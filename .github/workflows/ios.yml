@@ -43,6 +43,17 @@ jobs:
       - name: Test KlimaCore
         shell: bash
         run: swift test --package-path Packages/KlimaCore --no-parallel 2>&1 | tail -60
+      - name: Test KlimaCloud
+        shell: bash
+        run: |
+          # Linux-testable cloud core (HTTP client, DTOs, PKCE, merge rule) – docs/CLOUDFLARE_BACKEND.md §6.
+          if [ -f Packages/KlimaCloud/Package.swift ]; then
+            swift test --package-path Packages/KlimaCloud --no-parallel 2>&1 | tail -60
+          else
+            echo "::notice::Packages/KlimaCloud gibt es in diesem Stand noch nicht – übersprungen."
+          fi
+      - name: Test CI scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
   build:
     name: Build iOS (.ipa)
@@ -79,7 +90,11 @@ jobs:
 
       - name: KlimaCore tests (macOS)
         shell: bash
-        run: swift test --package-path Packages/KlimaCore 2>&1 | tail -25
+        run: |
+          swift test --package-path Packages/KlimaCore 2>&1 | tail -25
+          if [ -f Packages/KlimaCloud/Package.swift ]; then
+            swift test --package-path Packages/KlimaCloud 2>&1 | tail -25
+          fi
 
       - name: Version
         id: version
@@ -96,8 +111,12 @@ jobs:
 
       - name: App configuration (from repository secrets/variables)
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          # Cloud backend (Cloudflare Worker, docs/SETUP.md §3): repository variable API_BASE_URL (custom domain), else
+          # derived from the Cloudflare account's workers.dev subdomain, else empty = the app runs local-only.
+          # The token is only used to read the subdomain; scripts/write_app_config.py never prints it.
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Public repo: update.json / tariffs.json come straight from this repo's latest GitHub Release
           # (override with repository variables if the files are hosted elsewhere).
           UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL || format('https://github.com/{0}/releases/latest/download/update.json', github.repository) }}
