@@ -31,9 +31,10 @@ struct AuthButtonStack: View {
                 SignInWithAppleButton(.signIn) { request in
                     app.auth.prepareAppleRequest(request)
                 } onCompletion: { result in
+                    let before = app.auth.profile
                     Task {
                         await app.auth.handleAppleCompletion(result)
-                        if app.auth.isSignedIn { onSignedIn() }
+                        finishSignIn(since: before)
                     }
                 }
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
@@ -83,12 +84,21 @@ struct AuthButtonStack: View {
         .task { await app.auth.refreshServerConfig() }
     }
 
+    /// Calls `onSignedIn` only when the attempt really signed in. `isSignedIn` alone is no proof: with a local profile
+    /// ("Ohne Konto fortfahren") a cancelled or failed attempt ends in `.signedIn` again – Settings would then announce
+    /// "Angemeldet" and fold the panel away over the error text, although no account was connected.
+    private func finishSignIn(since before: UserProfile?) {
+        guard app.auth.isSignedIn, app.auth.lastError == nil, let profile = app.auth.profile, profile != before else { return }
+        onSignedIn()
+    }
+
     private var appleWebButton: some View {
         let isBusy = app.auth.phase == .signingIn(.apple)
         return Button {
+            let before = app.auth.profile
             Task {
                 await app.auth.signIn(with: .apple, using: webAuthenticationSession)
-                if app.auth.isSignedIn { onSignedIn() }
+                finishSignIn(since: before)
             }
         } label: {
             HStack(spacing: 8) {
@@ -111,9 +121,10 @@ struct AuthButtonStack: View {
     private func providerButton<Logo: View>(_ provider: AuthProvider, title: String, @ViewBuilder logo: () -> Logo) -> some View {
         let isBusy = app.auth.phase == .signingIn(provider)
         return Button {
+            let before = app.auth.profile
             Task {
                 await app.auth.signIn(with: provider, using: webAuthenticationSession)
-                if app.auth.isSignedIn { onSignedIn() }
+                finishSignIn(since: before)
             }
         } label: {
             HStack(spacing: 12) {

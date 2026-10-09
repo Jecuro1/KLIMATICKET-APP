@@ -15,7 +15,6 @@ struct SetAccountSection: View {
     var screenHeader: SetScreenHeader? = nil
 
     @State private var showsConnect = false
-    @State private var syncTrigger = 0
 
     /// The signed-in profile; CI screenshots show the demo ticket holder so the screen is fully populated.
     private var profile: UserProfile? {
@@ -24,6 +23,7 @@ struct SetAccountSection: View {
 
     private var isCloudActive: Bool { (profile?.isCloud ?? false) && app.auth.isCloudAvailable }
 
+    /// Memoised (AnalyticsMemo): the dashboard behind the sheet asks for the same period, so this is a cache hit.
     private var snapshot: AnalyticsSnapshot? {
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else { return nil }
         return Analytics.make(ticket: ticket, trips: trips, catalog: app.catalog)
@@ -69,11 +69,7 @@ struct SetAccountSection: View {
     private var accountRows: some View {
         if let profile {
             if isCloudActive {
-                syncStatusRow
-                syncNowRow
-                if app.sync.requiresAppUpdate {
-                    updateRow
-                }
+                SetSyncRows()
             } else if app.auth.isCloudAvailable || (profile.provider == .local && AppConfig.supportsNativeAppleSignIn) {
                 connectRow
                 if showsConnect {
@@ -89,67 +85,6 @@ struct SetAccountSection: View {
                 SetRowLabel(title: "Cloud-Sync einrichten", subtitle: "Konten & Abgleich zwischen deinen Geräten",
                             symbol: "icloud.fill", tint: Theme.modeColor(.sBahn))
             }
-        }
-    }
-
-    private var syncStatusRow: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            SetRowLabel(title: "Synchronisierung", subtitle: syncSubtitle, symbol: "icloud.fill", tint: Theme.glacier)
-            Spacer(minLength: Theme.Spacing.xs)
-            syncIndicator
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    @ViewBuilder
-    private var syncIndicator: some View {
-        switch app.sync.state {
-        case .syncing:
-            ProgressView()
-        case .synced:
-            Image(systemName: "checkmark.icloud.fill").foregroundStyle(Theme.positiveText)
-        case .failed:
-            Image(systemName: "exclamationmark.icloud.fill").foregroundStyle(Theme.negative)
-        case .disabled:
-            Image(systemName: "icloud.slash").foregroundStyle(Theme.textTertiary)
-        case .idle:
-            Image(systemName: "icloud").foregroundStyle(Theme.textSecondary)
-        }
-    }
-
-    private var syncSubtitle: String {
-        switch app.sync.state {
-        case .disabled:
-            return "Nicht eingerichtet"
-        case .idle:
-            return app.sync.lastSync.map { "Zuletzt \(SetFormat.relative($0))" } ?? "Bereit"
-        case .syncing:
-            return "Wird synchronisiert …"
-        case .synced(let date):
-            return "Synchronisiert \(SetFormat.relative(date))"
-        case .failed(let message):
-            return "Fehlgeschlagen · \(message)"
-        }
-    }
-
-    private var syncNowRow: some View {
-        Button {
-            syncTrigger += 1
-            Task { await app.sync.sync(context: context, auth: app.auth) }
-        } label: {
-            SetRowLabel(title: "Jetzt synchronisieren", symbol: "arrow.triangle.2.circlepath", tint: Theme.dusk)
-        }
-        .disabled(app.sync.state == .syncing)
-        .settingsHaptic(.impact(weight: .light), trigger: syncTrigger, enabled: app.settings.hapticsEnabled)
-    }
-
-    /// The server no longer accepts this app version (`426`): offer the update right here.
-    private var updateRow: some View {
-        Button {
-            Task { await app.updates.checkIfDue(force: true) }
-        } label: {
-            SetRowLabel(title: "Nach Update suchen", subtitle: "Diese Version wird vom Server nicht mehr unterstützt",
-                        symbol: "arrow.down.app.fill", tint: Theme.accent)
         }
     }
 
@@ -189,6 +124,91 @@ struct SetAccountSection: View {
         let name = app.auth.profile?.displayName
         app.showToast("checkmark.circle.fill", "Angemeldet", name.map { "Servus, \($0)!" })
         Task { await app.sync.sync(context: context, auth: app.auth) }
+    }
+}
+
+// MARK: - Sync rows
+
+/// "Synchronisierung", "Jetzt synchronisieren" and – after a `426` – "Nach Update suchen". Its own view, so only these
+/// rows follow the sync state (idle → syncing → synced on every pass) – the profile card and its bilanz stay put.
+private struct SetSyncRows: View {
+    @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var context
+    @State private var syncTrigger = 0
+
+    var body: some View {
+        statusRow
+        syncNowRow
+        if app.sync.requiresAppUpdate {
+            updateRow
+        }
+    }
+
+    /// The relative time ("vor 5 Minuten") moves on while Settings stays open.
+    private var statusRow: some View {
+        TimelineView(.everyMinute) { timeline in
+            HStack(spacing: Theme.Spacing.s) {
+                SetRowLabel(title: "Synchronisierung", subtitle: subtitle(now: timeline.date), symbol: "icloud.fill",
+                            tint: Theme.glacier)
+                Spacer(minLength: Theme.Spacing.xs)
+                indicator
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var indicator: some View {
+        switch app.sync.state {
+        case .syncing:
+            ProgressView()
+        case .synced:
+            Image(systemName: "checkmark.icloud.fill").foregroundStyle(Theme.positiveText)
+        case .failed:
+            Image(systemName: "exclamationmark.icloud.fill").foregroundStyle(Theme.negative)
+        case .disabled:
+            Image(systemName: "icloud.slash").foregroundStyle(Theme.textTertiary)
+        case .idle:
+            Image(systemName: "icloud").foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    private func subtitle(now: Date) -> String {
+        // RootView asks right after Settings closes (it closes them for this) – until then nothing is synced.
+        if app.sync.isPaused { return "Pausiert · Kontowechsel offen" }
+        switch app.sync.state {
+        case .disabled:
+            return "Nicht eingerichtet"
+        case .idle:
+            return app.sync.lastSync.map { "Zuletzt \(SetFormat.relative($0, now: now))" } ?? "Bereit"
+        case .syncing:
+            return "Wird synchronisiert …"
+        case .synced(let date):
+            return "Synchronisiert \(SetFormat.relative(date, now: now))"
+        case .failed(let message):
+            return "Fehlgeschlagen · \(message)"
+        }
+    }
+
+    private var syncNowRow: some View {
+        Button {
+            syncTrigger += 1
+            Task { await app.sync.sync(context: context, auth: app.auth) }
+        } label: {
+            SetRowLabel(title: "Jetzt synchronisieren", symbol: "arrow.triangle.2.circlepath", tint: Theme.dusk)
+        }
+        .disabled(app.sync.state == .syncing)
+        .settingsHaptic(.impact(weight: .light), trigger: syncTrigger, enabled: app.settings.hapticsEnabled)
+    }
+
+    /// The server no longer accepts this app version (`426`): offer the update right here.
+    private var updateRow: some View {
+        Button {
+            Task { await app.updates.checkIfDue(force: true) }
+        } label: {
+            SetRowLabel(title: "Nach Update suchen", subtitle: "Diese Version wird vom Server nicht mehr unterstützt",
+                        symbol: "arrow.down.app.fill", tint: Theme.accent)
+        }
     }
 }
 
