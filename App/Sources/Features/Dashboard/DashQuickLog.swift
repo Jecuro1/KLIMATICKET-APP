@@ -23,6 +23,8 @@ struct DashQuickLogSection: View {
     @State private var lastLoggedTripIDs: [UUID: UUID] = [:]
     /// Favourites whose "+" shows the check right now.
     @State private var justLogged: Set<UUID> = []
+    /// Per favourite: bumped on every tap, so only the newest tap's timer takes the check away again.
+    @State private var checkGeneration: [UUID: Int] = [:]
 
     var body: some View {
         ScrollView(.horizontal) {
@@ -171,9 +173,13 @@ struct DashQuickLogSection: View {
 
     /// The "+" turns into a check for 1.4 s; a second tap meanwhile logs again (and keeps the check).
     private func flashCheck(on id: UUID) {
+        let generation = (checkGeneration[id] ?? 0) + 1
+        checkGeneration[id] = generation
         withMotion(Motion.bouncy) { _ = justLogged.insert(id) }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.4))
+            // An earlier tap's timer must not take away the check of a later one.
+            guard checkGeneration[id] == generation else { return }
             withMotion(Motion.smooth) { _ = justLogged.remove(id) }
         }
     }
