@@ -14,7 +14,6 @@ struct TripEdPriceCard: View {
     @State private var manualFareBeforeEditing: Double? = nil
     @State private var showsInfo = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         SurfaceCard(padding: 0, cornerRadius: Theme.Radius.formGroup) {
@@ -90,7 +89,7 @@ struct TripEdPriceCard: View {
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(Theme.pine.opacity(0.13), in: .capsule)
-                .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
+                .motionTransition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
         } else {
             Kicker(text: eyebrowText)
                 .lineLimit(1)
@@ -162,7 +161,7 @@ struct TripEdPriceCard: View {
                         .background(Theme.accent.opacity(0.12), in: .circle)
                         .contentShape(.circle)
                 }
-                .buttonStyle(TripEdPressStyle())
+                .buttonStyle(.pressable)
                 .accessibilityLabel("Preis anpassen")
             }
         } else {
@@ -181,7 +180,7 @@ struct TripEdPriceCard: View {
                 .background(Theme.accent.opacity(0.12), in: .capsule)
                 .contentShape(.capsule)
         }
-        .buttonStyle(TripEdPressStyle())
+        .buttonStyle(.pressable)
         .fixedSize()
     }
 
@@ -224,8 +223,8 @@ struct TripEdPriceCard: View {
         Text(model.fare > 0 ? Format.number(model.fare, decimals: 2) : "–")
             .font(Theme.Typography.priceNumeral)
             .foregroundStyle(model.fare > 0 ? Theme.textPrimary : Theme.textTertiary)
-            .contentTransition(.numericText(value: model.fare))
-            .animation(reduceMotion ? nil : .snappy(duration: 0.35), value: model.fare)
+            // Route, mode, class, Vorteilscard: the price rolls to the new fare.
+            .numericValue(model.fare)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .onTapGesture { beginEditing() }
@@ -268,13 +267,13 @@ struct TripEdPriceCard: View {
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
-                .contentTransition(.numericText(value: model.fare))
+                .numericValue(model.fare)
             Text("Hin + Rück")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
         }
         .lineLimit(1)
-        .transition(.opacity.combined(with: .move(edge: .trailing)))
+        .motionTransition(.opacity.combined(with: .move(edge: .trailing)))
         .accessibilityElement(children: .combine)
     }
 
@@ -292,7 +291,7 @@ struct TripEdPriceCard: View {
         Binding(
             get: { model.isRoundTrip },
             set: { newValue in
-                withAnimation(.snappy(duration: 0.3)) { model.isRoundTrip = newValue }
+                withMotion(Motion.snappy) { model.isRoundTrip = newValue }
             }
         )
     }
@@ -302,7 +301,7 @@ struct TripEdPriceCard: View {
     private func beginEditing() {
         manualFareBeforeEditing = model.manualFare
         fareText = TripEdFormat.editableEuro(model.fare)
-        withAnimation(.snappy(duration: 0.25)) { isEditingFare = true }
+        withMotion(Motion.snappy) { isEditingFare = true }
     }
 
     /// Applies the field to the model (live and on finish). The prefill equals the current fare and changes nothing.
@@ -325,11 +324,11 @@ struct TripEdPriceCard: View {
         if let manual = model.manualFare, let estimate = model.estimate, abs(manual - estimate.fareEUR) < 0.005 {
             model.resetManualFare()
         }
-        withAnimation(.snappy(duration: 0.25)) { isEditingFare = false }
+        withMotion(Motion.snappy) { isEditingFare = false }
     }
 
     private func resetFare() {
-        withAnimation(.snappy(duration: 0.3)) {
+        withMotion(Motion.smooth) {
             model.resetManualFare()
             isEditingFare = false
         }

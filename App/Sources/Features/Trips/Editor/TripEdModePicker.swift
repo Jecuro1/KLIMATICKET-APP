@@ -2,12 +2,16 @@ import SwiftUI
 import KlimaCore
 
 /// Verkehrsmittel-Wahl: a scrolling strip of mode tiles (SF Symbol + label) on a calm card. The tinted
-/// selection tile glides to the new mode (matchedGeometry); S-Bahn and U-Bahn carry their "S"/"U" plaques.
+/// selection tile glides to the new mode (matchedGeometry), the picked symbol bounces; S-Bahn and U-Bahn carry their
+/// "S"/"U" plaques. When the form changes the mode itself (a bus stop → Bus), the strip scrolls it into view.
 struct TripEdModePicker: View {
     let model: TripEditorModel
 
     @Namespace private var selection
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Per mode: bumps when its tile gets picked (only that symbol bounces).
+    @State private var bounces: [TransportMode: Int] = [:]
+    /// The mode the finger picked last – a change to any other came from the form (stop kind, favourite).
+    @State private var tapped: TransportMode?
     @ScaledMetric(relativeTo: .caption) private var tileWidth: CGFloat = 62
     @ScaledMetric(relativeTo: .caption) private var tileHeight: CGFloat = 54
 
@@ -32,6 +36,11 @@ struct TripEdModePicker: View {
                         proxy.scrollTo(model.mode, anchor: .center)
                     }
                 }
+                .onChange(of: model.mode) { _, mode in
+                    guard mode != tapped else { return }
+                    bounces[mode, default: 0] += 1
+                    withMotion(Motion.smooth) { proxy.scrollTo(mode, anchor: .center) }
+                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -48,6 +57,7 @@ struct TripEdModePicker: View {
                 Image(systemName: mode.symbolName)
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(isSelected ? tint : Theme.textSecondary)
+                    .symbolBounce(on: bounces[mode] ?? 0)
                     .frame(height: 24)
                     .overlay(alignment: .topTrailing) {
                         plaque(for: mode, tint: tint, isSelected: isSelected)
@@ -67,7 +77,7 @@ struct TripEdModePicker: View {
             }
             .contentShape(.rect(cornerRadius: Theme.Radius.modeTile))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel(mode.displayName)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -100,8 +110,8 @@ struct TripEdModePicker: View {
 
     private func select(_ mode: TransportMode) {
         guard model.mode != mode else { return }
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .snappy(duration: 0.3, extraBounce: 0.08)) {
-            model.setMode(mode)
-        }
+        tapped = mode
+        bounces[mode, default: 0] += 1
+        withMotion(Motion.snappy) { model.setMode(mode) }
     }
 }

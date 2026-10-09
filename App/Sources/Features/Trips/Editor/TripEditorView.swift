@@ -42,6 +42,8 @@ private struct TripEdSheet: View {
 
     @State private var picking: TripEdPick?
     @State private var selectionTick = 0
+    /// Saved: the button turns into "✓ Gespeichert" for a moment, then the sheet closes.
+    @State private var isSaved = false
     @FocusState private var focus: TripEdField?
 
     init(app: AppState, draft: TripDraft, editing: TripEntity?) {
@@ -49,14 +51,13 @@ private struct TripEdSheet: View {
     }
 
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
         NavigationStack {
             form
                 .navigationTitle(model.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { toolbarContent }
                 .safeAreaBar(edge: .bottom) {
-                    TripEdSaveBar(model: model, onSave: save)
+                    TripEdSaveBar(model: model, isSaved: isSaved, onSave: save)
                 }
         }
         .sheet(item: $picking) { pick in
@@ -64,12 +65,12 @@ private struct TripEdSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .sensoryFeedback(.selection, trigger: model.mode) { _, _ in haptics }
-        .sensoryFeedback(.selection, trigger: selectionTick) { _, _ in haptics }
+        .haptic(.selection, trigger: model.mode)
+        .haptic(.selection, trigger: selectionTick)
         // MARK: tripmeta – suggest the purpose from the favourite / the route's last trip.
         .onAppear { model.metaApplySuggestion(favorites: favorites, context: context) }
         .onChange(of: model.metaSuggestionKey) { _, _ in
-            withAnimation(.snappy(duration: 0.3)) { model.metaApplySuggestion(favorites: favorites, context: context) }
+            withMotion(Motion.snappy) { model.metaApplySuggestion(favorites: favorites, context: context) }
         }
     }
 
@@ -132,13 +133,13 @@ private struct TripEdSheet: View {
                 title: pick.pickerTitle,
                 selection: { station in
                     // MARK: via – a via pick goes to its slot (TripEdViaRows.swift)
-                    withAnimation(.snappy(duration: 0.35)) {
+                    withMotion(Motion.smooth) {
                         if !model.tripEdSetVia(station, for: pick) { model.setStation(station, for: pick.endpoint) }
                     }
                     selectionTick += 1
                 },
                 customName: pick.tripEdAllowsCustomName ? { name in
-                    withAnimation(.snappy(duration: 0.35)) { model.setCustomName(name, for: pick.endpoint) }
+                    withMotion(Motion.smooth) { model.setCustomName(name, for: pick.endpoint) }
                     selectionTick += 1
                 } : nil)
             .toolbar {
@@ -174,7 +175,7 @@ private struct TripEdSheet: View {
 
     private func applyFavorite(_ favorite: FavoriteRouteEntity) {
         focus = nil
-        withAnimation(.snappy(duration: 0.35)) { model.apply(favorite: favorite) }
+        withMotion(Motion.smooth) { model.apply(favorite: favorite) }
         selectionTick += 1
     }
 
@@ -194,7 +195,7 @@ private struct TripEdSheet: View {
 
     private func save() {
         focus = nil
-        guard model.canSave else { return }
+        guard !isSaved, model.canSave else { return }
         if existingFavorite != nil { model.saveAsFavorite = false }
         let outcome = projectedOutcome()
         let wasEditing = model.isEditing
@@ -216,59 +217,71 @@ private struct TripEdSheet: View {
            !app.settings.celebratedBreakEvenTicketIDs.contains(outcome.ticketID.uuidString) {
             app.celebrateBreakEven = true
         }
-        dismiss()
+        // The toast plays the success haptic; the button confirms in place, then the sheet goes.
+        withMotion(Motion.bouncy) { isSaved = true }
+        let pause: Duration = MotionPolicy.isStatic ? .zero : .milliseconds(MotionPolicy.prefersReducedMotion ? 300 : 420)
+        Task { @MainActor in
+            try? await Task.sleep(for: pause)
+            dismiss()
+        }
     }
 }
 
 // MARK: - Save bar
 
 /// Bottom call to action "✓ Fahrt speichern | € 49,80" in a safe-area bar (system scroll-edge effect, rides above the keyboard).
+/// The value rolls with every change of the form; after saving, the label morphs into "✓ Gespeichert" (check bounces).
 private struct TripEdSaveBar: View {
     let model: TripEditorModel
+    let isSaved: Bool
     var onSave: () -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: Theme.Spacing.xs) {
-            if let hint = model.validationHint {
+            if let hint = model.validationHint, !isSaved {
                 Label(hint, systemImage: "info.circle")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .contentTransition(.opacity)
+                    .motionTransition(.lift)
             }
             Button(action: onSave) {
                 label
             }
             .buttonStyle(.primary)
-            .disabled(!model.canSave)
-            .accessibilityLabel(model.isEditing ? "Änderungen speichern" : "Fahrt speichern")
-            .accessibilityValue(model.totalValue > 0 ? Format.euroPrecise(model.totalValue) : "")
+            .disabled(!model.canSave && !isSaved)
+            .allowsHitTesting(!isSaved)
+            .accessibilityLabel(isSaved ? "Gespeichert" : (model.isEditing ? "Änderungen speichern" : "Fahrt speichern"))
+            .accessibilityValue(model.totalValue > 0 && !isSaved ? Format.euroPrecise(model.totalValue) : "")
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, Theme.Spacing.xs)
         .padding(.bottom, Theme.Spacing.xxs)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.validationHint)
+        .motionAnimation(Motion.smooth, value: model.validationHint)
     }
 
     private var label: some View {
         HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: "checkmark")
+            Image(systemName: isSaved ? "checkmark.circle.fill" : "checkmark")
                 .font(.headline.weight(.bold))
-            Text(model.isEditing ? "Änderungen speichern" : "Fahrt speichern")
-            if model.totalValue > 0 {
+                .symbolReplaceTransition()
+                .symbolBounce(on: isSaved)
+            Text(isSaved ? "Gespeichert" : (model.isEditing ? "Änderungen speichern" : "Fahrt speichern"))
+                .contentTransition(.opacity)
+            if model.totalValue > 0 && !isSaved {
                 Capsule()
                     .fill(Theme.onAccent.opacity(0.4))
                     .frame(width: 1, height: 22)
+                    .transition(.opacity)
                 Text(Format.euroPrecise(model.totalValue))
                     .monospacedDigit()
-                    .contentTransition(.numericText(value: model.totalValue))
+                    .numericValue(model.totalValue)
+                    .transition(.opacity)
             }
         }
         .lineLimit(1)
         .minimumScaleFactor(0.75)
         .padding(.horizontal, Theme.Spacing.m)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: model.totalValue)
     }
 }
 

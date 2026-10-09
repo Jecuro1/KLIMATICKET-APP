@@ -200,12 +200,10 @@ struct TripEdRowDivider: View {
     }
 }
 
-/// Subtle press feedback for custom tappable areas.
+/// Press feedback for the editor's own tappable areas – the motion system's `.pressable` at card depth (98 %,
+/// Motion.press / .release, a dim instead of the scale under Reduce Motion).
 struct TripEdPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .opacity(configuration.isPressed ? 0.6 : 1)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+        PressableButtonStyle(scale: Motion.Distance.pressScaleCard).makeBody(configuration: configuration)
     }
 }

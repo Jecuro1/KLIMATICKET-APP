@@ -44,6 +44,8 @@ struct TripEdFavoritesRow: View {
                 Image(systemName: isSelected ? "star.fill" : "star")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.gold)
+                    .symbolReplaceTransition()
+                    .symbolBounce(on: isSelected)
                 ViaRouteLabel(route: title, vias: favorite.via,   // MARK: via – "· über Feldkirch" when it fits, else ⦿
                               color: isSelected ? Theme.accentText : Theme.textPrimary)
             }
@@ -204,6 +206,8 @@ struct TripEdDetailsCard: View {
         }
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, 10)
+        .haptic(.increase, trigger: model.companions, when: { old, new in new > old })
+        .haptic(.decrease, trigger: model.companions, when: { old, new in new < old })
         .accessibilityValue("\(model.companions)")
     }
 
@@ -249,7 +253,7 @@ struct TripEdDetailsCard: View {
         Binding(
             get: { model.travelClass },
             set: { newValue in
-                withAnimation(.snappy(duration: 0.3)) { model.setTravelClass(newValue) }
+                withMotion(Motion.snappy) { model.setTravelClass(newValue) }
             }
         )
     }
@@ -258,7 +262,7 @@ struct TripEdDetailsCard: View {
         Binding(
             get: { model.discount == .vorteilscard },
             set: { isOn in
-                withAnimation(.snappy(duration: 0.3)) { model.setDiscount(isOn ? .vorteilscard : .none) }
+                withMotion(Motion.snappy) { model.setDiscount(isOn ? .vorteilscard : .none) }
             }
         )
     }

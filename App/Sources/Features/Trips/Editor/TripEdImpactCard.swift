@@ -10,7 +10,6 @@ struct TripEdImpactCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @State private var revealed = false
 
@@ -80,7 +79,7 @@ struct TripEdImpactCard: View {
                     if impact.reachesSummit {
                         Image(systemName: "flag.fill")
                             .foregroundStyle(Theme.summitText)
-                            .transition(.scale.combined(with: .opacity))
+                            .motionTransition(.pop)
                     }
                     Text("Gipfel " + Format.euro(impact.price))
                 }
@@ -90,8 +89,9 @@ struct TripEdImpactCard: View {
             .lineLimit(1)
             .minimumScaleFactor(0.85)
         }
-        .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15), value: impact.after)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: impact.added)
+        // The new segment and the percentages settle calmly; the euro amount follows the price like the save button.
+        .motionAnimation(Motion.gentle, value: impact.after)
+        .motionAnimation(Motion.number, value: impact.added)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Wirkung auf die Amortisation")
         .accessibilityValue(spokenValue(impact))
@@ -174,12 +174,9 @@ struct TripEdImpactCard: View {
             .shadow(color: color.opacity(0.55), radius: 6)
     }
 
+    /// The new segment grows out of today's fill once, after the sheet has settled.
     private func reveal() {
         guard !revealed else { return }
-        if reduceMotion || LaunchMode.isScreenshot {
-            revealed = true
-        } else {
-            withAnimation(.spring(duration: 0.8, bounce: 0.2).delay(0.35)) { revealed = true }
-        }
+        withMotion(Motion.gentle.delay(0.35)) { revealed = true }
     }
 }

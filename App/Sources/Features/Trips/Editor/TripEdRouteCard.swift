@@ -1,4 +1,5 @@
 import SwiftUI
+import TipKit
 import KlimaCore
 
 /// Route card: "Von / Nach" with the DS `RouteGlyph`, station name + "Bahnhof · Tirol", the route meta
@@ -8,7 +9,6 @@ struct TripEdRouteCard: View {
     let model: TripEditorModel
     var onPick: (TripEdPick) -> Void
 
-    @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var labels
     @State private var swapTurns = 0
@@ -19,7 +19,6 @@ struct TripEdRouteCard: View {
     @ScaledMetric(relativeTo: .title3) private var nameHalfLine: CGFloat = 12.5
 
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
         SurfaceCard(padding: 0, cornerRadius: Theme.Radius.formGroup) {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 stops
@@ -29,7 +28,7 @@ struct TripEdRouteCard: View {
             .padding(.leading, Theme.Spacing.m)
             .padding(.trailing, Theme.Spacing.s)
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: swapTurns) { _, _ in haptics }
+        .haptic(.tap, trigger: swapTurns)
     }
 
     // MARK: Stops
@@ -94,13 +93,15 @@ struct TripEdRouteCard: View {
                     }
                 }
                 .id(key)
+                // A swap keeps the keys: the labels glide to their new slot. A new pick is a new key: it blurs in.
                 .matchedGeometryEffect(id: key, in: labels, properties: .position)
+                .motionTransition(AnyTransition(.blurReplace))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 2)
             .contentShape(.rect)
         }
-        .buttonStyle(TripEdPressStyle())
+        .buttonStyle(.pressable(scale: Motion.Distance.pressScaleCard))
         .accessibilityLabel(spoken)
         .accessibilityHint(pick == .from ? "Öffnet die Suche für den Start" : "Öffnet die Suche für das Ziel")
     }
@@ -137,9 +138,12 @@ struct TripEdRouteCard: View {
 
     // MARK: Swap
 
+    private var canSwap: Bool { !model.resolvedFromName.isEmpty && !model.resolvedToName.isEmpty }
+
     private var swapButton: some View {
         Button {
-            withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .bouncy(duration: 0.5, extraBounce: 0.1)) {
+            KBTips.used(KBTips.SwapStations())
+            withMotion(Motion.bouncy) {
                 swapTurns += 1
                 model.swap()
             }
@@ -154,6 +158,8 @@ struct TripEdRouteCard: View {
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .circle)
         .disabled(model.resolvedFromName.isEmpty && model.resolvedToName.isEmpty)
+        // Once both ends are set: the arrow is the way home (TipKit decides when; never in screenshot runs).
+        .popoverTip(canSwap ? KBTips.SwapStations() : nil, arrowEdge: .trailing)
         .accessibilityLabel("Start und Ziel tauschen")
     }
 }
