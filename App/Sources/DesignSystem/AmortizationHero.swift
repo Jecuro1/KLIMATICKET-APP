@@ -7,7 +7,6 @@ import KlimaCore
 struct AmortizationHero: View {
     var snapshot: AnalyticsSnapshot
     var chartHeight: CGFloat = 250
-    var now: Date = Date()
 
     @State private var shownPercent: Double = 0
     /// Spec `heroNumeral`: rounded thin, scales with Dynamic Type (clamped below).
@@ -19,6 +18,8 @@ struct AmortizationHero: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var summary: SavingsSummary { snapshot.summary }
+    /// Read when the body runs – a stored `now = Date()` would differ on every parent update and defeat SwiftUI's diffing.
+    private var now: Date { Date() }
     private var percent: Double { SummitFigures.percent(summary.amortizedFraction) }
     private var numeralSize: CGFloat { min(max(numeralMetric, 96), 140) }
 
@@ -51,7 +52,7 @@ struct AmortizationHero: View {
             }
         }
         .onChange(of: percent) { _, new in
-            withAnimation(.spring(duration: 0.6, bounce: 0.15)) { shownPercent = new }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.6, bounce: 0.15)) { shownPercent = new }
         }
     }
 

@@ -7,19 +7,22 @@ import KlimaCore
 /// Row C: the car comparison, once (tap → "Öffis vs. Auto", which explains and configures it).
 struct DashBalanceCard: View {
     var snapshot: AnalyticsSnapshot
-    /// The same car comparison as Statistik › "Öffis vs. Auto" (`WorkCarCalc`: road km, the chosen car-cost mode,
-    /// the own share of the ticket) – the Übersicht must not show a second, differently calculated car figure.
-    var car: CarComparisonResult
-    var now: Date = Date()
+    /// For the car comparison – the same one as Statistik › "Öffis vs. Auto" (`WorkCarCalc`: road km, the chosen car-cost
+    /// mode, the own share of the ticket); the Übersicht must not show a second, differently calculated car figure.
+    /// Computed here (not by the dashboard), so it only runs when the snapshot or the car settings change.
+    var catalog: TariffCatalog
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var summary: SavingsSummary { snapshot.summary }
+    /// Read when the body runs – a stored `now = Date()` would differ on every parent update and defeat SwiftUI's diffing.
+    private var now: Date { Date() }
     private var isExpired: Bool { now > snapshot.ticket.end }
-    private var showsCarRow: Bool { car.tripCount > 0 && car.carCost > 0 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let car = WorkCarCalc.result(period: snapshot.ticket, records: snapshot.trips, catalog: catalog)
+        let showsCarRow = car.tripCount > 0 && car.carCost > 0
+        return VStack(alignment: .leading, spacing: 0) {
             forecastRow
                 .padding(.top, 14)
                 .padding(.bottom, 12)
@@ -29,7 +32,7 @@ struct DashBalanceCard: View {
             if showsCarRow {
                 hairline
                     .padding(.horizontal, -Theme.Spacing.m)
-                carRow
+                carRow(car)
             }
         }
         .padding(.horizontal, Theme.Spacing.m)
@@ -235,19 +238,19 @@ struct DashBalanceCard: View {
 
     // MARK: Row C – car comparison
 
-    private var carRow: some View {
+    private func carRow(_ car: CarComparisonResult) -> some View {
         NavigationLink {
             WorkCarView(period: snapshot.ticket)
         } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.xs) {
-                    carLead
+                    carLead(car)
                     Spacer(minLength: Theme.Spacing.xs)
-                    carVerdict
+                    carVerdict(car)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    carLead
-                    carVerdict
+                    carLead(car)
+                    carVerdict(car)
                 }
             }
             .padding(.vertical, 10)
@@ -259,7 +262,7 @@ struct DashBalanceCard: View {
         .accessibilityHint("Öffnet den ausführlichen Auto-Vergleich")
     }
 
-    private var carLead: some View {
+    private func carLead(_ car: CarComparisonResult) -> some View {
         HStack(spacing: Theme.Spacing.xs) {
             Image(systemName: "car.fill")
                 .font(.subheadline)
@@ -277,7 +280,7 @@ struct DashBalanceCard: View {
     }
 
     @ViewBuilder
-    private var carVerdict: some View {
+    private func carVerdict(_ car: CarComparisonResult) -> some View {
         if car.isCheaperThanCar, let since = car.breakEvenDate {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Image(systemName: "checkmark")

@@ -182,19 +182,25 @@ struct DashWeekStats: Equatable {
     /// 0 = Monday … 6 = Sunday.
     var todayIndex: Int = 0
 
-    var delta: Double { value - previousValue }
+    /// From the whole euros the card shows, so "€ 48 · Vorwoche € 23" never reads "+ € 24 vs. Vorwoche".
+    var delta: Double { value.rounded() - previousValue.rounded() }
     var isEmpty: Bool { trips == 0 && previousTrips == 0 }
 
-    /// `trips` may be in any order; only the last 14 days are considered.
-    static func make(from trips: [TripEntity], now: Date = Date()) -> DashWeekStats {
+    /// `trips` must be sorted newest first (the dashboard's @Query): the walk stops at the first trip before the previous
+    /// week, so it reads a fortnight of trips instead of the whole history on every dashboard update.
+    static func make(fromNewestFirst trips: [TripEntity], now: Date = Date()) -> DashWeekStats {
         let cal = Calendar.vienna
         let today = cal.startOfDay(for: now)
         let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? today
         let previousStart = cal.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
         var stats = DashWeekStats()
         stats.todayIndex = min(6, max(0, cal.dateComponents([.day], from: weekStart, to: today).day ?? 0))
-        for trip in trips where trip.deletedAt == nil && trip.date >= previousStart {
-            let offset = cal.dateComponents([.day], from: previousStart, to: cal.startOfDay(for: trip.date)).day ?? -1
+        for trip in trips {
+            let date = trip.date
+            guard date >= previousStart else { break }
+            guard trip.deletedAt == nil else { continue }
+            // Calendar days between local midnights – stays right across the DST switch (23 / 25 h days).
+            let offset = cal.dateComponents([.day], from: previousStart, to: cal.startOfDay(for: date)).day ?? -1
             if offset >= 7 && offset < 14 {
                 stats.trips += 1
                 stats.value += trip.totalValue
