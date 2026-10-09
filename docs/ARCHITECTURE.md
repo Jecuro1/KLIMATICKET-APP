@@ -15,6 +15,9 @@ Packages/KlimaCore/         Plattformunabhängige Logik (unter Linux & macOS tes
   TicketComparator.swift    „Was wäre wenn“ – welches Ticket wäre am günstigsten?
   Updates.swift             SemanticVersion, UpdateManifest, UpdateDecision
   CSVExport.swift           CSV-Export (Excel-AT kompatibel)
+  StationIndex.swift        Suche über stations.json; Fassade über PlaceIndex nach attach(places:)
+  Places/                   Orte-Suche wie Scotty (docs/PLACES.md): PlaceIndex (offline, ~40k Haltestellen + 21k Orte),
+                            PlaceNormalizer, Ranking, LocMatch-Decoder + Merge, PlaceIndexLoader (lazy, Hintergrund)
 Packages/KlimaCloud/        Cloud-Client ohne UI (nur Foundation, unter Linux & macOS testbar): HTTP-Client,
                             Sitzung/Refresh, DTOs, Merge-Regel, PKCE, Zeitstempel (docs/CLOUDFLARE_BACKEND.md §6)
 Shared/                     In App UND Widget kompiliert
@@ -32,10 +35,12 @@ App/Sources/
                             NotificationService, LocationService
   DesignSystem/             Theme (Tokens), Komponenten, Hintergründe, Haptik
   Features/<Feature>/       Onboarding, Dashboard, Trips, Statistics, Ticket, Achievements, Settings, Updates, Account, Widgets
-App/Resources/              Assets, stations.json, tariffs.json, AppConfig.json
+App/Resources/              Assets, stations.json (legacy ids), places.bin + localities.bin (all stops/places,
+                            docs/PLACES.md), tariffs.json, AppConfig.json
 Widgets/Sources/            WidgetKit-Extension
 backend/                    Cloud-Backend: Cloudflare Worker (TypeScript) + D1-Schema (migrations/), Tests, Deploy-Skripte
-scripts/                    CI-Hilfsskripte, Tarif-Katalog-Generator
+scripts/                    CI-Hilfsskripte, Tarif-Katalog-Generator, build_places.py (Haltestellen/Orte,
+                            docs/DATA_SOURCES.md), places_reference.py (Python-Referenz + Goldens der Suche)
 .github/workflows/          ios.yml (App, Releases), backend.yml (Worker testen + bereitstellen)
 ```
 
