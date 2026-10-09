@@ -133,9 +133,10 @@ struct MotionGalleryView: View {
                 Button {
                     withMotion { total += 23.5 }
                 } label: {
-                    Label("+ € 23,50", systemImage: "plus")
+                    Label("Fahrt dazu", systemImage: "plus")
                 }
                 .buttonStyle(.glassProminent)
+                .tint(Theme.prominentTint)
                 .haptic(.increase, trigger: total, when: { old, new in new > old })
             }
             .labelStyle(.titleAndIcon)
@@ -191,7 +192,7 @@ struct MotionGalleryView: View {
                     Image(systemName: "chevron.right").foregroundStyle(Theme.textTertiary)
                 }
                 .padding(Theme.Spacing.s)
-                .frostedCard(cornerRadius: Theme.Radius.tile)
+                .innerTile()
             }
             .buttonStyle(.pressableCard)
             Button("Fahrt speichern · € 47,00") {}
@@ -225,7 +226,7 @@ struct MotionGalleryView: View {
                             .symbolReplaceTransition()
                     }
                     .buttonStyle(.pressable(scale: 0.9))
-                    .morphingGlass(.regular.tint(Theme.accent).interactive(), in: .circle, id: "main", namespace: ns)
+                    .morphingGlass(.regular.tint(Theme.prominentTint).interactive(), in: .circle, id: "main", namespace: ns)
                     .haptic(.tap, trigger: isExpanded)
                     .accessibilityLabel(isExpanded ? "Schließen" : "Mehr Aktionen")
                 }
@@ -282,6 +283,7 @@ struct MotionGalleryView: View {
                 Spacer(minLength: 0)
                 Button("Feiern") { celebrateCount += 1 }
                     .buttonStyle(.glassProminent)
+                    .tint(Theme.prominentTint)
             }
             .padding(.vertical, Theme.Spacing.xs)
         }
@@ -290,7 +292,12 @@ struct MotionGalleryView: View {
     // MARK: Carousel
 
     private var carouselSection: some View {
-        GallerySection(title: "Karussell", note: ".carouselScrolling · .carouselItem", padsContent: false) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Karussell").font(Theme.Typography.sectionTitle).foregroundStyle(Theme.textPrimary)
+                Text(".carouselScrolling · .carouselItem").font(.caption.monospaced()).foregroundStyle(Theme.textSecondary)
+            }
+            .padding(.horizontal, Theme.Spacing.xxs)
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 10) {
                     ForEach(Self.demoTrips, id: \.from) { trip in
@@ -299,6 +306,7 @@ struct MotionGalleryView: View {
                                 ModeIcon(mode: trip.mode, size: 30)
                                 Text("\(TripRow.short(trip.from)) → \(TripRow.short(trip.to))")
                                     .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Theme.textPrimary)
                                     .lineLimit(1)
                                 Text(Format.euroPrecise(trip.value))
                                     .font(.subheadline.weight(.bold).monospacedDigit())
@@ -315,8 +323,10 @@ struct MotionGalleryView: View {
                 }
                 .scrollTargetLayout()
             }
-            .carouselScrolling(margin: Theme.Spacing.m)
+            .carouselScrolling()
+            .padding(.horizontal, -Theme.Spacing.cardGutter)   // full bleed; the content margins keep the gutter
         }
+        .reveal()
     }
 
     // MARK: Zoom
@@ -335,7 +345,7 @@ struct MotionGalleryView: View {
                         }
                         .padding(Theme.Spacing.m)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .frostedCard(cornerRadius: Theme.Radius.tile)
+                        .innerTile()
                         .zoomSource(id: id, cornerRadius: Theme.Radius.tile)
                     }
                     .buttonStyle(.pressableCard)
@@ -398,7 +408,7 @@ struct MotionGalleryView: View {
         DemoTrip(from: "St. Anton am Arlberg", to: "Innsbruck Hauptbahnhof", mode: .train, km: 101, value: 47),
         DemoTrip(from: "Innsbruck Hauptbahnhof", to: "Hall in Tirol", mode: .sBahn, km: 9, value: 3.6),
         DemoTrip(from: "Wien Westbahnhof", to: "Wien Stephansplatz", mode: .metro, km: 4, value: 2.4),
-        DemoTrip(from: "Lech Post", to: "Warth am Arlberg Dorf", mode: .bus, km: 15, value: 5.8),
+        DemoTrip(from: "Lech Post", to: "Warth am Arlberg", mode: .bus, km: 15, value: 5.8),
     ]
 
     private static let haptics: [(name: String, haptic: Haptic)] = [
@@ -413,7 +423,6 @@ struct MotionGalleryView: View {
 private struct GallerySection<Content: View>: View {
     var title: String
     var note: String
-    var padsContent = true
     @ViewBuilder var content: Content
 
     var body: some View {
@@ -422,16 +431,22 @@ private struct GallerySection<Content: View>: View {
                 Text(title).font(Theme.Typography.sectionTitle).foregroundStyle(Theme.textPrimary)
                 Text(note).font(.caption.monospaced()).foregroundStyle(Theme.textSecondary)
             }
-            .padding(.horizontal, padsContent ? 0 : Theme.Spacing.m)
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
             content
         }
         .padding(.vertical, Theme.Spacing.m)
-        .padding(.horizontal, padsContent ? Theme.Spacing.m : 0)
+        .padding(.horizontal, Theme.Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frostedCard()
         .reveal()
+    }
+}
+
+private extension View {
+    /// A quiet tile inside a card (never a card on a card).
+    func innerTile() -> some View {
+        background(Theme.surfaceSecondary.opacity(0.75), in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
     }
 }
 

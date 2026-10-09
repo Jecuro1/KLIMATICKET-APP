@@ -105,6 +105,7 @@ struct BreakEvenCelebration: View {
                 }
                 Button("Weiter so") { onDismiss() }
                     .buttonStyle(.glassProminent)
+                    .tint(Theme.prominentTint)
                     .controlSize(.large)
                     .padding(.top, Theme.Spacing.s)
                     .reveal(order: 3, delay: 0.12)

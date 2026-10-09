@@ -88,3 +88,11 @@ enum Motion {
         reduceMotion ? crossfade : animation
     }
 }
+
+extension View {
+    /// Widgets and Live Activities: the digits roll when the next timeline entry / activity update arrives (the system
+    /// animates the change; the app uses `numericValue(_:)`, which also follows Reduce Motion and screenshot mode).
+    func rollingDigits(_ value: Double) -> some View {
+        contentTransition(.numericText(value: value))
+    }
+}

@@ -25,6 +25,9 @@ enum Theme {
     static let accent = glacier
     static let accentSecondary = dusk
     static let onAccent = Color.white
+    // MARK: motion – fill behind white labels (`.glassProminent`, tinted glass buttons). `accent` is a light blue in
+    // dark mode (#7CC4FF), where white text on it reads at < 2:1; this stays a deep glacier blue in both appearances.
+    static let prominentTint = Color(light: "#2A7BD4", dark: "#2E78CC")
 
     static let background = Color(light: "#E6ECF3", dark: "#08132A")
     static let sheetBackground = Color(light: "#F1F4F8", dark: "#0D1830")
