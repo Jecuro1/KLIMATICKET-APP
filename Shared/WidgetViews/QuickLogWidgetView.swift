@@ -31,24 +31,24 @@ private struct WidQuickLogSmall: View {
     let margins: EdgeInsets
     let isInteractive: Bool
 
+    /// No ridge here: two buttons and the progress footer fill the whole tile, so any ridge line would run
+    /// through the bar and the "75 %" – the summit glow of the sky carries the brand instead.
     var body: some View {
         let favorites = Array(snapshot.favorites.prefix(2))
-        ZStack(alignment: .topLeading) {
-            WidSummitArt(model: .decorative, top: 0.68, bottom: 1, scale: 0.8, showsRoute: false, ridgeOpacity: 0.55, showsFlag: false)
-            VStack(alignment: .leading, spacing: 5) {
-                WidEyebrow(text: "Schnell erfassen", symbol: "bolt.fill", tint: Theme.gold)
-                if favorites.isEmpty {
-                    WidNoFavoritesHint(compact: true)
-                } else {
-                    ForEach(favorites) { favorite in
-                        WidFavoriteButton(favorite: favorite, isInteractive: isInteractive)
-                    }
+        VStack(alignment: .leading, spacing: 5) {
+            WidEyebrow(text: "Schnell erfassen", symbol: "bolt.fill", tint: Theme.gold)
+            if favorites.isEmpty {
+                WidNoFavoritesHint(compact: true)
+            } else {
+                ForEach(favorites) { favorite in
+                    WidFavoriteButton(favorite: favorite, isInteractive: isInteractive)
                 }
-                Spacer(minLength: 0)
-                WidProgressFooter(snapshot: snapshot)
             }
-            .padding(margins)
+            Spacer(minLength: 0)
+            WidProgressFooter(snapshot: snapshot)
         }
+        .padding(margins)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
@@ -68,8 +68,13 @@ private struct WidQuickLogMedium: View {
 
     var body: some View {
         let grid = self.rows
+        let showsFooter = grid.count < 2
         ZStack(alignment: .topLeading) {
-            WidSummitArt(model: .decorative, top: 0.6, bottom: 1, scale: 0.9, showsRoute: false, ridgeOpacity: 0.5, showsFlag: false)
+            // Two rows: a low horizon below the buttons (its rim would show through the capsules).
+            // One row + footer: the ridge rises between them and dissolves into mist before it reaches the bar.
+            WidSummitArt(model: .decorative, top: showsFooter ? 0.6 : 0.76, bottom: 1, scale: 0.9, showsRoute: false,
+                         ridgeOpacity: 0.5, showsFlag: false,
+                         mistFrom: showsFooter ? 0.66 : 0.86, mistTo: showsFooter ? 0.8 : 1, mistOpacity: showsFooter ? 0 : 0.35)
             VStack(alignment: .leading, spacing: 8) {
                 header
                 if grid.isEmpty {
@@ -80,7 +85,7 @@ private struct WidQuickLogMedium: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if grid.count < 2 {
+                if showsFooter {
                     WidProgressFooter(snapshot: snapshot)
                 }
             }
@@ -97,7 +102,7 @@ private struct WidQuickLogMedium: View {
                 Text("noch \(WidFormat.euroWhole(snapshot.remaining))")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -138,7 +143,7 @@ private struct WidNoFavoritesHint: View {
                     .foregroundStyle(Theme.textPrimary)
                 Text(message)
                     .font(.system(size: 12))
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
                     .lineLimit(compact ? 3 : 2)
                     .minimumScaleFactor(0.85)
             }

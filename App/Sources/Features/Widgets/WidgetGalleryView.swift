@@ -20,25 +20,40 @@ struct WidgetGalleryView: View {
     @State private var topic: WidGuideTopic = .home
     /// Captured on first appearance (see `backdrop`), so the background does not flip while Settings closes.
     @State private var isInSettingsSheet: Bool?
+    /// CI screenshots of the lower part of the gallery ("widgets2", "widgets3") start scrolled to this section.
+    var screenshotSection: WidGallerySection? = nil
 
     var body: some View {
         let snapshot = gallerySnapshot
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-                header
-                    .widAppear(0, appeared)
-                WidHomeStage(snapshot: snapshot, appeared: appeared)
-                WidLockStage(snapshot: snapshot)
-                    .widAppear(6, appeared)
-                WidControlCenterSection { openAddTrip() }
-                    .widAppear(7, appeared)
-                WidGuideSection(topic: $topic, snapshot: snapshot)
-                    .widAppear(8, appeared)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
+                    header
+                        .widAppear(0, appeared)
+                    WidHomeStage(snapshot: snapshot, appeared: appeared)
+                    WidLockStage(snapshot: snapshot)
+                        .widAppear(6, appeared)
+                        .id(WidGallerySection.lock)
+                    WidControlCenterSection { openAddTrip() }
+                        .widAppear(7, appeared)
+                    WidGuideSection(topic: $topic, snapshot: snapshot)
+                        .widAppear(8, appeared)
+                }
+                .padding(.top, Theme.Spacing.xs)
+                .padding(.bottom, Theme.Spacing.xxl)
             }
-            .padding(.top, Theme.Spacing.xs)
-            .padding(.bottom, Theme.Spacing.xxl)
+            .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 64
+            } action: { _, isPastHeader in
+                withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
+            }
+            .task {
+                guard let screenshotSection else { return }
+                try? await Task.sleep(for: .milliseconds(300))
+                proxy.scrollTo(screenshotSection, anchor: .top)
+            }
         }
-        .scrollIndicators(.hidden)
         .background { backdrop }
         .navigationTitle("Widgets")
         .navigationBarTitleDisplayMode(.inline)
@@ -49,11 +64,6 @@ struct WidgetGalleryView: View {
                     .opacity(showsNavigationTitle ? 1 : 0)
                     .accessibilityHidden(!showsNavigationTitle)
             }
-        }
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, isPastHeader in
-            withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
         }
         .onAppear {
             if isInSettingsSheet == nil { isInSettingsSheet = app.isShowingSettings }
@@ -128,6 +138,14 @@ struct WidgetGalleryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.Spacing.screen)
     }
+}
+
+/// Scroll anchors inside the gallery (used by the CI screenshots of its lower part).
+enum WidGallerySection: Hashable {
+    /// The large Amortisation widget and the medium Schnellerfassung below it.
+    case large
+    /// Lock screen, Control Center and the how-to guide.
+    case lock
 }
 
 // MARK: - Entrance motion

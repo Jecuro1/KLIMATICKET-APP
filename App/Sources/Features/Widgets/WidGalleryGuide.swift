@@ -98,8 +98,10 @@ struct WidControlCenterSection: View {
             }
             .font(.headline)
             .foregroundStyle(Theme.textPrimary)
+            // Footnote like the other descriptions here: at subheadline size the narrow column split three
+            // compounds in a row ("Kontroll-", "Sperrbild-", "Akti-").
             Text("Öffnet KlimaBilanz direkt beim Erfassen einer neuen Fahrt – aus dem Kontrollzentrum, vom Sperrbildschirm oder über die Aktionstaste.")
-                .font(.subheadline)
+                .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             Button(action: tryIt) {

@@ -4,7 +4,7 @@ import KlimaCore
 
 // MARK: - Section title
 
-/// Title + caption above a gallery stage ("Startbildschirm").
+/// Title + caption above a gallery stage ("Home-Bildschirm").
 struct WidStageTitle: View {
     var title: String
     var caption: String
@@ -43,7 +43,7 @@ struct WidHomeStage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            WidStageTitle(title: "Startbildschirm", caption: "Klein, mittel und groß – Amortisation und Schnellerfassung.")
+            WidStageTitle(title: "Home-Bildschirm", caption: "Klein, mittel und groß – Amortisation und Schnellerfassung.")
                 .widAppear(1, appeared)
             stage
         }
@@ -59,6 +59,7 @@ struct WidHomeStage: View {
             tile(.systemLarge, caption: "Amortisation · Groß", index: 4) {
                 AmortizationWidgetView(snapshot: snapshot, family: .systemLarge, isInteractive: false)
             }
+            .id(WidGallerySection.large)
             tile(.systemMedium, caption: "Schnellerfassung · Mittel", index: 5) {
                 QuickLogWidgetView(snapshot: snapshot, family: .systemMedium, isInteractive: false)
             }
@@ -78,10 +79,10 @@ struct WidHomeStage: View {
 
     private var smallRow: some View {
         HStack(alignment: .top, spacing: 24 * scale) {
-            tile(.systemSmall, caption: "Amortisation", index: 2) {
+            tile(.systemSmall, caption: "Amortisation · Klein", index: 2) {
                 AmortizationWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false)
             }
-            tile(.systemSmall, caption: "Schnellerfassung", index: 2) {
+            tile(.systemSmall, caption: "Schnellerfassung · Klein", index: 2) {
                 QuickLogWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false)
             }
         }
@@ -129,30 +130,24 @@ private struct WidGalleryTile<Content: View>: View {
     }
 }
 
-/// Colourful iOS-style wallpaper built from the Alpine palette (deeper in dark mode).
+/// Calm alpine-dusk wallpaper: muted glacier blue into dusk violet with a hint of alpenglow on the right (deeper in
+/// dark mode). Mid-toned on purpose: the light widgets stand out against it, it does not tint them, and the white
+/// captions keep ≥ 4.5:1 everywhere (the earlier rainbow mesh went down to 3.4:1 on its coral side).
 private struct WidWallpaper: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     private static let points: [SIMD2<Float>] = [
         [0, 0], [0.5, 0], [1, 0],
         [0, 0.42], [0.6, 0.5], [1, 0.38],
         [0, 1], [0.45, 1], [1, 1],
     ]
 
-    var body: some View {
-        MeshGradient(width: 3, height: 3, points: Self.points, colors: colors)
-    }
+    private static let colors: [Color] = [
+        Color(light: "#3D679F", dark: "#1C3454"), Color(light: "#4B629F", dark: "#223154"), Color(light: "#5F5D9E", dark: "#2A2A55"),
+        Color(light: "#5A7DB5", dark: "#28426A"), Color(light: "#6670AE", dark: "#2F3765"), Color(light: "#9A6A8E", dark: "#4A3150"),
+        Color(light: "#3F6496", dark: "#18304E"), Color(light: "#485A92", dark: "#1D2B4E"), Color(light: "#4E4F8A", dark: "#222447"),
+    ]
 
-    private var colors: [Color] {
-        let base: [Color] = [
-            Theme.glacier, Theme.dusk, Theme.alpenglow,
-            Theme.glacier2, Theme.dusk.mix(with: Theme.glacier, by: 0.4), Theme.dawn,
-            Theme.pine.mix(with: Theme.glacier, by: 0.45), Theme.glacier, Theme.dusk,
-        ]
-        if colorScheme == .dark {
-            return base.map { $0.mix(with: .black, by: 0.42) }
-        }
-        return base.map { $0.mix(with: .white, by: 0.04) }
+    var body: some View {
+        MeshGradient(width: 3, height: 3, points: Self.points, colors: Self.colors)
     }
 }
 
@@ -224,7 +219,8 @@ struct WidLockStage: View {
     }
 }
 
-/// Blue-hour wallpaper with stars and a ridge line (always dark).
+/// Blue-hour wallpaper with stars and a low ridge horizon (always dark). The stars leave a gap behind the inline
+/// row (24–46 pt) – a star beside "75 % rentiert" reads as punctuation – and the ridges stay below the accessory row.
 private struct WidLockWallpaper: View {
     var body: some View {
         ZStack {
@@ -233,11 +229,22 @@ private struct WidLockWallpaper: View {
             RadialGradient(colors: [Theme.alpenglow.opacity(0.42), .clear],
                            center: UnitPoint(x: 0.74, y: 0.86), startRadius: 0, endRadius: 260)
             StarField(seed: 5, count: 46, t: 0)
-            WidRidgeShape(peak: CGPoint(x: 0.72, y: 0.74), seed: 4, drop: 0.7, roughness: 1.1)
+                .mask { inlineRowGap }
+            WidRidgeShape(peak: CGPoint(x: 0.72, y: 0.87), seed: 4, drop: 0.7, roughness: 1.1)
                 .fill(Theme.dusk.opacity(0.26))
-            WidRidgeShape(peak: CGPoint(x: 0.24, y: 0.84), seed: 9, drop: 0.6, roughness: 1)
+            WidRidgeShape(peak: CGPoint(x: 0.24, y: 0.91), seed: 9, drop: 0.6, roughness: 1)
                 .fill(Theme.background.opacity(0.7))
         }
         .accessibilityHidden(true)
+    }
+
+    private var inlineRowGap: some View {
+        VStack(spacing: 0) {
+            Color.black.frame(height: 14)
+            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 8)
+            Color.clear.frame(height: 30)
+            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 10)
+            Color.black
+        }
     }
 }
