@@ -219,7 +219,8 @@ struct WidLockStage: View {
     }
 }
 
-/// Blue-hour wallpaper with stars and a ridge line (always dark).
+/// Blue-hour wallpaper with stars and a low ridge horizon (always dark). The stars leave a gap behind the inline
+/// row (24–46 pt) – a star beside "75 % rentiert" reads as punctuation – and the ridges stay below the accessory row.
 private struct WidLockWallpaper: View {
     var body: some View {
         ZStack {
@@ -228,11 +229,22 @@ private struct WidLockWallpaper: View {
             RadialGradient(colors: [Theme.alpenglow.opacity(0.42), .clear],
                            center: UnitPoint(x: 0.74, y: 0.86), startRadius: 0, endRadius: 260)
             StarField(seed: 5, count: 46, t: 0)
-            WidRidgeShape(peak: CGPoint(x: 0.72, y: 0.74), seed: 4, drop: 0.7, roughness: 1.1)
+                .mask { inlineRowGap }
+            WidRidgeShape(peak: CGPoint(x: 0.72, y: 0.87), seed: 4, drop: 0.7, roughness: 1.1)
                 .fill(Theme.dusk.opacity(0.26))
-            WidRidgeShape(peak: CGPoint(x: 0.24, y: 0.84), seed: 9, drop: 0.6, roughness: 1)
+            WidRidgeShape(peak: CGPoint(x: 0.24, y: 0.91), seed: 9, drop: 0.6, roughness: 1)
                 .fill(Theme.background.opacity(0.7))
         }
         .accessibilityHidden(true)
+    }
+
+    private var inlineRowGap: some View {
+        VStack(spacing: 0) {
+            Color.black.frame(height: 14)
+            LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom).frame(height: 8)
+            Color.clear.frame(height: 30)
+            LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom).frame(height: 10)
+            Color.black
+        }
     }
 }

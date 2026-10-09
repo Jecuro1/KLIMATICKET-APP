@@ -42,13 +42,18 @@ struct WidgetGalleryView: View {
                 .padding(.top, Theme.Spacing.xs)
                 .padding(.bottom, Theme.Spacing.xxl)
             }
+            .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 64
+            } action: { _, isPastHeader in
+                withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
+            }
             .task {
                 guard let screenshotSection else { return }
                 try? await Task.sleep(for: .milliseconds(300))
                 proxy.scrollTo(screenshotSection, anchor: .top)
             }
         }
-        .scrollIndicators(.hidden)
         .background { backdrop }
         .navigationTitle("Widgets")
         .navigationBarTitleDisplayMode(.inline)
@@ -59,11 +64,6 @@ struct WidgetGalleryView: View {
                     .opacity(showsNavigationTitle ? 1 : 0)
                     .accessibilityHidden(!showsNavigationTitle)
             }
-        }
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, isPastHeader in
-            withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
         }
         .onAppear {
             if isInSettingsSheet == nil { isInSettingsSheet = app.isShowingSettings }
