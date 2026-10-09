@@ -11,6 +11,9 @@ import KlimaCore
 ///                  (`sidestore://install?url=…`) installs it. Neither store installs silently: once the source is added
 ///                  they detect new versions, show a badge/notification and the user taps „Aktualisieren“.
 ///                  Which store installed this copy is read from the URL scheme / UTI the store adds to our Info.plist.
+///   • Ad hoc     → our own signed build on a registered iPhone (docs/DIREKT_INSTALLIEREN.md): „Jetzt installieren“
+///                  opens `itms-services://` with the release's `otaManifestURL`, iOS asks once and replaces the app in
+///                  place – no computer, no store, data stays.
 /// App Store vs. TestFlight is read from `AppTransaction` (environment `.sandbox` = TestFlight); sideloaded builds are
 /// recognised by their `embedded.mobileprovision`, which App Store and TestFlight builds never contain.
 @Observable
@@ -373,15 +376,38 @@ final class UpdateService {
         return availableManifest.flatMap { URL(string: $0.downloadURL) }
     }
 
-    var otaInstallURL: URL? {
+    var otaInstallURL: URL? { directInstallURL(for: availableManifest) }
+
+    // MARK: ota – Direkt installieren (ad-hoc builds, docs/DIREKT_INSTALLIEREN.md)
+
+    /// This copy is our own ad-hoc build (registered iPhone): an itms-services install replaces it in place.
+    /// AltStore/SideStore copies are development-signed under `<id>.<TEAMID>` – there the ad-hoc build would be a second app.
+    static let isDirectInstallCopy: Bool = DirectInstall.replacesInPlace(
+        kind: ProvisioningKind(profile: ProvisioningProfile.main),
+        bundleIdentifier: Bundle.main.bundleIdentifier,
+        expected: baseBundleIdentifier)
+
+    /// The itms-services link of a release (nil without an ad-hoc build, and never for App Store / TestFlight copies).
+    func directInstallURL(for manifest: UpdateManifest?) -> URL? {
         guard showsSideloadOptions else { return nil }
-        return Self.link("itms-services://?action=download-manifest&url=", availableManifest?.otaManifestURL)
+        return DirectInstall.link(manifestURL: manifest?.otaManifestURL)
     }
+
+    /// „Jetzt installieren“ hands the release straight to iOS: our ad-hoc copy, or a copy no sideloading store manages
+    /// (a store-managed copy would get the ad-hoc build as a second app, so AltStore/SideStore copies keep their store).
+    func prefersDirectInstall(for manifest: UpdateManifest?) -> Bool {
+        guard directInstallURL(for: manifest) != nil else { return false }
+        return Self.isDirectInstallCopy || sideloadStore == .other
+    }
+
+    var prefersDirectInstall: Bool { prefersDirectInstall(for: availableManifest) }
 
     var testFlightURL: URL? { URL(string: "itms-beta://") }
 
     /// Install routes for this channel, best first.
     var installCandidates: [URL] {
+        // MARK: ota – our own ad-hoc copy updates itself in place (otaInstallURL implies a sideloaded channel).
+        if Self.isDirectInstallCopy, let ota = otaInstallURL { return [ota] + [directDownloadURL].compactMap { $0 } }
         let urls: [URL?]
         switch channel {
         case .appStore:
@@ -391,8 +417,9 @@ final class UpdateService {
         case .sideloaded, .development:
             switch sideloadStore {
             // `install?url=` works with and without the source; `viewapp` does nothing in AltStore without it.
-            case .altStore: urls = [altStoreInstallURL, altStoreViewAppURL, otaInstallURL, directDownloadURL]
-            case .sideStore: urls = [sideStoreInstallURL, otaInstallURL, directDownloadURL]
+            // No itms-services here: AltStore/SideStore rename the bundle id, the ad-hoc build would be a second app.
+            case .altStore: urls = [altStoreInstallURL, altStoreViewAppURL, directDownloadURL]
+            case .sideStore: urls = [sideStoreInstallURL, directDownloadURL]
             case .other: urls = [otaInstallURL, directDownloadURL]
             }
         }
@@ -406,6 +433,7 @@ final class UpdateService {
         case .testFlight: return Copy.Updates.actionTestFlight
         case .sideloaded, .development: break
         }
+        if prefersDirectInstall { return Copy.Updates.actionDirectInstall }   // MARK: ota
         switch sideloadStore {
         case .altStore: return Copy.Updates.actionAltStore
         case .sideStore: return Copy.Updates.actionSideStore
@@ -418,7 +446,9 @@ final class UpdateService {
         switch channel {
         case .appStore: return Copy.Updates.footerAppStore
         case .testFlight: return Copy.Updates.footerTestFlight
-        case .sideloaded, .development: return sideloadStore == .other ? Copy.Updates.footerDirect : Copy.Updates.footerSource
+        case .sideloaded, .development:
+            if Self.isDirectInstallCopy { return Copy.Updates.footerDirectInstall }   // MARK: ota
+            return sideloadStore == .other ? Copy.Updates.footerDirect : Copy.Updates.footerSource
         }
     }
 
@@ -440,6 +470,7 @@ final class UpdateService {
         case .testFlight: return "Weiter in TestFlight"
         case .sideloaded, .development: break
         }
+        if prefersDirectInstall { return Copy.Updates.handoffDirectInstall }   // MARK: ota
         switch sideloadStore {
         case .altStore: return "Weiter in AltStore"
         case .sideStore: return "Weiter in SideStore"

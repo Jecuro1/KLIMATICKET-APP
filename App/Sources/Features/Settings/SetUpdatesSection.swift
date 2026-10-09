@@ -40,10 +40,13 @@ struct SetUpdatesSection: View {
                 }
                 .haptic(.selection, trigger: settings.autoUpdateCheck)
                 if app.updates.showsSideloadOptions {
-                    sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
-                              tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
-                    sourceRow(title: "SideStore-Quelle hinzufügen", symbol: "square.stack.3d.up.fill",
-                              tint: Theme.modeColor(.tram), url: app.updates.sideStoreSourceURL)
+                    if !UpdateService.isDirectInstallCopy {   // MARK: ota – an ad-hoc copy needs no store source
+                        sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
+                                  tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
+                        sourceRow(title: "SideStore-Quelle hinzufügen", symbol: "square.stack.3d.up.fill",
+                                  tint: Theme.modeColor(.tram), url: app.updates.sideStoreSourceURL)
+                    }
+                    directInstallRow   // MARK: ota
                 }
             }
             .listRowBackground(Theme.surface)
@@ -185,6 +188,17 @@ struct SetUpdatesSection: View {
             SetRowLabel(title: title, subtitle: sourceSubtitle(available: url != nil), symbol: symbol, tint: tint)
         }
         .disabled(url == nil)
+    }
+
+    // MARK: ota – Direkt installieren: the state for our own ad-hoc copy, otherwise the iPhone-only setup guide.
+    private var directInstallRow: some View {
+        Button {
+            openURL(Copy.Updates.directInstallGuideURL)
+        } label: {
+            SetRowLabel(title: Copy.Updates.directInstallRowTitle,
+                        subtitle: UpdateService.isDirectInstallCopy ? Copy.Updates.directInstallRowActive : Copy.Updates.directInstallRowGuide,
+                        symbol: "arrow.down.app.fill", tint: Theme.pine)
+        }
     }
 
     private func sourceSubtitle(available: Bool) -> String {

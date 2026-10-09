@@ -92,3 +92,49 @@ public enum UpdateDecision: Hashable, Sendable {
         return .upToDate
     }
 }
+
+// MARK: ota – Direkt installieren (ad-hoc builds over the air, docs/DIREKT_INSTALLIEREN.md)
+
+/// How the provisioning profile embedded in this copy (`embedded.mobileprovision`) was made.
+public enum ProvisioningKind: Equatable, Sendable {
+    /// No profile: App Store, TestFlight or the simulator.
+    case none
+    /// Development profile (`get-task-allow`): AltStore, SideStore, Sideloadly, Xcode.
+    case development
+    /// Ad hoc: a device list without `get-task-allow` – our own signed build for registered iPhones.
+    case adHoc
+    /// Enterprise (`ProvisionsAllDevices`).
+    case enterprise
+    /// A profile without devices (App Store distribution) – never embedded in an installed app.
+    case other
+
+    /// Classifies the parsed profile plist (nil = no profile).
+    public init(profile: [String: Any]?) {
+        guard let profile else { self = .none; return }
+        if profile["ProvisionsAllDevices"] as? Bool == true { self = .enterprise; return }
+        let entitlements = profile["Entitlements"] as? [String: Any]
+        if entitlements?["get-task-allow"] as? Bool == true { self = .development; return }
+        let devices = profile["ProvisionedDevices"] as? [String] ?? []
+        self = devices.isEmpty ? .other : .adHoc
+    }
+}
+
+public enum DirectInstall {
+    /// An itms-services install of our ad-hoc build replaces this copy in place – same app, same data – only when this
+    /// copy is itself our ad-hoc build: AltStore and SideStore rename the bundle id (`<id>.<TEAMID>`), so there the new
+    /// build would arrive as a second app.
+    public static func replacesInPlace(kind: ProvisioningKind, bundleIdentifier: String?, expected: String) -> Bool {
+        kind == .adHoc && bundleIdentifier == expected
+    }
+
+    /// `itms-services://?action=download-manifest&url=…` for an https manifest URL (iOS refuses anything else).
+    public static func link(manifestURL: String?) -> URL? {
+        guard let manifestURL, let url = URL(string: manifestURL), url.scheme?.lowercased() == "https", url.host != nil else {
+            return nil
+        }
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: "&=+?#")
+        guard let encoded = manifestURL.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
+        return URL(string: "itms-services://?action=download-manifest&url=" + encoded)
+    }
+}

@@ -83,6 +83,16 @@ enum Copy {
         static let actionTestFlight = "In TestFlight aktualisieren"
         static let actionDownload = "Update herunterladen"
 
+        // MARK: ota – Direkt installieren (ad-hoc builds over the air, docs/DIREKT_INSTALLIEREN.md)
+        static let actionDirectInstall = "Jetzt installieren"
+        static let handoffDirectInstall = "Weiter mit „Installieren“"
+        static let directInstallNote = "Nach „Installieren“ schließt sich KlimaBilanz und lädt das Update – danach einfach wieder öffnen. Deine Daten bleiben."
+        static let footerDirectInstall = "Direkt installiert: Neue Versionen kommen mit „Jetzt installieren“ – ohne Computer und ohne Store. Deine Daten bleiben erhalten."
+        static let directInstallRowTitle = "Direkt installieren"
+        static let directInstallRowActive = "Aktiv – Updates mit einem Tipp, ohne Store"
+        static let directInstallRowGuide = "Ohne AltStore und SideStore – so richtest du es ein"
+        static let directInstallGuideURL = URL(string: "https://github.com/Jecuro1/KLIMATICKET-APP/blob/main/docs/DIREKT_INSTALLIEREN.md")!
+
         static let toggleSubtitle = "Beim Start und alle paar Stunden"
     }
 }

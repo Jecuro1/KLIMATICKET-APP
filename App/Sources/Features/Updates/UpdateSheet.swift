@@ -140,7 +140,7 @@ struct UpdateSheet: View {
 
     /// The source matching the store this copy was installed with (none for App Store / TestFlight builds).
     private var sourceURL: URL? {
-        guard app.updates.showsSideloadOptions else { return nil }
+        guard app.updates.showsSideloadOptions, !UpdateService.isDirectInstallCopy else { return nil }   // MARK: ota
         return isSideStore ? app.updates.sideStoreSourceURL : app.updates.altStoreSourceURL
     }
 
@@ -153,6 +153,15 @@ struct UpdateSheet: View {
                 .buttonStyle(.primary)
                 .accessibilityLabel(app.updates.installActionTitle)
                 .accessibilityValue(handoffAccessibilityValue)
+
+                // MARK: ota – one line on what happens after iOS' "Installieren" prompt.
+                if handoff != .failed, app.updates.prefersDirectInstall(for: manifest) {
+                    Text(Copy.Updates.directInstallNote)
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 if handoff == .failed {
                     Text("Das hat nicht geklappt – versuch es gleich noch einmal.")
@@ -286,7 +295,9 @@ struct UpdateSheet: View {
         switch app.updates.channel {
         case .testFlight: return app.updates.testFlightURL
         case .appStore: return app.updates.appStoreURL ?? manifest.flatMap { URL(string: $0.downloadURL) }
-        case .sideloaded, .development: return manifest.flatMap { URL(string: $0.downloadURL) }
+        case .sideloaded, .development:
+            if app.updates.prefersDirectInstall(for: manifest) { return app.updates.directInstallURL(for: manifest) }   // MARK: ota
+            return manifest.flatMap { URL(string: $0.downloadURL) }
         }
     }
 
