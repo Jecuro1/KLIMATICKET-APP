@@ -71,20 +71,15 @@ enum TripEdFormat {
         "\(TripRow.short(from)) \(roundTrip ? "⇄" : "→") \(TripRow.short(to))"
     }
 
-    /// "23,50" for the inline fare field (empty when there is no price yet).
+    /// "23,50" for the inline fare field (empty when there is no price yet) – no grouping, see `EuroInput`.
     static func editableEuro(_ value: Double) -> String {
-        value > 0 ? Format.number(value, decimals: 2) : ""
+        EuroInput.editableText(value)
     }
 
-    /// Parses de-AT input ("24,90", "24.90", "€ 1.024,50") → 24.9. Nil for empty/invalid/implausible values.
+    /// Parses de-AT input with comma or dot ("24,90", "24.90", "€ 1.024,50") → 24.9. Nil for empty/invalid/implausible
+    /// values (`EuroInput.parse`).
     static func parseEuro(_ text: String) -> Double? {
-        var s = text.replacingOccurrences(of: "€", with: "")
-        s = s.components(separatedBy: .whitespacesAndNewlines).joined()
-        if s.contains(",") {
-            s = s.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
-        }
-        guard !s.isEmpty, let value = Double(s), value.isFinite, value > 0, value < 10_000 else { return nil }
-        return (value * 100).rounded() / 100
+        EuroInput.parse(text)
     }
 
     /// "+ € 47,00"

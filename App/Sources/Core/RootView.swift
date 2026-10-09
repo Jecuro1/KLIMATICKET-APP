@@ -320,6 +320,10 @@ struct ScreenshotRouter: View {
                     if let trip = trips.first(where: { $0.fromStationID == nil || $0.toStationID == nil }) ?? trips.first {
                         TripListActions(app: app, context: context).edit(trip)
                     }
+                case "tripEditFare": // MARK: trips – an own price that looks off: the plausibility callout in the price card
+                    try? await Task.sleep(for: .milliseconds(600))
+                    let trip = TripScreenshotSeeds.implausibleFareTrip(context: context, app: app)
+                    TripListActions(app: app, context: context).edit(trip)
                 default:
                     break
                 }
@@ -345,7 +349,7 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { app.selectedTab = .stats }
         case "ticket", "ticketBottom", "ticketBack": // MARK: dashboardTicket – ticketBottom (scrolled to the end), ticketBack (pass turned over)
             MainTabView().onAppear { app.selectedTab = .ticket }
-        case "tripEdit": // MARK: trips
+        case "tripEdit", "tripEditFare": // MARK: trips
             MainTabView().onAppear { app.selectedTab = .trips }
         case "tripDetail":
             NavigationStack {

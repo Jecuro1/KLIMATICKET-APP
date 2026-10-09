@@ -3,7 +3,8 @@ import KlimaCore
 
 /// Price card: eyebrow (or the "Offizieller ÖBB-Preis" badge) + ⓘ popover, the big "€ 23,50 pro Richtung"
 /// numeral with the "2 × € 23,50 · Hin + Rück" breakdown, the explanation line, "Anpassen" → inline
-/// decimal field (de-AT comma input), "Zurücksetzen", and the round-trip toggle ("Wert wird verdoppelt").
+/// decimal field (comma or dot, normalised while typing – `EuroInput`), a plausibility callout for an own price that looks
+/// off ("€ 150 für Wien → Mödling? Das wirkt hoch." – never blocking), "Zurücksetzen", and the round-trip toggle.
 struct TripEdPriceCard: View {
     let model: TripEditorModel
     var focus: FocusState<TripEdField?>.Binding
@@ -13,6 +14,9 @@ struct TripEdPriceCard: View {
     /// The own price when "Anpassen" was tapped (restored when the field is emptied and there is no estimate).
     @State private var manualFareBeforeEditing: Double? = nil
     @State private var showsInfo = false
+    /// The plausibility callout shown – follows `model.tripEdFareHint` once typing pauses (no "Das wirkt niedrig" for the
+    /// "1" of "150").
+    @State private var shownHint: TripEdFareHint?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -25,6 +29,11 @@ struct TripEdPriceCard: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let shownHint {
+                        TripEdFareHintCallout(hint: shownHint, onFix: applyFix)
+                            .padding(.top, Theme.Spacing.xxs)
+                            .motionTransition(.rise)
+                    }
                 }
                 .padding(.horizontal, Theme.Spacing.m)
                 .padding(.top, 14)
@@ -41,10 +50,26 @@ struct TripEdPriceCard: View {
         .onChange(of: focus.wrappedValue) { oldValue, newValue in
             if oldValue == .fare && newValue != .fare { finishEditing() }
         }
-        .onChange(of: fareText) { _, text in
+        .onChange(of: fareText) { oldText, text in
+            // Normalised while typing ("23.5" → "23,5", two decimals, four digits); the corrected text comes back here.
+            let normalized = EuroInput.live(text, previous: oldText)
+            guard normalized == text else {
+                fareText = normalized
+                return
+            }
             // Live update while typing (CTA + impact follow).
             guard isEditingFare else { return }
             applyFareText(text)
+        }
+        // The callout follows the price once typing pauses; right away for changes from elsewhere (favourite, reset).
+        .task(id: model.tripEdFareHint) {
+            let hint = model.tripEdFareHint
+            guard hint != shownHint else { return }
+            if isEditingFare && hint != nil {
+                try? await Task.sleep(for: .milliseconds(700))
+                if Task.isCancelled { return }
+            }
+            withMotion(Motion.smooth) { shownHint = hint }
         }
     }
 
@@ -325,6 +350,20 @@ struct TripEdPriceCard: View {
             model.resetManualFare()
         }
         withMotion(Motion.snappy) { isEditingFare = false }
+    }
+
+    /// One tap from the plausibility callout: the one-way half, or back to the estimate.
+    private func applyFix(_ fix: TripEdFareHint.Fix) {
+        switch fix {
+        case .halve(let oneWay):
+            withMotion(Motion.smooth) {
+                model.manualFare = oneWay
+                if isEditingFare { fareText = TripEdFormat.editableEuro(oneWay) }
+            }
+            if let estimate = model.estimate, abs(oneWay - estimate.fareEUR) < 0.005 { resetFare() }
+        case .useEstimate:
+            resetFare()
+        }
     }
 
     private func resetFare() {
