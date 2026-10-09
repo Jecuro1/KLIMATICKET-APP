@@ -88,7 +88,7 @@ public final class StationIndex: @unchecked Sendable {
         if let i = nameIndex[key] ?? aliasIndex[key] { return stations[i] }
         guard let places else { return nil }
         let want = PlaceNormalizer.key(name)
-        return places.search(name, context: .tripLog, limit: 5)
+        return places.search(name, context: .tripLog, limit: 5, enrich: false)
             .first { p in ([p.name] + p.aliases).contains { PlaceNormalizer.key($0) == want } }?.station
     }
 
@@ -97,7 +97,8 @@ public final class StationIndex: @unchecked Sendable {
     public func search(_ query: String, limit: Int = 30, near: GeoPoint? = nil) -> [Station] {
         let rawWords = StationIndex.foldedWords(query)
         if !rawWords.isEmpty, let places {
-            return places.search(query, context: PlaceSearchContext(mode: .tripLog, near: near), limit: limit).map(\.station)
+            return places.search(query, context: PlaceSearchContext(mode: .tripLog, near: near), limit: limit, enrich: false)
+                .map(\.station)
         }
         if rawWords.isEmpty {
             // Rank once per station, not twice per comparison (a distance each time when `near` is set).
@@ -124,7 +125,7 @@ public final class StationIndex: @unchecked Sendable {
     /// Nearest stations to a coordinate (every stop when a place index is attached).
     public func nearest(to point: GeoPoint, limit: Int = 5, maxKm: Double = 25) -> [(station: Station, distanceKm: Double)] {
         if let places {
-            return places.nearest(to: point, limit: limit, maxMeters: maxKm * 1000)
+            return places.nearest(to: point, limit: limit, maxMeters: maxKm * 1000, enrich: false)
                 .map { (station: $0.place.station, distanceKm: $0.distanceMeters / 1000) }
         }
         // Latitude band first: a station farther north or south than `maxKm` is farther than `maxKm` (the great-circle

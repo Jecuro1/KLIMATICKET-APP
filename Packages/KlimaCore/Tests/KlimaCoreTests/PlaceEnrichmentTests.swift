@@ -218,6 +218,23 @@ final class PlaceEnrichmentTests: XCTestCase {
         XCTAssertEqual(imp, imp.sorted(by: >), "by importance")
     }
 
+    /// `StationIndex` (search, nearest, station(id:)) only needs `Place.station`: those paths skip lines and tags.
+    func testStationPathsSkipEnrichment() throws {
+        let p = try XCTUnwrap(index.place(id: Self.warth))
+        let plain = index.nearest(to: p.coordinate, limit: 6, maxMeters: 2_000, enrich: false)
+        let full = index.nearest(to: p.coordinate, limit: 6)
+        XCTAssertEqual(plain.map(\.place.id), full.map(\.place.id))
+        XCTAssertTrue(plain.allSatisfy { $0.place.lines.isEmpty && $0.place.tags == .empty })
+        XCTAssertTrue(full.contains { !$0.place.lines.isEmpty })
+        XCTAssertEqual(plain.map(\.place.station), full.map(\.place.station))
+        XCTAssertEqual(index.search("warth", context: .tripLog, limit: 8, enrich: false).map(\.station),
+                       index.search("warth", context: .tripLog, limit: 8).map(\.station))
+        XCTAssertEqual(index.station(id: Self.warth), p.station)
+        let stations = StationIndex(stations: [])
+        stations.attach(places: index)
+        XCTAssertEqual(stations.nearest(to: p.coordinate, limit: 3).map(\.station.id), full.prefix(3).map(\.place.station.id))
+    }
+
     func testLegacyStationIDsResolve() throws {
         // stations.json ids of the previous app version map to the same place, lines and tags
         let p = try XCTUnwrap(index.place(id: Self.stAnton))
@@ -277,7 +294,7 @@ final class PlaceEnrichmentTests: XCTestCase {
             let kt = tags.klimaTicket
             let ktStatus = ["valid": "yes", "check": "check", "notIncluded": "no", "border": "border"][kt.status.rawValue]!
             have["klimaticket"] = [(ktStatus, e.rawTags(i).first { $0.key == "klimaticket" }?.confidence ?? 90, nil)]
-            have["state"] = [(e.stopStates[i], 100, nil)]
+            have["state"] = [(e.stopState(i) ?? "", 100, nil)]
             if let g = tags.gkz {
                 have["bezirk"] = [(g / 10000 == 9 ? "900" : String(format: "%03d", g / 100), 99, nil)]
                 if let w = tags.wienBezirk { have["wienBezirk"] = [(String(w), 99, nil)] }

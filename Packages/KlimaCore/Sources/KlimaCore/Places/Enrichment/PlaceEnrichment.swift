@@ -10,8 +10,8 @@ final class PlaceEnrichment: @unchecked Sendable {
     let stopCount: Int
     /// RECS order.
     let stopIDs: [String]
-    let stopNames: [String]
-    let stopStates: [String]
+    /// State of each stop as an index into `PlaceDataset.stateCodes` (0xFF = unknown).
+    let stopStateCodes: [UInt8]
     let stopGKZ: [UInt32]
     let stopGem: [UInt16]
 
@@ -51,20 +51,19 @@ final class PlaceEnrichment: @unchecked Sendable {
     init(stops: [PlaceRecord], official: PlaceLayer, osm: PlaceLayer?) {
         let n = official.nStopRecords
         var ids = [String](repeating: "", count: n), names = [String](repeating: "", count: n)
-        var states = [String](repeating: "", count: n)
+        var states = [UInt8](repeating: 0xFF, count: n)
         var gkz = [UInt32](repeating: 0, count: n), gem = [UInt16](repeating: 0xFFFF, count: n)
         for r in stops where r.stopIndex >= 0 && Int(r.stopIndex) < n {
             let i = Int(r.stopIndex)
             ids[i] = r.id
             names[i] = r.name
-            states[i] = r.state
+            states[i] = PlaceDataset.stateCodes.firstIndex(of: r.state).map(UInt8.init) ?? 0xFF
             gkz[i] = r.gkz
             gem[i] = r.gemIndex
         }
         stopCount = n
         stopIDs = ids
-        stopNames = names
-        stopStates = states
+        stopStateCodes = states
         stopGKZ = gkz
         stopGem = gem
 
@@ -232,8 +231,15 @@ final class PlaceEnrichment: @unchecked Sendable {
             gemeindeTags?.forEach(gemeinde: Int(stopGem[i])) { b.add($0, catalog: cat) }
         }
         osmTags?.forEach(i) { b.add($0, catalog: cat) }
-        return b.finish(state: stopStates[i].isEmpty ? nil : stopStates[i], gkz: stopGKZ[i] == 0 ? nil : Int(stopGKZ[i]),
+        return b.finish(state: stopState(i), gkz: stopGKZ[i] == 0 ? nil : Int(stopGKZ[i]),
                         catalog: cat)
+    }
+
+    /// State code of stop i ("V", "NÖ", "X"), nil if unknown.
+    func stopState(_ i: Int) -> String? {
+        guard i >= 0, i < stopCount else { return nil }
+        let c = Int(stopStateCodes[i])
+        return c < PlaceDataset.stateCodes.count ? PlaceDataset.stateCodes[c] : nil
     }
 
     /// Tags a town carries (§2.2): ski areas, regions and landscapes of its main stop, the town's own state,

@@ -96,7 +96,9 @@ public final class PlaceIndex: @unchecked Sendable {
 
     /// Legacy bridge: `Station` for a place id or old station id (nil if unknown).
     public func station(id: String) -> Station? {
-        guard var p = place(id: id) else { return nil }
+        // no lines/tags: a Station has none, and trip lists resolve every stored id through here
+        guard let ri = table.byID[id] ?? byLegacy[id] else { return nil }
+        var p = place(Int(ri), enriched: false)
         if p.legacyStationIDs.contains(id) {
             // keep the exact id the caller stored (a trip may reference the metro entry of a combined record)
             p.legacyStationIDs = [id]
@@ -153,10 +155,16 @@ public final class PlaceIndex: @unchecked Sendable {
     /// favourites/recents; duplicates merged and diversity caps applied. Empty text → `[]` (use `popularStations`,
     /// `nearest`). Towns only in `.planner` mode.
     public func search(_ query: String, context: PlaceSearchContext = .planner, limit: Int = 20) -> [Place] {
+        search(query, context: context, limit: limit, enrich: true)
+    }
+
+    /// `enrich: false` leaves `lines`/`tags` empty – for callers that only need `Place.station` (`StationIndex`).
+    func search(_ query: String, context: PlaceSearchContext, limit: Int, enrich: Bool) -> [Place] {
         guard limit > 0 else { return [] }
         let ctx = normalized(context)
         let raw = searchRaw(query, context: ctx, limit: max(12, limit + 8))
-        return enriched(merged(offline: raw, live: [], query: query, context: ctx, limit: limit))
+        let rows = merged(offline: raw, live: [], query: query, context: ctx, limit: limit)
+        return enrich ? enriched(rows) : rows
     }
 
     /// Offline ranking without dedupe/caps (tests, diagnostics); rows without `lines`/`tags` unless `enriched`.
@@ -174,8 +182,15 @@ public final class PlaceIndex: @unchecked Sendable {
     /// Stops (stations and every other stop) nearest to `point`, closest first.
     public func nearest(to point: GeoPoint, limit: Int = 5, maxMeters: Double = 2_000,
                         products: PlaceProducts = []) -> [(place: Place, distanceMeters: Double)] {
+        nearest(to: point, limit: limit, maxMeters: maxMeters, products: products, enrich: true)
+    }
+
+    /// `enrich: false` leaves `lines`/`tags` empty – `StationIndex.nearest` (coverage engine, station linker: every
+    /// stop of every journey) only needs `Place.station`.
+    func nearest(to point: GeoPoint, limit: Int, maxMeters: Double, products: PlaceProducts = [],
+                 enrich: Bool) -> [(place: Place, distanceMeters: Double)] {
         table.nearest(lat: point.latitude, lon: point.longitude, k: limit, maxMeters: maxMeters, products: products.rawValue)
-            .map { (place: place(Int($0.0)), distanceMeters: $0.1) }
+            .map { (place: place(Int($0.0), enriched: enrich), distanceMeters: $0.1) }
     }
 
     /// "Beliebte Bahnhöfe" for the empty state (Wien Hbf, Wien Westbahnhof, Salzburg Hbf, Innsbruck Hbf, Graz Hbf,

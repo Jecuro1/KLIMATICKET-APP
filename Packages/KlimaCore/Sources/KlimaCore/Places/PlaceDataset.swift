@@ -11,6 +11,9 @@ struct PlaceRecord: Sendable {
     var kind: PlaceKind
     var flags: UInt8
     private var classCode: UInt8
+    /// GEMS index of the record's own file (0xFFFF = none; GTAG of places.bin is in GEMS order). Declared next to the
+    /// one-byte fields so it fills their padding (~60k records live as long as the index).
+    var gemIndex: UInt16 = 0xFFFF
     var products: Int
     var importance: Double
     /// "at", "" = unknown/abroad (offline: state X), ISO code for live rows.
@@ -21,13 +24,11 @@ struct PlaceRecord: Sendable {
     var weight: Int
     /// Gemeindekennziffer from GEMS (0 = unknown).
     var gkz: UInt32 = 0
-    /// GEMS index of the record's own file (0xFFFF = none; GTAG of places.bin is in GEMS order).
-    var gemIndex: UInt16 = 0xFFFF
     /// Position in places.bin RECS for its stop records (key of every per-stop enrichment section), -1 otherwise.
     var stopIndex: Int32 = -1
-    /// v1 only: the legacy „lines“ string of EXTR tag 5 ("" = none; v2 has LSTP instead).
-    private var linesValue: String = ""
     private var extras: ExtrasBox?
+    /// v1 only: the legacy „lines“ string of EXTR tag 5 (v2 has LSTP instead) – one reference, nil in v2 files.
+    private var legacyLinesBox: LegacyLinesBox?
 
     /// Rarely set fields. Immutable box: setters replace it (no uniqueness checks – Swift 6.4's optimizer
     /// miscompiles `isKnownUniquelyReferenced` on this field when inlined into the decoder).
@@ -50,6 +51,11 @@ struct PlaceRecord: Sendable {
     final class ExtrasBox: Sendable {
         let fields: Extras
         init(_ fields: Extras) { self.fields = fields }
+    }
+
+    final class LegacyLinesBox: Sendable {
+        let lines: String
+        init(_ lines: String) { self.lines = lines }
     }
 
     static let placeClasses: [String?] = [nil, "city", "town", "village", "suburb", "hamlet", "neighbourhood", "quarter",
@@ -102,8 +108,8 @@ struct PlaceRecord: Sendable {
     var poiCategoryLabel: String? { get { extras?.fields.poiCategoryLabel } set { update { $0.poiCategoryLabel = newValue } } }
     /// v1 only: lines of the legacy EXTR tag 5 ("110,852"), nil if none.
     var legacyLines: String? {
-        get { linesValue.isEmpty ? nil : linesValue }
-        set { linesValue = newValue ?? "" }
+        get { legacyLinesBox?.lines }
+        set { legacyLinesBox = newValue.flatMap { $0.isEmpty ? nil : LegacyLinesBox($0) } }
     }
 
     /// HAFAS extId used by dedupe rule D1 (offline: Verbund extId hint, else EVA).
