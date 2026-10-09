@@ -2,8 +2,9 @@ import Foundation
 
 // Step 0 contracts of the stop enrichment (docs/ENRICH_SPEC.md §2.1, §4.2): every public type the work packages share.
 // The types are final; behaviour that belongs to a work package is marked with its id:
-//   WP-C1 format reader (Places/Format/*, PlaceDataset), WP-C2 enrichment model + PlaceIndex API (Places/Enrichment/*),
-//   WP-C3 presentation (Places/Presentation/*), WP-L live departures (Places/Live/*).
+//   WP-C1 format reader (Places/Format/*, PlaceDataset), WP-C2 enrichment model + PlaceIndex API (Places/Enrichment/*,
+//   the §2.3 API in PlaceIndex.swift and StopDetailsBuilder.swift), WP-C3 presentation (Places/Presentation/*),
+//   WP-L live departures (Places/Live/*).
 // Raw values and bit positions are stable (they are the on-disk values of KBPL v2, §1.8): add cases only at the end.
 
 // MARK: - Lines
@@ -586,30 +587,4 @@ public struct StopDeparture: Sendable, Hashable, Identifiable {
 
     /// Realtime if known, else planned.
     public var effectiveTime: Date { realtime ?? planned }
-}
-
-// MARK: - PlaceIndex API (§2.3) – stubs until WP-C2
-
-// WP-C2 replaces these stubs with the real implementation (Enrichment/*, PlaceIndex.swift) and deletes this block.
-// They compile and answer "no enrichment data", so UI work packages can build against the final signatures now.
-extension PlaceIndex {
-    public var skiAreas: [SkiArea] { [] }
-    public func skiArea(id: String) -> SkiArea? { nil }
-    public var regions: [Region] { [] }
-    public func region(id: String) -> Region? { nil }
-    /// Display name of an operator (E4); live names are mapped by `OperatorNames.display`.
-    public func operatorName(_ legal: String) -> String { OperatorNames.display(legal) }
-
-    /// Full line list of a stop (detail); place id or legacy id.
-    public func stopLines(for placeID: String) -> [StopLine] { [] }
-    /// M8 subset for compact rows.
-    public func compactLines(for placeID: String) -> [LineRef] { [] }
-    public func tags(for placeID: String) -> PlaceTags { .empty }
-    public func details(for placeID: String) -> StopDetails? {
-        place(id: placeID).map { StopDetails(place: $0) }
-    }
-    /// Persistent key → current dataset line (first match).
-    public func line(key: String) -> LineRef? { nil }
-    public func stops(inSkiArea id: String, minConfidence: Int = 70, limit: Int = 500) -> [Place] { [] }
-    public func stops(inRegion id: String, limit: Int = 500) -> [Place] { [] }
 }

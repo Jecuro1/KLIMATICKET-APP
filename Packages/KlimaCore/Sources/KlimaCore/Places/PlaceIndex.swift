@@ -22,13 +22,20 @@ public final class PlaceIndex: @unchecked Sendable {
     public let buildSeconds: Double
     /// Format version and layers of the loaded files (ENRICH_SPEC §2.3; `hasOSMLayer` = M1).
     public let dataInfo: PlaceDataInfo
+    /// Lines and tags of the v2 files (nil for v1 files: rows then carry the legacy line list only).
+    let enrichment: PlaceEnrichment?
+    /// Per table record: the enrichment stop index of the record (towns: of their main stop), -1 none.
+    let enrichIndex: [Int32]
 
     /// Ids of the "Beliebte Bahnhöfe" shown for an empty query (SUGGEST_SPEC §8).
     public static let topStationIDs = ["at:49:1349", "at:49:1468", "at:45:50002", "at:47:1187", "at:46:3040", "at:44:41164",
                                        "at:43:4848", "at:42:3642", "at:42:3654", "at:48:452"]
 
     public convenience init(dataset: PlaceDataset) {
-        self.init(stops: dataset.stops, localities: dataset.localities, dataInfo: dataset.dataInfo)
+        let enrichment = dataset.officialLayer.map {
+            PlaceEnrichment(stops: dataset.stops, official: $0, osm: dataset.osmLayer)
+        }
+        self.init(stops: dataset.stops, localities: dataset.localities, dataInfo: dataset.dataInfo, enrichment: enrichment)
     }
 
     /// Loads and indexes the bundled binary files (v1 or v2; `osmURL` = the optional ODbL layer stops_osm.bin).
@@ -38,8 +45,9 @@ public final class PlaceIndex: @unchecked Sendable {
     }
 
     init(stops: [PlaceRecord], localities: [PlaceRecord], municipalities: Set<String>? = nil,
-         dataInfo: PlaceDataInfo? = nil) {
+         dataInfo: PlaceDataInfo? = nil, enrichment: PlaceEnrichment? = nil) {
         self.dataInfo = dataInfo ?? PlaceDataset.info(version: 1, stops: stops, official: nil, osm: nil, issue: nil)
+        self.enrichment = enrichment
         let t0 = Date()
         let munis = municipalities ?? Self.municipalityKeys(stops: stops, localities: localities)
         table = PlaceTable(records: stops + localities, municipalities: munis)
@@ -48,6 +56,7 @@ public final class PlaceIndex: @unchecked Sendable {
             for l in r.legacyIDs where legacy[l] == nil { legacy[l] = Int32(ri) }
         }
         byLegacy = legacy
+        enrichIndex = Self.enrichmentIndex(table: table, enrichment: enrichment)
         stopCount = stops.count
         localityCount = localities.count
         buildSeconds = Date().timeIntervalSince(t0)
@@ -90,7 +99,9 @@ public final class PlaceIndex: @unchecked Sendable {
         return p.station
     }
 
-    func place(_ ri: Int, score: Double = 0) -> Place {
+    /// Place of table record `ri`; `enriched: false` leaves `lines`/`tags` empty (search candidates are enriched
+    /// only once they survive the merge, see `search`).
+    func place(_ ri: Int, score: Double = 0, enriched: Bool = true) -> Place {
         let r = table.recs[ri]
         return Place(id: r.id, kind: r.kind, name: r.name, aliases: r.aliases,
                      coordinate: GeoPoint(latitude: r.lat, longitude: r.lon), products: PlaceProducts(rawValue: r.products),
@@ -99,7 +110,20 @@ public final class PlaceIndex: @unchecked Sendable {
                      country: r.country, extId: r.extId, lid: r.lid, isMeta: r.isMeta, weight: r.wt, liveRank: r.liveRank,
                      poiCategory: r.poiCategory, poiCategoryLabel: r.poiCategoryLabel,
                      localityClass: r.localityClass, mainStopID: r.mainStopID,
-                     legacyStationIDs: r.legacyIDs, departures: r.weight, lines: r.lines, score: score, source: .offline)
+                     legacyStationIDs: r.legacyIDs, departures: r.weight, lines: enriched ? compactLines(record: ri) : [],
+                     tags: enriched ? tags(record: ri) : .empty, score: score, source: .offline)
+    }
+
+    /// Fills `lines` and `tags` of offline rows (and of live rows merged into an offline identity).
+    func enriched(_ places: [Place]) -> [Place] {
+        guard enrichment != nil || dataInfo.formatVersion == 1 else { return places }
+        return places.map { p in
+            guard p.source != .live, p.lines.isEmpty, p.tags == .empty, let ri = table.byID[p.id].map(Int.init) else { return p }
+            var c = p
+            c.lines = compactLines(record: ri)
+            c.tags = tags(record: ri)
+            return c
+        }
     }
 
     /// Resolves legacy ids in favourites/recents to place ids (personal boosts are keyed by place id).
@@ -127,13 +151,13 @@ public final class PlaceIndex: @unchecked Sendable {
         guard limit > 0 else { return [] }
         let ctx = normalized(context)
         let raw = searchRaw(query, context: ctx, limit: max(12, limit + 8))
-        return merged(offline: raw, live: [], query: query, context: ctx, limit: limit)
+        return enriched(merged(offline: raw, live: [], query: query, context: ctx, limit: limit))
     }
 
-    /// Offline ranking without dedupe/caps (tests, diagnostics).
-    func searchRaw(_ query: String, context: PlaceSearchContext, limit: Int) -> [Place] {
+    /// Offline ranking without dedupe/caps (tests, diagnostics); rows without `lines`/`tags` unless `enriched`.
+    func searchRaw(_ query: String, context: PlaceSearchContext, limit: Int, enriched: Bool = false) -> [Place] {
         var stats = PlaceTable.SearchStats()
-        return table.search(query, context, limit: limit, stats: &stats).map { place($0.1, score: $0.0) }
+        return table.search(query, context, limit: limit, stats: &stats).map { place($0.1, score: $0.0, enriched: enriched) }
     }
 
     func searchStats(_ query: String, context: PlaceSearchContext = .planner) -> PlaceTable.SearchStats {
@@ -185,5 +209,123 @@ public final class PlaceIndex: @unchecked Sendable {
         }
         out.sort { $0.cost < $1.cost || ($0.cost == $1.cost && $0.distanceMeters < $1.distanceMeters) }
         return Array(out.prefix(3))
+    }
+}
+
+// MARK: - Lines, tags, ski areas, regions (docs/ENRICH_SPEC.md §2.3)
+
+extension PlaceIndex {
+    /// Curated and OSM-only ski areas and sectors (no alliances), sorted by name. Empty for v1 files.
+    public var skiAreas: [SkiArea] { enrichment?.catalog.sortedAreas ?? [] }
+
+    /// Ski area, sector or ski-pass alliance by id ("ski-arlberg", "ski-amade").
+    public func skiArea(id: String) -> SkiArea? { enrichment?.catalog.areas[id] }
+
+    /// Tourism regions and landscapes, sorted by name.
+    public var regions: [Region] { enrichment?.catalog.sortedRegions ?? [] }
+
+    public func region(id: String) -> Region? { enrichment?.catalog.regions[id] }
+
+    /// Display name of an operator (E4): the data build's table, else `OperatorNames.display` (live names).
+    public func operatorName(_ legal: String) -> String {
+        enrichment?.catalog.operatorDisplay(legal) ?? OperatorNames.display(legal)
+    }
+
+    /// Every line of a stop for the detail (M3–M7: deduped, superseded lines shown as their successor, rail
+    /// categories as plates), display-sorted. `placeID` = place id or a legacy station id; a town gives the lines of
+    /// its main stop; unknown ids and stops without lines give `[]`.
+    public func stopLines(for placeID: String) -> [StopLine] {
+        guard let ri = recordIndex(placeID) else { return [] }
+        if let e = enrichment, enrichIndex[ri] >= 0 { return e.stopLines(Int(enrichIndex[ri])) }
+        return legacyLines(record: ri).map { StopLine(line: $0, confidence: .timetable) }
+    }
+
+    /// M8 subset for compact rows (the same as `place(id:)?.lines`).
+    public func compactLines(for placeID: String) -> [LineRef] {
+        recordIndex(placeID).map { compactLines(record: $0) } ?? []
+    }
+
+    /// Every tag of a place (`.empty` for unknown ids).
+    public func tags(for placeID: String) -> PlaceTags {
+        recordIndex(placeID).map { tags(record: $0) } ?? .empty
+    }
+
+    /// Persistent line key ("VVV|bus|852") → the line of the current dataset (first match).
+    public func line(key: String) -> LineRef? {
+        guard let c = enrichment?.lines, let i = c.byKey[key] else { return nil }
+        return c.lines[Int(i)]
+    }
+
+    /// Stops in a ski area (tag confidence ≥ `minConfidence`), by confidence, then importance.
+    public func stops(inSkiArea id: String, minConfidence: Int = 70, limit: Int = 500) -> [Place] {
+        guard let e = enrichment, limit > 0 else { return [] }
+        let members = e.skiMembers(id)
+        let hits = members.filter { Int($0.confidence) >= minConfidence }
+            .compactMap { m in recordIndex(stop: Int(m.stop)).map { (ri: $0, conf: Int(m.confidence)) } }
+            .sorted { $0.conf != $1.conf ? $0.conf > $1.conf : $0.ri < $1.ri }
+        return hits.prefix(limit).map { place($0.ri) }
+    }
+
+    /// Stops in a tourism region or landscape (tag confidence ≥ 80), by importance.
+    public func stops(inRegion id: String, limit: Int = 500) -> [Place] {
+        guard let e = enrichment, limit > 0 else { return [] }
+        let members = e.regionMembers(id)
+        let ris = members.compactMap { recordIndex(stop: Int($0)) }.sorted()
+        return ris.prefix(limit).map { place($0) }
+    }
+
+    // MARK: internals
+
+    /// Table record of a place id or legacy station id.
+    func recordIndex(_ placeID: String) -> Int? {
+        (table.byID[placeID] ?? byLegacy[placeID]).map(Int.init)
+    }
+
+    /// Table record of an enrichment stop index.
+    func recordIndex(stop: Int) -> Int? {
+        guard let e = enrichment, stop >= 0, stop < e.stopCount else { return nil }
+        return table.byID[e.stopIDs[stop]].map(Int.init)
+    }
+
+    static func enrichmentIndex(table: PlaceTable, enrichment: PlaceEnrichment?) -> [Int32] {
+        guard let e = enrichment else { return [] }
+        var out = [Int32](repeating: -1, count: table.recs.count)
+        for (ri, r) in table.recs.enumerated() {
+            if r.stopIndex >= 0 && Int(r.stopIndex) < e.stopCount {
+                out[ri] = r.stopIndex
+            } else if r.kind == .town, let m = r.mainStopID, let mi = table.byID[m] {
+                let s = table.recs[Int(mi)].stopIndex
+                if s >= 0 && Int(s) < e.stopCount { out[ri] = s }
+            }
+        }
+        return out
+    }
+
+    /// Compact lines of table record `ri` (Place.lines).
+    func compactLines(record ri: Int) -> [LineRef] {
+        if let e = enrichment {
+            let s = ri < enrichIndex.count ? Int(enrichIndex[ri]) : -1
+            return s >= 0 ? e.rowFacts(s).lines : []
+        }
+        return legacyLines(record: ri)
+    }
+
+    /// v1 files: the legacy line string of the record (towns: of their main stop).
+    func legacyLines(record ri: Int) -> [LineRef] {
+        var r = table.recs[ri]
+        if r.kind == .town, let m = r.mainStopID, let mi = table.byID[m] { r = table.recs[Int(mi)] }
+        guard let s = r.legacyLines else { return [] }
+        return PlaceEnrichment.legacyLines(s, products: r.products)
+    }
+
+    /// Tags of table record `ri` (Place.tags).
+    func tags(record ri: Int) -> PlaceTags {
+        guard let e = enrichment else { return .empty }
+        let r = table.recs[ri]
+        let s = ri < enrichIndex.count ? Int(enrichIndex[ri]) : -1
+        if r.kind == .town {
+            return e.townTags(mainStop: s >= 0 ? s : nil, state: r.state.isEmpty ? nil : r.state, gkz: r.gkz)
+        }
+        return s >= 0 ? e.rowFacts(s).tags : .empty
     }
 }

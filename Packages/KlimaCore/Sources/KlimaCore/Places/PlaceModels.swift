@@ -115,8 +115,13 @@ public struct Place: Identifiable, Hashable, Sendable {
     public var legacyStationIDs: [String]
     /// Departures on the reference weekday (offline stops) / population (localities).
     public var departures: Int
-    /// Lines serving the stop (offline, comma separated, abbreviated).
-    public var lines: String?
+    /// Lines serving the place (docs/ENRICH_SPEC.md §2.2): offline stops carry the compact set (M8: timetable lines,
+    /// special services, OSM-only lines only when nothing else is known), display-sorted; towns the lines of their
+    /// main stop; live-only rows `[]`. The full list of a stop is `PlaceIndex.stopLines(for:)`.
+    public var lines: [LineRef]
+    /// Ski area, regions, special types, services, lift, accessibility, KlimaTicket validity, Gemeinde/Bezirk
+    /// (`.empty` for live-only rows; towns: ski area and regions of the main stop plus their own state).
+    public var tags: PlaceTags
     /// Ranking score of the last search/merge (higher is better). 0 for unscored values.
     public var score: Double
     public var source: PlaceSource
@@ -128,8 +133,8 @@ public struct Place: Identifiable, Hashable, Sendable {
                 country: String = "at", extId: String? = nil, lid: String? = nil, isMeta: Bool = false, weight: Int? = nil,
                 liveRank: Int? = nil, poiCategory: String? = nil, poiCategoryLabel: String? = nil,
                 localityClass: String? = nil, mainStopID: String? = nil, legacyStationIDs: [String] = [],
-                departures: Int = 0, lines: String? = nil, score: Double = 0, source: PlaceSource = .offline,
-                mergedNames: [String] = []) {
+                departures: Int = 0, lines: [LineRef] = [], tags: PlaceTags = .empty, score: Double = 0,
+                source: PlaceSource = .offline, mergedNames: [String] = []) {
         self.id = id
         self.kind = kind
         self.name = name
@@ -152,10 +157,14 @@ public struct Place: Identifiable, Hashable, Sendable {
         self.legacyStationIDs = legacyStationIDs
         self.departures = departures
         self.lines = lines
+        self.tags = tags
         self.score = score
         self.source = source
         self.mergedNames = mergedNames
     }
+
+    /// The plates as text ("110,852,Skibus"), nil without lines (the former `lines: String?`).
+    public var linesText: String? { lines.isEmpty ? nil : lines.map(\.ref).joined(separator: ",") }
 
     public var federalState: FederalState? { state.flatMap(FederalState.init(rawValue:)) }
     public var isForeign: Bool { state == FederalState.foreign.rawValue || (!country.isEmpty && country != "at") }

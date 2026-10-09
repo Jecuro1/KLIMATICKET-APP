@@ -195,7 +195,6 @@ extension PlaceIndex {
                             state: p.state ?? "", municipality: p.municipality ?? "", localityClass: p.localityClass,
                             weight: p.departures, flags: 0)
         if !p.legacyStationIDs.isEmpty { r.legacyIDs = p.legacyStationIDs }
-        if let l = p.lines { r.lines = l }
         if let m = p.mainStopID { r.mainStopID = m }
         r.extIdString = p.extId
         r.lid = p.lid

@@ -11,12 +11,14 @@ enum PlaceFixtures {
     static let resources = repoRoot.appendingPathComponent("App/Resources")
     static let placesURL = resources.appendingPathComponent("places.bin")
     static let localitiesURL = resources.appendingPathComponent("localities.bin")
+    /// The ODbL layer (lines and tags from OpenStreetMap), loaded like the app does (`PlaceIndexLoader(bundle:)`).
+    static let osmURL = resources.appendingPathComponent("stops_osm.bin")
     static let dir = testsDir.appendingPathComponent("Fixtures/places")
 
-    /// Full offline index (built once; ~5 s in a debug build).
+    /// Full offline index with the OSM layer, as in the app (built once; ~5 s in a debug build).
     static let index: PlaceIndex = {
         do {
-            return try PlaceIndex(placesURL: placesURL, localitiesURL: localitiesURL)
+            return try PlaceIndex(placesURL: placesURL, localitiesURL: localitiesURL, osmURL: osmURL)
         } catch {
             fatalError("cannot load \(placesURL.path): \(error)")
         }

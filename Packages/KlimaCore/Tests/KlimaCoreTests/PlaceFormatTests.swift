@@ -217,13 +217,13 @@ final class PlaceFormatTests: XCTestCase {
         XCTAssertNotNil(v2.officialLayer)
         XCTAssertEqual(signature(v1.stops, lines: false), signature(v2.stops, lines: false))
         XCTAssertEqual(signature(v1.localities, lines: false), signature(v2.localities, lines: false))
-        XCTAssertTrue(v1.stops.contains { $0.lines != nil }, "v1 keeps its lines string (EXTR tag 5)")
-        XCTAssertTrue(v2.stops.allSatisfy { $0.lines == nil }, "v2 drops tag 5 (lines come from LSTP)")
+        XCTAssertTrue(v1.stops.contains { $0.legacyLines != nil }, "v1 keeps its lines string (EXTR tag 5)")
+        XCTAssertTrue(v2.stops.allSatisfy { $0.legacyLines == nil }, "v2 drops tag 5 (lines come from LSTP)")
         let warth = try XCTUnwrap(v2.stops.first { $0.id == "at:48:344" })
         XCTAssertEqual(warth.name, "Warth (Vorarlberg) Dorfplatz")
         XCTAssertEqual(warth.state, "V")
         XCTAssertEqual(warth.municipality, "Warth")
-        XCTAssertEqual(v1.stops.first { $0.id == "at:48:344" }?.lines, "110,852")
+        XCTAssertEqual(v1.stops.first { $0.id == "at:48:344" }?.legacyLines, "110,852")
         let ort = try XCTUnwrap(v2.localities.first { $0.id == "osm:n73089810" })
         XCTAssertEqual(ort.mainStopID, "at:48:344")
         XCTAssertEqual(v2.stops.map(\.id), V2Fixtures.manifest["stops"] as? [String], "stop record index = RECS order")
@@ -408,8 +408,8 @@ final class PlaceFormatTests: XCTestCase {
         guard case .failed = broken.state else { return XCTFail("not failed") }
         XCTAssertNil(PlaceIndexLoader(placesURL: nil, localitiesURL: nil).osmURL)
 
-        let shipped = PlaceFixtures.index.dataInfo
-        XCTAssertFalse(shipped.hasOSMLayer)
+        let shipped = PlaceFixtures.index.dataInfo         // loaded with stops_osm.bin, like the app
+        XCTAssertEqual(shipped.hasOSMLayer, shipped.formatVersion == 2)
         XCTAssertGreaterThanOrEqual(shipped.formatVersion, 1)
         if shipped.formatVersion == 1 { XCTAssertGreaterThan(shipped.stopsWithLines, 30_000) }
     }
@@ -426,7 +426,7 @@ final class PlaceFormatTests: XCTestCase {
             f.append(r.uic.map { String($0) } ?? "")
             f.append(r.legacyIDs.joined(separator: "|"))
             f.append(r.mainStopID ?? "")
-            f.append(lines ? (r.lines ?? "") : "")
+            f.append(lines ? (r.legacyLines ?? "") : "")
             return f.joined(separator: "\u{1F}")
         }
     }

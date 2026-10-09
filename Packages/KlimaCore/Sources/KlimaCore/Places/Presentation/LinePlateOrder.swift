@@ -57,6 +57,7 @@ public enum LinePlateOrder {
     }
 
     static func naturalCompare(_ a: String, _ b: String) -> Int {
+        if let fast = asciiNaturalCompare(a, b) { return fast }
         let x = Array(a.lowercased()), y = Array(b.lowercased())
         var i = 0, j = 0
         while i < x.count && j < y.count {
@@ -67,6 +68,51 @@ public enum LinePlateOrder {
                 let da = String(x[i..<ni]).drop(while: { $0 == "0" }), db = String(y[j..<nj]).drop(while: { $0 == "0" })
                 if da.count != db.count { return da.count < db.count ? -1 : 1 }
                 if da != db { return da < db ? -1 : 1 }
+                i = ni
+                j = nj
+            } else {
+                if x[i] != y[j] { return x[i] < y[j] ? -1 : 1 }
+                i += 1
+                j += 1
+            }
+        }
+        if x.count - i != y.count - j { return (x.count - i) < (y.count - j) ? -1 : 1 }
+        return 0
+    }
+
+    /// `naturalCompare` on the bytes of two ASCII strings (every plate text; nil otherwise): same order, no
+    /// `Character` arrays. Excludes CR ("\r\n" is one `Character`).
+    static func asciiNaturalCompare(_ a: String, _ b: String) -> Int? {
+        guard let x = naturalBytes(a), let y = naturalBytes(b) else { return nil }
+        return naturalCompare(bytes: x, y)
+    }
+
+    /// Lower-cased bytes of an ASCII string for `naturalCompare(bytes:_:)`; nil if not ASCII (or contains CR).
+    static func naturalBytes(_ s: String) -> [UInt8]? {
+        var x: [UInt8] = []
+        x.reserveCapacity(s.utf8.count)
+        for c in s.utf8 {
+            guard c < 0x80, c != 0x0D else { return nil }
+            x.append(c >= 65 && c <= 90 ? c + 32 : c)
+        }
+        return x
+    }
+
+    /// `naturalCompare` of two `naturalBytes` arrays.
+    static func naturalCompare(bytes x: [UInt8], _ y: [UInt8]) -> Int {
+        @inline(__always) func digit(_ c: UInt8) -> Bool { c >= 48 && c <= 57 }
+        var i = 0, j = 0
+        while i < x.count && j < y.count {
+            if digit(x[i]) && digit(y[j]) {
+                var ni = i, nj = j
+                while ni < x.count && digit(x[ni]) { ni += 1 }
+                while nj < y.count && digit(y[nj]) { nj += 1 }
+                var si = i, sj = j
+                while si < ni && x[si] == 48 { si += 1 }
+                while sj < nj && y[sj] == 48 { sj += 1 }
+                let la = ni - si, lb = nj - sj
+                if la != lb { return la < lb ? -1 : 1 }
+                for k in 0..<la where x[si + k] != y[sj + k] { return x[si + k] < y[sj + k] ? -1 : 1 }
                 i = ni
                 j = nj
             } else {

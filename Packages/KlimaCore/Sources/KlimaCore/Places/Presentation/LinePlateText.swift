@@ -54,7 +54,7 @@ public enum LinePlateText {
 
     /// Same with an already classified kind (live lines, tests).
     public static func text(for line: LineRef, kind: LineKind, size: Size) -> Plate {
-        let ref = line.ref.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ref = trimmed(line.ref)
         let cap = size.maxCharacters
         switch kind {
         case .fern, .nacht:
@@ -136,9 +136,10 @@ public enum LinePlateText {
         }
         let modeGlyph: PlateGlyph = kind == .tram ? .tram : .bus
         // rule 3: short refs as they are; with a slash only the first part ("9773/5" → "9773")
-        let first = ref.split(separator: "/", omittingEmptySubsequences: true).first
-            .map { $0.trimmingCharacters(in: .whitespaces) } ?? ref
-        if !first.isEmpty, first.count <= 5 { return (first, glyph) }
+        let first = ref.utf8.contains(0x2F)
+            ? ref.split(separator: "/", omittingEmptySubsequences: true).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ref
+            : ref                                           // `text(for:)` already trimmed it
+        if !first.isEmpty, first.utf8.count <= 5 || first.count <= 5 { return (first, glyph) }
         if first.isEmpty { return ("", glyph ?? modeGlyph) }
         // rule 4: named refs longer than 5 characters, at every size („Skibus“ → ❄ / „Ski“, „Stadtbus“ → „Stadt“)
         switch kind {
@@ -183,4 +184,11 @@ public enum LinePlateText {
     }
 
     static func fit(_ t: String, _ cap: Int) -> String? { t.count <= cap ? t : nil }
+
+    /// `trimmingCharacters(in: .whitespacesAndNewlines)` without the Foundation call when both ends are printable
+    /// ASCII (nothing to trim) – every ref in the data.
+    static func trimmed(_ s: String) -> String {
+        if let f = s.utf8.first, let l = s.utf8.last, f > 0x20, f < 0x7F, l > 0x20, l < 0x7F { return s }
+        return s.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }

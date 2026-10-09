@@ -19,7 +19,13 @@ struct PlaceRecord: Sendable {
     var state: String
     var municipality: String
     var weight: Int
-    /// Lines serving the stop ("" = none); usually ≤ 15 bytes, so stored inline.
+    /// Gemeindekennziffer from GEMS (0 = unknown).
+    var gkz: UInt32 = 0
+    /// GEMS index of the record's own file (0xFFFF = none; GTAG of places.bin is in GEMS order).
+    var gemIndex: UInt16 = 0xFFFF
+    /// Position in places.bin RECS for its stop records (key of every per-stop enrichment section), -1 otherwise.
+    var stopIndex: Int32 = -1
+    /// v1 only: the legacy „lines“ string of EXTR tag 5 ("" = none; v2 has LSTP instead).
     private var linesValue: String = ""
     private var extras: ExtrasBox?
 
@@ -94,7 +100,8 @@ struct PlaceRecord: Sendable {
     var wt: Int? { get { extras?.fields.wt } set { update { $0.wt = newValue } } }
     var poiCategory: String? { get { extras?.fields.poiCategory } set { update { $0.poiCategory = newValue } } }
     var poiCategoryLabel: String? { get { extras?.fields.poiCategoryLabel } set { update { $0.poiCategoryLabel = newValue } } }
-    var lines: String? {
+    /// v1 only: lines of the legacy EXTR tag 5 ("110,852"), nil if none.
+    var legacyLines: String? {
         get { linesValue.isEmpty ? nil : linesValue }
         set { linesValue = newValue ?? "" }
     }
@@ -277,7 +284,11 @@ public struct PlaceDataset: Sendable {
         }
         guard c.nStopRecords <= c.nRecords else { throw ReadError.corrupt(section: "RECS") }
         let layer = keepLayer ? try PlaceLayer(container: c, strings: strs) : nil
-        return DecodedFile(version: 2, records: records, layer: layer)
+        var decoded = records
+        if layer != nil {
+            for i in 0..<min(c.nStopRecords, decoded.count) where decoded[i].kind != .town { decoded[i].stopIndex = Int32(i) }
+        }
+        return DecodedFile(version: 2, records: decoded, layer: layer)
     }
 
     /// v1 entry point kept for tools and tests: the records of one file.
@@ -324,7 +335,7 @@ public struct PlaceDataset: Sendable {
                 n + ((i < a.count && a[i]) || (i < b.count && b[i]) ? 1 : 0)
             }
         } else {
-            info.stopsWithLines = stops.reduce(0) { $0 + ($1.lines == nil ? 0 : 1) }   // v1: the „lines“ string
+            info.stopsWithLines = stops.reduce(0) { $0 + ($1.legacyLines == nil ? 0 : 1) }   // v1: the „lines“ string
         }
         if let issue { info.osmLayerNote = "stops_osm.bin: \(issue)" }
         return info
@@ -357,6 +368,7 @@ public struct PlaceDataset: Sendable {
         var gemeinden: [String] = []
         gemeinden.reserveCapacity(nGem)
         for g in 0..<nGem { gemeinden.append(string(Int(u32(gems, 8 * g + 4)))) }
+        let gkz = (0..<nGem).map { u32(gems, 8 * $0) }
 
         var out: [PlaceRecord] = []
         out.reserveCapacity(n)
@@ -375,6 +387,10 @@ public struct PlaceDataset: Sendable {
                                   municipality: gem != 0xFFFF && gem < gemeinden.count ? gemeinden[gem] : "",
                                   localityClass: kindCode == 1 && pclass < placeClasses.count ? placeClasses[pclass] : nil,
                                   weight: weight, flags: flags)
+            if gem != 0xFFFF && gem < nGem {
+                rec.gemIndex = UInt16(gem)
+                rec.gkz = gkz[gem]
+            }
             if extraOff != 0xFFFF_FFFF {
                 let e = Int(extraOff)
                 guard e < extr.count else { throw error("EXTR") }
@@ -389,7 +405,7 @@ public struct PlaceDataset: Sendable {
                     case 1: ex.eva = Int(v); hasExtras = true
                     case 2: ex.hafasExtId = Int(v); hasExtras = true
                     case 3: ex.legacyIDs.append(string(Int(v))); hasExtras = true
-                    case 5: rec.lines = string(Int(v))          // v1 only (v2: LSTP)
+                    case 5: rec.legacyLines = string(Int(v))    // v1 only (v2: LSTP)
                     case 6: ex.uic = Int(v); hasExtras = true
                     case 7: ex.mainStopID = string(Int(v)); hasExtras = true
                     default: break     // 4 = main stop record index (merged files): resolved by id instead
