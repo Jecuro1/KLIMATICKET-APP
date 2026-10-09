@@ -173,12 +173,13 @@ struct AchDetailSheet: View {
     private var titleBlock: some View {
         VStack(spacing: Theme.Spacing.xs) {
             Kicker(text: statusKicker)
-            Text(achievement.title)
+            Text(AchText.title(achievement))
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
                 .minimumScaleFactor(0.7)
+                .accessibilityLabel(achievement.title)
                 .accessibilityAddTraits(.isHeader)
             Text(achievement.detail)
                 .font(Theme.Typography.body)
@@ -368,7 +369,7 @@ struct AchShareCard: View {
                 AchMedallion(achievement: achievement, size: 150, showsPercentBadge: false)
                 Spacer(minLength: Theme.Spacing.l)
                 Kicker(text: isUnlocked ? "\(tierName) · Erreicht" : "\(tierName) · \(AchFormat.percent(achievement.progress)) geschafft")
-                Text(achievement.title)
+                Text(AchText.title(achievement))
                     .font(Theme.Typography.heroTitle)
                     .foregroundStyle(Theme.textPrimary)
                     .multilineTextAlignment(.center)

@@ -26,6 +26,55 @@ enum AchTierStyle {
         case .platinum: "Platin"
         }
     }
+
+    /// Engraved glyph tone – a deep shade of each metal, so the symbol stays ≥ 3:1 on the whole face (white on the
+    /// light silver/gold/platinum faces fell to 1.7–2.9:1, worst where the sheen crosses the glyph).
+    static func engraving(_ tier: Achievement.Tier) -> Color {
+        switch tier {
+        case .bronze: Color(hex: "#4E2408")
+        case .silver: Color(hex: "#2B3748")
+        case .gold: Color(hex: "#5A3A06")
+        case .platinum: Color(hex: "#2A1F6E")
+        }
+    }
+
+    /// Tier colours for thin strokes (collection ring). Dark mode uses the tier gradient as is; in light mode the pale
+    /// ends of `Theme.tierGradient` (#E2E8F0, #FFE08A, #C7D2FE) vanish on a white card, so the strokes run a shade deeper.
+    static func strokeColors(_ tier: Achievement.Tier) -> [Color] {
+        switch tier {
+        case .bronze: [Color(light: "#DB8D52", dark: "#E7A06B"), Color(light: "#A9571F", dark: "#B8672E")]
+        case .silver: [Color(light: "#97A6BB", dark: "#E2E8F0"), Color(light: "#64748B", dark: "#94A3B8")]
+        case .gold: [Color(light: "#EDB531", dark: "#FFE08A"), Color(light: "#C48A0C", dark: "#E0A422")]
+        case .platinum: [Color(light: "#9D8CFF", dark: "#C7D2FE"), Color(light: "#6A4BF0", dark: "#7B5CFF")]
+        }
+    }
+}
+
+/// Display text for achievement titles. The catalog (KlimaCore) holds plain strings; for the narrow medallion grid we add
+/// soft hyphens at the German compound joints, so a forced break reads "Klima-/schützer:in" and never "Kli-/maschützer:in".
+/// Use the plain `achievement.title` for VoiceOver and sharing.
+enum AchText {
+    private static let joints: [(String, String)] = [
+        ("Klimaschützer", "Klima\u{00AD}schützer"),
+        ("Streckenkenner", "Strecken\u{00AD}kenner"),
+        ("Frühaufsteher", "Früh\u{00AD}auf\u{00AD}steher"),
+        ("Bundesländer", "Bundes\u{00AD}länder"),
+        ("Umrunder", "Um\u{00AD}runder"),
+        ("Eingestiegen", "Ein\u{00AD}gestiegen"),
+        ("Multimodal", "Multi\u{00AD}modal"),
+        ("Nachteule", "Nacht\u{00AD}eule"),
+        ("Stammgast", "Stamm\u{00AD}gast"),
+    ]
+
+    static func title(_ achievement: Achievement) -> String {
+        joints.reduce(achievement.title) { $0.replacingOccurrences(of: $1.0, with: $1.1) }
+    }
+
+    /// One word without a hyphen ("Klimaschützer:in", "Halbzeit"): kept on one line and scaled down slightly
+    /// instead of being split mid-word.
+    static func isSingleWord(_ achievement: Achievement) -> Bool {
+        !achievement.title.contains(" ") && !achievement.title.contains("-")
+    }
 }
 
 /// Formatting used by the Gipfelbuch.
@@ -208,11 +257,13 @@ struct AchMedallion: View {
                        startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 
+    /// Unlocked: engraved into the metal – deep tier tone with a light catch on the lower edge (≥ 3:1 on every tier).
+    /// Locked: plain secondary ink on the muted coin.
     private var symbol: some View {
         Image(systemName: AchSymbols.name(for: achievement))
             .font(.system(size: size * 0.36, weight: .semibold))
-            .foregroundStyle(isUnlocked ? Color.white : Theme.textSecondary)
-            .shadow(color: Color.black.opacity(isUnlocked ? 0.3 : 0), radius: max(0.5, size * 0.015), y: size * 0.012)
+            .foregroundStyle(isUnlocked ? AchTierStyle.engraving(tier) : Theme.textSecondary)
+            .shadow(color: Color.white.opacity(isUnlocked ? 0.55 : 0), radius: 0, y: max(0.5, size * 0.011))
             .symbolEffect(.bounce, value: isUnlocked ? bounceTick : 0)
     }
 
@@ -230,12 +281,29 @@ struct AchMedallion: View {
     }
 }
 
-/// Small tier coin (tallies, stat rows).
+/// Small tier coin (tallies, stat rows). Always in its tier gradient so gold reads gold; `muted` (nothing earned yet)
+/// fades the metal and adds a dashed outline (≥ 3:1) instead of desaturating it to grey.
 struct AchTierCoin: View {
     var tier: Achievement.Tier
     var size: CGFloat = 16
+    var muted: Bool = false
 
     var body: some View {
+        ZStack {
+            face
+                .opacity(muted ? 0.45 : 1)
+                .shadow(color: Color.black.opacity(muted ? 0 : 0.15), radius: size * 0.12, y: size * 0.06)
+            if muted {
+                Circle()
+                    .strokeBorder(Theme.textSecondary.opacity(0.8),
+                                  style: StrokeStyle(lineWidth: 1, dash: [max(1.5, size * 0.1), max(1.2, size * 0.075)]))
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+
+    private var face: some View {
         ZStack {
             Circle().fill(Theme.tierGradient(tier))
             Circle()
@@ -245,8 +313,6 @@ struct AchTierCoin: View {
             Circle().strokeBorder(Color.white.opacity(0.7), lineWidth: max(0.75, size * 0.06))
             Circle().strokeBorder(Color.black.opacity(0.1), lineWidth: 0.5)
         }
-        .frame(width: size, height: size)
-        .shadow(color: Color.black.opacity(0.15), radius: size * 0.12, y: size * 0.06)
-        .accessibilityHidden(true)
+        .compositingGroup()
     }
 }
