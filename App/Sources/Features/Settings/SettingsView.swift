@@ -14,8 +14,9 @@ struct SettingsView: View {
     /// The update sheet is presented from here (not from a lazily loaded list row, and not from RootView,
     /// which cannot show a second sheet while Settings is up).
     @State private var showsUpdateSheet = false
-    /// The inline nav-bar title fades in once the custom header has scrolled away.
-    @State private var showsInlineTitle = false
+    /// Scroll progress of the header: it condenses while the inline nav-bar title fades in. Only the header and the
+    /// title read it, so scrolling never re-renders the list itself.
+    @State private var condense = ScrollCondense()
 
     /// CI screenshots of the lower parts of the long list (`-KBScreenshot settings2 | settings3 | settingsDemo | settingsEnd`).
     var screenshotScreen: String? = nil
@@ -26,7 +27,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen"))
+                SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen", condense: condense))
                 SetFareSection()
                 WorkSettingsSection() // MARK: work – "Arbeit & Steuer", "Auto-Vergleich"
                 PerkSettingsSection() // MARK: benefits
@@ -45,11 +46,10 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background { SetBackdrop() }
             .tint(Theme.accent)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 56
-            } action: { _, isScrolled in
-                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
-            }
+            // One entrance per opening: the header and the profile card rise in (docs/MOTION.md §4); rows that
+            // scroll in later are simply there.
+            .revealScope()
+            .tracksScrollCondense(condense, distance: 64)
             .task { await scrollForScreenshot(proxy) }
         }
         .navigationTitle("Einstellungen")
@@ -70,11 +70,7 @@ struct SettingsView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Text("Einstellungen")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-                .opacity(showsInlineTitle ? 1 : 0)
-                .accessibilityHidden(!showsInlineTitle)
+            SetInlineTitle(title: "Einstellungen", condense: condense)
         }
         // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an
         // empty pill while the title is faded out (same as Übersicht and Statistik).

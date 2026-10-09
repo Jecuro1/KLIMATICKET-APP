@@ -422,13 +422,29 @@ final class UpdateService {
         }
     }
 
-    /// Opens the best available installation route.
-    func install() {
-        for url in installCandidates where url.scheme == "https" || canOpen(url.absoluteString) {
-            UIApplication.shared.open(url)
-            return
+    /// Opens the best available installation route. Returns whether another app (store, TestFlight, Safari) took over –
+    /// the update sheet shows the hand-off ("Weiter in AltStore") or says that nothing could be opened.
+    @discardableResult
+    func install() async -> Bool {
+        let candidates = installCandidates
+        guard let url = candidates.first(where: { $0.scheme == "https" || canOpen($0.absoluteString) }) ?? candidates.last else {
+            return false
         }
-        if let url = installCandidates.last { UIApplication.shared.open(url) }
+        return await UIApplication.shared.open(url, options: [:])
+    }
+
+    /// The update button once `install()` handed over ("Weiter in AltStore").
+    var installHandoffTitle: String {
+        switch channel {
+        case .appStore: return "Weiter im App Store"
+        case .testFlight: return "Weiter in TestFlight"
+        case .sideloaded, .development: break
+        }
+        switch sideloadStore {
+        case .altStore: return "Weiter in AltStore"
+        case .sideStore: return "Weiter in SideStore"
+        case .other: return "Download gestartet"
+        }
     }
 
     private func canOpen(_ string: String) -> Bool {

@@ -4,6 +4,8 @@ import KlimaCloud
 
 /// "Mit Apple / Google / Microsoft anmelden" buttons following each provider's branding,
 /// shared by onboarding and settings. Calls `onSignedIn` after a successful sign-in.
+/// Motion (docs/MOTION.md): the buttons dip under the finger, a provider that the server enables later rises in, the
+/// logo turns into a spinner while that sign-in runs, and a failure rises in below with one error haptic.
 struct AuthButtonStack: View {
     var showsContinueWithoutAccount = false
     var onSignedIn: () -> Void = {}
@@ -49,9 +51,11 @@ struct AuthButtonStack: View {
 
             if app.auth.isProviderEnabled(.google) {
                 providerButton(.google, title: "Mit Google anmelden") { GoogleLogo(size: 20) }
+                    .motionTransition(.rise)
             }
             if app.auth.isProviderEnabled(.microsoft) {
                 providerButton(.microsoft, title: "Mit Microsoft anmelden") { MicrosoftLogo(size: 18) }
+                    .motionTransition(.rise)
             }
 
             if app.auth.serverHasNoProviders {
@@ -59,6 +63,7 @@ struct AuthButtonStack: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .motionTransition(.opacity)
             }
 
             if showsContinueWithoutAccount {
@@ -67,20 +72,30 @@ struct AuthButtonStack: View {
                     onContinueWithoutAccount()
                 }
                 .font(.body.weight(.semibold))
+                .buttonStyle(.pressable)
                 .padding(.top, 6)
             }
 
             if let error = app.auth.lastError {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 4)
-                    .transition(.opacity)
+                Label {
+                    Text(error)
+                } icon: {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(Theme.negative)
+                        .symbolEffect(.wiggle, value: error)
+                        .symbolEffectsRemoved(MotionPolicy.isStatic)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
+                .motionTransition(.rise)
             }
         }
-        .animation(.smooth, value: app.auth.lastError)
-        .animation(.smooth, value: app.auth.serverConfig)
+        .motionAnimation(Motion.smooth, value: app.auth.lastError)
+        .motionAnimation(Motion.smooth, value: app.auth.serverConfig)
+        .motionAnimation(Motion.snappy, value: app.auth.phase)
+        .haptic(.error, trigger: app.auth.lastError, when: { _, new in new != nil })
         .task { await app.auth.refreshServerConfig() }
     }
 
@@ -95,6 +110,7 @@ struct AuthButtonStack: View {
     private var appleWebButton: some View {
         let isBusy = app.auth.phase == .signingIn(.apple)
         return Button {
+            guard !isBusy else { return }
             let before = app.auth.profile
             Task {
                 await app.auth.signIn(with: .apple, using: webAuthenticationSession)
@@ -102,9 +118,7 @@ struct AuthButtonStack: View {
             }
         } label: {
             HStack(spacing: 8) {
-                if isBusy {
-                    ProgressView().tint(colorScheme == .dark ? .black : .white)
-                } else {
+                logoSlot(isBusy: isBusy, spinnerTint: colorScheme == .dark ? .black : .white) {
                     Image(systemName: "applelogo").font(.system(size: 19, weight: .semibold))
                 }
                 Text("Mit Apple anmelden").font(.system(size: 19, weight: .semibold))
@@ -112,15 +126,33 @@ struct AuthButtonStack: View {
             .frame(maxWidth: .infinity, minHeight: height)
             .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
             .background(Capsule().fill(colorScheme == .dark ? Color.white : Color.black))
+            .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
-        .disabled(isBusy)
+        // Dips under the finger (not dimmed while busy – the spinner says it is working; taps are ignored then).
+        .buttonStyle(.pressable(scale: 0.97))
         .accessibilityLabel("Mit Apple anmelden")
+        .accessibilityValue(isBusy ? "Anmeldung läuft" : "")
+    }
+
+    /// The provider logo, or – while that provider's sign-in runs – a spinner in its place (scaled cross-fade).
+    private func logoSlot<Logo: View>(isBusy: Bool, spinnerTint: Color, @ViewBuilder logo: () -> Logo) -> some View {
+        ZStack {
+            if isBusy {
+                ProgressView()
+                    .tint(spinnerTint)
+                    .motionTransition(.pop)
+            } else {
+                logo()
+                    .motionTransition(.pop)
+            }
+        }
+        .frame(minWidth: 22)
     }
 
     private func providerButton<Logo: View>(_ provider: AuthProvider, title: String, @ViewBuilder logo: () -> Logo) -> some View {
         let isBusy = app.auth.phase == .signingIn(provider)
         return Button {
+            guard !isBusy else { return }
             let before = app.auth.profile
             Task {
                 await app.auth.signIn(with: provider, using: webAuthenticationSession)
@@ -128,11 +160,8 @@ struct AuthButtonStack: View {
             }
         } label: {
             HStack(spacing: 12) {
-                if isBusy {
-                    ProgressView().tint(colorScheme == .dark ? .black : .white)
-                } else {
-                    logo()
-                }
+                // The spinner sits on the button's own surface (white in light mode, near-black in dark mode).
+                logoSlot(isBusy: isBusy, spinnerTint: colorScheme == .dark ? Color(white: 0.89) : Color(white: 0.12), logo: logo)
                 Text(title)
                     .font(.system(size: 19, weight: .medium))
                     .lineLimit(1)
@@ -146,9 +175,10 @@ struct AuthButtonStack: View {
             .overlay(
                 Capsule().strokeBorder(colorScheme == .dark ? Color(white: 0.56) : Color(white: 0.45), lineWidth: 1)
             )
+            .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
-        .disabled(isBusy)
+        .buttonStyle(.pressable(scale: 0.97))
         .accessibilityLabel(title)
+        .accessibilityValue(isBusy ? "Anmeldung läuft" : "")
     }
 }

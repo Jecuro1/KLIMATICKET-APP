@@ -139,13 +139,17 @@ private struct SetFAQPage: View {
         .background { SetBackdrop(skyOpacity: 0.4, fadeEnd: 0.4) }
         .navigationTitle("Häufige Fragen")
         .navigationBarTitleDisplayMode(.large)
+        .haptic(.tap, trigger: expanded)
     }
 
+    /// Answers fold open and shut on `Motion.smooth`, with the light tap of every expand / collapse.
     private func binding(for index: Int) -> Binding<Bool> {
         Binding(
             get: { expanded.contains(index) },
             set: { isOpen in
-                if isOpen { expanded.insert(index) } else { expanded.remove(index) }
+                withMotion(Motion.smooth) {
+                    if isOpen { expanded.insert(index) } else { expanded.remove(index) }
+                }
             }
         )
     }

@@ -10,8 +10,12 @@ struct SetUpdatesSection: View {
     @Binding var showsUpdateSheet: Bool
 
     @State private var isRefreshingTariffs = false
-    @State private var checkTrigger = 0
-    @State private var tariffTrigger = 0
+    /// A check started here failed (no toast for it: one error haptic and the status line says why).
+    @State private var checkFailedTrigger = 0
+    /// The available release as shown: mirrored from the service so its row folds in with a spring when a check
+    /// finds it, instead of popping into the list.
+    @State private var shownManifest: UpdateManifest?
+    @State private var sparkleTrigger = 0
 
     private struct Status {
         var text: String
@@ -25,13 +29,16 @@ struct SetUpdatesSection: View {
             Group {
                 versionRow
                 checkRow
-                if let manifest = app.updates.availableManifest {
+                if let manifest = shownManifest {
                     availableRow(manifest)
+                        .motionTransition(.rise)
                 }
                 Toggle(isOn: $settings.autoUpdateCheck) {
                     SetRowLabel(title: "Automatisch prüfen", subtitle: "Beim Start und alle paar Stunden",
                                 symbol: "clock.arrow.circlepath", tint: Theme.pine)
+                        .setSymbolOnEnable(settings.autoUpdateCheck, .rotate)
                 }
+                .haptic(.selection, trigger: settings.autoUpdateCheck)
                 if app.updates.showsSideloadOptions {
                     sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
                               tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
@@ -44,6 +51,14 @@ struct SetUpdatesSection: View {
             SetSectionHeader(title: "Updates")
         } footer: {
             SetFooter(text: app.updates.channelFooter)
+        }
+        .onChange(of: app.updates.availableManifest, initial: true) { old, new in
+            guard shownManifest != new else { return }
+            if old == new {
+                shownManifest = new   // initial: the row is simply there
+            } else {
+                withMotion(Motion.smooth) { shownManifest = new }
+            }
         }
 
         Section {
@@ -79,24 +94,24 @@ struct SetUpdatesSection: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The relative time ("geprüft vor 5 Minuten") moves on while Settings stays open.
+    /// The relative time ("geprüft vor 5 Minuten") moves on while Settings stays open. Each state morphs into the
+    /// next: the clock turns into circling arrows while checking, then into the check or the arrow of a new version.
     private var statusLabel: some View {
         TimelineView(.everyMinute) { timeline in
             let status = currentStatus(now: timeline.date)
             HStack(spacing: 5) {
-                if isChecking {
-                    ProgressView()
-                        .controlSize(.mini)
-                } else {
-                    Image(systemName: status.symbol)
-                }
+                Image(systemName: status.symbol)
+                    .symbolReplaceTransition()
+                    .setBusySymbol(isChecking)
                 Text(status.text)
                     .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
             }
             .font(.footnote.weight(.medium))
             .foregroundStyle(status.color)
             .padding(.top, 2)
         }
+        .motionAnimation(Motion.smooth, value: app.updates.state)
     }
 
     private var isChecking: Bool { app.updates.state == .checking }
@@ -121,23 +136,24 @@ struct SetUpdatesSection: View {
         }
     }
 
+    /// The arrow in the tile turns while the check runs. The result answers for itself: the sheet, the "aktuell"
+    /// toast (with its haptic) or – on failure – one error haptic and the status line.
     private var checkRow: some View {
         Button {
-            checkTrigger += 1
             Task { await checkForUpdates() }
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                SetRowLabel(title: "Nach Updates suchen", symbol: "arrow.clockwise", tint: Theme.glacier)
+                SetRowLabel(title: "Nach Updates suchen", symbol: "arrow.clockwise", tint: Theme.glacier, isBusy: isChecking)
                 Spacer(minLength: Theme.Spacing.xs)
-                if isChecking {
-                    ProgressView()
-                }
+                SetBusyIndicator(isBusy: isChecking)
             }
         }
         .disabled(isChecking || app.updates.state == .notConfigured)
-        .settingsHaptic(.impact(weight: .light), trigger: checkTrigger, enabled: app.settings.hapticsEnabled)
+        .haptic(.error, trigger: checkFailedTrigger)
+        .accessibilityValue(isChecking ? "Wird geprüft" : "")
     }
 
+    /// A found release folds into the list; its sparkles glint once to draw the eye.
     private func availableRow(_ manifest: UpdateManifest) -> some View {
         Button {
             showsUpdateSheet = true
@@ -145,9 +161,15 @@ struct SetUpdatesSection: View {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: "Version \(SetFormat.shortVersion(manifest.version)) ansehen",
                             subtitle: manifest.releaseNotes.first, symbol: "sparkles", tint: Theme.dawn)
+                    .setSymbolEffect(.wiggle, trigger: sparkleTrigger)
                 Spacer(minLength: Theme.Spacing.xs)
                 SetPill(text: "Neu", tint: Theme.accentText)
             }
+        }
+        .task(id: manifest.version.description) {
+            guard !MotionPolicy.isStatic else { return }
+            try? await Task.sleep(for: .milliseconds(450))
+            sparkleTrigger += 1
         }
     }
 
@@ -179,9 +201,12 @@ struct SetUpdatesSection: View {
     private var tariffRow: some View {
         HStack(spacing: Theme.Spacing.s) {
             SetRowLabel(title: "Tarif-Stand", subtitle: tariffSubtitle, symbol: "tag.fill", tint: Theme.dawn)
+                .setSymbolEffect(.bounce, trigger: app.catalog.version)
             Spacer(minLength: Theme.Spacing.xs)
             SetPill(text: "v\(app.catalog.version)", tint: Theme.summitText)
+                .numericValue(Double(app.catalog.version))
         }
+        .motionAnimation(Motion.smooth, value: app.catalog.version)
         .accessibilityElement(children: .combine)
     }
 
@@ -199,23 +224,21 @@ struct SetUpdatesSection: View {
         return parts.joined(separator: " · ")
     }
 
+    /// The arrows turn while the catalogue loads; the toast (and its haptic) reports the result.
     private var refreshTariffsRow: some View {
         Button {
-            tariffTrigger += 1
             Task { await refreshTariffs() }
         } label: {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: "Tarife aktualisieren",
                             subtitle: hasTariffSource ? nil : "Keine Online-Quelle eingerichtet",
-                            symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier)
+                            symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier, isBusy: isRefreshingTariffs)
                 Spacer(minLength: Theme.Spacing.xs)
-                if isRefreshingTariffs {
-                    ProgressView()
-                }
+                SetBusyIndicator(isBusy: isRefreshingTariffs)
             }
         }
         .disabled(isRefreshingTariffs || !hasTariffSource)
-        .settingsHaptic(.impact(weight: .light), trigger: tariffTrigger, enabled: app.settings.hapticsEnabled)
+        .accessibilityValue(isRefreshingTariffs ? "Wird aktualisiert" : "")
     }
 
     // MARK: Actions
@@ -228,6 +251,8 @@ struct SetUpdatesSection: View {
             showsUpdateSheet = true
         } else if case .upToDate = app.updates.state {
             app.showToast("checkmark.circle.fill", "KlimaBilanz ist aktuell", "Version \(AppConfig.appVersion)")
+        } else if case .failed = app.updates.state {
+            checkFailedTrigger += 1
         }
     }
 

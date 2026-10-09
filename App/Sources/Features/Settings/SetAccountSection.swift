@@ -38,6 +38,7 @@ struct SetAccountSection: View {
         Section {
             SetProfileCard(profile: profile, isCloudActive: isCloudActive, canSignIn: canSignIn, snapshot: snapshot,
                            onSignedIn: didSignIn)
+                .reveal(order: 1)
                 .listRowBackground(SetProfileCardBackground())
                 .listRowInsets(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
                 .onChange(of: app.auth.profile?.id) { _, _ in
@@ -75,6 +76,7 @@ struct SetAccountSection: View {
                 if showsConnect {
                     AuthButtonStack(onSignedIn: didSignIn)
                         .padding(.vertical, Theme.Spacing.xs)
+                        .motionTransition(.rise)
                 }
             }
         }
@@ -90,7 +92,7 @@ struct SetAccountSection: View {
 
     private var connectRow: some View {
         Button {
-            withAnimation(.snappy) { showsConnect.toggle() }
+            withMotion(Motion.smooth) { showsConnect.toggle() }
         } label: {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: "Mit Konto verbinden",
@@ -104,6 +106,7 @@ struct SetAccountSection: View {
                     .accessibilityHidden(true)
             }
         }
+        .haptic(.tap, trigger: showsConnect)
         .accessibilityValue(showsConnect ? "Aufgeklappt" : "Zugeklappt")
     }
 
@@ -120,7 +123,7 @@ struct SetAccountSection: View {
     // MARK: Actions
 
     private func didSignIn() {
-        withAnimation(.snappy) { showsConnect = false }
+        withMotion(Motion.smooth) { showsConnect = false }
         let name = app.auth.profile?.displayName
         app.showToast("checkmark.circle.fill", "Angemeldet", name.map { "Servus, \($0)!" })
         Task { await app.sync.sync(context: context, auth: app.auth) }
@@ -134,7 +137,12 @@ struct SetAccountSection: View {
 private struct SetSyncRows: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
-    @State private var syncTrigger = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Results of a sync started here ("Jetzt synchronisieren"): one haptic each, and the cloud check hops.
+    @State private var syncedTrigger = 0
+    @State private var failedTrigger = 0
+
+    private var isSyncing: Bool { app.sync.state == .syncing }
 
     var body: some View {
         statusRow
@@ -154,22 +162,43 @@ private struct SetSyncRows: View {
                 indicator
             }
         }
+        .motionAnimation(Motion.snappy, value: app.sync.state)
         .accessibilityElement(children: .combine)
     }
 
+    /// The state symbol morphs from one to the next (cloud → turning arrows → cloud with check) and the check hops
+    /// after a sync started here. Reduce Motion / screenshots: a plain spinner while syncing.
     @ViewBuilder
     private var indicator: some View {
-        switch app.sync.state {
-        case .syncing:
+        if isSyncing && (reduceMotion || MotionPolicy.isStatic) {
             ProgressView()
-        case .synced:
-            Image(systemName: "checkmark.icloud.fill").foregroundStyle(Theme.positiveText)
-        case .failed:
-            Image(systemName: "exclamationmark.icloud.fill").foregroundStyle(Theme.negative)
-        case .disabled:
-            Image(systemName: "icloud.slash").foregroundStyle(Theme.textTertiary)
-        case .idle:
-            Image(systemName: "icloud").foregroundStyle(Theme.textSecondary)
+        } else {
+            Image(systemName: indicatorSymbol)
+                .foregroundStyle(indicatorColor)
+                .symbolReplaceTransition()
+                .setBusySymbol(isSyncing)
+                .setSymbolEffect(.bounce, trigger: syncedTrigger)
+                .setSymbolEffect(.wiggle, trigger: failedTrigger)
+        }
+    }
+
+    private var indicatorSymbol: String {
+        switch app.sync.state {
+        case .syncing: "arrow.triangle.2.circlepath"
+        case .synced: "checkmark.icloud.fill"
+        case .failed: "exclamationmark.icloud.fill"
+        case .disabled: "icloud.slash"
+        case .idle: "icloud"
+        }
+    }
+
+    private var indicatorColor: Color {
+        switch app.sync.state {
+        case .syncing: Theme.glacier
+        case .synced: Theme.positiveText
+        case .failed: Theme.negative
+        case .disabled: Theme.textTertiary
+        case .idle: Theme.textSecondary
         }
     }
 
@@ -190,15 +219,29 @@ private struct SetSyncRows: View {
         }
     }
 
+    /// The tile's arrows turn while the sync runs; the result is one haptic (success or error), no toast.
     private var syncNowRow: some View {
         Button {
-            syncTrigger += 1
-            Task { await app.sync.sync(context: context, auth: app.auth) }
+            Task {
+                await app.sync.sync(context: context, auth: app.auth)
+                switch app.sync.state {
+                case .synced: syncedTrigger += 1
+                case .failed: failedTrigger += 1
+                default: break
+                }
+            }
         } label: {
-            SetRowLabel(title: "Jetzt synchronisieren", symbol: "arrow.triangle.2.circlepath", tint: Theme.dusk)
+            HStack(spacing: Theme.Spacing.s) {
+                SetRowLabel(title: "Jetzt synchronisieren", symbol: "arrow.triangle.2.circlepath", tint: Theme.dusk,
+                            isBusy: isSyncing)
+                Spacer(minLength: Theme.Spacing.xs)
+                SetBusyIndicator(isBusy: isSyncing)
+            }
         }
-        .disabled(app.sync.state == .syncing)
-        .settingsHaptic(.impact(weight: .light), trigger: syncTrigger, enabled: app.settings.hapticsEnabled)
+        .disabled(isSyncing)
+        .haptic(.success, trigger: syncedTrigger)
+        .haptic(.error, trigger: failedTrigger)
+        .accessibilityValue(isSyncing ? "Wird synchronisiert" : "")
     }
 
     /// The server no longer accepts this app version (`426`): offer the update right here.
@@ -233,6 +276,8 @@ private struct SetProfileCard: View {
     var snapshot: AnalyticsSnapshot?
     var onSignedIn: () -> Void
 
+    /// Signing in (or out) morphs the card in place: the avatar takes the initials, the badges change, the sign-in
+    /// buttons fold away and the bilanz rises in – one smooth transaction instead of a jump.
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             identity
@@ -240,15 +285,21 @@ private struct SetProfileCard: View {
                 if canSignIn {
                     AuthButtonStack(onSignedIn: onSignedIn)
                         .padding(.top, Theme.Spacing.xxs)
+                        .motionTransition(.rise)
                 }
             } else if let snapshot {
-                Rectangle()
-                    .fill(Theme.separator)
-                    .frame(height: 1)
-                    .accessibilityHidden(true)
-                SetProfileStats(snapshot: snapshot)
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    Rectangle()
+                        .fill(Theme.separator)
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
+                    SetProfileStats(snapshot: snapshot)
+                }
+                .motionTransition(.rise)
             }
         }
+        .motionAnimation(Motion.smooth, value: profile?.id)
+        .motionAnimation(Motion.smooth, value: isCloudActive)
     }
 
     private var identity: some View {
@@ -259,10 +310,12 @@ private struct SetProfileCard: View {
                     .font(.title3.weight(.bold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
+                    .contentTransition(.interpolate)
                 Text(detailLine)
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(2)
+                    .contentTransition(.opacity)
                 badges
                     .padding(.top, Theme.Spacing.xxs)
             }
@@ -296,13 +349,17 @@ private struct SetProfileCard: View {
     private var providerBadge: some View {
         if let profile {
             SetProviderBadge(provider: profile.provider)
+                .motionTransition(.pop)
         }
     }
 
+    /// "Lokal gespeichert" → "Cloud-Sync aktiv": the symbol morphs (iPhone → cloud with check) and hops once.
     private var storageBadge: some View {
         SetPill(text: isCloudActive ? "Cloud-Sync aktiv" : "Lokal gespeichert",
                 symbol: isCloudActive ? "checkmark.icloud.fill" : "iphone",
                 tint: isCloudActive ? Theme.positiveText : Theme.textSecondary)
+            .symbolReplaceTransition()
+            .setSymbolOnEnable(isCloudActive)
     }
 }
 
@@ -312,14 +369,16 @@ private struct SetAvatar: View {
     var size: CGFloat
 
     var body: some View {
+        // Signing in: the gradient blooms in behind the placeholder and the initials pop in (`.pop`); signing out
+        // reverses it. Cross-fades under Reduce Motion.
         ZStack {
+            Circle().fill(Theme.surfaceSecondary)
             if initials != nil {
                 Circle()
                     .fill(LinearGradient(colors: [Theme.glacier, Theme.dusk, Theme.alpenglow],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
                     .environment(\.colorScheme, .light)
-            } else {
-                Circle().fill(Theme.surfaceSecondary)
+                    .motionTransition(.opacity.combined(with: .scale(scale: 0.4)))
             }
             Circle()
                 .fill(RadialGradient(colors: [Color.white.opacity(0.38), Color.white.opacity(0)],
@@ -330,10 +389,12 @@ private struct SetAvatar: View {
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .motionTransition(.pop)
             } else {
                 Image(systemName: "person.fill")
                     .font(.system(size: size * 0.42, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
+                    .motionTransition(.pop)
             }
         }
         .frame(width: size, height: size)
@@ -395,16 +456,32 @@ private struct SetProfileStats: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The card's hero figure (amortisiert) counts in once when Settings opens; the others roll on every change
+    /// (a trip logged from a widget while Settings is open, a restored backup).
     @ViewBuilder
     private var items: some View {
-        stat(Format.percent(summary.amortizedFraction), "amortisiert", Theme.accentText)
-        stat(Format.number(Double(summary.tripCount)), "Fahrten", Theme.textPrimary)
-        stat(Format.kg(summary.co2SavedKg), "CO₂ gespart", Theme.positiveText)
+        stat("amortisiert", Theme.accentText) {
+            // The final figure reserves the width: the row never re-lays out (or flips to the stacked layout) while
+            // the count runs.
+            Text(Format.percent(summary.amortizedFraction))
+                .hidden()
+                .overlay(alignment: .leading) {
+                    CountUpText(value: summary.amortizedFraction, delay: 0.15) { Format.percent($0) }
+                }
+        }
+        stat("Fahrten", Theme.textPrimary) {
+            Text(Format.number(Double(summary.tripCount)))
+                .numericValue(Double(summary.tripCount))
+        }
+        stat("CO₂ gespart", Theme.positiveText) {
+            Text(Format.kg(summary.co2SavedKg))
+                .numericValue(summary.co2SavedKg)
+        }
     }
 
-    private func stat(_ value: String, _ label: String, _ color: Color) -> some View {
+    private func stat<Value: View>(_ label: String, _ color: Color, @ViewBuilder value: () -> Value) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value)
+            value()
                 .font(Theme.Typography.numberSmall)
                 .foregroundStyle(color)
                 .lineLimit(1)

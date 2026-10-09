@@ -14,7 +14,6 @@ struct SetDiagnosticsPage: View {
     @State private var isPreparingExport = false
     @State private var watchdogOn = DiagnosticsService.shared.isWatchdogEnabled
     @State private var isConfirmingClear = false
-    @State private var clearTrigger = 0
 
     private static let latestLimit = 8
 
@@ -47,15 +46,19 @@ struct SetDiagnosticsPage: View {
     private var statusSection: some View {
         Section {
             HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                // "Wird geladen …" morphs into the verdict: the stethoscope turns into the seal (or the ECG line).
                 SetIconTile(symbol: status.symbol, tint: status.tint, size: 44)
+                    .symbolReplaceTransition()
                 VStack(alignment: .leading, spacing: 4) {
                     Text(status.title)
                         .font(.headline)
                         .foregroundStyle(Theme.textPrimary)
+                        .contentTransition(.opacity)
                     Text(status.message)
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.opacity)
                     if let overview {
                         HStack(spacing: Theme.Spacing.xs) {
                             SetPill(text: SetFormat.count(overview.sessionCount, "Sitzung", "Sitzungen"), symbol: "clock")
@@ -133,6 +136,7 @@ struct SetDiagnosticsPage: View {
             Text(value ?? "–")
                 .font(.body.monospacedDigit().weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText())
         } label: {
             SetRowLabel(title: title, subtitle: subtitle, symbol: symbol, tint: tint)
         }
@@ -300,7 +304,6 @@ struct SetDiagnosticsPage: View {
                 } message: {
                     Text("Absturz- und Hängerberichte, Sitzungen und der Verlauf werden von diesem iPhone gelöscht. Deine Fahrten bleiben unberührt.")
                 }
-                .settingsHaptic(.success, trigger: clearTrigger, enabled: app.settings.hapticsEnabled)
             }
             .listRowBackground(Theme.surface)
         } header: {
@@ -313,7 +316,8 @@ struct SetDiagnosticsPage: View {
     // MARK: Actions
 
     private func reload() async {
-        overview = await DiagnosticsService.shared.overview()
+        let loaded = await DiagnosticsService.shared.overview()
+        withMotion(Motion.smooth) { overview = loaded }
         isPreparingExport = true
         let counts = dataCounts()
         let exportContext = DiagnosticsExport.context(app: app, trips: counts.trips, tickets: counts.tickets, favorites: counts.favorites)
@@ -323,8 +327,7 @@ struct SetDiagnosticsPage: View {
 
     private func clear() async {
         await DiagnosticsService.shared.clearAll()
-        clearTrigger += 1
-        app.showToast("trash.fill", "Diagnosedaten gelöscht")
+        app.showToast("trash.fill", "Diagnosedaten gelöscht")   // the toast plays the deletion's one haptic
         await reload()
     }
 

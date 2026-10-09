@@ -4,13 +4,21 @@ import KlimaCore
 /// "Update verfügbar" (DESIGN.md §5.7): app icon on a summit glow, "Version 1.1 ist da" + "Du hast 1.0", release notes
 /// with feature tiles, the channel CTA ("Update herunterladen" …), optional "AltStore-Quelle hinzufügen" (tinted) and "Später".
 /// Presented by RootView (`app.updates.isPresentingSheet`) or from Einstellungen › Updates.
+///
+/// Motion (docs/MOTION.md): one entrance in reading order – the icon pops onto its glow and sends out one ring, the
+/// title focuses in, the notes rise one by one, the buttons last. The CTA shows the hand-off: its arrow turns into a
+/// spinner while the store opens and into a check ("Weiter in AltStore") once it took over – or says that it could not.
 struct UpdateSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var appeared = false
+    /// The install button's hand-off to the store / TestFlight / Safari.
+    private enum Handoff: Equatable {
+        case idle, opening, handedOver, failed
+    }
+
+    @State private var handoff: Handoff = .idle
     @State private var installTrigger = 0
     /// The update shown when the sheet opened. A background re-check (scene becoming active) briefly sets the
     /// service state to `.checking` – or `.failed` offline – which must not flip the open sheet to "Alles aktuell".
@@ -24,23 +32,25 @@ struct UpdateSheet: View {
     private var isRequired: Bool {
         app.updates.availableManifest == nil ? pinnedRequired : app.updates.isRequired
     }
-    private var animates: Bool { !(reduceMotion || LaunchMode.isScreenshot) }
 
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
                 UpdHero(manifest: manifest, installed: app.updates.installedVersion, installedBuild: app.updates.installedBuild,
-                        isRequired: isRequired, appeared: appeared, animates: animates)
+                        isRequired: isRequired)
                 if let manifest {
-                    UpdNotesCard(notes: manifest.releaseNotes, appeared: appeared, animates: animates)
+                    UpdNotesCard(notes: manifest.releaseNotes)
                     if let tariffs = manifest.tariffsVersion, tariffs > app.catalog.version {
                         tariffsHint(tariffs)
+                            .reveal(order: 8)
                     }
                 } else {
                     upToDateCard
+                        .reveal(order: 3)
                 }
                 if isRequired {
                     requiredNotice
+                        .reveal(order: 8)
                 }
             }
             .padding(.horizontal, Theme.Spacing.screen)
@@ -51,23 +61,21 @@ struct UpdateSheet: View {
         .scrollBounceBehavior(.basedOnSize)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             actions
+                .reveal(order: 5)
         }
+        .revealScope()
         .background { SetBackdrop(skyOpacity: 0.6, fadeEnd: 0.6) }
         .tint(Theme.accent)
         .presentationDetents([.large])
         .presentationDragIndicator(isRequired ? .hidden : .visible)
         .interactiveDismissDisabled(isRequired)
-        .settingsHaptic(.success, trigger: installTrigger, enabled: app.settings.hapticsEnabled)
+        // One haptic per step of the install: a tap when it starts, an error if nothing could be opened.
+        .haptic(.tap, trigger: installTrigger)
+        .haptic(.error, trigger: handoff, when: { _, new in new == .failed })
         .onAppear {
             if pinnedManifest == nil, let current = app.updates.availableManifest {
                 pinnedManifest = current
                 pinnedRequired = app.updates.isRequired
-            }
-            guard !appeared else { return }
-            if animates {
-                withAnimation(.spring(duration: 0.7, bounce: 0.28)) { appeared = true }
-            } else {
-                appeared = true
             }
         }
         .onDisappear {
@@ -86,6 +94,7 @@ struct UpdateSheet: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.title2)
                     .foregroundStyle(Theme.positive)
+                    .modifier(UpdAttentionSymbol(effect: .bounce))
                 Text("Du hast bereits die neueste Version von KlimaBilanz.")
                     .font(.body)
                     .foregroundStyle(Theme.textPrimary)
@@ -112,6 +121,7 @@ struct UpdateSheet: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.headline)
                 .foregroundStyle(Theme.summit)
+                .modifier(UpdAttentionSymbol(effect: .wiggle))
                 .accessibilityHidden(true)
             Text("Diese Version wird nicht mehr unterstützt. Bitte aktualisiere, damit Preise, Prognosen und Sync weiter stimmen.")
                 .font(.subheadline)
@@ -137,22 +147,26 @@ struct UpdateSheet: View {
     private var actions: some View {
         VStack(spacing: Theme.Spacing.s) {
             if manifest != nil {
-                Button {
-                    installTrigger += 1
-                    if app.updates.availableManifest == nil, let url = pinnedInstallURL {
-                        openURL(url)   // service is mid re-check (or offline) – fall back to the pinned release
-                    } else {
-                        app.updates.install()
-                    }
-                } label: {
-                    Label(app.updates.installActionTitle, systemImage: "arrow.down.circle.fill")
+                Button(action: install) {
+                    installLabel
                 }
                 .buttonStyle(.primary)
+                .accessibilityLabel(app.updates.installActionTitle)
+                .accessibilityValue(handoffAccessibilityValue)
+
+                if handoff == .failed {
+                    Text("Das hat nicht geklappt – versuch es gleich noch einmal.")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .motionTransition(.rise)
+                }
 
                 if let source = sourceURL {
                     Button {
                         openURL(source) { accepted in
-                            withAnimation(.snappy) { altStoreMissing = !accepted }
+                            withMotion(Motion.smooth) { altStoreMissing = !accepted }
                             if !accepted { AccessibilityNotification.Announcement(storeMissingText).post() }
                         }
                     } label: {
@@ -166,7 +180,7 @@ struct UpdateSheet: View {
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
                             .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity)
+                            .motionTransition(.rise)
                     }
                 }
             }
@@ -179,9 +193,11 @@ struct UpdateSheet: View {
                         .frame(minWidth: 160, minHeight: 44)   // HIG hit target, not just the word
                         .contentShape(.rect)
                 }
+                .buttonStyle(.pressable)
                 .foregroundStyle(Theme.accentText)
             }
         }
+        .motionAnimation(Motion.snappy, value: handoff)
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.top, Theme.Spacing.m)
         .padding(.bottom, isRequired ? Theme.Spacing.xs : 0)
@@ -195,6 +211,69 @@ struct UpdateSheet: View {
     }
 
     private var laterTitle: String { manifest == nil ? "Schließen" : "Später" }
+
+    /// "In AltStore aktualisieren" ⟶ spinner "Wird geöffnet …" ⟶ check "Weiter in AltStore": the symbol morphs in
+    /// place, the text cross-fades, the capsule keeps its size.
+    private var installLabel: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            ZStack {
+                if handoff == .opening {
+                    ProgressView()
+                        .tint(Theme.onAccent)
+                        .motionTransition(.pop)
+                } else {
+                    Image(systemName: handoff == .handedOver ? "checkmark.circle.fill" : "arrow.down.circle.fill")
+                        .symbolReplaceTransition()
+                        .motionTransition(.pop)
+                }
+            }
+            .frame(minWidth: 24)
+            Text(installTitle)
+                .contentTransition(.opacity)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
+    private var installTitle: String {
+        switch handoff {
+        case .idle, .failed: app.updates.installActionTitle
+        case .opening: "Wird geöffnet …"
+        case .handedOver: app.updates.installHandoffTitle
+        }
+    }
+
+    private var handoffAccessibilityValue: String {
+        switch handoff {
+        case .idle: ""
+        case .opening: "Wird geöffnet"
+        case .handedOver: app.updates.installHandoffTitle
+        case .failed: "Konnte nicht geöffnet werden"
+        }
+    }
+
+    /// Opens the channel's install route and shows the hand-off. Back in the app a few seconds later, the button is
+    /// ready for another try.
+    private func install() {
+        guard handoff != .opening else { return }
+        installTrigger += 1
+        withMotion(Motion.snappy) { handoff = .opening }
+        Task {
+            let opened: Bool
+            if app.updates.availableManifest == nil, let url = pinnedInstallURL {
+                // The service is mid re-check (or offline) – fall back to the pinned release.
+                opened = await withCheckedContinuation { continuation in
+                    openURL(url) { continuation.resume(returning: $0) }
+                }
+            } else {
+                opened = await app.updates.install()
+            }
+            withMotion(Motion.snappy) { handoff = opened ? .handedOver : .failed }
+            guard opened else { return }
+            try? await Task.sleep(for: .seconds(3))
+            if handoff == .handedOver { withMotion(Motion.smooth) { handoff = .idle } }
+        }
+    }
 
     private var storeMissingText: String {
         isSideStore ? "SideStore ist auf diesem iPhone nicht installiert."
@@ -225,8 +304,10 @@ private struct UpdHero: View {
     var installed: SemanticVersion
     var installedBuild: Int
     var isRequired: Bool
-    var appeared: Bool
-    var animates: Bool
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// One ring leaves the icon once it has landed – "something new arrived". Not for "Alles aktuell".
+    @State private var ringTrigger = 0
 
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
@@ -235,6 +316,7 @@ private struct UpdHero: View {
             if isRequired {
                 Kicker(text: "Update erforderlich", color: Theme.summitText)
                     .padding(.top, Theme.Spacing.xs)
+                    .reveal(order: 1)
             }
             Text(title)
                 .font(Theme.Typography.heroTitle)
@@ -242,6 +324,7 @@ private struct UpdHero: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, isRequired ? 0 : Theme.Spacing.xs)
+                .reveal(.focus, order: 1)
             VStack(spacing: Theme.Spacing.xs) {
                 installedPill
                 if let manifest, let date = SetFormat.isoDateTime(manifest.publishedAt) {
@@ -251,6 +334,7 @@ private struct UpdHero: View {
                 }
             }
             .padding(.top, Theme.Spacing.xxs)
+            .reveal(order: 2)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -280,17 +364,21 @@ private struct UpdHero: View {
                 .fill(RadialGradient(colors: [Theme.dawn.opacity(0.5), Theme.alpenglow.opacity(0.18), Theme.dawn.opacity(0)],
                                      center: .center, startRadius: 0, endRadius: 110))
                 .frame(width: 220, height: 220)
-                .scaleEffect(appeared ? 1 : 0.6)
-                .opacity(appeared ? 1 : 0)
+                .reveal(.fade)
             SetAppIconView(size: 100)
                 .shadow(color: Theme.dusk.opacity(0.35), radius: 26, y: 14)
-                .scaleEffect(appeared ? 1 : 0.8)
-                .opacity(appeared ? 1 : 0)
+                .celebrationRing(trigger: ringTrigger, color: Theme.dawn)
+                .reveal(.pop)
         }
         .frame(height: 172)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, -Theme.Spacing.screen)
         .accessibilityHidden(true)
+        .task {
+            guard manifest != nil, !reduceMotion, !MotionPolicy.isStatic else { return }
+            try? await Task.sleep(for: .milliseconds(380))   // the icon has popped into place
+            ringTrigger += 1
+        }
     }
 
     /// "Du hast 1.0" – the installed version in the same short form as the title. A build-only update has no new
@@ -333,19 +421,11 @@ private struct UpdHero: View {
 
 // MARK: - Release notes
 
+/// The card rises in after the title; its notes follow one by one inside it (the sheet's one staggered block).
 private struct UpdNotesCard: View {
     var notes: [String]
-    var appeared: Bool
-    var animates: Bool
 
     private var lines: [String] { notes.isEmpty ? ["Fehlerbehebungen und Verbesserungen"] : notes }
-
-    /// Staggered entrance (≤ ~1.1 s in total); nil = no animation (Reduce Motion, screenshots).
-    private func entrance(_ index: Int) -> Animation? {
-        guard animates else { return nil }
-        let delay: Double = 0.16 + Double(min(index, 6)) * 0.07
-        return Animation.spring(duration: 0.55, bounce: 0.2).delay(delay)
-    }
 
     var body: some View {
         SurfaceCard(padding: Theme.Spacing.l, cornerRadius: Theme.Radius.formGroup) {
@@ -355,13 +435,36 @@ private struct UpdNotesCard: View {
                     .accessibilityAddTraits(.isHeader)
                 ForEach(Array(lines.enumerated()), id: \.offset) { index, note in
                     UpdNoteRow(text: note)
-                        .opacity(appeared ? 1 : 0)
-                        .offset(y: appeared ? 0 : 12)
-                        .animation(entrance(index), value: appeared)
+                        .reveal(order: 4 + index)
                 }
             }
         }
+        .reveal(order: 3)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// A status symbol that plays `effect` once shortly after it appears (the seal of "Alles aktuell", the warning of a
+/// required update) – attention, not decoration. Still under Reduce Motion and in screenshots.
+private struct UpdAttentionSymbol: ViewModifier {
+    enum Effect { case bounce, wiggle }
+
+    let effect: Effect
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var trigger = 0
+
+    func body(content: Content) -> some View {
+        Group {
+            switch effect {
+            case .bounce: content.symbolEffect(.bounce, value: trigger)
+            case .wiggle: content.symbolEffect(.wiggle, value: trigger)
+            }
+        }
+        .task {
+            guard !reduceMotion, !MotionPolicy.isStatic else { return }
+            try? await Task.sleep(for: .milliseconds(650))
+            trigger += 1
+        }
     }
 }
 
@@ -429,6 +532,7 @@ private struct UpdFeature {
 private struct UpdSecondaryButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         let dark = colorScheme == .dark
@@ -447,7 +551,8 @@ private struct UpdSecondaryButtonStyle: ButtonStyle {
             }
             .contentShape(.capsule)
             .opacity(isEnabled ? 1 : 0.45)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(MotionPolicy.isStatic ? nil : (configuration.isPressed ? Motion.press : Motion.release),
+                       value: configuration.isPressed)
     }
 }

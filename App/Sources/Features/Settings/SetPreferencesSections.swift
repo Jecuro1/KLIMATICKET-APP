@@ -20,14 +20,18 @@ struct SetFareSection: View {
                     }
                 } label: {
                     SetRowLabel(title: "Ermäßigung", symbol: "percent", tint: Theme.dusk)
+                        .setSymbolEffect(.bounce, trigger: settings.defaultDiscount)
                 }
+                .haptic(.selection, trigger: settings.defaultDiscount)
                 Picker(selection: $settings.defaultTravelClass) {
                     ForEach(TravelClass.allCases) { travelClass in
                         Text(travelClass.displayName).tag(travelClass)
                     }
                 } label: {
                     SetRowLabel(title: "Klasse", symbol: "sofa.fill", tint: Theme.modeColor(.train))
+                        .setSymbolEffect(.bounce, trigger: settings.defaultTravelClass)
                 }
+                .haptic(.selection, trigger: settings.defaultTravelClass)
                 NavigationLink {
                     SetInfoPage(title: "Preisschätzung", kicker: "So rechnet KlimaBilanz", symbol: "eurosign.circle.fill",
                                 tint: Theme.glacier, text: Copy.fareExplanation,
@@ -68,22 +72,30 @@ struct SetCaptureSection: View {
             Group {
                 homeStationRow
                 favoritesRow
-                Toggle(isOn: $detection.isEnabled) {
+                // The status row below folds in and out with the switch (animated binding); detection starting and
+                // stopping has its own haptics (docs/MOTION.md §6: .start / .stop).
+                Toggle(isOn: $detection.isEnabled.animation(MotionPolicy.animation(Motion.smooth))) {
                     // Short enough for one line each next to the switch (the section header already says "Fahrten").
                     SetRowLabel(title: "Automatisch erkennen",
                                 subtitle: detection.isAvailable ? "Vorschläge an Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
                                 symbol: "location.fill", tint: Theme.glacier)
+                        .setSymbolOnEnable(detection.isEnabled)
                 }
                 .disabled(!detection.isAvailable)
+                .haptic(.start, trigger: detection.isEnabled, when: { _, isOn in isOn })
+                .haptic(.stop, trigger: detection.isEnabled, when: { _, isOn in !isOn })
                 .onChange(of: detection.isEnabled) { _, enabled in
                     if enabled { Repository(context: context, app: app).configureTripDetection() }
                 }
                 if detection.isEnabled {
-                    if detection.isAuthorizedAlways {
-                        activeRow
-                    } else {
-                        permissionRow
+                    Group {
+                        if detection.isAuthorizedAlways {
+                            activeRow
+                        } else {
+                            permissionRow
+                        }
                     }
+                    .motionTransition(.rise)
                 }
             }
             .listRowBackground(Theme.surface)
@@ -106,6 +118,7 @@ struct SetCaptureSection: View {
                     Text(Format.number(Double(favorites.count)))
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(Theme.textSecondary)
+                        .numericValue(Double(favorites.count))
                 }
             }
         }
@@ -118,11 +131,13 @@ struct SetCaptureSection: View {
             }
         } label: {
             SetRowLabel(title: "Heimatbahnhof", subtitle: homeStationSubtitle, symbol: "house.fill", tint: Theme.pine)
+                .setSymbolEffect(.bounce, trigger: app.settings.homeStationID)
+                .motionAnimation(Motion.snappy, value: app.settings.homeStationID)
         }
         .swipeActions(edge: .trailing) {
             if app.settings.homeStationID != nil {
                 Button("Entfernen", role: .destructive) {
-                    app.settings.homeStationID = nil
+                    withMotion(Motion.snappy) { app.settings.homeStationID = nil }
                 }
             }
         }
@@ -142,6 +157,7 @@ struct SetCaptureSection: View {
                            subtitle: count == 0 ? "Bis zu 20 Bahnhöfe werden beobachtet"
                                                 : "\(SetFormat.count(count, "Vorschlag wartet", "Vorschläge warten")) in der Übersicht",
                            symbol: "checkmark.circle.fill", tint: Theme.pine)
+            .motionAnimation(Motion.snappy, value: count)
     }
 
     private var permissionRow: some View {
@@ -171,17 +187,20 @@ struct SetAppearanceSection: View {
         @Bindable var settings = app.settings
         Section {
             Group {
-                SetAppearancePicker(selection: $settings.appearance, hapticsEnabled: settings.hapticsEnabled)
+                SetAppearancePicker(selection: $settings.appearance)
                     .padding(.vertical, Theme.Spacing.xs)
                     .id(SetScrollAnchor.appearance)
                 // MARK: icons – Einstellungen › Darstellung › App-Symbol
                 if AppIconStore.shared.isSupported {
                     AppIconSettingsRow()
                 }
+                // Turned on, the phone in the tile shakes and you feel the snap it just enabled.
                 Toggle(isOn: $settings.hapticsEnabled) {
                     SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
                                 symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
+                        .setSymbolOnEnable(settings.hapticsEnabled, .wiggle)
                 }
+                .haptic(.snap, trigger: settings.hapticsEnabled, when: { _, isOn in isOn })
                 NavigationLink {
                     WidgetGalleryView()
                 } label: {
@@ -196,10 +215,11 @@ struct SetAppearanceSection: View {
     }
 }
 
-/// Three mini phone previews (System / Hell / Dunkel) like the iOS display settings.
+/// Three mini phone previews (System / Hell / Dunkel) like the iOS display settings. The selection ring glides from
+/// one preview to the next (matched geometry), the picked phone settles forward and its check morphs in.
 private struct SetAppearancePicker: View {
     @Binding var selection: AppSettings.Appearance
-    var hapticsEnabled: Bool
+    @Namespace private var namespace
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.m) {
@@ -207,37 +227,44 @@ private struct SetAppearancePicker: View {
                 tile(option)
             }
         }
-        .settingsHaptic(.selection, trigger: selection, enabled: hapticsEnabled)
+        .haptic(.selection, trigger: selection)
     }
 
     private func tile(_ option: AppSettings.Appearance) -> some View {
         let isSelected = selection == option
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
         return Button {
-            withAnimation(.snappy) { selection = option }
+            guard option != selection else { return }
+            withMotion(Motion.snappy) { selection = option }
         } label: {
             VStack(spacing: Theme.Spacing.xs) {
                 SetAppearancePreview(option: option)
                     .frame(maxWidth: 78)
+                    .overlay { shape.strokeBorder(Theme.separator, lineWidth: 1) }
                     .overlay {
-                        RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
-                            .strokeBorder(isSelected ? Theme.accent : Theme.separator, lineWidth: isSelected ? 2.5 : 1)
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: Theme.Radius.modeTile + 3, style: .continuous)
+                                .strokeBorder(Theme.accent, lineWidth: 2.5)
+                                .padding(-3)
+                                .matchedGeometryEffect(id: "selection", in: namespace)
+                        }
                     }
                     .shadow(color: Color.black.opacity(isSelected ? 0.14 : 0.05), radius: 8, y: 4)
-                    .scaleEffect(isSelected ? 1 : 0.96)
+                    .scaleEffect(isSelected ? 1 : 0.94)
                 Text(option.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Theme.textPrimary)
+                    .font(.subheadline.weight(isSelected ? .semibold : .medium))
+                    .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel("Erscheinungsbild \(option.title)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -326,11 +353,15 @@ struct SetNotificationsSection: View {
             Group {
                 if status == .denied {
                     deniedRow
+                        .motionTransition(.rise)
                 }
-                Toggle(isOn: $settings.renewalRemindersEnabled) {
+                // On: the bell rings once. Off: it morphs into the struck-through bell.
+                Toggle(isOn: $settings.renewalRemindersEnabled.animation(MotionPolicy.animation(Motion.snappy))) {
                     SetRowLabel(title: "Verlängerungs-Erinnerung", subtitle: renewalSubtitle,
-                                symbol: "bell.badge.fill", tint: Theme.dawn)
+                                symbol: settings.renewalRemindersEnabled ? "bell.badge.fill" : "bell.slash.fill", tint: Theme.dawn)
+                        .setSymbolOnEnable(settings.renewalRemindersEnabled, .wiggle)
                 }
+                .haptic(.selection, trigger: settings.renewalRemindersEnabled)
                 .onChange(of: settings.renewalRemindersEnabled) { _, enabled in
                     updateRenewalReminders(enabled)
                 }
@@ -345,7 +376,9 @@ struct SetNotificationsSection: View {
                 Toggle(isOn: $settings.weeklySummaryEnabled) {
                     SetRowLabel(title: "Wochenrückblick", subtitle: "Sonntags um 18 Uhr",
                                 symbol: "calendar.badge.clock", tint: Theme.dusk)
+                        .setSymbolOnEnable(settings.weeklySummaryEnabled)
                 }
+                .haptic(.selection, trigger: settings.weeklySummaryEnabled)
                 .onChange(of: settings.weeklySummaryEnabled) { _, enabled in
                     updateWeeklySummary(enabled)
                 }
@@ -383,7 +416,12 @@ struct SetNotificationsSection: View {
     private func refreshStatus() async {
         let previous = status
         let current = await app.notifications.authorizationStatus()
-        status = current
+        // The "Mitteilungen sind aus" row folds in / out (back from the iOS Settings app); the first read just shows it.
+        if previous == nil {
+            status = current
+        } else if previous != current {
+            withMotion(Motion.smooth) { status = current }
+        }
         // Allowed again in the iOS Settings app: schedule what was skipped while notifications were off.
         guard previous == .denied, current == .authorized || current == .provisional else { return }
         if app.settings.renewalRemindersEnabled { updateRenewalReminders(true) }

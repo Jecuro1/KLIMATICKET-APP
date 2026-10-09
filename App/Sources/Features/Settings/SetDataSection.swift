@@ -17,8 +17,6 @@ struct SetDataSection: View {
     @State private var isConfirmingDemoRemoval = false
     @State private var isConfirmingDelete = false
     @State private var isDeleting = false
-    @State private var deleteTrigger = 0
-    @State private var successTrigger = 0
 
     /// Rows of the sample year ("Demo ansehen") are still there. Tickets and favourites are few and decide almost
     /// always; the trips are only scanned once both are gone.
@@ -48,7 +46,10 @@ struct SetDataSection: View {
         } header: {
             SetSectionHeader(title: "Daten")
         } footer: {
+            // The counts roll when a restore or a removal changes them.
             SetFooter(text: "\(SetFormat.count(trips.count, "Fahrt", "Fahrten")) · \(SetFormat.count(favorites.count, "Favorit", "Favoriten")) · \(SetFormat.count(tickets.count, "Ticket", "Tickets")). Das Backup enthält alles und lässt sich jederzeit wieder einspielen.")
+                .contentTransition(.numericText())
+                .motionAnimation(Motion.number, value: [trips.count, favorites.count, tickets.count])
         }
     }
 
@@ -81,18 +82,17 @@ struct SetDataSection: View {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: "Backup wiederherstellen",
                             subtitle: isRestoring ? "Wird wiederhergestellt …" : "Neuere Einträge gewinnen, nichts wird doppelt",
-                            symbol: "arrow.down.doc.fill", tint: Theme.dusk)
+                            symbol: "arrow.down.doc.fill", tint: Theme.dusk, isBusy: isRestoring, busyStyle: .pulse)
                 Spacer(minLength: Theme.Spacing.xs)
-                if isRestoring {
-                    ProgressView()
-                }
+                SetBusyIndicator(isBusy: isRestoring)
             }
+            .motionAnimation(Motion.snappy, value: isRestoring)
         }
         .disabled(isRestoring)
+        // The result toast carries the one haptic of the restore (success or error).
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
             handleImport(result)
         }
-        .settingsHaptic(.success, trigger: successTrigger, enabled: app.settings.hapticsEnabled)
     }
 
     /// Only while rows of the sample year exist – "Demo ansehen" lives in the onboarding, where the store is still empty.
@@ -123,12 +123,15 @@ struct SetDataSection: View {
                         .foregroundStyle(Theme.negativeText)
                 } icon: {
                     SetIconTile(symbol: "trash.fill", tint: Theme.negative)
+                        .setSymbolOnEnable(isDeleting, .wiggle)
                 }
                 Spacer(minLength: Theme.Spacing.xs)
                 if isDeleting {
                     ProgressView()
+                        .motionTransition(.pop)
                 }
             }
+            .motionAnimation(Motion.snappy, value: isDeleting)
         }
         .disabled(isDeleting)
         .confirmationDialog("Alle Daten löschen?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
@@ -137,7 +140,6 @@ struct SetDataSection: View {
         } message: {
             Text("Alle Tickets, Fahrten und Favoriten werden von diesem iPhone gelöscht. Das lässt sich nicht rückgängig machen – sichere vorher ein Backup.")
         }
-        .settingsHaptic(.warning, trigger: deleteTrigger, enabled: app.settings.hapticsEnabled)
     }
 
     // MARK: Actions
@@ -174,7 +176,6 @@ struct SetDataSection: View {
             for ticket in repository.liveTickets() where !ticket.isExpired {
                 repository.scheduleReminders(for: ticket)
             }
-            successTrigger += 1
             app.showToast("checkmark.circle.fill", "Backup wiederhergestellt", imported.summary)
         } catch {
             app.showToast("exclamationmark.triangle.fill", "Import fehlgeschlagen", "Die Datei ist kein gültiges KlimaBilanz-Backup.")
@@ -183,23 +184,22 @@ struct SetDataSection: View {
 
     private func removeDemo() {
         let repository = Repository(context: context, app: app)
-        let removed = repository.deleteDemoData(ids: DemoDataStore.ids)
-        DemoDataStore.forget()
-        deleteTrigger += 1
+        let removed = withMotion(Motion.smooth) { repository.deleteDemoData(ids: DemoDataStore.ids) }
+        withMotion(Motion.smooth) { DemoDataStore.forget() }
         guard removed > 0 else { return }
+        // The toast plays the removal's one haptic (warning – something was deleted).
         if repository.liveTickets().isEmpty {
             // No own ticket left: the app starts over with the setup (RootView shows the onboarding).
             app.isShowingSettings = false
-            app.showToast("sparkles", "Demo-Daten entfernt", "Leg jetzt dein eigenes Ticket an")
+            app.showToast("sparkles", "Demo-Daten entfernt", "Leg jetzt dein eigenes Ticket an", haptic: .warning)
         } else {
-            app.showToast("sparkles", "Demo-Daten entfernt", "Deine eigenen Einträge bleiben erhalten")
+            app.showToast("sparkles", "Demo-Daten entfernt", "Deine eigenen Einträge bleiben erhalten", haptic: .warning)
         }
     }
 
     private func deleteAll() {
         guard !isDeleting else { return }
         isDeleting = true
-        deleteTrigger += 1
         // The hard delete leaves no ticket behind to cancel its reminders later – do it first.
         let ticketIDs = tickets.map(\.id)
         let notifications = app.notifications
@@ -215,7 +215,8 @@ struct SetDataSection: View {
             if ok {
                 app.showToast("trash.fill", "Alle Daten gelöscht", "Bereit für dein nächstes Ticket")
             } else {
-                app.showToast("icloud.slash", "Auf diesem iPhone gelöscht", "Die Cloud wird beim nächsten Sync bereinigt")
+                app.showToast("icloud.slash", "Auf diesem iPhone gelöscht", "Die Cloud wird beim nächsten Sync bereinigt",
+                              haptic: .warning)
             }
         }
     }

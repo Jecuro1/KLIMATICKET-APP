@@ -38,6 +38,9 @@ struct SetRowLabel: View {
     var subtitle: String? = nil
     var symbol: String
     var tint: Color
+    /// The row's work is running (sync, update check, restore): its own symbol shows it (`setBusySymbol`).
+    var isBusy: Bool = false
+    var busyStyle: SetBusyStyle = .rotate
 
     var body: some View {
         Label {
@@ -48,10 +51,13 @@ struct SetRowLabel: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.opacity)
                 }
             }
         } icon: {
             SetIconTile(symbol: symbol, tint: tint)
+                .symbolReplaceTransition()
+                .setBusySymbol(isBusy, style: busyStyle)
         }
     }
 }
@@ -62,6 +68,8 @@ struct SetRowLabel: View {
 struct SetScreenHeader: View {
     var kicker: String
     var title: String
+    /// Scroll progress of the list: the header condenses while the inline title takes over (`SetInlineTitle`).
+    var condense: ScrollCondense? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -76,6 +84,8 @@ struct SetScreenHeader: View {
         }
         .textCase(nil)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .setHeaderCondense(condense)
+        .reveal(.focus)
         .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
                                   bottom: Theme.Spacing.s, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
     }
@@ -203,14 +213,17 @@ struct SetInfoPage: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .reveal()
                 if !notes.isEmpty {
                     notesCard
+                        .reveal(order: 1)
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
             .padding(.top, Theme.Spacing.xs)
             .padding(.bottom, Theme.Spacing.xxl)
         }
+        .revealScope()
         .background { SetBackdrop(skyOpacity: 0.4, fadeEnd: 0.4) }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.large)
@@ -306,9 +319,3 @@ enum SetDemo {
                                      provider: .apple, avatarURL: nil, isCloud: false)
 }
 
-extension View {
-    /// `.sensoryFeedback` that respects the "Haptisches Feedback" setting.
-    func settingsHaptic<T: Equatable>(_ feedback: SensoryFeedback, trigger: T, enabled: Bool) -> some View {
-        sensoryFeedback(trigger: trigger) { _, _ in enabled ? feedback : nil }
-    }
-}
