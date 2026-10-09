@@ -26,6 +26,7 @@ struct AppIconPickerView: View {
     @ScaledMetric(relativeTo: .body) private var scaledIconSize: CGFloat = 64
 
     private var store: AppIconStore { AppIconStore.shared }
+    private static let unbreakableBrand = "KlimaBilanz".map(String.init).joined(separator: "\u{2060}")  // MARK: review-icons
     private var iconSize: CGFloat { min(scaledIconSize, 92) }
 
     var body: some View {
@@ -92,10 +93,12 @@ struct AppIconPickerView: View {
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Such dir aus, wie KlimaBilanz auf deinem Home-Bildschirm aussieht.")
+            // MARK: review-icons – word joiners keep the brand whole at large text sizes ("Kli-" | "maBilanz").
+            Text("Such dir aus, wie \(Self.unbreakableBrand) auf deinem Home-Bildschirm aussieht.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel("Such dir aus, wie KlimaBilanz auf deinem Home-Bildschirm aussieht.")
                 .padding(.top, Theme.Spacing.xxs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

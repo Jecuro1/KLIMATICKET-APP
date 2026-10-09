@@ -113,6 +113,7 @@ RidgeShape(peakX:peakY:seed:roughness:), SmoothPath(points:), FlagShape()
 ```swift
 AppIconChoice.allCases            // .alpin (primär) · .nacht · .sonnenaufgang · .gletscher · .minimal – title, subtitle, previewAsset
 AppIconStore.shared.current       // das gerade aktive Home-Bildschirm-Symbol (@Observable); .select(_:completion:) wechselt es
+AppIconStore.lastKnown            // letzter bekannter Stand ohne Store/LaunchServices-Abfrage (Onboarding, erster Frame)
 AppIconImage(choice: AppIconChoice, size: CGFloat)   // Vorschau mit Home-Bildschirm-Form, hell/dunkel nach Umgebung
 AppIconPickerView()               // Einstellungen › Darstellung › App-Symbol (Zeile: AppIconSettingsRow)
 SetAppIconView(size:)             // aktives Symbol in Update-Sheet, „Über“, Updates
