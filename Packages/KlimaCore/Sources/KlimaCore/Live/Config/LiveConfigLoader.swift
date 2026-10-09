@@ -16,6 +16,7 @@ public enum LiveConfigLoader {
     /// Validates and clamps a config (also used for the cached copy). nil when structurally unusable.
     public static func sanitized(_ config: LiveConfig) -> LiveConfig? {
         guard config.version > 0, isUsable(config.hafas), isUsable(config.vao), config.shop.baseURL.scheme == "https",
+              config.shop.baseURL.host?.isEmpty == false,
               config.hafasFallback.map(isUsable) ?? true,
               !config.userAgent.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
         var c = config

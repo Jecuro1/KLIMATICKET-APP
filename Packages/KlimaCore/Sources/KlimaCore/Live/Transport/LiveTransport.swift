@@ -83,3 +83,9 @@ public struct HTTPResponse: Sendable, Hashable {
 public protocol HTTPTransport: Sendable {
     func send(_ request: HTTPRequest) async throws -> HTTPResponse
 }
+
+/// Unambiguous names for app files that import both KlimaCore and KlimaCloud: KlimaCloud declares its own
+/// `HTTPTransport` and `URLSessionTransport`, so there `URLSessionTransport()` does not compile. Use
+/// `LiveURLSessionTransport()` / `any LiveHTTPTransport` (or the module-qualified `KlimaCore.` names).
+public typealias LiveHTTPTransport = HTTPTransport
+public typealias LiveURLSessionTransport = URLSessionTransport

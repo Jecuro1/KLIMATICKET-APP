@@ -1059,8 +1059,9 @@ public actor VerbundTariffClient: VaoLocationSearching {
 | Kind | Key | TTL |
 |---|---|---|
 | Relation quote | `rel` · fromKey · toKey · yyyy-MM-dd · class · discount, joined with `\|` | 24 h |
-| Connection quote | `con` · `Journey.id` · class · discount, joined with `\|` | 24 h |
-| Negative (VAO NA, shop noPrice) | `neg` · provider · fromKey · toKey · day, joined with `\|` | 24 h (NA) / 1 h (noPrice) |
+| Connection quote | `con` · `Journey.id` · class · discount (+ `\|via:…`), joined with `\|` | 24 h |
+| Negative (VAO NA, shop noPrice) | `neg` · provider · fromKey · toKey · day · class, joined with `\|` | 24 h (NA) / 1 h (noPrice) |
+| Negative, one planner connection (shop, plan `.connection`) | `neg` · `oebbShop` · `con` · `Journey.id` · class | 1 h |
 
 - `fromKey = stationID ?? "eva:\(hafasExtId)" ?? "name:\(normalize(name))"`. `toKey` is built the same way.
 - **Storage:** in memory, plus a JSON file at `cacheURL` (app: `Caches/Live/prices.json`). At most 500 entries with LRU eviction. Write-behind with ≤ 1 write per 5 s.
@@ -1659,6 +1660,41 @@ Tests go under `Packages/KlimaCore/Tests/KlimaCoreTests/Live/<Area>/`. XCTest (a
 5. VoiceOver pass over results, detail and board; Dynamic Type AX3.
 
 ---
+
+## D5. Review notes (adversarial review of Step 0 + WP-A/B/C, 2026-10-09)
+
+Fixed on main (tests in `Live/HAFAS/LiveRobustnessTests`, `Live/Pricing/LivePriceServiceCacheKeyTests`,
+`Live/Presentation/BoardArrivalRowsTests`, `Live/Support/LiveTransportConfigReviewTests`):
+
+- **Corrupt input never traps.** `HafasTime`: day offsets > 99 and UTC offsets beyond ±24 h are corrupt (they
+  overflowed; such an offset is ignored, such a time is nil). `Polyline`: values longer than 7 chunks are rejected,
+  sums wrap. `HafasClient.nearby` answers `[]` without I/O for a NaN/∞/out-of-range fix (CoreLocation „invalid“
+  is −180/−180); `OebbShopClient.Station` sends 0/0 for it. `LiveHealth` caps a server `Retry-After` at 6 h (∞/NaN →
+  60 s). `ShopTime` accepts plausible ranges only; `softList` stops when the container does not advance;
+  `HTMLText` stays linear on unclosed „<“. A fuzz test patches every HAFAS fixture with hostile values.
+- **One envelope decode.** `HafasClient` checks AUTH/PARSE/HAMM and other top-level codes on a status-only decode
+  (≈ 1 ms) instead of two full decodes before the codec's own (≈ 12 ms each for 150 KB, Linux debug).
+- **Price cache keys** (§B6 table updated): connection quotes include the via stops (a via quote no longer answers
+  the direct request of the same journey); negative keys include the class (1st-class „kein Standard-Ticket“ no longer
+  blocks 2nd class); a shop failure of one planner connection blocks only that train for 1 h.
+- **Display names:** `StationLinker.displayName` = `DisplayNames.name` – via texts read „über St. Pölten Hbf“ (was
+  „St.  Pölten Hauptbahnhof“ with two spaces), „über Feldkirch“ like the cards, segments „Innsbruck Hbf – Feldkirch“.
+- **Arrival boards:** `BoardPresentation.rows` shows the origin of the run on arrival boards (HAFAS `dirTxt` is the
+  final destination there too); `row(_:kind:)` defaults to departures.
+- **Coverage speed:** `StationIndex.nearest` scans a latitude band only, the Gemeinschaftsbahnhof check runs only for
+  stops outside Austria: a 4-journey Tyrol bus page (144 stops) 250 → 65 ms (Linux debug), same results.
+- **Name clash with KlimaCloud:** use `LiveURLSessionTransport()` / `any LiveHTTPTransport` in app files that import
+  both modules (KlimaCloud declares `HTTPTransport` and `URLSessionTransport` too).
+- `LiveConfigLoader` rejects a shop base URL without a host; `OebbShopClient.stations` has no force unwraps.
+
+Measured (Linux, debug build, one core): TripSearch decode 15–24 ms for 105–148 KB, StationBoard 27 ms for 173 KB,
+cards (`summaries`) 1–3 ms per page, coverage 27–65 ms per page (bundled stations only; with the attached
+`PlaceIndex` the grid lookup is used). Release builds on device are several times faster.
+
+Open (not changed): StationLinker caches positive results only (spec: positive and negative); a `ruleRef` cycle in a
+hand-edited rule file is cut at depth 12 but can fan out exponentially (the file is bundled, not remote); the
+enrichment queries `PlaceIndex.stopLines/compactLines/tags` are still the Step-0 stubs (WP-C2 of the enrichment
+spec); `LiveLineRefAdapter` stays until WP-L ships `LiveLineMatcher.lineRef(from:)`.
 
 # PART E: App (SwiftUI, iOS 26)
 

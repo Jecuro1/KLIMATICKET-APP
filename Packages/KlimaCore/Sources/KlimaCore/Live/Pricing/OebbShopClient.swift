@@ -106,9 +106,10 @@ public actor OebbShopClient {
     public func stations(named name: String) async throws -> [Station] {
         let q = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return [] }
-        var comps = URLComponents(url: endpoint("/api/hafas/v1/stations"), resolvingAgainstBaseURL: false)!
-        comps.queryItems = [URLQueryItem(name: "name", value: q), URLQueryItem(name: "count", value: "5")]
-        let data = try await authorized(method: "GET", url: comps.url!, body: nil)
+        var comps = URLComponents(url: endpoint("/api/hafas/v1/stations"), resolvingAgainstBaseURL: false)
+        comps?.queryItems = [URLQueryItem(name: "name", value: q), URLQueryItem(name: "count", value: "5")]
+        guard let url = comps?.url else { throw LiveError.decoding("Ungültige Shop-Adresse") }
+        let data = try await authorized(method: "GET", url: url, body: nil)
         let raw = try await decode([ShopStationRaw].self, data)
         return raw.compactMap { r in
             guard let n = r.number else { return nil }
