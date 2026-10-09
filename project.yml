@@ -1,0 +1,118 @@
+name: KlimaBilanz
+options:
+  bundleIdPrefix: com.knitelarlberg
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: "YES"
+    DEAD_CODE_STRIPPING: "YES"
+    LOCALIZATION_PREFERS_STRING_CATALOGS: "YES"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+packages:
+  KlimaCore:
+    path: Packages/KlimaCore
+
+targets:
+  KlimaBilanz:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: Shared
+      - path: App/Resources
+    info:
+      path: App/Supporting/Info.plist
+      properties:
+        CFBundleDisplayName: KlimaBilanz
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: de
+        LSRequiresIPhoneOS: true
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.knitelarlberg.klimabilanz
+            CFBundleURLSchemes:
+              - klimabilanz
+        NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor, wenn du eine Fahrt erfasst."
+        NSUserActivityTypes:
+          - com.knitelarlberg.klimabilanz.addTrip
+        KBAppGroup: group.com.knitelarlberg.klimabilanz
+    entitlements:
+      path: App/Supporting/KlimaBilanz.entitlements
+      properties:
+        com.apple.developer.applesignin:
+          - Default
+        com.apple.security.application-groups:
+          - group.com.knitelarlberg.klimabilanz
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.knitelarlberg.klimabilanz
+        PRODUCT_NAME: KlimaBilanz
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: "YES"
+        ENABLE_PREVIEWS: "YES"
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleDefault
+    dependencies:
+      - package: KlimaCore
+      - target: KlimaBilanzWidgets
+        embed: true
+        codeSign: true
+
+  KlimaBilanzWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets/Sources
+      - path: Shared
+    info:
+      path: Widgets/Supporting/Info.plist
+      properties:
+        CFBundleDisplayName: KlimaBilanz
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        KBAppGroup: group.com.knitelarlberg.klimabilanz
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/Supporting/KlimaBilanzWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.knitelarlberg.klimabilanz
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.knitelarlberg.klimabilanz.widgets
+        PRODUCT_NAME: KlimaBilanzWidgets
+        SKIP_INSTALL: "YES"
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+    dependencies:
+      - package: KlimaCore
+
+schemes:
+  KlimaBilanz:
+    build:
+      targets:
+        KlimaBilanz: all
+    run:
+      config: Debug
+    archive:
+      config: Release

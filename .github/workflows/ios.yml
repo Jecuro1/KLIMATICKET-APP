@@ -1,0 +1,195 @@
+name: iOS
+
+# Builds the KlimaBilanz iOS app on a macOS runner and produces an unsigned .ipa
+# (installable via AltStore / SideStore / Sideloadly, which re-sign with your Apple ID).
+#
+# macOS minutes are expensive on private repos, so the macOS job only runs for:
+#   • pushes to main, version tags (v*), pull requests, manual runs, or
+#   • any push whose commit message contains "[build]" ("[shots]" additionally captures simulator screenshots).
+# Optional signed build + TestFlight upload kicks in automatically when the signing secrets exist (see docs/SETUP.md).
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: "Simulator-Screenshots aufnehmen"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: KlimaBilanz
+  BUNDLE_ID: com.knitelarlberg.klimabilanz
+
+jobs:
+  core-tests:
+    name: KlimaCore Tests (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Test KlimaCore
+        run: swift test --package-path Packages/KlimaCore
+
+  build:
+    name: Build iOS (.ipa)
+    needs: core-tests
+    if: >-
+      github.event_name != 'push' ||
+      github.ref == 'refs/heads/main' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      contains(github.event.head_commit.message, '[build]') ||
+      contains(github.event.head_commit.message, '[shots]')
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      SHOTS: ${{ (github.event_name == 'workflow_dispatch' && inputs.screenshots) || startsWith(github.ref, 'refs/tags/v') || contains(github.event.head_commit.message, '[shots]') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          ls -d /Applications/Xcode*.app || true
+          CURRENT=$(xcodebuild -version | head -1 | awk '{print $2}')
+          echo "Default Xcode: $CURRENT"
+          if [ "${CURRENT%%.*}" -lt 26 ]; then
+            XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+            sudo xcode-select -s "$XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i ios || true
+
+      - name: Install tools
+        run: |
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          brew list ldid >/dev/null 2>&1 || brew install ldid
+          xcodegen --version
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/.*"([0-9.]+)".*/\1/')
+          fi
+          BUILD=$((GITHUB_RUN_NUMBER + 100))
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "Version $VERSION ($BUILD)"
+
+      - name: App configuration (from repository secrets/variables)
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL }}
+          TARIFFS_URL: ${{ vars.TARIFFS_URL }}
+        run: python3 scripts/write_app_config.py App/Resources/AppConfig.json
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project KlimaBilanz.xcodeproj -scheme "$SCHEME"
+
+      - name: Build for device (unsigned)
+        run: |
+          mkdir -p build
+          xcodebuild build \
+            -project KlimaBilanz.xcodeproj -scheme "$SCHEME" -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/device \
+            MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            > build/device-build.log 2>&1 || { grep -E "error:" build/device-build.log | sort -u | head -150; tail -40 build/device-build.log; exit 1; }
+          grep -E "warning:" build/device-build.log | grep -v "SourcePackages" | sort -u | head -60 || true
+
+      - name: Package .ipa
+        run: |
+          APP=build/device/Build/Products/Release-iphoneos/KlimaBilanz.app
+          test -d "$APP"
+          # Fake-sign with entitlements so AltStore/SideStore/TrollStore keep App Groups etc.
+          for EXT in "$APP"/PlugIns/*.appex; do
+            [ -d "$EXT" ] || continue
+            EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$EXT/Info.plist")
+            ldid -SWidgets/Supporting/KlimaBilanzWidgets.entitlements "$EXT/$EXE"
+          done
+          ldid -SApp/Supporting/KlimaBilanz.entitlements "$APP/KlimaBilanz"
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          (cd dist && zip -qry "KlimaBilanz-${{ steps.version.outputs.version }}.ipa" Payload && rm -rf Payload)
+          ls -la dist
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KlimaBilanz-${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}
+          path: dist/*.ipa
+          if-no-files-found: error
+
+      - name: Build for simulator
+        if: env.SHOTS == 'true'
+        run: |
+          UDID=$(python3 scripts/pick_simulator.py)
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcodebuild build \
+            -project KlimaBilanz.xcodeproj -scheme "$SCHEME" -configuration Debug \
+            -sdk iphonesimulator -destination "id=$UDID" \
+            -derivedDataPath build/sim \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            > build/sim-build.log 2>&1 || { grep -E "error:" build/sim-build.log | sort -u | head -150; tail -40 build/sim-build.log; exit 1; }
+
+      - name: Capture screenshots
+        if: env.SHOTS == 'true'
+        run: bash scripts/capture_screenshots.sh "$UDID" build/sim/Build/Products/Debug-iphonesimulator/KlimaBilanz.app shots
+
+      - name: Publish screenshots branch
+        if: env.SHOTS == 'true'
+        run: |
+          cd shots
+          git init -q
+          git checkout -q -b screenshots
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          echo "Build ${{ steps.version.outputs.version }} (${{ steps.version.outputs.build }}) – ${GITHUB_SHA}" > README.md
+          git add -A
+          git commit -qm "Screenshots ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" screenshots
+
+      - name: Upload screenshots artifact
+        if: env.SHOTS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ steps.version.outputs.build }}
+          path: shots
+
+      - name: Release metadata (update.json + AltStore source)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, github.ref_name) }}
+        run: python3 scripts/make_release_metadata.py dist
+
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.ipa
+            dist/update.json
+            dist/altstore-source.json
+          body_path: dist/RELEASE_NOTES.md
+          generate_release_notes: true
