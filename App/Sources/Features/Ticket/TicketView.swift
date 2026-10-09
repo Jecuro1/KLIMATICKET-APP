@@ -146,6 +146,8 @@ struct TicketView: View {
             }
             TktPaymentCard(ticket: ticket, totalValue: summary.totalValue)
                 .tktEntrance(4, visible: appeared)
+            AdvEntryLink(ticket: ticket, trips: trips)
+                .tktEntrance(4, visible: appeared)
         }
     }
 
