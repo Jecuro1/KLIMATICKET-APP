@@ -25,8 +25,7 @@ struct RootView: View {
             } else if app.sync.isReplacingLocalData {
                 // Every local row is being replaced (account data, "Alles löschen"): no screen may still hold one of
                 // them – SwiftData traps when a view reads a deleted model (SyncService.performLocalDataReplacement).
-                AmbientBackground(animated: false)
-                    .overlay { ProgressView() }
+                DataReplacementView()
                     .transition(.opacity)
             } else if !app.settings.onboardingCompleted || tickets.isEmpty {
                 if app.auth.isLoaded {
@@ -335,6 +334,8 @@ struct ScreenshotRouter: View {
             NavigationStack { SetDiagnosticsPage() }
         case "onboarding":
             OnboardingFlow()
+        case "replacingData": // MARK: global – the placeholder while local data is replaced (RootView)
+            DataReplacementView()
         case "trips":
             MainTabView().onAppear { app.selectedTab = .trips }
         case "stats", "statsCategories", "statsHonest": // MARK: tripmeta – statsCategories, statsHonest

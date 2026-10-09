@@ -47,26 +47,24 @@ struct StoreRecoveryView: View {
     // MARK: Phases
 
     private var loading: some View {
-        VStack(spacing: Theme.Spacing.m) {
-            ProgressView()
-                .controlSize(.large)
-            Text("Deine Daten werden geladen …")
-                .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
-        }
-        .frame(minHeight: 320)
-        .accessibilityElement(children: .combine)
+        StatusCapsule(text: "Deine Daten werden geladen …")
+            .frame(minHeight: 320)
     }
 
     private var locked: some View {
-        header(symbol: "lock.fill",
-               title: "iPhone entsperren",
-               message: "Nach einem Neustart bleiben deine Tickets und Fahrten verschlüsselt, bis du dein iPhone einmal entsperrst. Danach geht es automatisch weiter.")
+        VStack(spacing: Theme.Spacing.l) {
+            header(symbol: "lock.fill", tint: Theme.accent,
+                   title: "iPhone entsperren",
+                   message: "Nach einem Neustart bleiben deine Tickets und Fahrten verschlüsselt, bis du dein iPhone einmal entsperrst. Danach geht es automatisch weiter.")
+            StatusCapsule(text: "Wartet auf das Entsperren …")
+        }
     }
 
     private func failed(_ failure: StoreLoader.Failure) -> some View {
         VStack(spacing: Theme.Spacing.l) {
+            // Warm, not alarm red: nothing is lost, the screen explains what to do.
             header(symbol: failure.kind == .diskFull ? "externaldrive.fill.badge.xmark" : "externaldrive.badge.exclamationmark",
+                   tint: Theme.summit,
                    title: failure.kind == .diskFull ? "Kein Speicherplatz frei" : "Daten konnten nicht geöffnet werden",
                    message: message(for: failure))
 
@@ -112,15 +110,14 @@ struct StoreRecoveryView: View {
         }
     }
 
-    private func header(symbol: String, title: String, message: String) -> some View {
+    private func header(symbol: String, tint: Color, title: String, message: String) -> some View {
         VStack(spacing: Theme.Spacing.m) {
-            Image(systemName: symbol)
-                .font(.system(size: 48, weight: .light))
-                .foregroundStyle(Theme.accent.gradient)
-                .symbolRenderingMode(.hierarchical)
-                .accessibilityHidden(true)
+            StatusMedallion(symbol: symbol, tint: tint)
+                .padding(.bottom, Theme.Spacing.xs)
+            Kicker(text: "KlimaBilanz")
             Text(title)
                 .font(Theme.Typography.title)
+                .foregroundStyle(Theme.textPrimary)
                 .multilineTextAlignment(.center)
             Text(message)
                 .font(.body)
@@ -146,5 +143,52 @@ struct StoreRecoveryView: View {
         } catch {
             startFreshError = "Ein neuer, leerer Datenspeicher konnte nicht angelegt werden (\(StoreFiles.describe(error))). Deine bisherigen Daten bleiben erhalten."
         }
+    }
+}
+
+/// The frosted disc with the state's symbol at the top of the store screens.
+private struct StatusMedallion: View {
+    var symbol: String
+    var tint: Color
+    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 92
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.4, weight: .regular))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .frostedCard(cornerRadius: size / 2, tint: tint)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A calm "something is happening" line: spinner + text in a glass capsule (store loading, waiting for the unlock,
+/// the moment local data is replaced).
+struct StatusCapsule: View {
+    var text: String
+
+    var body: some View {
+        HStack(spacing: Theme.Spacing.s) {
+            ProgressView()
+            Text(text)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .padding(.horizontal, Theme.Spacing.l)
+        .padding(.vertical, Theme.Spacing.s)
+        .glassEffect(.regular, in: .capsule)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Shown for the moment every local row is replaced (account data, "Alles löschen" – see RootView): a still sky and a
+/// status line instead of screens that could still hold one of the rows.
+struct DataReplacementView: View {
+    var body: some View {
+        StatusCapsule(text: "Daten werden aktualisiert …")
+            .padding(.horizontal, Theme.Spacing.screen)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { AmbientBackground(animated: false) }
     }
 }
