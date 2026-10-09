@@ -326,7 +326,14 @@ struct PerkHeroCard: View {
                 HStack(alignment: .center) {
                     Kicker(text: "Zusatz-Ersparnis")
                     Spacer(minLength: Theme.Spacing.xs)
-                    PerkPill(text: period.label, symbol: "calendar", foreground: Theme.textSecondary, fill: Theme.textTertiary)
+                    Image(systemName: "gift.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(LinearGradient(colors: [Theme.gold, Theme.dawn], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    in: .circle)
+                        .environment(\.colorScheme, .light)
+                        .accessibilityHidden(true)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     PerkEuroNumeral(amount: summary.total.rounded())

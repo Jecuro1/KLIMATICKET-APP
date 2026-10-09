@@ -104,10 +104,7 @@ struct PerkMonthlyChart: View {
         .chartXAxis {
             AxisMarks { value in
                 AxisValueLabel {
-                    let index = Int(value.as(String.self) ?? "") ?? -1
-                    Text(monthLetter(index, months: months))
-                        .font(.caption2.weight(index == todayIndex ? .bold : .regular))
-                        .foregroundStyle(index == todayIndex ? Theme.textPrimary : Theme.textSecondary)
+                    axisLabel(value.as(String.self), months: months, todayIndex: todayIndex)
                 }
             }
         }
@@ -150,6 +147,14 @@ struct PerkMonthlyChart: View {
 
     private func monthTotals(_ entries: [Entry]) -> [Double] {
         Dictionary(grouping: entries, by: \.monthIndex).values.map { $0.reduce(0) { $0 + $1.total } }
+    }
+
+    private func axisLabel(_ id: String?, months: [DateInterval], todayIndex: Int?) -> Text {
+        let index = Int(id ?? "") ?? -1
+        let isToday = index == todayIndex
+        return Text(monthLetter(index, months: months))
+            .font(.caption2.weight(isToday ? .bold : .regular))
+            .foregroundStyle(isToday ? Theme.textPrimary : Theme.textSecondary)
     }
 
     /// "J", "F", "M" … of the validity month's start.

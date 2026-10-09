@@ -147,7 +147,7 @@ struct PerkPassengerRightsView: View {
                                 Text("Erinnerung nach Ablauf")
                                     .font(.headline)
                                     .foregroundStyle(Theme.textPrimary)
-                                Text("\(Format.weekdayDayMonth(date)) \(Calendar.vienna.component(.year, from: date)) · \(Format.time(date)) Uhr")
+                                Text(reminderLine(date))
                                     .font(.footnote.monospacedDigit())
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -166,6 +166,12 @@ struct PerkPassengerRightsView: View {
                 }
             }
         }
+    }
+
+    /// "Fr., 21. Mai 2027 · 09:00 Uhr"
+    private func reminderLine(_ date: Date) -> String {
+        let year = String(Calendar.vienna.component(.year, from: date))
+        return "\(Format.weekdayDayMonth(date)) \(year) · \(Format.time(date)) Uhr"
     }
 
     private func reminderIcon(symbol: String) -> some View {
