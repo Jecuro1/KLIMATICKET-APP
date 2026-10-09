@@ -66,6 +66,7 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue).receive(on: RunLoop.main)) { _ in
             handleExternalRequests()
         }
+        .rideActivityHost()  // MARK: live
         .task {
             guard !LaunchMode.isScreenshot else { return }
             handleExternalRequests()
@@ -232,6 +233,8 @@ struct ScreenshotRouter: View {
             NavigationStack { SettingsView() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
+        case "liveActivityPreview":  // MARK: live
+            NavigationStack { RideActivityPreviewView() }
         case "hero":
             DesignSystemPreview()
         default:

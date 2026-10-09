@@ -88,6 +88,7 @@ private struct TripEdSheet: View {
                     TripEdDateCard(model: model)
                     TripEdPriceCard(model: model, focus: $focus)
                     TripEdImpactCard(model: model)
+                    RideEdStartCard(model: model, isExistingFavorite: existingFavorite != nil) { dismiss() }  // MARK: live
                     TripEdDetailsCard(model: model, showsCompanions: showsCompanions,
                                       isExistingFavorite: existingFavorite != nil, focus: $focus)
                 }

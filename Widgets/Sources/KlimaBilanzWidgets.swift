@@ -9,5 +9,6 @@ struct KlimaBilanzWidgetsBundle: WidgetBundle {
         AmortizationWidget()
         QuickLogWidget()
         KlimaControlWidget()
+        RideLiveActivity()  // MARK: live
     }
 }
