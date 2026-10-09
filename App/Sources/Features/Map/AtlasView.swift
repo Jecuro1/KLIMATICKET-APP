@@ -298,6 +298,15 @@ struct AtlasView: View {
         guard launchFocus != .none else { return }
         // Screenshots wait for the tiles; a user arriving by zoom sees the camera glide in right after the push.
         try? await Task.sleep(for: .milliseconds(LaunchMode.isScreenshot ? 900 : 520))
+        // Routes to bus, tram and cable-car stops only exist once the full stop database is attached – picking the
+        // "top" route before that would pick the wrong one (and a Top-Strecken route might not be found at all).
+        if !placesReady {
+            for _ in 0..<30 where !placesReady {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            // Let the summary recompute for the attached stops (onChange of dataKey) before picking from it.
+            try? await Task.sleep(for: .milliseconds(150))
+        }
         switch launchFocus {
         case .topRoute, .topRouteExpanded:
             if let id = summary.topRoute?.id { select(id) }
