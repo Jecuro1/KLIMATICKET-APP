@@ -67,6 +67,10 @@ struct RootView: View {
             handleExternalRequests()
         }
         .task {
+            // All Austrian stops + localities (places.bin): built once off the main thread, then every station
+            // search (StationIndex façade) covers all ~40.000 stops.
+            PlaceIndexLoader.shared.preload()
+            PlaceIndexLoader.shared.whenReady { [stations = app.stations] index in stations.attach(places: index) }
             guard !LaunchMode.isScreenshot else { return }
             handleExternalRequests()
             let repo = Repository(context: context, app: app)
@@ -234,11 +238,36 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "hero":
             DesignSystemPreview()
+        case "stationSearch":
+            // All-stops search QA: waits for the place index, then searches like a user typing.
+            ScreenshotStationSearch(query: "warth am arlberg dorf")
+        case "stationSearchBus":
+            ScreenshotStationSearch(query: "lech post")
         // MARK: reports
         case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
             RepScreenshotHost(screen: reportScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
+        }
+    }
+}
+
+/// CI screenshot: the station picker once the complete place index is attached.
+private struct ScreenshotStationSearch: View {
+    let query: String
+    @State private var isReady = false
+
+    var body: some View {
+        NavigationStack {
+            if isReady {
+                StationPickerView(title: "Von", initialQuery: query) { _ in }
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            _ = try? await PlaceIndexLoader.shared.load()
+            isReady = true
         }
     }
 }
