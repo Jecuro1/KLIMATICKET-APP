@@ -228,7 +228,10 @@ struct DesignSystemPreview: View {
                     }
                     TicketCard(title: ticket.name, subtitle: "Klassik · Gültig in ganz Österreich", holder: ticket.holderName,
                                validFrom: ticket.startDate, validUntil: ticket.endDate, ticketNumber: ticket.ticketNumber,
-                               theme: .aurora, roll: 0.3, pitch: 0.1)
+                               theme: .twilight, roll: 0.3, pitch: 0.1, hasPhoto: true,
+                               amortizedFraction: snap.summary.amortizedFraction,
+                               valueText: "\(Format.euro(snap.summary.totalValue)) von \(Format.euro(ticket.price))",
+                               onOriginal: {})
                 }
                 .padding(.horizontal, Theme.Spacing.screen)
                 .padding(.top, 60)

@@ -95,10 +95,14 @@ AmortizationHero(snapshot: AnalyticsSnapshot, chartHeight: CGFloat = 250)
 SummitChart(series: [CumulativePoint], forecast: [CumulativePoint], start: Date, end: Date, price: Double,
             breakEvenDate: Date?, isPaidOff: Bool, showsLabels: Bool = true)
 
-// Ticket-Karte (Wallet-Stil) mit Themen und Neigungs-Schimmer
-TicketCard(title: String, subtitle: String, holder: String, validFrom: Date, validUntil: Date,
-           ticketNumber: String, theme: TicketTheme, roll: Double = 0, pitch: Double = 0)
-TicketTheme.allCases / .from(ticket.themeRaw) / .title / .colors / .ink   // aurora, alpenglow, glacier, signal, night
+// Ticket-Pass „Begleitkarte · kein Fahrschein“ (Mockup docs/design/final/04-ticket-*.jpg): Dämmerungs-Verlauf, Topo-Linien,
+// Holo-Folie & Siegel (Neigung), Perforation mit Kerben, Stub mit Mini-Gipfel + „73 % amortisiert“ + „Original“-Knopf
+TicketCard(title: String, subtitle: String /* Kicker, z. B. "Jahresticket · ganz Österreich" */, holder: String,
+           validFrom: Date, validUntil: Date, ticketNumber: String, theme: TicketTheme,
+           roll: Double = 0, pitch: Double = 0, hasPhoto: Bool = false,
+           amortizedFraction: Double? = nil, valueText: String? = nil, onOriginal: (() -> Void)? = nil)
+TicketTheme.allCases / .from(ticket.themeRaw) / .title / .colors / .ink   // twilight (Standard), aurora, alpenglow, glacier, signal, night
+MiniSummit(progress: Double)   // kleiner Gipfel mit Route (66×44)
 
 // Formen
 RidgeShape(peakX:peakY:seed:roughness:), SmoothPath(points:), FlagShape()

@@ -20,7 +20,7 @@ final class TicketEntity {
     var holderName: String = ""
     var ticketNumber: String = ""
     /// Visual theme of the ticket card (see TicketTheme).
-    var themeRaw: String = "aurora"
+    var themeRaw: String = "twilight"
     /// Reminder offsets in days before expiry, comma separated ("30,7,1").
     var remindersRaw: String = "30,7,1"
     /// Paid in 12 monthly instalments instead of once (KlimaTicket Ö option).

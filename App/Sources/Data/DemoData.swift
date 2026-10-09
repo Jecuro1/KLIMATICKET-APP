@@ -30,7 +30,7 @@ enum DemoData {
         let start = cal.date(byAdding: .day, value: -222, to: cal.startOfDay(for: now)) ?? now
         let ticket = TicketEntity(productID: "oe-klassik", name: "KlimaTicket Ö Klassik", variant: .klassik, family: .oe,
                                   price: 1_400, startDate: start, holderName: "Lena Hofer", ticketNumber: "KT-2026-48 31 07")
-        ticket.themeRaw = "aurora"
+        ticket.themeRaw = "twilight"
         context.insert(ticket)
 
         var generator = SeededGenerator(seed: 42)

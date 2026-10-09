@@ -1,7 +1,8 @@
 # KlimaBilanz – Design Spec „Alpine Glass“
 
 > Gewinner des Design-Wettbewerbs (3 Richtungen, 3 unabhängige Juroren, einstimmig: Alpine Glass 50 · Rail Editorial 49 · Vivid Eco 46),
-> ergänzt um die übereinstimmenden Verbesserungen der Jury. Referenz-Mockups: `docs/design/concepts/alpine-glass/*.jpg`
+> ergänzt um die übereinstimmenden Verbesserungen der Jury. **Finale Referenz-Mockups (nach Jury-Synthese): `docs/design/final/*.jpg`**
+> (Übersicht `00-overview.jpg`), ausführliche Synthese-Spezifikation: `docs/DESIGN_FINAL_SYNTHESIS.md`. Ursprüngliche Konzepte: `docs/design/concepts/alpine-glass/*.jpg`
 > (Ideen aus `rail-editorial/` und `vivid-eco/` sind unten explizit übernommen). Tokens & Komponenten: `docs/DESIGN_SYSTEM_API.md`.
 
 ## 1. Konzept – „Dein Weg zum Gipfel“
