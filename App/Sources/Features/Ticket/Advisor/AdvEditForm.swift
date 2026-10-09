@@ -123,7 +123,6 @@ struct AdvEditAddOnsSection: View {
             Text(isInvalid ? "Bitte einen Betrag eingeben, z. B. 1.490 oder 1.234,50."
                            : "Vorgeschlagen sind die ÖBB-Listenpreise 2026 für deine Ticketkategorie. Unterjährig oder in Raten gekauft? Trag deinen tatsächlichen Preis ein – er zählt zu deinem Ticketpreis.")
         }
-        .sensoryFeedback(.selection, trigger: addOns) { _, _ in hapticsEnabled }
     }
 
     private func row(_ addOn: TicketAddOn) -> some View {
@@ -152,6 +151,7 @@ struct AdvEditAddOnsSection: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
+        .sensoryFeedback(.selection, trigger: isOn) { _, _ in hapticsEnabled }
     }
 
     private func color(_ addOn: TicketAddOn) -> Color {
