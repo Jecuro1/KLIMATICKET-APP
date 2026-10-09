@@ -107,7 +107,8 @@ struct AtlasMiniMap: View {
             let region = Atlas.region(fitting: summary.bounds ?? .austria,
                                       width: Double(max(geometry.size.width, 1)),
                                       height: Double(max(geometry.size.height, 1)),
-                                      padding: 0.1, minimumSpanKm: 40)
+                                      insets: AtlasInsets(top: summary.topRoute == nil ? 0 : 30),
+                                      padding: 0.08, minimumSpanKm: 40)
             let palette = AtlasPalette(environment: environment, look: .standard, scheme: colorScheme)
             Map(initialPosition: .region(region.mkRegion), interactionModes: []) {
                 AtlasRouteLayers(routes: summary.routes, selectedID: nil, palette: palette, scale: 0.8)
@@ -123,14 +124,17 @@ struct AtlasMiniMap: View {
                 }
             }
             .mapStyle(AtlasMapLook.standard.mapStyle)
-            .id("\(Int(geometry.size.width))x\(Int(geometry.size.height))|\(summary.routes.count)|\(summary.places.count)")
+            // A static camera: rebuild the map whenever the framing changes (size or another ticket year's bounds).
+            .id(String(format: "%.4f|%.4f|%.4f|%.4f", region.centerLatitude, region.centerLongitude,
+                       region.latitudeDelta, region.longitudeDelta))
         }
         .clipShape(.rect(cornerRadius: Theme.Radius.tile, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
                 .strokeBorder(Theme.separator, lineWidth: 1)
         }
-        .overlay(alignment: .bottomLeading) {
+        .overlay(alignment: .topLeading) {
+            // Top corner: MapKit keeps its attribution in the bottom-left corner, which must stay visible.
             if let top = summary.topRoute {
                 topRouteChip(top)
             }

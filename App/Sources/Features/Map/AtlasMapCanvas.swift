@@ -144,7 +144,7 @@ struct AtlasMapCanvas: View {
     private func reframe(animated: Bool) {
         guard viewport.size.width > 1, viewport.size.height > 1 else { return }
         let bounds: AtlasBounds
-        var pad = 0.08
+        var pad = 0.05
         switch framing.target {
         case .overview:
             bounds = summary.bounds ?? .austria
@@ -170,6 +170,9 @@ struct AtlasMapCanvas: View {
         }
     }
 
+    /// Room kept free around the framed content: largest bead rim (11 pt) + gap + compass mark (17 pt) + breathing space.
+    static let edgeMargin: CGFloat = 34
+
     /// Region that shows `bounds` in the visible part of the map – the safe rectangle minus anything else covering it.
     /// `viewport.size` is the safe rectangle; the map itself extends under `viewport.insets` (bars, panel).
     static func region(fitting bounds: AtlasBounds, viewport: AtlasViewport, coveredBottom: CGFloat, padding: Double,
@@ -177,8 +180,12 @@ struct AtlasMapCanvas: View {
         let safe = viewport.insets
         let safeW = Double(max(viewport.size.width, 1)), safeH = Double(max(viewport.size.height, 1))
         if mapFramesInsideSafeArea {
+            // Fixed margin in points on top of the relative padding: the outermost stations carry a compass mark and
+            // often a label beside them, both must stay inside the visible map.
+            let margin = Double(edgeMargin)
             let extraBottom = Double(max(0, coveredBottom - safe.bottom))
-            return Atlas.region(fitting: bounds, width: safeW, height: safeH, insets: AtlasInsets(bottom: extraBottom),
+            return Atlas.region(fitting: bounds, width: safeW, height: safeH,
+                                insets: AtlasInsets(top: margin, leading: margin, bottom: extraBottom + margin, trailing: margin),
                                 padding: padding, minimumSpanKm: minimumSpanKm)
         }
         let fullW = safeW + Double(safe.leading + safe.trailing), fullH = safeH + Double(safe.top + safe.bottom)

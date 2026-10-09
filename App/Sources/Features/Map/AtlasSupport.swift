@@ -75,13 +75,9 @@ enum AtlasFormat {
     static func stations(_ n: Int) -> String { n == 1 ? "1 Bahnhof" : "\(n) Bahnhöfe" }
     static func routes(_ n: Int) -> String { n == 1 ? "1 Strecke" : "\(n) Strecken" }
 
-    /// "St. Anton ⇄ Landeck-Zams"
+    /// "St. Anton ⇄ Landeck-Zams" (single-line contexts; lists use `AtlasRouteName`).
     static func routeTitle(_ route: AtlasRoute) -> String {
         "\(TripRow.short(route.from.name)) ⇄ \(TripRow.short(route.to.name))"
-    }
-
-    static func unmappedTitle(_ route: AtlasUnmappedRoute) -> String {
-        "\(TripRow.short(route.fromName)) ⇄ \(TripRow.short(route.toName))"
     }
 
     /// "47,26° N"
@@ -124,6 +120,38 @@ enum AtlasFormat {
     static func stateSubtitle(_ place: AtlasPlace) -> String {
         guard let state = place.state else { return "Bahnhof" }
         return state == .foreign ? "Ausland · Grenzbahnhof" : state.displayName
+    }
+}
+
+// MARK: - Route name
+
+/// "A ⇄ B" on one line when it fits, otherwise always broken the same way – "A" / "⇄ B" – instead of wherever the
+/// line breaker puts the arrow.
+struct AtlasRouteName: View {
+    let from: String
+    let to: String
+
+    init(from: String, to: String) {
+        self.from = TripRow.short(from)
+        self.to = TripRow.short(to)
+    }
+
+    init(_ route: AtlasRoute) {
+        self.init(from: route.from.name, to: route.to.name)
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Text("\(from) ⇄ \(to)")
+                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(from)
+                Text("⇄ \(to)")
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(from) – \(to)")
     }
 }
 

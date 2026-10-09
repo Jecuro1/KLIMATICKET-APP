@@ -9,6 +9,8 @@ struct AtlasPanel: View {
     let modeName: String?
     var onDetails: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         Group {
             if summary.tripCount == 0 {
@@ -28,7 +30,11 @@ struct AtlasPanel: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s + 2) {
             header
-            AtlasStateStamps(visited: summary.visitedStates)
+            // At accessibility sizes the nine states need a labelled grid – too tall for a panel over the map;
+            // the details sheet lists them in full.
+            if !typeSize.isAccessibilitySize {
+                AtlasStateStamps(visited: summary.visitedStates)
+            }
             Rectangle()
                 .fill(Theme.separator)
                 .frame(height: 1)
