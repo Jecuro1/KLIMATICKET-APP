@@ -34,6 +34,11 @@ enum AtlasSheet: Identifiable, Equatable {
     }
 }
 
+/// Zoom-transition IDs inside the map screen.
+enum AtlasZoomID {
+    static let details = "atlas.details"
+}
+
 /// "Meine Österreich-Karte": every route of the ticket year as an arc across Austria, stations as glass dots,
 /// the nine federal states, extreme points and the trips without coordinates. Filter by mode and ticket year;
 /// tap a route for its trips and value.
@@ -61,6 +66,7 @@ struct AtlasView: View {
     @State private var didLaunch = false
     @State private var panelShown = LaunchMode.isScreenshot
     @State private var panelHeight: CGFloat = 0
+    @State private var recenterTick = 0
     /// The full stop database (bus, tram, cable-car stops) is attached to `app.stations` shortly after launch;
     /// once it is, trips logged at those stops get their map position.
     @State private var placesReady = PlaceIndexLoader.shared.current != nil
@@ -103,6 +109,8 @@ struct AtlasView: View {
         .sheet(item: $sheet, onDismiss: sheetDismissed) { item in
             sheetContent(item)
         }
+        // The details sheet grows out of the panel's "Details" button.
+        .zoomTransitionScope()
         .onChange(of: dataKey, initial: true) {
             recompute()
         }
@@ -111,23 +119,26 @@ struct AtlasView: View {
             guard !placesReady, (try? await PlaceIndexLoader.shared.load()) != nil else { return }
             placesReady = true
         }
-        .sensoryFeedback(.selection, trigger: mode) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.selection, trigger: pickedScope) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.impact(weight: .light), trigger: selectionTick) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: mode)
+        .haptic(.selection, trigger: pickedScope)
+        .haptic(.tap, trigger: selectionTick)
     }
 
     // MARK: Overlays
 
     private var recenterButton: some View {
         Button {
+            recenterTick += 1
             showOverview()
         } label: {
             Image(systemName: "scope")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
+                .symbolBounce(on: recenterTick)
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.plain)
+        .haptic(.tap, trigger: recenterTick)
         .glassEffect(.regular.interactive(), in: .circle)
         .accessibilityLabel("Alle Strecken zeigen")
     }
@@ -140,14 +151,11 @@ struct AtlasView: View {
         .padding(.bottom, Theme.Spacing.xs)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { panelHeight = $0 }
         .opacity(panelShown ? 1 : 0)
-        .offset(y: panelShown ? 0 : 40)
+        .offset(y: panelShown || reduceMotion ? 0 : 40)
         .onAppear {
             guard !panelShown else { return }
-            if reduceMotion {
-                panelShown = true
-            } else {
-                withAnimation(.spring(duration: 0.65, bounce: 0.18).delay(0.15)) { panelShown = true }
-            }
+            // Rises once from the bottom edge while the camera settles (Reduce Motion: fades in).
+            withAnimation(Motion.resolved(Motion.reveal, reduceMotion: reduceMotion).delay(0.15)) { panelShown = true }
         }
     }
 
@@ -163,6 +171,7 @@ struct AtlasView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .contentTransition(.opacity)
+                    .motionAnimation(Motion.smooth, value: scopeLabel)
             }
             .lineLimit(1)
             .padding(.horizontal, Theme.Spacing.m)
@@ -188,10 +197,11 @@ struct AtlasView: View {
                 .accessibilityValue(scopeLabel)
             }
             Button {
-                withAnimation(.smooth) { lookRaw = (look == .standard ? AtlasMapLook.satellite : .standard).rawValue }
+                withMotion(Motion.smooth) { lookRaw = (look == .standard ? AtlasMapLook.satellite : .standard).rawValue }
             } label: {
                 Label(look == .standard ? "Satellit" : "Karte",
                       systemImage: look == .standard ? AtlasMapLook.satellite.symbol : AtlasMapLook.standard.symbol)
+                    .symbolReplaceTransition()
             }
             .accessibilityLabel(look == .standard ? "Satellitenansicht" : "Kartenansicht")
         }
@@ -214,6 +224,7 @@ struct AtlasView: View {
             AtlasDetailsSheet(summary: summary, scopeLabel: scopeLabel, startsAtRoutes: launchFocus == .details,
                               onSelectRoute: { id in select(id) },
                               onFocusPlace: { place in focus(place) })
+                .zoomDestination(id: AtlasZoomID.details)
         }
     }
 

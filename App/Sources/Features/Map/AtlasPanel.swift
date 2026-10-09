@@ -55,7 +55,7 @@ struct AtlasPanel: View {
                     Text("\(summary.visitedStateCount)")
                         .font(Theme.Typography.priceNumeral)
                         .foregroundStyle(Theme.textPrimary)
-                        .contentTransition(.numericText(value: Double(summary.visitedStateCount)))
+                        .numericValue(Double(summary.visitedStateCount))
                     Text("von 9")
                         .font(.title3.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
@@ -73,6 +73,7 @@ struct AtlasPanel: View {
                     Label("Details", systemImage: "list.bullet")
                         .font(.subheadline.weight(.semibold))
                 }
+                .zoomSource(id: AtlasZoomID.details, cornerRadius: 22)
                 .buttonStyle(.glass)
                 .accessibilityHint("Extrempunkte, alle Strecken und Fahrten ohne Kartenposition")
                 if summary.isAllAustria {
@@ -82,6 +83,7 @@ struct AtlasPanel: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Theme.positive.opacity(0.16), in: .capsule)
+                        .motionTransition(.pop)
                 }
             }
         }
@@ -105,11 +107,13 @@ struct AtlasPanel: View {
 
     @ViewBuilder
     private func statItems(divided: Bool) -> some View {
-        stat(value: "\(summary.places.count)", label: summary.places.count == 1 ? "Bahnhof" : "Bahnhöfe")
+        stat(value: "\(summary.places.count)", number: Double(summary.places.count),
+             label: summary.places.count == 1 ? "Bahnhof" : "Bahnhöfe")
         if divided { divider }
-        stat(value: "\(summary.routes.count)", label: summary.routes.count == 1 ? "Strecke" : "Strecken")
+        stat(value: "\(summary.routes.count)", number: Double(summary.routes.count),
+             label: summary.routes.count == 1 ? "Strecke" : "Strecken")
         if divided { divider }
-        stat(value: longestValue, label: "längste Fahrt")
+        stat(value: longestValue, number: summary.longestTrip?.distanceKm ?? 0, label: "längste Fahrt")
     }
 
     private var longestValue: String {
@@ -123,7 +127,8 @@ struct AtlasPanel: View {
             .frame(width: 1, height: 30)
     }
 
-    private func stat(value: String, label: String) -> some View {
+    /// Figures roll when a mode filter or another ticket year changes them.
+    private func stat(value: String, number: Double, label: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(value)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
@@ -131,7 +136,7 @@ struct AtlasPanel: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
-                .contentTransition(.numericText())
+                .numericValue(number)
             Text(label)
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
@@ -197,11 +202,11 @@ struct AtlasModeBar: View {
             GlassEffectContainer(spacing: Theme.Spacing.xs) {
                 HStack(spacing: Theme.Spacing.xs) {
                     Chip(title: "Alle", symbol: "square.stack.3d.up.fill", isSelected: selection == nil) {
-                        withAnimation(.snappy) { selection = nil }
+                        withMotion(Motion.snappy) { selection = nil }
                     }
                     ForEach(modes) { mode in
                         Chip(title: mode.displayName, symbol: mode.symbolName, isSelected: selection == mode) {
-                            withAnimation(.snappy) { selection = selection == mode ? nil : mode }
+                            withMotion(Motion.snappy) { selection = selection == mode ? nil : mode }
                         }
                     }
                 }

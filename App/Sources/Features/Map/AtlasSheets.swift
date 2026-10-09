@@ -62,6 +62,8 @@ struct AtlasRouteDetail: View {
             tiles
             tripList
         }
+        // Tapping another route on the map updates the open sheet in place: figures roll, the rest cross-fades.
+        .motionAnimation(Motion.smooth, value: route.id)
     }
 
     private var header: some View {
@@ -100,6 +102,7 @@ struct AtlasRouteDetail: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .numericValue(route.value)
             }
             Text("Normalpreis-Wert aller Fahrten auf dieser Strecke")
                 .font(.subheadline)
@@ -311,7 +314,7 @@ struct AtlasDetailsSheet: View {
             .background(Theme.surface, in: .rect(cornerRadius: Theme.Radius.tile, style: .continuous))
             .contentShape(.rect(cornerRadius: Theme.Radius.tile))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(direction.superlative): \(place.name)")
         .accessibilityValue("\(AtlasFormat.coordinate(for: direction, of: place)), \(AtlasFormat.stateSubtitle(place))")
@@ -367,7 +370,7 @@ struct AtlasDetailsSheet: View {
                     } label: {
                         routeRow(route)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressableCard)
                     if route.id != summary.routes.last?.id {
                         Rectangle()
                             .fill(Theme.separator)

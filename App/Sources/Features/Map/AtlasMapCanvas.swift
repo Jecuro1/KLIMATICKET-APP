@@ -164,7 +164,8 @@ struct AtlasMapCanvas: View {
             placeLabels()
         }
         if animated {
-            withAnimation(.smooth(duration: 0.9)) { position = .region(region.mkRegion) }
+            // The camera glides to the route / station (large, calm move → Motion.gentle).
+            withAnimation(Motion.gentle) { position = .region(region.mkRegion) }
         } else {
             position = .region(region.mkRegion)
         }
@@ -480,19 +481,22 @@ struct AtlasStationDot: View {
         }
     }
 
-    @ViewBuilder
+    /// The focused station's ring pulses only while it can be seen (on screen, scene active, no sheet over the map,
+    /// no Reduce Motion / Low Power, never in screenshots – docs/MOTION.md §12); otherwise it stands still.
     private func highlightRing(size: CGFloat) -> some View {
-        if reduceMotion || LaunchMode.isScreenshot {
-            Circle().stroke(Theme.summit, lineWidth: 2.5).frame(width: size + 10, height: size + 10)
-        } else {
-            PhaseAnimator([false, true]) { expanded in
-                Circle()
-                    .stroke(Theme.summit, lineWidth: 2.5)
-                    .frame(width: size + 10, height: size + 10)
-                    .scaleEffect(expanded ? 1.9 : 1)
-                    .opacity(expanded ? 0 : 0.95)
-            } animation: { expanded in
-                expanded ? .easeOut(duration: 1.4) : .linear(duration: 0.01)
+        ContinuousMotionReader { isRunning in
+            if isRunning {
+                PhaseAnimator([false, true]) { expanded in
+                    Circle()
+                        .stroke(Theme.summit, lineWidth: 2.5)
+                        .frame(width: size + 10, height: size + 10)
+                        .scaleEffect(expanded ? 1.9 : 1)
+                        .opacity(expanded ? 0 : 0.95)
+                } animation: { expanded in
+                    expanded ? .easeOut(duration: 1.4) : .linear(duration: 0.01)
+                }
+            } else {
+                Circle().stroke(Theme.summit, lineWidth: 2.5).frame(width: size + 10, height: size + 10)
             }
         }
     }

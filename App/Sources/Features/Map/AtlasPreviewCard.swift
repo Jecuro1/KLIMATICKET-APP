@@ -17,12 +17,15 @@ struct AtlasPreviewCard: View {
 
     var body: some View {
         let summary = memo.summary(of: snapshot.trips, stations: app.stations, placesReady: placesReady)
+        // The map grows out of this card (Reduce Motion: a standard push).
         NavigationLink {
             AtlasView(initialTicketID: ticketID)
+                .zoomDestination(id: StatsZoomID.atlas)
         } label: {
             AtlasPreviewCardContent(summary: summary)
         }
-        .buttonStyle(AtlasPressStyle())
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: StatsZoomID.atlas, cornerRadius: Theme.Radius.card)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Meine Österreich-Karte")
         .accessibilityValue(accessibilityValue(summary))
@@ -198,15 +201,6 @@ struct AtlasCompactLabelStyle: LabelStyle {
             configuration.icon
             configuration.title
         }
-    }
-}
-
-/// Gentle press feedback for the tappable card.
-struct AtlasPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
     }
 }
 
