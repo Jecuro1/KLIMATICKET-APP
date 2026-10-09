@@ -121,7 +121,7 @@ struct MetaCategoryFilterMenu: View {
                 }
             }
         } label: {
-            label
+            chipLabel
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -131,7 +131,7 @@ struct MetaCategoryFilterMenu: View {
         .accessibilityValue(selection.isActive ? selection.title : "Alle Kategorien")
     }
 
-    private var label: some View {
+    private var chipLabel: some View {
         HStack(spacing: 6) {
             Image(systemName: selection.symbol)
                 .font(.subheadline.weight(.semibold))

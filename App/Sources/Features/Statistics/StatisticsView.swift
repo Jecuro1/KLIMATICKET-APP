@@ -82,10 +82,10 @@ struct StatsScreen: View {
                 withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
             }
             .task {
-                // CI screenshot "statsCategories": scroll to "Wofür du fährst" + "Ehrliche Bilanz".
-                guard LaunchMode.screenshotScreen == "statsCategories" else { return }
+                // CI screenshots "statsCategories" / "statsHonest": scroll to "Wofür du fährst" / "Ehrliche Bilanz".
+                guard let target = MetaStatsAnchor.screenshotTarget else { return }
                 try? await Task.sleep(for: .milliseconds(400))
-                proxy.scrollTo(MetaStatsAnchor.purpose, anchor: .top)
+                proxy.scrollTo(target, anchor: .top)
             }
         }
         .navigationTitle("Statistik")
@@ -139,6 +139,7 @@ struct StatsScreen: View {
             .id(MetaStatsAnchor.purpose)
             .statsEntrance(3)
         MetaHonestBalanceCard(snapshot: snapshot, grow: grow)
+            .id(MetaStatsAnchor.honest)
             .statsEntrance(3)
         StatsCalendarCard(snapshot: snapshot)
             .statsEntrance(3)

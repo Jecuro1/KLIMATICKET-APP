@@ -100,7 +100,7 @@ struct MetaHonestBalanceCard: View {
         guard balance.hasInducedTrips else {
             return "Alle deine Fahrten hättest du sonst bezahlt – jeder Euro deiner Bilanz ist echte Ersparnis."
         }
-        let trips = balance.inducedTripCount == 1 ? "1 deiner \(balance.tripCount) Fahrten hättest" : "\(balance.inducedTripCount) deiner \(balance.tripCount) Fahrten hättest"
+        let trips = balance.inducedTripCount == 1 ? "Eine deiner \(balance.tripCount) Fahrten hättest" : "\(balance.inducedTripCount) deiner \(balance.tripCount) Fahrten hättest"
         let pronoun = balance.inducedTripCount == 1 ? "Sie ist" : "Sie sind"
         return "\(trips) du ohne KlimaTicket nicht gemacht. \(pronoun) \(Format.euro(balance.extraValue, decimals: 0)) Mehrwert – aber kein gespartes Geld."
     }
@@ -153,7 +153,7 @@ struct MetaHonestBalanceCard: View {
 
     private func railLabels(_ balance: HonestBalance) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(balance.isHonestlyPaidOff ? "Gipfel erreicht" : "Noch \(Format.euro(balance.remainingHonest, decimals: 0)) echt")
+            Text("Gesamtwert \(Format.euro(balance.totalValue, decimals: 0))")
             Spacer(minLength: Theme.Spacing.xs)
             HStack(spacing: 4) {
                 Image(systemName: "flag.fill")

@@ -216,7 +216,7 @@ struct ScreenshotRouter: View {
             OnboardingFlow()
         case "trips":
             MainTabView().onAppear { app.selectedTab = .trips }
-        case "stats", "statsCategories":
+        case "stats", "statsCategories", "statsHonest":
             MainTabView().onAppear { app.selectedTab = .stats }
         case "ticket":
             MainTabView().onAppear { app.selectedTab = .ticket }
