@@ -6,7 +6,6 @@ import KlimaCore
 struct StatsCalendarCard: View {
     let snapshot: AnalyticsSnapshot
 
-    @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .caption2) private var cell: CGFloat = 15
     @State private var selectedDay: Date?
@@ -30,9 +29,7 @@ struct StatsCalendarCard: View {
                 selectionLine(weeks)
             }
         }
-        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in
-            new != nil && app.settings.hapticsEnabled
-        }
+        .haptic(.selection, trigger: selectedDay, when: { _, new in new != nil })
     }
 
     // MARK: Header & footer
@@ -78,14 +75,17 @@ struct StatsCalendarCard: View {
             Image(systemName: day == nil ? "hand.tap" : "calendar")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(day == nil ? Theme.textTertiary : Theme.accentText)
+                .symbolReplaceTransition()
             if let day {
                 Text(Format.weekdayDayMonth(day.date))
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
+                    .contentTransition(.numericText())
                 Text(day.trips == 0 ? "keine Fahrt" : "\(StatsNames.trips(day.trips)) · \(Format.euro(day.value))")
                     .font(.footnote)
                     .monospacedDigit()
                     .foregroundStyle(Theme.textSecondary)
+                    .contentTransition(.numericText())
             } else {
                 Text("Tippe auf einen Tag für Details")
                     .font(.footnote)
@@ -97,7 +97,7 @@ struct StatsCalendarCard: View {
         .padding(.vertical, Theme.Spacing.xs)
         .background(Theme.textTertiary.opacity(0.08), in: .rect(cornerRadius: Theme.Radius.modeTile, style: .continuous))
         .accessibilityElement(children: .combine)
-        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.25), value: selectedDay)
+        .motionAnimation(Motion.snappy, value: selectedDay)
     }
 
     private func heatDay(for date: Date?, in weeks: [StatsHeatWeek]) -> StatsHeatDay? {
@@ -193,7 +193,7 @@ struct StatsCalendarCard: View {
                 .scaleEffect(selectedDay == day.date && !reduceMotion ? 1.18 : 1)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.25)) {
+                    withMotion(Motion.snappy) {
                         selectedDay = selectedDay == day.date ? nil : day.date
                     }
                 }

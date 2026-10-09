@@ -97,3 +97,14 @@ extension View {
             .tint(Theme.accent)
     }
 }
+
+// MARK: stats – a tip inside a card (the chart it explains is right above it)
+extension View {
+    /// Inline tip inside a content card: a faint glacier wash instead of a second material (never a card on a card).
+    func kbCardTipStyle() -> some View {
+        self
+            .tipBackground(Theme.accent.opacity(0.08))
+            .tipCornerRadius(Theme.Radius.modeTile)
+            .tint(Theme.accent)
+    }
+}

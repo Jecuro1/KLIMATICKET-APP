@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import TipKit
 import KlimaCore
 
 /// Hero chart "Ersparnis-Verlauf": cumulative value climbing towards the ticket price ("Gipfellinie"),
@@ -29,6 +30,9 @@ struct StatsSavingsCard: View {
                     .frame(height: 230)
                     .padding(.top, Theme.Spacing.xs)
                 legend
+                // Scrubbing is a hidden gesture: one inline hint under the chart until it has been used once.
+                TipView(KBTips.ChartScrub(), arrowEdge: .top)
+                    .kbCardTipStyle()
             }
         }
     }
@@ -47,12 +51,12 @@ struct StatsSavingsCard: View {
                     .font(.system(size: numeralSize * 0.55, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.textSecondary)
                 // Whole euros from the same rounding as the dashboard hero ("€ 1.044 von € 1.400", never
-                // "€ 1.400 von € 1.400" before the break-even).
-                Text(Format.number(summary.shownTotalEuro))
+                // "€ 1.400 von € 1.400" before the break-even). The screen's hero value: counts in once with the
+                // card's entrance, then rolls its digits on every change (another ticket year, a new trip).
+                CountUpText(value: summary.shownTotalEuro, delay: Motion.Stagger.delay(1)) { Format.number($0) }
                     .font(.system(size: numeralSize, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: summary.shownTotalEuro))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("von \(SummitFigures.euro(price))")
@@ -79,6 +83,7 @@ struct StatsSavingsCard: View {
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
                     .lineLimit(1)
+                    .numericValue(value)
             }
             .foregroundStyle(Theme.positiveText)
             .padding(.horizontal, 10)
@@ -94,7 +99,10 @@ struct StatsSavingsCard: View {
             Label {
                 Text(paidOffText)
             } icon: {
-                Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.positive)
+                // The seal stamps once as the chart lands on its value.
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(Theme.positive)
+                    .symbolBounce(on: grow >= 1)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(Theme.positiveText)

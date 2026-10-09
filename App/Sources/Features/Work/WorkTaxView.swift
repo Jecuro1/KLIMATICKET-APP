@@ -42,7 +42,6 @@ private struct WorkTaxScreen: View {
     let tickets: [TicketEntity]
     @Binding var pickedTicketID: UUID?
 
-    @Environment(AppState.self) private var app
     @State private var exports = WorkTaxExports()
     @State private var isAssigning = false
     @State private var isEditingContribution = false
@@ -77,28 +76,32 @@ private struct WorkTaxScreen: View {
                 Kicker(text: "Ticketjahr \(data.ticketYear) · \(data.ticket.name)")
                     .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
                 WorkDisclaimerBanner()
-                Picker("Ich bin", selection: $settings.role.animation(.snappy)) {
-                    ForEach(WorkTaxRole.allCases) { role in
-                        Text(role.displayName).tag(role)
+                // Glass segments: the selection capsule glides, the cards below swap with a rise (plays its own haptic).
+                GlassSegmentedPicker(selection: $settings.role, options: WorkTaxRole.allCases) { role in
+                    Text(role.displayName)
+                }
+                .padding(.vertical, Theme.Spacing.xxs)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Beschäftigung")
+                .reveal(order: 1)
+
+                Group {
+                    if settings.role == .employee {
+                        WorkJobticketCard(data: data, onEditContribution: { isEditingContribution = true })
+                            .reveal(order: 2)
+                        WorkBusinessTripsCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
+                            .reveal(order: 3)
+                        WorkPendlerCard(data: data)
+                            .reveal(order: 4)
+                    } else {
+                        WorkSelfEmployedCard(data: data)
+                            .reveal(order: 2)
+                        WorkLogbookCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
+                            .reveal(order: 3)
                     }
                 }
-                .pickerStyle(.segmented)
-                .padding(.vertical, Theme.Spacing.xxs)
-                .accessibilityLabel("Beschäftigung")
-
-                if settings.role == .employee {
-                    WorkJobticketCard(data: data, onEditContribution: { isEditingContribution = true })
-                        .statsEntrance(0)
-                    WorkBusinessTripsCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
-                        .statsEntrance(1)
-                    WorkPendlerCard(data: data)
-                        .statsEntrance(2)
-                } else {
-                    WorkSelfEmployedCard(data: data)
-                        .statsEntrance(0)
-                    WorkLogbookCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
-                        .statsEntrance(1)
-                }
+                .scrollCardTransition()
+                .motionTransition(.rise)
                 WorkSourceLinks(sources: WorkSourceLinks.tax)
                     .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
                     .padding(.top, Theme.Spacing.s)
@@ -107,6 +110,7 @@ private struct WorkTaxScreen: View {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .scrollIndicators(.hidden)
+        .revealScope()
         .background { SetBackdrop(skyOpacity: 0.45, fadeEnd: 0.45) }
         .toolbar { toolbarContent }
         .sheet(isPresented: $isAssigning) {
@@ -115,8 +119,7 @@ private struct WorkTaxScreen: View {
         .sheet(isPresented: $isEditingContribution) {
             WorkContributionSheet(ticket: data.ticket) { contributionSaves += 1 }
         }
-        .sensoryFeedback(.selection, trigger: settings.role) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.success, trigger: contributionSaves) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.success, trigger: contributionSaves)
         .task(id: exportKey) {
             // Only the documents are built here (rows, totals, CSV text); the PDFs are drawn when shared.
             exports = WorkTaxExports.make(data, countsCommute: settings.countsCommuteAsBusiness)

@@ -88,7 +88,7 @@ struct MetaHonestBalanceCard: View {
                 .font(.system(size: size, weight: weight, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(color)
-                .contentTransition(.numericText(value: fraction))
+                .numericValue(fraction)
             Text(verbatim: "%")
                 .font(.system(size: size * 0.5, weight: .regular, design: .rounded))
                 .foregroundStyle(Theme.textSecondary)

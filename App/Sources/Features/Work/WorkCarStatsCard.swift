@@ -4,6 +4,8 @@ import KlimaCore
 /// Small "Öffis vs. Auto" card for the statistics tab (replaces the plain Kilometergeld card) → opens the detail.
 struct WorkCarStatsCard: View {
     let snapshot: AnalyticsSnapshot
+    /// 0…1 – the sparkline grows with the statistics cards (`StatsGrowOnView`).
+    var grow: Double = 1
 
     @Environment(AppState.self) private var app
 
@@ -11,6 +13,7 @@ struct WorkCarStatsCard: View {
         let result = WorkCarCalc.result(period: snapshot.ticket, records: snapshot.trips, catalog: app.catalog)
         NavigationLink {
             WorkCarView(period: snapshot.ticket)
+                .zoomDestination(id: StatsZoomID.car)
         } label: {
             GlassCard(padding: Theme.Spacing.m + 2) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -34,7 +37,7 @@ struct WorkCarStatsCard: View {
                             .padding(.top, 2)
                     }
                     if result.tripCount > 0 {
-                        WorkCarChart(result: result, period: snapshot.ticket, style: .compact)
+                        WorkCarChart(result: result, period: snapshot.ticket, style: .compact, grow: grow)
                             .frame(height: 58)
                             .allowsHitTesting(false)
                     }
@@ -42,7 +45,8 @@ struct WorkCarStatsCard: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: StatsZoomID.car, cornerRadius: Theme.Radius.card)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Öffis vs. Auto")
         .accessibilityValue(accessibilityValue(result))

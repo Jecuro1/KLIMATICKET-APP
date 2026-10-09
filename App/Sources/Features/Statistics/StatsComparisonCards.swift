@@ -90,6 +90,7 @@ struct StatsTicketComparisonCard: View {
                     .monospacedDigit()
                     .foregroundStyle(isCheapest ? Theme.positiveText : Theme.textPrimary)
                     .lineLimit(1)
+                    .numericValue(option.totalCost.rounded())
             }
             costBar(option, maxCost: result.maxCost, color: color)
             Text(detailText)
@@ -146,8 +147,10 @@ struct StatsCarCO2Section: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
-            WorkCarStatsCard(snapshot: snapshot) // MARK: work – "Öffis vs. Auto" card (replaces carCard)
+            WorkCarStatsCard(snapshot: snapshot, grow: grow) // MARK: work – "Öffis vs. Auto" card (replaces carCard)
+                .scrollCardTransition()
             co2Card
+                .scrollCardTransition()
         }
     }
 
@@ -235,6 +238,7 @@ struct StatsCarCO2Section: View {
                         .foregroundStyle(Theme.positive)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                        .numericValue(kg)
                     Text(parts.unit)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.positiveText)
@@ -299,13 +303,16 @@ struct StatsEffectiveCostsSection: View {
             SectionHeader(title: "Effektive Kosten")
                 .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
             LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Spacing.s) {
-                StatTile(value: perTrip, label: "pro Fahrt bisher", symbol: "train.side.front.car", color: Theme.accent)
-                StatTile(value: perKm, label: "pro Kilometer", symbol: "point.topleft.down.to.point.bottomright.curvepath",
-                         color: Theme.dusk)
-                StatTile(value: Format.euroPrecise(summary.costPerDay), label: "Ticketkosten pro Tag", symbol: "calendar",
-                         color: Theme.summit)
-                StatTile(value: Format.euroPrecise(summary.valuePerDay), label: "Wert pro Tag bisher",
-                         symbol: "chart.line.uptrend.xyaxis", color: Theme.positive)
+                Group {
+                    StatTile(value: perTrip, label: "pro Fahrt bisher", symbol: "train.side.front.car", color: Theme.accent)
+                    StatTile(value: perKm, label: "pro Kilometer", symbol: "point.topleft.down.to.point.bottomright.curvepath",
+                             color: Theme.dusk)
+                    StatTile(value: Format.euroPrecise(summary.costPerDay), label: "Ticketkosten pro Tag", symbol: "calendar",
+                             color: Theme.summit)
+                    StatTile(value: Format.euroPrecise(summary.valuePerDay), label: "Wert pro Tag bisher",
+                             symbol: "chart.line.uptrend.xyaxis", color: Theme.positive)
+                }
+                .scrollCardTransition()
             }
             verdict
                 .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)

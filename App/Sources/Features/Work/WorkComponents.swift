@@ -241,19 +241,27 @@ struct WorkEuroNumeral: View {
     var value: Double
     var size: CGFloat
     var color: Color = Theme.textPrimary
+    /// The screen's hero value: counts in once on its first appearance (docs/MOTION.md §5), then rolls like the others.
+    var countsIn = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text("€")
                 .font(.system(size: size * 0.5, weight: .regular, design: .rounded))
                 .foregroundStyle(Theme.textSecondary)
-            Text(Format.number(value))
-                .font(.system(size: size, weight: .light, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(color)
-                .contentTransition(.numericText(value: value))
-                .lineLimit(1)
-                .minimumScaleFactor(0.55)
+            Group {
+                if countsIn {
+                    CountUpText(value: value) { Format.number($0) }
+                } else {
+                    Text(Format.number(value))
+                        .numericValue(value)
+                }
+            }
+            .font(.system(size: size, weight: .light, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Format.euro(value, decimals: 0))

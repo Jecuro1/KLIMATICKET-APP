@@ -69,6 +69,7 @@ struct StatsModesCard: View {
                             .foregroundStyle(Theme.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
+                            .numericValue(Double(snapshot.summary.tripCount))
                         Text("Fahrten")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(Theme.textSecondary)
@@ -115,6 +116,7 @@ struct StatsModesCard: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
+                    .numericValue(share)
             }
             ProgressRail(progress: share * grow, height: 5, fill: AnyShapeStyle(Theme.modeColor(bucket.mode)))
         }

@@ -25,8 +25,18 @@ final class StatsChartScrub {
     func update(_ value: Date?) {
         current = value
         if date != value { date = value }
-        if isActive != (value != nil) { isActive = value != nil }
+        if isActive != (value != nil) {
+            isActive = value != nil
+            // The hidden gesture was found: the "Fahr mit dem Finger drüber" tip never shows again.
+            if isActive, !Self.retiredTip {
+                Self.retiredTip = true
+                KBTips.used(KBTips.ChartScrub())
+            }
+        }
     }
+
+    /// Once per launch is enough – invalidating a tip writes to the TipKit store.
+    private static var retiredTip = false
 }
 
 /// Fades its content out while a scrub is in progress. Only this view re-renders when the scrub starts or ends –
@@ -37,7 +47,9 @@ struct StatsScrubFade<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        content.opacity(scrub.isActive ? 0 : opacity)
+        content
+            .opacity(scrub.isActive ? 0 : opacity)
+            .motionAnimation(Motion.snappy, value: scrub.isActive)
     }
 }
 
@@ -60,23 +72,30 @@ struct StatsScrubLayer<Callout: View>: View {
                 let px = plot.minX + x
                 ZStack(alignment: .topLeading) {
                     Rectangle()
-                        .fill(Theme.textSecondary.opacity(0.6))
+                        .fill(LinearGradient(colors: [Theme.textSecondary.opacity(0.15), Theme.textSecondary.opacity(0.6)],
+                                             startPoint: .top, endPoint: .bottom))
                         .frame(width: 1, height: plot.height)
                         .position(x: px, y: plot.midY)
+                    // Marker with a soft halo, so it reads as "the finger is here" on the line.
                     Circle()
                         .fill(markerColor)
-                        .frame(width: 9.5, height: 9.5)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().strokeBorder(Theme.onAccent, lineWidth: 2))
+                        .background(Circle().fill(markerColor.opacity(0.22)).frame(width: 26, height: 26))
                         .position(x: px, y: plot.minY + y)
                     StatsCalloutPlacement(x: px, top: plot.minY) {
                         callout(date, marker)
                     }
                 }
+                // Pops in where the finger lands and fades away on lift-off (begin/end only – never per frame).
+                .transition(.scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
             }
         }
+        .motionAnimation(Motion.snappy, value: scrub.isActive)
         .allowsHitTesting(false)
         // The chart itself carries the spoken summary; the callout only exists under a scrubbing finger.
         .accessibilityHidden(true)
-        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && hapticsEnabled }
+        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && hapticsEnabled && !MotionPolicy.isStatic }
     }
 
     /// One tick per day crossed, not per frame.

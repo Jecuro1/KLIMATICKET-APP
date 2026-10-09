@@ -85,28 +85,37 @@ struct StatsRecordsSection: View {
             SectionHeader(title: "Rekorde")
                 .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
             LazyVGrid(columns: columns, alignment: .leading, spacing: Theme.Spacing.s) {
-                if let trip = records.longestTrip {
-                    StatTile(value: Format.number(trip.distanceKm), unit: "km",
-                             label: "Längste Fahrt · \(routeName(trip))",
-                             symbol: "arrow.left.and.right", color: Theme.accent)
-                }
-                if let trip = records.mostValuableTrip {
-                    StatTile(value: Format.euro(trip.totalValue), label: "Wertvollste Fahrt · \(routeName(trip))",
-                             symbol: "eurosign", color: Theme.summit)
-                }
-                if let month = records.bestMonth {
-                    StatTile(value: Format.euro(month.value, decimals: 0),
-                             label: "Bester Monat · \(StatsNames.wideMonth(month.month))",
-                             symbol: "crown.fill", color: Theme.gold)
-                }
-                StatTile(value: "\(records.longestStreakDays)", unit: records.longestStreakDays == 1 ? "Tag" : "Tage",
-                         label: "Längste Serie in Folge", symbol: "calendar", color: Theme.dusk)
-                StatTile(value: "\(records.currentStreakDays)", unit: records.currentStreakDays == 1 ? "Tag" : "Tage",
-                         label: "Aktuelle Serie", symbol: "clock.arrow.circlepath", color: Theme.positive)
-                StatTile(value: "\(records.uniqueStations)", label: "Verschiedene Haltestellen",
-                         symbol: "mappin.and.ellipse", color: Theme.alpenglow)
+                tiles(records)
             }
         }
+    }
+
+    /// Each tile settles in on its own as it scrolls up from the bottom edge.
+    @ViewBuilder
+    private func tiles(_ records: TravelRecords) -> some View {
+        Group {
+            if let trip = records.longestTrip {
+                StatTile(value: Format.number(trip.distanceKm), unit: "km",
+                         label: "Längste Fahrt · \(routeName(trip))",
+                         symbol: "arrow.left.and.right", color: Theme.accent)
+            }
+            if let trip = records.mostValuableTrip {
+                StatTile(value: Format.euro(trip.totalValue), label: "Wertvollste Fahrt · \(routeName(trip))",
+                         symbol: "eurosign", color: Theme.summit)
+            }
+            if let month = records.bestMonth {
+                StatTile(value: Format.euro(month.value, decimals: 0),
+                         label: "Bester Monat · \(StatsNames.wideMonth(month.month))",
+                         symbol: "crown.fill", color: Theme.gold)
+            }
+            StatTile(value: "\(records.longestStreakDays)", unit: records.longestStreakDays == 1 ? "Tag" : "Tage",
+                     label: "Längste Serie in Folge", symbol: "calendar", color: Theme.dusk)
+            StatTile(value: "\(records.currentStreakDays)", unit: records.currentStreakDays == 1 ? "Tag" : "Tage",
+                     label: "Aktuelle Serie", symbol: "clock.arrow.circlepath", color: Theme.positive)
+            StatTile(value: "\(records.uniqueStations)", label: "Verschiedene Haltestellen",
+                     symbol: "mappin.and.ellipse", color: Theme.alpenglow)
+        }
+        .scrollCardTransition()
     }
 
     private func routeName(_ trip: TripRecord) -> String {
@@ -137,6 +146,7 @@ struct StatsStatesCard: View {
                     Text("\(count)")
                         .font(Theme.Typography.numberLarge)
                         .foregroundStyle(Theme.textPrimary)
+                        .numericValue(Double(count))
                     Text("von \(states.count) Bundesländern")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
@@ -189,9 +199,11 @@ struct StatsSummitBookRow: View {
             app.isShowingAchievements = true
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                Image(systemName: "book.closed.fill")
+                // The book opens: the closed book morphs into an open one while its sheet zooms out of this row.
+                Image(systemName: app.isShowingAchievements ? "book.fill" : "book.closed.fill")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.onAccent)
+                    .symbolReplaceTransition()
                     .frame(width: 44, height: 44)
                     .background(Theme.tierGradient(.gold), in: .rect(cornerRadius: Theme.Radius.modeTile, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
@@ -207,6 +219,7 @@ struct StatsSummitBookRow: View {
                 Text("\(unlocked)/\(total)")
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
+                    .numericValue(Double(unlocked))
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textTertiary)
@@ -216,13 +229,15 @@ struct StatsSummitBookRow: View {
             .frostedCard(cornerRadius: Theme.Radius.tile)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: StatsZoomID.summitBook, cornerRadius: Theme.Radius.tile)
         .accessibilityLabel("Gipfelbuch, \(unlocked) von \(total) Erfolgen")
         .accessibilityHint(detail)
         .sheet(isPresented: sheetBinding) {
             NavigationStack {
                 AchievementsView()
             }
+            .zoomDestination(id: StatsZoomID.summitBook)
         }
     }
 

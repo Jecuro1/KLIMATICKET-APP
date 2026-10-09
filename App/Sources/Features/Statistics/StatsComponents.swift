@@ -124,30 +124,3 @@ struct StatsLegendLine: Shape {
         return p
     }
 }
-
-/// Short staggered fade/rise when a card first appears (instant with Reduce Motion and in screenshot mode).
-struct StatsEntrance: ViewModifier {
-    var index: Int
-
-    /// End state from the first frame in screenshot mode.
-    @State private var shown = LaunchMode.isScreenshot
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(shown ? 1 : 0)
-            .offset(y: shown ? 0 : 18)
-            .onAppear {
-                guard !shown else { return }
-                if reduceMotion || LaunchMode.isScreenshot {
-                    shown = true
-                } else {
-                    withAnimation(.spring(duration: 0.6, bounce: 0.12).delay(Double(min(index, 5)) * 0.06)) { shown = true }
-                }
-            }
-    }
-}
-
-extension View {
-    func statsEntrance(_ index: Int) -> some View { modifier(StatsEntrance(index: index)) }
-}

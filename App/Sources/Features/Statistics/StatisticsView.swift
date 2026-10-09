@@ -27,6 +27,8 @@ struct StatisticsView: View {
             }
             .ambientBackground()
         }
+        // Cards zoom into the screens and sheets they open (Karte, Öffis vs. Auto, Gipfelbuch).
+        .zoomTransitionScope()
     }
 
     private var noTicket: some View {
@@ -50,22 +52,21 @@ struct StatsScreen: View {
     @Binding var selection: UUID?
 
     @Environment(AppState.self) private var app
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Already in the end state in screenshot mode (no empty first frame).
-    @State private var grow: Double = LaunchMode.isScreenshot ? 1 : 0
-    /// Inline-title state in a reference: only the toolbar title reads it, so crossing the scroll threshold
-    /// doesn't re-run this body (and every card's) mid-scroll.
-    @State private var chrome = StatsChromeState()
+    /// How far the large header has condensed (0 … 1). Only the header and the inline title read it, so scrolling
+    /// never re-runs this body (and every card's).
+    @State private var condense = ScrollCondense()
     // MARK: reports
     @State private var isShowingReport = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                header
+                StatsScreenHeader(ticketYear: StatsCalc.ticketYearLabel(snapshot.ticket), subtitle: subtitle, condense: condense)
                     .padding(.bottom, Theme.Spacing.xxs)
+                    .reveal(.focus)
                 if snapshot.trips.isEmpty {
                     emptyTrips
+                        .reveal(order: 1)
                 } else {
                     primarySections
                     secondarySections
@@ -77,37 +78,18 @@ struct StatsScreen: View {
         }
         .accessibilityIdentifier("perf.scroll.stats") // MARK: perf – KlimaBilanzPerfTests
         .scrollIndicators(.hidden)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, isScrolled in
-            withAnimation(.easeInOut(duration: 0.2)) { chrome.showsInlineTitle = isScrolled }
-        }
+        .tracksScrollCondense(condense, distance: 72)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .revealScope()
         .navigationTitle("Statistik")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
-        .sensoryFeedback(.selection, trigger: ticket.id) { _, _ in app.settings.hapticsEnabled }
-        .onAppear { startEntrance() }
+        .haptic(.selection, trigger: ticket.id)
         // MARK: reports
         .sheet(isPresented: $isShowingReport) { RepReportSheet(ticketID: ticket.id) }
     }
 
     // MARK: Header
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Kicker(text: "Ticketjahr \(StatsCalc.ticketYearLabel(snapshot.ticket))")
-            Text("Statistik")
-                .font(Theme.Typography.heroTitle)
-                .foregroundStyle(Theme.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(2)
-        }
-        .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
 
     private var subtitle: String {
         let summary = snapshot.summary
@@ -122,46 +104,55 @@ struct StatsScreen: View {
 
     // MARK: Sections
 
+    /// Cards in reading order: each one rises in once (staggered), settles in as it scrolls up from the bottom edge,
+    /// and its charts grow when it first comes into view.
     @ViewBuilder
     private var primarySections: some View {
-        StatsSavingsCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(0)
-        StatsMonthlyCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(1)
-        StatsModesCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(2)
+        StatsGrowOnView(delay: Motion.Stagger.delay(1)) { StatsSavingsCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 1)
+        StatsGrowOnView(delay: Motion.Stagger.delay(2)) { StatsMonthlyCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 2)
+        StatsGrowOnView(delay: Motion.Stagger.delay(3)) { StatsModesCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 3)
         // MARK: tripmeta – "Wofür du fährst" and "Ehrliche Bilanz"
-        MetaPurposeCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(3)
-        MetaHonestBalanceCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(3)
+        StatsGrowOnView(delay: Motion.Stagger.delay(4)) { MetaPurposeCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 4)
+        StatsGrowOnView(delay: Motion.Stagger.delay(5)) { MetaHonestBalanceCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 5)
         StatsCalendarCard(snapshot: snapshot)
-            .statsEntrance(3)
-        StatsWeekdayCard(snapshot: snapshot, grow: grow)
-            .statsEntrance(4)
+            .statsCard(order: 6)
+        StatsGrowOnView(delay: Motion.Stagger.delay(7)) { StatsWeekdayCard(snapshot: snapshot, grow: $0) }
+            .statsCard(order: 7)
     }
 
     @ViewBuilder
     private var secondarySections: some View {
         if !snapshot.topRoutes.isEmpty {
-            StatsTopRoutesCard(snapshot: snapshot, grow: grow)
-                .statsEntrance(5)
+            StatsGrowOnView(delay: Motion.Stagger.delay(8)) { StatsTopRoutesCard(snapshot: snapshot, grow: $0) }
+                .statsCard(order: 8)
         }
         // MARK: map
         AtlasPreviewCard(snapshot: snapshot, ticketID: ticket.id)
+            .statsCard(order: 8)
         StatsRecordsSection(snapshot: snapshot)
             .padding(.top, Theme.Spacing.s)
+            .reveal(order: 8)
         StatsStatesCard(snapshot: snapshot)
+            .statsCard(order: 8)
         // The Gipfelbuch sheet always shows the app-wide ticket – only offer it (with its counts) for that ticket,
         // otherwise the row's "6/17" would contradict the sheet it opens.
         if showsSummitBook {
             StatsSummitBookRow(snapshot: snapshot)
+                .statsCard(order: 8)
         }
-        StatsTicketComparisonCard(snapshot: snapshot, products: app.catalog.products, variant: ticket.variant, grow: grow)
+        StatsGrowOnView { StatsTicketComparisonCard(snapshot: snapshot, products: app.catalog.products, variant: ticket.variant, grow: $0) }
             .padding(.top, Theme.Spacing.s)
-        StatsCarCO2Section(snapshot: snapshot, kilometergeld: app.catalog.kilometergeldEUR, grow: grow)
+            .statsCard(order: 8)
+        StatsGrowOnView { StatsCarCO2Section(snapshot: snapshot, kilometergeld: app.catalog.kilometergeldEUR, grow: $0) }
+            .reveal(order: 8)
         StatsEffectiveCostsSection(snapshot: snapshot)
             .padding(.top, Theme.Spacing.s)
+            .reveal(order: 8)
     }
 
     private var showsSummitBook: Bool {
@@ -183,7 +174,7 @@ struct StatsScreen: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            StatsInlineTitle(chrome: chrome)
+            StatsInlineTitle(title: "Statistik", condense: condense)
         }
         // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an
         // empty pill while the title is faded out (same as the dashboard).
@@ -232,35 +223,38 @@ struct StatsScreen: View {
         }
         .accessibilityLabel("Teilen")
     }
+}
 
-    // MARK: Motion
+/// "Ticketjahr 2026/27 · Statistik · KlimaTicket Ö · Tag 210 von 365" – condenses as the screen scrolls (only this
+/// view reads the scroll progress).
+private struct StatsScreenHeader: View {
+    let ticketYear: String
+    let subtitle: String
+    let condense: ScrollCondense
 
-    private func startEntrance() {
-        guard grow < 1 else { return }
-        if reduceMotion || LaunchMode.isScreenshot {
-            grow = 1
-        } else {
-            withAnimation(.smooth(duration: 0.9).delay(0.12)) { grow = 1 }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Kicker(text: "Ticketjahr \(ticketYear)")
+            Text("Statistik")
+                .font(Theme.Typography.heroTitle)
+                .foregroundStyle(Theme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(2)
+                .contentTransition(.opacity)
         }
+        .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .statsHeaderCondense(condense)
     }
 }
 
-/// Scroll-driven chrome of the Statistik screen.
-@Observable
-@MainActor
-final class StatsChromeState {
-    var showsInlineTitle = false
-}
-
-/// The inline navigation title, faded in once the large header has scrolled away.
-private struct StatsInlineTitle: View {
-    let chrome: StatsChromeState
-
-    var body: some View {
-        Text("Statistik")
-            .font(.headline)
-            .foregroundStyle(Theme.textPrimary)
-            .opacity(chrome.showsInlineTitle ? 1 : 0)
-            .accessibilityHidden(!chrome.showsInlineTitle)
+private extension View {
+    /// A statistics card: rises in once with the screen's staggered entrance and settles in as it scrolls up from the
+    /// bottom edge (docs/MOTION.md §4, §10).
+    func statsCard(order: Int) -> some View {
+        reveal(order: order).scrollCardTransition()
     }
 }

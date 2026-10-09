@@ -77,11 +77,9 @@ private struct WorkCarScreen: View {
     let result: CarComparisonResult
 
     @Environment(AppState.self) private var app
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 64
     @ScaledMetric(relativeTo: .largeTitle) private var statSize: CGFloat = 40
-    @State private var grow: Double = LaunchMode.isScreenshot ? 1 : 0
 
     private var settings: WorkSettings { .shared }
 
@@ -100,15 +98,23 @@ private struct WorkCarScreen: View {
                         }
                     }
                 } else {
-                    heroCard.statsEntrance(0)
-                    chartCard.statsEntrance(1)
-                    assumptionsCard.statsEntrance(2)
-                    tilesLayout {
-                        co2Tile
-                        timeTile
+                    heroCard
+                        .reveal(order: 1)
+                    StatsGrowOnView(delay: Motion.Stagger.delay(2)) { chartCard(grow: $0) }
+                        .reveal(order: 2)
+                        .scrollCardTransition()
+                    assumptionsCard
+                        .reveal(order: 3)
+                        .scrollCardTransition()
+                    StatsGrowOnView(delay: Motion.Stagger.delay(4)) { grow in
+                        tilesLayout {
+                            co2Tile(grow: grow)
+                            timeTile
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
                     }
-                    .fixedSize(horizontal: false, vertical: true)
-                    .statsEntrance(3)
+                    .reveal(order: 4)
+                    .scrollCardTransition()
                     WorkSourceLinks(sources: WorkSourceLinks.car)
                         .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
                         .padding(.top, Theme.Spacing.s)
@@ -118,11 +124,8 @@ private struct WorkCarScreen: View {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .scrollIndicators(.hidden)
-        .sensoryFeedback(.selection, trigger: settings.carMode) { _, _ in app.settings.hapticsEnabled }
-        .onAppear {
-            guard grow < 1 else { return }
-            if reduceMotion { grow = 1 } else { withAnimation(.smooth(duration: 1.1).delay(0.15)) { grow = 1 } }
-        }
+        .revealScope()
+        .haptic(.selection, trigger: settings.carMode)
     }
 
     /// Side by side; stacked with large text.
@@ -139,7 +142,8 @@ private struct WorkCarScreen: View {
                 Kicker(text: result.isCheaperThanCar ? "Günstiger als mit dem Auto" : "Noch bis zum Gleichstand mit dem Auto")
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                     WorkEuroNumeral(value: abs(result.isCheaperThanCar ? result.savings : result.remainingToBreakEven),
-                                    size: numeralSize, color: result.isCheaperThanCar ? Theme.positive : Theme.textPrimary)
+                                    size: numeralSize, color: result.isCheaperThanCar ? Theme.positive : Theme.textPrimary,
+                                    countsIn: true)
                     verdict
                 }
                 Divider().overlay(Theme.separator)
@@ -248,7 +252,7 @@ private struct WorkCarScreen: View {
                 Text(Format.euro(value, decimals: 0))
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: value))
+                    .numericValue(value.rounded())
                 Text(detail)
                     .font(.caption)
                     .monospacedDigit()
@@ -261,7 +265,7 @@ private struct WorkCarScreen: View {
 
     // MARK: Chart
 
-    private var chartCard: some View {
+    private func chartCard(grow: Double) -> some View {
         GlassCard(padding: Theme.Spacing.m + 2) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 StatsCardHeader(kicker: "Kosten-Verlauf", title: "Jede Fahrt macht das Auto teurer – dein Ticket bleibt gleich") {
@@ -357,7 +361,7 @@ private struct WorkCarScreen: View {
 
     // MARK: CO₂ & time
 
-    private var co2Tile: some View {
+    private func co2Tile(grow: Double) -> some View {
         let parts = StatsCalc.co2Parts(result.co2SavedKg)
         return GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile, tint: Theme.eco) {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -377,7 +381,7 @@ private struct WorkCarScreen: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                co2Bars
+                co2Bars(grow: grow)
                 Spacer(minLength: 0)
                 Text("Pkw \(Format.number(app.catalog.emissions.car)) g/km, Öffis je Verkehrsmittel (Umweltbundesamt)")
                     .font(.caption2)
@@ -389,11 +393,11 @@ private struct WorkCarScreen: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var co2Bars: some View {
+    private func co2Bars(grow: Double) -> some View {
         let maxKg = max(result.co2CarKg, result.co2TransitKg, 0.001)
         return VStack(alignment: .leading, spacing: 6) {
-            co2Bar(symbol: "car.fill", label: "Auto", kg: result.co2CarKg, fraction: result.co2CarKg / maxKg, color: Theme.dawn)
-            co2Bar(symbol: "tram.fill", label: "Öffis", kg: result.co2TransitKg, fraction: result.co2TransitKg / maxKg, color: Theme.positive)
+            co2Bar(symbol: "car.fill", label: "Auto", kg: result.co2CarKg, fraction: result.co2CarKg / maxKg * grow, color: Theme.dawn)
+            co2Bar(symbol: "tram.fill", label: "Öffis", kg: result.co2TransitKg, fraction: result.co2TransitKg / maxKg * grow, color: Theme.positive)
         }
         .padding(.vertical, 2)
     }
@@ -409,7 +413,7 @@ private struct WorkCarScreen: View {
             GeometryReader { geo in
                 Capsule().fill(Theme.textTertiary.opacity(0.14))
                     .overlay(alignment: .leading) {
-                        Capsule().fill(color).frame(width: max(6, geo.size.width * CGFloat(fraction * grow)))
+                        Capsule().fill(color).frame(width: max(6, geo.size.width * CGFloat(fraction)))
                     }
             }
             .frame(height: 6)

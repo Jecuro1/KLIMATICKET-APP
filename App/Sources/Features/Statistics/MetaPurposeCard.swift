@@ -25,10 +25,11 @@ struct MetaPurposeCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .title) private var spotlightSize: CGFloat = 30
     @State private var metric: Metric = .value
     @State private var selectedID: String?
+    /// The tinted row highlight glides from row to row instead of blinking.
+    @Namespace private var rowSelection
 
     var body: some View {
         let buckets = sorted(snapshot.metaCategoryBuckets)
@@ -51,10 +52,11 @@ struct MetaPurposeCard: View {
                 }
             }
         }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.35), value: metric)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: selectedID)
-        .sensoryFeedback(.selection, trigger: selectedID) { _, new in new != nil && app.settings.hapticsEnabled }
-        .sensoryFeedback(.selection, trigger: metric) { _, _ in app.settings.hapticsEnabled }
+        // Switching the metric re-sorts the rows and re-cuts the donut (a layout change → smooth); picking a purpose
+        // is a direct touch (snappy). The segmented control plays its own selection haptic.
+        .motionAnimation(Motion.smooth, value: metric)
+        .motionAnimation(Motion.snappy, value: selectedID)
+        .haptic(.selection, trigger: selectedID, when: { _, new in new != nil })
         .metaScreenshotScrollTarget("statsCategories")
     }
 
@@ -66,14 +68,11 @@ struct MetaPurposeCard: View {
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Theme.Spacing.xs)
             if hasData {
-                Picker("Kennzahl", selection: $metric) {
-                    ForEach(Metric.allCases) { item in
-                        Text(item.title).tag(item)
-                    }
+                GlassSegmentedPicker(selection: $metric, options: Metric.allCases) { item in
+                    Text(item.title)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
                 .fixedSize()
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel("Kennzahl")
             }
         }
@@ -121,13 +120,13 @@ struct MetaPurposeCard: View {
                             .font(.system(.title3, design: .rounded).weight(.bold))
                             .monospacedDigit()
                             .foregroundStyle(Theme.textPrimary)
-                            .contentTransition(.numericText(value: share(focus)))
+                            .numericValue(share(focus))
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                         Image(systemName: MetaCategoryStyle.symbol(focus.category))
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(focus.isUncategorized ? Theme.textSecondary : MetaCategoryStyle.color(focus.category))
-                            .contentTransition(.symbolEffect(.replace))
+                            .symbolReplaceTransition()
                     }
                     .frame(width: frame.width * 0.56)
                     .position(x: frame.midX, y: frame.midY)
@@ -155,7 +154,7 @@ struct MetaPurposeCard: View {
                 .font(.system(size: spotlightSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
-                .contentTransition(.numericText(value: amount(focus)))
+                .numericValue(amount(focus))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(secondaryText(focus))
@@ -213,12 +212,14 @@ struct MetaPurposeCard: View {
                         .monospacedDigit()
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
+                        .numericValue(amount(bucket))
                     Text(Format.percent(share(bucket)))
                         .font(.footnote)
                         .monospacedDigit()
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                         .frame(minWidth: 38, alignment: .trailing)
+                        .numericValue(share(bucket))
                 }
                 ProgressRail(progress: share(bucket) * grow, height: 4,
                              fill: AnyShapeStyle(color.opacity(bucket.isUncategorized ? 0.6 : 1)))
@@ -227,12 +228,15 @@ struct MetaPurposeCard: View {
             .padding(.horizontal, Theme.Spacing.xs)
             .padding(.vertical, 7)
             .background {
-                RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
-                    .fill(isSelected ? color.opacity(0.12) : Color.clear)
+                if isSelected {
+                    RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
+                        .fill(color.opacity(0.12))
+                        .matchedGeometryEffect(id: "purpose.selection", in: rowSelection)
+                }
             }
             .contentShape(.rect(cornerRadius: Theme.Radius.modeTile))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .padding(.horizontal, -Theme.Spacing.xs)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(MetaCategoryStyle.name(bucket.category))
