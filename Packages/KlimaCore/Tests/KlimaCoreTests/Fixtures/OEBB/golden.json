@@ -1,0 +1,5764 @@
+{
+ "hafas/locmatch_innsbruck": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "LocMatch"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "1170101",
+    "name": "Innsbruck",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "8100108",
+    "name": "Innsbruck Hbf",
+    "meta": false
+   },
+   {
+    "type": "S",
+    "id": "8100109",
+    "name": "Innsbruck Westbahnhof",
+    "meta": false
+   },
+   {
+    "type": "S",
+    "id": "1170112",
+    "name": "Wilten (Innsbruck)",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "1370181",
+    "name": "Innsbruck Technik",
+    "meta": true
+   }
+  ],
+  "locationCount": 8
+ },
+ "hafas/locmatch_st_anton": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "LocMatch"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "1170621",
+    "name": "St.Anton am Arlberg",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "1270602",
+    "name": "St.Anton am Arlberg Bahnhof",
+    "meta": true
+   },
+   {
+    "type": "P",
+    "id": "980134590",
+    "name": "St. Anton, Bruck an der Grossglocknerstrasse",
+    "meta": null
+   },
+   {
+    "type": "P",
+    "id": "980137987",
+    "name": "St. Anton am Fratres, Gailpergerweg 1, 9800 Spittal an der Drau",
+    "meta": null
+   },
+   {
+    "type": "P",
+    "id": "980136351",
+    "name": "St. Anton v. Padua, Antonsplatz 21, 1100 Wien",
+    "meta": null
+   }
+  ],
+  "locationCount": 8
+ },
+ "hafas/locmatch_wien_westbahnhof": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "LocMatch"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "1291501",
+    "name": "Wien Westbahnhof (U)",
+    "meta": true
+   },
+   {
+    "type": "P",
+    "id": "980108571",
+    "name": "Westbahnhof Hostel One, Bürgerspitalgasse 17-19, 1060 Wien",
+    "meta": null
+   },
+   {
+    "type": "P",
+    "id": "980111864",
+    "name": "Hotel Mercure Wien Westbahnhof, Felberstrasse 4, 1150 Wien",
+    "meta": null
+   },
+   {
+    "type": "P",
+    "id": "980169846",
+    "name": "Motel One Wien Westbahnhof, Europaplatz 3, 1150 Wien",
+    "meta": null
+   },
+   {
+    "type": "P",
+    "id": "980160411",
+    "name": "Action, Westbahnhof, 1150 Wien",
+    "meta": null
+   }
+  ],
+  "locationCount": 8
+ },
+ "hafas/locmatch_batch_mixed": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK"
+  ],
+  "meth": [
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "1290401",
+    "name": "Wien Hbf (U)",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "8100516",
+    "name": "Wr.Neustadt Hbf",
+    "meta": false
+   },
+   {
+    "type": "S",
+    "id": "1190100",
+    "name": "Wien",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "1192101",
+    "name": "Floridsdorf (Wien)",
+    "meta": true
+   }
+  ],
+  "locationCount": 4,
+  "batch": [
+   [
+    {
+     "type": "S",
+     "id": "1290401",
+     "name": "Wien Hbf (U)"
+    },
+    {
+     "type": "S",
+     "id": "8100516",
+     "name": "Wr.Neustadt Hbf"
+    },
+    {
+     "type": "S",
+     "id": "1190100",
+     "name": "Wien"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1291501",
+     "name": "Wien Westbahnhof (U)"
+    },
+    {
+     "type": "S",
+     "id": "907012",
+     "name": "Wien Westbahnstraße/Kaiserstraße"
+    },
+    {
+     "type": "S",
+     "id": "907020",
+     "name": "Wien Westbahnstraße/Zieglergasse"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "8100002",
+     "name": "Salzburg Hbf"
+    },
+    {
+     "type": "S",
+     "id": "1150101",
+     "name": "Salzburg"
+    },
+    {
+     "type": "S",
+     "id": "1250106",
+     "name": "Salzburg Hagenau Bahnhst"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "8100173",
+     "name": "Graz Hbf"
+    },
+    {
+     "type": "S",
+     "id": "1160117",
+     "name": "Puntigam (Graz)"
+    },
+    {
+     "type": "S",
+     "id": "1260102",
+     "name": "Graz Puntigam Bahnhof"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "8100085",
+     "name": "Klagenfurt Hbf"
+    },
+    {
+     "type": "S",
+     "id": "1120107",
+     "name": "Klagenfurt Viktringer Vorstadt"
+    },
+    {
+     "type": "S",
+     "id": "1120109",
+     "name": "Annabichl (Klagenfurt)"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1180113",
+     "name": "Lech"
+    },
+    {
+     "type": "S",
+     "id": "891302",
+     "name": "Lech Dorfhus"
+    },
+    {
+     "type": "S",
+     "id": "891058",
+     "name": "Lech Feuerwehr"
+    }
+   ],
+   [
+    {
+     "type": "A",
+     "id": "9984288",
+     "name": "6020 Innsbruck, Maria-Theresien-Straße 18 (Gebäude)"
+    },
+    {
+     "type": "A",
+     "id": "9984288",
+     "name": "6020 Innsbruck, Maria-Theresien-Straße 18 (Hauptgebäude)"
+    },
+    {
+     "type": "A",
+     "id": "10009963",
+     "name": "8071 Hausmannstätten, Maria-Theresien-Straße 22"
+    }
+   ],
+   [
+    {
+     "type": "P",
+     "id": "980137938",
+     "name": "Goldenes Dachl, 6020"
+    },
+    {
+     "type": "P",
+     "id": "980057471",
+     "name": "Gasthaus Goldenes Dachl, Hofgasse 1, 6020 Innsbruck"
+    },
+    {
+     "type": "P",
+     "id": "980026270",
+     "name": "Museum Goldenes Dachl, Herzog-Friedrich-Strasse 15, 6020 Innsbruck"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1170531",
+     "name": "Wörgl"
+    },
+    {
+     "type": "S",
+     "id": "8100099",
+     "name": "Wörgl Hbf"
+    },
+    {
+     "type": "S",
+     "id": "1270505",
+     "name": "Wörgl Süd-Bruckhäusl Bahnhst"
+    }
+   ],
+   [
+    {
+     "type": "P",
+     "id": "980124266",
+     "name": "NÖ Landeskindergarten Josef Schöffel, Untere Bachgasse 3, 2340 Mödling"
+    },
+    {
+     "type": "P",
+     "id": "980052225",
+     "name": "Schöffel, Ferdinand-Buchberger-Gasse 4, 2340 Mödling"
+    },
+    {
+     "type": "S",
+     "id": "317337",
+     "name": "Sulz im Wienerwald Schöffelstraße"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1191201",
+     "name": "Meidling (Wien)"
+    },
+    {
+     "type": "S",
+     "id": "1290401",
+     "name": "Wien Hbf (U)"
+    },
+    {
+     "type": "S",
+     "id": "1130201",
+     "name": "St.Pölten"
+    }
+   ]
+  ]
+ },
+ "hafas/locmatch_batch_2_nonfuzzy_nomatch": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK",
+   "OK",
+   "OK",
+   "OK",
+   "OK"
+  ],
+  "meth": [
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch",
+   "LocMatch"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "1170608",
+    "name": "Ischgl",
+    "meta": true
+   },
+   {
+    "type": "S",
+    "id": "796084",
+    "name": "Ischgl Abzw Versahl",
+    "meta": false
+   },
+   {
+    "type": "S",
+    "id": "796082",
+    "name": "Ischgl Ebene",
+    "meta": false
+   },
+   {
+    "type": "S",
+    "id": "796086",
+    "name": "Ischgl Florianparkplatz",
+    "meta": false
+   }
+  ],
+  "locationCount": 4,
+  "batch": [
+   [
+    {
+     "type": "S",
+     "id": "1170608",
+     "name": "Ischgl"
+    },
+    {
+     "type": "S",
+     "id": "796084",
+     "name": "Ischgl Abzw Versahl"
+    },
+    {
+     "type": "S",
+     "id": "796082",
+     "name": "Ischgl Ebene"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1390167",
+     "name": "Wien Stephansplatz (U)"
+    },
+    {
+     "type": "S",
+     "id": "1390367",
+     "name": "Wien Wildgansplatz"
+    },
+    {
+     "type": "S",
+     "id": "1391070",
+     "name": "Wien Stefan-Fadinger-Platz"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1391266",
+     "name": "Wien Schönbrunn (U)"
+    },
+    {
+     "type": "S",
+     "id": "904031",
+     "name": "Wien Schönbrunner Straße/Kettenbrückengasse"
+    },
+    {
+     "type": "S",
+     "id": "1391463",
+     "name": "Wien Schloss Schönbrunn"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1191201",
+     "name": "Meidling (Wien)"
+    },
+    {
+     "type": "S",
+     "id": "1290401",
+     "name": "Wien Hbf (U)"
+    },
+    {
+     "type": "S",
+     "id": "1130201",
+     "name": "St.Pölten"
+    }
+   ],
+   [
+    {
+     "type": "S",
+     "id": "1270601",
+     "name": "Landeck-Zams Bahnhof"
+    },
+    {
+     "type": "S",
+     "id": "1230607",
+     "name": "Pottendorf-Landegg Bahnhst"
+    },
+    {
+     "type": "S",
+     "id": "796235",
+     "name": "Landeck Bahnübersetzung"
+    }
+   ]
+  ]
+ },
+ "hafas/locgeopos_nearby_innsbruck_hbf": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "LocGeoPos"
+  ],
+  "locations": [
+   {
+    "type": "S",
+    "id": "8100108",
+    "name": "Innsbruck Hbf",
+    "distance": 0
+   },
+   {
+    "type": "S",
+    "id": "791253",
+    "name": "Innsbruck Hbf (Verladestelle)",
+    "distance": 61
+   },
+   {
+    "type": "S",
+    "id": "791243",
+    "name": "Innsbruck Hbf (Südtiroler Platz/Steige A-C)",
+    "distance": 92
+   },
+   {
+    "type": "S",
+    "id": "791033",
+    "name": "Innsbruck Hbf (Südtiroler Platz/Steige D-F)",
+    "distance": 99
+   },
+   {
+    "type": "S",
+    "id": "791245",
+    "name": "Innsbruck Hbf (Südtiroler Platz/Steig G)",
+    "distance": 105
+   }
+  ],
+  "locationCount": 10
+ },
+ "hafas/serverinfo": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "ServerInfo"
+  ],
+  "serverInfo": {
+   "hciVersion": "1.96",
+   "serverVersion": "5.45.OEBB.19.0.9 (customer/hcuoebb/release/26.2.1) [2026-07-30]",
+   "fpB": "20260807",
+   "fpE": "20271211",
+   "sD": "20261009",
+   "sT": "111740",
+   "planrtTS": "1791537441"
+  }
+ },
+ "hafas/tripsearch_st_anton_innsbruck": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537321",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T12:33:00+02:00",
+    "plannedArrival": "2026-10-09T13:43:00+02:00",
+    "departure": "2026-10-09T12:33:00+02:00",
+    "arrival": "2026-10-09T13:43:00+02:00",
+    "durationSec": 4200,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4
+    ],
+    "polylinePointCounts": [
+     889
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:06:00+02:00",
+    "plannedArrival": "2026-10-09T15:36:00+02:00",
+    "departure": "2026-10-09T13:06:00+02:00",
+    "arrival": "2026-10-09T15:36:00+02:00",
+    "durationSec": 9000,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "Bus 270",
+     "REX 1"
+    ],
+    "rideCategories": [
+     "Bus",
+     "REX"
+    ],
+    "rideCls": [
+     64,
+     16
+    ],
+    "rideModes": [
+     "bus",
+     "train"
+    ],
+    "operators": [
+     "Österreichische Postbus Aktiengesellschaft",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "Vorplatz",
+    "firstPlannedDeparturePlatform": "Vorplatz",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     35,
+     15
+    ],
+    "polylinePointCounts": [
+     35,
+     2,
+     581
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T14:33:00+02:00",
+    "plannedArrival": "2026-10-09T15:43:00+02:00",
+    "departure": "2026-10-09T14:33:00+02:00",
+    "arrival": "2026-10-09T15:43:00+02:00",
+    "durationSec": 4200,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19917"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4
+    ],
+    "polylinePointCounts": [
+     889
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_innsbruck_lech_bus": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537771",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:16:00+02:00",
+    "plannedArrival": "2026-10-09T13:32:00+02:00",
+    "departure": "2026-10-09T11:16:00+02:00",
+    "arrival": "2026-10-09T13:32:00+02:00",
+    "durationSec": 8160,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19960",
+     "Bus 750"
+    ],
+    "rideCategories": [
+     "RJX",
+     "Bus"
+    ],
+    "rideCls": [
+     1,
+     64
+    ],
+    "rideModes": [
+     "train",
+     "bus"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Österreichische Postbus Aktiengesellschaft"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     10
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:16:00+02:00",
+    "plannedArrival": "2026-10-09T14:09:00+02:00",
+    "departure": "2026-10-09T12:16:00+02:00",
+    "arrival": "2026-10-09T14:09:00+02:00",
+    "durationSec": 6780,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19910",
+     "Bus 760"
+    ],
+    "rideCategories": [
+     "RJX",
+     "Bus"
+    ],
+    "rideCls": [
+     1,
+     64
+    ],
+    "rideModes": [
+     "train",
+     "bus"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Österreichische Postbus Aktiengesellschaft"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     15
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:16:00+02:00",
+    "plannedArrival": "2026-10-09T15:12:00+02:00",
+    "departure": "2026-10-09T13:16:00+02:00",
+    "arrival": "2026-10-09T15:12:00+02:00",
+    "durationSec": 6960,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19962",
+     "Bus 750"
+    ],
+    "rideCategories": [
+     "RJX",
+     "Bus"
+    ],
+    "rideCls": [
+     1,
+     64
+    ],
+    "rideModes": [
+     "train",
+     "bus"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Österreichische Postbus Aktiengesellschaft"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     10
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_innsbruck_wien_hbf": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537711",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T16:32:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T16:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T17:03:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T17:03:00+02:00",
+    "durationSec": 18300,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977",
+     "IC 649"
+    ],
+    "rideCategories": [
+     "RJX",
+     "IC"
+    ],
+    "rideCls": [
+     1,
+     4
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     12
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:56:00+02:00",
+    "plannedArrival": "2026-10-09T17:32:00+02:00",
+    "departure": "2026-10-09T12:56:00+02:00",
+    "arrival": "2026-10-09T17:32:00+02:00",
+    "durationSec": 16560,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX13477"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "4",
+    "firstPlannedDeparturePlatform": "4",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_wien_westbf_salzburg": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 8,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537711",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:18:00+02:00",
+    "plannedArrival": "2026-10-09T13:53:00+02:00",
+    "departure": "2026-10-09T11:18:00+02:00",
+    "arrival": "2026-10-09T13:53:00+02:00",
+    "durationSec": 9300,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "CJX 5",
+     "RJX19976"
+    ],
+    "rideCategories": [
+     "CJX",
+     "RJX"
+    ],
+    "rideCls": [
+     16,
+     1
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     3
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:23:00+02:00",
+    "plannedArrival": "2026-10-09T13:53:00+02:00",
+    "departure": "2026-10-09T11:23:00+02:00",
+    "arrival": "2026-10-09T13:53:00+02:00",
+    "durationSec": 9000,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "U6",
+     "RJX19976"
+    ],
+    "rideCategories": [
+     "U",
+     "RJX"
+    ],
+    "rideCls": [
+     256,
+     1
+    ],
+    "rideModes": [
+     "metro",
+     "train"
+    ],
+    "operators": [
+     "Wiener Linien GmbH & Co KG",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "2",
+    "firstPlannedDeparturePlatform": "2",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     5,
+     4
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:30:00+02:00",
+    "plannedArrival": "2026-10-09T14:49:00+02:00",
+    "departure": "2026-10-09T11:30:00+02:00",
+    "arrival": "2026-10-09T14:49:00+02:00",
+    "durationSec": 11940,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "EC 204",
+     "IC 642"
+    ],
+    "rideCategories": [
+     "EC",
+     "IC"
+    ],
+    "rideCls": [
+     4,
+     4
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "8",
+    "firstPlannedDeparturePlatform": "8",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     2,
+     11
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_graz_klagenfurt_koralm": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537740",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:22:00+02:00",
+    "plannedArrival": "2026-10-09T12:03:00+02:00",
+    "departure": "2026-10-09T11:25:00+02:00",
+    "arrival": "2026-10-09T12:03:00+02:00",
+    "durationSec": 2460,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX 133"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "5",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 180,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     2
+    ],
+    "polylinePointCounts": [
+     465
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:45:00+02:00",
+    "plannedArrival": "2026-10-09T14:49:00+02:00",
+    "departure": "2026-10-09T11:45:00+02:00",
+    "arrival": "2026-10-09T14:49:00+02:00",
+    "durationSec": 11040,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "IR 584"
+    ],
+    "rideCategories": [
+     "IR"
+    ],
+    "rideCls": [
+     4
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "5",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     22
+    ],
+    "polylinePointCounts": [
+     1982
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:03:00+02:00",
+    "plannedArrival": "2026-10-09T12:57:00+02:00",
+    "departure": "2026-10-09T12:03:00+02:00",
+    "arrival": "2026-10-09T12:57:00+02:00",
+    "durationSec": 3240,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJ 554"
+    ],
+    "rideCategories": [
+     "RJ"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "5",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4
+    ],
+    "polylinePointCounts": [
+     465
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_overnight_dst_change_wien_innsbruck": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 3,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791538102",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-24T22:44:00+02:00",
+    "plannedArrival": "2026-10-25T05:05:00+01:00",
+    "departure": "2026-10-24T22:44:00+02:00",
+    "arrival": "2026-10-25T05:05:00+01:00",
+    "durationSec": 26460,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "NJ 19946"
+    ],
+    "rideCategories": [
+     "NJ"
+    ],
+    "rideCls": [
+     8
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "8",
+    "firstPlannedDeparturePlatform": "8",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     10
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-24T23:28:00+02:00",
+    "plannedArrival": "2026-10-25T04:27:00+01:00",
+    "departure": "2026-10-24T23:28:00+02:00",
+    "arrival": "2026-10-25T04:27:00+01:00",
+    "durationSec": 21540,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "EN 40462"
+    ],
+    "rideCategories": [
+     "EN"
+    ],
+    "rideCls": [
+     8
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": null,
+    "firstPlannedDeparturePlatform": null,
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     6
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-24T23:28:00+02:00",
+    "plannedArrival": "2026-10-25T04:27:00+01:00",
+    "departure": "2026-10-24T23:28:00+02:00",
+    "arrival": "2026-10-25T04:27:00+01:00",
+    "durationSec": 21540,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "EC 462",
+     "NJ 466"
+    ],
+    "rideCategories": [
+     "EC",
+     "NJ"
+    ],
+    "rideCls": [
+     4,
+     8
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "8",
+    "firstPlannedDeparturePlatform": "8",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     5,
+     2
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_paging_later_graz_klagenfurt": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537981",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T13:03:00+02:00",
+    "plannedArrival": "2026-10-09T13:57:00+02:00",
+    "departure": "2026-10-09T13:03:00+02:00",
+    "arrival": "2026-10-09T13:57:00+02:00",
+    "durationSec": 3240,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJ 752"
+    ],
+    "rideCategories": [
+     "RJ"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:22:00+02:00",
+    "plannedArrival": "2026-10-09T14:03:00+02:00",
+    "departure": "2026-10-09T13:22:00+02:00",
+    "arrival": "2026-10-09T14:03:00+02:00",
+    "durationSec": 2460,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX 53"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "4",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:45:00+02:00",
+    "plannedArrival": "2026-10-09T16:49:00+02:00",
+    "departure": "2026-10-09T13:45:00+02:00",
+    "arrival": "2026-10-09T16:49:00+02:00",
+    "durationSec": 11040,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "IR 582"
+    ],
+    "rideCategories": [
+     "IR"
+    ],
+    "rideCls": [
+     4
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_paging_earlier_graz_klagenfurt": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537981",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T07:45:00+02:00",
+    "plannedArrival": "2026-10-09T10:49:00+02:00",
+    "departure": "2026-10-09T07:45:00+02:00",
+    "arrival": "2026-10-09T10:49:00+02:00",
+    "durationSec": 11040,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "IR 588"
+    ],
+    "rideCategories": [
+     "IR"
+    ],
+    "rideCls": [
+     4
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "5",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T10:00:00+02:00",
+    "plannedArrival": "2026-10-09T10:48:00+02:00",
+    "departure": "2026-10-09T10:00:00+02:00",
+    "arrival": "2026-10-09T10:48:00+02:00",
+    "durationSec": 2880,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "ICE 116"
+    ],
+    "rideCategories": [
+     "ICE"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3D-E",
+    "firstPlannedDeparturePlatform": "5D-F",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T10:03:00+02:00",
+    "plannedArrival": "2026-10-09T10:57:00+02:00",
+    "departure": "2026-10-09T10:04:00+02:00",
+    "arrival": "2026-10-09T10:57:00+02:00",
+    "durationSec": 3240,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJ 131"
+    ],
+    "rideCategories": [
+     "RJ"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "5",
+    "firstPlannedDeparturePlatform": "5",
+    "firstDepartureDelaySec": 60,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_getTariff_true_innsbruck_wien": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 2,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791538252",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T13:58:00+02:00",
+    "plannedArrival": "2026-10-09T18:32:00+02:00",
+    "departure": "2026-10-09T13:58:00+02:00",
+    "arrival": "2026-10-09T18:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "7",
+    "firstPlannedDeparturePlatform": "7",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:58:00+02:00",
+    "plannedArrival": "2026-10-09T19:03:00+02:00",
+    "departure": "2026-10-09T13:58:00+02:00",
+    "arrival": "2026-10-09T19:03:00+02:00",
+    "durationSec": 18300,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915",
+     "IC 743"
+    ],
+    "rideCategories": [
+     "RJX",
+     "IC"
+    ],
+    "rideCls": [
+     1,
+     4
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "7",
+    "firstPlannedDeparturePlatform": "7",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     0,
+     0
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ],
+  "shopLink": "https://shop.oebbtickets.at/de/ticket?cref=scotty&connectionDatetimeDeparture=2026-10-09T13:58&connectionDatetimeArrival=2026-10-09T18:32&connectionOrigEva=8100108&connectionDestEva=8103000&stationOrigName=Innsbruck%20Hbf&stationDestName=Wien%20Hbf%20(Bahnsteige%203-12)"
+ },
+ "hafas/tripsearch_vienna_urban_address_to_poi": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 6,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537771",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:16:00+02:00",
+    "plannedArrival": "2026-10-09T11:57:00+02:00",
+    "departure": "2026-10-09T11:16:00+02:00",
+    "arrival": "2026-10-09T11:57:00+02:00",
+    "durationSec": 2460,
+    "changes": 0,
+    "legTypes": [
+     "WALK",
+     "JNY",
+     "WALK"
+    ],
+    "rideLines": [
+     "U4"
+    ],
+    "rideCategories": [
+     "U"
+    ],
+    "rideCls": [
+     256
+    ],
+    "rideModes": [
+     "metro"
+    ],
+    "operators": [
+     "Wiener Linien GmbH & Co KG"
+    ],
+    "firstDeparturePlatform": "2",
+    "firstPlannedDeparturePlatform": "2",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     10
+    ],
+    "polylinePointCounts": [
+     0,
+     108,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:16:00+02:00",
+    "plannedArrival": "2026-10-09T11:56:00+02:00",
+    "departure": "2026-10-09T11:16:00+02:00",
+    "arrival": "2026-10-09T11:57:00+02:00",
+    "durationSec": 2400,
+    "changes": 1,
+    "legTypes": [
+     "WALK",
+     "JNY",
+     "WALK",
+     "JNY",
+     "WALK"
+    ],
+    "rideLines": [
+     "U3",
+     "Tram 60"
+    ],
+    "rideCategories": [
+     "U",
+     "str"
+    ],
+    "rideCls": [
+     256,
+     512
+    ],
+    "rideModes": [
+     "metro",
+     "tram"
+    ],
+    "operators": [
+     "Wiener Linien GmbH & Co KG",
+     "Wiener Linien GmbH & Co KG"
+    ],
+    "firstDeparturePlatform": "2",
+    "firstPlannedDeparturePlatform": "2",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     6,
+     8
+    ],
+    "polylinePointCounts": [
+     0,
+     46,
+     2,
+     43,
+     0
+    ],
+    "remarkCount": 2,
+    "isAlternative": true
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:19:00+02:00",
+    "plannedArrival": "2026-10-09T11:52:00+02:00",
+    "departure": "2026-10-09T11:19:00+02:00",
+    "arrival": "2026-10-09T11:52:00+02:00",
+    "durationSec": 1980,
+    "changes": 1,
+    "legTypes": [
+     "WALK",
+     "JNY",
+     "WALK",
+     "JNY",
+     "WALK"
+    ],
+    "rideLines": [
+     "U1",
+     "U4"
+    ],
+    "rideCategories": [
+     "U",
+     "U"
+    ],
+    "rideCls": [
+     256,
+     256
+    ],
+    "rideModes": [
+     "metro",
+     "metro"
+    ],
+    "operators": [
+     "Wiener Linien GmbH & Co KG",
+     "Wiener Linien GmbH & Co KG"
+    ],
+    "firstDeparturePlatform": "2",
+    "firstPlannedDeparturePlatform": "2",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     2,
+     7
+    ],
+    "polylinePointCounts": [
+     0,
+     13,
+     2,
+     71,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_tyrol_bus_landeck_ischgl": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537771",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:10:00+02:00",
+    "plannedArrival": "2026-10-09T12:01:00+02:00",
+    "departure": "2026-10-09T11:13:00+02:00",
+    "arrival": "2026-10-09T12:05:00+02:00",
+    "durationSec": 3060,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "Bus 260"
+    ],
+    "rideCategories": [
+     "Bus"
+    ],
+    "rideCls": [
+     64
+    ],
+    "rideModes": [
+     "bus"
+    ],
+    "operators": [
+     "Paznauntaler Verkehrsunternehmen GmbH"
+    ],
+    "firstDeparturePlatform": "C",
+    "firstPlannedDeparturePlatform": "C",
+    "firstDepartureDelaySec": 180,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     36
+    ],
+    "polylinePointCounts": [
+     36
+    ],
+    "remarkCount": 2,
+    "isAlternative": true
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:40:00+02:00",
+    "plannedArrival": "2026-10-09T12:31:00+02:00",
+    "departure": "2026-10-09T11:40:00+02:00",
+    "arrival": "2026-10-09T12:31:00+02:00",
+    "durationSec": 3060,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "Bus 260"
+    ],
+    "rideCategories": [
+     "Bus"
+    ],
+    "rideCls": [
+     64
+    ],
+    "rideModes": [
+     "bus"
+    ],
+    "operators": [
+     "Paznauntaler Verkehrsunternehmen GmbH"
+    ],
+    "firstDeparturePlatform": "C",
+    "firstPlannedDeparturePlatform": "C",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     36
+    ],
+    "polylinePointCounts": [
+     36
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:10:00+02:00",
+    "plannedArrival": "2026-10-09T13:01:00+02:00",
+    "departure": "2026-10-09T12:10:00+02:00",
+    "arrival": "2026-10-09T13:01:00+02:00",
+    "durationSec": 3060,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "Bus 260"
+    ],
+    "rideCategories": [
+     "Bus"
+    ],
+    "rideCls": [
+     64
+    ],
+    "rideModes": [
+     "bus"
+    ],
+    "operators": [
+     "Paznauntaler Verkehrsunternehmen GmbH"
+    ],
+    "firstDeparturePlatform": "C",
+    "firstPlannedDeparturePlatform": "C",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     36
+    ],
+    "polylinePointCounts": [
+     36
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_arrive_by_innsbruck_wien": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 3,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537921",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T16:32:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T16:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T17:03:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T17:03:00+02:00",
+    "durationSec": 18300,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977",
+     "IC 649"
+    ],
+    "rideCategories": [
+     "RJX",
+     "IC"
+    ],
+    "rideCls": [
+     1,
+     4
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     12
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:56:00+02:00",
+    "plannedArrival": "2026-10-09T17:32:00+02:00",
+    "departure": "2026-10-09T12:56:00+02:00",
+    "arrival": "2026-10-09T17:32:00+02:00",
+    "durationSec": 16560,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX13477"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "4",
+    "firstPlannedDeparturePlatform": "4",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_via_linz_maxchg0_rail": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 3,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537921",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T16:32:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T16:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:56:00+02:00",
+    "plannedArrival": "2026-10-09T17:32:00+02:00",
+    "departure": "2026-10-09T12:56:00+02:00",
+    "arrival": "2026-10-09T17:32:00+02:00",
+    "durationSec": 16560,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX13477"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "4",
+    "firstPlannedDeparturePlatform": "4",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:58:00+02:00",
+    "plannedArrival": "2026-10-09T18:32:00+02:00",
+    "departure": "2026-10-09T13:58:00+02:00",
+    "arrival": "2026-10-09T18:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "7",
+    "firstPlannedDeparturePlatform": "7",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_bike_filter_BC": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 3,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537950",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:58:00+02:00",
+    "plannedArrival": "2026-10-09T16:32:00+02:00",
+    "departure": "2026-10-09T11:58:00+02:00",
+    "arrival": "2026-10-09T16:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19977"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T12:56:00+02:00",
+    "plannedArrival": "2026-10-09T17:32:00+02:00",
+    "departure": "2026-10-09T12:56:00+02:00",
+    "arrival": "2026-10-09T17:32:00+02:00",
+    "durationSec": 16560,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX13477"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "4",
+    "firstPlannedDeparturePlatform": "4",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:58:00+02:00",
+    "plannedArrival": "2026-10-09T18:32:00+02:00",
+    "departure": "2026-10-09T13:58:00+02:00",
+    "arrival": "2026-10-09T18:32:00+02:00",
+    "durationSec": 16440,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "7",
+    "firstPlannedDeparturePlatform": "7",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     8
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/tripsearch_accessibility_meta_filter": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 4,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791537950",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:23:00+02:00",
+    "plannedArrival": "2026-10-09T13:53:00+02:00",
+    "departure": "2026-10-09T11:23:00+02:00",
+    "arrival": "2026-10-09T13:53:00+02:00",
+    "durationSec": 9000,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "U6",
+     "RJX19976"
+    ],
+    "rideCategories": [
+     "U",
+     "RJX"
+    ],
+    "rideCls": [
+     256,
+     1
+    ],
+    "rideModes": [
+     "metro",
+     "train"
+    ],
+    "operators": [
+     "Wiener Linien GmbH & Co KG",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "2",
+    "firstPlannedDeparturePlatform": "2",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     5,
+     4
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:30:00+02:00",
+    "plannedArrival": "2026-10-09T14:49:00+02:00",
+    "departure": "2026-10-09T11:30:00+02:00",
+    "arrival": "2026-10-09T14:49:00+02:00",
+    "durationSec": 11940,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "EC 204",
+     "IC 642"
+    ],
+    "rideCategories": [
+     "EC",
+     "IC"
+    ],
+    "rideCls": [
+     4,
+     4
+    ],
+    "rideModes": [
+     "train",
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "8",
+    "firstPlannedDeparturePlatform": "8",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     2,
+     11
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T11:38:00+02:00",
+    "plannedArrival": "2026-10-09T14:08:00+02:00",
+    "departure": "2026-10-09T11:38:00+02:00",
+    "arrival": "2026-10-09T14:08:00+02:00",
+    "durationSec": 9000,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "WB 912"
+    ],
+    "rideCategories": [
+     "WB"
+    ],
+    "rideCls": [
+     4096
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Westbahn Management GmbH"
+    ],
+    "firstDeparturePlatform": "6",
+    "firstPlannedDeparturePlatform": "6",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     9
+    ],
+    "polylinePointCounts": [
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/legacy_mgate141_tripsearch_st_anton_innsbruck": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "TripSearch"
+  ],
+  "journeyCount": 2,
+  "hasLaterRef": true,
+  "hasEarlierRef": true,
+  "planrtTS": "1791538042",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T12:33:00+02:00",
+    "plannedArrival": "2026-10-09T13:43:00+02:00",
+    "departure": "2026-10-09T12:33:00+02:00",
+    "arrival": "2026-10-09T13:43:00+02:00",
+    "durationSec": 4200,
+    "changes": 0,
+    "legTypes": [
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19915"
+    ],
+    "rideCategories": [
+     "RJX"
+    ],
+    "rideCls": [
+     1
+    ],
+    "rideModes": [
+     "train"
+    ],
+    "operators": [
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4
+    ],
+    "polylinePointCounts": [
+     889
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   },
+   {
+    "plannedDeparture": "2026-10-09T13:06:00+02:00",
+    "plannedArrival": "2026-10-09T15:36:00+02:00",
+    "departure": "2026-10-09T13:06:00+02:00",
+    "arrival": "2026-10-09T15:36:00+02:00",
+    "durationSec": 9000,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "Bus 270",
+     "REX 1"
+    ],
+    "rideCategories": [
+     "Bus",
+     "REX"
+    ],
+    "rideCls": [
+     64,
+     16
+    ],
+    "rideModes": [
+     "bus",
+     "train"
+    ],
+    "operators": [
+     "Österreichische Postbus Aktiengesellschaft",
+     "Nahreisezug"
+    ],
+    "firstDeparturePlatform": "Vorplatz",
+    "firstPlannedDeparturePlatform": "Vorplatz",
+    "firstDepartureDelaySec": null,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     35,
+     15
+    ],
+    "polylinePointCounts": [
+     35,
+     2,
+     581
+    ],
+    "remarkCount": 1,
+    "isAlternative": false
+   }
+  ]
+ },
+ "hafas/reconstruction_innsbruck_lech_outReconL": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "Reconstruction"
+  ],
+  "journeyCount": 1,
+  "hasLaterRef": false,
+  "hasEarlierRef": false,
+  "planrtTS": "1791537862",
+  "journeys": [
+   {
+    "plannedDeparture": "2026-10-09T11:16:00+02:00",
+    "plannedArrival": "2026-10-09T13:32:00+02:00",
+    "departure": "2026-10-09T11:16:00+02:00",
+    "arrival": "2026-10-09T13:32:00+02:00",
+    "durationSec": 8160,
+    "changes": 1,
+    "legTypes": [
+     "JNY",
+     "WALK",
+     "JNY"
+    ],
+    "rideLines": [
+     "RJX19960",
+     "Bus 750"
+    ],
+    "rideCategories": [
+     "RJX",
+     "Bus"
+    ],
+    "rideCls": [
+     1,
+     64
+    ],
+    "rideModes": [
+     "train",
+     "bus"
+    ],
+    "operators": [
+     "Nahreisezug",
+     "Österreichische Postbus Aktiengesellschaft"
+    ],
+    "firstDeparturePlatform": "3",
+    "firstPlannedDeparturePlatform": "3",
+    "firstDepartureDelaySec": 0,
+    "refreshTokenPrefix": "¶HKI¶",
+    "stopoverCounts": [
+     4,
+     10
+    ],
+    "polylinePointCounts": [
+     0,
+     0,
+     0
+    ],
+    "remarkCount": 0,
+    "isAlternative": false
+   }
+  ],
+  "shopLink": "https://shop.oebbtickets.at/de/ticket?cref=scotty&connectionDatetimeDeparture=2026-10-09T11:16&connectionDatetimeArrival=2026-10-09T13:32&connectionOrigEva=8100108&connectionDestEva=891290&stationOrigName=Innsbruck%20Hbf&stationDestName=Lech%20R%C3%BCfiplatz"
+ },
+ "hafas/journeydetails_rjx133_koralm_polyline": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "JourneyDetails"
+  ],
+  "trip": {
+   "line": "RJX 133",
+   "direction": "Venezia Santa Lucia",
+   "stopoverCount": 12,
+   "polylinePointCount": 3589,
+   "polylineFirst": [
+    48.18505,
+    16.37701
+   ],
+   "polylineLast": [
+    45.44138,
+    12.32044
+   ],
+   "firstStop": "Wien Hbf (Bahnsteige 3-12)",
+   "lastStop": "Venezia Santa Lucia"
+  }
+ },
+ "hafas/stationboard_dep_innsbruck_hbf": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "StationBoard"
+  ],
+  "boardType": "DEP",
+  "entryCount": 30,
+  "entries": [
+   {
+    "line": "Bus F",
+    "direction": "Rum Bahnhst",
+    "plannedWhen": "2026-10-09T11:22:00+02:00",
+    "when": "2026-10-09T11:24:00+02:00",
+    "delaySec": 120,
+    "platform": "F",
+    "plannedPlatform": "F",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Tram 5",
+    "direction": "Rum Bahnhst",
+    "plannedWhen": "2026-10-09T11:22:00+02:00",
+    "when": "2026-10-09T11:26:00+02:00",
+    "delaySec": 240,
+    "platform": "F",
+    "plannedPlatform": "F",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Tram 5",
+    "direction": "Technik West",
+    "plannedWhen": "2026-10-09T11:26:00+02:00",
+    "when": "2026-10-09T11:26:00+02:00",
+    "delaySec": 0,
+    "platform": "G",
+    "plannedPlatform": "G",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Bus K",
+    "direction": "Kranebitten Bahnhst",
+    "plannedWhen": "2026-10-09T11:27:00+02:00",
+    "when": "2026-10-09T11:28:00+02:00",
+    "delaySec": 60,
+    "platform": "F",
+    "plannedPlatform": "F",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Bus R",
+    "direction": "DEZ Süd via Baggersee",
+    "plannedWhen": "2026-10-09T11:27:00+02:00",
+    "when": "2026-10-09T11:27:00+02:00",
+    "delaySec": 0,
+    "platform": "F",
+    "plannedPlatform": "F",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   }
+  ],
+  "platformChanges": [
+   {
+    "line": "S 4",
+    "direction": "Jenbach",
+    "plannedWhen": "2026-10-09T11:35:00+02:00",
+    "plannedPlatform": "4",
+    "platform": "3"
+   }
+  ],
+  "maxDelaySec": 240
+ },
+ "hafas/stationboard_arr_wien_hbf": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "StationBoard"
+  ],
+  "boardType": "ARR",
+  "entryCount": 42,
+  "entries": [
+   {
+    "line": "Bus B23",
+    "direction": "Lockenhaus Hauptplatz",
+    "plannedWhen": "2026-10-09T06:23:00+02:00",
+    "when": "2026-10-09T12:17:00+02:00",
+    "delaySec": 21240,
+    "platform": "L1",
+    "plannedPlatform": "L1",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Tram O",
+    "direction": "Wien Bruno-Marek-Allee (Schleife)",
+    "plannedWhen": "2026-10-09T11:21:00+02:00",
+    "when": "2026-10-09T11:24:00+02:00",
+    "delaySec": 180,
+    "platform": "E",
+    "plannedPlatform": "E",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": true
+   },
+   {
+    "line": "Tram D",
+    "direction": "Wien Börse (Peregringasse)",
+    "plannedWhen": "2026-10-09T11:23:00+02:00",
+    "when": "2026-10-09T11:25:00+02:00",
+    "delaySec": 120,
+    "platform": null,
+    "plannedPlatform": null,
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "Tram 18",
+    "direction": "Wien Stadion (Meiereistraße/Handelskai)",
+    "plannedWhen": "2026-10-09T11:25:00+02:00",
+    "when": "2026-10-09T11:25:00+02:00",
+    "delaySec": 0,
+    "platform": "H",
+    "plannedPlatform": "H",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "BusVAB 1",
+    "direction": "Flughafen Wien Busterminal (Terminal 3/Busstraße)",
+    "plannedWhen": "2026-10-09T11:25:00+02:00",
+    "when": "2026-10-09T11:25:00+02:00",
+    "delaySec": 0,
+    "platform": "R",
+    "plannedPlatform": "R",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   }
+  ],
+  "platformChanges": [],
+  "maxDelaySec": 21240
+ },
+ "hafas/stationboard_dep_wien_hbf_rail_90min": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "StationBoard"
+  ],
+  "boardType": "DEP",
+  "entryCount": 56,
+  "entries": [
+   {
+    "line": "R 95",
+    "direction": "Traiskirchen Aspangbahn",
+    "plannedWhen": "2026-10-09T11:27:00+02:00",
+    "when": "2026-10-09T11:27:00+02:00",
+    "delaySec": 0,
+    "platform": "10A-B",
+    "plannedPlatform": "10A-B",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "RJX19976",
+    "direction": "Bregenz",
+    "plannedWhen": "2026-10-09T11:28:00+02:00",
+    "when": "2026-10-09T11:28:00+02:00",
+    "delaySec": 0,
+    "platform": "7",
+    "plannedPlatform": "7",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "S 80",
+    "direction": "Wien Aspern Nord",
+    "plannedWhen": "2026-10-09T11:28:00+02:00",
+    "when": "2026-10-09T11:28:00+02:00",
+    "delaySec": 0,
+    "platform": "3",
+    "plannedPlatform": "3",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "EC 140",
+    "direction": "Wien Westbahnhof",
+    "plannedWhen": "2026-10-09T11:30:00+02:00",
+    "when": "2026-10-09T11:30:00+02:00",
+    "delaySec": 0,
+    "platform": "5A-B",
+    "plannedPlatform": "5A-B",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   },
+   {
+    "line": "S 80",
+    "direction": "Leobersdorf",
+    "plannedWhen": "2026-10-09T11:33:00+02:00",
+    "when": "2026-10-09T11:33:00+02:00",
+    "delaySec": 0,
+    "platform": "3",
+    "plannedPlatform": "3",
+    "platformChanged": false,
+    "cancelled": false,
+    "redirected": false
+   }
+  ],
+  "platformChanges": [
+   {
+    "line": "R 81",
+    "direction": "Marchegg",
+    "plannedWhen": "2026-10-09T11:46:00+02:00",
+    "plannedPlatform": "4A-B",
+    "platform": "4C-E"
+   }
+  ],
+  "maxDelaySec": 600
+ },
+ "hafas/himsearch_disruptions_rail": {
+  "topErr": "OK",
+  "svcErr": [
+   "OK"
+  ],
+  "meth": [
+   "HimSearch"
+  ],
+  "messageCount": 15,
+  "messages": [
+   {
+    "id": "HIM_FREETEXT_768111",
+    "head": "Bahnsteig 91/92 in Villach Hbf nicht barrierefrei",
+    "prio": 100,
+    "validFrom": "2026-04-23T00:00:00+02:00",
+    "validUntil": "2026-10-27T23:59:00+01:00"
+   },
+   {
+    "id": "HIM_FREETEXT_834778",
+    "head": "Bauarbeiten - Schienenersatzverkehr/geänderte Fahrzeiten",
+    "prio": 100,
+    "validFrom": "2026-02-16T00:00:00+01:00",
+    "validUntil": "2026-11-17T23:59:00+01:00"
+   },
+   {
+    "id": "HIM_FREETEXT_834779",
+    "head": "Bauarbeiten - Schienenersatzverkehr/geänderte Fahrzeiten",
+    "prio": 100,
+    "validFrom": "2026-02-16T00:00:00+01:00",
+    "validUntil": "2026-11-17T23:59:00+01:00"
+   }
+  ]
+ },
+ "hafas/batch_edge_cases_errors": {
+  "topErr": "OK",
+  "svcErr": [
+   "LOCATION",
+   "H890",
+   "PARAMETER",
+   "H9381"
+  ],
+  "meth": [
+   "TripSearch",
+   "TripSearch",
+   "JourneyDetails",
+   "TripSearch"
+  ],
+  "svcErrTxtOut": [
+   "Während der Suche ist ein interner Fehler aufgetreten",
+   "Es wurde keine Verbindung gefunden",
+   "Während der Suche ist ein interner Fehler aufgetreten",
+   "Während der Suche ist ein interner Fehler aufgetreten"
+  ]
+ },
+ "hafas/error_parse_invalid_enum_rtmode": {
+  "topErr": "PARSE",
+  "svcErr": [],
+  "meth": [],
+  "errTxt": "HCI Core: Parse fail : Parser error: root.svcReqL.svcReqL.cfg.rtMode(SFlCUklE)"
+ },
+ "hafas/error_parse_unknown_field": {
+  "topErr": "PARSE",
+  "svcErr": [],
+  "meth": [],
+  "errTxt": "HCI Core: Parse fail : Parser error: root.svcReqL.svcReqL.req(Z2V0VGltZVRhYmxlUGVyaW9k)"
+ },
+ "hafas/error_parse_reconstruction_ctxRecon_v188": {
+  "topErr": "PARSE",
+  "svcErr": [],
+  "meth": [],
+  "errTxt": "HCI Core: Parse fail : Parser error: root.svcReqL.svcReqL.req(Y3R4UmVjb24=)"
+ },
+ "hafas/error_auth_invalid_aid": {
+  "topErr": "AUTH",
+  "svcErr": [],
+  "meth": [],
+  "errTxt": "HCI Core: Authorization fail"
+ },
+ "shop/shop_wien-salzburg_2026-10-10_01_anonymousToken": {
+  "status": 200,
+  "keys": [
+   "access_token",
+   "expires_in",
+   "refresh_expires_in",
+   "refresh_token",
+   "scope",
+   "session_state"
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_02_initUserData": {
+  "status": 200,
+  "keys": [
+   "cashId",
+   "channel",
+   "customerId",
+   "legacyUserMigrated",
+   "orgUnit",
+   "personId",
+   "realm",
+   "sessionCreatedAt",
+   "sessionId",
+   "sessionTimeout",
+   "sessionVersion",
+   "showNewsletterSelection123m",
+   "showTermsAndConditions",
+   "supportId",
+   "userId",
+   "xffxIP"
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_03_stations_0": {
+  "status": 200,
+  "stations": [
+   {
+    "number": 1290401,
+    "name": "Wien Hbf (U)",
+    "meta": ""
+   },
+   {
+    "number": 8100516,
+    "name": "Wr.Neustadt Hbf",
+    "meta": ""
+   },
+   {
+    "number": 1190100,
+    "name": "",
+    "meta": "Wien"
+   },
+   {
+    "number": 1192101,
+    "name": "",
+    "meta": "Floridsdorf (Wien)"
+   },
+   {
+    "number": 1292101,
+    "name": "Wien Floridsdorf Bahnhof (U)",
+    "meta": ""
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_03_stations_1": {
+  "status": 200,
+  "stations": [
+   {
+    "number": 8100002,
+    "name": "Salzburg Hbf",
+    "meta": ""
+   },
+   {
+    "number": 1150101,
+    "name": "",
+    "meta": "Salzburg"
+   },
+   {
+    "number": 1250106,
+    "name": "Salzburg Hagenau Bahnhst",
+    "meta": ""
+   },
+   {
+    "number": 1350172,
+    "name": "Salzburg Herbert-von-Karajan-Platz",
+    "meta": ""
+   },
+   {
+    "number": 591059,
+    "name": "Salzburg Hofhaymer Allee",
+    "meta": ""
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_05_timetable": {
+  "status": 200,
+  "connectionCount": 5,
+  "connections": [
+   {
+    "id": "40b209785651",
+    "departure": "2026-10-10T08:28:00.000",
+    "arrival": "2026-10-10T10:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "19962"
+     ]
+    ]
+   },
+   {
+    "id": "63dd50ddbe79",
+    "departure": "2026-10-10T08:57:00.000",
+    "arrival": "2026-10-10T11:49:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10320000,
+    "sections": [
+     [
+      "IC",
+      "546"
+     ]
+    ]
+   },
+   {
+    "id": "af32b4247169",
+    "departure": "2026-10-10T09:13:00.000",
+    "arrival": "2026-10-10T13:26:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 1,
+    "durationMs": 15180000,
+    "sections": [
+     [
+      "EC",
+      "1216"
+     ],
+     [
+      "R",
+      "2"
+     ]
+    ]
+   },
+   {
+    "id": "8b6841e2662e",
+    "departure": "2026-10-10T09:28:00.000",
+    "arrival": "2026-10-10T11:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "19952"
+     ]
+    ]
+   },
+   {
+    "id": "7572813fddd9",
+    "departure": "2026-10-10T10:28:00.000",
+    "arrival": "2026-10-10T12:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "13470"
+     ]
+    ]
+   }
+  ],
+  "infos": []
+ },
+ "shop/shop_wien-salzburg_2026-10-10_06_prices": {
+  "status": 200,
+  "cheapest": [
+   {
+    "price": 66.4,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   },
+   {
+    "price": 66.4,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   },
+   {
+    "price": 66.4,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   },
+   {
+    "price": 66.4,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   },
+   {
+    "price": 66.4,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_07_offers_v6_adult": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 66.4,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 129.5,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 66.4,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 129.5,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 129.5,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_08_offers_v6_vorteilscard": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 33.2,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 64.8,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 33.2,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": [
+     "1× Vorteilscard Classic"
+    ]
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 64.8,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": [
+     "1× Vorteilscard Classic"
+    ]
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 64.8,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": [
+     "1× Vorteilscard Classic"
+    ]
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_2026-10-10_09_offers_v6_child8": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 33.2,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 64.8,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 33.2,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 64.8,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 64.8,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_wien-salzburg_sameday_2026-10-09_05_timetable": {
+  "status": 200,
+  "connectionCount": 5,
+  "connections": [
+   {
+    "id": "e04ec39f5a59",
+    "departure": "2026-10-09T14:28:00.000",
+    "arrival": "2026-10-09T16:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "13474"
+     ]
+    ]
+   },
+   {
+    "id": "6894650b8f6a",
+    "departure": "2026-10-09T14:57:00.000",
+    "arrival": "2026-10-09T17:49:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10320000,
+    "sections": [
+     [
+      "IC",
+      "648"
+     ]
+    ]
+   },
+   {
+    "id": "cad5c0f02129",
+    "departure": "2026-10-09T15:13:00.000",
+    "arrival": "2026-10-09T18:00:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10020000,
+    "sections": [
+     [
+      "ICE",
+      "1212"
+     ]
+    ]
+   },
+   {
+    "id": "51762ca6cd1f",
+    "departure": "2026-10-09T15:24:00.000",
+    "arrival": "2026-10-09T21:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 23340000,
+    "sections": [
+     [
+      "RJ",
+      "658"
+     ]
+    ]
+   },
+   {
+    "id": "f6f2b1cf361e",
+    "departure": "2026-10-09T15:28:00.000",
+    "arrival": "2026-10-09T17:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "187"
+     ]
+    ]
+   }
+  ],
+  "infos": [
+   "Bauarbeiten - geänderte Fahrzeiten"
+  ]
+ },
+ "shop/shop_wien-salzburg_sameday_2026-10-09_07_offers_v6_adult": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 67.7,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 132.1,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 67.7,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 132.1,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 132.1,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_ibk-hall_2026-10-10_05_timetable": {
+  "status": 200,
+  "connectionCount": 5,
+  "connections": [
+   {
+    "id": "6a3ce0f7c29e",
+    "departure": "2026-10-10T08:00:00.000",
+    "arrival": "2026-10-10T08:21:00.000",
+    "fromEsn": 791243,
+    "toEsn": 793024,
+    "switches": 0,
+    "durationMs": 1260000,
+    "sections": [
+     [
+      "Bus",
+      "504"
+     ]
+    ]
+   },
+   {
+    "id": "0dc520619db6",
+    "departure": "2026-10-10T08:05:00.000",
+    "arrival": "2026-10-10T08:15:00.000",
+    "fromEsn": 8100108,
+    "toEsn": 8100105,
+    "switches": 0,
+    "durationMs": 600000,
+    "sections": [
+     [
+      "s",
+      "4"
+     ]
+    ]
+   },
+   {
+    "id": "7896a3b6d5be",
+    "departure": "2026-10-10T08:05:00.000",
+    "arrival": "2026-10-10T08:41:00.000",
+    "fromEsn": 791243,
+    "toEsn": 793169,
+    "switches": 0,
+    "durationMs": 2160000,
+    "sections": [
+     [
+      "Bus",
+      "501"
+     ]
+    ]
+   },
+   {
+    "id": "a3db9f6e22ed",
+    "departure": "2026-10-10T08:11:00.000",
+    "arrival": "2026-10-10T08:42:00.000",
+    "fromEsn": 791246,
+    "toEsn": 793169,
+    "switches": 0,
+    "durationMs": 1860000,
+    "sections": [
+     [
+      "Bus",
+      "505"
+     ]
+    ]
+   },
+   {
+    "id": "f0af9c8c73c3",
+    "departure": "2026-10-10T08:12:00.000",
+    "arrival": "2026-10-10T08:42:00.000",
+    "fromEsn": 791246,
+    "toEsn": 793169,
+    "switches": 1,
+    "durationMs": 1800000,
+    "sections": [
+     [
+      "Bus",
+      "589"
+     ],
+     [
+      "Bus",
+      "505"
+     ]
+    ]
+   }
+  ],
+  "infos": []
+ },
+ "shop/shop_ibk-hall_2026-10-10_07_offers_v6_adult": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 4.7,
+   "products": [
+    "VVT Einzelticket"
+   ],
+   "owners": [
+    "VVT"
+   ]
+  },
+  "standard1st": null,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 4.7,
+    "products": [
+     "VVT Einzelticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "VVT"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 42.6,
+    "products": [
+     "VVT Tagesticket Tirol 2Plus"
+    ],
+    "trafficTypes": [
+     "MULTIPLE"
+    ],
+    "owners": [
+     "VVT"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_graz-wien_sparschiene_2026-10-12_05_timetable": {
+  "status": 200,
+  "connectionCount": 5,
+  "connections": [
+   {
+    "id": "e2e6a69e65ce",
+    "departure": "2026-10-12T08:00:00.000",
+    "arrival": "2026-10-12T10:36:00.000",
+    "fromEsn": 8100173,
+    "toEsn": 8103000,
+    "switches": 0,
+    "durationMs": 9360000,
+    "sections": [
+     [
+      "RJ",
+      "657"
+     ]
+    ]
+   },
+   {
+    "id": "79cec422cabc",
+    "departure": "2026-10-12T08:41:00.000",
+    "arrival": "2026-10-12T11:07:00.000",
+    "fromEsn": 8100173,
+    "toEsn": 8103000,
+    "switches": 0,
+    "durationMs": 8760000,
+    "sections": [
+     [
+      "RJX",
+      "638"
+     ]
+    ]
+   },
+   {
+    "id": "21b51b31a803",
+    "departure": "2026-10-12T09:00:00.000",
+    "arrival": "2026-10-12T11:36:00.000",
+    "fromEsn": 8100173,
+    "toEsn": 8103000,
+    "switches": 0,
+    "durationMs": 9360000,
+    "sections": [
+     [
+      "RJ",
+      "857"
+     ]
+    ]
+   },
+   {
+    "id": "52ef19856277",
+    "departure": "2026-10-12T09:41:00.000",
+    "arrival": "2026-10-12T12:07:00.000",
+    "fromEsn": 8100173,
+    "toEsn": 8103000,
+    "switches": 0,
+    "durationMs": 8760000,
+    "sections": [
+     [
+      "IC",
+      "538"
+     ]
+    ]
+   },
+   {
+    "id": "ab575da8a2c3",
+    "departure": "2026-10-12T10:00:00.000",
+    "arrival": "2026-10-12T12:36:00.000",
+    "fromEsn": 8100173,
+    "toEsn": 8103000,
+    "switches": 0,
+    "durationMs": 9360000,
+    "sections": [
+     [
+      "RJ",
+      "659"
+     ]
+    ]
+   }
+  ],
+  "infos": []
+ },
+ "shop/shop_graz-wien_sparschiene_2026-10-12_06_prices": {
+  "status": 200,
+  "cheapest": [
+   {
+    "price": 39.9,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": "Sparschiene"
+   },
+   {
+    "price": 39.9,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": "Sparschiene"
+   },
+   {
+    "price": 14.9,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": "Sparschiene"
+   },
+   {
+    "price": 14.9,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": "Sparschiene"
+   },
+   {
+    "price": 43.5,
+    "firstClass": false,
+    "offerError": false,
+    "specialNote": null
+   }
+  ]
+ },
+ "shop/shop_graz-wien_sparschiene_2026-10-12_07_offers_v6_adult": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 43.5,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 84.7,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "NON-FLEX",
+    "price": 39.9,
+    "products": [
+     "Sparschiene"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 43.5,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 84.7,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 84.7,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_minimal-headers_no-travelAction_timetable_wien-salzburg_2026-10-09T1600": {
+  "status": 200,
+  "connectionCount": 3,
+  "connections": [
+   {
+    "id": "04e8992752c4",
+    "departure": "2026-10-09T16:28:00.000",
+    "arrival": "2026-10-09T18:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "19986"
+     ]
+    ]
+   },
+   {
+    "id": "fbd0f648a0e6",
+    "departure": "2026-10-09T16:57:00.000",
+    "arrival": "2026-10-09T19:49:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10320000,
+    "sections": [
+     [
+      "IC",
+      "742"
+     ]
+    ]
+   },
+   {
+    "id": "dcce71283afc",
+    "departure": "2026-10-09T17:24:00.000",
+    "arrival": "2026-10-10T00:06:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 24120000,
+    "sections": [
+     [
+      "RJ",
+      "656"
+     ]
+    ]
+   }
+  ],
+  "infos": [
+   "Bauarbeiten - geänderte Fahrzeiten"
+  ]
+ },
+ "shop/shop_minimal-headers_offers_v6_wien-salzburg_2026-10-09T1600": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 67.7,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 132.1,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 67.7,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 132.1,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 132.1,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_offers_v6_wien-salzburg_2026-11-20T1400_RJX": {
+  "status": 200,
+  "offerError": false,
+  "standard2nd": {
+   "price": 63.7,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ]
+  },
+  "standard1st": 124.2,
+  "offers": [
+   {
+    "class": "2",
+    "flexibility": "FLEX",
+    "price": 63.7,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "1",
+    "flexibility": "FLEX",
+    "price": 124.2,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   },
+   {
+    "class": "B",
+    "flexibility": "FLEX",
+    "price": 124.2,
+    "products": [
+     "Standard-Ticket"
+    ],
+    "trafficTypes": [
+     "ONEWAY"
+    ],
+    "owners": [
+     "ÖBB"
+    ],
+    "reductions": []
+   }
+  ]
+ },
+ "shop/shop_timetable_past_yesterday_wien-salzburg_2026-10-08T0800": {
+  "status": 200,
+  "connectionCount": 3,
+  "connections": [
+   {
+    "id": "5f7d5bca7899",
+    "departure": "2026-10-08T08:28:00.000",
+    "arrival": "2026-10-08T10:53:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 8700000,
+    "sections": [
+     [
+      "RJX",
+      "19962"
+     ]
+    ]
+   },
+   {
+    "id": "1d3c761780aa",
+    "departure": "2026-10-08T08:57:00.000",
+    "arrival": "2026-10-08T11:49:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10320000,
+    "sections": [
+     [
+      "IC",
+      "546"
+     ]
+    ]
+   },
+   {
+    "id": "06867a866189",
+    "departure": "2026-10-08T09:13:00.000",
+    "arrival": "2026-10-08T13:26:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 1,
+    "durationMs": 15180000,
+    "sections": [
+     [
+      "EC",
+      "1216"
+     ],
+     [
+      "R",
+      "2"
+     ]
+    ]
+   }
+  ],
+  "infos": []
+ },
+ "shop/shop_prices_past_yesterday_wien-salzburg_2026-10-08T0800": {
+  "status": 200,
+  "cheapest": [
+   {
+    "price": null,
+    "firstClass": null,
+    "offerError": null,
+    "specialNote": null
+   },
+   {
+    "price": null,
+    "firstClass": null,
+    "offerError": null,
+    "specialNote": null
+   }
+  ]
+ },
+ "shop/shop_offers_v6_past_yesterday_wien-salzburg_2026-10-08T0800": {
+  "status": 200,
+  "offerError": true,
+  "standard2nd": null,
+  "standard1st": null,
+  "offers": []
+ },
+ "shop/shop_timetable_wien-salzburg_2026-12-15T1400": {
+  "status": 200,
+  "connectionCount": 3,
+  "connections": [
+   {
+    "id": "0de1ca6e8be7",
+    "departure": "2026-12-15T19:36:00.000",
+    "arrival": "2026-12-15T22:12:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 9360000,
+    "sections": [
+     [
+      "NJ",
+      "468"
+     ]
+    ]
+   },
+   {
+    "id": "d9caa7e8d5e6",
+    "departure": "2026-12-15T21:39:00.000",
+    "arrival": "2026-12-16T00:30:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 10260000,
+    "sections": [
+     [
+      "NJ",
+      "40466"
+     ]
+    ]
+   },
+   {
+    "id": "3246871faa24",
+    "departure": "2026-12-15T22:44:00.000",
+    "arrival": "2026-12-16T01:49:00.000",
+    "fromEsn": 8103000,
+    "toEsn": 8100002,
+    "switches": 0,
+    "durationMs": 11100000,
+    "sections": [
+     [
+      "NJ",
+      "446"
+     ]
+    ]
+   }
+  ],
+  "infos": [
+   "Fahrplan 2026/2027"
+  ]
+ },
+ "shop/shop_error_403_cloudflare_block_page": {
+  "status": 403
+ },
+ "shop/shop_error_440_session_not_initialised_timetable": {
+  "status": 440,
+  "keys": [
+   "error"
+  ],
+  "error": {
+   "code": 3011,
+   "level": "info",
+   "message": "Bitte kehren Sie zum Start zurück und starten Sie Ihren Kaufprozess neu.",
+   "status": 440,
+   "title": "Ihre Sitzung wurde aus Sicherheitsgründen beendet"
+  }
+ },
+ "shop/shop_token_expiry_after_330s_timetable": {
+  "status": 401,
+  "keys": [
+   "error"
+  ],
+  "error": {
+   "code": 13008,
+   "level": "info",
+   "message": "Access token is expired.",
+   "status": 401,
+   "system": "ts-shiftmanagement"
+  }
+ },
+ "vao/vao_tripsearch_tariff_stanton-ibk": {
+  "depLid": "A=1@L=470122200@",
+  "arrLid": "A=1@L=470118700@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 2200,
+    "product": "Einzelticket",
+    "fareSet": "VVT 14 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 2200,
+    "product": "Einzelticket",
+    "fareSet": "VVT 14 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_ibk-hall": {
+  "depLid": "A=1@L=470118700@",
+  "arrLid": "A=1@L=470118400@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_ibk-hall_past_2026-10-08": {
+  "depLid": "A=1@L=470118700@",
+  "arrLid": "A=1@L=470118400@",
+  "outDate": "20261008",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_ibk-hall_after-fare-change_2026-12-15": {
+  "depLid": "A=1@L=470118700@",
+  "arrLid": "A=1@L=470118400@",
+  "outDate": "20261215",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 470,
+    "product": "Einzelticket",
+    "fareSet": "VVT 3 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_ibk-landeck": {
+  "depLid": "A=1@L=470118700@",
+  "arrLid": "A=1@L=470121200@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 2200,
+    "product": "Einzelticket",
+    "fareSet": "VVT 14 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 2200,
+    "product": "Einzelticket",
+    "fareSet": "VVT 14 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_wien-salzburg": {
+  "depLid": "A=1@L=490134900@",
+  "arrLid": "A=1@L=455000200@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "NA",
+    "totalCents": null,
+    "product": null,
+    "fareSet": null
+   },
+   {
+    "statusCode": "NA",
+    "totalCents": null,
+    "product": null,
+    "fareSet": null
+   },
+   {
+    "statusCode": "NA",
+    "totalCents": null,
+    "product": null,
+    "fareSet": null
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_graz-wien": {
+  "depLid": "A=1@L=460304000@",
+  "arrLid": "A=1@L=490134900@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "NA",
+    "totalCents": null,
+    "product": null,
+    "fareSet": null
+   },
+   {
+    "statusCode": "NA",
+    "totalCents": null,
+    "product": null,
+    "fareSet": null
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_wien-kernzone_wienhbf-wienwest": {
+  "depLid": "A=1@O=Wien Hauptbahnhof@X=16376413@Y=48185184@U=81@L=490134900@p=1791493163@i=at:49:1349@",
+  "arrLid": "A=1@O=Wien Westbahnhof@X=16337652@Y=48196654@U=81@L=490146800@p=1791493163@i=at:49:1468@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 300,
+    "product": "1 Fahrt WIEN",
+    "fareSet": "VOR"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 300,
+    "product": "1 Fahrt WIEN",
+    "fareSet": "VOR"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_wien-wrneustadt": {
+  "depLid": "A=1@L=490134900@",
+  "arrLid": "A=1@L=430521000@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 1480,
+    "product": "Einzelfahrt VOR + Wien Kernzone",
+    "fareSet": "VOR"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 1480,
+    "product": "Einzelfahrt VOR + Wien Kernzone",
+    "fareSet": "VOR"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_wienwest-stpoelten": {
+  "depLid": "A=1@L=490146800@",
+  "arrLid": "A=1@L=430484800@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 1750,
+    "product": "Einzelfahrt VOR + Wien Kernzone",
+    "fareSet": "VOR"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 1750,
+    "product": "Einzelfahrt VOR + Wien Kernzone",
+    "fareSet": "VOR"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_linz-wels": {
+  "depLid": "A=1@L=444116400@",
+  "arrLid": "A=1@L=444210700@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 760,
+    "product": "Einzelfahrt",
+    "fareSet": "OÖVV 5 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 760,
+    "product": "Einzelfahrt",
+    "fareSet": "OÖVV 5 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_klagenfurt-villach": {
+  "depLid": "A=1@L=420364200@",
+  "arrLid": "A=1@L=420365400@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 1050,
+    "product": "Einzelkarte Erwachsene",
+    "fareSet": "VKG 7 Zonen"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 1050,
+    "product": "Einzelkarte Erwachsene",
+    "fareSet": "VKG 7 Zonen"
+   }
+  ]
+ },
+ "vao/vao_tripsearch_tariff_bregenz-feldkirch": {
+  "depLid": "A=1@L=480045200@",
+  "arrLid": "A=1@L=480081700@",
+  "outDate": "20261012",
+  "connections": [
+   {
+    "statusCode": "OK",
+    "totalCents": 960,
+    "product": "Vollpreis - 60/120 Minuten",
+    "fareSet": "VVV MAXIMO"
+   },
+   {
+    "statusCode": "OK",
+    "totalCents": 960,
+    "product": "Vollpreis - 60/120 Minuten",
+    "fareSet": "VVV MAXIMO"
+   }
+  ]
+ },
+ "shop/arch_shop_offers_v6_minimal-passenger_ibk-landeck": {
+  "status": 200,
+  "standard2nd": {
+   "price": 22,
+   "products": [
+    "VVT Einzelticket"
+   ],
+   "owners": [
+    "VVT"
+   ],
+   "reductions": []
+  },
+  "standard1st": 34.4
+ },
+ "shop/arch_shop_offers_v6_minimal-vorteilscard_graz-wien": {
+  "status": 200,
+  "standard2nd": {
+   "price": 22.2,
+   "products": [
+    "Standard-Ticket"
+   ],
+   "owners": [
+    "ÖBB"
+   ],
+   "reductions": [
+    "1× Vorteilscard Classic"
+   ]
+  },
+  "standard1st": 43.2
+ },
+ "shop/arch_shop_timetable_hafas-station_minimal-passenger_ibk-landeck": {
+  "status": 200,
+  "connectionCount": 3
+ },
+ "vao/arch_vao_locmatch_eferding": {
+  "status": 200,
+  "svcErr": "OK",
+  "errTxt": null,
+  "locations": [
+   {
+    "name": "EFERDING",
+    "lid": "A=1@O=EFERDING@X=14023631@Y=48308624@U=81@L=900023355@p=1791493163@i=A×7cb77c61-d372-417d-8d9b-1f8614e2295f@",
+    "extId": "900023355"
+   },
+   {
+    "name": "Eferding Bahnhof",
+    "lid": "A=1@O=Eferding Bahnhof@X=14015999@Y=48303500@U=81@L=444250500@p=1791493163@i=A×at:44:42505@",
+    "extId": "444250500"
+   },
+   {
+    "name": "Eferding Gewerbegebiet Bahnhof",
+    "lid": "A=1@O=Eferding Gewerbegebiet Bahnhof@X=14021743@Y=48301990@U=81@L=444254500@p=1791493163@i=A×at:44:42545@",
+    "extId": "444254500"
+   }
+  ]
+ },
+ "vao/arch_vao_tripsearch_tariff_eva-lid_eferding-linz": {
+  "status": 200,
+  "svcErr": "LOCATION",
+  "errTxt": "HCI Service: location missing or invalid"
+ },
+ "coverage/journeys": {
+  "tripsearch_st_anton_innsbruck": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19915",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 270",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "REX 1 (Zug-Nr. 3323)",
+      "result": "covered",
+      "rule": "regional-rail"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19917",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 270",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "REX 1 (Zug-Nr. 3327)",
+      "result": "covered",
+      "rule": "regional-rail"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19915",
+      "result": "covered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 270",
+      "result": "covered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "REX 1 (Zug-Nr. 3323)",
+      "result": "covered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19917",
+      "result": "covered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 270",
+      "result": "covered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "REX 1 (Zug-Nr. 3327)",
+      "result": "covered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_innsbruck_lech_bus": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19960",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "Bus 750",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19910",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "Bus 760",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19962",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "Bus 750",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19912",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "Bus 760",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "partial",
+    "legs": [
+     {
+      "product": "RJX19960",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Bus 750",
+      "result": "unknown",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "unknown",
+    "legs": [
+     {
+      "product": "RJX19910",
+      "result": "covered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Bus 760",
+      "result": "unknown",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "partial",
+    "legs": [
+     {
+      "product": "RJX19962",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Bus 750",
+      "result": "unknown",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "unknown",
+    "legs": [
+     {
+      "product": "RJX19912",
+      "result": "covered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Bus 760",
+      "result": "unknown",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_wien_westbf_salzburg": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "CJX 5 (Zug-Nr. 1914)",
+      "result": "covered",
+      "rule": "regional-rail"
+     },
+     {
+      "product": "RJX19976",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U6",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "RJX19976",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "EC 204",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "IC 642",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "WB 912",
+      "result": "covered",
+      "rule": "westbahn"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 4,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "WB 950",
+      "result": "covered",
+      "rule": "westbahn"
+     },
+     {
+      "product": "IC 642",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 5,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "CJX 5 (Zug-Nr. 1916)",
+      "result": "covered",
+      "rule": "regional-rail"
+     },
+     {
+      "product": "RJX 62",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 6,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U6",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "RJX 62",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 7,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "REX 51 (Zug-Nr. 1632)",
+      "result": "covered",
+      "rule": "regional-rail"
+     },
+     {
+      "product": "IC 644",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "CJX 5 (Zug-Nr. 1914)",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "RJX19976",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U6",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "RJX19976",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "EC 204",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "IC 642",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "WB 912",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 4,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "WB 950",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "IC 642",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 5,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "CJX 5 (Zug-Nr. 1916)",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "RJX 62",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 6,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U6",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "RJX 62",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 7,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "REX 51 (Zug-Nr. 1632)",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "IC 644",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_graz_klagenfurt_koralm": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX 133",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "IR 584",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJ 554",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "WB 1003",
+      "result": "covered",
+      "rule": "westbahn"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJX 133",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "IR 584",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJ 554",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "WB 1003",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_overnight_dst_change_wien_innsbruck": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "NJ 19946",
+      "result": "surcharge",
+      "rule": "night-train-domestic"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "EN 40462",
+      "result": "surcharge",
+      "rule": "night-train-domestic"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "EC 462",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "NJ 466",
+      "result": "surcharge",
+      "rule": "night-train-domestic"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "NJ 19946",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "EN 40462",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "EC 462",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "NJ 466",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_tyrol_bus_landeck_ischgl": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "covered",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "covered",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "covered",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "covered",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "surcharge",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "surcharge",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "surcharge",
+      "rule": "toll-surcharge"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "Bus 260",
+      "result": "surcharge",
+      "rule": "toll-surcharge"
+     }
+    ]
+   }
+  ],
+  "tripsearch_innsbruck_wien_hbf": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19977",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX19977",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "IC 649",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX13477",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "RJX13477",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     },
+     {
+      "product": "IC 741",
+      "result": "covered",
+      "rule": "oebb-long-distance"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJX19977",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJX19977",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "IC 649",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJX13477",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "RJX13477",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "IC 741",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ],
+  "tripsearch_vienna_urban_address_to_poi": [
+   {
+    "family": "oe",
+    "connection": 0,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U4",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 1,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U3",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "Tram 60",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 2,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U1",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "U4",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 3,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U3",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "Bus 10A",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 4,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U4",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "oe",
+    "connection": 5,
+    "overall": "covered",
+    "legs": [
+     {
+      "product": "U1",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     },
+     {
+      "product": "U4",
+      "result": "covered",
+      "rule": "verbund-bus-tram-metro"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 0,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U4",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 1,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U3",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Tram 60",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 2,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U1",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "U4",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 3,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U3",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "Bus 10A",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 4,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U4",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   },
+   {
+    "family": "tirol",
+    "connection": 5,
+    "overall": "notCovered",
+    "legs": [
+     {
+      "product": "U1",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     },
+     {
+      "product": "U4",
+      "result": "notCovered",
+      "rule": "scope:tirol"
+     }
+    ]
+   }
+  ]
+ }
+}

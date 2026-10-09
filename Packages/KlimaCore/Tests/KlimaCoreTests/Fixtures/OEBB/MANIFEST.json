@@ -1,0 +1,714 @@
+{
+ "files": [
+  {
+   "path": "hafas/locmatch_innsbruck.request.json",
+   "source": "journey-planner/fixtures/locmatch_innsbruck.request.json",
+   "bytes": 546,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_innsbruck.response.json",
+   "source": "journey-planner/fixtures/locmatch_innsbruck.response.json",
+   "bytes": 4942,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_st_anton.request.json",
+   "source": "journey-planner/fixtures/locmatch_st_anton.request.json",
+   "bytes": 546,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_st_anton.response.json",
+   "source": "journey-planner/fixtures/locmatch_st_anton.response.json",
+   "bytes": 3821,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_wien_westbahnhof.request.json",
+   "source": "journey-planner/fixtures/locmatch_wien_westbahnhof.request.json",
+   "bytes": 561,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_wien_westbahnhof.response.json",
+   "source": "journey-planner/fixtures/locmatch_wien_westbahnhof.response.json",
+   "bytes": 3911,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_batch_mixed.request.json",
+   "source": "journey-planner/fixtures/locmatch_batch_mixed.request.json",
+   "bytes": 1608,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_batch_mixed.response.json",
+   "source": "journey-planner/fixtures/locmatch_batch_mixed.response.json",
+   "bytes": 26934,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_batch_2_nonfuzzy_nomatch.request.json",
+   "source": "journey-planner/fixtures/locmatch_batch_2_nonfuzzy_nomatch.request.json",
+   "bytes": 985,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locmatch_batch_2_nonfuzzy_nomatch.response.json",
+   "source": "journey-planner/fixtures/locmatch_batch_2_nonfuzzy_nomatch.response.json",
+   "bytes": 10298,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locgeopos_nearby_innsbruck_hbf.request.json",
+   "source": "journey-planner/fixtures/locgeopos_nearby_innsbruck_hbf.request.json",
+   "bytes": 1091,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/locgeopos_nearby_innsbruck_hbf.response.json",
+   "source": "journey-planner/fixtures/locgeopos_nearby_innsbruck_hbf.response.json",
+   "bytes": 5038,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/serverinfo.request.json",
+   "source": "journey-planner/fixtures/serverinfo.request.json",
+   "bytes": 537,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/serverinfo.response.json",
+   "source": "journey-planner/fixtures/serverinfo.response.json",
+   "bytes": 557,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_st_anton_innsbruck.request.json",
+   "source": "journey-planner/fixtures/tripsearch_st_anton_innsbruck.request.json",
+   "bytes": 850,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_st_anton_innsbruck.response.json",
+   "source": "journey-planner/fixtures/tripsearch_st_anton_innsbruck.response.json",
+   "bytes": 107749,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_innsbruck_lech_bus.request.json",
+   "source": "journey-planner/fixtures/tripsearch_innsbruck_lech_bus.request.json",
+   "bytes": 853,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_innsbruck_lech_bus.response.json",
+   "source": "journey-planner/fixtures/tripsearch_innsbruck_lech_bus.response.json",
+   "bytes": 98103,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_innsbruck_wien_hbf.request.json",
+   "source": "journey-planner/fixtures/tripsearch_innsbruck_wien_hbf.request.json",
+   "bytes": 852,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_innsbruck_wien_hbf.response.json",
+   "source": "journey-planner/fixtures/tripsearch_innsbruck_wien_hbf.response.json",
+   "bytes": 60345,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_wien_westbf_salzburg.request.json",
+   "source": "journey-planner/fixtures/tripsearch_wien_westbf_salzburg.request.json",
+   "bytes": 855,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_wien_westbf_salzburg.response.json",
+   "source": "journey-planner/fixtures/tripsearch_wien_westbf_salzburg.response.json",
+   "bytes": 151850,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_graz_klagenfurt_koralm.request.json",
+   "source": "journey-planner/fixtures/tripsearch_graz_klagenfurt_koralm.request.json",
+   "bytes": 855,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_graz_klagenfurt_koralm.response.json",
+   "source": "journey-planner/fixtures/tripsearch_graz_klagenfurt_koralm.response.json",
+   "bytes": 96768,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_overnight_dst_change_wien_innsbruck.request.json",
+   "source": "journey-planner/fixtures/tripsearch_overnight_dst_change_wien_innsbruck.request.json",
+   "bytes": 1303,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_overnight_dst_change_wien_innsbruck.response.json",
+   "source": "journey-planner/fixtures/tripsearch_overnight_dst_change_wien_innsbruck.response.json",
+   "bytes": 36328,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_paging_later_graz_klagenfurt.request.json",
+   "source": "journey-planner/fixtures/tripsearch_paging_later_graz_klagenfurt.request.json",
+   "bytes": 967,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_paging_later_graz_klagenfurt.response.json",
+   "source": "journey-planner/fixtures/tripsearch_paging_later_graz_klagenfurt.response.json",
+   "bytes": 50725,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_paging_earlier_graz_klagenfurt.request.json",
+   "source": "journey-planner/fixtures/tripsearch_paging_earlier_graz_klagenfurt.request.json",
+   "bytes": 971,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_paging_earlier_graz_klagenfurt.response.json",
+   "source": "journey-planner/fixtures/tripsearch_paging_earlier_graz_klagenfurt.response.json",
+   "bytes": 55071,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_getTariff_true_innsbruck_wien.request.json",
+   "source": "journey-planner/fixtures/tripsearch_getTariff_true_innsbruck_wien.request.json",
+   "bytes": 1270,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_getTariff_true_innsbruck_wien.response.json",
+   "source": "journey-planner/fixtures/tripsearch_getTariff_true_innsbruck_wien.response.json",
+   "bytes": 21757,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_vienna_urban_address_to_poi.request.json",
+   "source": "journey-planner/fixtures/tripsearch_vienna_urban_address_to_poi.request.json",
+   "bytes": 936,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_vienna_urban_address_to_poi.response.json",
+   "source": "journey-planner/fixtures/tripsearch_vienna_urban_address_to_poi.response.json",
+   "bytes": 81684,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_tyrol_bus_landeck_ischgl.request.json",
+   "source": "journey-planner/fixtures/tripsearch_tyrol_bus_landeck_ischgl.request.json",
+   "bytes": 858,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_tyrol_bus_landeck_ischgl.response.json",
+   "source": "journey-planner/fixtures/tripsearch_tyrol_bus_landeck_ischgl.response.json",
+   "bytes": 76115,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_arrive_by_innsbruck_wien.request.json",
+   "source": "journey-planner/fixtures/tripsearch_arrive_by_innsbruck_wien.request.json",
+   "bytes": 860,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_arrive_by_innsbruck_wien.response.json",
+   "source": "journey-planner/fixtures/tripsearch_arrive_by_innsbruck_wien.response.json",
+   "bytes": 45140,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_via_linz_maxchg0_rail.request.json",
+   "source": "journey-planner/fixtures/tripsearch_via_linz_maxchg0_rail.request.json",
+   "bytes": 910,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_via_linz_maxchg0_rail.response.json",
+   "source": "journey-planner/fixtures/tripsearch_via_linz_maxchg0_rail.response.json",
+   "bytes": 37664,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_bike_filter_BC.request.json",
+   "source": "journey-planner/fixtures/tripsearch_bike_filter_BC.request.json",
+   "bytes": 875,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_bike_filter_BC.response.json",
+   "source": "journey-planner/fixtures/tripsearch_bike_filter_BC.response.json",
+   "bytes": 36254,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_accessibility_meta_filter.request.json",
+   "source": "journey-planner/fixtures/tripsearch_accessibility_meta_filter.request.json",
+   "bytes": 918,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/tripsearch_accessibility_meta_filter.response.json",
+   "source": "journey-planner/fixtures/tripsearch_accessibility_meta_filter.response.json",
+   "bytes": 68744,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/legacy_mgate141_tripsearch_st_anton_innsbruck.request.json",
+   "source": "journey-planner/fixtures/legacy_mgate141_tripsearch_st_anton_innsbruck.request.json",
+   "bytes": 1155,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/legacy_mgate141_tripsearch_st_anton_innsbruck.response.json",
+   "source": "journey-planner/fixtures/legacy_mgate141_tripsearch_st_anton_innsbruck.response.json",
+   "bytes": 56446,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/reconstruction_innsbruck_lech_outReconL.request.json",
+   "source": "journey-planner/fixtures/reconstruction_innsbruck_lech_outReconL.request.json",
+   "bytes": 1051,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/reconstruction_innsbruck_lech_outReconL.response.json",
+   "source": "journey-planner/fixtures/reconstruction_innsbruck_lech_outReconL.response.json",
+   "bytes": 31817,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/journeydetails_rjx133_koralm_polyline.request.json",
+   "source": "journey-planner/fixtures/journeydetails_rjx133_koralm_polyline.request.json",
+   "bytes": 718,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/journeydetails_rjx133_koralm_polyline.response.json",
+   "source": "journey-planner/fixtures/journeydetails_rjx133_koralm_polyline.response.json",
+   "bytes": 38415,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_dep_innsbruck_hbf.request.json",
+   "source": "journey-planner/fixtures/stationboard_dep_innsbruck_hbf.request.json",
+   "bytes": 660,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_dep_innsbruck_hbf.response.json",
+   "source": "journey-planner/fixtures/stationboard_dep_innsbruck_hbf.response.json",
+   "bytes": 54893,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_arr_wien_hbf.request.json",
+   "source": "journey-planner/fixtures/stationboard_arr_wien_hbf.request.json",
+   "bytes": 655,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_arr_wien_hbf.response.json",
+   "source": "journey-planner/fixtures/stationboard_arr_wien_hbf.response.json",
+   "bytes": 104270,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_dep_wien_hbf_rail_90min.request.json",
+   "source": "journey-planner/fixtures/stationboard_dep_wien_hbf_rail_90min.request.json",
+   "bytes": 1100,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/stationboard_dep_wien_hbf_rail_90min.response.json",
+   "source": "journey-planner/fixtures/stationboard_dep_wien_hbf_rail_90min.response.json",
+   "bytes": 177314,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/himsearch_disruptions_rail.request.json",
+   "source": "journey-planner/fixtures/himsearch_disruptions_rail.request.json",
+   "bytes": 1057,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/himsearch_disruptions_rail.response.json",
+   "source": "journey-planner/fixtures/himsearch_disruptions_rail.response.json",
+   "bytes": 21231,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/batch_edge_cases_errors.request.json",
+   "source": "journey-planner/fixtures/batch_edge_cases_errors.request.json",
+   "bytes": 1568,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/batch_edge_cases_errors.response.json",
+   "source": "journey-planner/fixtures/batch_edge_cases_errors.response.json",
+   "bytes": 1883,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_invalid_enum_rtmode.request.json",
+   "source": "journey-planner/fixtures/error_parse_invalid_enum_rtmode.request.json",
+   "bytes": 871,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_invalid_enum_rtmode.response.json",
+   "source": "journey-planner/fixtures/error_parse_invalid_enum_rtmode.response.json",
+   "bytes": 279,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_unknown_field.request.json",
+   "source": "journey-planner/fixtures/error_parse_unknown_field.request.json",
+   "bytes": 578,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_unknown_field.response.json",
+   "source": "journey-planner/fixtures/error_parse_unknown_field.response.json",
+   "bytes": 288,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_reconstruction_ctxRecon_v188.request.json",
+   "source": "journey-planner/fixtures/error_parse_reconstruction_ctxRecon_v188.request.json",
+   "bytes": 2135,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_parse_reconstruction_ctxRecon_v188.response.json",
+   "source": "journey-planner/fixtures/error_parse_reconstruction_ctxRecon_v188.response.json",
+   "bytes": 276,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_auth_invalid_aid.request.json",
+   "source": "journey-planner/fixtures/error_auth_invalid_aid.request.json",
+   "bytes": 548,
+   "owner": "WP-A"
+  },
+  {
+   "path": "hafas/error_auth_invalid_aid.response.json",
+   "source": "journey-planner/fixtures/error_auth_invalid_aid.response.json",
+   "bytes": 228,
+   "owner": "WP-A"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_01_anonymousToken.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_01_anonymousToken.json",
+   "bytes": 1298,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_02_initUserData.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_02_initUserData.json",
+   "bytes": 1449,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_03_stations_0.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_03_stations_0.json",
+   "bytes": 1467,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_03_stations_1.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_03_stations_1.json",
+   "bytes": 1495,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_05_timetable.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_05_timetable.json",
+   "bytes": 17592,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_06_prices.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_06_prices.json",
+   "bytes": 2107,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_07_offers_v6_adult.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_07_offers_v6_adult.json",
+   "bytes": 17474,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_08_offers_v6_vorteilscard.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_08_offers_v6_vorteilscard.json",
+   "bytes": 18530,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_2026-10-10_09_offers_v6_child8.json",
+   "source": "prices/fixtures/shop_wien-salzburg_2026-10-10_09_offers_v6_child8.json",
+   "bytes": 17537,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_sameday_2026-10-09_05_timetable.json",
+   "source": "prices/fixtures/shop_wien-salzburg_sameday_2026-10-09_05_timetable.json",
+   "bytes": 17812,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_wien-salzburg_sameday_2026-10-09_07_offers_v6_adult.json",
+   "source": "prices/fixtures/shop_wien-salzburg_sameday_2026-10-09_07_offers_v6_adult.json",
+   "bytes": 16532,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_ibk-hall_2026-10-10_05_timetable.json",
+   "source": "prices/fixtures/shop_ibk-hall_2026-10-10_05_timetable.json",
+   "bytes": 9929,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_ibk-hall_2026-10-10_07_offers_v6_adult.json",
+   "source": "prices/fixtures/shop_ibk-hall_2026-10-10_07_offers_v6_adult.json",
+   "bytes": 11641,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_graz-wien_sparschiene_2026-10-12_05_timetable.json",
+   "source": "prices/fixtures/shop_graz-wien_sparschiene_2026-10-12_05_timetable.json",
+   "bytes": 8303,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_graz-wien_sparschiene_2026-10-12_06_prices.json",
+   "source": "prices/fixtures/shop_graz-wien_sparschiene_2026-10-12_06_prices.json",
+   "bytes": 2428,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_graz-wien_sparschiene_2026-10-12_07_offers_v6_adult.json",
+   "source": "prices/fixtures/shop_graz-wien_sparschiene_2026-10-12_07_offers_v6_adult.json",
+   "bytes": 20492,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_minimal-headers_no-travelAction_timetable_wien-salzburg_2026-10-09T1600.json",
+   "source": "prices/fixtures/shop_minimal-headers_no-travelAction_timetable_wien-salzburg_2026-10-09T1600.json",
+   "bytes": 11096,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_minimal-headers_offers_v6_wien-salzburg_2026-10-09T1600.json",
+   "source": "prices/fixtures/shop_minimal-headers_offers_v6_wien-salzburg_2026-10-09T1600.json",
+   "bytes": 15670,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_offers_v6_wien-salzburg_2026-11-20T1400_RJX.json",
+   "source": "prices/fixtures/shop_offers_v6_wien-salzburg_2026-11-20T1400_RJX.json",
+   "bytes": 17225,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_timetable_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "source": "prices/fixtures/shop_timetable_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "bytes": 6012,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_prices_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "source": "prices/fixtures/shop_prices_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "bytes": 713,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_offers_v6_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "source": "prices/fixtures/shop_offers_v6_past_yesterday_wien-salzburg_2026-10-08T0800.json",
+   "bytes": 2356,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_timetable_wien-salzburg_2026-12-15T1400.json",
+   "source": "prices/fixtures/shop_timetable_wien-salzburg_2026-12-15T1400.json",
+   "bytes": 6322,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_error_403_cloudflare_block_page.json",
+   "source": "prices/fixtures/shop_error_403_cloudflare_block_page.json",
+   "bytes": 2357,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_error_440_session_not_initialised_timetable.json",
+   "source": "prices/fixtures/shop_error_440_session_not_initialised_timetable.json",
+   "bytes": 1425,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/shop_token_expiry_after_330s_timetable.json",
+   "source": "prices/fixtures/shop_token_expiry_after_330s_timetable.json",
+   "bytes": 1374,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_stanton-ibk.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_stanton-ibk.json",
+   "bytes": 29343,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_ibk-hall.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_ibk-hall.json",
+   "bytes": 25816,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_ibk-hall_past_2026-10-08.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_ibk-hall_past_2026-10-08.json",
+   "bytes": 25799,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_ibk-hall_after-fare-change_2026-12-15.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_ibk-hall_after-fare-change_2026-12-15.json",
+   "bytes": 28096,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_ibk-landeck.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_ibk-landeck.json",
+   "bytes": 22378,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_wien-salzburg.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_wien-salzburg.json",
+   "bytes": 39342,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_graz-wien.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_graz-wien.json",
+   "bytes": 20100,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_wien-kernzone_wienhbf-wienwest.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_wien-kernzone_wienhbf-wienwest.json",
+   "bytes": 32866,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_wien-wrneustadt.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_wien-wrneustadt.json",
+   "bytes": 20751,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_wienwest-stpoelten.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_wienwest-stpoelten.json",
+   "bytes": 24106,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_linz-wels.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_linz-wels.json",
+   "bytes": 77736,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_klagenfurt-villach.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_klagenfurt-villach.json",
+   "bytes": 22186,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/vao_tripsearch_tariff_bregenz-feldkirch.json",
+   "source": "prices/fixtures/vao_tripsearch_tariff_bregenz-feldkirch.json",
+   "bytes": 33067,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/arch_shop_offers_v6_minimal-passenger_ibk-landeck.json",
+   "source": "arch/fixtures/arch_shop_offers_v6_minimal-passenger_ibk-landeck.json",
+   "bytes": 16346,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/arch_shop_offers_v6_minimal-vorteilscard_graz-wien.json",
+   "source": "arch/fixtures/arch_shop_offers_v6_minimal-vorteilscard_graz-wien.json",
+   "bytes": 7786,
+   "owner": "WP-B"
+  },
+  {
+   "path": "shop/arch_shop_timetable_hafas-station_minimal-passenger_ibk-landeck.json",
+   "source": "arch/fixtures/arch_shop_timetable_hafas-station_minimal-passenger_ibk-landeck.json",
+   "bytes": 4732,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/arch_vao_locmatch_eferding.json",
+   "source": "arch/fixtures/arch_vao_locmatch_eferding.json",
+   "bytes": 2132,
+   "owner": "WP-B"
+  },
+  {
+   "path": "vao/arch_vao_tripsearch_tariff_eva-lid_eferding-linz.json",
+   "source": "arch/fixtures/arch_vao_tripsearch_tariff_eva-lid_eferding-linz.json",
+   "bytes": 922,
+   "owner": "WP-B"
+  },
+  {
+   "path": "coverage/coverage_rules.json",
+   "source": "official/coverage_rules.json",
+   "bytes": 44616,
+   "owner": "WP-C"
+  },
+  {
+   "path": "coverage/synthetic_cases.json",
+   "source": "official/client.py synthetic_cases()",
+   "bytes": 7712,
+   "owner": "WP-C"
+  },
+  {
+   "path": "ux/vm_trips_innsbruck_lech.json",
+   "source": "ux/fixtures/vm_trips_innsbruck_lech.json",
+   "bytes": 17252,
+   "owner": "WP-C"
+  },
+  {
+   "path": "ux/vm_board_innsbruck_hbf.json",
+   "source": "ux/fixtures/vm_board_innsbruck_hbf.json",
+   "bytes": 7250,
+   "owner": "WP-C"
+  },
+  {
+   "path": "ux/vm_trips_st_anton_innsbruck.json",
+   "source": "ux/fixtures/vm_trips_st_anton_innsbruck.json",
+   "bytes": 14772,
+   "owner": "WP-C"
+  },
+  {
+   "path": "ux/vm_trips_landeck_ischgl_delays.json",
+   "source": "ux/fixtures/vm_trips_landeck_ischgl_delays.json",
+   "bytes": 13507,
+   "owner": "WP-C"
+  }
+ ],
+ "totalBytes": 2368490,
+ "note": "Captured live 2026-10-09 by the KlimaBilanz research agents from fahrplan.oebb.at (HAFAS), shop.oebbtickets.at and anachb.vor.at (VAO HAFAS). Minified. Access tokens, session ids, egress IPs and Cloudflare cookies are redacted. HAFAS/VAO 'aid' values in request bodies are public web-app client identifiers. golden.json = expected values computed by the Python reference parsers (journey-planner/client.py, prices/client.py, official/client.py)."
+}

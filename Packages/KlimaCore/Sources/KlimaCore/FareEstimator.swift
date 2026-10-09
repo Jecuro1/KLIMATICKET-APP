@@ -4,6 +4,10 @@ public struct FareEstimate: Hashable, Sendable {
     public enum Method: String, Sendable {
         /// Exact price from the official ÖBB relation tables.
         case officialTable
+        /// Live ÖBB ticket shop price (Standard-Ticket or Verbund ticket sold by ÖBB). NEW (SPEC §B7)
+        case liveOebb
+        /// Live Verbund single-ticket price from VAO. NEW (SPEC §B7)
+        case liveVerbund
         case distanceTariff
         case cityTicket
         case manual
@@ -17,14 +21,18 @@ public struct FareEstimate: Hashable, Sendable {
     public var cityName: String?
     /// Short German explanation shown under the price ("≈ 128 km Bahnstrecke · ÖBB-Standardticket 2. Kl.").
     public var explanation: String
+    /// Full provenance when the price came through the live chain (nil for the classic synchronous estimate). NEW
+    public var quote: PriceQuote?
 
-    public init(fareEUR: Double, distanceKm: Double, straightLineKm: Double, method: Method, cityName: String? = nil, explanation: String) {
+    public init(fareEUR: Double, distanceKm: Double, straightLineKm: Double, method: Method, cityName: String? = nil, explanation: String,
+                quote: PriceQuote? = nil) {
         self.fareEUR = fareEUR
         self.distanceKm = distanceKm
         self.straightLineKm = straightLineKm
         self.method = method
         self.cityName = cityName
         self.explanation = explanation
+        self.quote = quote
     }
 }
 
