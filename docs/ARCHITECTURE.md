@@ -68,3 +68,9 @@ CI legt die PNGs (hell/dunkel) im Branch `screenshots` ab.
 Apple (nativ, ID-Token), Google und Microsoft (PKCE-Webflow) über Supabase Auth; Sync über PostgREST mit
 Last-Writer-Wins auf `updated_at` und Soft-Deletes. Ohne Supabase-Konfiguration funktioniert die App
 vollständig lokal (Apple-Login lokal möglich).
+
+Details (`SyncService`, `supabase/migrations/0002_sync_hardening.sql`): Pull-Cursor ist die vom Server vergebene
+`server_rev` (pro Tabelle und Konto, Keyset-Seiten zu 500), nie die Geräteuhr; der Server-Trigger verwirft veraltete
+Schreibzugriffe und kappt Uhren, die mehr als 10 Minuten vorgehen. Lokale Daten gehören dem zuletzt synchronisierten
+Konto – bei einem anderen Konto pausiert der Sync (`pendingAccountSwitch`). Abmelden wirkt nur auf diesem Gerät,
+Kontolöschung läuft über die Edge Function `supabase/functions/delete-account`.
