@@ -11,6 +11,9 @@ struct SetAccountSection: View {
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
 
+    /// The screen header ("SERVUS, LENA" · "Einstellungen") sits above the profile card as this section's header.
+    var screenHeader: SetScreenHeader? = nil
+
     @State private var showsConnect = false
     @State private var syncTrigger = 0
 
@@ -41,6 +44,10 @@ struct SetAccountSection: View {
                     // Signed out or the account was deleted (from the section at the end of the list).
                     showsConnect = false
                 }
+        } header: {
+            if let screenHeader {
+                screenHeader
+            }
         }
         if hasAccountRows {
             Section {

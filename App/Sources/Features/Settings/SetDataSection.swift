@@ -34,6 +34,7 @@ struct SetDataSection: View {
                     .onAppear { prepareExports() }
                     .onChange(of: exportKey) { _, _ in prepareExports() }
                 backupRow
+                    .id(SetScrollAnchor.data)
                 importRow
                 demoRow
                 deleteRow

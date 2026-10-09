@@ -67,11 +67,11 @@ struct SetCaptureSection: View {
         Section {
             Group {
                 homeStationRow
-                    .id(SetScrollAnchor.capture)
                 favoritesRow
                 Toggle(isOn: $detection.isEnabled) {
-                    SetRowLabel(title: "Fahrten automatisch erkennen",
-                                subtitle: detection.isAvailable ? "Vorschläge an deinen Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
+                    // Short enough for one line each next to the switch (the section header already says "Fahrten").
+                    SetRowLabel(title: "Automatisch erkennen",
+                                subtitle: detection.isAvailable ? "Vorschläge an Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
                                 symbol: "location.fill", tint: Theme.glacier)
                 }
                 .disabled(!detection.isAvailable)
@@ -99,7 +99,7 @@ struct SetCaptureSection: View {
             FavoritesManagerView()
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                SetRowLabel(title: "Favoriten verwalten", subtitle: "Lieblingsstrecken mit einem Tipp erfassen",
+                SetRowLabel(title: "Favoriten verwalten", subtitle: "Strecken mit einem Tipp erfassen",
                             symbol: "star.fill", tint: Theme.gold)
                 Spacer(minLength: Theme.Spacing.xs)
                 if !favorites.isEmpty {
@@ -173,6 +173,7 @@ struct SetAppearanceSection: View {
             Group {
                 SetAppearancePicker(selection: $settings.appearance, hapticsEnabled: settings.hapticsEnabled)
                     .padding(.vertical, Theme.Spacing.xs)
+                    .id(SetScrollAnchor.appearance)
                 Toggle(isOn: $settings.hapticsEnabled) {
                     SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
                                 symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
@@ -349,7 +350,7 @@ struct SetNotificationsSection: View {
         } header: {
             SetSectionHeader(title: "Mitteilungen")
         } footer: {
-            SetFooter(text: "Die Tage vor Ablauf stellst du je Ticket im Ticket-Tab ein.")
+            SetFooter(text: "Wie viele Tage vorher du erinnert wirst, stellst du je Ticket im Tab „Ticket“ ein.")
         }
     }
 

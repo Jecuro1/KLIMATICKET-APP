@@ -26,8 +26,12 @@ struct SettingsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                SetScreenHeader(kicker: headerKicker, title: "Einstellungen")
-                SetAccountSection()
+                if let trimsSectionTop = headerRowExperiment {
+                    SetScreenHeaderRowSection(header: screenHeader, trimsSectionTop: trimsSectionTop)
+                    SetAccountSection()
+                } else {
+                    SetAccountSection(screenHeader: screenHeader)
+                }
                 SetFareSection()
                 SetCaptureSection()
                 SetAppearanceSection()
@@ -41,6 +45,7 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .listSectionSpacing(Theme.Spacing.l)
             .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+            .contentMargins(screenshotScreen == "settingsC" ? .top : [], 0, for: .scrollContent)
             .scrollContentBackground(.hidden)
             .background { SetBackdrop() }
             .tint(Theme.accent)
@@ -93,11 +98,24 @@ struct SettingsView: View {
         }
     }
 
+    private var screenHeader: SetScreenHeader {
+        SetScreenHeader(kicker: headerKicker, title: "Einstellungen")
+    }
+
+    /// EXPERIMENT (CI screenshots only): header as a row – settingsB trims the section top, settingsC the content margin.
+    private var headerRowExperiment: Bool? {
+        switch screenshotScreen {
+        case "settingsB": true
+        case "settingsC": false
+        default: nil
+        }
+    }
+
     private func scrollForScreenshot(_ proxy: ScrollViewProxy) async {
         let target: (anchor: SetScrollAnchor, position: UnitPoint)
         switch screenshotScreen {
-        case "settings2": target = (.capture, UnitPoint(x: 0.5, y: 0.22))
-        case "settings3": target = (.updates, UnitPoint(x: 0.5, y: 0.22))
+        case "settings2": target = (.appearance, .center)
+        case "settings3": target = (.data, .center)
         case "settingsEnd": target = (.end, .bottom)
         default: return
         }
@@ -105,20 +123,12 @@ struct SettingsView: View {
         proxy.scrollTo(target.anchor, anchor: target.position)
     }
 
-    /// "SERVUS, LENA" for a signed-in profile (CI screenshots use the demo holder), else the app version.
-    private var headerKicker: String {
-        let profile = app.auth.profile ?? (LaunchMode.isScreenshot ? SetDemo.profile : nil)
-        // Placeholder names from AuthService ("Du", "Konto", "Apple-Konto") or an e-mail make a poor greeting.
-        let placeholders: Set<String> = ["Du", "Konto", "Apple-Konto"]
-        if let name = profile?.displayName, !placeholders.contains(name), !name.contains("@"),
-           let first = name.split(separator: " ").first {
-            return "Servus, \(first)"
-        }
-        return "KlimaBilanz · Version \(AppConfig.appVersion)"
-    }
+    /// What the screen holds, like the informational eyebrows of the other screens ("TICKETJAHR 2026/27").
+    /// A greeting would only repeat the name shown on the profile card right below.
+    private var headerKicker: String { "Konto, App & Daten" }
 }
 
 /// Row ids the CI screenshots scroll to (`SettingsView.screenshotScreen`).
 enum SetScrollAnchor: Hashable {
-    case capture, updates, end
+    case appearance, data, end
 }

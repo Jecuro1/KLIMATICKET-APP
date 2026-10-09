@@ -84,9 +84,10 @@ private struct SetBrandFooter: View {
             Text("Version \(AppConfig.appVersion) (Build \(AppConfig.buildNumber))")
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
+            // textSecondary: the tertiary grey stays below 4.5 : 1 for footnote text on the pale sky.
             Text(Copy.tagline)
                 .font(.footnote)
-                .foregroundStyle(Theme.textTertiary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 2)
         }

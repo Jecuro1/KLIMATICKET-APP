@@ -56,31 +56,53 @@ struct SetRowLabel: View {
     }
 }
 
-/// The screen's own header as a borderless first list section: eyebrow over the rounded large title,
-/// aligned to the 20 pt text margin like Übersicht, Statistik, Ticket and Widgets (cards stay at 16 pt).
+/// The screen's own header: eyebrow over the rounded large title, aligned to the 20 pt text margin like Übersicht,
+/// Statistik, Ticket and Widgets (cards stay at 16 pt). Used as the header of the first list section – a header
+/// scrolls with the list but, unlike a row, is not clipped by the rounded inset-grouped row mask.
 struct SetScreenHeader: View {
     var kicker: String
     var title: String
 
     var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 2) {
-                Kicker(text: kicker)
-                    .lineLimit(1)
-                Text(title)
-                    .font(Theme.Typography.heroTitle)
-                    .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .accessibilityAddTraits(.isHeader)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        content
             .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
-                                      bottom: 0, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+                                      bottom: Theme.Spacing.s, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
+    }
+
+    var content: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Kicker(text: kicker)
+                .lineLimit(1)
+            Text(title)
+                .font(Theme.Typography.heroTitle)
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityAddTraits(.isHeader)
         }
-        .listSectionSpacing(Theme.Spacing.s)
+        .textCase(nil)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// EXPERIMENT (CI screenshots settingsB / settingsC only): the header as a borderless first row, padded clear of the
+/// rounded row mask. Removed again once the screenshots have decided between header and row.
+struct SetScreenHeaderRowSection: View {
+    var header: SetScreenHeader
+    var trimsSectionTop: Bool
+
+    var body: some View {
+        Section {
+            header.content
+                .padding(.top, 12)
+                .padding(.bottom, 4)
+                .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
+                                          bottom: 0, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+        }
+        .listSectionSpacing(Theme.Spacing.xs)
+        .listSectionMargins(trimsSectionTop ? .top : [], 0)
     }
 }
 
