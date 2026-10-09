@@ -11,6 +11,20 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
         var date: Date
     }
 
+    /// The favourite a widget button / Siri / the control logged a moment ago (the widget shows "Gerade erfasst" for
+    /// `RecentLog.feedbackSeconds`). Only the optimistic update sets it; the app's precise rebuild drops it.
+    struct RecentLog: Codable, Hashable, Sendable {
+        var favoriteID: UUID
+        var date: Date
+
+        static let feedbackSeconds: TimeInterval = 60
+
+        /// True while `favoriteID`'s button should still confirm the log at `now`.
+        func confirms(_ favoriteID: UUID, at now: Date) -> Bool {
+            self.favoriteID == favoriteID && now >= date.addingTimeInterval(-5) && now < date.addingTimeInterval(Self.feedbackSeconds)
+        }
+    }
+
     struct Favorite: Codable, Hashable, Sendable, Identifiable {
         var id: UUID
         var title: String
@@ -37,8 +51,16 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
     var favorites: [Favorite]
     /// Daily cumulative value points (max ~60) for a sparkline.
     var sparkline: [Double]
+    /// Optional, so snapshots written before it existed still decode.
+    var recentLog: RecentLog? = nil
+
+    /// Favourites carried for Siri, Shortcuts, Spotlight and the favourite control (the widgets show up to 4).
+    static let maxFavorites = 24
 
     var net: Double { totalValue - ticketPrice }
+
+    /// The button of `favoriteID` confirms a log made a moment ago ("Gerade erfasst").
+    func justLogged(_ favoriteID: UUID, at now: Date) -> Bool { recentLog?.confirms(favoriteID, at: now) ?? false }
     var remaining: Double { max(0, ticketPrice - totalValue) }
 
     static let defaultsKey = "widgetSnapshot.v1"
@@ -79,6 +101,7 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
             lastTrip = RecentTrip(fromName: favorite.fromName.isEmpty ? favorite.title : favorite.fromName,
                                   toName: favorite.toName, modeSymbol: favorite.modeSymbol, value: favorite.value, date: date)
         }
+        recentLog = RecentLog(favoriteID: favorite.id, date: date)
     }
 
     /// Realistic sample used for widget previews/placeholders and screenshots.

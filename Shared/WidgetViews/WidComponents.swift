@@ -42,13 +42,18 @@ struct WidPercentNumeral: View {
     }
 
     var body: some View {
+        let percent = WidFormat.percentValue(fraction)
         HStack(alignment: .top, spacing: 1) {
-            Text(verbatim: String(WidFormat.percentValue(fraction)))
+            // Counts up to the new value when a quick log or the app updates the widget; dimmed by the system while a
+            // tap's update is pending (invalidatable).
+            Text(verbatim: String(percent))
                 .font(.system(size: size, weight: weight, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
+                .contentTransition(.numericText(value: Double(percent)))
+                .invalidatableContent()
             Text(verbatim: "%")
                 .font(.system(size: size * 0.4, weight: .light, design: .rounded))
                 .foregroundStyle(.widSecondary)
@@ -75,6 +80,8 @@ struct WidVerdictLine: View {
             .foregroundStyle(.widSecondary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
+            .contentTransition(.numericText(value: snapshot.totalValue))
+            .invalidatableContent()
     }
 
     private var line: Text {
@@ -114,6 +121,8 @@ struct WidForecastBlock: View {
                 .foregroundStyle(info.isPositive ? Theme.positiveText : Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(.numericText())
+                .invalidatableContent()
             Text(info.caption)
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(.widSecondary)
@@ -171,6 +180,8 @@ struct WidMiniRing: View {
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText(value: fraction))
+                .invalidatableContent()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisiert")
@@ -195,6 +206,8 @@ struct WidProgressFooter: View {
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize()
+                .contentTransition(.numericText(value: snapshot.amortizedFraction))
+                .invalidatableContent()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisiert")
@@ -243,28 +256,34 @@ struct WidFavoriteButton: View {
     var favorite: WidgetSnapshot.Favorite
     /// False in the in-app gallery (preview only – nothing gets logged).
     var isInteractive: Bool = true
+    /// Logged a moment ago (`WidgetSnapshot.justLogged`): "✓ Gerade erfasst" instead of "+ € 22,80".
+    var justLogged: Bool = false
 
     var body: some View {
         if isInteractive {
             Button(intent: LogFavoriteTripIntent(favoriteID: favorite.id, title: favorite.title)) {
-                WidFavoriteLabel(favorite: favorite)
+                WidFavoriteLabel(favorite: favorite, justLogged: justLogged)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(spokenTitle)
-            .accessibilityValue(WidFormat.euroPrecise(favorite.value))
+            .accessibilityValue(spokenValue)
         } else {
-            WidFavoriteLabel(favorite: favorite)
+            WidFavoriteLabel(favorite: favorite, justLogged: justLogged)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(spokenTitle)
-                .accessibilityValue(WidFormat.euroPrecise(favorite.value))
+                .accessibilityValue(spokenValue)
         }
     }
 
     private var spokenTitle: String { "\(favorite.title) erfassen" }
+    private var spokenValue: String {
+        justLogged ? "Gerade erfasst, \(WidFormat.euroPrecise(favorite.value))" : WidFormat.euroPrecise(favorite.value)
+    }
 }
 
 private struct WidFavoriteLabel: View {
     let favorite: WidgetSnapshot.Favorite
+    var justLogged: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.widgetRenderingMode) private var renderingMode
@@ -279,11 +298,20 @@ private struct WidFavoriteLabel: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(WidFormat.euroPrecise(favorite.value))
-                    .font(.system(size: 11.5, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundStyle(.widSecondary)
-                    .lineLimit(1)
+                Group {
+                    if justLogged {
+                        Text("Gerade erfasst")
+                            .foregroundStyle(renderingMode == .fullColor ? AnyShapeStyle(Theme.positiveText) : AnyShapeStyle(.primary))
+                    } else {
+                        Text(WidFormat.euroPrecise(favorite.value))
+                            .foregroundStyle(.widSecondary)
+                    }
+                }
+                .font(.system(size: 11.5, weight: .medium))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .transition(.opacity.combined(with: .offset(y: 4)))
             }
             .layoutPriority(1)
             Spacer(minLength: 2)
@@ -298,15 +326,17 @@ private struct WidFavoriteLabel: View {
         .contentShape(shape)
     }
 
+    /// "+" → "✓" (symbol replace) while the log is confirmed; the disc turns pine.
     @ViewBuilder
     private var plus: some View {
-        let glyph = Image(systemName: "plus")
+        let glyph = Image(systemName: justLogged ? "checkmark" : "plus")
             .font(.system(size: 11, weight: .bold))
+            .contentTransition(.symbolEffect(.replace))
             .frame(width: 22, height: 22)
         if renderingMode == .fullColor {
             glyph
                 .foregroundStyle(Theme.onAccent)
-                .background(Circle().fill(Theme.ctaGradient))
+                .background(Circle().fill(justLogged ? AnyShapeStyle(Theme.positive.gradient) : AnyShapeStyle(Theme.ctaGradient)))
         } else {
             glyph
                 .widgetAccentable()

@@ -31,6 +31,8 @@ private struct WidQuickLogSmall: View {
     let margins: EdgeInsets
     let isInteractive: Bool
 
+    @Environment(\.widNow) private var entryDate
+
     /// No ridge here: two buttons and the progress footer fill the whole tile, so any ridge line would run
     /// through the bar and the "75 %" – the summit glow of the sky carries the brand instead.
     var body: some View {
@@ -41,7 +43,8 @@ private struct WidQuickLogSmall: View {
                 WidNoFavoritesHint(compact: true)
             } else {
                 ForEach(favorites) { favorite in
-                    WidFavoriteButton(favorite: favorite, isInteractive: isInteractive)
+                    WidFavoriteButton(favorite: favorite, isInteractive: isInteractive,
+                                      justLogged: snapshot.justLogged(favorite.id, at: entryDate ?? Date()))
                 }
             }
             Spacer(minLength: 0)
@@ -58,6 +61,8 @@ private struct WidQuickLogMedium: View {
     let snapshot: WidgetSnapshot
     let margins: EdgeInsets
     let isInteractive: Bool
+
+    @Environment(\.widNow) private var entryDate
 
     private var rows: [[WidgetSnapshot.Favorite]] {
         let favorites = Array(snapshot.favorites.prefix(4))
@@ -102,6 +107,8 @@ private struct WidQuickLogMedium: View {
                 Text("noch \(WidFormat.euroWhole(WidFigures.remaining(snapshot)))")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
+                    .contentTransition(.numericText(value: WidFigures.remaining(snapshot)))
+                    .invalidatableContent()
                     .foregroundStyle(.widSecondary)
                     .lineLimit(1)
                     .fixedSize()
@@ -112,7 +119,8 @@ private struct WidQuickLogMedium: View {
     private func row(_ favorites: [WidgetSnapshot.Favorite]) -> some View {
         HStack(spacing: 8) {
             ForEach(favorites) { favorite in
-                WidFavoriteButton(favorite: favorite, isInteractive: isInteractive)
+                WidFavoriteButton(favorite: favorite, isInteractive: isInteractive,
+                                  justLogged: snapshot.justLogged(favorite.id, at: entryDate ?? Date()))
             }
             if favorites.count == 1 {
                 Color.clear.frame(maxWidth: .infinity, maxHeight: 1)

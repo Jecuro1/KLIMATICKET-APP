@@ -335,6 +335,7 @@ struct Repository {
     private func writeWidgetSnapshot() {
         CommitEffects.widgetRefreshDidRun()
         guard let ticket = Analytics.activeTicket(in: liveTickets(), selectedID: app.settings.selectedTicketID) else {
+            WidIntentSync.favoritesDidChange(to: [])   // MARK: widgets – Siri phrases, Spotlight, favourite control
             guard WidgetSnapshot.store.data(forKey: WidgetSnapshot.defaultsKey) != nil else { return }
             WidgetSnapshot.store.removeObject(forKey: WidgetSnapshot.defaultsKey)
             WidgetCenter.shared.reloadAllTimelines()
@@ -342,6 +343,7 @@ struct Repository {
         }
         let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: periodTrips(ticket), lastTrip: lastTrip(),
                                                   favorites: liveFavorites(), catalog: app.catalog)
+        WidIntentSync.favoritesDidChange(to: snapshot.favorites)   // MARK: widgets – Siri phrases, Spotlight, favourite control
         // Compared with what is stored – the widget's optimistic quick log may have changed it. A snapshot from
         // another day is always rewritten: the widgets count the remaining days from `generatedAt`.
         if var stored = WidgetSnapshot.load(),
@@ -385,7 +387,7 @@ enum WidgetSnapshotBuilder {
             isPaidOff: a.summary.isPaidOff,
             forecastBreakEvenDate: a.summary.forecastBreakEvenDate,
             lastTrip: last.map { .init(fromName: $0.fromName, toName: $0.toName, modeSymbol: $0.mode.symbolName, value: $0.totalValue, date: $0.date) },
-            favorites: favorites.prefix(6).map { fav in
+            favorites: favorites.prefix(WidgetSnapshot.maxFavorites).map { fav in // MARK: widgets – Siri/control need all
                 WidgetSnapshot.Favorite(id: fav.id, title: fav.displayTitle, modeSymbol: fav.mode.symbolName,
                                         value: fav.fareEUR * (fav.isRoundTrip ? 2 : 1),
                                         distanceKm: fav.distanceKm * (fav.isRoundTrip ? 2 : 1),

@@ -6,17 +6,23 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: ShowBalanceIntent(),
             phrases: [
+                "Hat sich mein KlimaTicket in \(.applicationName) gelohnt",
                 "Hat sich mein Ticket mit \(.applicationName) rentiert",
                 "Zeig meine \(.applicationName)",
+                "\(.applicationName) Bilanz",
                 "Wie viel habe ich mit \(.applicationName) gespart",
             ],
-            shortTitle: "Bilanz",
+            shortTitle: "Ticket-Bilanz",
             systemImageName: "gauge.with.needle"
         )
+        // The favourite phrases know every favourite by name once the app has called updateAppShortcutParameters()
+        // (WidIntentSync, whenever the favourites change).
         AppShortcut(
             intent: LogFavoriteTripIntent(),
             phrases: [
                 "\(\.$favorite) in \(.applicationName) erfassen",
+                "Lieblingsfahrt \(\.$favorite) in \(.applicationName) erfassen",
+                "\(.applicationName) \(\.$favorite) erfassen",
                 "Lieblingsfahrt in \(.applicationName) erfassen",
             ],
             shortTitle: "Lieblingsfahrt",
@@ -25,8 +31,9 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: OpenAddTripIntent(),
             phrases: [
-                "Neue Fahrt in \(.applicationName)",
                 "Fahrt in \(.applicationName) erfassen",
+                "Neue Fahrt in \(.applicationName)",
+                "\(.applicationName) Fahrt erfassen",
             ],
             shortTitle: "Fahrt erfassen",
             systemImageName: "plus.circle.fill"

@@ -1,39 +1,88 @@
 import AppIntents
+import CoreSpotlight
 import Foundation
+import SwiftUI
 import WidgetKit
 
-/// A favourite route as seen by Siri, Shortcuts and widgets (backed by the widget snapshot).
-struct FavoriteRouteAppEntity: AppEntity, Identifiable {
+/// Kinds of the controls (Control Center, Lock Screen, Action button) – reloaded by the app and the intents.
+enum WidControlKind {
+    static let addTrip = "com.knitelarlberg.klimabilanz.control.addTrip"
+    static let logFavorite = "com.knitelarlberg.klimabilanz.control.logFavorite"
+}
+
+/// A favourite route as seen by Siri, Shortcuts, Spotlight, controls and widgets (backed by the widget snapshot).
+struct FavoriteRouteAppEntity: AppEntity, IndexedEntity, Identifiable {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Lieblingsfahrt"
     static var defaultQuery = FavoriteRouteQuery()
 
     var id: UUID
     var title: String
+    /// "St. Anton → Innsbruck · € 22,80" – nil while only the id is known (a widget button's intent).
+    var subtitle: String? = nil
+    var symbol: String = "star.fill"
+
+    init(id: UUID, title: String) {
+        self.id = id
+        self.title = title
+    }
+
+    init(_ favorite: WidgetSnapshot.Favorite) {
+        id = favorite.id
+        title = favorite.title
+        symbol = favorite.modeSymbol
+        let route = [favorite.fromName, favorite.toName].filter { !$0.isEmpty }.joined(separator: " → ")
+        subtitle = route.isEmpty ? WidFormat.euroPrecise(favorite.value) : "\(route) · \(WidFormat.euroPrecise(favorite.value))"
+    }
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(title)")
+        let detail: LocalizedStringResource? = subtitle.map { "\($0)" }
+        return DisplayRepresentation(title: "\(title)", subtitle: detail, image: .init(systemName: symbol))
+    }
+
+    /// Spotlight: "Pendeln – Lieblingsfahrt · St. Anton → Innsbruck · € 22,80".
+    var attributeSet: CSSearchableItemAttributeSet {
+        let set = defaultAttributeSet
+        set.title = title
+        set.contentDescription = ["Lieblingsfahrt", subtitle].compactMap { $0 }.joined(separator: " · ")
+        set.keywords = ["KlimaBilanz", "Fahrt", "Lieblingsfahrt", "KlimaTicket"]
+        return set
     }
 }
 
-struct FavoriteRouteQuery: EntityQuery {
+struct FavoriteRouteQuery: EntityStringQuery {
     func entities(for identifiers: [UUID]) async throws -> [FavoriteRouteAppEntity] {
         all().filter { identifiers.contains($0.id) }
     }
 
     func suggestedEntities() async throws -> [FavoriteRouteAppEntity] { all() }
 
+    /// Siri / Shortcuts by name: "Pendeln", "pendeln", "Innsbruck" (title first, then the route).
+    func entities(matching string: String) async throws -> [FavoriteRouteAppEntity] {
+        let query = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return all() }
+        let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        let entities = all()
+        let byTitle = entities.filter { $0.title.range(of: query, options: options) != nil }
+        if !byTitle.isEmpty { return byTitle }
+        return entities.filter { ($0.subtitle ?? "").range(of: query, options: options) != nil }
+    }
+
     private func all() -> [FavoriteRouteAppEntity] {
-        (WidgetSnapshot.load()?.favorites ?? []).map { FavoriteRouteAppEntity(id: $0.id, title: $0.title) }
+        (WidgetSnapshot.load()?.favorites ?? []).map(FavoriteRouteAppEntity.init)
     }
 }
 
-/// Logs a favourite route for today – usable from interactive widgets, Control Center and Siri.
+/// Logs a favourite route for today – usable from interactive widgets, Siri, Shortcuts and Spotlight.
 struct LogFavoriteTripIntent: AppIntent {
     static var title: LocalizedStringResource = "Lieblingsfahrt erfassen"
     static var description = IntentDescription("Erfasst eine deiner Lieblingsfahrten mit Datum und Uhrzeit von jetzt.")
 
-    @Parameter(title: "Fahrt")
+    @Parameter(title: "Lieblingsfahrt")
     var favorite: FavoriteRouteAppEntity
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("\(\.$favorite) erfassen")
+    }
 
     init() {}
 
@@ -41,10 +90,51 @@ struct LogFavoriteTripIntent: AppIntent {
         self.favorite = FavoriteRouteAppEntity(id: favoriteID, title: title)
     }
 
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        let logged = QuickLogBridge.log(favoriteID: favorite.id)
+        return .result(dialog: "\(IntentCopy.logged(favorite.title, snapshot: logged.snapshot))",
+                       view: WidLoggedSnippet(title: favorite.title, favorite: logged.favorite, snapshot: logged.snapshot))
+    }
+}
+
+/// "Lieblingsfahrt erfassen" control (Control Center, Lock Screen, Action button): the configured favourite is logged
+/// right away, without opening the app – the control shows "Erfasst" while it runs.
+struct LogFavoriteControlIntent: ControlConfigurationIntent {
+    static let title: LocalizedStringResource = "Lieblingsfahrt erfassen"
+    static let description = IntentDescription("Erfasst die gewählte Lieblingsfahrt mit einem Tipp – ohne die App zu öffnen.")
+    static let isDiscoverable = false
+
+    @Parameter(title: "Lieblingsfahrt")
+    var favorite: FavoriteRouteAppEntity?
+
+    init() {}
+
+    init(favorite: FavoriteRouteAppEntity?) {
+        self.favorite = favorite
+    }
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        QuickLogQueue.enqueue(favoriteID: favorite.id)
+        guard let favorite else {
+            return .result(dialog: "Wähle zuerst eine Lieblingsfahrt aus: Halte das Steuerelement gedrückt und tippe auf „Bearbeiten“.")
+        }
+        // A favourite deleted since the control was set up is not logged (the widgets' buttons vanish with it, too).
+        if let snapshot = WidgetSnapshot.load(), !snapshot.favorites.contains(where: { $0.id == favorite.id }) {
+            return .result(dialog: "„\(favorite.title)“ gibt es nicht mehr. Wähle für das Steuerelement eine andere Lieblingsfahrt.")
+        }
+        let logged = QuickLogBridge.log(favoriteID: favorite.id)
+        return .result(dialog: "\(IntentCopy.logged(favorite.title, snapshot: logged.snapshot))")
+    }
+}
+
+/// One place for "log this favourite now" (widget buttons, Siri, the control): queue it for the app, update the
+/// widget snapshot optimistically and reload widgets + the favourite control.
+enum QuickLogBridge {
+    static func log(favoriteID: UUID, date: Date = Date()) -> (snapshot: WidgetSnapshot?, favorite: WidgetSnapshot.Favorite?) {
+        QuickLogQueue.enqueue(favoriteID: favoriteID, date: date)
         WidgetCenter.shared.reloadAllTimelines()
-        return .result(dialog: "\(IntentCopy.logged(favorite.title, snapshot: WidgetSnapshot.load()))")
+        ControlCenter.shared.reloadControls(ofKind: WidControlKind.logFavorite)
+        let snapshot = WidgetSnapshot.load()
+        return (snapshot, snapshot?.favorites.first { $0.id == favoriteID })
     }
 }
 
@@ -67,10 +157,11 @@ struct OpenAddTripIntent: AppIntent {
 /// "Hat sich mein KlimaTicket schon rentiert?" – answers with the current balance.
 struct ShowBalanceIntent: AppIntent {
     static var title: LocalizedStringResource = "Ticket-Bilanz anzeigen"
-    static var description = IntentDescription("Sagt dir, wie viel deines Tickets sich schon rentiert hat.")
+    static var description = IntentDescription("Sagt dir, ob und wie weit sich dein KlimaTicket schon rentiert hat.")
 
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        .result(dialog: "\(IntentCopy.balance(WidgetSnapshot.load()))")
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        let snapshot = WidgetSnapshot.load()
+        return .result(dialog: "\(IntentCopy.balance(snapshot))", view: WidBalanceSnippet(snapshot: snapshot))
     }
 }
 

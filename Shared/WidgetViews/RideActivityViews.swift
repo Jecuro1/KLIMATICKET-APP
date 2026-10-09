@@ -218,12 +218,14 @@ struct RideValueBlock: View {
                 .foregroundStyle(RidePalette.value(onDark))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(.numericText(value: state.valueEUR))
             payoffLine
                 .font(.system(size: 12.5, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(RidePalette.secondary(onDark))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+                .contentTransition(.numericText(value: state.payoff?.after ?? 0))
         }
     }
 
@@ -260,17 +262,21 @@ struct RideActionRow: View {
     var height: CGFloat = 32
 
     var body: some View {
+        // Saving swaps the buttons for the confirmation in place (the system animates between the two states).
         switch state.phase {
         case .saved:
             RideConfirmationPill(text: "In deinen Fahrten gespeichert", onDark: onDark, height: height)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
         case .ended:
             RideConfirmationPill(text: "Ohne Speichern beendet", symbol: "xmark.circle.fill", tint: RidePalette.secondary(onDark),
                                  onDark: onDark, height: height)
+                .transition(.opacity)
         case .riding, .arrived:
             HStack(spacing: 8) {
                 saveButton
                 discardButton
             }
+            .transition(.opacity)
         }
     }
 
@@ -424,6 +430,7 @@ struct RideIslandTrailing: View {
                 .foregroundStyle(RidePalette.value(true))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .contentTransition(.numericText(value: state.valueEUR))
             if state.phase.isFinal {
                 Text("Wert")
                     .font(.system(size: 12, weight: .medium))
@@ -491,6 +498,7 @@ struct RideIslandBottom: View {
             Text(verbatim: RideFormat.percent(payoff.after, decimals: payoff.needsDecimals))
                 .fontWeight(.bold)
                 .foregroundStyle(payoff.isPaidOffAfter ? RidePalette.profit(true) : RidePalette.emphasis(true))
+                .contentTransition(.numericText(value: payoff.after))
         }
         .font(.system(size: 12.5, weight: .semibold, design: .rounded))
         .monospacedDigit()
@@ -516,6 +524,7 @@ struct RideIslandCompactLeading: View {
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Color.white)
+                    .contentTransition(.numericText(value: payoff.after))
             } else {
                 Image(systemName: attributes.mode.symbolName)
                     .font(.system(size: 13, weight: .semibold))
@@ -539,6 +548,7 @@ struct RideIslandCompactTrailing: View {
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(RidePalette.value(true))
+            .contentTransition(.numericText(value: state.valueEUR))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
             .padding(.trailing, 2)

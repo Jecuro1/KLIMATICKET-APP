@@ -40,16 +40,21 @@ struct SnapshotProvider: TimelineProvider {
         completion(Timeline(entries: Self.entries(for: snapshot, from: now), policy: .atEnd))
     }
 
-    /// Now, then the start of each of the next `days` Vienna days (DST-safe: calendar days, not 24-hour steps).
+    /// Now, then the start of each of the next `days` Vienna days (DST-safe: calendar days, not 24-hour steps) – plus
+    /// the moment a just-logged favourite's "Gerade erfasst" turns back into "+ € 22,80".
     static func entries(for snapshot: WidgetSnapshot, from now: Date) -> [SnapshotEntry] {
         let calendar = WidInsight.calendar
-        var entries = [SnapshotEntry(date: now, snapshot: snapshot, isPreview: false)]
+        var dates = [now]
         var day = calendar.startOfDay(for: now)
         for _ in 0..<days {
             guard let next = calendar.date(byAdding: .day, value: 1, to: day), next > day else { break }
             day = next
-            entries.append(SnapshotEntry(date: next, snapshot: snapshot, isPreview: false))
+            dates.append(next)
         }
-        return entries
+        if let log = snapshot.recentLog {
+            let end = log.date.addingTimeInterval(WidgetSnapshot.RecentLog.feedbackSeconds)
+            if end > now { dates.append(end) }
+        }
+        return dates.sorted().map { SnapshotEntry(date: $0, snapshot: snapshot, isPreview: false) }
     }
 }

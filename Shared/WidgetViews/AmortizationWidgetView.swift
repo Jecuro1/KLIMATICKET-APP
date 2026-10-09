@@ -181,7 +181,9 @@ private struct WidAmortizationLarge: View {
                 .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .contentTransition(.numericText(value: snapshot.totalValue))
         }
+        .invalidatableContent()
     }
 
     private var headline: Text {
@@ -224,6 +226,8 @@ private struct WidAmortizationLarge: View {
                 .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText())
+                .invalidatableContent()
             if let label {
                 Text(label)
                     .font(.system(size: 11.5, weight: .medium))
@@ -255,7 +259,8 @@ private struct WidAmortizationLarge: View {
         } else {
             HStack(spacing: 8) {
                 ForEach(favorites) { favorite in
-                    WidFavoriteButton(favorite: favorite, isInteractive: isInteractive)
+                    WidFavoriteButton(favorite: favorite, isInteractive: isInteractive,
+                                      justLogged: snapshot.justLogged(favorite.id, at: now))
                 }
             }
         }
@@ -310,6 +315,7 @@ private struct WidAccessoryRectangular: View {
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
+                    .contentTransition(.numericText(value: snapshot.amortizedFraction))
                 Text(detail)
                     .font(.system(size: 13.5, weight: .medium))
                     .monospacedDigit()
