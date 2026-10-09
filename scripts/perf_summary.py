@@ -89,7 +89,8 @@ def summarize(tests):
     for test, entry in tests.items():
         if entry.get("status") == "failed":
             out["failed"].append(test)
-        launch = metric(entry, "Duration (AppLaunch)")
+        # Xcode 26 names it "Duration (ApplicationFirstFramePresentationResponsive)", older ones "Duration (AppLaunch)".
+        launch = metric(entry, "Duration (AppLaunch)", "Duration (ApplicationFirstFramePresentation")
         if launch:
             out["launch"] = {"test": test, "seconds": launch["average"], "rsd": launch["rsd"], "values": launch["values"]}
         if test.startswith("testScroll"):
@@ -350,7 +351,8 @@ def markdown(summary, diag=None):
         lines += [f"**Fehlgeschlagen:** {', '.join(summary['failed'])}", ""]
     launch = summary["launch"]
     if launch:
-        lines += [f"**App-Start** (XCTApplicationLaunchMetric, bis bedienbar): **{launch['seconds']:.3f} s** "
+        lines += [f"**App-Start laut XCTest** (XCTApplicationLaunchMetric, Start-Anfrage bis erstes bedienbares Bild): "
+                  f"**{launch['seconds']:.3f} s** "
                   f"(± {launch['rsd']:.1f} %, Werte {', '.join(f'{v:.3f}' for v in launch['values'])})", ""]
     if has_app:
         lines += in_app_markdown(app, (diag or {}).get("launchTrace"))

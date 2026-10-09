@@ -46,6 +46,13 @@ class PerfSummaryTests(unittest.TestCase):
         self.assertIn("Statistik (+1 500 Fahrten)", text)
         self.assertIn("Fehlgeschlagen", text)
 
+    def test_xcode26_launch_metric(self):
+        log = ("Test Case '-[KlimaBilanzPerfTests.LaunchPerfTests testLaunch]' measured [Duration "
+               "(ApplicationFirstFramePresentationResponsive), s] average: 6.189, relative standard deviation: 5.770%, "
+               "values: [6.328703, 6.659767, 5.9, 5.87], performanceMetricID:x\n")
+        summary = perf_summary.summarize(perf_summary.parse_log(log))
+        self.assertAlmostEqual(summary["launch"]["seconds"], 6.189)
+
     def test_empty_log(self):
         text = perf_summary.markdown(perf_summary.summarize(perf_summary.parse_log("no metrics here")))
         self.assertIn("Keine Messwerte", text)
