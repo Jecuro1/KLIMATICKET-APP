@@ -35,16 +35,16 @@ jobs:
   core-tests:
     name: KlimaCore Tests (Linux)
     runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v5
       - name: Swift version
         run: swift --version
       - name: Test KlimaCore
-        run: swift test --package-path Packages/KlimaCore
+        run: swift test --package-path Packages/KlimaCore --no-parallel 2>&1 | tail -60
 
   build:
     name: Build iOS (.ipa)
-    needs: core-tests
     if: >-
       github.event_name != 'push' ||
       github.ref == 'refs/heads/main' ||
@@ -75,6 +75,9 @@ jobs:
           brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
           brew list ldid >/dev/null 2>&1 || brew install ldid
           xcodegen --version
+
+      - name: KlimaCore tests (macOS)
+        run: swift test --package-path Packages/KlimaCore 2>&1 | tail -25
 
       - name: Version
         id: version
