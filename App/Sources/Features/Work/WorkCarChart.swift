@@ -44,7 +44,6 @@ struct WorkCarChart: View {
             }
             .environment(\.calendar, Calendar.vienna)
             .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && app.settings.hapticsEnabled }
-            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Kosten-Verlauf Auto gegen KlimaTicket")
             .accessibilityValue(accessibilityText)
             .accessibilityHint(isFull ? "Zum Erkunden horizontal über das Diagramm streichen." : "")
@@ -94,6 +93,7 @@ struct WorkCarChart: View {
             AreaMark(x: .value("Datum", point.date), y: .value("Auto", point.value * grow))
                 .interpolationMethod(.linear)
                 .foregroundStyle(carArea)
+                .accessibilityHidden(true)
         }
     }
 
