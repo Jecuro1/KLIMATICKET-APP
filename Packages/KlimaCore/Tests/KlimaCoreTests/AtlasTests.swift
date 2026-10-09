@@ -67,7 +67,14 @@ final class AtlasTests: XCTestCase {
         XCTAssertEqual(s.routes[0].legs, 3)
         let hbf = s.places.first { $0.name == "Wien Hauptbahnhof" }
         XCTAssertEqual(hbf?.visits, 3)
-        XCTAssertEqual(hbf?.dominantMode, .metro)
+        XCTAssertEqual(hbf?.dominantMode, .metro, "U-Bahn has more legs here (2 vs 1)")
+    }
+
+    func testPlaceModeTieGoesToMoreValuableMode() {
+        let trips = [trip(wienRail, innsbruck, fare: 92.8), trip(wienMetro, praterstern, mode: .metro, fare: 3.2)]
+        let hbf = Atlas.summarize(trips, stations: index).places.first { $0.name == "Wien Hauptbahnhof" }
+        XCTAssertEqual(hbf?.visits, 2)
+        XCTAssertEqual(hbf?.dominantMode, .train)
     }
 
     func testNameFallbackResolvesAliases() {
@@ -259,6 +266,36 @@ final class AtlasTests: XCTestCase {
         let b = AtlasBounds(points: [wienRail.location, praterstern.location])!
         let r = Atlas.region(fitting: b, width: 400, height: 300, minimumSpanKm: 8)
         XCTAssertGreaterThan(r.longitudeDelta * 111 * cos(48.2 * .pi / 180), 8)
+    }
+
+    func testProjectionMatchesRegionFitting() {
+        let bounds = AtlasBounds(points: [stAnton.location, wienRail.location])!
+        let r = Atlas.region(fitting: bounds, width: 400, height: 300, padding: 0)
+        let west = Atlas.project(stAnton.location, in: r, width: 400, height: 300)
+        let east = Atlas.project(wienRail.location, in: r, width: 400, height: 300)
+        XCTAssertEqual(west.x, 0, accuracy: 0.5)
+        XCTAssertEqual(east.x, 400, accuracy: 0.5)
+        XCTAssertGreaterThan(west.y, east.y, "St. Anton lies south of Wien")
+        let mid = Atlas.project(r.center, in: r, width: 400, height: 300)
+        XCTAssertEqual(mid.x, 200, accuracy: 0.5)
+    }
+
+    func testMapKitCenterConversionRoundTrips() {
+        let r = AtlasRegion(centerLatitude: 47.4, centerLongitude: 13, latitudeDelta: 4.5, longitudeDelta: 7.8)
+        // Mercator centre of r = latitude in the middle of the view.
+        let top = Atlas.mercatorY(r.centerLatitude + r.latitudeDelta / 2)
+        let bottom = Atlas.mercatorY(r.centerLatitude - r.latitudeDelta / 2)
+        let mercatorCenter = Atlas.inverseMercatorY((top + bottom) / 2)
+        XCTAssertGreaterThan(mercatorCenter, r.centerLatitude)
+        let back = Atlas.regionFromMapCenter(latitude: mercatorCenter, longitude: 13, latitudeDelta: 4.5, longitudeDelta: 7.8)
+        XCTAssertEqual(back.centerLatitude, r.centerLatitude, accuracy: 0.0001)
+        XCTAssertEqual(back.latitudeDelta, r.latitudeDelta, accuracy: 0.0001)
+    }
+
+    func testFanStepShrinksForLongRoutes() {
+        XCTAssertEqual(Atlas.fanStep(chordKm: 50), 0.08, accuracy: 0.0001)
+        XCTAssertLessThan(Atlas.fanStep(chordKm: 400), Atlas.fanStep(chordKm: 150))
+        XCTAssertGreaterThanOrEqual(Atlas.fanStep(chordKm: 5000), 0.024)
     }
 
     func testStatesAreWestToEastAndAbbreviated() {

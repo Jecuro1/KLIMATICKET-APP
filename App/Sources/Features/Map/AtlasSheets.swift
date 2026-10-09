@@ -195,14 +195,18 @@ struct AtlasMiniStat: View {
 struct AtlasDetailsSheet: View {
     let summary: AtlasSummary
     let scopeLabel: String
+    /// Opens at full height scrolled to the route ranking (screenshots).
+    var startsAtRoutes = false
     var onSelectRoute: (String) -> Void
     var onFocusPlace: (AtlasPlace) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var detent: PresentationDetent = .medium
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { reader in
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl - 4) {
                     if !summary.extremes.isEmpty {
@@ -224,6 +228,13 @@ struct AtlasDetailsSheet: View {
                 .padding(.bottom, Theme.Spacing.xl)
             }
             .scrollIndicators(.hidden)
+            .task {
+                guard startsAtRoutes else { return }
+                detent = .large
+                try? await Task.sleep(for: .milliseconds(450))
+                reader.scrollTo("routes", anchor: .top)
+            }
+            }
             .navigationTitle("Deine Karte")
             .navigationSubtitle(scopeLabel)
             .navigationBarTitleDisplayMode(.inline)
@@ -233,7 +244,7 @@ struct AtlasDetailsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
     }
 
@@ -341,6 +352,7 @@ struct AtlasDetailsSheet: View {
     private var routesSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             sectionTitle("Alle Strecken", trailing: "\(summary.routes.count)")
+                .id("routes")
             LazyVStack(spacing: 0) {
                 ForEach(summary.routes) { route in
                     Button {

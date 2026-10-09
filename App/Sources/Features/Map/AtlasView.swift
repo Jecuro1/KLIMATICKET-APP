@@ -54,6 +54,8 @@ struct AtlasView: View {
     @State private var highlightedPlaceID: String?
     @State private var selectionTick = 0
     @State private var didLaunch = false
+    @State private var panelShown = LaunchMode.isScreenshot
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var look: AtlasMapLook { AtlasMapLook(rawValue: lookRaw) ?? .standard }
 
@@ -115,6 +117,16 @@ struct AtlasView: View {
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.bottom, Theme.Spacing.xs)
+        .opacity(panelShown ? 1 : 0)
+        .offset(y: panelShown ? 0 : 40)
+        .onAppear {
+            guard !panelShown else { return }
+            if reduceMotion {
+                panelShown = true
+            } else {
+                withAnimation(.spring(duration: 0.65, bounce: 0.18).delay(0.15)) { panelShown = true }
+            }
+        }
     }
 
     @ToolbarContentBuilder
@@ -158,7 +170,7 @@ struct AtlasView: View {
                                 routeCount: summary.routes.count)
             }
         case .details:
-            AtlasDetailsSheet(summary: summary, scopeLabel: scopeLabel,
+            AtlasDetailsSheet(summary: summary, scopeLabel: scopeLabel, startsAtRoutes: launchFocus == .details,
                               onSelectRoute: { id in select(id) },
                               onFocusPlace: { place in focus(place) })
         }

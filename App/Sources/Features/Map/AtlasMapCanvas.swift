@@ -47,22 +47,19 @@ struct AtlasMapCanvas: View {
 
     @State private var position: MapCameraPosition = .region(Atlas.region(fitting: .austria, width: 390, height: 600).mkRegion)
     @State private var viewport = AtlasViewport()
+    /// Region currently shown in the safe rectangle (arithmetic-centre convention, see `Atlas.project`).
+    @State private var cameraRegion: AtlasRegion?
     @State private var labels: [String: AtlasLabelSide] = [:]
     @State private var hasFramed = false
-    @State private var debugText = ""
 
     var body: some View {
         MapReader { proxy in
             Map(position: $position, interactionModes: [.pan, .zoom]) {
                 AtlasRouteLayers(routes: summary.routes, selectedID: selectedRouteID, palette: palette, scale: 1)
-                ForEach(summary.places) { place in
-                    Annotation(place.name, coordinate: place.location.coordinate, anchor: .center) {
-                        AtlasStationDot(place: place,
-                                        diameter: dotDiameter(place),
-                                        color: palette.color(place.dominantMode),
-                                        label: labels[place.id].map { (TripRow.short(place.name), $0) },
-                                        isDimmed: isDimmed(place),
-                                        isHighlighted: place.id == highlightedPlaceID)
+                ForEach(dots) { dot in
+                    Annotation(dot.place.name, coordinate: dot.place.location.coordinate, anchor: .center) {
+                        AtlasStationDot(place: dot.place, diameter: dot.diameter, color: dot.color, label: dot.label,
+                                        isDimmed: dot.isDimmed, isHighlighted: dot.isHighlighted)
                     }
                     .annotationTitles(.hidden)
                 }
@@ -75,20 +72,11 @@ struct AtlasMapCanvas: View {
                 onSelectRoute(hitRoute(at: location, proxy: proxy))
             }
             .onMapCameraChange(frequency: .onEnd) { context in
-                placeLabels(proxy: proxy)
-                if LaunchMode.isScreenshot {
-                    let r = context.region
-                    debugText += String(format: " | cam %.3f %.3f d%.3f/%.3f", r.center.latitude, r.center.longitude,
-                                        r.span.latitudeDelta, r.span.longitudeDelta)
-                    if let b = summary.bounds, let p = proxy.convert(b.center.coordinate, to: .local),
-                       let q = proxy.convert(CLLocationCoordinate2D(latitude: b.maxLatitude, longitude: b.minLongitude), to: .local),
-                       let z = proxy.convert(CLLocationCoordinate2D(latitude: b.minLatitude, longitude: b.maxLongitude), to: .local) {
-                        debugText += String(format: " | bc %.0f,%.0f nw %.0f,%.0f se %.0f,%.0f", p.x, p.y, q.x, q.y, z.x, z.y)
-                    }
-                }
-            }
-            .onChange(of: labelKey) {
-                placeLabels(proxy: proxy)
+                let r = context.region
+                cameraRegion = Atlas.regionFromMapCenter(latitude: r.center.latitude, longitude: r.center.longitude,
+                                                         latitudeDelta: r.span.latitudeDelta,
+                                                         longitudeDelta: r.span.longitudeDelta)
+                placeLabels()
             }
         }
         .onGeometryChange(for: AtlasViewport.self) { geometry in
@@ -101,25 +89,21 @@ struct AtlasMapCanvas: View {
         .onChange(of: framing) {
             reframe(animated: !reduceMotion && !LaunchMode.isScreenshot)
         }
-        .overlay(alignment: .center) {
-            if LaunchMode.isScreenshot {
-                Image(systemName: "plus").font(.system(size: 30, weight: .ultraLight)).foregroundStyle(.red)
-                    .allowsHitTesting(false)
-            }
-        }
-        .overlay(alignment: .top) {
-            if LaunchMode.isScreenshot && !debugText.isEmpty {
-                Text(debugText)
-                    .font(.system(size: 9, design: .monospaced))
-                    .padding(4)
-                    .background(.yellow.opacity(0.8))
-                    .foregroundStyle(.black)
-                    .allowsHitTesting(false)
-            }
+        .onChange(of: labelKey) {
+            placeLabels()
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Karte deiner Strecken")
         .accessibilityValue(accessibilitySummary)
+    }
+
+    /// Annotation models. The identity includes the visual state so MapKit always re-renders a changed dot.
+    private var dots: [AtlasDotModel] {
+        summary.places.map { place in
+            AtlasDotModel(place: place, diameter: dotDiameter(place), color: palette.color(place.dominantMode),
+                          label: labels[place.id].map { (TripRow.short(place.name), $0) },
+                          isDimmed: isDimmed(place), isHighlighted: place.id == highlightedPlaceID)
+        }
     }
 
     // MARK: Styling
@@ -166,10 +150,9 @@ struct AtlasMapCanvas: View {
         let region = Self.region(fitting: bounds, viewport: viewport,
                                  coveredBottom: framing.coveredBottomFraction * fullHeight, padding: pad,
                                  minimumSpanKm: framing.target == .overview ? 30 : 14)
-        if LaunchMode.isScreenshot {
-            debugText = String(format: "vp %.0fx%.0f t%.0f b%.0f | req %.3f %.3f d%.3f/%.3f", viewport.size.width,
-                               viewport.size.height, viewport.insets.top, viewport.insets.bottom, region.centerLatitude,
-                               region.centerLongitude, region.latitudeDelta, region.longitudeDelta)
+        if Self.mapFramesInsideSafeArea {
+            cameraRegion = region
+            placeLabels()
         }
         if animated {
             withAnimation(.smooth(duration: 0.9)) { position = .region(region.mkRegion) }
@@ -226,43 +209,49 @@ struct AtlasMapCanvas: View {
 
     // MARK: Labels
 
-    /// Greedy cartographic placement: the most visited stations first, each tries below → above → right → left
-    /// and skips positions that would collide with another label or dot.
-    private func placeLabels(proxy: MapProxy) {
+    /// Greedy cartographic placement: the most visited stations first (plus the selected route's ends and a focused
+    /// station), each tries below → above → right → left and skips spots that collide with another label or dot or
+    /// leave the visible map. Projection is pure maths on the current region, so it is deterministic.
+    private func placeLabels() {
+        guard let region = cameraRegion, viewport.size.width > 1, viewport.size.height > 1 else { return }
+        let w = Double(viewport.size.width), h = Double(viewport.size.height)
+        let visible = CGRect(x: 4, y: 4, width: viewport.size.width - 8, height: viewport.size.height - 8)
+
         var candidates = Array(summary.places.prefix(5))
-        if let highlightedPlaceID, let place = summary.place(id: highlightedPlaceID), !candidates.contains(place) {
-            candidates.insert(place, at: 0)
-        }
         if let selectedRouteID, let route = summary.route(id: selectedRouteID) {
             for place in [route.to, route.from] where !candidates.contains(where: { $0.id == place.id }) {
                 candidates.insert(place, at: 0)
             }
         }
-        var dots: [String: CGRect] = [:]
-        for place in summary.places {
-            guard let p = proxy.convert(place.location.coordinate, to: .local) else { continue }
-            let d = dotDiameter(place) + 6
-            dots[place.id] = CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d)
+        if let highlightedPlaceID, let place = summary.place(id: highlightedPlaceID) {
+            candidates.removeAll { $0.id == place.id }
+            candidates.insert(place, at: 0)
         }
+
+        var dotRects: [String: CGRect] = [:]
+        for place in summary.places {
+            let p = Atlas.project(place.location, in: region, width: w, height: h)
+            let d = dotDiameter(place) + 6
+            dotRects[place.id] = CGRect(x: p.x - Double(d) / 2, y: p.y - Double(d) / 2, width: Double(d), height: Double(d))
+        }
+
         var taken: [CGRect] = []
         var result: [String: AtlasLabelSide] = [:]
         for place in candidates {
-            guard let dot = dots[place.id] else { continue }
-            let size = CGSize(width: CGFloat(TripRow.short(place.name).count) * 6.4 + 18, height: 22)
+            guard let dot = dotRects[place.id], visible.contains(CGPoint(x: dot.midX, y: dot.midY)) else { continue }
+            let size = CGSize(width: CGFloat(TripRow.short(place.name).count) * 6.6 + 18, height: 22)
             for side in AtlasLabelSide.allCases {
                 let rect = Self.labelRect(side: side, dot: dot, size: size)
-                let hitsDot = dots.contains { $0.key != place.id && $0.value.insetBy(dx: 2, dy: 2).intersects(rect) }
+                guard visible.contains(rect) else { continue }
+                let hitsDot = dotRects.contains { $0.key != place.id && $0.value.insetBy(dx: 1, dy: 1).intersects(rect) }
                 if !hitsDot, !taken.contains(where: { $0.intersects(rect) }) {
                     taken.append(rect)
-                    taken.append(dot)
                     result[place.id] = side
                     break
                 }
             }
         }
-        if result != labels {
-            withAnimation(.easeInOut(duration: 0.2)) { labels = result }
-        }
+        if result != labels { labels = result }
     }
 
     static func labelRect(side: AtlasLabelSide, dot: CGRect, size: CGSize) -> CGRect {
@@ -364,6 +353,21 @@ struct AtlasRouteLayers: MapContent {
 
 // MARK: - Station dot
 
+/// Everything one station annotation shows.
+struct AtlasDotModel: Identifiable {
+    let place: AtlasPlace
+    let diameter: CGFloat
+    let color: Color
+    let label: (String, AtlasLabelSide)?
+    let isDimmed: Bool
+    let isHighlighted: Bool
+
+    var id: String {
+        let side = label.map { "\($0.1)" } ?? "-"
+        return "\(place.id)|\(side)|\(isDimmed)|\(isHighlighted)|\(Int(diameter * 10))"
+    }
+}
+
 /// Small glass dot sized by visits, coloured by the station's main mode; optional name label beside it.
 struct AtlasStationDot: View {
     let place: AtlasPlace
@@ -389,7 +393,6 @@ struct AtlasStationDot: View {
                     AtlasMapLabel(text: label.0, isEmphasized: isHighlighted)
                         .fixedSize()
                         .offset(labelOffset(side: label.1, outer: outer))
-                        .transition(.opacity)
                 }
             }
             .opacity(isDimmed ? 0.35 : 1)

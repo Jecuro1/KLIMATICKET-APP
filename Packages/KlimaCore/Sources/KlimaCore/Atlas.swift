@@ -198,6 +198,15 @@ public struct AtlasRegion: Hashable, Sendable {
     public var centerLongitude: Double
     public var latitudeDelta: Double
     public var longitudeDelta: Double
+
+    public init(centerLatitude: Double, centerLongitude: Double, latitudeDelta: Double, longitudeDelta: Double) {
+        self.centerLatitude = centerLatitude
+        self.centerLongitude = centerLongitude
+        self.latitudeDelta = latitudeDelta
+        self.longitudeDelta = longitudeDelta
+    }
+
+    public var center: GeoPoint { GeoPoint(latitude: centerLatitude, longitude: centerLongitude) }
 }
 
 /// Parts of the map view covered by bars or panels (points).
@@ -312,19 +321,21 @@ public enum Atlas {
 
         var places: [String: AtlasPlace] = [:]
         var placeModeLegs: [String: [TransportMode: Int]] = [:]
+        var placeModeValue: [String: [TransportMode: Double]] = [:]
         var routeAcc: [String: RouteAccumulator] = [:]
         var unmappedAcc: [String: UnmappedAccumulator] = [:]
         var states = Set<FederalState>()
         var mapped = 0, unmappedCount = 0
         var totalValue = 0.0, totalKm = 0.0
 
-        func register(_ s: Station, legs: Int, mode: TransportMode) -> String {
+        func register(_ s: Station, legs: Int, mode: TransportMode, value: Double) -> String {
             let key = placeKey(s)
             if places[key] == nil {
                 places[key] = AtlasPlace(id: key, stationID: s.id, name: s.name, location: s.location, state: s.federalState)
             }
             places[key]?.visits += legs
             placeModeLegs[key, default: [:]][mode, default: 0] += legs
+            placeModeValue[key, default: [:]][mode, default: 0] += value
             if let st = s.federalState, st != .foreign { states.insert(st) }
             return key
         }
@@ -337,8 +348,8 @@ public enum Atlas {
             }
             let a = station(trip.fromStationID, trip.fromName)
             let b = station(trip.toStationID, trip.toName)
-            let keyA = a.map { register($0, legs: trip.legs, mode: trip.mode) }
-            let keyB = b.map { register($0, legs: trip.legs, mode: trip.mode) }
+            let keyA = a.map { register($0, legs: trip.legs, mode: trip.mode, value: trip.totalValue) }
+            let keyB = b.map { register($0, legs: trip.legs, mode: trip.mode, value: trip.totalValue) }
 
             if let keyA, let keyB {
                 mapped += 1
@@ -356,7 +367,8 @@ public enum Atlas {
         // Places: dominant mode + rank.
         var placeList = Array(places.values)
         for i in placeList.indices {
-            placeList[i].dominantMode = dominant(placeModeLegs[placeList[i].id] ?? [:], values: [:])
+            let id = placeList[i].id
+            placeList[i].dominantMode = dominant(placeModeLegs[id] ?? [:], values: placeModeValue[id] ?? [:])
         }
         placeList.sort { ($0.visits, $1.name) > ($1.visits, $0.name) }
         for i in placeList.indices { placeList[i].rank = i + 1 }
@@ -380,7 +392,7 @@ public enum Atlas {
             routes[i].rank = i + 1
             routes[i].weight = weight(legs: routes[i].legs, maxLegs: maxLegs)
             let fan = routes[..<i].filter { nearParallel(routes[i], $0) }.count
-            let magnitude = baseBend(chordKm: routes[i].straightKm) + 0.08 * Double(fan / 2)
+            let magnitude = baseBend(chordKm: routes[i].straightKm) + fanStep(chordKm: routes[i].straightKm) * Double(fan / 2)
             routes[i].bend = fan % 2 == 1 ? -magnitude : magnitude
             routes[i].path = arc(from: routes[i].from.location, to: routes[i].to.location, bend: routes[i].bend,
                                  samples: sampleCount(chordKm: routes[i].straightKm))
@@ -425,6 +437,11 @@ public enum Atlas {
     public static func baseBend(chordKm: Double) -> Double {
         let raw = 0.20 - 0.035 * log2(max(chordKm, 1) / 25)
         return min(max(raw, 0.07), 0.24)
+    }
+
+    /// Extra bend per fan-out step; long routes need less (their different lengths already keep them apart).
+    public static func fanStep(chordKm: Double) -> Double {
+        0.08 * min(max(120 / max(chordKm, 1), 0.3), 1)
     }
 
     static func sampleCount(chordKm: Double) -> Int {
@@ -525,6 +542,33 @@ public enum Atlas {
         let bottom = inverseMercatorY(centerY - scale * h / 2)
         return AtlasRegion(centerLatitude: (top + bottom) / 2, centerLongitude: degrees(centerX),
                            latitudeDelta: top - bottom, longitudeDelta: degrees(scale * w))
+    }
+
+    /// Position of a coordinate in a view of `width` × `height` points showing `region` (north up, Web-Mercator).
+    public static func project(_ point: GeoPoint, in region: AtlasRegion, width: Double, height: Double) -> (x: Double, y: Double) {
+        let top = mercatorY(region.centerLatitude + region.latitudeDelta / 2)
+        let bottom = mercatorY(region.centerLatitude - region.latitudeDelta / 2)
+        let left = region.centerLongitude - region.longitudeDelta / 2
+        let x = (point.longitude - left) / max(region.longitudeDelta, 1e-9) * width
+        let y = (top - mercatorY(point.latitude)) / max(top - bottom, 1e-12) * height
+        return (x, y)
+    }
+
+    /// MapKit reports a visible region with the *Mercator* centre (the coordinate in the middle of the view) and the
+    /// latitude span top − bottom. Converts it to the arithmetic-centre convention used by `region(fitting:)` / `project`.
+    public static func regionFromMapCenter(latitude: Double, longitude: Double, latitudeDelta: Double,
+                                           longitudeDelta: Double) -> AtlasRegion {
+        let yc = mercatorY(latitude)
+        var low = 0.0, high = 3.0
+        for _ in 0..<60 {
+            let mid = (low + high) / 2
+            let span = inverseMercatorY(yc + mid) - inverseMercatorY(yc - mid)
+            if span < latitudeDelta { low = mid } else { high = mid }
+        }
+        let half = (low + high) / 2
+        let top = inverseMercatorY(yc + half), bottom = inverseMercatorY(yc - half)
+        return AtlasRegion(centerLatitude: (top + bottom) / 2, centerLongitude: longitude,
+                           latitudeDelta: top - bottom, longitudeDelta: longitudeDelta)
     }
 
     static func radians(_ deg: Double) -> Double { deg * .pi / 180 }
