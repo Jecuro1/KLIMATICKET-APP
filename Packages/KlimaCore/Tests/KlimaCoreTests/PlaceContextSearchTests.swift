@@ -115,6 +115,8 @@ final class PlaceContextSearchTests: XCTestCase {
         XCTAssertFalse(abbrev.context[2].isEmpty, "Vlbg → vorarlberg (state abbreviation)")
         XCTAssertTrue(try XCTUnwrap(index.table.compile("Hintertux Gletscher")).context.allSatisfy(\.isEmpty),
                       "generic words never become context words")
+        XCTAssertFalse(try XCTUnwrap(index.table.compile("innsbruck innsbruck")).hasContext,
+                       "a repeated word is a name word again (each query word needs its own name word)")
     }
 
     // MARK: vocabulary and sets

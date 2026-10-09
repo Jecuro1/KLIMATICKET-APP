@@ -821,6 +821,8 @@ def apply_context(q, info):
     for k, t in enumerate(q.toks):
         if k == 0 or t.stop or t.numeric or t.raw in CTX_GENERIC:
             continue
+        if any(u.raw == t.raw or u.c == t.c for u in q.toks[:k]):
+            continue                            # a repeated word is a name word again ("innsbruck innsbruck")
         cand[k], exact[k] = CONTEXT.lookup(t.raw, t.c, q.last_partial and k == n - 1)
     if not any(cand):
         return

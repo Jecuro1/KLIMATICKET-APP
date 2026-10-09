@@ -146,7 +146,9 @@ extension PlaceTable {
         if let context {
             var cand = ctx, exactTerm = [Bool](repeating: false, count: toks.count)
             for k in toks.indices where k > 0 && !toks[k].isStop && !toks[k].isNumeric
-                && !PlaceContextVocabulary.genericWords.contains(toks[k].raw) {
+                && !PlaceContextVocabulary.genericWords.contains(toks[k].raw)
+                && !toks[..<k].contains(where: { $0.raw == toks[k].raw || $0.canonical == toks[k].canonical }) {
+                // (a word repeating an earlier one is a name word again: "innsbruck innsbruck" needs two name tokens)
                 let hit = context.lookup(raw: toks[k].raw, canonical: toks[k].canonical, partial: !trailing && k == toks.count - 1)
                 cand[k] = hit.sets
                 exactTerm[k] = hit.exact
