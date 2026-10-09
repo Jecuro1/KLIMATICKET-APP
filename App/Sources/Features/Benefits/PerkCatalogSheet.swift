@@ -120,6 +120,7 @@ struct PerkCatalogSheet: View {
         }
         .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
         .scrollIndicators(.hidden)
+        .scrollClipDisabled()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Nach Kategorie filtern")
     }

@@ -221,11 +221,11 @@ struct PerkBenefitRow: View {
                 Text(benefit.title.isEmpty ? (partner?.name ?? "Vorteil") : benefit.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 Text(subtitle)
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
             }
             .alignmentGuide(.listRowSeparatorLeading) { dimensions in dimensions[.leading] }
             Spacer(minLength: Theme.Spacing.xs)

@@ -121,7 +121,7 @@ struct PerkBenefitsView: View {
             }
             .padding(.top, Theme.Spacing.xxs)
             // Room for the last card's shadow inside the section.
-            .padding(.bottom, Theme.Spacing.xl)
+            .padding(.bottom, Theme.Spacing.l)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
@@ -157,6 +157,8 @@ struct PerkBenefitsView: View {
         }
         .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
         .scrollIndicators(.hidden)
+        // The glass shadows may spill over the scroll bounds (the full-width row has room for them).
+        .scrollClipDisabled()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Schnell erfassen")
     }
