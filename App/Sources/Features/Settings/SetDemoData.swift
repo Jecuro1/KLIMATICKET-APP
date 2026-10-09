@@ -1,23 +1,27 @@
 import Foundation
 import SwiftData
+import Observation
 
 /// Remembers exactly which rows "Demo ansehen" (onboarding) inserted, so Einstellungen › Daten › "Demo-Daten entfernen"
 /// can take them out again without touching anything the user entered. The sample rows themselves carry no marker.
+/// Observable, so the Daten section follows a change right away.
+@Observable
 @MainActor
-enum DemoDataStore {
+final class DemoDataStore {
     private static let key = "demo.ids"
-    private static var cache: Set<UUID>?
+    private static let shared = DemoDataStore()
 
     /// Ids of the inserted tickets, trips, favourites and benefits (UserDefaults, read once per launch).
+    private var storedIDs: Set<UUID>
+
+    private init() {
+        storedIDs = Set((UserDefaults.standard.stringArray(forKey: Self.key) ?? []).compactMap(UUID.init(uuidString:)))
+    }
+
     static var ids: Set<UUID> {
-        get {
-            if let cache { return cache }
-            let stored = Set((UserDefaults.standard.stringArray(forKey: key) ?? []).compactMap(UUID.init(uuidString:)))
-            cache = stored
-            return stored
-        }
+        get { shared.storedIDs }
         set {
-            cache = newValue
+            shared.storedIDs = newValue
             if newValue.isEmpty {
                 UserDefaults.standard.removeObject(forKey: key)
             } else {
@@ -38,6 +42,11 @@ enum DemoDataStore {
     }
 
     static func forget() { ids = [] }
+
+    /// CI screenshots (`settingsDemo`): the seeded sample year counts as loaded via "Demo ansehen".
+    static func markAllRowsAsDemo(in context: ModelContext) {
+        ids = allIDs(in: context).all
+    }
 
     private static func allIDs(in context: ModelContext) -> (trips: Set<UUID>, all: Set<UUID>) {
         let trips = Set(((try? context.fetch(FetchDescriptor<TripEntity>())) ?? []).map(\.id))

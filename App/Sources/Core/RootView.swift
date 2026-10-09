@@ -349,6 +349,10 @@ struct ScreenshotRouter: View {
         // MARK: polish-settings – lower parts of the long settings list
         case "settings2", "settings3", "settingsEnd":
             NavigationStack { SettingsView(screenshotScreen: screen) }
+        // MARK: settings – Daten with "Demo-Daten entfernen" (the seeded sample year counts as "Demo ansehen")
+        case "settingsDemo":
+            NavigationStack { SettingsView(screenshotScreen: screen) }
+                .task { DemoDataStore.markAllRowsAsDemo(in: context) }
         // MARK: benefits
         case "benefits", "benefitsHistory", "benefitCatalog", "benefitEditor":
             NavigationStack { PerkBenefitsView() }

@@ -17,7 +17,7 @@ struct SettingsView: View {
     /// The inline nav-bar title fades in once the custom header has scrolled away.
     @State private var showsInlineTitle = false
 
-    /// CI screenshots of the lower parts of the long list (`-KBScreenshot settings2 | settings3 | settingsEnd`).
+    /// CI screenshots of the lower parts of the long list (`-KBScreenshot settings2 | settings3 | settingsDemo | settingsEnd`).
     var screenshotScreen: String? = nil
 
     /// Sheet from the dashboard avatar (`app.isShowingSettings`) or any other modal presentation.
@@ -91,7 +91,7 @@ struct SettingsView: View {
         let target: (anchor: SetScrollAnchor, position: UnitPoint)
         switch screenshotScreen {
         case "settings2": target = (.appearance, .center)
-        case "settings3": target = (.data, .center)
+        case "settings3", "settingsDemo": target = (.data, .center)
         case "settingsEnd": target = (.end, .bottom)
         default: return
         }
