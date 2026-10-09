@@ -149,6 +149,9 @@ struct TicketView: View {
             // MARK: benefits
             PerkSummaryCard()
                 .tktEntrance(4, visible: appeared)
+            // MARK: advisor
+            AdvEntryLink(ticket: ticket, trips: trips, scrollProxy: proxy)
+                .tktEntrance(4, visible: appeared)
         }
     }
 

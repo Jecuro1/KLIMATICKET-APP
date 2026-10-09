@@ -19,6 +19,14 @@ struct TktDraft: Equatable {
     /// Validity of an existing ticket – kept as long as its first day is unchanged.
     var originalStart: Date? = nil
     var originalEnd: Date? = nil
+    // MARK: advisor
+    /// Renews automatically per SEPA unless the holder objects (Ticket-Ratgeber).
+    var autoRenews: Bool = false
+    /// Jobticket / Zuschuss – the payoff is measured against the own share.
+    var employerContribution: Double = 0
+    /// ÖBB add-ons (`TicketAddOn` raw values) and what was paid for them.
+    var addOns: [String] = []
+    var addOnPrice: Double = 0
 
     static let customProductID = "custom"
 
@@ -38,7 +46,9 @@ extension TktDraft {
         self.init(name: ticket.name, productID: ticket.productID, variant: ticket.variant, family: ticket.family,
                   states: ticket.states, price: ticket.price, start: ticket.startDate, holder: ticket.holderName,
                   number: ticket.ticketNumber, themeRaw: ticket.themeRaw,
-                  originalStart: ticket.startDate, originalEnd: ticket.endDate)
+                  originalStart: ticket.startDate, originalEnd: ticket.endDate,
+                  autoRenews: ticket.autoRenews, employerContribution: ticket.employerContribution,
+                  addOns: ticket.addOns, addOnPrice: ticket.addOnPrice)
     }
 
     /// New ticket year: continues the current one (day after it ends) with the catalog price, or starts today.
@@ -54,11 +64,13 @@ extension TktDraft {
         if !baseIsCustom, let product = catalog.product(id: base?.productID ?? "oe-klassik") ?? catalog.product(id: "oe-klassik") {
             return TktDraft(name: product.name, productID: product.id, variant: product.variant, family: product.family,
                             states: product.states, price: product.price(forStart: start), start: start,
-                            holder: holder, number: "", themeRaw: theme)
+                            holder: holder, number: "", themeRaw: theme,
+                            autoRenews: base?.autoRenews ?? false, employerContribution: base?.employerContribution ?? 0)
         }
         return TktDraft(name: base?.name ?? "Mein Jahresticket", productID: customProductID, variant: base?.variant ?? .klassik,
                         family: .custom, states: base?.states ?? [], price: base?.price ?? 0, start: start,
-                        holder: holder, number: "", themeRaw: theme)
+                        holder: holder, number: "", themeRaw: theme,
+                        autoRenews: base?.autoRenews ?? false, employerContribution: base?.employerContribution ?? 0)
     }
 
     func apply(to ticket: TicketEntity) {
@@ -77,6 +89,10 @@ extension TktDraft {
         ticket.holderName = holder.trimmingCharacters(in: .whitespacesAndNewlines)
         ticket.ticketNumber = number.trimmingCharacters(in: .whitespacesAndNewlines)
         ticket.themeRaw = themeRaw
+        ticket.autoRenews = autoRenews
+        ticket.employerContribution = employerContribution
+        ticket.addOns = addOns
+        ticket.addOnPrice = addOnPrice
     }
 
     func makeEntity() -> TicketEntity {
@@ -86,6 +102,10 @@ extension TktDraft {
                                   holderName: holder.trimmingCharacters(in: .whitespacesAndNewlines),
                                   ticketNumber: number.trimmingCharacters(in: .whitespacesAndNewlines))
         ticket.themeRaw = themeRaw
+        ticket.autoRenews = autoRenews
+        ticket.employerContribution = employerContribution
+        ticket.addOns = addOns
+        ticket.addOnPrice = addOnPrice
         return ticket
     }
 
@@ -126,29 +146,52 @@ struct TktEditRequest: Identifiable {
 struct TktEditSheet: View {
     let ticket: TicketEntity?
     let initial: TktDraft
+    /// Row id to scroll to on appear (e.g. `AdvEditAnchor.renewal` from the Ratgeber / screenshots).
+    var scrollTarget: String? = nil
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var draft: TktDraft
     @State private var priceText: String
+    @State private var employerText: String
+    @State private var addOnPriceText: String
 
-    init(ticket: TicketEntity?, initial: TktDraft) {
+    init(ticket: TicketEntity?, initial: TktDraft, scrollTarget: String? = nil) {
         self.ticket = ticket
         self.initial = initial
+        self.scrollTarget = scrollTarget
         _draft = State(initialValue: initial)
         _priceText = State(initialValue: TktDraft.priceString(initial.price))
+        _employerText = State(initialValue: AdvisorEuro.editString(initial.employerContribution))
+        _addOnPriceText = State(initialValue: AdvisorEuro.editString(initial.addOnPrice))
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                previewSection
-                designSection
-                ticketSection
-                validitySection
-                priceSection
-                holderSection
+            ScrollViewReader { proxy in
+                Form {
+                    previewSection
+                    designSection
+                    ticketSection
+                    validitySection
+                    priceSection
+                    // MARK: advisor
+                    AdvEditRenewalSection(autoRenews: $draft.autoRenews, employerText: $employerText, family: draft.family,
+                                          fullPrice: parsedPrice.map { $0 + (showsAddOns ? (parsedAddOnPrice ?? 0) : 0) },
+                                          hapticsEnabled: app.settings.hapticsEnabled)
+                    if showsAddOns {
+                        AdvEditAddOnsSection(addOns: $draft.addOns, priceText: $addOnPriceText, productID: draft.productID,
+                                             variant: draft.variant, hapticsEnabled: app.settings.hapticsEnabled)
+                    }
+                    holderSection
+                }
+                .task {
+                    guard let scrollTarget else { return }
+                    try? await Task.sleep(for: .milliseconds(450))
+                    // Centred: the section header and the neighbouring fields stay in view.
+                    proxy.scrollTo(scrollTarget, anchor: .center)
+                }
             }
             .scrollContentBackground(.hidden)
             .background(Theme.sheetBackground)
@@ -167,11 +210,25 @@ struct TktEditSheet: View {
 
     private var isNew: Bool { ticket == nil }
     private var parsedPrice: Double? { TktDraft.parsePrice(priceText) }
+    // MARK: advisor
+    /// Empty amount fields mean 0; anything else must parse ("800", "1.234,50").
+    private var parsedEmployer: Double? { Self.amount(employerText) }
+    private var parsedAddOnPrice: Double? { Self.amount(addOnPriceText) }
+    /// ÖBB extras exist for the KlimaTicket Ö (also when entered as an own ticket), not for regional tickets.
+    private var showsAddOns: Bool { draft.family != .regional }
     private var isValid: Bool {
         !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (parsedPrice ?? 0) > 0
+            && parsedEmployer != nil && parsedAddOnPrice != nil
     }
     /// An empty price field equals a price of 0 – a pristine custom draft must stay swipe-dismissable.
-    private var hasChanges: Bool { draft != initial || (parsedPrice ?? 0) != initial.price }
+    private var hasChanges: Bool {
+        draft != initial || (parsedPrice ?? 0) != initial.price
+            || (parsedEmployer ?? -1) != initial.employerContribution || (parsedAddOnPrice ?? -1) != initial.addOnPrice
+    }
+
+    private static func amount(_ text: String) -> Double? {
+        text.trimmingCharacters(in: .whitespaces).isEmpty ? 0 : AdvisorEuro.parse(text)
+    }
     private var catalogProduct: TicketProduct? { draft.isCustom ? nil : app.catalog.product(id: draft.productID) }
 
     private var productLabel: String {
@@ -331,6 +388,14 @@ struct TktEditSheet: View {
         guard isValid, let price = parsedPrice else { return }
         var result = draft
         result.price = price
+        // MARK: advisor
+        result.employerContribution = parsedEmployer ?? 0
+        if showsAddOns && !result.addOns.isEmpty {
+            result.addOnPrice = parsedAddOnPrice ?? 0
+        } else {
+            result.addOns = []
+            result.addOnPrice = 0
+        }
         let repo = Repository(context: context, app: app)
         if let ticket {
             result.apply(to: ticket)
