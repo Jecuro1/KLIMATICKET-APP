@@ -32,10 +32,17 @@ struct AnalyticsSnapshot {
 
 enum Analytics {
     static func make(ticket: TicketEntity, trips: [TripEntity], catalog: TariffCatalog, now: Date = Date()) -> AnalyticsSnapshot {
-        make(period: ticket.period, records: trips.filter { $0.deletedAt == nil }.map(\.record), catalog: catalog, now: now)
+        // MARK: Diagnostics – count/duration per session (Einstellungen › Diagnose), signpost for the perf tests.
+        Diagnostics.measure("Analytics.make") {
+            make(period: ticket.period, records: trips.filter { $0.deletedAt == nil }.map(\.record), catalog: catalog, now: now)
+        }
     }
 
     static func make(period: TicketPeriod, records allRecords: [TripRecord], catalog: TariffCatalog, now: Date = Date()) -> AnalyticsSnapshot {
+        Diagnostics.measure("Analytics.compute") { compute(period: period, records: allRecords, catalog: catalog, now: now) }
+    }
+
+    private static func compute(period: TicketPeriod, records allRecords: [TripRecord], catalog: TariffCatalog, now: Date) -> AnalyticsSnapshot {
         let records = allRecords.filter { period.contains($0.date) }
         let summary = SavingsCalculator.summary(ticket: period, trips: records, now: now,
                                                 kilometergeld: catalog.kilometergeldEUR, emissions: catalog.emissions)

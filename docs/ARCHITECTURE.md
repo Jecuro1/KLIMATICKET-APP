@@ -63,6 +63,26 @@ scripts/                    CI-Hilfsskripte, Tarif-Katalog-Generator, build_plac
 Screens: `onboarding dashboard trips addTrip tripDetail stats ticket achievements settings update widgets`.
 CI lädt die PNGs (hell/dunkel) als Artefakt `screenshots-<build>` des Laufs hoch (README.md darin nennt Version und Commit); einen Screenshots-Branch gibt es nicht mehr.
 
+## Diagnose & Performance
+
+- **Diagnose auf dem iPhone** (`App/Sources/Services/Diagnostics/`, nur lokal, nichts wird gesendet):
+  `DiagnosticsService` abonniert MetricKit (Absturz-, Hänger-, CPU-/Schreib-, Start-Berichte + Tagesmetriken, JSON in
+  `Application Support/Diagnostics/payloads`, 30 Tage, max. 6 MB), ein Watchdog pingt alle 0,5 s den Main-Thread und
+  protokolliert jeden Hänger > 250 ms mit dem sichtbaren Bildschirm, ein Breadcrumb-Ring (Tabs, globale Sheets,
+  Speichern, Lebenszyklus) überlebt Abstürze, eine Sitzung, die im Vordergrund ohne sauberes Ende abbricht, wird beim
+  nächsten Start gemeldet. `Diagnostics.measure("Name") { … }` misst Hot Paths (Signpost + Ø/max je Sitzung), z. B.
+  `Analytics.make`, `Widgets.refresh`, `Repository.save`.
+- **Export:** Einstellungen › Über KlimaBilanz › *Diagnose & Stabilität* › „Diagnosedatei teilen“ (JSON: Ereignisse,
+  Sitzungen, Breadcrumbs, MetricKit-Rohdaten, Gerät/iOS, nur Anzahl der Fahrten). Symbolisieren mit dem dSYM-Artefakt
+  des Builds (`dSYM-<version>-<build>`): `atos -arch arm64 -o KlimaBilanz.app.dSYM/Contents/Resources/DWARF/KlimaBilanz
+  -l 0x100000000 <0x100000000 + offset>` für „KlimaBilanz +0x…“-Frames.
+- **Performance-Tests in CI:** `[perf]` in der Commit-Nachricht (oder *Run workflow* mit `perf`) startet den Job
+  `perf`: XCUITest-Target `KlimaBilanzPerfTests` (Schema `KlimaBilanzPerf`, Release) im Simulator mit
+  `-KBPerf YES -KBDemo YES` (normale Tabs, Demo-Jahr im Speicher, `-KBPerfTrips 1500` für viele Daten). Gemessen:
+  App-Start, Hitch Time Ratio beim Scrollen je Bildschirm (Übersicht, Fahrten, Statistik, Ticket, Gipfelbuch), Tab-Runde
+  (Zeit, CPU, Speicher) plus die Hänger/Timings, die die App selbst erfasst hat → `$GITHUB_STEP_SUMMARY` und Artefakt
+  `perf-<run>` (`scripts/perf_summary.py`).
+
 ## Updates
 
 1. **App-Updates:** CI veröffentlicht bei jedem Tag `v*` eine Release mit `.ipa`, `update.json`

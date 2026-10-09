@@ -785,6 +785,8 @@ open class UIApplication: UIResponder {
     /// - (BOOL)sendAction:(SEL)action to:(nullable id)target from:(nullable id)sender forEvent:(nullable UIEvent *)event;
     open func sendAction(_ action: Selector, to target: Any?, from sender: Any?, for event: UIEvent?) -> Bool { _uiStub() }
     open var applicationState: UIApplicationState { _uiStub() }
+    /// @property(nonatomic,readonly) UIContentSizeCategory preferredContentSizeCategory API_AVAILABLE(ios(7.0));
+    open var preferredContentSizeCategory: UIContentSizeCategory { _uiStub() }
     open var backgroundTimeRemaining: TimeInterval { _uiStub() }
     open var backgroundRefreshStatus: UIBackgroundRefreshStatus { _uiStub() }
     nonisolated open var isProtectedDataAvailable: Bool { _uiStub() }

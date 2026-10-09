@@ -208,8 +208,11 @@ struct Repository {
 
     // MARK: Commit
 
-    func commit(sync: Bool = true) {
-        do { try context.save() } catch { print("⚠️ save failed: \(error)") }
+    func commit(sync: Bool = true, caller: String = #function) {
+        Diagnostics.action("save", detail: caller) // MARK: Diagnostics
+        Diagnostics.measure("Repository.save") {
+            do { try context.save() } catch { print("⚠️ save failed: \(error)") }
+        }
         refreshWidgets()
         if sync {
             let context = context, app = app
@@ -219,6 +222,10 @@ struct Repository {
 
     /// Writes the widget snapshot and reloads widget timelines.
     func refreshWidgets() {
+        Diagnostics.measure("Widgets.refresh") { writeWidgetSnapshot() } // MARK: Diagnostics
+    }
+
+    private func writeWidgetSnapshot() {
         let tickets = liveTickets()
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else {
             WidgetSnapshot.store.removeObject(forKey: WidgetSnapshot.defaultsKey)

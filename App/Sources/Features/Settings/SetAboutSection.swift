@@ -30,6 +30,12 @@ struct SetAboutSection: View {
                 } label: {
                     SetRowLabel(title: "Hinweis", symbol: "info.circle.fill", tint: Theme.dusk)
                 }
+                // MARK: Diagnostics
+                NavigationLink {
+                    SetDiagnosticsPage()
+                } label: {
+                    SetRowLabel(title: "Diagnose & Stabilität", symbol: "stethoscope", tint: Theme.dawn)
+                }
                 if let url = SetAboutSection.feedbackURL {
                     Link(destination: url) {
                         SetRowLabel(title: "Feedback senden", subtitle: "Ideen, Fehler oder Lob – immer her damit",

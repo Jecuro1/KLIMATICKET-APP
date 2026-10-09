@@ -10,6 +10,8 @@ struct KlimaBilanzApp: App {
     private let container: ModelContainer
 
     init() {
+        // MARK: Diagnostics – launch timing starts here (Einstellungen › Diagnose & Stabilität).
+        DiagnosticsService.shared.markLaunchStart()
         let state: AppState
         if LaunchMode.isScreenshot {
             // Deterministic, isolated state for CI screenshots.
@@ -22,6 +24,11 @@ struct KlimaBilanzApp: App {
             if LaunchMode.screenshotScreen != "onboarding" {
                 DemoData.seed(into: container.mainContext)
             }
+        } else if LaunchMode.isPerf {
+            // MARK: Diagnostics – CI performance tests: the normal tab interface with in-memory demo data.
+            state = AppState(settings: PerfMode.makeSettings())
+            container = DataSchema.makeContainer(inMemory: true)
+            PerfMode.seed(into: container.mainContext)
         } else {
             state = AppState()
             container = DataSchema.makeContainer()
@@ -29,6 +36,7 @@ struct KlimaBilanzApp: App {
         _app = State(initialValue: state)
         AppDelegate.appState = state
         AppDelegate.container = container
+        DiagnosticsService.shared.start(mode: LaunchMode.isScreenshot ? .screenshot : (LaunchMode.isPerf ? .perf : .standard))
     }
 
     var body: some Scene {
