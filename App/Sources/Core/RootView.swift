@@ -251,6 +251,9 @@ struct ScreenshotRouter: View {
             ScreenshotStationSearch(query: "warth am arlberg dorf")
         case "stationSearchBus":
             ScreenshotStationSearch(query: "lech post")
+        // MARK: reports
+        case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
+            RepScreenshotHost(screen: reportScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
