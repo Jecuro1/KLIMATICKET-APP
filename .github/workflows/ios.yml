@@ -26,6 +26,10 @@ on:
         description: "Release veröffentlichen, z. B. v1.0.1 (leer = kein Release). Legt Tag + GitHub Release mit .ipa, update.json und AltStore-Quelle an."
         type: string
         default: ""
+      screens:
+        description: "Nur diese Screenshot-Bildschirme, durch Leerzeichen oder Komma getrennt (leer = Standardliste), z. B. dashboardLive,map,settings2"
+        type: string
+        default: ""
       perf:
         description: "Performance-Tests (XCUITest im Simulator: Start, Scroll-Hitches je Bildschirm, Tab-Runde)"
         type: boolean
@@ -282,9 +286,11 @@ jobs:
         if: env.SHOTS == 'true'
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
+          SCREENS_INPUT: ${{ inputs.screens }}
         run: |
-          # "[shots:dashboard,stats]" in the commit message limits the captured screens.
+          # "[shots:dashboard,stats]" in the commit message – or the "screens" input of a manual run – limits the captured screens.
           LIST=$(printf '%s' "$COMMIT_MSG" | grep -o '\[shots:[^]]*\]' | head -1 | sed -E 's/\[shots:([^]]*)\]/\1/' | tr ',' ' ')
+          if [ -n "${SCREENS_INPUT:-}" ]; then LIST=$(printf '%s' "$SCREENS_INPUT" | tr ',' ' '); fi
           if [ -n "$LIST" ]; then export SCREENS="$LIST"; fi
           bash scripts/capture_screenshots.sh "$UDID" build/sim/Build/Products/Debug-iphonesimulator/KlimaBilanz.app shots
 
