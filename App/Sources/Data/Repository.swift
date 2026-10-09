@@ -448,7 +448,9 @@ struct Repository {
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
-        let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: periodTrips(ticket), lastTrip: lastTrip(),
+        let last = lastTrip()
+        let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: periodTrips(ticket), lastTrip: last,
+                                                  lastJourney: last.map { journeyLegs(of: $0) } ?? [],   // MARK: trips
                                                   favorites: liveFavorites(), catalog: app.catalog)
         WidIntentSync.favoritesDidChange(to: snapshot.favorites)   // MARK: widgets – Siri phrases, Spotlight, favourite control
         // Compared with what is stored – the widget's optimistic quick log may have changed it. A snapshot from
@@ -470,10 +472,12 @@ enum WidgetSnapshotBuilder {
              favorites: favorites, catalog: catalog)
     }
 
-    /// `trips` only needs the ticket period's trips; `last` is the newest live trip of any ticket year.
+    /// `trips` only needs the ticket period's trips; `last` is the newest live trip of any ticket year – `lastJourney` its
+    /// journey's legs when it is a leg (the widget then shows the whole journey: first start → last destination, the
+    /// main mode, the summed value; docs/JOURNEYS.md).  // MARK: trips
     @MainActor
-    static func make(ticket: TicketEntity, trips: [TripEntity], lastTrip last: TripEntity?, favorites: [FavoriteRouteEntity],
-                     catalog: TariffCatalog) -> WidgetSnapshot {
+    static func make(ticket: TicketEntity, trips: [TripEntity], lastTrip last: TripEntity?, lastJourney: [TripEntity] = [],
+                     favorites: [FavoriteRouteEntity], catalog: TariffCatalog) -> WidgetSnapshot {
         let a = Analytics.make(ticket: ticket, trips: trips, catalog: catalog)
         let values = a.series.map(\.value)
         let step = max(1, values.count / 40)
@@ -493,7 +497,11 @@ enum WidgetSnapshotBuilder {
             validUntil: ticket.endDate,
             isPaidOff: a.summary.isPaidOff,
             forecastBreakEvenDate: a.summary.forecastBreakEvenDate,
-            lastTrip: last.map { .init(fromName: $0.fromName, toName: $0.toName, modeSymbol: $0.mode.symbolName, value: $0.totalValue, date: $0.date) },
+            lastTrip: lastJourney.count > 1
+                ? .init(fromName: lastJourney[0].fromName, toName: lastJourney[lastJourney.count - 1].toName,   // MARK: trips
+                        modeSymbol: (JourneySummary.mainMode(lastJourney.map { ($0.mode, $0.distanceKm, $0.fareEUR) }) ?? lastJourney[0].mode).symbolName,
+                        value: lastJourney.reduce(0) { $0 + $1.totalValue }, date: lastJourney[0].date)
+                : last.map { .init(fromName: $0.fromName, toName: $0.toName, modeSymbol: $0.mode.symbolName, value: $0.totalValue, date: $0.date) },
             favorites: favorites.prefix(WidgetSnapshot.maxFavorites).map { fav in // MARK: widgets – Siri/control need all
                 WidgetSnapshot.Favorite(id: fav.id, title: fav.displayTitle, modeSymbol: fav.mode.symbolName,
                                         value: fav.fareEUR * (fav.isRoundTrip ? 2 : 1),

@@ -237,6 +237,7 @@ final class SyncService {
         // MARK: trips – journeys (`journey_id`, `leg_index`, favourite `legs`) the same way (docs/JOURNEYS.md §3).
         let syncsJourney = auth.serverConfig?.supports(CloudFeature.tripJourney) ?? false
         let viaBackfill = SyncViaBackfill.isNeeded(userID: uid, serverSyncsVia: syncsVia, defaults)
+        let journeyBackfill = SyncJourneyBackfill.isNeeded(userID: uid, serverSyncsJourney: syncsJourney, defaults)   // MARK: trips
 
         let started = Date()
         do {
@@ -254,6 +255,12 @@ final class SyncService {
                     trips += try SyncViaBackfill.trips(unchangedSince: since, context: context)
                     favorites += try SyncViaBackfill.favorites(unchangedSince: since, context: context)
                 }
+                if journeyBackfill {   // MARK: trips – journeys saved while the server could not take them (SyncJourneyBackfill)
+                    let tripIDs = Set(trips.map(\.id)), favoriteIDs = Set(favorites.map(\.id))
+                    trips += try SyncJourneyBackfill.trips(unchangedSince: since, context: context).filter { !tripIDs.contains($0.id) }
+                    favorites += try SyncJourneyBackfill.favorites(unchangedSince: since, context: context)
+                        .filter { !favoriteIDs.contains($0.id) }
+                }
                 let benefits = try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.updatedAt > since }))
                 let ticketRows = tickets.map { TicketDTO($0, userID: uid) }
                 let tripRows = trips.map { TripDTO($0, userID: uid, includesVia: syncsVia, includesJourney: syncsJourney) }
@@ -265,6 +272,7 @@ final class SyncService {
                 _ = try await client.push(table: BenefitDTO.table, rows: benefitRows, session: provider)
                 SyncOwnerStore.setLastPush(pushStarted, userID: uid, defaults)
                 if viaBackfill { SyncViaBackfill.markDone(userID: uid, defaults) }   // MARK: via
+                if journeyBackfill { SyncJourneyBackfill.markDone(userID: uid, defaults) }   // MARK: trips
                 pushWatermark = pushStarted
             }
 

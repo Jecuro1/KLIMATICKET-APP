@@ -40,8 +40,10 @@ Tests: `TripJourneyTests` (KlimaCore).
 - **Sync:** `journey_id` text(36) K ('') + `leg_index` int K (0) on `trips`, `legs` text(4000) K ('') on
   `favorite_routes` (D1 migration `0003_journey.sql`; K = absent/null keeps the stored value, so an older app's edit never
   drops a leg out of its journey). `/v1/config` lists `trip_journey`; the app sends the keys and applies pulled values
-  only when the server lists it (`CloudConfig.supports(CloudFeature.tripJourney)`), exactly like `trip_via`. Older apps
-  see every leg as a trip of its own and a Kombi-Vorlage as one route with the summed price.
+  only when the server lists it (`CloudConfig.supports(CloudFeature.tripJourney)`), exactly like `trip_via`. The first
+  sync with such a server also pushes every journey leg and Kombi-Vorlage once per account (`SyncJourneyBackfill`), so
+  journeys saved before the deploy reach the other devices. Older apps see every leg as a trip of its own and a
+  Kombi-Vorlage as one route with the summed price.
 - **Backup:** v2 rows carry the keys (additive; files without them keep an entity's journey).
 - **CSV:** one row per leg (unchanged format).
 
