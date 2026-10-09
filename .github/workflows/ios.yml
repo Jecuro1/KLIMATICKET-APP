@@ -345,12 +345,28 @@ jobs:
           python3 -m json.tool dist/altstore-source.json > /dev/null
           python3 -m json.tool dist/update.json > /dev/null
 
+      - name: Release target commit
+        id: target
+        if: steps.version.outputs.release == 'true'
+        # GitHub refuses (403 "Resource not accessible by integration") to let GITHUB_TOKEN create a tag on a commit whose
+        # .github/workflows differ from the default branch – which happens whenever main got a workflow change while this
+        # build ran (trunk-based, many pushes). Then the tag goes on the current main head; the notes name the build commit.
+        run: |
+          git fetch -q --depth=50 origin main
+          if git diff --quiet "$GITHUB_SHA" FETCH_HEAD -- .github/workflows; then
+            echo "sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse FETCH_HEAD)" >> "$GITHUB_OUTPUT"
+            echo "::notice::Workflows changed on main during the build: tagging $(git rev-parse --short FETCH_HEAD), the .ipa is built from ${GITHUB_SHA:0:7}."
+            printf '\n_Gebaut aus Commit %s._\n' "${GITHUB_SHA:0:7}" >> dist/RELEASE_NOTES.md
+          fi
+
       - name: GitHub Release
         if: steps.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ steps.target.outputs.sha }}
           name: KlimaBilanz ${{ steps.version.outputs.version }}
           make_latest: true
           overwrite_files: true
