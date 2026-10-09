@@ -67,6 +67,7 @@ struct SetCaptureSection: View {
         Section {
             Group {
                 homeStationRow
+                    .id(SetScrollAnchor.capture)
                 favoritesRow
                 Toggle(isOn: $detection.isEnabled) {
                     SetRowLabel(title: "Fahrten automatisch erkennen",

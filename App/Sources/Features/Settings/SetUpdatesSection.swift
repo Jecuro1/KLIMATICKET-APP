@@ -24,6 +24,7 @@ struct SetUpdatesSection: View {
         Section {
             Group {
                 versionRow
+                    .id(SetScrollAnchor.updates)
                 checkRow
                 if let manifest = app.updates.availableManifest {
                     availableRow(manifest)

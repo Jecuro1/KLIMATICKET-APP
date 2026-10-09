@@ -65,6 +65,7 @@ struct SetBrandFooterSection: View {
     var body: some View {
         Section {
             SetBrandFooter()
+                .id(SetScrollAnchor.end)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
         }

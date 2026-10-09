@@ -17,33 +17,39 @@ struct SettingsView: View {
     /// The inline nav-bar title fades in once the custom header has scrolled away.
     @State private var showsInlineTitle = false
 
+    /// CI screenshots of the lower parts of the long list (`-KBScreenshot settings2 | settings3 | settingsEnd`).
+    var screenshotScreen: String? = nil
+
     /// Sheet from the dashboard avatar (`app.isShowingSettings`) or any other modal presentation.
     private var showsDoneButton: Bool { app.isShowingSettings || isPresented }
 
     var body: some View {
-        List {
-            SetScreenHeader(kicker: headerKicker, title: "Einstellungen")
-            SetAccountSection()
-            SetFareSection()
-            SetCaptureSection()
-            SetAppearanceSection()
-            SetNotificationsSection()
-            SetUpdatesSection(showsUpdateSheet: $showsUpdateSheet)
-            SetDataSection()
-            SetAboutSection()
-            SetSignOutSection()
-            SetBrandFooterSection()
-        }
-        .listStyle(.insetGrouped)
-        .listSectionSpacing(Theme.Spacing.l)
-        .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
-        .scrollContentBackground(.hidden)
-        .background { SetBackdrop() }
-        .tint(Theme.accent)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 56
-        } action: { _, isScrolled in
-            withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
+        ScrollViewReader { proxy in
+            List {
+                SetScreenHeader(kicker: headerKicker, title: "Einstellungen")
+                SetAccountSection()
+                SetFareSection()
+                SetCaptureSection()
+                SetAppearanceSection()
+                SetNotificationsSection()
+                SetUpdatesSection(showsUpdateSheet: $showsUpdateSheet)
+                SetDataSection()
+                SetAboutSection()
+                SetSignOutSection()
+                SetBrandFooterSection()
+            }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(Theme.Spacing.l)
+            .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+            .scrollContentBackground(.hidden)
+            .background { SetBackdrop() }
+            .tint(Theme.accent)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 56
+            } action: { _, isScrolled in
+                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
+            }
+            .task { await scrollForScreenshot(proxy) }
         }
         .navigationTitle("Einstellungen")
         .navigationBarTitleDisplayMode(.inline)
@@ -87,6 +93,18 @@ struct SettingsView: View {
         }
     }
 
+    private func scrollForScreenshot(_ proxy: ScrollViewProxy) async {
+        let target: (anchor: SetScrollAnchor, position: UnitPoint)
+        switch screenshotScreen {
+        case "settings2": target = (.capture, UnitPoint(x: 0.5, y: 0.22))
+        case "settings3": target = (.updates, UnitPoint(x: 0.5, y: 0.22))
+        case "settingsEnd": target = (.end, .bottom)
+        default: return
+        }
+        try? await Task.sleep(for: .milliseconds(400))
+        proxy.scrollTo(target.anchor, anchor: target.position)
+    }
+
     /// "SERVUS, LENA" for a signed-in profile (CI screenshots use the demo holder), else the app version.
     private var headerKicker: String {
         let profile = app.auth.profile ?? (LaunchMode.isScreenshot ? SetDemo.profile : nil)
@@ -98,4 +116,9 @@ struct SettingsView: View {
         }
         return "KlimaBilanz · Version \(AppConfig.appVersion)"
     }
+}
+
+/// Row ids the CI screenshots scroll to (`SettingsView.screenshotScreen`).
+enum SetScrollAnchor: Hashable {
+    case capture, updates, end
 }
