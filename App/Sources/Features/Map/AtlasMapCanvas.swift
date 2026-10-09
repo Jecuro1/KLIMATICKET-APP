@@ -365,7 +365,7 @@ struct AtlasDotModel: Identifiable {
     var id: String { place.id }
 }
 
-/// Small glass dot sized by visits, coloured by the station's main mode; optional name label beside it.
+/// Small frosted-glass bead sized by visits, coloured by the station's main mode; optional name label beside it.
 struct AtlasStationDot: View {
     let place: AtlasPlace
     let diameter: CGFloat
@@ -383,7 +383,15 @@ struct AtlasStationDot: View {
             .frame(width: diameter, height: diameter)
             .overlay(Circle().strokeBorder(.white.opacity(0.95), lineWidth: 1.5))
             .padding(3)
-            .glassEffect(.regular, in: .circle)
+            .background {
+                // Frosted glass bead: material halo with a specular rim (cheaper and steadier on the map than live glass).
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Circle().strokeBorder(
+                        LinearGradient(colors: [.white.opacity(0.95), .white.opacity(0.25)], startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1))
+                    .shadow(color: .black.opacity(0.22), radius: 2.5, y: 1)
+            }
             .background { if isHighlighted { highlightRing(size: outer) } }
             .overlay(alignment: labelAlignment) {
                 if let label {
