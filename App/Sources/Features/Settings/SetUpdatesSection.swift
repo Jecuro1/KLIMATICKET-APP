@@ -79,37 +79,39 @@ struct SetUpdatesSection: View {
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder
+    /// The relative time ("geprüft vor 5 Minuten") moves on while Settings stays open.
     private var statusLabel: some View {
-        let status = currentStatus
-        HStack(spacing: 5) {
-            if isChecking {
-                ProgressView()
-                    .controlSize(.mini)
-            } else {
-                Image(systemName: status.symbol)
+        TimelineView(.everyMinute) { timeline in
+            let status = currentStatus(now: timeline.date)
+            HStack(spacing: 5) {
+                if isChecking {
+                    ProgressView()
+                        .controlSize(.mini)
+                } else {
+                    Image(systemName: status.symbol)
+                }
+                Text(status.text)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Text(status.text)
-                .fixedSize(horizontal: false, vertical: true)
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(status.color)
+            .padding(.top, 2)
         }
-        .font(.footnote.weight(.medium))
-        .foregroundStyle(status.color)
-        .padding(.top, 2)
     }
 
     private var isChecking: Bool { app.updates.state == .checking }
 
-    private var currentStatus: Status {
+    private func currentStatus(now: Date) -> Status {
         switch app.updates.state {
         case .notConfigured:
             return Status(text: "Update-Quelle nicht eingerichtet", symbol: "questionmark.circle", color: Theme.textSecondary)
         case .idle:
-            let text = app.updates.lastCheck.map { "Zuletzt geprüft \(SetFormat.relative($0))" } ?? "Noch nicht geprüft"
+            let text = app.updates.lastCheck.map { "Zuletzt geprüft \(SetFormat.relative($0, now: now))" } ?? "Noch nicht geprüft"
             return Status(text: text, symbol: "clock", color: Theme.textSecondary)
         case .checking:
             return Status(text: "Suche nach Updates …", symbol: "arrow.triangle.2.circlepath", color: Theme.textSecondary)
         case .upToDate(let checkedAt):
-            return Status(text: "Aktuell · geprüft \(SetFormat.relative(checkedAt))", symbol: "checkmark.circle.fill", color: Theme.positiveText)
+            return Status(text: "Aktuell · geprüft \(SetFormat.relative(checkedAt, now: now))", symbol: "checkmark.circle.fill", color: Theme.positiveText)
         case .available(let manifest):
             return Status(text: "Version \(SetFormat.shortVersion(manifest.version)) ist verfügbar", symbol: "arrow.down.circle.fill", color: Theme.accentText)
         case .required(let manifest):

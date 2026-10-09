@@ -242,31 +242,40 @@ struct SetInfoPage: View {
 // MARK: - Helpers
 
 /// Formatting helpers specific to settings (relative times, ISO strings, versions, German plurals).
+/// The formatters are created once – these run in `body` (sync status, update status, tariff row, update sheet).
 enum SetFormat {
-    /// "gerade eben", "vor 5 Minuten", "gestern".
-    static func relative(_ date: Date, now: Date = Date()) -> String {
-        if abs(now.timeIntervalSince(date)) < 60 { return "gerade eben" }
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = Format.locale
         formatter.unitsStyle = .full
         formatter.dateTimeStyle = .named
-        return formatter.localizedString(for: date, relativeTo: now)
-    }
+        return formatter
+    }()
 
-    /// Parses "2026-10-09" (also accepts longer ISO strings by their date part).
-    static func isoDay(_ string: String) -> Date? {
+    private static let isoDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "Europe/Vienna")
         formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: String(string.prefix(10)))
+        return formatter
+    }()
+
+    private static let isoDateTimeFormatter = ISO8601DateFormatter()
+
+    /// "gerade eben", "vor 5 Minuten", "gestern".
+    static func relative(_ date: Date, now: Date = Date()) -> String {
+        if abs(now.timeIntervalSince(date)) < 60 { return "gerade eben" }
+        return relativeFormatter.localizedString(for: date, relativeTo: now)
+    }
+
+    /// Parses "2026-10-09" (also accepts longer ISO strings by their date part).
+    static func isoDay(_ string: String) -> Date? {
+        isoDayFormatter.date(from: String(string.prefix(10)))
     }
 
     /// Parses ISO 8601 date-times ("2026-10-09T09:41:00Z"), falling back to the date part.
     static func isoDateTime(_ string: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: string) { return date }
-        return isoDay(string)
+        isoDateTimeFormatter.date(from: string) ?? isoDay(string)
     }
 
     /// "1.1" for 1.1.0, otherwise "1.1.2".

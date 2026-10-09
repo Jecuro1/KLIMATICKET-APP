@@ -286,16 +286,20 @@ private struct OnbStationPicker: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var results: [Station] = []
+    /// The query `results` belong to – no "Keine Haltestelle gefunden" flash while a search is still running.
+    @State private var resultsQuery: String?
     @State private var locator: LocationService?
     @State private var nearby: [OnbNearbyStation] = []
     @State private var isLocating = false
     @State private var locationFailed = false
 
+    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
     var body: some View {
-        let results = app.stations.search(query, limit: 40, near: near).filter { $0.id != excludedID }
         NavigationStack {
             List {
-                if query.isEmpty {
+                if trimmedQuery.isEmpty {
                     nearbySection
                 }
                 Section {
@@ -303,20 +307,21 @@ private struct OnbStationPicker: View {
                         row(station, distanceKm: nil)
                     }
                 } header: {
-                    Text(query.isEmpty ? (near == nil ? "Wichtige Bahnhöfe" : "In der Umgebung") : "Treffer")
+                    Text(trimmedQuery.isEmpty ? (near == nil ? "Wichtige Bahnhöfe" : "In der Umgebung") : "Treffer")
                 }
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Theme.sheetBackground)
             .overlay {
-                if results.isEmpty && !query.isEmpty {
+                if results.isEmpty && !trimmedQuery.isEmpty && resultsQuery == trimmedQuery {
                     ContentUnavailableView("Keine Haltestelle gefunden", systemImage: "magnifyingglass",
                                            description: Text("Prüfe die Schreibweise oder versuche einen kürzeren Namen."))
                 }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Bahnhof oder Haltestelle")
             .autocorrectionDisabled()
+            .task(id: trimmedQuery) { await search() }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -380,6 +385,25 @@ private struct OnbStationPicker: View {
         }
         .accessibilityLabel(station.name)
         .accessibilityValue(OnbStationText.subtitle(for: station))
+    }
+
+    /// Ranks all ~40.000 stops off the main thread (it used to run in `body` on every keystroke and state change),
+    /// with a light debounce while typing – like the trip editor's station picker.
+    private func search() async {
+        let q = trimmedQuery
+        if !q.isEmpty {
+            try? await Task.sleep(for: .milliseconds(80))
+            if Task.isCancelled { return }
+        }
+        let index = app.stations
+        let near = near
+        let excludedID = excludedID
+        let found = await Task.detached(priority: .userInitiated) {
+            index.search(q, limit: 40, near: near).filter { $0.id != excludedID }
+        }.value
+        if Task.isCancelled { return }
+        results = found
+        resultsQuery = q
     }
 
     private func locate() {
