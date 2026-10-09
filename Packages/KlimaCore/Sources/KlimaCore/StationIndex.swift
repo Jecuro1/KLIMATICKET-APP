@@ -102,9 +102,16 @@ public final class StationIndex: @unchecked Sendable {
             return places.nearest(to: point, limit: limit, maxMeters: maxKm * 1000)
                 .map { (station: $0.place.station, distanceKm: $0.distanceMeters / 1000) }
         }
-        return stations
-            .map { ($0, point.distanceKm(to: $0.location)) }
-            .filter { $0.1 <= maxKm }
+        // Latitude band first: a station farther north or south than `maxKm` is farther than `maxKm` (the great-circle
+        // distance is at least R·|Δφ|), so only the band needs a haversine. The coverage engine calls this for every stop
+        // of every journey; same result as checking all stations.
+        let band = maxKm / 6371.0088 * 180 / .pi * 1.001 + 1e-9
+        var hits: [(Station, Double)] = []
+        for s in stations where !(abs(s.location.latitude - point.latitude) > band) {
+            let d = point.distanceKm(to: s.location)
+            if d <= maxKm { hits.append((s, d)) }
+        }
+        return hits
             .sorted { $0.1 < $1.1 }
             .prefix(limit)
             .map { (station: $0.0, distanceKm: $0.1) }

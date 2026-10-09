@@ -254,6 +254,7 @@ struct EvalStop {
     let name: String?
     let state: String?
     let country: String?
+    /// Only computed for stops outside Austria (it matters only for `atOrGbf`; regex + distance per stop is costly).
     let isGemeinschaftsbahnhof: Bool
 
     init(_ s: CoverageLegInput.Stop, evaluator: CoverageEvaluator) {
@@ -266,7 +267,8 @@ struct EvalStop {
             if CoverageEvaluator.austrianStates.contains(state) { country = "AT" } else if state == "X" { country = "XX" }
         }
         self.country = country
-        isGemeinschaftsbahnhof = evaluator.isGemeinschaftsbahnhof(name: s.name, lat: s.lat, lon: s.lon)
+        let inAustria = country?.hasPrefix("AT") ?? false
+        isGemeinschaftsbahnhof = !inAustria && evaluator.isGemeinschaftsbahnhof(name: s.name, lat: s.lat, lon: s.lon)
     }
 
     var inAustria: Bool { country?.hasPrefix("AT") ?? false }
