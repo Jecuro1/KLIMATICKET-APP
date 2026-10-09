@@ -143,6 +143,7 @@ function page(info: RequestInfo, status: number, title: string, main: string, sc
     `<meta name="color-scheme" content="light dark"><title>${escapeHtml(title)}</title><style>` +
     `:root{--bg:#f4f7f5;--fg:#1c2b22;--muted:#5b6b62;--card:#fff;--line:#d8e2dc;--accent:#1f7a4d;--on:#fff}` +
     `@media (prefers-color-scheme:dark){:root{--bg:#101814;--fg:#e6efe9;--muted:#9fb1a6;--card:#18231d;--line:#2a3a31;--accent:#3fae78;--on:#06140c}}` +
+    `*{box-sizing:border-box}` +
     `body{font-family:-apple-system,system-ui,sans-serif;margin:0;padding:32px 16px 48px;background:var(--bg);color:var(--fg);line-height:1.45}` +
     `main{max-width:30rem;margin:0 auto}h1{font-size:1.4rem;margin:0 0 .5rem}p,li{color:var(--muted)}` +
     `.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:16px 0}` +

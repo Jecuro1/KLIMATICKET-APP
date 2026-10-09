@@ -21,7 +21,7 @@ bekommen die App Group). iOS installiert Apps nur signiert – das übernimmt ei
 | **AltStore** (altstore.io) | gratis | ✅ über Quelle: neue Version wird erkannt, ein Tipp auf „Aktualisieren“ | Signatur mit kostenloser Apple-ID 7 Tage gültig, AltStore erneuert sie automatisch |
 | **SideStore** (sidestore.io) | gratis | ✅ über Quelle: wie AltStore | wie AltStore, ohne Computer zum Erneuern |
 | **Sideloadly** (sideloadly.io) | gratis | Hinweis in der App, Neuinstallation per Kabel | einfach per Kabel vom PC/Mac |
-| **Apple Developer Program** (99 €/Jahr) | kostenpflichtig | ✅ TestFlight / App Store | volle Funktionen inkl. „Mit Apple anmelden“, 1 Jahr gültig |
+| **Apple Developer Program** (99 €/Jahr) | kostenpflichtig | ✅ in der App „Jetzt installieren“ ([Direkt installieren](DIREKT_INSTALLIEREN.md)), TestFlight / App Store | ohne Computer und ohne Store, volle Funktionen inkl. „Mit Apple anmelden“, 1 Jahr gültig |
 
 > AltStore und SideStore benennen die App Group beim Signieren in `group.com.knitelarlberg.klimabilanz.<TEAMID>` um.
 > Die App findet die richtige Gruppe selbst (AltStore-Info.plist bzw. eingebettetes Provisioning-Profil) –
@@ -43,6 +43,7 @@ neuen Version ein Update-Fenster. Wohin „Jetzt aktualisieren“ führt, hängt
 | **AltStore** mit Quelle | AltStore prüft die Quelle und zeigt ein Badge bzw. eine Mitteilung; dazu das Update-Fenster der App | Tipp auf **Aktualisieren** in AltStore – oder „Jetzt aktualisieren“ in der App übergibt die neue `.ipa` an AltStore |
 | **SideStore** mit Quelle | wie AltStore | „Jetzt aktualisieren“ übergibt die neue `.ipa` an SideStore, oder Tipp auf **Aktualisieren** in SideStore |
 | **Sideloadly** / anderes | Update-Fenster der App | `.ipa` herunterladen und neu installieren |
+| **Direkt installiert** (Ad hoc, [DIREKT_INSTALLIEREN.md](DIREKT_INSTALLIEREN.md)) | Update-Fenster der App | „Jetzt installieren“ → iOS fragt „Installieren“ → App wird ersetzt, Daten bleiben |
 | **TestFlight** | TestFlight-App (Mitteilung) | in TestFlight auf **Aktualisieren** tippen – oder dort „Automatische Updates“ einschalten |
 | **App Store** | App Store (Versionsabgleich über `itunes.apple.com/lookup`) | im App Store bzw. automatisch, wenn App-Updates in den iOS-Einstellungen aktiv sind |
 
@@ -391,20 +392,30 @@ bleiben dabei angemeldet. Der Backend-Workflow fasst beide Secrets nie an.
 | App: „Der Server ist nicht auf dem neuesten Stand …“ | *Actions › Backend › Run workflow* (aktualisiert Worker und Datenbank) |
 | App: „Cloud-Anmeldung ist noch nicht eingerichtet.“ | Die App wurde ohne Backend-Adresse gebaut: nach §3.2 *Actions › iOS › Run workflow* erneut starten |
 
-## 4. Optional: Signierter Build & TestFlight
+## 4. Optional: Signierter Build, Direkt installieren & TestFlight
 
-Mit Apple Developer Program kann CI signierte Builds erzeugen und direkt zu TestFlight hochladen
-(TestFlight installiert Updates automatisch). Die Signierung läuft „cloud-managed“ über einen
-App-Store-Connect-API-Schlüssel – keine Zertifikate/Profile nötig:
+Mit Apple Developer Program kann CI signierte Builds erzeugen: **Direkt installieren** (Ad hoc – die App installiert
+jedes Update selbst, ein Tipp, ohne Computer und ohne Store) und/oder **TestFlight**. Die Signierung läuft
+„cloud-managed“ über einen App-Store-Connect-API-Schlüssel – keine Zertifikate/Profile im Repo. Alles geht am iPhone;
+die Schritt-für-Schritt-Anleitung steht in **[DIREKT_INSTALLIEREN.md](DIREKT_INSTALLIEREN.md)**. Kurz:
 
-1. In App Store Connect die App mit Bundle-ID `com.knitelarlberg.klimabilanz` anlegen
-   (vorher im Developer-Portal die IDs `com.knitelarlberg.klimabilanz`, `…klimabilanz.widgets` und
-   die App Group `group.com.knitelarlberg.klimabilanz` registrieren, „Sign in with Apple“ aktivieren).
-2. *Benutzer und Zugriff › Integrationen › App Store Connect API*: Schlüssel mit Rolle **App Manager** erzeugen.
-3. GitHub-Secrets: `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_BASE64` (`base64 -i AuthKey_XXXX.p8`).
-4. Bei jedem Tag `v*` (oder manuellem Lauf) lädt CI den signierten Build zu TestFlight hoch.
+1. *Benutzer und Zugriff › Integrationen › App Store Connect API*: Team-Schlüssel mit Zugriff **Admin** erzeugen
+   (registriert iPhones, erstellt Profile, signiert mit Apples cloudverwaltetem Zertifikat).
+2. GitHub-Secrets: `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` und `ASC_KEY_P8` = der **Text** der Datei
+   `AuthKey_XXXX.p8` (am iPhone kopierbar; alternativ wie bisher `ASC_KEY_BASE64` = `base64 -i AuthKey_XXXX.p8`).
+3. Für Direkt installieren: iPhone-UDID über `https://<Worker-Adresse>/v1/udid` anzeigen und mit *Actions › Gerät
+   registrieren* eintragen. Jedes Release enthält dann eine Ad-hoc-`.ipa` + `manifest.plist`, und die App zeigt
+   „Jetzt installieren“.
+4. TestFlight: In App Store Connect die App mit Bundle-ID `com.knitelarlberg.klimabilanz` anlegen – CI lädt dann bei
+   jedem Tag `v*` (oder manuellem Lauf) den signierten Build hoch. Ohne TestFlight: Variable `TESTFLIGHT` = `false`.
+   (App-IDs `com.knitelarlberg.klimabilanz`, `…klimabilanz.widgets`, App Group `group.com.knitelarlberg.klimabilanz`
+   und „Sign in with Apple“ legt die automatische Signierung normalerweise selbst an; meldet der Lauf eine fehlende
+   ID, sie unter developer.apple.com › *Certificates, Identifiers & Profiles* registrieren.)
 5. Für den nativen Login mit Apple im signierten Build zusätzlich das Secret `APPLE_BUNDLE_ID` setzen und *Actions ›
    Backend › Run workflow* starten (§3.3, Apple).
+
+Schlägt ein signierter Schritt fehl, steht das als Annotation im Lauf – das normale Release (unsignierte `.ipa`,
+`update.json`, AltStore/SideStore-Quelle) kommt trotzdem.
 
 ## 5. Selbst bauen (Mac)
 

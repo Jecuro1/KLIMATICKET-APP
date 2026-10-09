@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-t7UHzJ+M2mAw7FEjVZyDPNe2ZI6PJ4Sg0SBLm9kY+t4='; base-uri 'none'; form-action 'none'">
+<title>KlimaBilanz installieren</title>
+<!--
+  Installation page for "Direkt installieren" (docs/DIREKT_INSTALLIEREN.md): one itms-services link to the
+  manifest.plist of the latest release. GitHub Pages: Settings › Pages › Deploy from a branch › main › /docs
+  → https://jecuro1.github.io/KLIMATICKET-APP/install/
+  No tracking, no external resources. ?manifest=https://…/manifest.plist overrides the manifest (OTA_BASE_URL hosting,
+  e.g. https://<worker>/v1/ota/latest/manifest.plist).
+-->
+<style>
+  :root {
+    --bg: #f4f7f5; --fg: #17241c; --muted: #56675d; --card: #ffffff; --line: #d9e3dd;
+    --accent: #1f7a4d; --on-accent: #ffffff; --warn-bg: #fff4e0; --warn-fg: #6b4a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1612; --fg: #e7efe9; --muted: #9db0a5; --card: #16211b; --line: #26372e;
+      --accent: #3fae78; --on-accent: #04130b; --warn-bg: #2b2310; --warn-fg: #f1d48f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg); line-height: 1.5;
+    font: 17px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    padding: max(32px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 30rem; margin: 0 auto; }
+  header { text-align: center; }
+  header img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 12px 28px rgba(16, 48, 32, .28); }
+  h1 { font-size: 1.6rem; line-height: 1.2; margin: 18px 0 6px; letter-spacing: -.01em; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 56px;
+    padding: 14px 20px; border-radius: 16px; background: var(--accent); color: var(--on-accent);
+    font-weight: 650; font-size: 1.1rem; text-decoration: none;
+  }
+  .btn:active { opacity: .85; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; margin-top: 20px; }
+  .card h2 { font-size: 1rem; margin: 0 0 8px; }
+  ol { margin: 0; padding-left: 1.3rem; }
+  li + li { margin-top: 6px; }
+  p.small, li.small { color: var(--muted); font-size: .92rem; }
+  .note { background: var(--warn-bg); color: var(--warn-fg); border-radius: 14px; padding: 12px 14px; margin-top: 16px; font-size: .95rem; }
+  a { color: var(--accent); }
+  code { font: .88em ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+  footer { margin-top: 28px; text-align: center; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="AppIcon-180.png" alt="" width="96" height="96">
+    <h1>KlimaBilanz installieren</h1>
+    <p class="lead">Hat sich dein KlimaTicket schon rentiert? Die App direkt aufs iPhone – ohne Computer und ohne App Store.</p>
+  </header>
+
+  <a class="btn" id="install" href="itms-services://?action=download-manifest&amp;url=https://github.com/Jecuro1/KLIMATICKET-APP/releases/latest/download/manifest.plist">KlimaBilanz installieren</a>
+
+  <div class="card">
+    <h2>So geht's</h2>
+    <ol>
+      <li>Öffne diese Seite in <b>Safari</b> auf deinem iPhone.</li>
+      <li>Tippe auf <b>KlimaBilanz installieren</b> und bestätige mit <b>Installieren</b>.</li>
+      <li>Die App erscheint auf dem Home-Bildschirm. Neue Versionen installierst du danach direkt in der App
+        (<i>Einstellungen › Updates › Jetzt installieren</i>) – deine Daten bleiben.</li>
+    </ol>
+  </div>
+
+  <p class="note">Funktioniert nur auf iPhones, die für KlimaBilanz registriert sind. Ohne Registrierung meldet iOS
+    „App kann nicht installiert werden“ – dann hilft die
+    <a href="https://github.com/Jecuro1/KLIMATICKET-APP/blob/main/docs/DIREKT_INSTALLIEREN.md">Anleitung</a>.
+    Läuft KlimaBilanz schon über AltStore oder SideStore, kommt die direkt installierte App als zweite App dazu:
+    vorher in der App <i>Einstellungen › Daten › Backup sichern</i>.</p>
+
+  <footer>Kein Tracking, keine Cookies, keine fremden Inhalte.</footer>
+</main>
+<script>
+(function () {
+  var m = new URLSearchParams(location.search).get("manifest");
+  if (m && /^https:\/\/[^\s"'<>]+\/manifest\.plist$/.test(m)) {
+    document.getElementById("install").href = "itms-services://?action=download-manifest&url=" + m.replace(/[&?#=+]/g, encodeURIComponent);
+  }
+})();
+</script>
+</body>
+</html>
