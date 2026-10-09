@@ -15,9 +15,11 @@ struct AtlasRouteSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var detent: PresentationDetent = .medium
+    /// A trip opened from the list (pushed inside the sheet, which grows to full height for it).
+    @State private var path: [TripEntity] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 AtlasRouteDetail(route: route, trips: trips, ticketPrice: ticketPrice, routeCount: routeCount)
                     .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -37,7 +39,15 @@ struct AtlasRouteSheet: View {
                     Button(role: .close) { dismiss() }
                 }
             }
+            .navigationDestination(for: TripEntity.self) { trip in
+                TripDetailView(trip: trip)
+            }
         }
+        .onChange(of: path.isEmpty) { _, isEmpty in
+            if !isEmpty { withMotion(Motion.smooth) { detent = .large } }
+        }
+        // Another route tapped on the map: back to its overview.
+        .onChange(of: route.id) { _, _ in path.removeAll() }
         .presentationDetents([.medium, .large], selection: $detent)
         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         .presentationBackground(Theme.sheetBackground)
@@ -145,7 +155,17 @@ struct AtlasRouteDetail: View {
             }
             LazyVStack(spacing: 0) {
                 ForEach(Array(trips.enumerated()), id: \.element.id) { index, trip in
-                    TripRow(trip: trip)
+                    NavigationLink(value: trip) {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            TripRow(trip: trip)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Theme.textTertiary)
+                                .accessibilityHidden(true)
+                        }
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.pressableCard)
                     if index < trips.count - 1 {
                         Rectangle()
                             .fill(Theme.separator)
