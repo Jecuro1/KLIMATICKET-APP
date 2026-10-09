@@ -19,6 +19,22 @@ export SIMCTL_CHILD_TZ="Europe/Vienna"
 xcrun simctl launch "$UDID" "$BUNDLE_ID" -KBScreenshot dashboard -KBDemo YES >/dev/null 2>&1 || true
 sleep 25
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+DATA=$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data 2>/dev/null || true)
+TRACE="$DATA/Documents/launch-trace.txt"
+
+# Blank-launch diagnostics: a launch whose main thread never answered LaunchTrace's ping (no "stall" line) and never
+# applied the Keychain read ("auth.loaded") is stuck before its first frame – the screenshot shows the launch screen.
+# Sample that process (host `sample`, simulator apps are host processes) before it is terminated.
+sample_if_stuck() {
+  [ -n "$DATA" ] && [ -f "$TRACE" ] || return 0
+  local block pid
+  block=$(awk '/  launch /{b=""} {b=b $0 "\n"} END{printf "%s", b}' "$TRACE")
+  printf '%s' "$block" | grep -qE "stall|auth\.loaded" && return 0
+  pid=$(printf '%s' "$block" | sed -nE 's/.*  launch .* pid ([0-9]+).*/\1/p' | head -1)
+  [ -n "$pid" ] || return 0
+  echo "::warning::$1: main thread unresponsive since launch (pid $pid) – sampling it"
+  sample "$pid" 3 -file "$OUT/stuck-$1.sample.txt" >/dev/null 2>&1 || true
+}
 
 for APPEARANCE in light dark; do
   xcrun simctl ui "$UDID" appearance "$APPEARANCE"
@@ -28,12 +44,12 @@ for APPEARANCE in light dark; do
     sleep "${SHOT_DELAY:-5}"
     xcrun simctl io "$UDID" screenshot --type=png "$OUT/${APPEARANCE}-${SCREEN}.png" >/dev/null 2>&1
     echo "captured $APPEARANCE-$SCREEN"
+    sample_if_stuck "${APPEARANCE}-${SCREEN}"
   done
 done
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 # LaunchTrace (App/Sources/Core/LaunchTrace.swift): launch timestamps + main-thread stalls of every screenshot launch.
-DATA=$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data 2>/dev/null || true)
-if [ -n "$DATA" ] && [ -f "$DATA/Documents/launch-trace.txt" ]; then
-  cp "$DATA/Documents/launch-trace.txt" "$OUT/launch-trace.txt" || true
+if [ -n "$DATA" ] && [ -f "$TRACE" ]; then
+  cp "$TRACE" "$OUT/launch-trace.txt" || true
 fi
 ls -la "$OUT"
