@@ -38,7 +38,7 @@ enum WorkDemo {
         applyWorkCategories(to: (try? context.fetch(FetchDescriptor<TripEntity>())) ?? [])
         let ticket = (try? context.fetch(FetchDescriptor<TicketEntity>()))?.first
         switch screen {
-        case "carSettings":
+        case "carSettings", "carSettingsDetails":
             settings.carMode = .fuelOnly
             settings.carGivenUp = true
         case "work", "workDetails", "workPDF", "workAssign", "workContribution":
@@ -52,8 +52,9 @@ enum WorkDemo {
     }
 }
 
-/// CI screenshot routes of this module: car carDetails carSettings carCard work workDetails workSelf workAssign
-/// workContribution workPDF workLogbookPDF ("…Details" = the same screen scrolled to its end).
+/// CI screenshot routes of this module: car carDetails carSettings carSettingsDetails carCard work workDetails workSelf
+/// workAssign workContribution workPDF workLogbookPDF ("…Details" = the same screen scrolled further: carDetails to its
+/// middle – chart axis, legend, "So rechnen wir" –, the others to their end).
 struct WorkScreenshotHost: View {
     let screen: String
 
@@ -68,6 +69,8 @@ struct WorkScreenshotHost: View {
         }
         .task {
             guard !isReady else { return }
+            // Let the first frame (sky) reach the screen before the demo data is prepared and the screen is built.
+            try? await Task.sleep(for: .milliseconds(60))
             WorkDemo.prepare(screen: screen, context: context)
             isReady = true
             if screen == "workAssign" || screen == "workContribution" {
@@ -82,6 +85,9 @@ struct WorkScreenshotHost: View {
         switch screen {
         case "carSettings":
             NavigationStack { WorkCarSettingsView() }
+        case "carSettingsDetails":
+            NavigationStack { WorkCarSettingsView() }
+                .defaultScrollAnchor(.bottom)
         case "carCard":
             NavigationStack { WorkCarCardPreview() }
         case "work", "workSelf":
@@ -91,7 +97,7 @@ struct WorkScreenshotHost: View {
                 .defaultScrollAnchor(.bottom)
         case "carDetails":
             NavigationStack { WorkCarView() }
-                .defaultScrollAnchor(.bottom)
+                .defaultScrollAnchor(.center)
         case "workAssign":
             NavigationStack { WorkTaxView() }
                 .sheet(isPresented: $showsSheet) {

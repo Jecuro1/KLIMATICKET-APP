@@ -16,7 +16,7 @@ struct WorkJobticketCard: View {
     var body: some View {
         GlassCard(padding: Theme.Spacing.m + 2) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                StatsCardHeader(kicker: "Jobticket & Arbeitgeberzuschuss",
+                StatsCardHeader(kicker: "Jobticket & Zuschuss",
                                 title: job.hasContribution ? "Dein Arbeitgeber zahlt \(Format.euro(job.employerContribution, decimals: 0)) mit"
                                                            : "Zahlt dein Arbeitgeber mit?") {
                     StatsInfoButton(title: "Jobticket", text: explanation)

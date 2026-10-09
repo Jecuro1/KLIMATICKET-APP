@@ -29,7 +29,9 @@ struct WorkTaxData {
                         singleFare: WorkTax.secondClassFare(trip.fareEUR, travelClass: trip.travelClass, firstClassFactor: factor),
                         note: trip.note.trimmingCharacters(in: .whitespacesAndNewlines))
         }
-        let summary = Analytics.make(ticket: ticket, trips: entities, catalog: catalog).summary
+        // Only the trip value is needed – the summary alone (not the whole Analytics snapshot with charts and achievements).
+        let summary = SavingsCalculator.summary(ticket: period, trips: entities.map(\.record),
+                                                kilometergeld: catalog.kilometergeldEUR, emissions: catalog.emissions)
 
         let addOns = ticket.addOns
         let hasFirstClass = addOns.contains("firstClass")

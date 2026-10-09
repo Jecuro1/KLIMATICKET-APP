@@ -379,7 +379,7 @@ private struct WorkCarScreen: View {
                     .fixedSize(horizontal: false, vertical: true)
                 co2Bars
                 Spacer(minLength: 0)
-                Text("Pkw \(Format.number(app.catalog.emissions.car)) g/km auf Straßen-km · Öffis je Verkehrsmittel (Umweltbundesamt)")
+                Text("Pkw \(Format.number(app.catalog.emissions.car)) g/km, Öffis je Verkehrsmittel (Umweltbundesamt)")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -433,13 +433,13 @@ private struct WorkCarScreen: View {
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(workdays >= 1
-                     ? "Rund \(StatsCalc.friendlyCount(workdays)) Arbeitstage, in denen du lesen, arbeiten oder einfach aus dem Fenster schauen konntest."
-                     : "Zeit, in der du lesen, arbeiten oder einfach aus dem Fenster schauen konntest.")
+                     ? "Rund \(StatsCalc.friendlyCount(workdays)) Arbeitstage – Zeit zum Lesen, Arbeiten oder Träumen."
+                     : "Zeit zum Lesen, Arbeiten oder Träumen.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
-                Text("Grobe Schätzung mit Durchschnittstempo je Strecke, ohne Stau und Parkplatzsuche")
+                Text("Schätzung mit Durchschnittstempo, ohne Stau und Parkplatzsuche")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -100,14 +100,14 @@ struct WorkContributionSheet: View {
 
     private var presets: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            presetButton("Keiner", value: 0)
-            presetButton("Hälfte", value: (fullPrice / 2).rounded())
-            presetButton("Ganzes Ticket", value: fullPrice)
+            presetButton("Keiner", accessibilityTitle: "Kein Zuschuss", value: 0)
+            presetButton("Hälfte", accessibilityTitle: "Die Hälfte des Tickets", value: (fullPrice / 2).rounded())
+            presetButton("Ganz", accessibilityTitle: "Das ganze Ticket", value: fullPrice)
         }
         .padding(.vertical, 2)
     }
 
-    private func presetButton(_ title: String, value: Double) -> some View {
+    private func presetButton(_ title: String, accessibilityTitle: String, value: Double) -> some View {
         let isActive = abs(contribution - value) < 0.5
         return Button {
             withAnimation(.snappy) { draft = value }
@@ -121,6 +121,8 @@ struct WorkContributionSheet: View {
         }
         .buttonStyle(.glass)
         .tint(isActive ? Theme.accent : nil)
+        .accessibilityLabel(accessibilityTitle)
+        .accessibilityValue(Format.euro(value, decimals: 0))
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
