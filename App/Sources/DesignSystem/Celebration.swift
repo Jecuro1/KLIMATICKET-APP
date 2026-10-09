@@ -86,6 +86,14 @@ struct BreakEvenCelebration: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 76, weight: .semibold))
                     .foregroundStyle(Theme.positive.gradient)
+                    .background {
+                        // Static glow (no animation cost): the seal sits in light.
+                        Circle()
+                            .fill(RadialGradient(colors: [Theme.positive.opacity(0.32), Theme.positive.opacity(0)],
+                                                 center: .center, startRadius: 6, endRadius: 96))
+                            .frame(width: 192, height: 192)
+                            .accessibilityHidden(true)
+                    }
                     .celebrate(trigger: appear, haptic: nil)
                     .celebrationRing(trigger: appear, color: Theme.positive)
                     .celebrationBurst(trigger: appear)

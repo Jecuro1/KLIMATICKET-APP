@@ -99,8 +99,7 @@ struct GlassSegmentedPicker<Value: Hashable, Label: View>: View {
                     if isSelected {
                         Capsule()
                             .fill(selectionFill)
-                            .overlay(Capsule().strokeBorder(tint.opacity(colorScheme == .dark ? 0.45 : 0.3), lineWidth: 1))
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 6, y: 2)
+                            .overlay(Capsule().strokeBorder(tint.opacity(colorScheme == .dark ? 0.45 : 0.35), lineWidth: 1))
                             .matchedGeometryEffect(id: "selection", in: namespace)
                     }
                 }
@@ -110,7 +109,8 @@ struct GlassSegmentedPicker<Value: Hashable, Label: View>: View {
         .accessibilityAddTraits(isSelected ? [.isSelected, .isButton] : .isButton)
     }
 
+    /// Tinted (never glass on glass): reads on the sky and on white cards alike.
     private var selectionFill: Color {
-        colorScheme == .dark ? tint.opacity(0.28) : Color.white.opacity(0.92)
+        tint.opacity(colorScheme == .dark ? 0.28 : 0.15)
     }
 }
