@@ -20,6 +20,7 @@ struct SettingsView: View {
         List {
             SetAccountSection()
             SetFareSection()
+            PerkSettingsSection()
             SetDetectionSection()
             SetAppearanceSection()
             SetNotificationsSection()

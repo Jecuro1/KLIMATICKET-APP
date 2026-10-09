@@ -193,6 +193,17 @@ struct ScreenshotRouter: View {
             NavigationStack { AchievementsView() }
         case "settings":
             NavigationStack { SettingsView() }
+        case "benefits", "benefitCatalog", "benefitEditor":
+            NavigationStack { PerkBenefitsView() }
+                .sheet(isPresented: .constant(screen != "benefits")) {
+                    if screen == "benefitCatalog" {
+                        PerkCatalogSheet()
+                    } else if let partner = PerkCatalogStore.shared.partner(id: "cat") {
+                        NavigationStack { PerkEditorView(mode: .new(partner)) {} }
+                    }
+                }
+        case "passengerRights":
+            NavigationStack { PerkPassengerRightsView() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
         case "hero":

@@ -104,6 +104,11 @@ struct DashboardView: View {
                         .padding(.horizontal, Theme.Spacing.cardGutter)
                         .padding(.top, DashStyle.sectionSpacing)
                 }
+
+                PerkSummaryCard()
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)
+                    .dashEntrance(8, visible: appeared)
             }
             .padding(.bottom, Theme.Spacing.xl)
             .animation(.smooth, value: suggestions.count)
