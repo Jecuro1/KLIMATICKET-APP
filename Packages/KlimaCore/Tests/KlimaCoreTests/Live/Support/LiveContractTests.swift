@@ -43,6 +43,29 @@ final class LiveContractTests: XCTestCase {
         XCTAssertEqual(LeadTimeTier.tier(departure: now.addingTimeInterval(20 * 86400), now: now), .advanceLong)
     }
 
+    /// Owner request 2026-10-09: `JourneyQuery.via` is a list of up to two `ViaStop`s; older encodings still decode.
+    func testJourneyQueryViaStops() throws {
+        let ibk = Location.station(extId: "8100108", name: "Innsbruck Hbf")
+        let bregenz = Location.station(extId: "8100090", name: "Bregenz Bahnhof")
+        let feldkirch = Location.station(extId: "8100094", name: "Feldkirch Bahnhof")
+        let date = Date(timeIntervalSince1970: 1_791_542_000)
+        var q = JourneyQuery(origin: ibk, destination: bregenz, via: [ViaStop(location: feldkirch, minimumDwellMinutes: 10)], date: date)
+        XCTAssertEqual(JourneyQuery.maxViaStops, 2)
+        XCTAssertEqual(try JSONDecoder().decode(JourneyQuery.self, from: JSONEncoder().encode(q)), q)
+        XCTAssertTrue(JourneyQuery(origin: ibk, destination: bregenz, date: date).via.isEmpty)
+
+        // Pre-2026-10-09 shape (`via` = one Location) and a missing key both decode.
+        let enc = JSONEncoder()
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: enc.encode(q)) as? [String: Any])
+        legacy["via"] = try JSONSerialization.jsonObject(with: enc.encode(feldkirch))
+        let fromLegacy = try JSONDecoder().decode(JourneyQuery.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertEqual(fromLegacy.via, [ViaStop(location: feldkirch)])
+        legacy.removeValue(forKey: "via")
+        XCTAssertEqual(try JSONDecoder().decode(JourneyQuery.self, from: JSONSerialization.data(withJSONObject: legacy)).via, [])
+        q.via = []
+        XCTAssertEqual(try JSONDecoder().decode(JourneyQuery.self, from: JSONEncoder().encode(q)), q)
+    }
+
     struct NoLive: LivePriceProvider {
         func livePrice(_ request: PriceRequest) async throws -> PriceQuote { throw LiveError.disabled(.oebbShop) }
     }

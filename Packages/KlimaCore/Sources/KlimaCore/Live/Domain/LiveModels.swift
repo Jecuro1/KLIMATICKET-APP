@@ -387,12 +387,29 @@ public struct JourneyPage: Codable, Sendable, Hashable {
     }
 }
 
+/// A stop the journey must pass ("Über", HAFAS `viaLocL`). Owner request 2026-10-09: up to two via stops, each with an
+/// optional minimum stay (SPEC §A3.3).
+public struct ViaStop: Codable, Sendable, Hashable {
+    public var location: Location
+    /// Minimum dwell at the via stop in minutes (HAFAS `min`); nil = only pass through / change there.
+    public var minimumDwellMinutes: Int?
+
+    public init(location: Location, minimumDwellMinutes: Int? = nil) {
+        self.location = location
+        self.minimumDwellMinutes = minimumDwellMinutes
+    }
+}
+
 public struct JourneyQuery: Codable, Sendable, Hashable {
     public enum Accessibility: String, Codable, Sendable { case complete = "completeBarrierfree", limited = "limitedBarrierfree" }
 
+    /// The planner offers at most this many via stops (owner requirement); encoders send only the first `maxViaStops`.
+    public static let maxViaStops = 2
+
     public var origin: Location
     public var destination: Location
-    public var via: Location?
+    /// Via stops in travel order (at most `maxViaStops` are sent). Empty = direct search.
+    public var via: [ViaStop]
     /// Departure time, or latest arrival when `isArrival`.
     public var date: Date
     public var isArrival: Bool
@@ -409,7 +426,7 @@ public struct JourneyQuery: Codable, Sendable, Hashable {
     /// Paging context; when set, `date`/`isArrival` are NOT sent (SPEC §A3.3).
     public var pageContext: String?
 
-    public init(origin: Location, destination: Location, via: Location? = nil, date: Date, isArrival: Bool = false,
+    public init(origin: Location, destination: Location, via: [ViaStop] = [], date: Date, isArrival: Bool = false,
                 maxChanges: Int? = nil, minTransferMinutes: Int? = nil, products: ProductMask = .all, bikeCarriage: Bool = false,
                 accessibility: Accessibility? = nil, results: Int = 5, includeStopovers: Bool = true, includePolyline: Bool = false,
                 pageContext: String? = nil) {
@@ -427,6 +444,36 @@ public struct JourneyQuery: Codable, Sendable, Hashable {
         self.includeStopovers = includeStopovers
         self.includePolyline = includePolyline
         self.pageContext = pageContext
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case origin, destination, via, date, isArrival, maxChanges, minTransferMinutes, products, bikeCarriage, accessibility, results,
+             includeStopovers, includePolyline, pageContext
+    }
+
+    /// Tolerant decoding: `via` may be missing (older saved queries) or a single `Location` (pre-2026-10-09 contract).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        origin = try c.decode(Location.self, forKey: .origin)
+        destination = try c.decode(Location.self, forKey: .destination)
+        if let list = try? c.decodeIfPresent([ViaStop].self, forKey: .via) {
+            via = list
+        } else if let single = try? c.decodeIfPresent(Location.self, forKey: .via) {
+            via = [ViaStop(location: single)]
+        } else {
+            via = []
+        }
+        date = try c.decode(Date.self, forKey: .date)
+        isArrival = try c.decodeIfPresent(Bool.self, forKey: .isArrival) ?? false
+        maxChanges = try c.decodeIfPresent(Int.self, forKey: .maxChanges)
+        minTransferMinutes = try c.decodeIfPresent(Int.self, forKey: .minTransferMinutes)
+        products = try c.decodeIfPresent(ProductMask.self, forKey: .products) ?? .all
+        bikeCarriage = try c.decodeIfPresent(Bool.self, forKey: .bikeCarriage) ?? false
+        accessibility = try c.decodeIfPresent(Accessibility.self, forKey: .accessibility)
+        results = try c.decodeIfPresent(Int.self, forKey: .results) ?? 5
+        includeStopovers = try c.decodeIfPresent(Bool.self, forKey: .includeStopovers) ?? true
+        includePolyline = try c.decodeIfPresent(Bool.self, forKey: .includePolyline) ?? false
+        pageContext = try c.decodeIfPresent(String.self, forKey: .pageContext)
     }
 }
 

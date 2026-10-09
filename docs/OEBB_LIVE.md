@@ -384,7 +384,7 @@ All dates and times are **Europe/Vienna wall clock**: `yyyyMMdd` and `HHmmss`. U
 ```
 
 Encoding rules:
-- **`viaLocL`** only when `via != nil`.
+- **`viaLocL`** only when `via` is non-empty (never an empty list, never `null`); see the via note below.
 - **Paging:** send `ctxScr: <context>` and **omit** `outDate`, `outTime` and `outFrwd` [LIVE `tripsearch_paging_later_graz_klagenfurt`, `…_earlier_…`]. Everything else stays identical.
 - **`outFrwd:false`** means `outTime` is the latest arrival [LIVE `tripsearch_arrive_by_innsbruck_wien`].
 - **`maxChg`:** `maxChanges ?? -1`. **`minChgTime`:** `minTransferMinutes ?? -1`.
@@ -395,6 +395,14 @@ Encoding rules:
 - **`getPolyline`** = `includePolyline`. It is false in list views; shapes come from JourneyDetails.
 - **`getPasslist`** = `includeStopovers`: true for results lists (stopover counts, coverage), false for „Deine Strecken“.
 - The `PROD` value is a **String**.
+
+**Additive note: via (owner request 2026-10-09)** („man sollte auch VIA Halte rein machen“)
+- `JourneyQuery.via: [ViaStop]` replaces the earlier `via: Location?` (decoding still accepts a single `Location` and a
+  missing key). `ViaStop = { location: Location, minimumDwellMinutes: Int? }`; at most `JourneyQuery.maxViaStops` (2)
+  are sent, in travel order.
+- Encoding: `"viaLocL":[{"loc":<loc>,"min":<minutes>}, …]`. `min` only when `minimumDwellMinutes` is set (> 0);
+  no `viaLocL` key at all when `via` is empty. Paging requests repeat `viaLocL` unchanged.
+- [ASSUMED until the WP-A live check] `/gate` accepts `min` inside `viaLocL` (HCI `HCIViaLocation.min`).
 
 **Reconstruction (refresh a saved connection)**
 ```json
