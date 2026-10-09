@@ -80,8 +80,21 @@ final class AppIconStore {
     /// A switch is in flight (the system call answers after its own confirmation alert is up).
     private(set) var isChanging = false
 
+    // MARK: settings – `alternateIconName` is a synchronous LaunchServices XPC on the main thread; at the first render
+    // of Einstellungen (app-icon row, update and brand rows) it blocked a CI launch for 16 s. This store is the only
+    // writer of the icon, so it remembers its last answer and asks the system once per install. Screenshots always run
+    // with the primary icon and never persist a choice.
+    private static let cacheKey = "appIcon.current"
+
     private init() {
-        current = AppIconChoice(alternateIconName: UIApplication.shared.alternateIconName)
+        if LaunchMode.isScreenshot {
+            current = .alpin
+        } else if let cached = UserDefaults.standard.string(forKey: Self.cacheKey).flatMap(AppIconChoice.init(rawValue:)) {
+            current = cached
+        } else {
+            current = AppIconChoice(alternateIconName: UIApplication.shared.alternateIconName)
+            UserDefaults.standard.set(current.rawValue, forKey: Self.cacheKey)
+        }
     }
 
     /// False on systems without alternate icons – the settings row is hidden then.
@@ -112,6 +125,7 @@ final class AppIconStore {
                     withMotion(Motion.snappy) { store.current = previous }
                     completion(false)
                 } else {
+                    UserDefaults.standard.set(choice.rawValue, forKey: AppIconStore.cacheKey) // MARK: settings
                     completion(true)
                 }
             }
