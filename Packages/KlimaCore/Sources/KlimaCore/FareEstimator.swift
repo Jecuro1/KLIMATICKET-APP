@@ -2,6 +2,8 @@ import Foundation
 
 public struct FareEstimate: Hashable, Sendable {
     public enum Method: String, Sendable {
+        /// Exact price from the official ÖBB relation tables.
+        case officialTable
         case distanceTariff
         case cityTicket
         case manual
@@ -29,9 +31,11 @@ public struct FareEstimate: Hashable, Sendable {
 /// Estimates what a trip would have cost with regular tickets.
 public struct FareEstimator: Sendable {
     public var catalog: TariffCatalog
+    public var relations: RelationPriceTable
 
-    public init(catalog: TariffCatalog) {
+    public init(catalog: TariffCatalog, relations: RelationPriceTable = .empty) {
         self.catalog = catalog
+        self.relations = relations
     }
 
     public func estimate(from: GeoPoint, to: GeoPoint, mode: TransportMode,
@@ -68,7 +72,25 @@ public struct FareEstimator: Sendable {
 
     public func estimate(from: Station, to: Station, mode: TransportMode,
                          travelClass: TravelClass = .second, discount: FareDiscount = .none) -> FareEstimate {
-        estimate(from: from.location, to: to.location, mode: mode, travelClass: travelClass, discount: discount)
+        let geo = estimate(from: from.location, to: to.location, mode: mode, travelClass: travelClass, discount: discount)
+        guard geo.method != .cityTicket, mode != .metro, mode != .tram,
+              let base = relations.price(from: from.id, to: to.id) else { return geo }
+        let model = catalog.fareModel
+        var value = base
+        if travelClass == .first { value *= model.firstClassFactor }
+        if let factor = model.discountFactors[discount.rawValue] { value *= factor }
+        value = model.round(value)
+        var parts = ["ÖBB-Standardticket \(travelClass == .first ? "1." : "2.") Kl.", "Tarif ab \(FareEstimator.shortDate(relations.validFrom))"]
+        if discount == .vorteilscard { parts.append("mit Vorteilscard") }
+        return FareEstimate(fareEUR: value, distanceKm: geo.distanceKm, straightLineKm: geo.straightLineKm,
+                            method: .officialTable, explanation: parts.joined(separator: " · "))
+    }
+
+    /// "2025-12-14" → "14.12.2025"
+    static func shortDate(_ iso: String) -> String {
+        let p = iso.split(separator: "-")
+        guard p.count == 3 else { return iso }
+        return "\(p[2]).\(p[1]).\(p[0])"
     }
 
     private func rounded1(_ v: Double) -> Double { (v * 10).rounded() / 10 }

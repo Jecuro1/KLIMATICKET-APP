@@ -76,6 +76,25 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertGreaterThan(long.fareEUR, 40)
     }
 
+    func testRelationTableOverridesDistanceTariff() throws {
+        let json = """
+        {"validFrom":"2025-12-14","source":"test","points":[{"name":"Wien","stationID":"a"},{"name":"Salzburg","stationID":"b"}],
+         "prices":[[0,1,6770]]}
+        """.data(using: .utf8)!
+        let table = try RelationPriceTable(jsonData: json)
+        XCTAssertEqual(table.price(from: "b", to: "a"), 67.7)
+        let catalog = TariffCatalog(version: 1, updatedAt: "", products: [], fareModel: .fallback, cityFares: [],
+                                    kilometergeldEUR: 0.5, carFullCostPerKmEUR: 0.6, emissions: .fallback)
+        let est = FareEstimator(catalog: catalog, relations: table)
+        let a = Station(id: "a", name: "Wien Hbf", lat: 48.185, lon: 16.376, state: "W")
+        let b = Station(id: "b", name: "Salzburg Hbf", lat: 47.813, lon: 13.045, state: "S")
+        let e = est.estimate(from: a, to: b, mode: .train)
+        XCTAssertEqual(e.method, .officialTable)
+        XCTAssertEqual(e.fareEUR, 67.7, accuracy: 0.001)
+        XCTAssertEqual(est.estimate(from: a, to: b, mode: .train, discount: .vorteilscard).fareEUR, 33.9, accuracy: 0.051)
+        XCTAssertTrue(e.explanation.contains("14.12.2025"))
+    }
+
     func testEuroFormatting() {
         XCTAssertEqual(FareEstimator.euro(3.2), "€ 3,20")
         XCTAssertEqual(FareEstimator.euro(1300), "€ 1300,00")
