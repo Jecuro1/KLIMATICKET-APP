@@ -67,7 +67,7 @@ struct WorkAssignSheet: View {
             .scrollContentBackground(.hidden)
             .background { SetBackdrop(skyOpacity: 0.35, fadeEnd: 0.35) }
             .safeAreaInset(edge: .top, spacing: 0) {
-                Picker("Anzeigen", selection: $filter.animation(.snappy)) {
+                Picker("Anzeigen", selection: $filter.animation(MotionPolicy.animation(Motion.snappy))) {
                     ForEach(Filter.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
@@ -82,7 +82,7 @@ struct WorkAssignSheet: View {
                         .fontWeight(.semibold)
                 }
             }
-            .sensoryFeedback(.selection, trigger: changeCount) { _, _ in app.settings.hapticsEnabled }
+            .haptic(.selection, trigger: changeCount)
         }
         .presentationDragIndicator(.visible)
     }
@@ -107,7 +107,7 @@ struct WorkAssignSheet: View {
     }
 
     private func assign(_ category: TripCategory?, to trip: TripEntity) {
-        withAnimation(.snappy) {
+        withMotion(Motion.snappy) {
             Repository(context: context, app: app).workSetCategory(category, for: trip)
         }
         changeCount += 1
@@ -195,7 +195,7 @@ private struct WorkAssignRow: View {
                 Capsule().strokeBorder(Theme.accent.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
         }
-        .contentTransition(.symbolEffect(.replace))
+        .symbolReplaceTransition()
     }
 
     static func tint(for category: TripCategory?) -> Color {

@@ -295,7 +295,7 @@ struct WorkSelfEmployedCard: View {
                     .init(label: "Betrieblich", value: s.businessKm, detail: Format.km(s.businessKm), color: Theme.glacier),
                     .init(label: "Privat", value: s.privateKm, detail: Format.km(s.privateKm), color: Theme.textTertiary.opacity(0.55)),
                 ], height: 10)
-                Toggle(isOn: $settings.countsCommuteAsBusiness.animation(.snappy)) {
+                Toggle(isOn: $settings.countsCommuteAsBusiness.animation(MotionPolicy.animation(Motion.smooth))) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Wege zum Betrieb zählen betrieblich")
                             .font(.subheadline.weight(.semibold))
@@ -449,7 +449,7 @@ struct WorkTripList: View {
             }
             if trips.count > collapsedCount {
                 Button {
-                    withAnimation(.snappy) { showsAll.toggle() }
+                    withMotion(Motion.smooth) { showsAll.toggle() }
                 } label: {
                     HStack(spacing: 4) {
                         Text(showsAll ? "Weniger anzeigen" : "Alle \(trips.count) anzeigen")
@@ -461,7 +461,7 @@ struct WorkTripList: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
             }
         }
     }

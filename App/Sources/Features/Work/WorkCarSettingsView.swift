@@ -34,7 +34,7 @@ struct WorkCarSettingsView: View {
                 if !settings.isCarAtDefaults {
                     Section {
                         Button {
-                            withAnimation(.snappy) { settings.resetCar() }
+                            withMotion(Motion.smooth) { settings.resetCar() }
                             resetTrigger += 1
                         } label: {
                             Label("Standardwerte wiederherstellen", systemImage: "arrow.uturn.backward")
@@ -57,9 +57,9 @@ struct WorkCarSettingsView: View {
         .background { SetBackdrop() }
         .navigationTitle("Auto-Vergleich")
         .navigationBarTitleDisplayMode(.large)
-        .sensoryFeedback(.selection, trigger: settings.carMode) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.impact(weight: .light), trigger: settings.carGivenUp) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.success, trigger: resetTrigger) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: settings.carMode)
+        .haptic(.snap, trigger: settings.carGivenUp)
+        .haptic(.success, trigger: resetTrigger)
     }
 
     private static let fixedCostsID = "work.car.fixedCosts"
@@ -82,7 +82,7 @@ struct WorkCarSettingsView: View {
     private func modeRow(_ mode: CarCostMode, settings: WorkSettings) -> some View {
         let isSelected = settings.carMode == mode
         return Button {
-            withAnimation(.snappy) { settings.carMode = mode }
+            withMotion(Motion.snappy) { settings.carMode = mode }
         } label: {
             // Label (not a plain HStack) so the icon tile sits in the list's icon column like every other settings row.
             Label {
@@ -106,7 +106,7 @@ struct WorkCarSettingsView: View {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.title3)
                         .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
-                        .contentTransition(.symbolEffect(.replace))
+                        .symbolReplaceTransition()
                 }
             } icon: {
                 SetIconTile(symbol: mode.symbol, tint: mode.tint)
@@ -114,7 +114,7 @@ struct WorkCarSettingsView: View {
             .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(mode.displayName), \(WorkFormat.perKm(rate(mode, settings: settings)))")
         .accessibilityHint(mode.explanation)
@@ -160,7 +160,7 @@ struct WorkCarSettingsView: View {
                             .font(.body.weight(.bold))
                             .monospacedDigit()
                             .foregroundStyle(Theme.textPrimary)
-                            .contentTransition(.numericText())
+                            .numericValue(settings.carProfile(catalog: app.catalog).fuelCostPerKm)
                     } label: {
                         Text("Ergibt")
                             .foregroundStyle(Theme.textSecondary)
@@ -196,7 +196,7 @@ struct WorkCarSettingsView: View {
         @Bindable var settings = model
         return Section {
             Group {
-                Toggle(isOn: $settings.carGivenUp.animation(.snappy)) {
+                Toggle(isOn: $settings.carGivenUp.animation(MotionPolicy.animation(Motion.smooth))) {
                     SetRowLabel(title: "Auto abgeschafft", subtitle: "Eingesparte Fixkosten anteilig dazurechnen",
                                 symbol: "car.side.fill", tint: Theme.pine)
                 }
@@ -216,7 +216,7 @@ struct WorkCarSettingsView: View {
                                 .font(.body.weight(.bold))
                                 .monospacedDigit()
                                 .foregroundStyle(Theme.textPrimary)
-                                .contentTransition(.numericText())
+                                .numericValue(settings.fixedCosts.total)
                             Text("\(Format.euroPrecise(settings.fixedCosts.total / 365)) pro Tag")
                                 .font(.footnote)
                                 .monospacedDigit()
@@ -252,7 +252,7 @@ struct WorkCarSettingsView: View {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.summit)
             }
             Button {
-                withAnimation(.snappy) { settings.carMode = .fuelOnly }
+                withMotion(Motion.snappy) { settings.carMode = .fuelOnly }
             } label: {
                 Label("Auf „Nur Sprit“ umstellen", systemImage: "fuelpump.fill")
                     .font(.subheadline.weight(.semibold))

@@ -88,7 +88,7 @@ struct WorkContributionSheet: View {
                       color: Theme.glacier),
                 .init(label: "Du", value: ownShare, detail: Format.euro(ownShare, decimals: 0), color: Theme.dawn),
             ], height: 10)
-            .animation(.snappy, value: contribution)
+            .motionAnimation(Motion.snappy, value: contribution)
         }
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .ignore)
@@ -110,7 +110,7 @@ struct WorkContributionSheet: View {
     private func presetButton(_ title: String, accessibilityTitle: String, value: Double) -> some View {
         let isActive = abs(contribution - value) < 0.5
         return Button {
-            withAnimation(.snappy) { draft = value }
+            withMotion(Motion.snappy) { draft = value }
         } label: {
             Text(title)
                 .font(.subheadline.weight(.semibold))
