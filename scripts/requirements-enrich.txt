@@ -1,0 +1,9 @@
+# Python packages of the places data build (docs/ENRICH_SPEC.md §1.7.1). Everything else is the standard library.
+#   python3 -m venv build/venv && build/venv/bin/pip install -r scripts/requirements-enrich.txt
+#   PYTHON=build/venv/bin/python sh scripts/build_places_all.sh
+# osmium: extract_osm_places.py, extract_osm_routes.py, extract_osm_tags.py (reads the Geofabrik PBF)
+# shapely + numpy: build_tags.py (ski-area polygons, lifts, regions, Gemeinde point-in-polygon)
+# Pinned: the shipped files were built with exactly these versions (zlib version: data/places_report.json).
+osmium==4.3.1
+shapely==2.2.0
+numpy==2.5.3

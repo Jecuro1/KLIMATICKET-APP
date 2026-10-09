@@ -2,15 +2,25 @@
 """KlimaBilanz – offline place database (all Austrian public-transport stops + localities).
 
 Reproducible, stdlib-only pipeline. Input = files downloaded into DL (scripts/fetch_places_sources.sh),
-output = OUT/places.bin + OUT/localities.bin (app resources) and debug/side files in DEBUG_OUT.
-Sources, licences and the yearly update procedure: docs/DATA_SOURCES.md.
+output = OUT/places.bin + OUT/stops_osm.bin + OUT/localities.bin (app resources, KBPL v2) and debug/side files in
+DEBUG_OUT. Sources, licences and the yearly update procedure: docs/DATA_SOURCES.md; format v2: docs/ENRICH_SPEC.md §1.
 
-    sh scripts/fetch_places_sources.sh build/places-dl          # once per timetable year (≈ 1.3 GB)
-    python3 -I scripts/build_places.py --dl build/places-dl --out App/Resources --debug-out build/places \
-        [--mvo path/to/haltestellen.csv]
+    sh scripts/fetch_places_sources.sh build/places-dl          # once per timetable year (≈ 1.4 GB)
+    sh scripts/build_places_all.sh --extract                     # stages below + lines + tags + checks
+    # or by hand:
+    python3 -I scripts/build_places.py --dl build/places-dl --stage base --debug-out build/places [--mvo …]
+    python3 -I scripts/build_places.py --dl build/places-dl --stage v2 --lines-official build/lines_official \
+        --lines-full build/lines_full --tags build/tags/tags.json --out App/Resources --debug-out build/places
 
-The output is deterministic for identical inputs (no timestamps or hash-order dependence in the .bin files);
-places_report.json carries the input checksums and the per-Bundesland/mode counts.
+Stages: base = the stop list (v1 logic below) → DEBUG_OUT/places.json and DEBUG_OUT/v1/{places,localities}.bin
+(v1 rollback artefact); v2 = v1 records + build_lines.py/build_tags.py outputs → KBPL v2 (official layer
+places.bin without any OSM content, ODbL layer stops_osm.bin, localities.bin rewrapped) + data/places_report.json,
+self-tested by scripts/check_places_v2.py before anything is written to OUT; all (default) = base + v2;
+v1 = legacy: the v1 files straight to OUT.
+
+The output is deterministic for identical inputs (no timestamps or hash-order dependence in the .bin files; v2 META
+carries build.date = --build-date / SOURCE_DATE_EPOCH / today); places_report.json carries the input checksums,
+the per-Bundesland/mode counts and the v2 section sizes, CRCs and coverage.
 
 Sources (all optional except ÖV-GK *or* MVO; missing optional inputs only reduce quality):
   oevgk/   ÖV-Güteklassen 2025_revised, 01_Haltestellenkategorien_20251022 (shp+dbf, EPSG:3035)
@@ -25,7 +35,8 @@ Sources (all optional except ÖV-GK *or* MVO; missing optional inputs only reduc
            existing trips reference – never regenerated from places) + data/stations_meta.json (EVA numbers)
   scotty_fixtures/  saved HAFAS LocMatch/LocGeoPos responses (optional: extId hints)
 
-places.bin format (little endian, version 1) – write_bin()/read_bin() are the reference:
+Record format (little endian; KBPL version 1 below – version 2 keeps these record sections byte-compatible as the
+RECS/STRS/GEMS/EXTR sections of a section container, minus extra tag 5, see stage_v2()/docs/ENRICH_SPEC.md §1.2):
   header 64 B: 0 magic "KBPL" | 4 u16 version=1 | 6 u16 flags=0 | 8 u32 nRecords | 12 u32 nGemeinden
                16 8×u32 offset/length of: records, strings, gemeinden, extras | 48 u32 nStopRecords | pad
   records nRecords × 28 B; first nStopRecords are stops sorted by weight desc, then localities:
@@ -819,11 +830,37 @@ def load_scotty(dirpath):
 # =============================================================================================
 # build
 # =============================================================================================
+def reexec_deterministic():
+    """Re-run once with PYTHONHASHSEED=0 (set iteration order never decides an output; belt and braces for AT-D1).
+    The child keeps the isolation of `python3 -I`: clean environment, no user site, script dir not on sys.path."""
+    if sys.flags.hash_randomization:
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "PYTHONHASHSEED": "0", "PYTHONUTF8": "1"}
+        if os.environ.get("SOURCE_DATE_EPOCH"):
+            env["SOURCE_DATE_EPOCH"] = os.environ["SOURCE_DATE_EPOCH"]
+        os.execve(sys.executable, [sys.executable, "-s", "-P", os.path.abspath(sys.argv[0])] + sys.argv[1:], env)
+
+
 def main():
+    reexec_deterministic()
     ap = argparse.ArgumentParser()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))     # repository root
+    ap.add_argument("--stage", choices=("all", "base", "v2", "v1"), default="all",
+                    help="base: stop list → DEBUG_OUT/places.json + DEBUG_OUT/v1/*.bin (rollback artefact); "
+                         "v2: v1 files + lines + tags → OUT/places.bin, stops_osm.bin, localities.bin (KBPL v2) + "
+                         "--report; all (default): base then v2 in one process; v1: legacy, v1 files straight to OUT")
     ap.add_argument("--dl", default=p(root, "build", "places-dl"), help="downloads (scripts/fetch_places_sources.sh)")
-    ap.add_argument("--out", default=p(root, "App", "Resources"), help="directory for places.bin / localities.bin")
+    ap.add_argument("--out", default=p(root, "App", "Resources"),
+                    help="directory for the shipped places.bin / stops_osm.bin / localities.bin")
+    ap.add_argument("--lines-official", default=p(root, "build", "lines_official"),
+                    help="scripts/build_lines.py output without --osm (official layer)")
+    ap.add_argument("--lines-full", default=p(root, "build", "lines_full"),
+                    help="scripts/build_lines.py output with --osm (ODbL layer keeps what the official one lacks)")
+    ap.add_argument("--tags", default=p(root, "build", "tags", "tags.json"), help="scripts/build_tags.py tags.json")
+    ap.add_argument("--v1-dir", default=None, help="v1 files of the base stage (default DEBUG_OUT/v1)")
+    ap.add_argument("--report", default=p(root, "data", "places_report.json"), help="places_report.json (v2 stage)")
+    ap.add_argument("--spot", default=p(root, "data", "places_spot_checks.json"), help="tag spot checks (AT-D5)")
+    ap.add_argument("--build-date", default=None, help="META build.date (default SOURCE_DATE_EPOCH or today, UTC)")
+    ap.add_argument("--no-check", action="store_true", help="skip the v2 self-test (scripts/check_places_v2.py)")
     ap.add_argument("--debug-out", default=p(root, "build", "places"),
                     help="directory for places.json, localities.json, legacy_map.json, places_report.json, "
                          "ATTRIBUTION.txt, osm_only_clusters.tsv")
@@ -844,9 +881,15 @@ def main():
                          "as a gap list; 'nonbus' adds rail/tram/metro/ferry ones)")
     a = ap.parse_args()
     DL = a.dl
-    os.makedirs(a.out, exist_ok=True)
     DBG = a.debug_out or a.out
     os.makedirs(DBG, exist_ok=True)
+    if a.stage == "v2":
+        base_report = json.load(open(p(DBG, "places_report.json"), encoding="utf-8")) \
+            if os.path.exists(p(DBG, "places_report.json")) else {}
+        finish_v2(a, base_report, root)
+        return
+    bin_out = a.out if a.stage == "v1" else p(DBG, "v1")
+    os.makedirs(bin_out, exist_ok=True)
     report = {"generated": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"), "inputs": {}}
 
     def stamp(name, path):
@@ -1309,11 +1352,11 @@ def main():
     final.sort(key=lambda pl: (-(pl["weight"]), pl["name"]))
     report["counts"] = summarize(final, locs, n_base)
     if a.osm_policy == "merge":
-        write_bin(p(a.out, "places.bin"), final, locs, gem_list)
+        write_bin(p(bin_out, "places.bin"), final, locs, gem_list)
     else:
-        write_bin(p(a.out, "places.bin"), final, [], gem_list)
+        write_bin(p(bin_out, "places.bin"), final, [], gem_list)
         if locs:
-            write_bin(p(a.out, "localities.bin"), [], locs, gem_list, main_as_id=True)
+            write_bin(p(bin_out, "localities.bin"), [], locs, gem_list, main_as_id=True)
     write_debug(DBG, final, locs, gem_list, legacy, ATTRIBUTION + "\n" + ATTRIBUTION_OSM[a.osm_policy])
     with open(p(DBG, "places_rules.json"), "w", encoding="utf-8") as fh:
         json.dump({"version": 1, "steps": ["lowercase", "ß→ss", "strip diacritics (NFKD)", "pre", "split non-[a-z0-9]",
@@ -1326,23 +1369,43 @@ def main():
                              "privateRail": M_WESTBAHN},
                    "states": STATE_CODES}, fh, ensure_ascii=False, indent=1)
     # round-trip self-test of the binary format (read_bin is the reference for the Swift PlaceDataset reader)
-    chk, n_chk = read_bin(p(a.out, "places.bin"))
+    chk, n_chk = read_bin(p(bin_out, "places.bin"))
     assert n_chk == len(final) and len(chk) == len(final) + (len(locs) if a.osm_policy == "merge" else 0)
     assert all(c["id"] == pl["id"] and c["name"] == pl["name"] and c["aliases"] == pl["alias_list"]
                for c, pl in zip(chk, final)), "places.bin round trip failed"
     if locs and a.osm_policy == "separate":
-        lchk, _ = read_bin(p(a.out, "localities.bin"))
+        lchk, _ = read_bin(p(bin_out, "localities.bin"))
         assert [c["id"] for c in lchk] == [lc["id"] for lc in locs], "localities.bin round trip failed"
     report["size"] = {}
     for fn in ("places.bin", "localities.bin"):
-        if os.path.exists(p(a.out, fn)) and (fn == "places.bin" or a.osm_policy == "separate"):
-            rb = open(p(a.out, fn), "rb").read()
+        if os.path.exists(p(bin_out, fn)) and (fn == "places.bin" or a.osm_policy == "separate"):
+            rb = open(p(bin_out, fn), "rb").read()
             report["size"][fn] = {"bytes": len(rb), "gzip -9": len(gzip.compress(rb, 9))}
     report["attribution"] = ATTRIBUTION + "\n" + ATTRIBUTION_OSM[a.osm_policy]
     with open(p(DBG, "places_report.json"), "w", encoding="utf-8") as fh:
         json.dump(report, fh, ensure_ascii=False, indent=1)
     log(json.dumps(report["counts"], ensure_ascii=False)[:2000])
     log(json.dumps(report["size"]))
+    if a.stage == "all":
+        finish_v2(a, report, root)
+
+
+def finish_v2(a, base_report, root):
+    """v2 stage + data/places_report.json (base report + "v2" block)."""
+    if a.osm_policy != "separate":
+        sys.exit("--stage v2 needs --osm-policy separate (places.bin must not contain OSM data)")
+    v2 = stage_v2(a, base_report, root)
+    rep = dict(base_report)
+    rep.pop("generated", None)          # deterministic report (build date: v2.build_date)
+    rep["size"] = {f: {"bytes": v2["files"][f], "gzip -9": v2["gzip"][f]} for f in v2["files"]}
+    rep["v2"] = v2
+    rep["attribution"] = ATTRIBUTION + "\n" + ATTRIBUTION_OSM["separate"] + "\n" + ATTRIBUTION_V2
+    os.makedirs(os.path.dirname(os.path.abspath(a.report)), exist_ok=True)
+    with open(a.report, "w", encoding="utf-8") as fh:
+        json.dump(rep, fh, ensure_ascii=False, indent=1)
+        fh.write("\n")
+    log(json.dumps({"v2": v2["files"], "total": v2["total_bytes"], "coverage": (v2["check"] or {}).get("coverage")},
+                   ensure_ascii=False))
 
 
 ARROW = re.compile(r"\s*-+>\s*")
@@ -1460,33 +1523,758 @@ def write_bin(path, final, locs, gem_list, main_as_id=False):
 
 
 def read_bin(path):
-    """Reference decoder (used by the self-test; mirrors what the Swift loader must do)."""
-    b = open(path, "rb").read()
-    magic, ver, _fl, n, ng = struct.unpack("<4sHHII", b[:16])
-    assert magic == b"KBPL" and ver == 1
-    off_rec, len_rec, off_str, len_str, off_gem, len_gem, off_ex, len_ex = struct.unpack("<8I", b[16:48])
-    n_stops = struct.unpack("<I", b[48:52])[0]
+    """Reference decoder of the record sections of a KBPL v1 or v2 file (used by the self-tests and by
+    scripts/places_reference.py; mirrors what the Swift PlaceDataset reader does)."""
+    raw = open(path, "rb").read()
+    magic, ver, _fl, n, ng = struct.unpack("<4sHHII", raw[:16])
+    assert magic == b"KBPL" and ver in (1, 2)
+    n_stops = struct.unpack("<I", raw[48:52])[0]
+    sec = read_kbpl_sections(raw)
+    recs, strs, gsec, exs = sec["RECS"], sec["STRS"], sec["GEMS"], sec.get("EXTR", b"")
 
     def s_at(o):
-        e = b.index(b"\0", off_str + o)
-        return b[off_str + o:e].decode("utf-8")
-    gems = [struct.unpack("<II", b[off_gem + 8 * i: off_gem + 8 * i + 8]) for i in range(ng)]
+        e = strs.index(b"\0", o)
+        return strs[o:e].decode("utf-8")
+    gems = [struct.unpack_from("<II", gsec, 8 * i) for i in range(ng)]
     gems = [(g, s_at(o)) for g, o in gems]
     out = []
     for i in range(n):
-        lat, lon, so, eo, modes, w, gem, state, kind, flags, pclass, _r2 = struct.unpack(
-            "<iiIIHHHBBBBH", b[off_rec + 28 * i: off_rec + 28 * i + 28])
+        lat, lon, so, eo, modes, w, gem, state, kind, flags, pclass, _r2 = struct.unpack_from("<iiIIHHHBBBBH", recs, 28 * i)
         parts = s_at(so).split("\x1f")
         ex = {}
         if eo != 0xFFFFFFFF:
-            k = b[off_ex + eo]
+            k = exs[eo]
             for j in range(k):
-                tag, v = struct.unpack("<BI", b[off_ex + eo + 1 + 5 * j: off_ex + eo + 6 + 5 * j])
+                tag, v = struct.unpack_from("<BI", exs, eo + 1 + 5 * j)
                 ex.setdefault(tag, []).append(s_at(v) if tag in (3, 5, 7) else v)
         out.append({"id": parts[0], "name": parts[1], "aliases": parts[2:], "lat": lat / 1e6, "lon": lon / 1e6,
                     "modes": modes, "weight": w, "gem": gems[gem][1] if gem != 0xFFFF else None,
                     "state": STATE_CODES[state], "kind": kind, "flags": flags, "place_class": pclass, "extras": ex})
     return out, n_stops
+
+
+# =============================================================================================
+# KBPL v2 stage (docs/ENRICH_SPEC.md §1, WP-D1/D2): v1 records + lines + tags → places.bin (official layer, no OSM),
+# stops_osm.bin (ODbL layer) and localities.bin (v2 rewrap). Reference reader + acceptance checks:
+# scripts/check_places_v2.py (also the self-test of this stage).
+# =============================================================================================
+V2_MODES = ["other", "rail", "sbahn", "subway", "tram", "bus", "trolleybus", "sev", "ship", "cable", "ondemand"]
+V2_NETS = ["", "VOR", "VVSt", "VKL", "OÖVV", "SVV", "VVT", "VVV", "ÖBB", "INT"]
+V2_LFLAGS = ["ski", "winter", "summer", "night", "schooldays", "schooldays?", "school_or_seasonal", "seasonal",
+             "ondemand", "sev", "superseded", "ski_candidate", "trolley", "school"]
+V2_SRC = {"gtfs": 1, "oevgk": 2, "stmk": 4, "osm": 8}
+V2_RAIL_CATS = ["RJX", "RJ", "ICE", "ECE", "EC", "IC", "IR", "D", "EN", "NJ", "WB", "CJX", "REX", "R", "S", "LEX",
+                "RB", "RE", "RX", "ER", "SP", "OS", "CAT", "ATB", "RR", "Regionalzug"]
+V2_TAG_KEYS = ["type", "service", "region", "wheelchair", "landscape", "klimaticket", "railTransfer", "lift", "ski",
+               "skiAlliance", "nationalPark", "glacierSki", "glacier", "hut"]
+V2_GEM_KEYS = ("region",)                      # Gemeinde defaults (GTAG): official region sets
+V2_OSM_KEYS = {"ski", "skiAlliance", "glacierSki", "glacier", "lift", "hut", "nationalPark", "wheelchair", "landscape"}
+V2_OSM_TYPES = {"airport", "parkAndRide", "bikeAndRide", "university", "mall"}
+V2_DEFLATE_MIN = 4096
+V2_STORED = {"RPRD", "BASE"}                   # §1.3: stay codec 0 (hex-inspectable)
+V2_MIN_CONF = 60                               # §1.4.2: lower confidence is evidence only, not shipped
+V2_BUDGET = 5_000_000
+NO16 = 0xFFFF
+LCAT_FMT = "<IIHBBHHBBHHH"                     # 24 B
+LPAT_FMT = "<HBBHIHHH"                         # 16 B
+ATTRIBUTION_ODBL = "© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright)"
+
+
+def load_module(path, name):
+    import importlib.util
+    sys.dont_write_bytecode = True
+    spec = importlib.util.spec_from_file_location(name, path)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+class V2Pool:
+    """NUL-terminated UTF-8 string pool, offset 0 = ''."""
+
+    def __init__(self):
+        self.b = bytearray(b"\0")
+        self.m = {}
+
+    def off(self, s):
+        if not s:
+            return 0
+        o = self.m.get(s)
+        if o is None:
+            o = self.m[s] = len(self.b)
+            self.b.extend(s.encode("utf-8") + b"\0")
+        return o
+
+
+class V2Names:
+    """Display-name table (LNAM): headsigns and termini without a stop → u16 index; strings in the pool."""
+
+    def __init__(self, pool):
+        self.pool, self.idx, self.offs = pool, {}, []
+
+    def get(self, s):
+        if not s:
+            return NO16
+        if s not in self.idx:
+            self.idx[s] = len(self.offs)
+            self.offs.append(self.pool.off(s))
+        assert len(self.offs) < NO16, "LNAM overflow (u16)"
+        return self.idx[s]
+
+    def section(self):
+        return struct.pack(f"<{len(self.offs)}I", *self.offs)
+
+
+def v2_bits(names, table):
+    v = 0
+    for n in names or ():
+        if n in table:
+            v |= 1 << table.index(n)
+    return v
+
+
+def deflate_raw(raw):
+    c = zlib.compressobj(9, zlib.DEFLATED, -15)
+    return c.compress(raw) + c.flush()
+
+
+def write_kbpl2(path, sections, n_records, n_gem, n_stops):
+    """KBPL v2 container (§1.2): 64-byte header, sections 4-byte aligned, directory of 28-byte entries.
+    Sections > 4 KB are raw DEFLATE (codec 1) except RPRD/BASE; every entry carries the CRC-32 of the raw bytes."""
+    body = bytearray()
+    entries = []
+    off = 64
+    for tag, raw, count in sections:
+        codec = 1 if len(raw) > V2_DEFLATE_MIN and tag not in V2_STORED else 0
+        stored = deflate_raw(raw) if codec else raw
+        pad = (-off) % 4
+        body.extend(b"\0" * pad)
+        off += pad
+        entries.append((tag, off, len(stored), len(raw), codec, min(count, 0xFFFF), zlib.crc32(raw)))
+        body.extend(stored)
+        off += len(stored)
+    pad = (-off) % 4
+    body.extend(b"\0" * pad)
+    off += pad
+    directory = b"".join(struct.pack("<4sIIIBBHII", t.encode("ascii"), o, sl, rl, c, 0, n, h, 0)
+                         for t, o, sl, rl, c, n, h in entries)
+    hdr = struct.pack("<4sHHII", b"KBPL", 2, 0, n_records, n_gem) + b"\0" * 32
+    hdr += struct.pack("<IIII", n_stops, off, len(entries), 0)
+    assert len(hdr) == 64
+    with open(path, "wb") as fh:
+        fh.write(hdr + body + directory)
+    return {t: {"raw": rl, "stored": sl, "codec": c, "count": n, "crc32": h} for t, o, sl, rl, c, n, h in entries}
+
+
+def read_kbpl_sections(b):
+    """Decoded sections of a v1 (fixed RECS/STRS/GEMS/EXTR) or v2 (directory, CRC-checked) KBPL file."""
+    magic, ver = struct.unpack_from("<4sH", b, 0)
+    assert magic == b"KBPL" and ver in (1, 2), (magic, ver)
+    if ver == 1:
+        offs = struct.unpack_from("<8I", b, 16)
+        return {t: b[offs[2 * k]:offs[2 * k] + offs[2 * k + 1]] for k, t in enumerate(("RECS", "STRS", "GEMS", "EXTR"))}
+    dir_off, n, _ = struct.unpack_from("<III", b, 52)
+    out = {}
+    for i in range(n):
+        t, o, sl, rl, codec, _z, _c, crc, _r = struct.unpack_from("<4sIIIBBHII", b, dir_off + 28 * i)
+        raw = b[o:o + sl]
+        if codec == 1:
+            raw = zlib.decompress(raw, -15)
+        assert codec in (0, 1) and len(raw) == rl and zlib.crc32(raw) == crc, f"section {t} corrupt"
+        out.setdefault(t.decode("ascii"), raw)
+    return out
+
+
+def v1_reencode(path, pool):
+    """Records, Gemeinden and extras of a v1 file re-pooled into `pool`, without extra tag 5 (the old ≤ 120-character
+    „lines“ string, replaced by LSTP). Returns (RECS, GEMS, EXTR, header counts, per-record info)."""
+    b = open(path, "rb").read()
+    magic, ver, _fl, n, ng = struct.unpack_from("<4sHHII", b, 0)
+    assert magic == b"KBPL" and ver == 1, f"{path}: expected the v1 file of --stage base"
+    o_rec, _l_rec, o_str, _l_str, o_gem, _l_gem, o_ex, _l_ex = struct.unpack_from("<8I", b, 16)
+    n_stops = struct.unpack_from("<I", b, 48)[0]
+
+    def s_at(o):
+        e = b.index(b"\0", o_str + o)
+        return b[o_str + o:e].decode("utf-8")
+    recs, extras, gems = bytearray(), bytearray(), bytearray()
+    info = []
+    for i in range(n):
+        lat, lon, so, eo, modes, w, gem, state, kind, flags, pcls, _r = struct.unpack_from("<iiIIHHHBBBBH", b, o_rec + 28 * i)
+        s = s_at(so)
+        nso = pool.off(s)
+        neo = 0xFFFFFFFF
+        if eo != 0xFFFFFFFF:
+            ex = []
+            for j in range(b[o_ex + eo]):
+                tag, v = struct.unpack_from("<BI", b, o_ex + eo + 1 + 5 * j)
+                if tag == 5:
+                    continue
+                if tag in (3, 7):
+                    v = pool.off(s_at(v))
+                ex.append((tag, v))
+            if ex:
+                neo = len(extras)
+                extras.append(len(ex))
+                for tag, v in ex:
+                    extras.extend(struct.pack("<BI", tag, v))
+        recs.extend(struct.pack("<iiIIHHHBBBBH", lat, lon, nso, neo, modes, w, gem, state, kind, flags, pcls, 0))
+        parts = s.split("\x1f")
+        info.append({"id": parts[0], "name": parts[1], "lat": lat / 1e6, "lon": lon / 1e6, "gem": gem,
+                     "state": STATE_CODES[state], "kind": kind, "weight": w, "modes": modes})
+    gem_names = []
+    for g in range(ng):
+        gkz, so = struct.unpack_from("<II", b, o_gem + 8 * g)
+        gems.extend(struct.pack("<II", gkz, pool.off(s_at(so))))
+        gem_names.append((gkz, s_at(so)))
+    return bytes(recs), bytes(gems), bytes(extras), (n, ng, n_stops), info, gem_names
+
+
+class TerminusResolver:
+    """E2: a terminus name → stop record index (terminiKind 2) when it names a stop of the line, else None (LNAM).
+    Tokens follow build_lines.py (folded, stop words dropped); one typo per long token is tolerated
+    („Schlosswopf“ = „Schlosskopf“). Outside the line: the most similar stop with the same first token ≤ 2 km."""
+
+    def __init__(self, BL, info):
+        self.BL = BL
+        self.info = info
+        self.toks = [BL.toks(r["name"]) for r in info]
+        self.by_first = collections.defaultdict(list)
+        for i, t in enumerate(self.toks):
+            if t:
+                self.by_first[t[0]].append(i)
+        self.cache = {}
+
+    @staticmethod
+    def tok_eq(a, b):
+        if a == b:
+            return True
+        if len(a) >= 4 and len(b) >= 4 and (a.startswith(b) or b.startswith(a)):
+            return True
+        if len(a) >= 6 and len(b) >= 6 and abs(len(a) - len(b)) <= 1:
+            # Damerau-Levenshtein ≤ 1
+            if len(a) == len(b):
+                diff = [k for k in range(len(a)) if a[k] != b[k]]
+                return len(diff) == 1 or (len(diff) == 2 and diff[1] == diff[0] + 1 and a[diff[0]] == b[diff[1]]
+                                          and a[diff[1]] == b[diff[0]])
+            s, t = (a, b) if len(a) < len(b) else (b, a)
+            return any(t[:k] + t[k + 1:] == s for k in range(len(t)))
+        return False
+
+    def score(self, tt, st):
+        if not tt or not st:
+            return 0.0, 0.0
+        mt = sum(1 for x in tt if any(self.tok_eq(x, y) for y in st)) / len(tt)
+        ms = sum(1 for y in st if any(self.tok_eq(x, y) for x in tt)) / len(st)
+        return mt, ms
+
+    def accept(self, mt, ms):
+        return (mt == 1.0 and ms >= 0.5) or (ms == 1.0 and mt >= 0.5)
+
+    def resolve(self, name, line_stops):
+        if not name:
+            return None
+        tt = self.BL.toks(name)
+        if not tt:
+            return None
+        best = None
+        for i in sorted(line_stops):
+            mt, ms = self.score(tt, self.toks[i])
+            if self.accept(mt, ms):
+                k = (min(mt, ms), mt + ms, self.info[i]["weight"], -i)
+                if best is None or k > best[0]:
+                    best = (k, i)
+        if best:
+            return best[1]
+        # outside the line's stop list: same first token, ≤ 2 km from a stop of the line
+        cands = self.by_first.get(tt[0], [])
+        if not cands or not line_stops or len(cands) > 3000:
+            return None
+        ls = [self.info[i] for i in line_stops]
+        for i in cands:
+            mt, ms = self.score(tt, self.toks[i])
+            if not self.accept(mt, ms):
+                continue
+            r = self.info[i]
+            d = min(hav_m(r["lat"], r["lon"], q["lat"], q["lon"]) for q in ls
+                    if abs(q["lat"] - r["lat"]) < 0.03 and abs(q["lon"] - r["lon"]) < 0.045) if any(
+                abs(q["lat"] - r["lat"]) < 0.03 and abs(q["lon"] - r["lon"]) < 0.045 for q in ls) else 1e9
+            if d <= 2000:
+                k = (min(mt, ms), mt + ms, -d, -i)
+                if best is None or k > best[0]:
+                    best = (k, i)
+        return best[1] if best else None
+
+
+def sha16(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()[:16]
+
+
+def json_sha16(obj):
+    return hashlib.sha256(json.dumps(obj, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
+
+
+def gtfs_validity(path):
+    """'YYYY-MM-DD/YYYY-MM-DD' service span of a GTFS feed (dir or zip; calendar.txt + calendar_dates.txt)."""
+    import io
+    import zipfile
+    zf = zipfile.ZipFile(path) if path.endswith(".zip") else None
+
+    def rows(name):
+        if zf:
+            if name not in zf.namelist():
+                return
+            yield from csv.DictReader(io.TextIOWrapper(zf.open(name), encoding="utf-8-sig", newline=""))
+        elif os.path.exists(p(path, name)):
+            with open(p(path, name), encoding="utf-8-sig", newline="") as fh:
+                yield from csv.DictReader(fh)
+    lo = hi = None
+    for r in rows("calendar.txt"):
+        lo = min(lo or r["start_date"], r["start_date"])
+        hi = max(hi or r["end_date"], r["end_date"])
+    for r in rows("calendar_dates.txt"):
+        if r.get("exception_type") == "1":
+            lo = min(lo or r["date"], r["date"])
+            hi = max(hi or r["date"], r["date"])
+    if not lo:
+        return None
+    f = lambda s: f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return f"{f(lo)}/{f(hi)}"
+
+
+def stage_v2(a, base_report, root):
+    here = os.path.dirname(os.path.abspath(__file__))
+    BL = load_module(p(here, "build_lines.py"), "build_lines_v2")
+    CU = load_module(p(here, "places_curated.py"), "places_curated_v2")
+    CHK = load_module(p(here, "check_places_v2.py"), "check_places_v2")
+    v1 = a.v1_dir or p(a.debug_out, "v1")
+    stage_dir = p(a.debug_out, "v2")
+    os.makedirs(stage_dir, exist_ok=True)
+    for need in (p(v1, "places.bin"), p(a.lines_official, "lines_catalog.json"), p(a.lines_full, "lines_catalog.json"),
+                 a.tags):
+        if not os.path.exists(need):
+            sys.exit(f"--stage v2: missing input {need} (run scripts/build_places_all.sh)")
+    Lo_doc = json.load(open(p(a.lines_official, "lines_catalog.json"), encoding="utf-8"))
+    Lo, Bo = Lo_doc["lines"], json.load(open(p(a.lines_official, "lines_by_stop.json"), encoding="utf-8"))
+    Lf = json.load(open(p(a.lines_full, "lines_catalog.json"), encoding="utf-8"))["lines"]
+    Bf = json.load(open(p(a.lines_full, "lines_by_stop.json"), encoding="utf-8"))
+    T = json.load(open(a.tags, encoding="utf-8"))
+
+    # ---------------------------------------------------------------- 1 v1 records, strings, Gemeinden, extras
+    pool = V2Pool()
+    recs, gems, extras, (n_all, n_gem, n_stops), info, gem_names = v1_reencode(p(v1, "places.bin"), pool)
+    assert n_all == n_stops and all(r["kind"] == 0 for r in info), "places.bin must hold stops only"
+    assert n_stops < NO16, "u16 stop indices: nStopRecords must stay < 65,535 (§1.8, else v3)"
+    ids = [r["id"] for r in info]
+    sidx = {x: i for i, x in enumerate(ids)}
+    resolver = TerminusResolver(BL, info)
+    counts = collections.Counter()
+
+    # ---------------------------------------------------------------- 2 official line catalogue (+ E2 termini, E4 ops)
+    names_o = V2Names(pool)
+    ops_o, ops_x = [], []
+    op_idx = {}
+
+    def opi(name, official):
+        if not name:
+            return NO16
+        if name not in op_idx:
+            if official:
+                assert not ops_x, "official operators must be numbered before the OSM extras"
+                op_idx[name] = len(ops_o)
+                ops_o.append(name)
+            else:
+                op_idx[name] = len(ops_o) + len(ops_x)
+                ops_x.append(name)
+        return op_idx[name]
+
+    stops_of_o = collections.defaultdict(set)
+    for sid, e in Bo.items():
+        if sid in sidx:
+            for li, *_ in e["l"]:
+                stops_of_o[li].add(sidx[sid])
+    stops_of_f = collections.defaultdict(set)
+    for sid, e in Bf.items():
+        if sid in sidx:
+            for li, *_ in e["l"]:
+                stops_of_f[li].add(sidx[sid])
+    for L in Lf:
+        for sid in L.get("stops_superseded") or ():
+            if sid in sidx:
+                stops_of_f[L["id"]].add(sidx[sid])
+
+    def termini(L, line_stops, names_):
+        t0 = (L.get("termini") or [[None, None]])[0]
+        frm, to = (t0 + [None, None])[:2]
+        if not frm and not to:
+            return 0, NO16, NO16
+        rf = resolver.resolve(frm, line_stops) if frm else None
+        rt = resolver.resolve(to, line_stops) if to else None
+        if (rf is not None or not frm) and (rt is not None or not to):
+            counts["termini_kind2"] += 1
+            return 2, NO16 if rf is None else rf, NO16 if rt is None else rt
+        counts["termini_kind1"] += 1
+        return 1, names_.get(frm), names_.get(to)
+
+    def line_rec(L, pool_, names_, official, line_stops, successor):
+        tk, tf, tt = termini(L, line_stops, names_)
+        src = 0
+        for s in L.get("src") or []:
+            src |= V2_SRC.get(s.split(":")[0], 0)
+        if official:
+            assert not src & V2_SRC["osm"], f"official line {L['ref']} has an OSM source"
+        return struct.pack(LCAT_FMT, pool_.off(L["ref"] or ""), pool_.off(L.get("name") or ""), opi(L.get("op"), official),
+                           V2_MODES.index(L["mode"]) if L["mode"] in V2_MODES else 0,
+                           V2_NETS.index(L["net"]) if L.get("net") in V2_NETS else 0, v2_bits(L.get("flags"), V2_LFLAGS),
+                           v2_bits(L.get("states"), STATE_CODES), src, tk, successor, tf, tt)
+    lcat_o = b"".join(line_rec(L, pool, names_o, True, stops_of_o[L["id"]],
+                               L["successor"] if L.get("successor") is not None else NO16) for L in Lo)
+
+    def lstp_section(by_stop, names_, keep, idx_map, extra_pairs=None):
+        """u8 count per stop (record order), then entries: u16 line, u8 bits (conf | nTo << 2 | nNext << 4),
+        nTo × u16 LNAM, nNext × u16 stop record index. extra_pairs: {stop id: [(merged line, conf)]} appended."""
+        cnt, ent = bytearray(), bytearray()
+        pairs = 0
+        for sid in ids:
+            e = by_stop.get(sid)
+            lst = []
+            for li, to, nx, conf in (e["l"] if e else ()):
+                if keep(sid, li):
+                    lst.append((idx_map(li), to[:3], [sidx[x] for x in nx if x in sidx][:3], conf))
+            have = {x[0] for x in lst}
+            for li, conf in (extra_pairs or {}).get(sid, ()):
+                if li not in have:
+                    have.add(li)
+                    lst.append((li, [], [], conf))
+            lst = lst[:255]
+            cnt.append(len(lst))
+            for li, to, nx, conf in lst:
+                pairs += 1
+                ent.extend(struct.pack("<HB", li, (conf & 3) | (len(to) << 2) | (len(nx) << 4)))
+                for h in to:
+                    ent.extend(struct.pack("<H", names_.get(h)))
+                for s in nx:
+                    ent.extend(struct.pack("<H", s))
+        return bytes(cnt) + bytes(ent), pairs
+    lstp_o, pairs_o = lstp_section(Bo, names_o, lambda sid, li: True, lambda li: li)
+
+    rprd = bytearray()
+    for i, sid in enumerate(ids):
+        e = Bo.get(sid)
+        if e and e.get("p"):
+            rprd.extend(struct.pack("<HI", i, v2_bits(e["p"], V2_RAIL_CATS)))
+            counts["rail_category_stations"] += 1
+
+    # ---------------------------------------------------------------- 5 tags (provenance from build_tags.py)
+    vals_o, vals_x = [], []
+    vi_o, vi_x = {}, {}
+
+    def vidx(v, vals, vi):
+        if v not in vi:
+            vi[v] = len(vals)
+            vals.append(v)
+        assert len(vals) < NO16
+        return vi[v]
+    kt_default = {st: [x["id"] for x in lst] for st, lst in CU.KLIMATICKET_REGIONAL.items()}
+    kt_products = {"oe": "KlimaTicket Ö"}
+    for st, lst in CU.KLIMATICKET_REGIONAL.items():
+        for x in lst:
+            kt_products.setdefault(x["id"], x["name"])
+    lifts, lift_i = [], {}
+    per_stop_o, per_stop_x = [], []
+    region_sets = []
+    for i, sid in enumerate(ids):
+        recs_t = (T["stops"].get(sid) or {"t": []})["t"]
+        off_keys = {(t[0], t[1]) for t in recs_t if not (t[3] if len(t) > 3 else {}).get("osm") and t[2] >= V2_MIN_CONF}
+        to_, tx = [], []
+        for t in recs_t:
+            k, v, c = t[0], t[1], t[2]
+            ev = t[3] if len(t) > 3 else {}
+            osm = bool(ev.get("osm"))
+            if k == "state" or c < V2_MIN_CONF:
+                continue                                   # state = record; < 60 = evidence only (§1.4.2)
+            if k not in V2_TAG_KEYS:
+                continue
+            if not osm and (k in V2_OSM_KEYS or (k == "type" and v in V2_OSM_TYPES)):
+                sys.exit(f"tags.json: {sid} {k}={v} is marked official but is an OSM-layer tag (AT-D7)")
+            if osm and (k, v) in off_keys:
+                counts["osm_duplicate_dropped"] += 1       # the official layer already has this tag
+                continue
+            if k == "klimaticket":
+                if osm:
+                    continue                               # ships with official evidence only (build_tags.py)
+                if v == "yes":
+                    reg = ev.get("reg") or []
+                    for x in reg:
+                        kt_products.setdefault(x["id"], x["name"])
+                    if [x["id"] for x in reg if not x.get("ext")] == kt_default.get(info[i]["state"], []) and \
+                            not any(x.get("ext") for x in reg):
+                        counts["klimaticket_default"] += 1
+                        continue                           # default: KlimaTicket Ö + the state's regional tickets
+                    v = "yes|" + ",".join(("+" if x.get("ext") else "") + x["id"] for x in reg)
+                elif v in ("check", "no"):
+                    v = f"{v}|{ev.get('why') or ''}"
+            if k == "lift":
+                key = (v, ev.get("role") or "", ev.get("type") or "")
+                if key not in lift_i:
+                    lift_i[key] = len(lifts)
+                    lifts.append(list(key))
+                v = f"#lift{lift_i[key]}"
+            aux = ev.get("d")
+            (tx if osm else to_).append((k, v, c, aux))
+        per_stop_o.append(to_)
+        per_stop_x.append(tx)
+        region_sets.append(tuple(sorted((k, v, c) for k, v, c, aux in to_ if k in V2_GEM_KEYS and aux is None)))
+    by_gem = collections.defaultdict(collections.Counter)
+    for i, rs in enumerate(region_sets):
+        by_gem[info[i]["gem"]][rs] += 1
+    gem_default = {g: sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))[0][0] for g, c in by_gem.items()}
+    gtag = bytearray()
+    for g in range(n_gem):
+        lst = gem_default.get(g, ())
+        gtag.append(len(lst))
+        for k, v, c in lst:
+            gtag.extend(struct.pack("<BBH", V2_TAG_KEYS.index(k), c, vidx(v, vals_o, vi_o)))
+
+    def tags_section(per_stop, vals, vi, official):
+        cnt, buf = bytearray(), bytearray()
+        for i, lst in enumerate(per_stop):
+            override = False
+            if official:
+                g = info[i]["gem"]
+                override = g == NO16 or region_sets[i] != gem_default.get(g, ())
+                if override and not region_sets[i] and g == NO16:
+                    override = False                       # abroad, no regions: nothing to override
+                counts["stops_overriding_gem_regions"] += override
+                if not override:
+                    lst = [x for x in lst if not (x[0] in V2_GEM_KEYS and x[3] is None)]
+            lst = lst[:127]
+            cnt.append(len(lst) | (0x80 if override else 0))
+            for k, v, c, aux in lst:
+                ki = V2_TAG_KEYS.index(k)
+                if aux is not None:
+                    buf.extend(struct.pack("<BBHH", ki | 0x80, c, vidx(v, vals, vi), min(int(aux), 0xFFFF)))
+                else:
+                    buf.extend(struct.pack("<BBH", ki, c, vidx(v, vals, vi)))
+                counts["tags_official" if official else "tags_osm"] += 1
+        return bytes(cnt) + bytes(buf)
+    tags_o = tags_section(per_stop_o, vals_o, vi_o, True)
+    tags_x = tags_section(per_stop_x, vals_x, vi_x, False)
+
+    # ---------------------------------------------------------------- 6 OSM layer: official ↔ full line mapping
+    by_ref_o = collections.defaultdict(list)
+    for L in Lo:
+        by_ref_o[(L["mode"], L["ref"])].append(L["id"])
+    by_ref_f = collections.defaultdict(list)
+    for L in Lf:
+        by_ref_f[(L["mode"], L["ref"])].append(L["id"])
+    f2o = {}
+    for L in Lf:
+        best, bo = None, 0
+        for oi in by_ref_o.get((L["mode"], L["ref"]), []):
+            ov = len(stops_of_f[L["id"]] & stops_of_o[oi])
+            if ov > bo:
+                best, bo = oi, ov
+        if best is not None:
+            f2o[L["id"]] = best
+    pool_x = V2Pool()
+    names_x = V2Names(pool_x)
+    off_pairs = {(sid, Lo[li]["mode"], Lo[li]["ref"]) for sid, e in Bo.items() for li, *_ in e["l"]}
+
+    def shown_osm_stops(F):
+        """Stops at which the merged data shows F's OSM pairs (the official layer keeps its own same-ref lines)."""
+        return {i for i in stops_of_f[F["id"]] if (ids[i], F["mode"], F["ref"]) not in off_pairs}
+    extra = [L for L in Lf if L["id"] not in f2o and stops_of_f[L["id"]]]
+    f2m = dict(f2o)
+    for j, L in enumerate(extra):
+        f2m[L["id"]] = len(Lo) + j
+    assert len(Lo) + len(extra) < NO16, "u16 line indices"
+    lcat_x = b"".join(line_rec(L, pool_x, names_x, False, shown_osm_stops(L),
+                               f2m.get(L["successor"], NO16) if L.get("successor") is not None else NO16) for L in extra)
+    lpat = bytearray()
+    succ_pairs = collections.defaultdict(list)
+    for O in Lo:
+        best, bo = None, 0
+        for fi in by_ref_f.get((O["mode"], O["ref"]), []):     # official → OSM: the full line with the largest overlap
+            if f2o.get(fi) != O["id"]:
+                continue        # its OSM stops belong to another official line (E1 component): its termini are not O's
+            ov = len(stops_of_o[O["id"]] & stops_of_f[fi])
+            if ov > bo:
+                best, bo = fi, ov
+        if best is None:
+            continue
+        F = Lf[best]
+        if "superseded" in (F.get("flags") or []) and "superseded" not in (O.get("flags") or []) \
+                and F.get("successor") is not None and F["successor"] in f2m:
+            # M4 for renumberings only the OSM layer knows (ÖV-GK 10/2025 → Dec 2025 numbers): the official stop
+            # list keeps the old number, the LPAT flag hides it and the successor serves the same stops
+            for sid in sorted(ids[i] for i in stops_of_o[O["id"]]):
+                succ_pairs[sid].append((f2m[F["successor"]], 2))
+            counts["superseded_successor_pairs"] += len(stops_of_o[O["id"]])
+        mask, op_, name_, tk, tf, tt = 0, NO16, 0, 0, NO16, NO16
+        if not O.get("op") and F.get("op"):
+            mask |= 1
+            op_ = opi(F["op"], False)
+        if not O.get("name") and F.get("name"):
+            mask |= 2
+            name_ = pool_x.off(F["name"])
+        if not O.get("termini") and F.get("termini"):
+            tk, tf, tt = termini(F, stops_of_o[O["id"]] | shown_osm_stops(F), names_x)
+            if tk:
+                mask |= 4
+        addf = v2_bits(set(F.get("flags") or []) - set(O.get("flags") or []), V2_LFLAGS)
+        if addf:
+            mask |= 8
+        if mask:
+            lpat.extend(struct.pack(LPAT_FMT, O["id"], mask, tk, op_, name_, tf, tt, addf))
+            counts["lines_patched"] += 1
+            if addf & (1 << V2_LFLAGS.index("superseded")):
+                counts["lines_patched_superseded"] += 1
+    lstp_x, pairs_x = lstp_section(Bf, names_x, lambda sid, li: (sid, Lf[li]["mode"], Lf[li]["ref"]) not in off_pairs
+                                   and li in f2m, lambda li: f2m[li], succ_pairs)
+
+    # ---------------------------------------------------------------- META (official) and META (OSM)
+    ski_o, ski_x, ski_stats, alliances = {}, {}, {}, {}
+    for sid, s in T["skiAreas"].items():
+        st = s.get("style") or {}
+        glyph = st.get("glyph") if st.get("glyph") in CU.GLYPHS_ALLOWED else "peaks2"
+        ent = {"name": s["name"], "short": s.get("short"), "kind": s["kind"], "parent": s.get("parent"),
+               "alliances": s.get("alliances") or [], "resorts": s.get("resorts") or [], "states": s.get("states") or [],
+               "glyph": glyph, "hue": CU.summit_hue(sid, st.get("color")), "mono": st.get("mono") or ""}
+        ent = {k: v for k, v in ent.items() if v not in (None, [], "")}
+        stats = {k: s[k] for k in ("bbox", "lifts", "stops") if s.get(k) is not None}
+        if s["kind"] == "alliance":
+            alliances[sid] = {"name": s["name"], "verified": sid in CU.ALLIANCES_VERIFIED, "hue": ent["hue"]}
+            if stats:
+                ski_stats[sid] = stats
+        elif s.get("src") == "osm":
+            ski_x[sid] = {**ent, **stats, "source": "osm", "verified": False}
+        else:
+            ski_o[sid] = {**ent, "verified": True}
+            if stats:
+                ski_stats[sid] = stats             # bbox, lift and stop counts are OSM-derived → ODbL layer
+    region_stops = collections.Counter()
+    for i in range(n_stops):
+        for k, v, c, aux in per_stop_o[i]:
+            if k == "region" and c >= 80:
+                region_stops[v] += 1
+    regions = {rid: {"name": r["name"], "kind": r["kind"], **({"stops": region_stops[rid]} if rid in region_stops else {})}
+               for rid, r in T["regions"].items()}       # tourism regions + landscapes (names: own work)
+    date = a.build_date or (dt.datetime.fromtimestamp(int(os.environ["SOURCE_DATE_EPOCH"]), dt.timezone.utc).date().isoformat()
+                            if os.environ.get("SOURCE_DATE_EPOCH") else dt.datetime.now(dt.timezone.utc).date().isoformat())
+    validity = {}
+    for label, path in (("oebb", p(a.dl, "oebb_gtfs")), ("wl", p(a.dl, "wl", "gtfs.zip"))):
+        if os.path.exists(path):
+            v = gtfs_validity(path)
+            if v:
+                validity[label] = v
+    tags_wo_time = {k: v for k, v in T.items() if k != "generated"}
+    inputs_o = {k: v["sha256"] for k, v in (base_report or {}).get("inputs", {}).items() if k != "osm_json"}
+    inputs_o.update({"lines_official": json_sha16(Lo_doc), "tags_official_records": json_sha16(
+        {sid: [t for t in r["t"] if not t[3].get("osm")] for sid, r in T["stops"].items()})})
+    meta_o = {
+        "v": 1,
+        "build": {"date": date, "timetableDays": ["2025-10-22", "2025-10-29"], "gtfsValidity": validity,
+                  "validUntil": min((v.split("/")[1] for v in validity.values()), default=None),
+                  "inputs": inputs_o, "zlib": zlib.ZLIB_VERSION},
+        "keys": V2_TAG_KEYS, "vals": vals_o, "modes": V2_MODES, "nets": V2_NETS, "netNames": Lo_doc["net_names"],
+        "lineFlags": V2_LFLAGS, "railCats": V2_RAIL_CATS,
+        "operators": [{"name": o, "display": CU.operator_display(o)} for o in ops_o],
+        "regions": regions, "skiAreas": ski_o, "skiAlliances": alliances,
+        "bezirke": T["bezirke"], "wienBezirke": T["wienBezirke"],
+        "klimaticket": {"defaultRegional": kt_default, "products": dict(sorted(kt_products.items()))},
+        "nOfficialLines": len(Lo)}
+    meta_x = {
+        "v": 1,
+        "build": {"date": date, "inputs": {"lines_full": json_sha16(Lf), "tags": json_sha16(tags_wo_time),
+                                           **({"osm_json": base_report["inputs"]["osm_json"]["sha256"]}
+                                              if base_report and "osm_json" in base_report.get("inputs", {}) else {})},
+                  "zlib": zlib.ZLIB_VERSION},
+        "keys": V2_TAG_KEYS, "vals": vals_x, "lifts": lifts, "skiAreas": ski_x, "skiAreaStats": ski_stats,
+        "operatorsExtra": [{"name": o, "display": CU.operator_display(o)} for o in ops_x],
+        "nOfficialLines": len(Lo), "nExtraLines": len(extra), "attribution": ATTRIBUTION_ODBL}
+    mj = lambda m: json.dumps(m, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    base = hashlib.sha256("\n".join(ids).encode("utf-8")).digest()
+
+    # ---------------------------------------------------------------- write (staging dir), self-test, install
+    sec_o = [("RECS", recs, n_all), ("STRS", bytes(pool.b), 0), ("GEMS", gems, n_gem), ("EXTR", extras, 0),
+             ("LCAT", lcat_o, len(Lo)), ("LNAM", names_o.section(), len(names_o.offs)), ("LSTP", lstp_o, pairs_o),
+             ("RPRD", bytes(rprd), counts["rail_category_stations"]), ("GTAG", bytes(gtag), n_gem),
+             ("TAGS", tags_o, counts["tags_official"]), ("META", mj(meta_o), 0), ("BASE", base, 0)]
+    sec_x = [("STRS", bytes(pool_x.b), 0), ("LCAT", lcat_x, len(extra)), ("LNAM", names_x.section(), len(names_x.offs)),
+             ("LPAT", bytes(lpat), counts["lines_patched"]), ("LSTP", lstp_x, pairs_x),
+             ("TAGS", tags_x, counts["tags_osm"]), ("META", mj(meta_x), 0), ("BASE", base, 0)]
+    out_sizes = {"places.bin": write_kbpl2(p(stage_dir, "places.bin"), sec_o, n_all, n_gem, n_stops),
+                 "stops_osm.bin": write_kbpl2(p(stage_dir, "stops_osm.bin"), sec_x, 0, 0, n_stops)}
+    lb = open(p(v1, "localities.bin"), "rb").read()
+    _m, _v, _f, nl, ngl = struct.unpack_from("<4sHHII", lb, 0)
+    ls = read_kbpl_sections(lb)
+    out_sizes["localities.bin"] = write_kbpl2(p(stage_dir, "localities.bin"),
+                                              [("RECS", ls["RECS"], nl), ("STRS", ls["STRS"], 0), ("GEMS", ls["GEMS"], ngl),
+                                               ("EXTR", ls["EXTR"], 0)], nl, ngl, 0)
+    # round trip of the record sections (read_bin is the reference for KlimaCore PlaceDataset)
+    chk, n_chk = read_bin(p(stage_dir, "places.bin"))
+    ref, _ = read_bin(p(v1, "places.bin"))
+    for c, r in zip(chk, ref):
+        r = dict(r, extras={k: v for k, v in r["extras"].items() if k != 5})
+        assert c == r, f"places.bin v2 round trip differs at {r['id']}"
+    assert [c["id"] for c in read_bin(p(stage_dir, "localities.bin"))[0]] == [c["id"] for c in read_bin(p(v1, "localities.bin"))[0]]
+    files = {f: os.path.getsize(p(stage_dir, f)) for f in ("places.bin", "stops_osm.bin", "localities.bin")}
+    total = sum(files.values())
+    assert total <= V2_BUDGET, f"size budget: {total} B > {V2_BUDGET}"
+    errors, check_rep = [], {}
+    if not a.no_check:
+        C, check_rep = CHK.check(stage_dir, a.spot, None, p(a.debug_out, "check_places_v2.json"))
+        errors = C.errors
+        for e in errors:
+            log("SELF-TEST FAIL", e)
+    v2rep = {"files": files, "total_bytes": total, "budget_bytes": V2_BUDGET,
+             "gzip": {f: len(gzip.compress(open(p(stage_dir, f), "rb").read(), 9)) for f in files},
+             "sizes": out_sizes, "counts": {"stops": n_stops, "lines_official": len(Lo), "lines_extra_osm": len(extra),
+                                            "pairs_official": pairs_o, "pairs_osm": pairs_x, "lifts": len(lifts),
+                                            "operators_official": len(ops_o), "operators_extra": len(ops_x),
+                                            "lnam_official": len(names_o.offs), "lnam_osm": len(names_x.offs),
+                                            "ski_areas_curated": len(ski_o), "ski_areas_osm": len(ski_x),
+                                            "ski_alliances": len(alliances), **dict(sorted(counts.items()))},
+             "coverage": v2_coverage(info, Bo, Bf), "check": {k: check_rep.get(k) for k in
+                                                              ("coverage", "spot_checks", "termini", "sha256")},
+             "self_test_errors": errors, "inputs": {**inputs_o, **meta_x["build"]["inputs"]}, "zlib": zlib.ZLIB_VERSION,
+             "build_date": date}
+    if errors:
+        sys.exit(f"v2 self-test failed ({len(errors)} errors) – files left in {stage_dir}, App resources unchanged")
+    os.makedirs(a.out, exist_ok=True)
+    for f in files:
+        with open(p(stage_dir, f), "rb") as src, open(p(a.out, f), "wb") as dst:
+            dst.write(src.read())
+    return v2rep
+
+
+def v2_coverage(info, Bo, Bf):
+    """Share of stops with ≥ 1 line (incl. rail categories) per state and per stop mode, official and merged."""
+    out = {"by_state": {}, "by_mode": {}}
+    agg = collections.defaultdict(lambda: [0, 0, 0])
+    aggm = collections.defaultdict(lambda: [0, 0, 0])
+    for r in info:
+        o = Bo.get(r["id"])
+        f = Bf.get(r["id"])
+        ho = bool(o and (o["l"] or o.get("p")))
+        hf = ho or bool(f and (f["l"] or f.get("p")))
+        m = r["modes"]
+        md = ("rail" if m & (1 | 4 | 8 | 16 | 32 | 4096) else "subway" if m & 256 else "tram" if m & 512 else
+              "ship" if m & 128 else "cable/ondemand" if m & 2048 else "bus")
+        for d, k in ((agg, r["state"]), (aggm, md)):
+            d[k][0] += 1
+            d[k][1] += ho
+            d[k][2] += hf
+    for d, name in ((agg, "by_state"), (aggm, "by_mode")):
+        for k in sorted(d):
+            n, ho, hf = d[k]
+            out[name][k] = {"stops": n, "pct_official": round(100 * ho / n, 1), "pct_merged": round(100 * hf / n, 1)}
+    return out
 
 
 def write_debug(outdir, final, locs, gem_list, legacy, attribution):
@@ -1517,6 +2305,13 @@ ATTRIBUTION = """Haltestellen/Orte (places.bin) – Datenquellen und Lizenzen
 • Steiermark: Land Steiermark – data.steiermark.gv.at (Haltestellen des Verkehrsverbundes Steiermark), CC BY 4.0.
 • Gemeinden/Bundesländer: Statistik Austria – data.statistik.gv.at (Gemeindegrenzen 01.01.2026), CC BY 4.0.
 • EVA-Nummern der Bahnhöfe: Datenquelle ÖBB-Infrastruktur AG (Verzeichnis der Verkehrsstationen), CC BY 3.0 AT."""
+ATTRIBUTION_V2 = """• Linien (places.bin, Format v2): ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · Stadt Wien –
+  data.wien.gv.at, Wiener Linien Fahrplandaten (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at, Haltestellen und
+  Linienverkehr des Verkehrsverbundes Steiermark (CC BY 4.0) · Linien je Haltestelle: ÖV-Güteklassen 2025
+  (ÖROK/BMIMI/AustriaTech; Daten der Mobilitätsverbünde Österreich OG), verändert (zusammengeführt).
+• Linienverläufe, weitere Linien, Skigebiete, Lifte, Barrierefreiheit, Orte (stops_osm.bin, localities.bin):
+  © OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright); abgeleitete Datenbanken unter ODbL 1.0.
+• Skigebiete, Regionen, Betreibernamen, KlimaTicket-Regeln: eigene Zusammenstellung (scripts/places_curated.py)."""
 ATTRIBUTION_OSM = {
     "separate": """• Orte (localities.bin): © OpenStreetMap-Mitwirkende, ODbL 1.0 (https://www.openstreetmap.org/copyright);
   localities.bin ist eine abgeleitete Datenbank unter ODbL 1.0. places.bin enthält keine OSM-Daten.""",
