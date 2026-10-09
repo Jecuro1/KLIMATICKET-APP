@@ -131,6 +131,11 @@ struct StatsScreen: View {
             .statsEntrance(1)
         StatsModesCard(snapshot: snapshot, grow: grow)
             .statsEntrance(2)
+        // MARK: tripmeta – "Wofür du fährst" and "Ehrliche Bilanz"
+        MetaPurposeCard(snapshot: snapshot, grow: grow)
+            .statsEntrance(3)
+        MetaHonestBalanceCard(snapshot: snapshot, grow: grow)
+            .statsEntrance(3)
         StatsCalendarCard(snapshot: snapshot)
             .statsEntrance(3)
         StatsWeekdayCard(snapshot: snapshot, grow: grow)

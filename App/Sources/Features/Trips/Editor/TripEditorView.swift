@@ -67,6 +67,11 @@ private struct TripEdSheet: View {
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.selection, trigger: model.mode) { _, _ in haptics }
         .sensoryFeedback(.selection, trigger: selectionTick) { _, _ in haptics }
+        // MARK: tripmeta – suggest the purpose from the favourite / the route's last trip.
+        .onAppear { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+        .onChange(of: model.metaSuggestionKey) { _, _ in
+            withAnimation(.snappy(duration: 0.3)) { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+        }
     }
 
     // MARK: Layout
@@ -88,10 +93,13 @@ private struct TripEdSheet: View {
                     TripEdDateCard(model: model)
                     TripEdPriceCard(model: model, focus: $focus)
                     TripEdImpactCard(model: model)
-                    TripEdDetailsCard(model: model, showsCompanions: showsCompanions,
-                                      isExistingFavorite: existingFavorite != nil, focus: $focus)
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
+                // MARK: tripmeta – purpose chips scroll edge to edge, so the section sits outside the padded group.
+                MetaTripPurposeSection(model: model)
+                TripEdDetailsCard(model: model, showsCompanions: showsCompanions,
+                                  isExistingFavorite: existingFavorite != nil, focus: $focus)
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
             }
             .padding(.top, Theme.Spacing.xxs)
             .padding(.bottom, Theme.Spacing.l)

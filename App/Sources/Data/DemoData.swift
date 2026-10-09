@@ -36,6 +36,7 @@ enum DemoData {
         var generator = SeededGenerator(seed: 42)
         var day = start
         var count = 0
+        var seeded: [TripEntity] = [] // MARK: tripmeta
         while day <= now {
             let weekday = cal.component(.weekday, from: day) // 1 = So
             let roll = Double.random(in: 0..<1, using: &generator)
@@ -57,9 +58,11 @@ enum DemoData {
                 let minute = Int.random(in: 0..<55, using: &generator)
                 let date = cal.date(bySettingHour: hour, minute: minute, second: 0, of: day) ?? day
                 guard date <= now else { continue }
-                context.insert(TripEntity(date: date, fromName: route.from, toName: route.to, fromStationID: route.fromID,
-                                          toStationID: route.toID, mode: route.mode, distanceKm: route.km, fareEUR: route.fare,
-                                          isRoundTrip: round, states: route.states))
+                let trip = TripEntity(date: date, fromName: route.from, toName: route.to, fromStationID: route.fromID,
+                                      toStationID: route.toID, mode: route.mode, distanceKm: route.km, fareEUR: route.fare,
+                                      isRoundTrip: round, states: route.states)
+                context.insert(trip)
+                seeded.append(trip)
                 count += 1
             }
             day = cal.date(byAdding: .day, value: 1, to: day) ?? now.addingTimeInterval(86_400)
@@ -77,6 +80,8 @@ enum DemoData {
         ]
         favorites.forEach { context.insert($0) }
         PerkDemoData.seed(into: context, ticket: ticket, now: now)
+        // MARK: tripmeta – purposes + "Ohne KlimaTicket nicht gefahren" (values unchanged, so the totals stay the same).
+        MetaDemoCategories.assign(trips: seeded, favorites: favorites)
         try? context.save()
         print("Demo data: \(count) trips")
     }
