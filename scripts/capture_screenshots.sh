@@ -20,7 +20,7 @@ for APPEARANCE in light dark; do
   for SCREEN in $SCREENS; do
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     xcrun simctl launch "$UDID" "$BUNDLE_ID" -KBScreenshot "$SCREEN" -KBDemo YES >/dev/null
-    sleep "${SHOT_DELAY:-7}"
+    sleep "${SHOT_DELAY:-5}"
     xcrun simctl io "$UDID" screenshot --type=png "$OUT/${APPEARANCE}-${SCREEN}.png" >/dev/null 2>&1
     echo "captured $APPEARANCE-$SCREEN"
   done

@@ -38,8 +38,8 @@ enum Copy {
 
     static let dataSources: [(title: String, detail: String)] = [
         ("Ticketpreise", "klimaticket.at (AGB 2021–2026) sowie die Websites der Verkehrsverbünde"),
-        ("Normalpreise", "ÖBB-Standardticket-Tarif (genähert), Kernzonen-Tarife der Verkehrsverbünde"),
-        ("Haltestellen", "© OpenStreetMap-Mitwirkende, Open Database License (ODbL)"),
+        ("Normalpreise", "ÖBB Relationspreise (Standardticket, Tarif ab 14.12.2025), sonst Näherung nach Bahnkilometern; Kernzonen-Tarife der Verkehrsverbünde"),
+        ("Haltestellen", "ÖBB-Personenverkehr AG Soll-Fahrplan GTFS (CC BY 4.0), ÖBB-Infrastruktur AG Verkehrsstationen (CC BY 3.0 AT), © OpenStreetMap-Mitwirkende (ODbL), Stadt Wien – data.wien.gv.at (CC BY 4.0)"),
         ("CO₂-Faktoren", "Umweltbundesamt, Emissionsfaktoren Personenverkehr"),
         ("Kilometergeld", "Reisegebührenvorschrift / BMF"),
     ]

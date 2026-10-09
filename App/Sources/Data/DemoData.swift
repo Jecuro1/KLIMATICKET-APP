@@ -29,7 +29,7 @@ enum DemoData {
         let cal = Calendar.vienna
         let start = cal.date(byAdding: .day, value: -222, to: cal.startOfDay(for: now)) ?? now
         let ticket = TicketEntity(productID: "oe-klassik", name: "KlimaTicket Ö Klassik", variant: .klassik, family: .oe,
-                                  price: 1_300, startDate: start, holderName: "Lena Hofer", ticketNumber: "KT-2026-48 31 07")
+                                  price: 1_400, startDate: start, holderName: "Lena Hofer", ticketNumber: "KT-2026-48 31 07")
         ticket.themeRaw = "aurora"
         context.insert(ticket)
 
@@ -42,16 +42,16 @@ enum DemoData {
             var plans: [(Route, Int, Bool)] = []
             // Tuned so the demo year sits at roughly 70–80 % amortisation (shows progress + forecast).
             if (2...6).contains(weekday) {
-                if roll < 0.04 { plans.append((routes[0], 7, true)) }
-                else if roll < 0.115 { plans.append((routes[1], 8, true)) }
-                else if roll < 0.165 { plans.append((routes[9], 17, false)) }
+                if roll < 0.035 { plans.append((routes[0], 7, true)) }
+                else if roll < 0.095 { plans.append((routes[1], 8, true)) }
+                else if roll < 0.145 { plans.append((routes[9], 17, false)) }
             } else {
-                if roll < 0.02 { plans.append((routes[4], 9, false)); plans.append((routes[6], 15, false)) }
-                else if roll < 0.05 { plans.append((routes[5], 10, true)) }
-                else if roll < 0.13 { plans.append((routes[2], 11, true)) }
-                else if roll < 0.19 { plans.append((routes[3], 12, false)) }
-                else if roll < 0.23 { plans.append((routes[7], 14, true)); plans.append((routes[8], 16, false)) }
-                else if roll < 0.25 { plans.append((routes[10], 9, false)) }
+                if roll < 0.015 { plans.append((routes[4], 9, false)); plans.append((routes[6], 15, false)) }
+                else if roll < 0.04 { plans.append((routes[5], 10, true)) }
+                else if roll < 0.11 { plans.append((routes[2], 11, true)) }
+                else if roll < 0.16 { plans.append((routes[3], 12, false)) }
+                else if roll < 0.20 { plans.append((routes[7], 14, true)); plans.append((routes[8], 16, false)) }
+                else if roll < 0.22 { plans.append((routes[10], 9, false)) }
             }
             for (route, hour, round) in plans {
                 let minute = Int.random(in: 0..<55, using: &generator)

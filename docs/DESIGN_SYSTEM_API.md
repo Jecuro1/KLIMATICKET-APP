@@ -77,6 +77,25 @@ ConfettiView(colors: [Color], count: Int = 90, duration: Double = 2.6)
 BreakEvenCelebration(ticketName: String, profit: Double, onDismiss: () -> Void)
 ```
 
+## Signatur-Komponenten
+
+```swift
+// Übersicht-Hero: riesige „73 %“, „€ 946 von € 1.400 amortisiert“ und die Gipfel-Grafik
+AmortizationHero(snapshot: AnalyticsSnapshot, chartHeight: CGFloat = 250)
+
+// Gipfel-Grafik allein (Ersparnis-Kurve klettert über den Bergkamm zum Break-even-Gipfel)
+SummitChart(series: [CumulativePoint], forecast: [CumulativePoint], start: Date, end: Date, price: Double,
+            breakEvenDate: Date?, isPaidOff: Bool, showsLabels: Bool = true)
+
+// Ticket-Karte (Wallet-Stil) mit Themen und Neigungs-Schimmer
+TicketCard(title: String, subtitle: String, holder: String, validFrom: Date, validUntil: Date,
+           ticketNumber: String, theme: TicketTheme, roll: Double = 0, pitch: Double = 0)
+TicketTheme.allCases / .from(ticket.themeRaw) / .title / .colors / .ink   // aurora, alpenglow, glacier, signal, night
+
+// Formen
+RidgeShape(peakX:peakY:seed:roughness:), SmoothPath(points:), FlagShape()
+```
+
 ## Bewegung
 
 ```swift

@@ -87,7 +87,7 @@ struct SummitChart: View {
     }
 
     private func ridgeColor(_ layer: Int) -> Color {
-        let light = [Color(hex: "#B9C6E6"), Color(hex: "#E7ECF7"), Color(hex: "#F4F6FB")]
+        let light = [Color(hex: "#A9B6E0"), Color(hex: "#C9D0EE"), Color(hex: "#E9ECF8")]
         let dark = [Color(hex: "#2A3466"), Color(hex: "#3A3F78"), Color(hex: "#1B2040")]
         return (colorScheme == .dark ? dark : light)[layer]
     }
@@ -141,7 +141,7 @@ struct SummitChart: View {
                     .offset(y: -4)
                 }
             }
-            .position(x: min(summit.x + 46, layout.size.width - 50), y: summit.y - 22)
+            .position(x: min(max(summit.x + 46, 60), layout.size.width - 56), y: max(summit.y - 22, 20))
             .opacity(reveal)
 
             Circle()
@@ -159,12 +159,14 @@ struct SummitChart: View {
                     .background(Circle().fill(Theme.accentSecondary.opacity(0.3)).frame(width: 34, height: 34))
                     .position(todayPoint)
                     .opacity(reveal)
+                let nearSummit = abs(todayPoint.x - summit.x) < 120 && abs(todayPoint.y - summit.y) < 70
                 Text("Heute")
                     .font(.footnote.weight(.semibold))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .glassEffect(.regular, in: .capsule)
-                    .position(x: min(max(todayPoint.x, 40), layout.size.width - 40), y: max(todayPoint.y - 36, 14))
+                    .position(x: min(max(todayPoint.x - (nearSummit ? 40 : 0), 40), layout.size.width - 40),
+                              y: nearSummit ? min(todayPoint.y + 38, layout.size.height - 14) : max(todayPoint.y - 36, 14))
                     .opacity(reveal)
             }
         }
