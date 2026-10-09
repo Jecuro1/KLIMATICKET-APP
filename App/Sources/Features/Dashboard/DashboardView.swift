@@ -67,7 +67,8 @@ struct DashboardView: View {
 
                 if hasTrips {
                     // Overlaps the faded valley of the summit chart by a few points (spec §8.1); the route starts above it.
-                    DashBalanceCard(snapshot: snapshot, kilometergeld: app.catalog.kilometergeldEUR)
+                    DashBalanceCard(snapshot: snapshot,
+                                    car: WorkCarCalc.result(period: snapshot.ticket, records: snapshot.trips, catalog: app.catalog))
                         .padding(.horizontal, Theme.Spacing.cardGutter)
                         .padding(.top, -Theme.Spacing.xs)
                         .dashEntrance(2, visible: appeared)

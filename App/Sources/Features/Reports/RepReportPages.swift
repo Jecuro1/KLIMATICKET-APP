@@ -660,12 +660,12 @@ struct RepAnalysisPage: View {
             RepPrintCost(value: data.costPerTrip.map(Format.euroPrecise) ?? "–", label: "pro Fahrt")
             RepPrintCost(value: summary.effectivePricePerKm.map { Format.euroPrecise($0) } ?? "–", label: "pro Kilometer")
             RepPrintCost(value: Format.euroPrecise(summary.costPerDay), label: "pro Tag")
-            RepPrintCost(value: Format.euro(summary.carCostEquivalent, decimals: 0), label: "mit dem Auto*")
+            RepPrintCost(value: Format.euro(data.car.carCost, decimals: 0), label: "mit dem Auto*")
         }
     }
 
     private var methodology: some View {
-        Text("So rechnet KlimaBilanz: Wert einer Fahrt = Normalpreis ohne KlimaTicket (ÖBB-Standardticket 2. Klasse nach offizieller Relationspreis-Tabelle bzw. Bahnkilometern, in Städten der Einzelfahrschein der Kernzone) – geschätzt oder von dir angepasst. Ticketpreis = Preis laut Gültigkeitsbeginn inkl. Zusatzpaketen, abzüglich Arbeitgeber-Zuschuss. CO₂ im Vergleich zur selben Strecke allein im Pkw (Umweltbundesamt). *Auto: amtliches Kilometergeld. Alle Angaben ohne Gewähr.")
+        Text("So rechnet KlimaBilanz: Wert einer Fahrt = Normalpreis ohne KlimaTicket (ÖBB-Standardticket 2. Klasse nach offizieller Relationspreis-Tabelle bzw. Bahnkilometern, in Städten der Einzelfahrschein der Kernzone) – geschätzt oder von dir angepasst. Ticketpreis = Preis laut Gültigkeitsbeginn inkl. Zusatzpaketen, abzüglich Arbeitgeber-Zuschuss. CO₂ im Vergleich zur selben Strecke allein im Pkw (Umweltbundesamt). *Auto: wie in „Öffis vs. Auto“ – \(WorkCarCalc.modeSummary(data.car)) auf Straßenkilometern. Alle Angaben ohne Gewähr.")
             .font(RepPrint.font(7))
             .foregroundStyle(Theme.textSecondary)
             .lineSpacing(1.5)

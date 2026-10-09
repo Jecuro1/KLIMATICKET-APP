@@ -45,6 +45,8 @@ struct RepReportData {
     let inducedValue: Double
     let benefitsCount: Int
     let benefitsValue: Double
+    /// The same car comparison as Statistik › "Öffis vs. Auto" (`WorkCarCalc`), so the report prints the app's figure.
+    let car: CarComparisonResult
     let generatedAt: Date
 
     var summary: SavingsSummary { snapshot.summary }
@@ -118,6 +120,7 @@ struct RepReportData {
             inducedValue: induced.reduce(0) { $0 + $1.totalValue },
             benefitsCount: periodBenefits.count,
             benefitsValue: periodBenefits.reduce(0) { $0 + $1.savedEUR },
+            car: WorkCarCalc.result(period: period, records: records, catalog: catalog, now: now),
             generatedAt: now)
     }
 

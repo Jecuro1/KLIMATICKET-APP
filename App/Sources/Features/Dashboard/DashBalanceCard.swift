@@ -4,19 +4,19 @@ import KlimaCore
 /// "Bilanz-Karte" (DESIGN.md §5.1 · 4, spec §8.3) – complements the hero instead of repeating its verdict:
 /// Row A: when the summit is reached (forecast) and the buffer before the ticket expires,
 /// Row B: three key figures (Fahrten · km · CO₂),
-/// Row C: the car comparison, once (tap → how the Kilometergeld comparison is calculated).
+/// Row C: the car comparison, once (tap → "Öffis vs. Auto", which explains and configures it).
 struct DashBalanceCard: View {
     var snapshot: AnalyticsSnapshot
-    /// Amtliches Kilometergeld (EUR/km) – same basis as `summary.carCostEquivalent`.
-    var kilometergeld: Double
+    /// The same car comparison as Statistik › "Öffis vs. Auto" (`WorkCarCalc`: road km, the chosen car-cost mode,
+    /// the own share of the ticket) – the Übersicht must not show a second, differently calculated car figure.
+    var car: CarComparisonResult
     var now: Date = Date()
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var showsCarInfo = false
 
     private var summary: SavingsSummary { snapshot.summary }
     private var isExpired: Bool { now > snapshot.ticket.end }
-    private var showsCarRow: Bool { summary.carCostEquivalent > 0 }
+    private var showsCarRow: Bool { car.tripCount > 0 && car.carCost > 0 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -36,10 +36,6 @@ struct DashBalanceCard: View {
         .padding(.bottom, showsCarRow ? 0 : 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frostedCard(cornerRadius: Theme.Radius.card, tint: summary.isPaidOff ? Theme.positive : nil)
-        .sheet(isPresented: $showsCarInfo) {
-            DashCarInfoSheet(distanceKm: summary.distanceKm, rate: kilometergeld, carCost: summary.carCostEquivalent,
-                             ticketPrice: summary.ticketPrice, cheaperSince: carCheaperSince)
-        }
     }
 
     // MARK: Row A – forecast and buffer
@@ -240,8 +236,8 @@ struct DashBalanceCard: View {
     // MARK: Row C – car comparison
 
     private var carRow: some View {
-        Button {
-            showsCarInfo = true
+        NavigationLink {
+            WorkCarView(period: snapshot.ticket)
         } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.xs) {
@@ -260,7 +256,7 @@ struct DashBalanceCard: View {
         }
         .buttonStyle(DashPressableStyle())
         .accessibilityElement(children: .combine)
-        .accessibilityHint("Erklärt, wie der Vergleich mit dem Auto berechnet wird")
+        .accessibilityHint("Öffnet den ausführlichen Auto-Vergleich")
     }
 
     private var carLead: some View {
@@ -272,7 +268,7 @@ struct DashBalanceCard: View {
             Text("Mit dem Auto")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
-            Text(SummitFigures.euro(summary.carCostEquivalent))
+            Text(SummitFigures.euro(car.carCost))
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
@@ -282,7 +278,7 @@ struct DashBalanceCard: View {
 
     @ViewBuilder
     private var carVerdict: some View {
-        if let since = carCheaperSince {
+        if car.isCheaperThanCar, let since = car.breakEvenDate {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Image(systemName: "checkmark")
                     .font(.caption2.weight(.bold))
@@ -291,8 +287,8 @@ struct DashBalanceCard: View {
             .font(.footnote.weight(.semibold))
             .foregroundStyle(Theme.positiveText)
             .lineLimit(1)
-        } else if summary.carCostEquivalent < summary.ticketPrice {
-            Text("noch \(SummitFigures.euro(summary.ticketPrice - summary.carCostEquivalent)) bis gleichauf")
+        } else if !car.isCheaperThanCar {
+            Text("noch \(SummitFigures.euro(car.remainingToBreakEven)) bis gleichauf")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
@@ -324,17 +320,6 @@ struct DashBalanceCard: View {
     private var tripsToGoText: String? {
         guard let n = snapshot.tripsToBreakEven, n > 0 else { return nil }
         return "≈ \(DashStyle.trips(n))"
-    }
-
-    /// Day from which the same km by car (Kilometergeld) would have cost more than the ticket.
-    private var carCheaperSince: Date? {
-        guard kilometergeld > 0, summary.carCostEquivalent >= summary.ticketPrice else { return nil }
-        var running = 0.0
-        for trip in snapshot.trips.sorted(by: { $0.date < $1.date }) {
-            running += trip.totalDistanceKm * kilometergeld
-            if running >= summary.ticketPrice { return trip.date }
-        }
-        return nil
     }
 
     private var extraTripsText: String {
@@ -431,90 +416,5 @@ private struct DashMiniStatListRow: View {
         .font(.subheadline)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.accessibilityText)
-    }
-}
-
-// MARK: - Car comparison explanation
-
-/// How "Mit dem Auto € 2.070" is calculated: km × amtliches Kilometergeld, compared with the ticket price.
-private struct DashCarInfoSheet: View {
-    var distanceKm: Double
-    var rate: Double
-    var carCost: Double
-    var ticketPrice: Double
-    var cheaperSince: Date?
-
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    VStack(spacing: 0) {
-                        row("Deine Strecken", Format.km(distanceKm), symbol: "point.topleft.down.to.point.bottomright.curvepath")
-                        divider
-                        row("× Kilometergeld", "\(Format.euroPrecise(rate)) pro km", symbol: "car.fill")
-                        divider
-                        row("= Mit dem Auto", SummitFigures.euro(carCost), symbol: "equal", emphasized: true)
-                        divider
-                        row("Dein Ticket", SummitFigures.euro(ticketPrice), symbol: "ticket.fill")
-                    }
-                    .padding(.horizontal, Theme.Spacing.m)
-                    .background(Theme.surface, in: .rect(cornerRadius: Theme.Radius.formGroup, style: .continuous))
-
-                    Text(explanation)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(Theme.Spacing.l)
-            }
-            .background(Theme.sheetBackground)
-            .navigationTitle("Vergleich mit dem Auto")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(role: .close) { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Theme.separator)
-            .frame(height: 1)
-            .padding(.leading, 36)
-            .accessibilityHidden(true)
-    }
-
-    private func row(_ title: String, _ value: String, symbol: String, emphasized: Bool = false) -> some View {
-        HStack(spacing: Theme.Spacing.s) {
-            Image(systemName: symbol)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .frame(width: 24)
-                .accessibilityHidden(true)
-            Text(title)
-                .font(.body.weight(emphasized ? Font.Weight.semibold : Font.Weight.regular))
-                .foregroundStyle(Theme.textPrimary)
-            Spacer(minLength: Theme.Spacing.xs)
-            Text(value)
-                .font(.system(.body, design: .rounded, weight: emphasized ? Font.Weight.bold : Font.Weight.semibold))
-                .monospacedDigit()
-                .foregroundStyle(Theme.textPrimary)
-        }
-        .padding(.vertical, 13)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var explanation: String {
-        let basis = "Gerechnet wird mit dem amtlichen Kilometergeld von \(Format.euroPrecise(rate)) pro Kilometer. "
-            + "Es deckt alle Kosten eines Pkw ab – Treibstoff, Service, Versicherung und Wertverlust."
-        if let cheaperSince {
-            return basis + " Seit \(Format.dayMonth(cheaperSince)) hätten dich deine Fahrten mit dem Auto mehr gekostet als dein Ticket."
-        }
-        return basis + " Sobald deine Fahrten mit dem Auto mehr gekostet hätten als dein Ticket, siehst du hier das Datum."
     }
 }
