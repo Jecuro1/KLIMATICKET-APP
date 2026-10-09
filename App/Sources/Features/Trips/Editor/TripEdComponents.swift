@@ -7,15 +7,23 @@ import KlimaCore
 
 // MARK: - Enums shared by the editor's subviews
 
-/// Which endpoint the station picker edits.
+/// Which stop the station picker edits.
 enum TripEdPick: String, Identifiable {
     case from, to
+    // MARK: via – first / second via, or a new one (TripEdViaRows.swift)
+    case via1, via2, viaNew
 
     var id: String { rawValue }
 
     var endpoint: TripEditorModel.Endpoint { self == .from ? .from : .to }
 
-    var pickerTitle: String { self == .from ? "Start wählen" : "Ziel wählen" }
+    var pickerTitle: String {
+        switch self {
+        case .from: "Start wählen"
+        case .to: "Ziel wählen"
+        case .via1, .via2, .viaNew: "Über"
+        }
+    }
 }
 
 /// Focusable text fields of the editor (manual fare, note).
@@ -95,6 +103,7 @@ extension TripEditorModel {
     /// Whether a favourite describes exactly the route currently in the form.
     func tripEdMatches(_ favorite: FavoriteRouteEntity) -> Bool {
         guard favorite.modeRaw == mode.rawValue, favorite.isRoundTrip == isRoundTrip else { return false }
+        guard tripEdViaMatches(favorite) else { return false }   // MARK: via
         return Self.tripEdSameStop(favorite.fromStationID, fromStation, favorite.fromName, resolvedFromName)
             && Self.tripEdSameStop(favorite.toStationID, toStation, favorite.toName, resolvedToName)
     }

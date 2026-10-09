@@ -396,10 +396,12 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
     public var category: TripCategory?
     /// "Ohne Ticket wäre ich nicht gefahren" – the trip was induced by the flat-rate ticket (counts as extra value, not as money saved).
     public var isInduced: Bool
+    /// Via stations in travel order (at most `TripVia.maxCount`); `distanceKm` and `fareEUR` already follow this route.
+    public var via: [TripVia]
 
     public init(id: UUID = UUID(), date: Date, fromName: String, toName: String, fromStationID: String? = nil, toStationID: String? = nil,
                 mode: TransportMode, distanceKm: Double, fareEUR: Double, isRoundTrip: Bool = false, companions: Int = 0, states: Set<String> = [],
-                category: TripCategory? = nil, isInduced: Bool = false) {
+                category: TripCategory? = nil, isInduced: Bool = false, via: [TripVia] = []) {
         self.id = id
         self.date = date
         self.fromName = fromName
@@ -414,6 +416,7 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
         self.states = states
         self.category = category
         self.isInduced = isInduced
+        self.via = via
     }
 
     public var legs: Int { isRoundTrip ? 2 : 1 }

@@ -126,6 +126,8 @@ final class TripEntity {
     var categoryRaw: String = ""
     /// "Ohne Ticket wäre ich nicht gefahren" – counted as extra value, shown separately from money actually saved.
     var isInduced: Bool = false
+    /// Via stations in travel order, `TripViaCodec` encoding ("" = direct; docs/VIA.md). Distance and fare follow it.  // MARK: via
+    var viaRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -176,10 +178,16 @@ final class TripEntity {
     var totalDistanceKm: Double { distanceKm * (isRoundTrip ? 2 : 1) }
     var isTrashed: Bool { deletedAt != nil }
 
+    // MARK: via
+    var via: [TripVia] {
+        get { TripViaCodec.decode(viaRaw) }
+        set { viaRaw = TripViaCodec.encode(newValue) }
+    }
+
     var record: TripRecord {
         TripRecord(id: id, date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
                    mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, companions: companions,
-                   states: Set(states), category: category, isInduced: isInduced)
+                   states: Set(states), category: category, isInduced: isInduced, via: via)
     }
 
     func touch() { updatedAt = Date() }
@@ -202,6 +210,8 @@ final class FavoriteRouteEntity {
     var usageCount: Int = 0
     /// TripCategory raw value applied to trips logged from this favourite; empty = none.
     var categoryRaw: String = ""
+    /// Via stations in travel order, `TripViaCodec` encoding ("" = direct; docs/VIA.md).  // MARK: via
+    var viaRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -237,11 +247,18 @@ final class FavoriteRouteEntity {
     var displayTitle: String { title.isEmpty ? "\(fromName) – \(toName)" : title }
     var isTrashed: Bool { deletedAt != nil }
 
+    // MARK: via
+    var via: [TripVia] {
+        get { TripViaCodec.decode(viaRaw) }
+        set { viaRaw = TripViaCodec.encode(newValue) }
+    }
+
     /// Creates a new trip entity from this favourite for the given date.
     func makeTrip(on date: Date = Date()) -> TripEntity {
         let trip = TripEntity(date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
                               mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, states: states)
         trip.categoryRaw = categoryRaw
+        trip.viaRaw = viaRaw   // MARK: via
         return trip
     }
 

@@ -301,6 +301,17 @@ struct ScreenshotRouter: View {
                     draft.isRoundTrip = true
                     try? await Task.sleep(for: .milliseconds(600))
                     app.presentAddTrip(draft)
+                case "addTripVia": // MARK: via – editor with two via stops and the price
+                    var draft = TripDraft()
+                    let stations = app.stations
+                    let from = stations.station(named: "Innsbruck Hbf"), to = stations.station(named: "Bregenz")
+                    draft.fromStationID = from?.id
+                    draft.toStationID = to?.id
+                    draft.fromName = from?.name ?? "Innsbruck Hbf"
+                    draft.toName = to?.name ?? "Bregenz"
+                    draft.via = ["Landeck-Zams", "Feldkirch"].compactMap { stations.station(named: $0).map(TripVia.init) }
+                    try? await Task.sleep(for: .milliseconds(600))
+                    app.presentAddTrip(draft)
                 case "update":
                     try? await Task.sleep(for: .milliseconds(600))
                     app.updates.presentSample()

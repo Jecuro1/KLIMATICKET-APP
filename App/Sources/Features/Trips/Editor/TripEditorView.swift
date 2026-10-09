@@ -131,13 +131,16 @@ private struct TripEdSheet: View {
             StationPickerView(
                 title: pick.pickerTitle,
                 selection: { station in
-                    withAnimation(.snappy(duration: 0.35)) { model.setStation(station, for: pick.endpoint) }
+                    // MARK: via – a via pick goes to its slot (TripEdViaRows.swift)
+                    withAnimation(.snappy(duration: 0.35)) {
+                        if !model.tripEdSetVia(station, for: pick) { model.setStation(station, for: pick.endpoint) }
+                    }
                     selectionTick += 1
                 },
-                customName: { name in
+                customName: pick.tripEdAllowsCustomName ? { name in
                     withAnimation(.snappy(duration: 0.35)) { model.setCustomName(name, for: pick.endpoint) }
                     selectionTick += 1
-                })
+                } : nil)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(role: .close) {

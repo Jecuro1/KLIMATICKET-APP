@@ -59,6 +59,7 @@ struct Repository {
                               companions: trip.companions, states: trip.states, note: note)
         copy.categoryRaw = trip.categoryRaw
         copy.isInduced = trip.isInduced
+        copy.viaRaw = trip.viaRaw   // MARK: via
         context.insert(copy)
         commit()
         return copy
@@ -121,6 +122,7 @@ struct Repository {
         let fav = FavoriteRouteEntity(title: title, fromName: trip.fromName, toName: trip.toName, fromStationID: trip.fromStationID,
                                       toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm,
                                       fareEUR: trip.fareEUR, isRoundTrip: trip.isRoundTrip, states: trip.states, sortIndex: count)
+        fav.viaRaw = trip.viaRaw   // MARK: via
         context.insert(fav)
         commit()
         return fav

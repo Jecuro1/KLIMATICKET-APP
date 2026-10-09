@@ -37,6 +37,7 @@ struct TripEdRouteCard: View {
     private var stops: some View {
         VStack(alignment: .leading, spacing: 0) {
             endpoint(.from)
+            TripEdViaRows(model: model, onPick: onPick)   // MARK: via
             meta
             endpoint(.to)
         }

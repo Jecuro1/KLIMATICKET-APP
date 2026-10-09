@@ -14,6 +14,8 @@ final class TripEditorModel {
     /// Free-text names when no bundled station matches (e.g. a bus stop).
     var fromName: String = ""
     var toName: String = ""
+    /// Via stations in travel order, at most `TripVia.maxCount` (TripEdViaRows.swift, docs/VIA.md).  // MARK: via
+    var vias: [TripEdViaStop] = []
 
     // Details
     var mode: TransportMode = .train
@@ -65,6 +67,7 @@ final class TripEditorModel {
             toStation = trip.toStationID.flatMap(app.stations.station(id:)) ?? app.stations.station(named: trip.toName)
             fromName = trip.fromName
             toName = trip.toName
+            vias = TripEdViaStop.stops(for: trip.via, stations: app.stations)   // MARK: via
             mode = trip.mode
             date = trip.date
             isRoundTrip = trip.isRoundTrip
@@ -86,6 +89,7 @@ final class TripEditorModel {
                 ?? (draft.toName.isEmpty ? nil : app.stations.station(named: draft.toName))
             fromName = fromStation?.name ?? draft.fromName
             toName = toStation?.name ?? draft.toName
+            vias = TripEdViaStop.stops(for: draft.via, stations: app.stations)   // MARK: via
             mode = draft.mode
             date = draft.date
             isRoundTrip = draft.isRoundTrip
@@ -103,7 +107,8 @@ final class TripEditorModel {
         guard !trip.isFareManual, let current = estimate, abs(current.fareEUR - trip.fareEUR) >= 0.005,
               let a = fromStation, let b = toStation else { return }
         let other: FareDiscount = discount == .none ? .vorteilscard : .none
-        let alternative = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: other, date: date)
+        let alternative = app.estimator.estimate(from: a, via: viaStations, to: b, mode: mode, travelClass: travelClass,   // MARK: via
+                                                 discount: other, date: date)
         guard abs(alternative.fareEUR - trip.fareEUR) < 0.005 else { return }
         discount = other
         estimate = alternative
@@ -170,7 +175,7 @@ final class TripEditorModel {
 
     /// Federal states touched (for regional ticket comparison).
     var states: [String] {
-        Array(Set([fromStation?.state, toStation?.state].compactMap { $0 })).sorted()
+        Array(Set(([fromStation?.state, toStation?.state] + viaStations.map(\.state)).compactMap { $0 })).sorted()   // MARK: via
     }
 
     // MARK: Actions
@@ -249,6 +254,14 @@ final class TripEditorModel {
     func swap() {
         Swift.swap(&fromStation, &toStation)
         Swift.swap(&fromName, &toName)
+        vias.reverse()   // MARK: via – the whole route turns around
+        recompute()
+    }
+
+    // MARK: via – a via was added, changed or removed: priced like a new start or destination.
+    func viaDidChange() {
+        routeChanged = true
+        pricingChanged = true
         recompute()
     }
 
@@ -257,6 +270,7 @@ final class TripEditorModel {
         toStation = favorite.toStationID.flatMap(app.stations.station(id:)) ?? app.stations.station(named: favorite.toName)
         fromName = favorite.fromName
         toName = favorite.toName
+        vias = TripEdViaStop.stops(for: favorite.via, stations: app.stations)   // MARK: via
         mode = favorite.mode
         isRoundTrip = favorite.isRoundTrip
         routeChanged = true
@@ -289,7 +303,8 @@ final class TripEditorModel {
             estimate = nil
             return
         }
-        estimate = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: discount, date: date)
+        estimate = app.estimator.estimate(from: a, via: viaStations, to: b, mode: mode, travelClass: travelClass,   // MARK: via
+                                          discount: discount, date: date)
     }
 
     /// Value of `ticket`'s period without the trip being edited, from the trips saved before the sheet opened (the one this
@@ -331,6 +346,7 @@ final class TripEditorModel {
             trip.note = note
             trip.category = category
             trip.isInduced = isInduced
+            trip.via = viaRecords   // MARK: via
             repo.updateTrip(trip)
         } else {
             trip = TripEntity(date: date, fromName: resolvedFromName, toName: resolvedToName, fromStationID: fromStation?.id,
@@ -339,6 +355,7 @@ final class TripEditorModel {
                               companions: companions, states: states, note: note)
             trip.category = category
             trip.isInduced = isInduced
+            trip.via = viaRecords   // MARK: via
             repo.addTrip(trip)
         }
         if saveAsFavorite { repo.metaAddFavorite(from: trip) }

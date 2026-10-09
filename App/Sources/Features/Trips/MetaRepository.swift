@@ -12,6 +12,7 @@ extension Repository {
                                            toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm,
                                            fareEUR: trip.fareEUR, isRoundTrip: trip.isRoundTrip, states: trip.states, sortIndex: count)
         favorite.categoryRaw = trip.categoryRaw
+        favorite.viaRaw = trip.viaRaw   // MARK: via
         context.insert(favorite)
         commit()
         return favorite

@@ -55,6 +55,8 @@ struct TripDraft: Identifiable, Equatable {
     /// Template favourite („Bearbeiten & erfassen“): the editor applies it like its own favourites row – incl. the stored
     /// fare as fallback when no estimate exists (custom places) and its category.
     var favorite: FavoriteRouteEntity?
+    /// Via stations in travel order (docs/VIA.md).  // MARK: via
+    var via: [TripVia] = []
 }
 
 /// Global app state & services, injected via `.environment(appState)`.
