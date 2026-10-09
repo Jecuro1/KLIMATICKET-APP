@@ -143,7 +143,8 @@ final class AppState {
                    actionTitle: String? = nil, haptic: Haptic? = nil, action: (@MainActor () -> Void)? = nil) {
         // A failed save was just reported: the caller's "Fahrt gespeichert" right after the write must not replace it.
         if let failedAt = saveFailureReportedAt, Date().timeIntervalSince(failedAt) < 1.5 { return }
-        withAnimation(.spring(duration: 0.45, bounce: 0.3)) {
+        // MARK: global – motion tokens (cross-fade under Reduce Motion, none in screenshots).
+        withMotion(Motion.bouncy) {
             toast = Toast(symbol: symbol, title: title, subtitle: subtitle, actionTitle: actionTitle, action: action,
                           haptic: haptic ?? Toast.defaultHaptic(for: symbol))   // MARK: trips
         }
@@ -151,7 +152,7 @@ final class AppState {
         let seconds: Double = action == nil ? 2.6 : 5
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(seconds))
-            if toast?.id == id { withAnimation(.easeOut(duration: 0.3)) { toast = nil } }
+            if toast?.id == id { withMotion(Motion.smooth) { toast = nil } }
         }
     }
 

@@ -375,7 +375,7 @@ struct ToastOverlay: View {
 
     // MARK: trips – closes the toast, then runs its action.
     private func perform(_ toast: Toast) {
-        withAnimation(.easeOut(duration: 0.25)) { app.toast = nil }
+        withMotion(Motion.smooth) { app.toast = nil }
         toast.action?()
     }
 }

@@ -99,6 +99,15 @@ private struct CelebrationRing<T: Equatable>: View {
     }
 }
 
+/// The burst's dots: fixed directions and sizes (no randomness per frame, nothing allocated while animating).
+private enum BurstDots {
+    static let all: [(angle: Double, distance: Double, size: Double)] = (0..<12).map { i in
+        (angle: Double(i) / 12 * 2 * .pi + (i.isMultiple(of: 2) ? 0 : 0.18),
+         distance: i.isMultiple(of: 2) ? 1 : 0.72,
+         size: i.isMultiple(of: 3) ? 6 : 4.5)
+    }
+}
+
 private struct BurstValues {
     var progress: Double = 0
     var opacity: Double = 0
@@ -109,14 +118,8 @@ private struct CelebrationBurst<T: Equatable>: View {
     let colors: [Color]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Fixed directions and sizes (no randomness per frame, nothing allocated while animating).
-    private static var dots: [(angle: Double, distance: Double, size: Double)] {
-        (0..<12).map { i in
-            (angle: Double(i) / 12 * 2 * .pi + (i.isMultiple(of: 2) ? 0 : 0.18),
-             distance: i.isMultiple(of: 2) ? 1 : 0.72,
-             size: i.isMultiple(of: 3) ? 6 : 4.5)
-        }
-    }
+    /// Fixed directions and sizes, built once (a generic type cannot hold them as a static stored property).
+    private static var dots: [(angle: Double, distance: Double, size: Double)] { BurstDots.all }
 
     var body: some View {
         if !reduceMotion && !MotionPolicy.isStatic {
