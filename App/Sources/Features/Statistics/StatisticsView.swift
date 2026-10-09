@@ -57,6 +57,7 @@ struct StatsScreen: View {
     @State private var shareImage: Image?
     /// Key the current `shareImage` was rendered for – the tab re-runs `.task` on every re-appear.
     @State private var shareImageKey: String?
+    @State private var isShowingReport = false
 
     var body: some View {
         ScrollView {
@@ -86,6 +87,7 @@ struct StatsScreen: View {
         .sensoryFeedback(.selection, trigger: ticket.id) { _, _ in app.settings.hapticsEnabled }
         .onAppear { startEntrance() }
         .task(id: shareKey) { renderShareImage() }
+        .sheet(isPresented: $isShowingReport) { RepReportSheet(ticketID: ticket.id) }
     }
 
     // MARK: Header
@@ -212,18 +214,18 @@ struct StatsScreen: View {
         "\(StatsCalc.ticketYearLabel(item.period)) · \(item.name)"
     }
 
-    @ViewBuilder
     private var shareButton: some View {
-        if let shareImage {
-            ShareLink(item: shareImage, preview: SharePreview("Meine KlimaBilanz", image: shareImage)) {
-                Label("Bilanz teilen", systemImage: "square.and.arrow.up")
+        Menu {
+            if let shareImage {
+                ShareLink(item: shareImage, preview: SharePreview("Meine KlimaBilanz", image: shareImage)) {
+                    Label("Bilanz als Bild teilen", systemImage: "photo")
+                }
             }
-        } else {
-            Button {} label: {
-                Label("Bilanz teilen", systemImage: "square.and.arrow.up")
-            }
-            .disabled(true)
+            RepReportMenuButton { isShowingReport = true }
+        } label: {
+            Label("Teilen", systemImage: "square.and.arrow.up")
         }
+        .accessibilityLabel("Teilen")
     }
 
     // MARK: Share card & motion

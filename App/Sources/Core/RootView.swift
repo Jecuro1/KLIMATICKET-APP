@@ -197,6 +197,8 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "hero":
             DesignSystemPreview()
+        case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
+            RepScreenshotHost(screen: reportScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

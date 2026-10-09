@@ -33,6 +33,8 @@ struct SetDataSection: View {
                 csvRow
                     .onAppear { prepareExports() }
                     .onChange(of: exportKey) { _, _ in prepareExports() }
+                RepImportSettingsRow()
+                RepReportSettingsRow()
                 backupRow
                 importRow
                 demoRow
