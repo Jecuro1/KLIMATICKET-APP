@@ -416,7 +416,7 @@ public struct BoardRow: Sendable, Hashable, Identifiable {
     /// „Bus F“, „S 4“, „RJ 83“.
     public var lineTitle: String
     public var mode: TransportMode
-    /// Final destination (departures) or origin of the run (arrivals), as a display name.
+    /// Final destination (departures) or origin of the run (arrivals, „von …“), as a display name.
     public var destination: DisplayName
     public var platform: PlatformLabel?
     /// Card notices (crowd, warning, critical).
@@ -444,13 +444,19 @@ public struct BoardRow: Sendable, Hashable, Identifiable {
 public enum BoardPresentation {
     /// Rows in board order (`Board.entries` is already sorted by effective time).
     public static func rows(_ board: Board) -> [BoardRow] {
-        board.entries.map(row)
+        board.entries.map { row($0, kind: board.kind) }
     }
 
-    public static func row(_ entry: BoardEntry) -> BoardRow {
+    /// `destination` is the run's final destination on a departure board and the run's origin on an arrival board
+    /// (HAFAS `dirTxt` is the final destination on both, SPEC §A3.4 – an arrival board must not show it).
+    public static func row(_ entry: BoardEntry, kind boardKind: BoardKind = .departures) -> BoardRow {
         let plate: LinePlateText.Plate = entry.line.map { LinePresentation.plate($0, size: .s) } ?? (text: "", glyph: nil)
         let kind = entry.line.map(LinePresentation.kind) ?? .sonst
-        let destinationRaw = entry.direction ?? entry.terminusOrOrigin?.name ?? ""
+        let destinationRaw: String
+        switch boardKind {
+        case .departures: destinationRaw = entry.direction ?? entry.terminusOrOrigin?.name ?? ""
+        case .arrivals: destinationRaw = entry.terminusOrOrigin?.name ?? entry.direction ?? ""
+        }
         return BoardRow(id: entry.id, time: entry.event.planned.map(RealtimePresentation.time) ?? "",
                         realtime: RealtimePresentation.label(entry.event), plate: plate.text, plateGlyph: plate.glyph, lineKind: kind,
                         lineTitle: entry.line.map(LinePresentation.title) ?? "", mode: entry.line?.mode ?? .other,
