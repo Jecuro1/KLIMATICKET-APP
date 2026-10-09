@@ -4,6 +4,9 @@ import MapKit
 import KlimaCore
 
 /// Fahrt-Detail: big value on the sky, route hero, stat tiles, map, fare explanation, note and actions.
+///
+/// Motion (docs/MOTION.md): zooms out of its list row; the value counts in once and rolls after an edit; the cards rise
+/// in one short stagger; scrolling, the numeral condenses behind the cards and the bar shows "Route · € value".
 struct TripDetailView: View {
     let trip: TripEntity
 
@@ -21,20 +24,14 @@ struct TripDetailView: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var favorites: [FavoriteRouteEntity]
 
-    @State private var shownValue: Double
-    @State private var revealed: Bool
     @State private var isConfirmingDelete = false
     @State private var isShowingFareInfo = false
-    @State private var successTick = 0
-    @State private var warningTick = 0
+    /// Bumps when "Als Favorit" made this route a favourite (star burst) / "Heute nochmal fahren" logged it (arrow turns).
+    @State private var favoriteBurst = 0
+    @State private var repeatTurns = 0
     @State private var routeCache = TripListDetailRouteCache()
-
-    init(trip: TripEntity) {
-        self.trip = trip
-        let settled = LaunchMode.isScreenshot
-        _shownValue = State(initialValue: settled ? trip.totalValue : 0)
-        _revealed = State(initialValue: settled)
-    }
+    /// Scroll progress of the hero (0 at rest … 1 condensed) – read only by the hero and the compact bar title.
+    @State private var condense = ScrollCondense()
 
     var body: some View {
         let info = makeInfo()
@@ -42,32 +39,44 @@ struct TripDetailView: View {
             VStack(spacing: Theme.Spacing.m) {
                 hero
                     .padding(.bottom, Theme.Spacing.xs)
-                Group {
-                    routeCard(info)
-                    tiles(info)
-                    if let route = info.route {
-                        // Map(initialPosition:) frames the region once – a new route (Bearbeiten) needs a new map.
-                        TripListDetailMap(route: route, mode: trip.mode)
-                            .id(route.identity)
-                    }
-                    fareCard(info)
-                    if !trimmedNote.isEmpty {
-                        noteCard
-                    }
-                    actionButtons(info)
+                    .heroCondense(condense, minScale: 0.86, fadeTo: 0.2)
+                    .reveal(.focus)
+                routeCard(info)
+                    .reveal(order: 1)
+                tiles(info)
+                    .reveal(order: 2)
+                if let route = info.route {
+                    // Map(initialPosition:) frames the region once – a new route (Bearbeiten) needs a new map.
+                    TripListDetailMap(route: route, mode: trip.mode)
+                        .id(route.identity)
+                        .reveal(.fade, order: 3)
                 }
-                .opacity(revealed ? 1 : 0)
-                .offset(y: revealed ? 0 : 18)
+                fareCard(info)
+                    .reveal(order: 4)
+                if !trimmedNote.isEmpty {
+                    noteCard
+                        .reveal(order: 5)
+                }
+                actionButtons(info)
+                    .reveal(order: 6)
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
             .padding(.top, Theme.Spacing.xs)
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .scrollIndicators(.hidden)
+        .tracksScrollCondense(condense, distance: 200)
+        .scrollEdgeEffectStyle(.soft, for: .top)
+        .revealScope()
         .ambientBackground()
         .navigationTitle("Fahrt")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                TripListDetailBarTitle(condense: condense,
+                                       route: TripListFormat.routeTitle(trip.fromName, trip.toName, roundTrip: trip.isRoundTrip),
+                                       value: trip.totalValue)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Bearbeiten") { actions.edit(trip) }
             }
@@ -77,12 +86,6 @@ struct TripDetailView: View {
             Button("Abbrechen", role: .cancel) {}
         } message: {
             Text("\(TripListFormat.routeTitle(trip.fromName, trip.toName)) · \(Format.euroPrecise(trip.totalValue)) wird aus deiner Bilanz entfernt.")
-        }
-        .sensoryFeedback(.success, trigger: successTick, condition: { _, _ in hapticsEnabled })
-        .sensoryFeedback(.warning, trigger: warningTick, condition: { _, _ in hapticsEnabled })
-        .onAppear(perform: animateIn)
-        .onChange(of: trip.totalValue) { _, newValue in
-            withAnimation(.spring(duration: 0.6)) { shownValue = newValue }
         }
     }
 
@@ -96,11 +99,11 @@ struct TripDetailView: View {
                 Text("€")
                     .font(Theme.Typography.priceNumeral)
                     .foregroundStyle(Theme.textSecondary)
-                Text(Format.number(shownValue, decimals: 2))
-                    .font(Theme.Typography.hero)
+                // Counts in once; after "Bearbeiten" the digits roll to the new value.
+                CountUpText(value: trip.totalValue, delay: 0.1) { Format.number($0, decimals: 2) }
+                    .font(Theme.Typography.hero.monospacedDigit())
                     .fontWeight(numeralWeight)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: shownValue))
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
             }
@@ -406,7 +409,13 @@ struct TripDetailView: View {
             Button {
                 repeatToday()
             } label: {
-                Label("Heute nochmal fahren · \(Format.euroPrecise(trip.totalValue))", systemImage: "arrow.clockwise")
+                Label {
+                    Text("Heute nochmal fahren · \(Format.euroPrecise(trip.totalValue))")
+                } icon: {
+                    Image(systemName: "arrow.clockwise")
+                        .symbolEffect(.rotate, value: repeatTurns)
+                        .symbolEffectsRemoved(reduceMotion || MotionPolicy.isStatic)
+                }
             }
             .buttonStyle(.primary)
 
@@ -422,13 +431,17 @@ struct TripDetailView: View {
                 } label: {
                     Label {
                         Text(favoriteButtonTitle(info))
+                            .contentTransition(.interpolate)
                     } icon: {
                         Image(systemName: info.isFavorite ? "star.fill" : "star")
                             .foregroundStyle(Theme.gold)
+                            .symbolReplaceTransition()
+                            .symbolBounce(on: favoriteBurst)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .disabled(info.isFavorite)
+                .celebrationBurst(trigger: favoriteBurst, colors: [Theme.gold, Theme.dawn, Theme.summit])
             }
             .buttonStyle(.glass)
             .controlSize(.large)
@@ -453,39 +466,29 @@ struct TripDetailView: View {
     }
 
     private var actions: TripListActions { TripListActions(app: app, context: context) }
-    private var hapticsEnabled: Bool { app.settings.hapticsEnabled }
+
+    // The toasts of these actions play their haptic (success / warning) – none here (MOTION.md §6).
 
     private func repeatToday() {
+        repeatTurns += 1
         actions.repeatToday(trip)
-        successTick += 1
     }
 
     private func addFavorite() {
-        actions.addFavorite(trip, favorites: favorites)
-        successTick += 1
+        let wasFavorite = actions.existingFavorite(for: trip, in: favorites) != nil
+        withMotion(Motion.bouncy) {
+            actions.addFavorite(trip, favorites: favorites)
+            if !wasFavorite { favoriteBurst += 1 }
+        }
     }
 
     private func deleteTrip() {
         actions.delete(trip)
-        warningTick += 1
         // Give the warning haptic a beat before popping back to the list.
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(150))
             dismiss()
         }
-    }
-
-    // MARK: Entrance
-
-    private func animateIn() {
-        guard !revealed || shownValue != trip.totalValue else { return }
-        if reduceMotion || LaunchMode.isScreenshot {
-            shownValue = trip.totalValue
-            revealed = true
-            return
-        }
-        withAnimation(.smooth(duration: 0.55)) { revealed = true }
-        withAnimation(.spring(duration: 0.9, bounce: 0.12)) { shownValue = trip.totalValue }
     }
 
     // MARK: Derived data
@@ -505,6 +508,43 @@ struct TripDetailView: View {
             co2Kg: app.catalog.emissions.savedKg(km: trip.totalDistanceKm, mode: trip.mode),
             isFavorite: actions.existingFavorite(for: trip, in: favorites) != nil
         )
+    }
+}
+
+// MARK: - Bar title
+
+/// The bar's title: "Fahrt" at rest; once the hero numeral has condensed under the cards, "St. Anton → Lech" with the
+/// value – so the context stays in view. Only this view reads the scroll progress (no re-render of the screen).
+private struct TripListDetailBarTitle: View {
+    let condense: ScrollCondense
+    let route: String
+    let value: Double
+
+    var body: some View {
+        let p = Double(condense.value)
+        let detail = max(0, p - 0.55) / 0.45
+        ZStack {
+            Text("Fahrt")
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+                .opacity(1 - detail)
+            VStack(spacing: 0) {
+                Text(route)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(Format.euroPrecise(value))
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.accentText)
+                    .numericValue(value)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .opacity(detail)
+            .offset(y: 6 * (1 - detail))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Fahrt")
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
