@@ -26,6 +26,9 @@ struct DashboardView: View {
     @State private var appeared = LaunchMode.isScreenshot
     @Namespace private var tripZoom
 
+    /// CI screenshot "dashboardBottom" opens scrolled to the end (Gipfelbuch, „Diese Woche“, Vorteile).
+    private static let screenshotAnchor: UnitPoint? = LaunchMode.screenshotScreen == "dashboardBottom" ? .bottom : nil
+
     var body: some View {
         let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
         let snapshot = ticket.map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) }
@@ -115,6 +118,7 @@ struct DashboardView: View {
         }
         .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
         .modifier(DashScrollScrim())
+        .defaultScrollAnchor(Self.screenshotAnchor)
         // The sun glow brightens towards the summit, capped so the verdict lines above it keep their contrast.
         .ambientBackground(.standard, glow: 0.4 + 0.4 * summary.progressClamped)
         .refreshable { await refresh() }

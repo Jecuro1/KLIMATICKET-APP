@@ -30,6 +30,8 @@ struct TicketView: View {
     @State private var deleteCount = 0
 
     private static let topID = "tkt-top"
+    /// CI screenshot "ticketBottom" opens scrolled to the end (details, Ticket-Verlauf).
+    private static let screenshotAnchor: UnitPoint? = LaunchMode.screenshotScreen == "ticketBottom" ? .bottom : nil
 
     var body: some View {
         let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
@@ -79,6 +81,7 @@ struct TicketView: View {
             .accessibilityIdentifier("perf.scroll.ticket") // MARK: perf – KlimaBilanzPerfTests
             .scrollEdgeEffectStyle(.soft, for: .all)
             .tktInlineTitleTracking(titleChrome)
+            .defaultScrollAnchor(Self.screenshotAnchor)
             .ambientBackground(.standard, glow: 0.45 + 0.5 * snapshot.summary.progressClamped)
         }
     }
