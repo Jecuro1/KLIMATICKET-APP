@@ -402,7 +402,11 @@ Encoding rules:
   are sent, in travel order.
 - Encoding: `"viaLocL":[{"loc":<loc>,"min":<minutes>}, …]`. `min` only when `minimumDwellMinutes` is set (> 0);
   no `viaLocL` key at all when `via` is empty. Paging requests repeat `viaLocL` unchanged.
-- [ASSUMED until the WP-A live check] `/gate` accepts `min` inside `viaLocL` (HCI `HCIViaLocation.min`).
+- [LIVE 2026-10-09, one request] `/gate` 1.88 accepts `min` inside `viaLocL` and honours it: Innsbruck Hbf → Bregenz
+  via Feldkirch with `min: 10` returns 3 journeys that all break at Feldkirch (RJ/RJX → S 1, 18 min stay), whereas
+  without the stay the RJX run through to Bregenz [`FX/hafas/tripsearch_via_feldkirch_dwell_ibk_bregenz`, trimmed;
+  `HafasViaTests`: request shape, every journey passes the via station, stay ≥ `min`].
+- `Journey.passes(_ location:)` (extId, else lid, else ≤ 300 m) checks that a journey stops at a via station.
 
 **Reconstruction (refresh a saved connection)**
 ```json
@@ -1554,6 +1558,7 @@ Tests go under `Packages/KlimaCore/Tests/KlimaCoreTests/Live/<Area>/`. XCTest (a
 4. StationBoard Innsbruck over 30 min has ≥ 1 entry.
 5. JourneyDetails of the first ride leg has > 100 polyline points.
 6. **Assumption checks:** the legacy profile accepts `outReconL` (§A3.1). The VAO `wl:60200657` → `A=1@L=490065700@` TripSearch to Wien Westbahnhof returns `statusCode OK` (§A3.7).
+7. **Via with a minimum stay** (owner request 2026-10-09): Innsbruck Hbf → Bregenz via Feldkirch, `min: 10`; every journey passes Feldkirch. `KB_LIVE_RECORD_DIR=<dir>` writes the exchange in `FX/hafas` format.
 
 **Prices (WP-B):**
 1. Shop Innsbruck→Landeck today, 2nd class: price > 0 and owner VVT.
