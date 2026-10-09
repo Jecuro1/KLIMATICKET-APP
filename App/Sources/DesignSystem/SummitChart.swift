@@ -16,6 +16,7 @@ struct SummitChart: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var reveal: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         GeometryReader { geo in
@@ -73,25 +74,37 @@ struct SummitChart: View {
     private func ridges(layout: Layout) -> some View {
         let summitX = layout.x(summitDate)
         let summitY = layout.y(price)
-        let h = layout.size.height
-        let w = layout.size.width
+        let h = max(layout.size.height, 1)
+        let w = max(layout.size.width, 1)
+        let dark = colorScheme == .dark
+        let front = RidgeShape(peakX: summitX / w, peakY: summitY / h, seed: 7, roughness: 0.42)
         return ZStack {
-            // Far ridge
-            RidgeShape(peakX: summitX / max(w, 1) * 0.6 + 0.3, peakY: (summitY + h * 0.18) / max(h, 1), seed: 3, roughness: 0.55)
-                .fill(LinearGradient(colors: [ridgeColor(0).opacity(0.55), ridgeColor(0).opacity(0.05)], startPoint: .top, endPoint: .bottom))
-            // Middle ridge with the summit
-            RidgeShape(peakX: summitX / max(w, 1), peakY: summitY / max(h, 1), seed: 7, roughness: 0.42)
-                .fill(LinearGradient(colors: [ridgeColor(1).opacity(0.9), ridgeColor(1).opacity(0.15)], startPoint: .top, endPoint: .bottom))
-            // Near ridge
-            RidgeShape(peakX: 0.18, peakY: 0.72, seed: 11, roughness: 0.3)
-                .fill(LinearGradient(colors: [ridgeColor(2).opacity(0.85), ridgeColor(2).opacity(0.25)], startPoint: .top, endPoint: .bottom))
+            // Far ridges
+            RidgeShape(peakX: min(0.9, summitX / w * 0.55 + 0.38), peakY: min(0.9, (summitY + h * 0.2) / h), seed: 3, roughness: 0.6)
+                .fill(dark ? Color(red: 64 / 255, green: 84 / 255, blue: 140 / 255).opacity(0.42)
+                           : Color(red: 150 / 255, green: 172 / 255, blue: 214 / 255).opacity(0.40))
+            RidgeShape(peakX: 0.16, peakY: 0.62, seed: 11, roughness: 0.5)
+                .fill(dark ? Color(red: 22 / 255, green: 34 / 255, blue: 70 / 255).opacity(0.9)
+                           : Color(red: 118 / 255, green: 146 / 255, blue: 196 / 255).opacity(0.40))
+            // Frosted glass front ridge carrying the summit
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .clipShape(front)
+                .opacity(reduceTransparency ? 0 : 1)
+            front.fill(LinearGradient(
+                stops: dark
+                    ? [.init(color: Color(red: 175 / 255, green: 200 / 255, blue: 1).opacity(0.26), location: 0),
+                       .init(color: Color(red: 175 / 255, green: 200 / 255, blue: 1).opacity(0.02), location: 0.62),
+                       .init(color: .clear, location: 1)]
+                    : [.init(color: .white.opacity(0.88), location: 0), .init(color: .white.opacity(0.18), location: 0.62),
+                       .init(color: .white.opacity(0.0), location: 1)],
+                startPoint: .top, endPoint: .bottom))
+            front.stroke(LinearGradient(colors: dark ? [Color(red: 170 / 255, green: 200 / 255, blue: 1).opacity(0.25), Color(hex: "#FFBEAA").opacity(0.75)]
+                                                     : [.white.opacity(0.7), .white, .white.opacity(0.7)],
+                                        startPoint: .leading, endPoint: .trailing), lineWidth: 1.3)
         }
-    }
-
-    private func ridgeColor(_ layer: Int) -> Color {
-        let light = [Color(hex: "#A9B6E0"), Color(hex: "#C9D0EE"), Color(hex: "#E9ECF8")]
-        let dark = [Color(hex: "#2A3466"), Color(hex: "#3A3F78"), Color(hex: "#1B2040")]
-        return (colorScheme == .dark ? dark : light)[layer]
+        .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.55), .init(color: .black.opacity(0), location: 1)],
+                             startPoint: .top, endPoint: .bottom))
     }
 
     private func valueLine(layout: Layout) -> some View {
@@ -100,12 +113,12 @@ struct SummitChart: View {
         return ZStack {
             SmoothPath(points: points)
                 .trim(from: 0, to: reveal)
-                .stroke(Theme.progressGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.routeGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round, lineJoin: .round))
                 .blur(radius: 10)
                 .opacity(0.45)
             SmoothPath(points: points)
                 .trim(from: 0, to: reveal)
-                .stroke(Theme.progressGradient, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                .stroke(Theme.routeGradient, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             // Above the summit line the route turns pine-green: every further trip is profit.
             if isPaidOff {
                 SmoothPath(points: points)

@@ -17,10 +17,10 @@ enum AppTab: String, Hashable, CaseIterable {
 
     var symbol: String {
         switch self {
-        case .overview: "gauge.with.needle"
-        case .trips: "list.bullet.rectangle.portrait"
-        case .stats: "chart.xyaxis.line"
-        case .ticket: "wallet.pass"
+        case .overview: "mountain.2"
+        case .trips: "tram.fill"
+        case .stats: "chart.bar.fill"
+        case .ticket: "ticket.fill"
         case .add: "plus"
         }
     }

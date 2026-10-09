@@ -7,20 +7,24 @@ Tokens: `Shared/Theme.swift` (auch in Widgets nutzbar). Komponenten: `App/Source
 
 | Token | Verwendung |
 |---|---|
-| `Theme.accent`, `Theme.accentSecondary`, `Theme.onAccent` | Marke, aktive Elemente, Text auf Akzent |
+| `Theme.glacier/.glacier2/.dawn/.dawn2/.alpenglow/.pine/.dusk/.gold` | Alpine-Palette (siehe DESIGN.md §3) |
+| `Theme.accent` (= glacier), `Theme.accentSecondary` (= dusk), `Theme.onAccent` | Marke, aktive Elemente, Text auf Akzent |
+| `Theme.routeGradient`, `Theme.ctaGradient` | Route/Fortschritt (glacier→dusk→dawn), primärer Button |
+| `Theme.sheetBackground` | ruhige Fläche für Sheets/Formulare |
 | `Theme.background`, `Theme.surface`, `Theme.surfaceSecondary`, `Theme.separator` | Flächen |
 | `Theme.textPrimary/.textSecondary/.textTertiary` | Text |
 | `Theme.positive` | Wert, Ersparnis, „rentiert“ |
 | `Theme.remaining` / `Theme.summit` | noch offen bis Break-even, Gipfel/Ziel-Marker |
 | `Theme.negative`, `Theme.eco` | Verlust/Fehler, CO₂ |
 | `Theme.positiveText`, `Theme.summitText`, `Theme.accentText` | **Kontrast-sichere Varianten (≥ 4,5:1) für kleinen Text** – Akzentfarben sonst nur als Flächen oder große Schrift |
-| `Theme.progressGradient` | Amortisations-Fortschritt |
+| `Theme.progressGradient` | = routeGradient |
 | `Theme.modeColor(_ mode: TransportMode) -> Color` | Farbe je Verkehrsmittel |
 | `Theme.tierGradient(_ tier: Achievement.Tier) -> LinearGradient` | Erfolge |
 | `Theme.celebrationColors: [Color]` | Konfetti |
 | `Theme.Typography.hero/.heroTitle/.numberLarge/.numberMedium/.numberSmall/.title/.sectionTitle/.headline/.body/.caption/.kicker` | Schrift |
-| `Theme.Spacing.xxs(4) xs(8) s(12) m(16) l(20) xl(28) xxl(40) screen(20)` | Abstände |
-| `Theme.Radius.chip(14) tile(20) card(28) sheet(36)` | Eckenradien (continuous) |
+| `Theme.Spacing.xxs(4) xs(8) s(12) m(16) l(20) xl(28) xxl(40) screen(20) cardGutter(16)` | Abstände |
+| `Theme.Radius.modeTile(12) chip(14) tile(20) formGroup(24) card(28) pass(30) sheet(38)` | Eckenradien (continuous) |
+| `Theme.Typography.priceNumeral` | große Preis-/Tage-Zahl (46 Light Rounded) |
 
 Farb-Helfer: `Color(hex:)`, `Color(light:dark:)` (Strings oder Colors).
 
@@ -28,9 +32,12 @@ Farb-Helfer: `Color(hex:)`, `Color(light:dark:)` (Strings oder Colors).
 
 ```swift
 GlassCard(padding: CGFloat = 20, cornerRadius: CGFloat = 28, tint: Color? = nil, interactive: Bool = false) { content }
-SurfaceCard(padding: CGFloat = 20, cornerRadius: CGFloat = 28) { content }   // opak, für dichte Charts
-AmbientBackground(intensity: Double = 1)   // animierter Mesh-Verlauf
-view.ambientBackground(intensity: 1)       // als Screen-Hintergrund
+    // Frost-Karte (Material + spekularer Rand + Schatten) – Standard-Container für Inhalte über dem Himmel
+view.frostedCard(cornerRadius: CGFloat = 28, tint: Color? = nil)   // dasselbe Rezept als Modifier
+SurfaceCard(padding: CGFloat = 20, cornerRadius: CGFloat = 28) { content }   // ruhig/opak, für dichte Charts & Formulare
+AmbientBackground(style: .standard | .onboarding, glow: Double = 0.7)   // Alpenhimmel (3×6 Mesh, Sonnen-Glühen, Sterne)
+view.ambientBackground(.standard, glow: 0.7)                          // als Screen-Hintergrund
+// Liquid Glass NUR für Bedienelemente: .glassEffect(...), .buttonStyle(.glass / .glassProminent), GlassEffectContainer
 ```
 
 ## Texte & Überschriften

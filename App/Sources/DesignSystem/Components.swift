@@ -3,7 +3,9 @@ import KlimaCore
 
 // MARK: - Cards
 
-/// Liquid Glass card – the default container for grouped content.
+/// Frosted content card over the alpine sky (Material + specular rim + soft shadow).
+/// Per HIG, Liquid Glass (`glassEffect`) is reserved for chrome – tab bar, toolbar, chips, floating controls;
+/// content cards use this frosted recipe (cheaper to render, better legibility). `tint` adds a faint colour wash.
 struct GlassCard<Content: View>: View {
     var padding: CGFloat = Theme.Spacing.l
     var cornerRadius: CGFloat = Theme.Radius.card
@@ -15,14 +17,50 @@ struct GlassCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .glassEffect(glass, in: .rect(cornerRadius: cornerRadius))
+            .frostedCard(cornerRadius: cornerRadius, tint: tint)
     }
+}
 
-    private var glass: Glass {
-        var g = Glass.regular
-        if let tint { g = g.tint(tint.opacity(0.18)) }
-        if interactive { g = g.interactive() }
-        return g
+extension View {
+    /// The frosted card recipe used by GlassCard / StatTile.
+    func frostedCard(cornerRadius: CGFloat = Theme.Radius.card, tint: Color? = nil) -> some View {
+        modifier(FrostedCardModifier(cornerRadius: cornerRadius, tint: tint))
+    }
+}
+
+struct FrostedCardModifier: ViewModifier {
+    var cornerRadius: CGFloat
+    var tint: Color?
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        content
+            .background {
+                ZStack {
+                    if reduceTransparency {
+                        shape.fill(Theme.sheetBackground)
+                    } else {
+                        shape.fill(.regularMaterial)
+                        shape.fill(colorScheme == .dark ? Color(red: 30 / 255, green: 46 / 255, blue: 78 / 255).opacity(0.30)
+                                                        : Color.white.opacity(0.44))
+                    }
+                    if let tint { shape.fill(tint.opacity(colorScheme == .dark ? 0.14 : 0.10)) }
+                }
+            }
+            .overlay {
+                shape.strokeBorder(
+                    LinearGradient(stops: [.init(color: .white.opacity(colorScheme == .dark ? 0.42 : 0.95), location: 0),
+                                           .init(color: .white.opacity(colorScheme == .dark ? 0.05 : 0.18), location: 0.32),
+                                           .init(color: .white.opacity(0), location: 0.5),
+                                           .init(color: .white.opacity(colorScheme == .dark ? 0.05 : 0.18), location: 0.7),
+                                           .init(color: .white.opacity(colorScheme == .dark ? 0.20 : 0.55), location: 1)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1)
+            }
+            .shadow(color: colorScheme == .dark ? .black.opacity(0.45) : Color(red: 26 / 255, green: 52 / 255, blue: 96 / 255).opacity(0.14),
+                    radius: colorScheme == .dark ? 20 : 15, y: colorScheme == .dark ? 12 : 8)
     }
 }
 
@@ -119,7 +157,7 @@ struct StatTile: View {
         }
         .padding(Theme.Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: Theme.Radius.tile))
+        .frostedCard(cornerRadius: Theme.Radius.tile)
         .accessibilityElement(children: .combine)
     }
 }
@@ -136,7 +174,10 @@ struct ModeIcon: View {
             .font(.system(size: size * 0.45, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(Theme.modeColor(mode).gradient, in: .rect(cornerRadius: size * 0.3))
+            .background(
+                LinearGradient(colors: [Theme.modeColor(mode), Theme.modeColor(mode).mix(with: .black, by: 0.22)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: .rect(cornerRadius: size * 0.31, style: .continuous))
             .accessibilityLabel(mode.displayName)
     }
 }
@@ -182,7 +223,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(.headline)
             .foregroundStyle(Theme.onAccent)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(Theme.progressGradient.opacity(isEnabled ? 1 : 0.4), in: .capsule)
+            .background(Theme.ctaGradient.opacity(isEnabled ? 1 : 0.4), in: .capsule)
             .shadow(color: Theme.accent.opacity(isEnabled ? 0.35 : 0), radius: 16, y: 8)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(duration: 0.25), value: configuration.isPressed)
