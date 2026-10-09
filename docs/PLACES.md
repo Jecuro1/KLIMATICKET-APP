@@ -113,10 +113,19 @@ index.isSamePlace(_:_:) -> Bool                                        // dedupe
 ## 5. Tests and goldens
 
 `swift test --package-path Packages/KlimaCore --no-parallel` (Linux CI) runs 27 place tests on the shipped
-`.bin` files: normaliser golden (60 strings), 113 ranking cases (offline + merged with 43 Scotty fixtures), 332 typed
-prefixes in both modes, nearest, address/POI → stop, dedupe pairs, C1/P1 collapses, plausibility, HAMM errors,
+`.bin` files: normaliser golden (60 strings), 163 ranking cases (offline + merged with 43 Scotty fixtures; 48 of them
+search context words, docs/ENRICH_SPEC.md §2.4), 383 typed prefixes in both modes, nearest, address/POI → stop, dedupe
+pairs, C1/P1 collapses, plausibility, HAMM errors,
 walking time, legacy ids, `StationIndex` façade, loader, dataset coverage, odd inputs and corrupted files, performance. The expected values come from
 `scripts/places_reference.py` (Python, stdlib) – the executable reference that mirrors the Swift code 1:1 – run on
-the same files; after a dataset or ranking change regenerate them (DATA_SOURCES §4) and review the diff.
+the same files; after a dataset or ranking change regenerate them (DATA_SOURCES §4) and review the diff:
+
+```sh
+SCOTTY_FIXTURES=<LocMatch fixtures> OEBB_FIXTURES=Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/OEBB/hafas \
+  python3 -I scripts/places_reference.py golden App/Resources/places.bin App/Resources/localities.bin \
+  Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places --osm App/Resources/stops_osm.bin
+```
+
+`--osm` loads the ODbL layer like the app does (ski-area context words need its tags).
 Fixtures: `Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places/` (golden JSON + trimmed LocMatch/LocGeoPos
 responses, 340 KB).

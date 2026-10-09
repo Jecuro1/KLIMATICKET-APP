@@ -9,6 +9,12 @@ enum PlaceWeights {
     static let poiStopIntent = -40.0, addrStopIntent = -40.0, addrStreetIntent = 10.0, addrNumberIntent = 40.0
     static let poiNumberIntent = 0.0
     static let liveRank = 5.0, fav = 35.0, recent = 25.0
+    /// Context word (ENRICH_SPEC §2.4) not matched by a name token while the place lies there (cancels the optional
+    /// skip, +0.05). A place outside the area counts the word as unmatched (relaxed matching only, −0.40).
+    static let contextHit = 0.10
+    /// Context words act only when the query has a selective place word (≤ this many postings): "bad gastein",
+    /// "st johann" name the place with the area word itself.
+    static let contextMaxGenerator = 500
     static let near = 8.0, nearShort = 16.0, nearKm = 30.0, nearGeneric = 60.0, nearGenericKm = 20.0
     static let placeExact: [String: Double] = ["city": 1.0, "town": 0.8, "village": 0.3, "suburb": 0.3, "hamlet": 0,
                                                "neighbourhood": 0, "quarter": 0, "isolated_dwelling": 0]
@@ -45,6 +51,9 @@ struct CompiledQuery {
     var ranges: [[Range<Int>]]
     /// Trimmed text length (near bonus for very short queries).
     var shortText: Bool
+    /// Per token: context-word sets (`PlaceContextIndex` set indices), empty for ordinary tokens.
+    var context: [[Int32]]
+    var hasContext: Bool
 }
 
 extension PlaceTable {
@@ -130,11 +139,34 @@ extension PlaceTable {
         }
         var qflags = toks.map(\.flags)
         for k in toks.indices where k > 0 && PlaceLexicon.optionalQuery.contains(toks[k].canonical) { qflags[k] |= PlaceTok.optional }
+        // §2.4: a context word after the first token is scored by membership when the name does not contain it – when
+        // another word already names a place selectively (postings ≤ contextMaxGenerator). An exact area word is
+        // optional for candidate generation; a still-typed prefix of one ("warth arlb") stays an ordinary word there.
+        var ctx = [[Int32]](repeating: [], count: toks.count)
+        if let context {
+            var cand = ctx, exactTerm = [Bool](repeating: false, count: toks.count)
+            for k in toks.indices where k > 0 && !toks[k].isStop && !toks[k].isNumeric
+                && !PlaceContextVocabulary.genericWords.contains(toks[k].raw) {
+                let hit = context.lookup(raw: toks[k].raw, canonical: toks[k].canonical, partial: !trailing && k == toks.count - 1)
+                cand[k] = hit.sets
+                exactTerm[k] = hit.exact
+            }
+            if cand.contains(where: { !$0.isEmpty }) {
+                let place = toks.indices.filter {
+                    cand[$0].isEmpty && qflags[$0] & (PlaceTok.stop | PlaceTok.numeric | PlaceTok.optional) == 0
+                }
+                if let g = place.min(by: { est[$0] < est[$1] }), est[g] <= PlaceWeights.contextMaxGenerator {
+                    ctx = cand
+                    for k in toks.indices where exactTerm[k] { qflags[k] |= PlaceTok.optional }
+                }
+            }
+        }
         return CompiledQuery(text: text, n: toks.count, raw: toks.map(\.raw), flags: qflags,
                              weight: toks.map { Double(max(2, $0.raw.unicodeScalars.count)) }, keys: keys, fuzzy: fz,
                              weak: weak, lastPartial: !trailing, genericOnly: genericOnly, hasNumber: hasNumber,
                              streetIntent: street, est: est, ranges: ranges,
-                             shortText: text.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count <= 3)
+                             shortText: text.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count <= 3,
+                             context: ctx, hasContext: ctx.contains { !$0.isEmpty })
     }
 
     /// §5.1 best match of query token `i` against name token `t`.
@@ -228,10 +260,20 @@ extension PlaceTable {
                 scratch.am[c.i] = c.m
             }
             var skip = 0.0, unmatchedHard = 0, nAssigned = 0
-            var wsum = 0.0, wq = 0.0, allExact = true
+            var wsum = 0.0, wq = 0.0, allExact = true, adj = 0.0
             for i in 0..<n {
                 let f = q.flags[i]
-                let skippable = f & (PlaceTok.stop | PlaceTok.optional) != 0
+                var skippable = f & (PlaceTok.stop | PlaceTok.optional) != 0
+                if q.hasContext, scratch.aj[i] < 0, !q.context[i].isEmpty, let context {
+                    // §2.4: an area word not in the name – the place lies there (skip like a stopword, +0.10) or the word
+                    // stays unmatched (relaxed matching only)
+                    if q.context[i].contains(where: { context.contains($0, Int32(ri)) }) {
+                        skippable = true
+                        adj += PlaceWeights.contextHit
+                    } else {
+                        skippable = false
+                    }
+                }
                 if scratch.aj[i] >= 0 {
                     nAssigned += 1
                     wsum += q.weight[i]
@@ -280,7 +322,7 @@ extension PlaceTable {
             if exact > 0 && kind == .town { exact *= info[ri].localityExactFactor }
             let anchor = (relaxed && unmatchedHard > 0 && anchorHit) ? PlaceWeights.relaxedAnchor : 0
             if q.genericOnly { first = 0; order = 0; compl = 0; exact = 0 }
-            let s = (quality + first + order + compl + exact + anchor - skip) * vfac
+            let s = (quality + first + order + compl + exact + anchor - skip) * vfac + adj
             if best == nil || s > best!.0 { best = (s, exact) }
         }
         return best

@@ -3,7 +3,8 @@
  "engine": "scripts/places_reference.py == Packages/KlimaCore/Sources/KlimaCore/Places (weights v1)",
  "dataset_sha256_16": {
   "places.bin": "98044d749c1c40f6",
-  "localities.bin": "0ea37ce590ed0d51"
+  "localities.bin": "0ea37ce590ed0d51",
+  "stops_osm.bin": "f2cf2524c8cc7dcf"
  },
  "records": 60761,
  "how_to_read": "offline_top5 = search_offline(limit 12); merged_top5 = merge(offline, live fixture) top 5; prefixes = public search(limit 20). 'S:' stop/station, 'Ort:' locality, 'A:' address, 'P:' POI.",
@@ -151,15 +152,15 @@
     "S:Hall in Tirol Bahnhof",
     "Ort:Hall in Tirol",
     "S:Hall in Tirol Abzw Bahnhof",
-    "Ort:Hall",
-    "S:Hall in Tirol Kurhaus"
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus"
    ],
    "merged_top5": [
     "S:Hall in Tirol Bahnhof",
     "Ort:Hall in Tirol",
     "S:Hall in Tirol-Thaur Bahnhst",
-    "Ort:Hall",
-    "S:Hall in Tirol Kurhaus"
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Burgfrieden"
    ],
    "live_rows": 10,
    "live_top5": [
@@ -1063,6 +1064,48 @@
    ]
   },
   {
+   "input": "Warth am Arlberg Dorfplatz",
+   "mode": "planner",
+   "fixture": null,
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ],
+   "merged_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ],
+   "live_rows": 0,
+   "live_top5": []
+  },
+  {
+   "input": "Warth am Arlberg Dorfplatz",
+   "mode": "tripLog",
+   "fixture": null,
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Flirsch Dorfplatz"
+   ],
+   "merged_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Flirsch Dorfplatz"
+   ],
+   "live_rows": 0,
+   "live_top5": []
+  },
+  {
    "input": "bahnhof",
    "mode": "planner",
    "context": "bahnhof near Innsbruck",
@@ -1745,8 +1788,8 @@
     "S:Hall in Tirol Bahnhof",
     "Ort:Hall in Tirol",
     "S:Hall in Tirol Abzw Bahnhof",
-    "Ort:Hall",
-    "S:Hall in Tirol Kurhaus"
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus"
    ]
   },
   {
@@ -1781,8 +1824,8 @@
     "S:Steinbrunn Bethausweg",
     "S:Steinbrunn Süd",
     "S:Steinbrunn Steinfeldweg",
-    "S:Steinbrunn b.Schardenberg",
-    "S:Steinbrunn Untere Hauptstraße"
+    "S:Steinbrunn Untere Hauptstraße",
+    "S:Steinbrunn Obere Hauptstraße"
    ]
   },
   {
@@ -1921,6 +1964,572 @@
     "S:Gmünd (NÖ) Bahnhofstraße",
     "S:Gmünd (NÖ) Bezirkshauptmannschaft",
     "S:Gmünd (NÖ) Schulzentrum"
+   ]
+  },
+  {
+   "input": "warth am arlberg dorfplatz",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth am arlberg dorfplatz",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Flirsch Dorfplatz"
+   ]
+  },
+  {
+   "input": "warth am arlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth am arlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "warth arlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth arlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "warth am arlberg dorf",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth am arlberg dorf",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "warth arlb",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth arlb",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "warth vorarlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "warth vorarlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "warth niederösterreich",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth/Pielach Bundesstraße",
+    "S:Warth/Neunkirchen Ausiedlung",
+    "S:Warth/Neunkirchen Bildungszentrum"
+   ]
+  },
+  {
+   "input": "warth niederösterreich",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth/Pielach Bundesstraße",
+    "S:Warth/Neunkirchen Ausiedlung",
+    "S:Warth/Neunkirchen Bildungszentrum",
+    "S:Warth/Neunkirchen Korngasse"
+   ]
+  },
+  {
+   "input": "warth",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Warth",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg"
+   ]
+  },
+  {
+   "input": "warth",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth/Pielach Bundesstraße"
+   ]
+  },
+  {
+   "input": "zürs am arlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Zürs",
+    "S:Zürs Flexenpass",
+    "S:Zürs Seekopfbahn",
+    "S:Zürs Trittkopfbahn",
+    "S:Zürs Arlberghaus"
+   ]
+  },
+  {
+   "input": "zürs am arlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Zürs Flexenpass",
+    "S:Zürs Seekopfbahn",
+    "S:Zürs Trittkopfbahn",
+    "S:Zürs Arlberghaus",
+    "S:Zürs Alpenhof"
+   ]
+  },
+  {
+   "input": "sölden ötztal",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "Ort:Sölden",
+    "S:Sölden (Tirol) Giggijochbahn",
+    "S:Sölden (Tirol) Postamt",
+    "S:Sölden (Tirol) Gaislachkoglbahn",
+    "S:Sölden (Tirol) Mühlau"
+   ]
+  },
+  {
+   "input": "sölden ötztal",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Sölden (Tirol) Giggijochbahn",
+    "S:Sölden (Tirol) Postamt",
+    "S:Sölden (Tirol) Gaislachkoglbahn",
+    "S:Sölden (Tirol) Mühlau",
+    "S:Sölden (Tirol) Pitze"
+   ]
+  },
+  {
+   "input": "mayrhofen zillertal",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Mayrhofen (Tirol) Bahnhof",
+    "Ort:Mayrhofen",
+    "S:Mayrhofen (Tirol) Stillupklamm",
+    "S:Mayrhofen (Tirol) Postamt",
+    "S:Mayrhofen (Tirol) Penkenbahn"
+   ]
+  },
+  {
+   "input": "mayrhofen zillertal",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Mayrhofen (Tirol) Bahnhof",
+    "S:Mayrhofen (Tirol) Stillupklamm",
+    "S:Mayrhofen (Tirol) Postamt",
+    "S:Mayrhofen (Tirol) Penkenbahn",
+    "S:Mayrhofen (Tirol) Rauchenwald"
+   ]
+  },
+  {
+   "input": "ischgl paznaun",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Ischgl Weiler Paznaun",
+    "Ort:Ischgl",
+    "S:Ischgl Ebene",
+    "S:Ischgl Therme",
+    "S:Ischgl Waldhof"
+   ]
+  },
+  {
+   "input": "ischgl paznaun",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Ischgl Weiler Paznaun",
+    "S:Ischgl Ebene",
+    "S:Ischgl Therme",
+    "S:Ischgl Waldhof",
+    "S:Ischgl Abzw Versahl"
+   ]
+  },
+  {
+   "input": "lech am arlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte",
+    "S:Lech am Arlberg Landbrugg"
+   ]
+  },
+  {
+   "input": "lech am arlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte",
+    "S:Lech am Arlberg Landbrugg"
+   ]
+  },
+  {
+   "input": "st anton am arlberg",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "Ort:St. Anton am Arlberg",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton am Arlberg Kohlereck",
+    "S:St. Anton am Arlberg Schollberg"
+   ]
+  },
+  {
+   "input": "st anton am arlberg",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton am Arlberg Kohlereck",
+    "S:St. Anton am Arlberg Schollberg",
+    "S:St. Anton am Arlberg Mooserkreuz"
+   ]
+  },
+  {
+   "input": "lech post",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Lech am Arlberg Postbus Garage",
+    "S:Lech am Arlberg Postbus Garage Lech (Ortsbus)",
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus"
+   ]
+  },
+  {
+   "input": "lech post",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Lech am Arlberg Postbus Garage",
+    "S:Lech am Arlberg Postbus Garage Lech (Ortsbus)",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus"
+   ]
+  },
+  {
+   "input": "st anton bahnhof",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:Stams Bahnhof",
+    "S:Steyr Bahnhof",
+    "S:St. Johann im Pongau Bahnhof"
+   ]
+  },
+  {
+   "input": "st anton bahnhof",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:Stams Bahnhof",
+    "S:Steyr Bahnhof",
+    "S:St. Johann im Pongau Bahnhof"
+   ]
+  },
+  {
+   "input": "wien floridsdorf",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Wien Floridsdorf",
+    "S:Wien Floridsdorfer Markt",
+    "S:Wien Floridsdorfer Brücke",
+    "S:Wien Betriebshof Floridsdorf"
+   ]
+  },
+  {
+   "input": "wien floridsdorf",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Wien Floridsdorf",
+    "S:Wien Floridsdorfer Markt",
+    "S:Wien Floridsdorfer Brücke",
+    "S:Wien Betriebshof Floridsdorf"
+   ]
+  },
+  {
+   "input": "hall i.t.",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus"
+   ]
+  },
+  {
+   "input": "hall i.t.",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus",
+    "S:Hall in Tirol Stadtgraben"
+   ]
+  },
+  {
+   "input": "bad gastein",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Bad Gastein Bahnhof",
+    "Ort:Bad Gastein",
+    "S:Bad Gastein Mozartplatz",
+    "S:Bad Gastein Gemeindesiedlung",
+    "S:Bad Gastein Feuerwehr"
+   ]
+  },
+  {
+   "input": "bad gastein",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Bad Gastein Bahnhof",
+    "S:Bad Gastein Mozartplatz",
+    "S:Bad Gastein Gemeindesiedlung",
+    "S:Bad Gastein Feuerwehr",
+    "S:Bad Gastein Hirschkar"
+   ]
+  },
+  {
+   "input": "st johann",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "Ort:St. Johann",
+    "Ort:Sankt Johann",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof"
+   ]
+  },
+  {
+   "input": "st johann",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof",
+    "S:St. Johann in Tirol Grieswirt Bahnhof"
+   ]
+  },
+  {
+   "input": "flughafen wien",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Wien Charterbusparkplatz",
+    "S:Flughafen Wien HCW",
+    "S:Flughafen Wien Fracht"
+   ]
+  },
+  {
+   "input": "flughafen wien",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Wien Charterbusparkplatz",
+    "S:Flughafen Wien HCW",
+    "S:Flughafen Wien Fracht"
+   ]
+  },
+  {
+   "input": "innsbruck tirol",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck ORF Tirol",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "innsbruck tirol",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck ORF Tirol",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "kitzbühel hahnenkamm",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Kitzbühel Hahnenkamm Bahnhof"
+   ]
+  },
+  {
+   "input": "kitzbühel hahnenkamm",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Kitzbühel Hahnenkamm Bahnhof"
+   ]
+  },
+  {
+   "input": "seefeld in tirol",
+   "mode": "planner",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "S:Seefeld in Tirol Birkenlift",
+    "S:Seefeld in Tirol Olympiastraße",
+    "S:Seefeld in Tirol Mittelschule"
+   ]
+  },
+  {
+   "input": "seefeld in tirol",
+   "mode": "tripLog",
+   "context": "contextWords",
+   "offline_top5": [
+    "S:Seefeld in Tirol Bahnhof",
+    "S:Seefeld in Tirol Birkenlift",
+    "S:Seefeld in Tirol Olympiastraße",
+    "S:Seefeld in Tirol Mittelschule",
+    "S:Seefeld in Tirol Panoramaweg"
    ]
   }
  ],
@@ -2371,9 +2980,9 @@
    "top5": [
     "S:Hall in Tirol Bahnhof",
     "Ort:Hall in Tirol",
-    "Ort:Hall",
     "S:Hall in Tirol Kurhaus",
-    "S:Hall in Tirol Krankenhaus"
+    "S:Hall in Tirol Krankenhaus",
+    "S:Hall in Tirol Stadtgraben"
    ]
   },
   {
@@ -5472,6 +6081,567 @@
     "S:Wien Meidling",
     "S:Wien Hütteldorf",
     "S:Wien Floridsdorf"
+   ]
+  },
+  {
+   "input": "Wa",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wals",
+    "S:Wartberg im Mürztal Bahnhof",
+    "S:Wald am Schoberpaß Bahnhof",
+    "S:Waidhofen an der Ybbs Bahnhof",
+    "S:Wals (Salzburg) Schwarzenbergkaserne"
+   ]
+  },
+  {
+   "input": "War",
+   "mode": "planner",
+   "top5": [
+    "S:Wartberg im Mürztal Bahnhof",
+    "Ort:Warmbad-Judendorf",
+    "Ort:Warth",
+    "S:Wartberg/Krems Bahnhof",
+    "S:Warth (Vorarlberg) Dorfplatz"
+   ]
+  },
+  {
+   "input": "Wart",
+   "mode": "planner",
+   "top5": [
+    "S:Wartberg im Mürztal Bahnhof",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Wartberg/Krems Bahnhof"
+   ]
+  },
+  {
+   "input": "Warth",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth a",
+   "mode": "planner",
+   "top5": [
+    "S:Warth/Neunkirchen Ausiedlung",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Abstellplatz",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp"
+   ]
+  },
+  {
+   "input": "Warth am",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg"
+   ]
+  },
+  {
+   "input": "Warth am ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am A",
+   "mode": "planner",
+   "top5": [
+    "S:Warth/Neunkirchen Ausiedlung",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Abstellplatz",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp"
+   ]
+  },
+  {
+   "input": "Warth am Ar",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg"
+   ]
+  },
+  {
+   "input": "Warth am Arl",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlb",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlbe",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlber",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg D",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Do",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dor",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorf",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfp",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfpl",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfpla",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfplat",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfplatz",
+   "mode": "planner",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "Ort:Warth",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "W",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wien Hauptbahnhof",
+    "S:Wörgl Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling"
+   ]
+  },
+  {
+   "input": "Wa",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wartberg im Mürztal Bahnhof",
+    "S:Wald am Schoberpaß Bahnhof",
+    "S:Waidhofen an der Ybbs Bahnhof",
+    "S:Wals (Salzburg) Schwarzenbergkaserne",
+    "S:Walding b.Linz Bahnhst"
+   ]
+  },
+  {
+   "input": "War",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wartberg im Mürztal Bahnhof",
+    "S:Wartberg/Krems Bahnhof",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz"
+   ]
+  },
+  {
+   "input": "Wart",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wartberg im Mürztal Bahnhof",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Wartberg/Krems Bahnhof",
+    "S:Warth/Neunkirchen Marktplatz"
+   ]
+  },
+  {
+   "input": "Warth",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth/Pielach Bundesstraße"
+   ]
+  },
+  {
+   "input": "Warth ",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth/Pielach Bundesstraße"
+   ]
+  },
+  {
+   "input": "Warth a",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth/Neunkirchen Ausiedlung",
+    "S:Warth (Vorarlberg) Abstellplatz",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz"
+   ]
+  },
+  {
+   "input": "Warth am",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am ",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth/Pielach Bundesstraße"
+   ]
+  },
+  {
+   "input": "Warth am A",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth/Neunkirchen Ausiedlung",
+    "S:Warth (Vorarlberg) Abstellplatz",
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz"
+   ]
+  },
+  {
+   "input": "Warth am Ar",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arl",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth/Neunkirchen Marktplatz",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe"
+   ]
+  },
+  {
+   "input": "Warth am Arlb",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlbe",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlber",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg ",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg D",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Do",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dor",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorf",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfp",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfpl",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfpla",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfplat",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Warth (Vorarlberg) Bildegg"
+   ]
+  },
+  {
+   "input": "Warth am Arlberg Dorfplatz",
+   "mode": "tripLog",
+   "top5": [
+    "S:Warth (Vorarlberg) Dorfplatz",
+    "S:Warth (Vorarlberg) Steffisalp",
+    "S:Warth (Vorarlberg) Wolfegg",
+    "S:Warth (Vorarlberg) Jägeralpe",
+    "S:Flirsch Dorfplatz"
    ]
   }
  ],

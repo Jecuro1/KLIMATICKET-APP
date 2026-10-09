@@ -93,6 +93,8 @@ final class PlaceTable: @unchecked Sendable {
     let exact: FlatMap<UInt64>
     let byID: [String: Int32]
     let grid: FlatMap<Int64>
+    /// Search context words (ENRICH_SPEC §2.4): term → record ids; nil without enrichment data.
+    let context: PlaceContextIndex?
 
     var formCount: Int { formLen.count }
 
@@ -103,7 +105,9 @@ final class PlaceTable: @unchecked Sendable {
         var keepRawTokens = false
     }
 
-    init(records: [PlaceRecord], municipalities: Set<String>, options: BuildOptions = BuildOptions()) {
+    /// `context` builds the context-word sets from the sorted records (record id = position), see `PlaceIndex`.
+    init(records: [PlaceRecord], municipalities: Set<String>, options: BuildOptions = BuildOptions(),
+         context: (([PlaceRecord]) -> PlaceContextIndex)? = nil) {
         self.municipalities = municipalities
         self.hasTrigrams = options.trigrams
         let recs = records.sorted { a, b in
@@ -139,6 +143,7 @@ final class PlaceTable: @unchecked Sendable {
         exact = FlatMap(pairs: b.exactPairs)
         byID = b.byID
         grid = FlatMap(pairs: b.gridPairs)
+        self.context = context?(recs)
     }
 
     // MARK: build

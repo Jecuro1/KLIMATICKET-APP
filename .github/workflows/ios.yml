@@ -71,12 +71,14 @@ jobs:
           fi
       - name: Test CI scripts
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
-      # Optimised build: 100 typical place searches on the full dataset must take < 50 ms (docs/PLACES.md).
+      # Optimised build: 100 typical place searches on the full dataset must take < 50 ms (docs/PLACES.md); context-word
+      # queries and the stop enrichment (parse, details(for:) < 1 ms) stay cheap (docs/ENRICH_SPEC.md AT-C8).
       - name: Place search performance (release)
         shell: bash
         run: |
           set +e
-          swift test -c release -Xswiftc -enable-testing --package-path Packages/KlimaCore --filter PlaceSearchPerformanceTests > /tmp/perf.log 2>&1
+          swift test -c release -Xswiftc -enable-testing --package-path Packages/KlimaCore \
+            --filter "PlaceSearchPerformanceTests|PlaceContextSearchPerformanceTests|PlaceEnrichmentPerformanceTests" > /tmp/perf.log 2>&1
           rc=$?
           tail -15 /tmp/perf.log
           if [ $rc -ne 0 ]; then

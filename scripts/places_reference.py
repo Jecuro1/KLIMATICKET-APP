@@ -5,8 +5,12 @@ Pure stdlib. Mirrors the Swift implementation in Packages/KlimaCore/Sources/Klim
 offline index, scoring, live LocMatch parsing, merge/dedupe) and generates the golden files the Swift tests check:
 
     python3 -I scripts/places_reference.py golden App/Resources/places.bin App/Resources/localities.bin \
-        Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places
-    python3 -I scripts/places_reference.py query App/Resources/places.bin App/Resources/localities.bin "wien w" [--ctx tripLog]
+        Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places --osm App/Resources/stops_osm.bin
+    python3 -I scripts/places_reference.py query App/Resources/places.bin App/Resources/localities.bin "wien w" [--ctx tripLog] \
+        [--osm App/Resources/stops_osm.bin]
+
+Search context words (docs/ENRICH_SPEC.md §2.4) come from the v2 tags of places.bin (+ stops_osm.bin with --osm,
+as the app loads it): "Warth am Arlberg Dorfplatz", "Sölden Ötztal", "Warth Vorarlberg".
 
 Rebuild the goldens whenever places.bin/localities.bin or the ranking change, and review the diff
 (positions 4–5 inside one town are importance-driven and may legitimately move with a new dataset).
@@ -113,7 +117,8 @@ class Tok:
     pos: int
     qualifier: bool = False
     forms: dict = field(default_factory=dict)  # form -> factor (1.0 official, 0.95 joined, 0.9 alias, 0.8 split)
-    optional: bool = False                     # query side only (OPTIONAL_QUERY)
+    optional: bool = False                     # query side only (OPTIONAL_QUERY, exact context words)
+    ctx: list = field(default_factory=list)    # query side only: context-word set indices (§2.4)
 
     @property
     def c(self):
@@ -337,6 +342,8 @@ class OfflineIndex:
         # record id = rank by importance (desc) → every posting list is importance-ordered
         records = sorted(records, key=lambda r: (-r.importance, r.name, r.id))
         self.recs = [prepare(r) for r in records]
+        for ri, r in enumerate(self.recs):
+            r.ri = ri                                  # record id (context-word sets)
         post = {}
         self.exact = {}
         for ri, r in enumerate(self.recs):
@@ -493,7 +500,8 @@ def prefix_edit_distance(q, t, limit):
 W = dict(text=100, importance=40, first=0.15, order=0.05, cov_exact=0.20, cov_partial=0.10, exact=0.50,
          skip_stop=0.05, skip_num=0.05, skip_relaxed=0.40, relaxed_anchor=0.25, foreign=-20, town_nonexact=-3,
          poi_stop_intent=-40, addr_stop_intent=-40, addr_street_intent=10, addr_number_intent=40, poi_number_intent=0,
-         live_rank=5, fav=35, recent=25, near=8, near_short=16, near_km=30, near_generic=60, near_generic_km=20, tripLog_town=-1000, town_minor=-12)
+         live_rank=5, fav=35, recent=25, near=8, near_short=16, near_km=30, near_generic=60, near_generic_km=20, tripLog_town=-1000, town_minor=-12,
+         context_hit=0.10)
 
 
 @dataclass
@@ -565,12 +573,24 @@ def text_score(query: Query, rec: Rec, fuzzy_maps, relaxed=False):
             if i in used_i or j in used_j:
                 continue
             used_i.add(i); used_j.add(j); assign[i] = (j, m)
+        skippable = [q.stop or q.optional for q in query.toks]
+        adj = 0.0
+        if CONTEXT is not None and getattr(rec, "ri", None) is not None:
+            # §2.4: an area word not in the name – the place lies there (skip like a stopword, +0.10) or the word
+            # stays unmatched (relaxed matching only)
+            for i, q in enumerate(query.toks):
+                if q.ctx and i not in assign:
+                    if any(rec.ri in CONTEXT.member_sets[k] for k in q.ctx):
+                        skippable[i] = True
+                        adj += W["context_hit"]
+                    else:
+                        skippable[i] = False
         skip = 0.0
         unmatched_hard = 0
         for i, q in enumerate(query.toks):
             if i in assign:
                 continue
-            if q.stop or q.optional:
+            if skippable[i]:
                 skip += W["skip_stop"]
             elif q.numeric and rec.kind not in ("address",):
                 skip += W["skip_num"]
@@ -581,7 +601,7 @@ def text_score(query: Query, rec: Rec, fuzzy_maps, relaxed=False):
             continue
         if not assign:
             continue
-        wsum = sum(max(2, len(q.raw)) for i, q in enumerate(query.toks) if i in assign or not (q.stop or q.optional))
+        wsum = sum(max(2, len(q.raw)) for i, q in enumerate(query.toks) if i in assign or not skippable[i])
         quality = sum(max(2, len(query.toks[i].raw)) * m for i, (j, m) in assign.items()) / max(1, wsum)
         first = W["first"] if (0 in assign and assign[0][0] == 0 and assign[0][1] >= 0.7) else 0.0
         js = [assign[i][0] for i in sorted(assign)]
@@ -608,7 +628,7 @@ def text_score(query: Query, rec: Rec, fuzzy_maps, relaxed=False):
         anchor = W["relaxed_anchor"] if (relaxed and unmatched_hard and any(j == 0 for j, _ in assign.values())) else 0.0
         if query.generic_only:          # "bahnhof"/"hbf": every station matches; rank by distance + importance
             first = order = compl = exact = 0.0
-        s = (quality + first + order + compl + exact + anchor - skip) * vfac
+        s = (quality + first + order + compl + exact + anchor - skip) * vfac + adj
         if best is None or s > best[0]:
             best = (s, dict(quality=round(quality, 3), first=first, order=order, cov=round(cov, 2), exact=exact,
                             skip=skip))
@@ -708,6 +728,8 @@ def search_offline(idx: OfflineIndex, text: str, ctx: Ctx, limit=None, stats=Non
     q = split_compounds(idx, q)
     info = [idx.token_ranges(t.raw) for t in q.toks]
     fuzzy_maps = [fz for _, _, fz in info]
+    if CONTEXT is not None:
+        apply_context(q, info)
     hard = [i for i, t in enumerate(q.toks) if not (t.stop or t.numeric or t.optional)] or list(range(len(q.toks)))
     gen = min(hard, key=lambda i: info[i][1])                       # most selective token generates candidates
     cands = idx.iterate(info[gen][0], N_MAX)
@@ -739,6 +761,197 @@ def score_set(idx, q, cands, fuzzy_maps, ctx, relaxed):
         s = final_score(q, r, ts[0], ctx) + town_adjust(q, r, ts[1])
         out.append((s, r, ts[1]))
     return out
+
+
+# ------------------------------------------------------------------------------------------------
+# 4b. Search context words (docs/ENRICH_SPEC.md §2.4) – PlaceContext.swift, PlaceRanking.swift `compile`/`textScore`
+# ------------------------------------------------------------------------------------------------
+CTX_GENERIC = {"ski", "skigebiet", "arena", "region", "card", "pass", "superskipass", "resort", "bergbahnen", "und", "city",
+               "plus", "zentrum", "am", "im", "an", "der", "die", "das", "see", "tal", "land", "welt", "gletscher",
+               "nationalpark", "naturpark", "stadt", "umgebung", "alpen", "berg", "3000", "sportwelt", "hohe", "wiener", "the"}
+CTX_STATE_TERMS = [("V", ["vorarlberg", "vbg", "vlbg"]), ("T", ["tirol"]), ("S", ["salzburg", "sbg"]),
+                   ("K", ["karnten", "ktn"]), ("ST", ["steiermark", "stmk"]), ("OÖ", ["oberosterreich", "oo", "ooe"]),
+                   ("NÖ", ["niederosterreich", "no", "noe"]), ("B", ["burgenland", "bgld"]), ("W", ["wien"])]
+CTX_MAX_GEN = 500           # context words act only when another word names a place selectively (≤ 500 postings)
+CONTEXT = None              # ContextIndex of the loaded dataset (load_context); None = no v2 tags
+
+
+def ctx_words(name):
+    """Folded single words (≥ 3 letters, not generic) of an area name, split like query tokens."""
+    out = []
+    for t in tokenize(name, is_name=False)[0]:
+        if len(t.raw) >= 3 and t.raw not in CTX_GENERIC and t.raw not in out:
+            out.append(t.raw)
+    return out
+
+
+class ContextIndex:
+    """Context term → record ids (index in OfflineIndex.recs) that lie there; terms without members dropped."""
+
+    def __init__(self, term_members):
+        items = sorted(((t, m) for t, m in term_members.items() if m), key=lambda kv: kv[0].encode())
+        self.terms = [t for t, _ in items]
+        self.keys = [t.encode() for t in self.terms]
+        self.member_sets = [set(m) for _, m in items]
+
+    def lookup(self, raw, canonical, partial):
+        """(set indices, exact): a term equal to the token or its canonical form; the last, still-typed token
+        (≥ 4 letters) also matches every term it is a prefix of."""
+        out = []
+        for w in ([raw] if canonical == raw else [canonical, raw]):
+            k = bisect.bisect_left(self.keys, w.encode())
+            if k < len(self.terms) and self.terms[k] == w and k not in out:
+                out.append(k)
+        exact = bool(out)
+        if partial and len(raw) >= 4:
+            p = raw.encode()
+            k = bisect.bisect_left(self.keys, p)
+            while k < len(self.keys) and self.keys[k].startswith(p):
+                if k not in out:
+                    out.append(k)
+                k += 1
+        return sorted(out), exact
+
+
+def apply_context(q, info):
+    """§2.4 rules 1 + 4 on a parsed (and compound-split) query: context words after the first token, active only when
+    another word names a place selectively; exact area words become optional for candidate generation."""
+    n = len(q.toks)
+    cand, exact = [[] for _ in range(n)], [False] * n
+    for k, t in enumerate(q.toks):
+        if k == 0 or t.stop or t.numeric or t.raw in CTX_GENERIC:
+            continue
+        cand[k], exact[k] = CONTEXT.lookup(t.raw, t.c, q.last_partial and k == n - 1)
+    if not any(cand):
+        return
+    place = [i for i, t in enumerate(q.toks) if not cand[i] and not (t.stop or t.numeric or t.optional)]
+    if not place:
+        return
+    g = min(place, key=lambda i: info[i][1])
+    if info[g][1] > CTX_MAX_GEN:
+        return
+    for k, t in enumerate(q.toks):
+        t.ctx = cand[k]
+        if exact[k]:
+            t.optional = True
+
+
+def load_context(idx, places_bin, osm_bin=None):
+    """Context sets of an index from the v2 tags (places.bin official + Gemeinde defaults, stops_osm.bin when its
+    BASE matches): ski area ≥ 70, region/landscape ≥ 80, state; towns through their main stop + own state."""
+    import importlib.util
+    import struct
+    spec = importlib.util.spec_from_file_location("check_places_v2", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                                  "check_places_v2.py"))
+    cp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cp)
+    P = cp.Container(places_bin)
+    if P.version != 2:
+        return None
+    X = None
+    if osm_bin and os.path.exists(osm_bin):
+        try:
+            X = cp.Container(osm_bin)
+            if X.version != 2 or X.sections.get("BASE") != P.sections.get("BASE") or X.n_stops != P.n_stops:
+                X = None
+        except cp.ReadError:
+            X = None
+    mo, mx = P.meta(), (X.meta() if X else {})
+    n = P.n_stops
+    recs, pool = P.sections["RECS"], P.sections["STRS"]
+    stop_of, stop_gem = {}, []
+    for i in range(n):
+        so, = struct.unpack_from("<I", recs, 28 * i + 8)
+        gem, = struct.unpack_from("<H", recs, 28 * i + 20)
+        stop_of[cp.cstr(pool, so).split("\x1f")[0]] = i
+        stop_gem.append(gem)
+
+    def tag_layer(C, meta):
+        if C is None or "TAGS" not in C.sections:
+            return None
+        sec = C.sections["TAGS"]
+        return sec, cp.per_stop_offsets(sec, n, cp.tag_width), meta.get("keys", []), meta.get("vals", [])
+
+    off, osm = tag_layer(P, mo), tag_layer(X, mx)
+    gt = P.sections.get("GTAG", b"")
+    gt_off, p = [], 0
+    while p < len(gt):
+        gt_off.append(p)
+        p += 1 + 4 * gt[p]
+    entity_stops = {}
+
+    def visit(i, key, val, conf):
+        if key == "ski" and conf >= 70:
+            e = "ski:" + val
+        elif key in ("region", "landscape") and conf >= 80:
+            e = key + ":" + val
+        else:
+            return
+        entity_stops.setdefault(e, set()).add(i)
+
+    def layer_tags(i, layer):
+        sec, offs, keys, vals = layer
+        p = offs[i]
+        for _ in range(sec[i] & 0x7F):
+            kb, conf, v = struct.unpack_from("<BBH", sec, p)
+            k = kb & 0x7F
+            if k < len(keys) and v < len(vals):
+                visit(i, keys[k], vals[v], conf)
+            p += 6 if kb & 0x80 else 4
+
+    for i in range(n):
+        override = False
+        if off:
+            layer_tags(i, off)
+            override = bool(off[0][i] & 0x80)
+        g = stop_gem[i]
+        if not override and g < len(gt_off):
+            p = gt_off[g]
+            for k in range(gt[p]):
+                kb, conf, v = struct.unpack_from("<BBH", gt, p + 1 + 4 * k)
+                if (kb & 0x7F) < len(mo["keys"]) and v < len(mo["vals"]):
+                    visit(i, mo["keys"][kb & 0x7F], mo["vals"][v], conf)
+        if osm:
+            layer_tags(i, osm)
+
+    term_entities = {}
+    areas = dict(mo.get("skiAreas", {}))
+    for aid, a in mx.get("skiAreas", {}).items():
+        areas.setdefault(aid, a)
+    for aid, a in areas.items():
+        if a.get("kind") == "alliance" or not a.get("name"):
+            continue
+        for w in ctx_words(a["name"]) + ctx_words(a.get("short") or ""):
+            term_entities.setdefault(w, set()).add("ski:" + aid)
+    for rid, r in mo.get("regions", {}).items():
+        if not r.get("name"):
+            continue
+        for w in ctx_words(r["name"]):
+            term_entities.setdefault(w, set()).add(("landscape:" if r.get("kind") == "landscape" else "region:") + rid)
+    term_states = {}
+    for st, terms in CTX_STATE_TERMS:
+        for t in terms:
+            term_states.setdefault(t, set()).add(st)
+    entity_terms, state_terms, stop_entities = {}, {}, {}
+    for t, ents in term_entities.items():
+        for e in ents:
+            entity_terms.setdefault(e, []).append(t)
+    for t, sts in term_states.items():
+        for st in sts:
+            state_terms.setdefault(st, []).append(t)
+    for e, stops in entity_stops.items():
+        for i in stops:
+            stop_entities.setdefault(i, []).append(e)
+    members = {t: [] for t in set(term_entities) | set(term_states)}
+    for ri, r in enumerate(idx.recs):
+        terms = set(state_terms.get(r.state, ()))
+        stop = stop_of.get(r.id) if r.kind in ("stop", "station") else stop_of.get(getattr(r, "main_stop", None) or "")
+        if stop is not None:
+            for e in stop_entities.get(stop, ()):
+                terms.update(entity_terms.get(e, ()))
+        for t in terms:
+            members[t].append(ri)
+    return ContextIndex(members)
 
 
 # ------------------------------------------------------------------------------------------------
@@ -1070,9 +1283,11 @@ def load_bins(places_bin, localities_bin):
         main = by_id.get((l["extras"].get(7) or [None])[0])
         place = PLACE_CLASSES[l["place_class"]]
         imp = (main.importance if main else 0.5) + DELTA.get(place, -0.10)
-        recs.append(Rec(id=l["id"], name=l["name"], lat=l["lat"], lon=l["lon"], kind="town", place=place,
-                        products=main.products if main else 0, importance=max(0.0, min(1.0, imp)),
-                        state=l["state"], country="at", municipality=l.get("gem") or "", aliases=[]))
+        town = Rec(id=l["id"], name=l["name"], lat=l["lat"], lon=l["lon"], kind="town", place=place,
+                   products=main.products if main else 0, importance=max(0.0, min(1.0, imp)),
+                   state=l["state"], country="at", municipality=l.get("gem") or "", aliases=[])
+        town.main_stop = (l["extras"].get(7) or [None])[0]
+        recs.append(town)
     return OfflineIndex(recs)
 
 
@@ -1172,7 +1387,16 @@ CASES = [
     ("inns", "lm_all_inns", "tripLog"),
     ("innsbruck", None, "tripLog"),
     ("wien", "lm_all_wien", "tripLog"),
+    # search context words (ENRICH_SPEC §2.4, AT-C7): every prefix while typing, both modes
+    ("Warth am Arlberg Dorfplatz", None, "planner"),
+    ("Warth am Arlberg Dorfplatz", None, "tripLog"),
 ]
+# ENRICH_SPEC §2.4 / AT-C7: area and Bundesland words in the query (offline top 5, planner and tripLog)
+CONTEXT_WORD_QUERIES = ["warth am arlberg dorfplatz", "warth am arlberg", "warth arlberg", "warth am arlberg dorf",
+                        "warth arlb", "warth vorarlberg", "warth niederösterreich", "warth", "zürs am arlberg",
+                        "sölden ötztal", "mayrhofen zillertal", "ischgl paznaun", "lech am arlberg", "st anton am arlberg",
+                        "lech post", "st anton bahnhof", "wien floridsdorf", "hall i.t.", "bad gastein", "st johann",
+                        "flughafen wien", "innsbruck tirol", "kitzbühel hahnenkamm", "seefeld in tirol"]
 
 
 
@@ -1227,11 +1451,14 @@ def trim_response(resp):
     return out
 
 
-def golden(places_bin, localities_bin, fx_dir, out_dir, oebb_fx=None):
+def golden(places_bin, localities_bin, fx_dir, out_dir, oebb_fx=None, osm_bin=None):
     import hashlib
+    global CONTEXT
     t0 = time.perf_counter()
     idx = load_bins(places_bin, localities_bin)
-    print(f"index (python): {time.perf_counter() - t0:.1f} s, {len(idx.recs)} records, {len(idx.forms)} forms")
+    CONTEXT = load_context(idx, places_bin, osm_bin)
+    print(f"index (python): {time.perf_counter() - t0:.1f} s, {len(idx.recs)} records, {len(idx.forms)} forms, "
+          f"{len(CONTEXT.terms) if CONTEXT else 0} context terms")
     live_dir = os.path.join(out_dir, "live")
     os.makedirs(live_dir, exist_ok=True)
 
@@ -1270,6 +1497,11 @@ def golden(places_bin, localities_bin, fx_dir, out_dir, oebb_fx=None):
     for text in EXTRA_QUERIES + TYPING_QUERIES:
         off = search_offline(idx, text, Ctx(), limit=12)
         cases.append(dict(input=text, mode="planner", context="extra", offline_top5=[fmt(r) for _, r, _ in off[:5]]))
+    for text in CONTEXT_WORD_QUERIES:
+        for mode in ("planner", "tripLog"):
+            off = search_offline(idx, text, Ctx(mode=mode), limit=12)
+            cases.append(dict(input=text, mode=mode, context="contextWords",
+                              offline_top5=[fmt(r) for _, r, _ in off[:5]]))
     for name in LIVE_FIXTURES_EXTRA:
         load_fx(name)
     # typing: every prefix (public search(limit: 20) = raw 28 + merge without live), both modes
@@ -1303,7 +1535,8 @@ def golden(places_bin, localities_bin, fx_dir, out_dir, oebb_fx=None):
                                tokens=[dict(raw=t.raw, qualifier=t.qualifier, stop=t.stop, generic=t.generic, numeric=t.numeric,
                                             essential=t.essential, forms=sorted([f, v] for f, v in t.forms.items()))
                                        for t in toks]))
-    sha = {os.path.basename(p): hashlib.sha256(open(p, "rb").read()).hexdigest()[:16] for p in (places_bin, localities_bin)}
+    sha = {os.path.basename(p): hashlib.sha256(open(p, "rb").read()).hexdigest()[:16]
+           for p in (places_bin, localities_bin, osm_bin) if p}
     gold = {"schema": "klimabilanz.places.golden/2",
             "engine": "scripts/places_reference.py == Packages/KlimaCore/Sources/KlimaCore/Places (weights v1)",
             "dataset_sha256_16": sha, "records": len(idx.recs),
@@ -1320,13 +1553,15 @@ def golden(places_bin, localities_bin, fx_dir, out_dir, oebb_fx=None):
 
 if __name__ == "__main__":
     cmd = sys.argv[1]
+    osm = sys.argv[sys.argv.index("--osm") + 1] if "--osm" in sys.argv else None
     if cmd == "golden":
         fx = os.environ.get("SCOTTY_FIXTURES")
         if not fx:
             sys.exit("set SCOTTY_FIXTURES to the LocMatch fixture directory (scenario.response.json files)")
-        golden(sys.argv[2], sys.argv[3], fx, sys.argv[4], os.environ.get("OEBB_FIXTURES"))
+        golden(sys.argv[2], sys.argv[3], fx, sys.argv[4], os.environ.get("OEBB_FIXTURES"), osm)
     elif cmd == "query":
         idx = load_bins(sys.argv[2], sys.argv[3])
+        CONTEXT = load_context(idx, sys.argv[2], osm)
         mode = sys.argv[sys.argv.index("--ctx") + 1] if "--ctx" in sys.argv else "planner"
         near = tuple(map(float, sys.argv[sys.argv.index("--near") + 1].split(","))) if "--near" in sys.argv else None
         for s, r, det in search_offline(idx, sys.argv[4], Ctx(mode=mode, near=near), limit=10):

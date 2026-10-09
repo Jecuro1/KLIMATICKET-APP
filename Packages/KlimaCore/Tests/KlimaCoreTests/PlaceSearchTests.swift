@@ -57,7 +57,8 @@ final class PlaceNormalizerTests: XCTestCase {
 final class PlaceGoldenTests: XCTestCase {
     func testGoldenDatasetMatchesShippedResources() throws {
         let sha = try XCTUnwrap(PlaceFixtures.golden["dataset_sha256_16"] as? [String: String])
-        XCTAssertEqual(sha.count, 2)
+        XCTAssertEqual(Set(sha.keys), ["places.bin", "localities.bin", "stops_osm.bin"],
+                       "goldens are generated with the OSM layer, like the app loads the data (--osm)")
         XCTAssertEqual(PlaceFixtures.golden["records"] as? Int, PlaceFixtures.index.count,
                        "goldens were generated for another dataset – rerun scripts/places_reference.py golden")
     }

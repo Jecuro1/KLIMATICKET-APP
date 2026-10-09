@@ -50,7 +50,12 @@ public final class PlaceIndex: @unchecked Sendable {
         self.enrichment = enrichment
         let t0 = Date()
         let munis = municipalities ?? Self.municipalityKeys(stops: stops, localities: localities)
-        table = PlaceTable(records: stops + localities, municipalities: munis)
+        // search context words (ENRICH_SPEC §2.4): sets built from the sorted table records
+        let builder = enrichment.map { e -> ([PlaceRecord]) -> PlaceContextIndex in
+            let vocabulary = PlaceContextVocabulary(catalog: e.catalog)
+            return { PlaceContextIndex(records: $0, vocabulary: vocabulary, entityNames: e.entityNames, entitiesOfStop: e.entities) }
+        }
+        table = PlaceTable(records: stops + localities, municipalities: munis, context: builder)
         var legacy: [String: Int32] = [:]
         for (ri, r) in table.recs.enumerated() {
             for l in r.legacyIDs where legacy[l] == nil { legacy[l] = Int32(ri) }

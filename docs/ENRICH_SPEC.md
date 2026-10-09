@@ -1016,3 +1016,36 @@ The prototype measures the format faithfully. These points differ from the final
 5. **Rail line identity** not fixed yet (E1). The prototype's Floridsdorf output shows the bug on purpose.
 6. **KlimaTicket product names and `build` info** not yet in META.
 7. **`RPRD`** falls back to the full build's `p[]` when the official build lacks it. Spec: the official build only (ÖBB GTFS is official).
+
+## Appendix C: Implementation notes (WP-C2, WP-C4)
+
+**WP-C2** (`Places/Enrichment/*`, `PlaceIndex` §2.3 API) follows §1.6 with these decisions:
+- **M3 dedupe key** = `LinePlateText.dedupeKey` with the stop's services (the same key `LinePlateOrder` uses), so the
+  detail list and the plates agree. Presentation (family, dedupe id, display rank) is precomputed once per catalogue
+  line; a stop's lines are merged with integers and materialised at the end.
+- **M4:** a superseded line without a successor is hidden; successors are followed ≤ 4 links.
+- **M6:** a rail category becomes a plate only when no plate of that category is already shown (`REX1` covers `REX`,
+  `S1` covers `S`); an exact plate match (OSM „RJ“ + RPRD „RJ“) makes that line timetable-confirmed. Floridsdorf
+  therefore shows `REX1 S U6 5` + overflow, not an extra `REX`/`R`/`CJX`.
+- **Search rows** carry the M8 compact lines and the tags, filled after the merge (≤ 20 rows) and memoised per stop
+  (bounded cache, 2,048 stops), so a keystroke stays at the v1 cost.
+- **Towns:** lines and ski area/regions of their main stop, their own Gemeinde and KlimaTicket default.
+- **Bezirk** of Vienna is 900 (`META.bezirke`), the Gemeindebezirk is `wienBezirk`.
+- `StopDetails.klimaTicketProducts` is empty for `check` / `notIncluded`; `attribution` lists the official part and,
+  with the OSM layer, the ODbL part (the live part is the UI's).
+- v1 files keep plates from the legacy line string (`PlaceEnrichment.legacyLines`).
+- The presentation helpers got ASCII fast paths with identical results (Foundation's `String.contains` bridges to
+  NSString on Linux).
+
+**WP-C4** (`PlaceContext.swift`, `PlaceRanking.swift`, `scripts/places_reference.py`) refines §2.4 after reviewing the
+golden diffs; all AT-C7 expectations and the prototype scores (207.6 / 63.5, 142.8 / 140.6, 147.8 / 145.6) hold:
+1. **A place outside the area counts the word as unmatched** (relaxed matching only, −0.40) instead of −0.30, so a
+   context word never admits places elsewhere: „Maria-Theresien-Straße 1 Innsbruck“ keeps its goldens, „Hall i.T.“
+   loses the Styrian Ort Hall, „Steinbrunn im Bgld“ the Upper Austrian Steinbrunn (the only golden changes).
+2. **Context words act only when another word names a place selectively** (≤ 500 postings): „bad gastein“ and
+   „st johann“ name the place with the area word itself and rank as before (no Bad Hofgastein in „bad gastein“).
+3. **A still-typed prefix** of an area word („warth arlb“) is scored by membership but stays an ordinary word for
+   candidate generation („warth am arlberg dorf“ must not turn „dorf“ into „Dorfgastein“).
+4. Generic words are never context words, also not by prefix („gletscher“ → „gletscherwelt“).
+5. The vocabulary words come from the query tokenizer; state abbreviations resolve through the lexicon (Vlbg → vorarlberg).
+
