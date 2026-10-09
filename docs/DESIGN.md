@@ -137,7 +137,8 @@ Fortschrittsring, Kopf „9 von 17“, Abschnitte „Erreicht“ / „Als Nächs
 Gruppierte Liste (system Liquid Glass), farbige Icon-Kacheln (Modus-Radius 9–10). Konto (Avatar, Anbieter, Sync), Bewertung (Vorteilscard,
 Klasse, Heimatbahnhof), Fahrterkennung, Darstellung, Mitteilungen, Updates (Version, Prüfen, AltStore/SideStore-Quelle, Tarif-Stand),
 Daten (CSV, Backup, Import, Demo, Löschen), Über (FAQ, Quellen, Datenschutz, Hinweis).
-**Update-Sheet:** App-Icon, „Version 1.1 ist da“, Notizen mit Häkchen, „Jetzt aktualisieren“ (CTA), „AltStore-Quelle hinzufügen“, „Später“.
+**Update-Sheet:** App-Icon, „Version 1.1 ist da“ + Glas-Pille „Du hast 1.0“ (Build-only-Update: „Build 7 → 8“), Notizen mit Feature-Kacheln
+(Symbol per Stichwort, sonst Glacier-Funkeln – keine Häkchen), Kanal-CTA, getönte Kapsel „AltStore-Quelle hinzufügen“, „Später“.
 Zusätzlich darf eine Glas-Kapsel „Neue Version verfügbar“ oben in der Übersicht erscheinen.
 
 ### 5.8 Onboarding
