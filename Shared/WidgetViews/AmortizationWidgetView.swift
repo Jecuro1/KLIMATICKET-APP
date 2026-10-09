@@ -47,10 +47,13 @@ private struct WidAmortizationSmall: View {
     let snapshot: WidgetSnapshot
     let margins: EdgeInsets
 
+    @Environment(\.widNow) private var entryDate
+
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
+        let now = entryDate ?? Date()
         ZStack(alignment: .topLeading) {
-            WidSummitArt(model: WidSummitModel(snapshot: snapshot), top: 0.6, bottom: 0.97, scale: 0.82)
+            WidSummitArt(model: WidSummitModel(snapshot: snapshot, now: now), top: 0.6, bottom: 0.97, scale: 0.82)
             VStack(alignment: .leading, spacing: 0) {
                 WidEyebrow(text: paid ? "Rentiert" : "Amortisiert",
                            symbol: paid ? "checkmark.seal.fill" : "mountain.2.fill",
@@ -64,7 +67,7 @@ private struct WidAmortizationSmall: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
     }
 }
 
@@ -73,10 +76,13 @@ private struct WidAmortizationMedium: View {
     let snapshot: WidgetSnapshot
     let margins: EdgeInsets
 
+    @Environment(\.widNow) private var entryDate
+
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
+        let now = entryDate ?? Date()
         ZStack(alignment: .topLeading) {
-            WidSummitArt(model: WidSummitModel(snapshot: snapshot), top: 0.5, bottom: 0.97, scale: 0.95)
+            WidSummitArt(model: WidSummitModel(snapshot: snapshot, now: now), top: 0.5, bottom: 0.97, scale: 0.95)
             HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
                     WidEyebrow(text: paid ? "Rentiert" : "Amortisiert",
@@ -93,7 +99,7 @@ private struct WidAmortizationMedium: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
     }
 }
 
@@ -103,11 +109,14 @@ private struct WidAmortizationLarge: View {
     let margins: EdgeInsets
     let isInteractive: Bool
 
+    @Environment(\.widNow) private var entryDate
+
     private var isPaidOff: Bool { WidInsight.isPaidOff(snapshot) }
+    private var now: Date { entryDate ?? Date() }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            WidSummitArt(model: WidSummitModel(snapshot: snapshot), top: 0.43, bottom: 0.755, scale: 1.08,
+            WidSummitArt(model: WidSummitModel(snapshot: snapshot, now: now), top: 0.43, bottom: 0.755, scale: 1.08,
                          todayLabel: "Heute", summitLabel: WidFormat.euroWhole(snapshot.ticketPrice),
                          mistFrom: 0.66, mistOpacity: 0.12)
             VStack(alignment: .leading, spacing: 0) {
@@ -136,7 +145,7 @@ private struct WidAmortizationLarge: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation \(snapshot.ticketName)")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
     }
 
     private var header: some View {
@@ -151,7 +160,7 @@ private struct WidAmortizationLarge: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: 6)
-            Text(WidInsight.validityText(snapshot))
+            Text(WidInsight.validityText(snapshot, now: now))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.widSecondary)
                 .lineLimit(1)
@@ -181,17 +190,18 @@ private struct WidAmortizationLarge: View {
                 .foregroundStyle(Theme.positive)
             return Text("\(seal) Rentiert – jede Fahrt ist jetzt Gewinn")
         }
-        let amount = Text(verbatim: WidFormat.euroWhole(snapshot.remaining))
+        let amount = Text(verbatim: WidFormat.euroWhole(WidFigures.remaining(snapshot)))
             .fontWeight(.bold)
             .foregroundStyle(Theme.accentText)
         return Text("Noch \(amount) bis zum Break-even")
     }
 
     private var detail: String {
+        let total = WidFormat.euroWhole(WidFigures.total(snapshot))
         if isPaidOff {
-            return "\(WidFormat.euroWhole(snapshot.totalValue)) Wert · \(WidFormat.trips(snapshot.tripCount))"
+            return "\(total) Wert · \(WidFormat.trips(snapshot.tripCount))"
         }
-        return "\(WidFormat.euroWhole(snapshot.totalValue)) von \(WidFormat.euroWhole(snapshot.ticketPrice)) amortisiert"
+        return "\(total) von \(WidFormat.euroWhole(snapshot.ticketPrice)) amortisiert"
     }
 
     private var statsLine: some View {
@@ -288,7 +298,8 @@ private struct WidAccessoryRectangular: View {
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
         let title: String = paid ? "Rentiert" : "Amortisation"
-        let detail: String = paid ? "+ \(WidFormat.euroWhole(snapshot.net))" : "noch \(WidFormat.euroWhole(snapshot.remaining))"
+        let detail: String = paid ? "+ \(WidFormat.euroWhole(WidFigures.profit(snapshot)))"
+                                  : "noch \(WidFormat.euroWhole(WidFigures.remaining(snapshot)))"
         VStack(alignment: .leading, spacing: 1) {
             Label(title, systemImage: "mountain.2.fill")
                 .font(.system(size: 12, weight: .semibold))
@@ -322,7 +333,7 @@ private struct WidAccessoryInline: View {
 
     var body: some View {
         let text: String = WidInsight.isPaidOff(snapshot)
-            ? "Rentiert · + \(WidFormat.euroWhole(snapshot.net))"
+            ? "Rentiert · + \(WidFormat.euroWhole(WidFigures.profit(snapshot)))"
             : "\(WidFormat.percent(snapshot.amortizedFraction)) rentiert"
         Label {
             Text(text)

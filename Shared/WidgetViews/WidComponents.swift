@@ -79,18 +79,18 @@ struct WidVerdictLine: View {
 
     private var line: Text {
         if WidInsight.isPaidOff(snapshot) && !showsProfit {
-            let amount = Text(verbatim: WidFormat.euroWhole(snapshot.totalValue))
+            let amount = Text(verbatim: WidFormat.euroWhole(WidFigures.total(snapshot)))
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
             return Text("\(amount) Wert gesamt")
         }
         if WidInsight.isPaidOff(snapshot) {
-            let amount = Text(verbatim: "+ " + WidFormat.euroWhole(snapshot.net))
+            let amount = Text(verbatim: "+ " + WidFormat.euroWhole(WidFigures.profit(snapshot)))
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.positiveText)
             return Text("\(amount) im Plus")
         }
-        let amount = Text(verbatim: WidFormat.euroWhole(snapshot.remaining))
+        let amount = Text(verbatim: WidFormat.euroWhole(WidFigures.remaining(snapshot)))
             .fontWeight(.bold)
             .foregroundStyle(Theme.textPrimary)
         return Text("noch \(amount)")
@@ -102,8 +102,10 @@ struct WidForecastBlock: View {
     var snapshot: WidgetSnapshot
     var valueSize: CGFloat = 21
 
+    @Environment(\.widNow) private var entryDate
+
     var body: some View {
-        let info = WidInsight.forecast(snapshot)
+        let info = WidInsight.forecast(snapshot, now: entryDate ?? Date())
         VStack(alignment: .trailing, spacing: 1) {
             WidEyebrow(text: info.kicker, symbol: info.symbol, tint: info.isPositive ? Theme.positive : Theme.dawn)
             Text(info.value)
@@ -207,18 +209,32 @@ struct WidModeBadge: View {
     var symbol: String
     var size: CGFloat = 26
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
     var body: some View {
-        let color = WidMode.color(forSymbol: symbol)
+        if renderingMode == .fullColor {
+            let color = WidMode.color(forSymbol: symbol)
+            glyph
+                .foregroundStyle(Color.white)
+                .background(
+                    Circle().fill(LinearGradient(colors: [color, color.mix(with: .black, by: 0.22)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+                .accessibilityHidden(true)
+        } else {
+            // Tinted / clear: the system paints the whole accent group in one colour, so a white glyph on an accented
+            // disc would vanish. The glyph carries the accent, the disc stays a faint neutral wash.
+            glyph
+                .widgetAccentable()
+                .background(Circle().fill(Color.white.opacity(0.16)))
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var glyph: some View {
         Image(systemName: symbol)
             .font(.system(size: size * 0.46, weight: .semibold))
-            .foregroundStyle(Color.white)
             .frame(width: size, height: size)
-            .background(
-                Circle().fill(LinearGradient(colors: [color, color.mix(with: .black, by: 0.22)],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
-            )
-            .widgetAccentable()
-            .accessibilityHidden(true)
     }
 }
 
@@ -282,13 +298,20 @@ private struct WidFavoriteLabel: View {
         .contentShape(shape)
     }
 
+    @ViewBuilder
     private var plus: some View {
-        Image(systemName: "plus")
+        let glyph = Image(systemName: "plus")
             .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(Theme.onAccent)
             .frame(width: 22, height: 22)
-            .background(Circle().fill(renderingMode == .fullColor ? AnyShapeStyle(Theme.ctaGradient) : AnyShapeStyle(Color.white.opacity(0.25))))
-            .widgetAccentable()
+        if renderingMode == .fullColor {
+            glyph
+                .foregroundStyle(Theme.onAccent)
+                .background(Circle().fill(Theme.ctaGradient))
+        } else {
+            glyph
+                .widgetAccentable()
+                .background(Circle().fill(Color.white.opacity(0.18)))
+        }
     }
 
     /// Dark: a night-glass capsule that sits *into* the sky (as in the widget mockup) – a white wash would brighten
@@ -342,7 +365,28 @@ struct WidEmptyView: View {
         }
     }
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
     private var isSmall: Bool { family == .systemSmall }
+
+    /// "App öffnen": white on the CTA gradient in full colour; tinted / clear paint the accent group in one colour,
+    /// so there the label carries the accent on a neutral capsule (white on an accented capsule would vanish).
+    @ViewBuilder
+    private var openAppPill: some View {
+        let label = Text("App öffnen")
+            .font(.system(size: 12.5, weight: .semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+        if renderingMode == .fullColor {
+            label
+                .foregroundStyle(Theme.onAccent)
+                .background(Capsule().fill(Theme.ctaGradient))
+        } else {
+            label
+                .widgetAccentable()
+                .background(Capsule().fill(Color.white.opacity(0.18)))
+        }
+    }
     private var messageWidth: CGFloat { isSmall ? CGFloat.infinity : 220 }
 
     private var systemEmpty: some View {
@@ -360,13 +404,7 @@ struct WidEmptyView: View {
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: messageWidth, alignment: .leading)
                 if !isSmall {
-                    Text("App öffnen")
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(Theme.onAccent)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Theme.ctaGradient))
-                        .widgetAccentable()
+                    openAppPill
                         .padding(.top, 2)
                 }
                 Spacer(minLength: 0)

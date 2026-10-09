@@ -55,21 +55,30 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
         WidgetSnapshot.store.set(data, forKey: WidgetSnapshot.defaultsKey)
     }
 
-    /// Optimistically applies a quick-logged favourite (widget / Siri) until the app recomputes precisely.
+    /// Optimistically applies a quick-logged favourite (widget / Siri) or a saved ride (Live Activity, `date` = its
+    /// start, which can lie before the snapshot) until the app recomputes precisely.
     mutating func apply(favorite: Favorite, date: Date) {
         // The widgets count the remaining days from `generatedAt` (WidInsight.daysRemaining): bring the stored value
-        // up to `date` before moving `generatedAt`, or the days left would jump up by the snapshot's age.
-        daysRemaining = max(0, daysRemaining - max(0, WidInsight.dayCount(from: generatedAt, to: date)))
-        totalValue += favorite.value
-        tripCount += 1
-        distanceKm += favorite.distanceKm
-        co2SavedKg += max(0, (166 - 8) * favorite.distanceKm / 1000)
-        amortizedFraction = ticketPrice > 0 ? totalValue / ticketPrice : 0
-        isPaidOff = totalValue >= ticketPrice
-        lastTrip = RecentTrip(fromName: favorite.fromName.isEmpty ? favorite.title : favorite.fromName,
-                              toName: favorite.toName, modeSymbol: favorite.modeSymbol, value: favorite.value, date: date)
-        sparkline.append(totalValue)
-        generatedAt = date
+        // up to `date` before moving `generatedAt`, or the days left would jump up by the snapshot's age. Only ever
+        // forwards – moving it back (a ride that started yesterday) would cost the widget a day.
+        if date > generatedAt {
+            daysRemaining = max(0, daysRemaining - max(0, WidInsight.dayCount(from: generatedAt, to: date)))
+            generatedAt = date
+        }
+        // The app counts only trips inside the ticket's validity – a trip after its end adds nothing here either.
+        if date <= validUntil {
+            totalValue += favorite.value
+            tripCount += 1
+            distanceKm += favorite.distanceKm
+            co2SavedKg += max(0, (166 - 8) * favorite.distanceKm / 1000)
+            amortizedFraction = ticketPrice > 0 ? totalValue / ticketPrice : 0
+            isPaidOff = isPaidOff || totalValue >= ticketPrice
+            sparkline.append(totalValue)
+        }
+        if lastTrip.map({ $0.date <= date }) ?? true {
+            lastTrip = RecentTrip(fromName: favorite.fromName.isEmpty ? favorite.title : favorite.fromName,
+                                  toName: favorite.toName, modeSymbol: favorite.modeSymbol, value: favorite.value, date: date)
+        }
     }
 
     /// Realistic sample used for widget previews/placeholders and screenshots.

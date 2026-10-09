@@ -32,10 +32,12 @@ enum WidFormat {
         value >= 1000 ? "\(number(value / 1000, decimals: 1)) t" : "\(number(value)) kg"
     }
 
-    /// 0.728 → 73
+    /// 0.728 → 73. Same rule as the app (`SummitFigures.percent`): never "100 %" before the break-even (99,6 % → 99)
+    /// and never rounded up past it afterwards (149,7 % → 149).
     static func percentValue(_ fraction: Double) -> Int {
         guard fraction.isFinite else { return 0 }
-        return Int((max(0, fraction) * 100).rounded())
+        let raw = min(max(0, fraction) * 100, 1_000_000)
+        return Int(fraction < 1 ? min(99, raw.rounded()) : raw.rounded(.down))
     }
 
     /// 0.728 → "73 %"
@@ -152,8 +154,12 @@ struct WidForecastInfo {
 }
 
 enum WidInsight {
+    /// The ticket's calendar (validity, day counts). `Calendar.vienna` builds a new calendar on every access.
+    static let calendar = Calendar.vienna
+
+    /// Whole calendar days from `start` to `end` (Vienna days, so DST changes never make it 0 or 2).
     static func dayCount(from start: Date, to end: Date) -> Int {
-        let cal = Calendar.vienna
+        let cal = calendar
         return cal.dateComponents([.day], from: cal.startOfDay(for: start), to: cal.startOfDay(for: end)).day ?? 0
     }
 
@@ -164,13 +170,21 @@ enum WidInsight {
 
     static func isPaidOff(_ s: WidgetSnapshot) -> Bool { s.isPaidOff || s.totalValue >= s.ticketPrice }
 
+    /// The break-even forecast while it still lies ahead and inside the validity (a date the app computed days ago
+    /// may have passed without the trips that would have reached it).
+    static func upcomingBreakEven(_ s: WidgetSnapshot, now: Date = Date()) -> Date? {
+        guard let date = s.forecastBreakEvenDate, date <= s.validUntil, dayCount(from: now, to: date) >= 0 else { return nil }
+        return date
+    }
+
     static func forecast(_ s: WidgetSnapshot, now: Date = Date()) -> WidForecastInfo {
         let left = daysRemaining(s, now: now)
         if isPaidOff(s) {
             return WidForecastInfo(kicker: "Im Plus", symbol: "checkmark.seal.fill",
-                                   value: "+ \(WidFormat.euroWhole(s.net))", caption: WidFormat.trips(s.tripCount), isPositive: true)
+                                   value: "+ \(WidFormat.euroWhole(WidFigures.profit(s)))", caption: WidFormat.trips(s.tripCount),
+                                   isPositive: true)
         }
-        if let date = s.forecastBreakEvenDate, date <= s.validUntil {
+        if let date = upcomingBreakEven(s, now: now) {
             return WidForecastInfo(kicker: "Break-even", symbol: "flag.fill", value: WidFormat.dayMonth(date),
                                    caption: WidFormat.inDays(dayCount(from: now, to: date)), isPositive: false)
         }
@@ -189,18 +203,43 @@ enum WidInsight {
     }
 
     /// VoiceOver summary for whole-widget elements.
-    static func spokenSummary(_ s: WidgetSnapshot) -> String {
+    static func spokenSummary(_ s: WidgetSnapshot, now: Date = Date()) -> String {
         var parts = ["\(WidFormat.percent(s.amortizedFraction)) amortisiert"]
         if isPaidOff(s) {
-            parts.append("rentiert, \(WidFormat.euroWhole(s.net)) im Plus")
+            parts.append("rentiert, \(WidFormat.euroWhole(WidFigures.profit(s))) im Plus")
         } else {
-            parts.append("noch \(WidFormat.euroWhole(s.remaining)) bis zum Break-even")
-            if let date = s.forecastBreakEvenDate, date <= s.validUntil {
+            parts.append("noch \(WidFormat.euroWhole(WidFigures.remaining(s))) bis zum Break-even")
+            if let date = upcomingBreakEven(s, now: now) {
                 parts.append("Prognose \(WidFormat.dayMonth(date))")
             }
         }
         return parts.joined(separator: ", ")
     }
+}
+
+/// Whole-euro figures, rounded the way the app rounds them (`SummitFigures`): "€ 1.044 von € 1.400" and "noch € 356"
+/// always add up, and nothing reads "€ 1.400 von € 1.400" or "noch € 0" before the break-even is actually reached.
+enum WidFigures {
+    static func total(_ s: WidgetSnapshot) -> Double {
+        let total = max(0, s.totalValue.rounded())
+        let summit = s.ticketPrice.rounded()
+        if !WidInsight.isPaidOff(s), summit >= 1, total >= summit { return summit - 1 }
+        return total
+    }
+
+    static func remaining(_ s: WidgetSnapshot) -> Double {
+        guard !WidInsight.isPaidOff(s) else { return 0 }
+        return max(0, s.ticketPrice.rounded() - total(s))
+    }
+
+    static func profit(_ s: WidgetSnapshot) -> Double {
+        max(0, s.totalValue.rounded() - s.ticketPrice.rounded())
+    }
+}
+
+extension EnvironmentValues {
+    /// The moment a widget timeline entry stands for (WidgetKit renders future entries ahead of time); nil = now.
+    @Entry var widNow: Date? = nil
 }
 
 // MARK: - Summit geometry
@@ -224,7 +263,7 @@ struct WidSummitModel {
         self.isPaidOff = isPaidOff
     }
 
-    init(snapshot s: WidgetSnapshot, yearDays: Double = 365) {
+    init(snapshot s: WidgetSnapshot, now: Date = Date(), yearDays: Double = 365) {
         let price = max(s.ticketPrice, 1)
         let paidOff = WidInsight.isPaidOff(s)
         var values = s.sparkline.filter { $0.isFinite }
@@ -234,8 +273,9 @@ struct WidSummitModel {
         if values.count == 1 { values.append(values[0]) }
 
         let maxValue = max(price * 1.12, (values.max() ?? 0) * 1.04, 1)
-        // Keep room on the right for the forecast segment towards the summit.
-        let elapsedRaw = 1 - Double(s.daysRemaining) / yearDays
+        // Keep room on the right for the forecast segment towards the summit. Days left as of `now`: a snapshot the
+        // app wrote days ago would otherwise put today's climber where it stood back then.
+        let elapsedRaw = 1 - Double(WidInsight.daysRemaining(s, now: now)) / yearDays
         let elapsed = min(max(elapsedRaw, 0.08), paidOff ? 0.95 : 0.86)
         let steps = Double(values.count - 1)
         route = values.enumerated().map { index, value in
@@ -254,8 +294,7 @@ struct WidSummitModel {
                 summit = 0.02
             }
         } else if let date = s.forecastBreakEvenDate {
-            let days = date.timeIntervalSince(s.generatedAt) / 86_400
-            summit = elapsed + max(days, 0) / yearDays
+            summit = elapsed + Double(max(WidInsight.dayCount(from: now, to: date), 0)) / yearDays
         } else {
             summit = 0.95
         }

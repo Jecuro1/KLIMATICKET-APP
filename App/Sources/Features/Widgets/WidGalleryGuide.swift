@@ -244,8 +244,8 @@ struct WidGuideSection: View {
     private var percentText: String { WidFormat.percent(snapshot.amortizedFraction) }
 
     private var rectangularText: String {
-        if WidInsight.isPaidOff(snapshot) { return "\(percentText) · + \(WidFormat.euroWhole(snapshot.net))" }
-        return "\(percentText) · noch \(WidFormat.euroWhole(snapshot.remaining))"
+        if WidInsight.isPaidOff(snapshot) { return "\(percentText) · + \(WidFormat.euroWhole(WidFigures.profit(snapshot)))" }
+        return "\(percentText) · noch \(WidFormat.euroWhole(WidFigures.remaining(snapshot)))"
     }
 
     private var stepTexts: [String] {

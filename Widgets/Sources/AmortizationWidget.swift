@@ -26,6 +26,7 @@ private struct AmortizationEntryView: View {
 
     var body: some View {
         AmortizationWidgetView(snapshot: entry.snapshot, family: family, margins: WidLayout.resolved(contentMargins))
+            .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
     }

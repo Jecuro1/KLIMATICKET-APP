@@ -44,11 +44,7 @@ struct LogFavoriteTripIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         QuickLogQueue.enqueue(favoriteID: favorite.id)
         WidgetCenter.shared.reloadAllTimelines()
-        if let snapshot = WidgetSnapshot.load() {
-            let percent = Int((snapshot.amortizedFraction * 100).rounded())
-            return .result(dialog: "\(favorite.title) erfasst. Dein Ticket ist jetzt zu \(percent) % amortisiert.")
-        }
-        return .result(dialog: "\(favorite.title) erfasst.")
+        return .result(dialog: "\(IntentCopy.logged(favorite.title, snapshot: WidgetSnapshot.load()))")
     }
 }
 
@@ -74,14 +70,53 @@ struct ShowBalanceIntent: AppIntent {
     static var description = IntentDescription("Sagt dir, wie viel deines Tickets sich schon rentiert hat.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let s = WidgetSnapshot.load() else {
-            return .result(dialog: "Öffne KlimaBilanz und lege zuerst dein Ticket an.")
+        .result(dialog: "\(IntentCopy.balance(WidgetSnapshot.load()))")
+    }
+}
+
+/// Spoken / shown answers of the intents – the same rounded figures as the widgets (`WidFigures`, `WidFormat.percent`),
+/// so Siri never says "100 Prozent" while € 4 are still missing.
+enum IntentCopy {
+    static let noTicket = "Öffne KlimaBilanz und lege zuerst dein Ticket an."
+
+    /// "Dein KlimaTicket Ö Klassik" · "Dein Ticket" (for names that do not read as one, e.g. "Arbeit 2026").
+    static func ticket(_ s: WidgetSnapshot) -> String {
+        s.ticketName.localizedCaseInsensitiveContains("ticket") ? "Dein \(s.ticketName)" : "Dein Ticket"
+    }
+
+    static func balance(_ snapshot: WidgetSnapshot?, now: Date = Date()) -> String {
+        guard let s = snapshot else { return noTicket }
+        let percent = WidFormat.percentValue(s.amortizedFraction)
+        if WidInsight.isPaidOff(s) {
+            return "\(ticket(s)) hat sich rentiert – du bist \(euro(WidFigures.profit(s))) im Plus, "
+                + "bei \(WidFormat.trips(s.tripCount))."
         }
-        let percent = Int((s.amortizedFraction * 100).rounded())
-        let euro = Int(abs(s.net).rounded())
-        if s.isPaidOff {
-            return .result(dialog: "Dein \(s.ticketName) hat sich rentiert! Du bist \(euro) Euro im Plus – bei \(s.tripCount) Fahrten.")
+        if WidInsight.daysRemaining(s, now: now) <= 0 {
+            return "\(ticket(s)) ist abgelaufen. Es hat sich zu \(percent) Prozent rentiert – "
+                + "\(euro(WidFigures.remaining(s))) haben bis zum Break-even gefehlt."
         }
-        return .result(dialog: "Dein \(s.ticketName) ist zu \(percent) Prozent amortisiert. Es fehlen noch \(euro) Euro.")
+        var text = "\(ticket(s)) ist zu \(percent) Prozent amortisiert. "
+            + "Es fehlen noch \(euro(WidFigures.remaining(s)))."
+        if let date = WidInsight.upcomingBreakEven(s, now: now) {
+            text += " Bei deinem Tempo hat es sich am \(spokenDate(date)) rentiert."
+        }
+        return text
+    }
+
+    /// "Pendeln erfasst. Dein Ticket ist jetzt zu 75 Prozent amortisiert."
+    static func logged(_ title: String, snapshot: WidgetSnapshot?) -> String {
+        guard let s = snapshot else { return "\(title) erfasst." }
+        if WidInsight.isPaidOff(s) {
+            return "\(title) erfasst. \(ticket(s)) hat sich rentiert – du bist \(euro(WidFigures.profit(s))) im Plus."
+        }
+        return "\(title) erfasst. \(ticket(s)) ist jetzt zu \(WidFormat.percentValue(s.amortizedFraction)) Prozent amortisiert."
+    }
+
+    /// "354 Euro" – whole euros read better aloud than "€ 354".
+    static func euro(_ value: Double) -> String { "\(WidFormat.number(value)) Euro" }
+
+    /// "14. Dezember"
+    static func spokenDate(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.wide).locale(WidFormat.locale))
     }
 }

@@ -8,12 +8,11 @@ import KlimaCore
 /// Uses the live ticket data (same builder the app uses for the real widgets), else the stored snapshot, else `.sample`.
 struct WidgetGalleryView: View {
     @Environment(AppState.self) private var app
-    @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
-    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse)
-    private var trips: [TripEntity]
-    @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
-    private var favorites: [FavoriteRouteEntity]
+    @Environment(\.modelContext) private var context
 
+    /// Built outside `body` (fetch + analytics): on appear, after every save (trips, favourites, tickets, sync merges)
+    /// and when another ticket is selected – not on each render pass (scroll title, entrance animation).
+    @State private var snapshot: WidgetSnapshot?
     /// Already in the end state for CI screenshots.
     @State private var appeared = LaunchMode.isScreenshot
     @State private var showsNavigationTitle = false
@@ -24,7 +23,7 @@ struct WidgetGalleryView: View {
     var screenshotSection: WidGallerySection? = nil
 
     var body: some View {
-        let snapshot = gallerySnapshot
+        let snapshot = self.snapshot ?? .sample
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
@@ -67,8 +66,13 @@ struct WidgetGalleryView: View {
         }
         .onAppear {
             if isInSettingsSheet == nil { isInSettingsSheet = app.isShowingSettings }
+            if snapshot == nil { reloadSnapshot() }
             appeared = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave).receive(on: RunLoop.main)) { _ in
+            reloadSnapshot()
+        }
+        .onChange(of: app.settings.selectedTicketID) { reloadSnapshot() }
     }
 
     // MARK: Background & actions
@@ -96,28 +100,29 @@ struct WidgetGalleryView: View {
         }
     }
 
-    /// The add-trip sheet is presented by RootView, which cannot show it while the Settings sheet (where this
-    /// screen is pushed) is up – SwiftUI presents one sheet at a time. Close Settings first, like FavoritesManagerView.
+    /// "Ausprobieren" behaves like the real control: the add-trip sheet is RootView's, which cannot show it while the
+    /// Settings sheet (where this screen is pushed) is up – `presentAddTripFromOutside` closes it first.
     private func openAddTrip() {
-        guard app.isShowingSettings else {
-            app.presentAddTrip()
-            return
-        }
-        app.isShowingSettings = false
-        let appState = app
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(450))
-            appState.presentAddTrip()
-        }
+        app.presentAddTripFromOutside()
     }
 
     // MARK: Data
 
-    private var gallerySnapshot: WidgetSnapshot {
-        if let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) {
-            return WidgetSnapshotBuilder.make(ticket: ticket, trips: trips, favorites: favorites, catalog: app.catalog)
+    /// The ticket's period trips only (not every ticket year) – the same inputs `Repository.refreshWidgets()` uses.
+    private func reloadSnapshot() {
+        let repo = Repository(context: context, app: app)
+        guard let ticket = Analytics.activeTicket(in: repo.liveTickets(), selectedID: app.settings.selectedTicketID) else {
+            snapshot = WidgetSnapshot.load() ?? .sample
+            return
         }
-        return WidgetSnapshot.load() ?? .sample
+        let fresh = WidgetSnapshotBuilder.make(ticket: ticket, trips: repo.periodTrips(ticket), lastTrip: repo.lastTrip(),
+                                               favorites: repo.liveFavorites(), catalog: app.catalog)
+        // `generatedAt` is the only field that differs on every build – keep the old value so the views stay put.
+        if var current = snapshot {
+            current.generatedAt = fresh.generatedAt
+            if current == fresh { return }
+        }
+        snapshot = fresh
     }
 
     // MARK: Header

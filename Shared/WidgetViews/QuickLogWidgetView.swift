@@ -99,7 +99,7 @@ private struct WidQuickLogMedium: View {
             Spacer(minLength: 4)
             WidMiniRing(fraction: snapshot.amortizedFraction)
             if !WidInsight.isPaidOff(snapshot) {
-                Text("noch \(WidFormat.euroWhole(snapshot.remaining))")
+                Text("noch \(WidFormat.euroWhole(WidFigures.remaining(snapshot)))")
                     .font(.system(size: 12, weight: .medium))
                     .monospacedDigit()
                     .foregroundStyle(.widSecondary)

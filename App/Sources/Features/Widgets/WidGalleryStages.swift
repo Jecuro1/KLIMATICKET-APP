@@ -90,10 +90,11 @@ struct WidHomeStage: View {
 
     private func tile<Content: View>(_ family: WidgetFamily, caption: String, index: Int,
                                      @ViewBuilder content: () -> Content) -> some View {
-        WidGalleryTile(family: family, caption: caption, scale: scale,
-                       spokenValue: WidInsight.spokenSummary(snapshot), content: content())
+        WidGalleryTile(family: family, caption: caption, scale: scale, spokenValue: spokenValue, content: content())
             .widAppear(index, appeared)
     }
+
+    private var spokenValue: String { WidInsight.spokenSummary(snapshot) }
 }
 
 /// One widget preview: brand sky, continuous corners, home-screen shadow and the name underneath.
@@ -115,7 +116,13 @@ private struct WidGalleryTile<Content: View>: View {
                 .overlay { shape.strokeBorder(Color.white.opacity(0.3), lineWidth: 0.6) }
                 .scaleEffect(scale)
                 .frame(width: size.width * scale, height: size.height * scale)
-                .shadow(color: Color.black.opacity(0.24), radius: 16, y: 10)
+                // The shadow is cast by a plain shape behind the tile: on the tile itself it would render the whole
+                // widget offscreen again on every scroll frame.
+                .background {
+                    RoundedRectangle(cornerRadius: WidLayout.cornerRadius * scale, style: .continuous)
+                        .fill(Theme.background)
+                        .shadow(color: Color.black.opacity(0.24), radius: 16, y: 10)
+                }
             Text(caption)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.white)
@@ -181,7 +188,7 @@ struct WidLockStage: View {
         .background { WidLockWallpaper() }
         .clipShape(shape)
         .overlay { shape.strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6) }
-        .shadow(color: Color.black.opacity(0.25), radius: 18, y: 10)
+        .background { shape.fill(Theme.background).shadow(color: Color.black.opacity(0.25), radius: 18, y: 10) }
         .foregroundStyle(Color.white)
         .tint(Color.white)
         .environment(\.colorScheme, .dark)
