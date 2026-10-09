@@ -131,7 +131,8 @@ jobs:
             EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$EXT/Info.plist")
             ldid -SWidgets/Supporting/KlimaBilanzWidgets.entitlements "$EXT/$EXE"
           done
-          ldid -SApp/Supporting/KlimaBilanz.entitlements "$APP/KlimaBilanz"
+          # Sideload builds must not request Sign in with Apple (not available to free Apple IDs).
+          ldid -SApp/Supporting/KlimaBilanz-Sideload.entitlements "$APP/KlimaBilanz"
           mkdir -p dist/Payload
           cp -R "$APP" dist/Payload/
           (cd dist && zip -qry "KlimaBilanz-${{ steps.version.outputs.version }}.ipa" Payload && rm -rf Payload)

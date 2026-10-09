@@ -56,7 +56,7 @@ struct LogFavoriteTripIntent: AppIntent {
 struct OpenAddTripIntent: AppIntent {
     static var title: LocalizedStringResource = "Fahrt erfassen"
     static var description = IntentDescription("Öffnet KlimaBilanz direkt beim Erfassen einer neuen Fahrt.")
-    static var openAppWhenRun: Bool = true
+    static let supportedModes: IntentModes = .foreground
 
     static let pendingKey = "intent.openAddTrip"
 

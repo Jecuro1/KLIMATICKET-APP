@@ -6,8 +6,9 @@ enum AppGroup {
     static let defaultIdentifier = "group.com.knitelarlberg.klimabilanz"
 
     static var identifier: String {
-        if let groups = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String], let first = groups.first {
-            return first
+        if let groups = Bundle.main.object(forInfoDictionaryKey: "ALTAppGroups") as? [String],
+           let match = groups.first(where: { $0.hasPrefix(defaultIdentifier) }) ?? groups.first {
+            return match
         }
         return Bundle.main.object(forInfoDictionaryKey: "KBAppGroup") as? String ?? defaultIdentifier
     }

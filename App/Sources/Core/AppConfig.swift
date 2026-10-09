@@ -28,6 +28,11 @@ struct AppConfig: Decodable, Sendable {
     static let urlScheme = "klimabilanz"
     static let authCallback = "klimabilanz://auth-callback"
 
+    /// Native Sign in with Apple is only possible in signed builds with the capability (CI sets KB_NATIVE_APPLE_SIGNIN=YES).
+    static var supportsNativeAppleSignIn: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: "KBNativeAppleSignIn") as? String)?.uppercased() == "YES"
+    }
+
     static var appVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0" }
     static var buildNumber: Int { Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1") ?? 1 }
 }

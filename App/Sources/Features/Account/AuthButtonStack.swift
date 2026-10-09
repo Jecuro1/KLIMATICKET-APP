@@ -16,18 +16,23 @@ struct AuthButtonStack: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            SignInWithAppleButton(.signIn) { request in
-                app.auth.prepareAppleRequest(request)
-            } onCompletion: { result in
-                Task {
-                    await app.auth.handleAppleCompletion(result)
-                    if app.auth.isSignedIn { onSignedIn() }
+            if AppConfig.supportsNativeAppleSignIn {
+                SignInWithAppleButton(.signIn) { request in
+                    app.auth.prepareAppleRequest(request)
+                } onCompletion: { result in
+                    Task {
+                        await app.auth.handleAppleCompletion(result)
+                        if app.auth.isSignedIn { onSignedIn() }
+                    }
                 }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: height)
+                .clipShape(Capsule())
+                .accessibilityLabel("Mit Apple anmelden")
+            } else {
+                // Sideloaded builds can't carry the Sign in with Apple entitlement → secure web sign-in via Supabase.
+                appleWebButton
             }
-            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-            .frame(height: height)
-            .clipShape(Capsule())
-            .accessibilityLabel("Mit Apple anmelden")
 
             providerButton(.google, title: "Mit Google anmelden") { GoogleLogo(size: 20) }
             providerButton(.microsoft, title: "Mit Microsoft anmelden") { MicrosoftLogo(size: 18) }
@@ -51,6 +56,31 @@ struct AuthButtonStack: View {
             }
         }
         .animation(.smooth, value: app.auth.lastError)
+    }
+
+    private var appleWebButton: some View {
+        let isBusy = app.auth.phase == .signingIn(.apple)
+        return Button {
+            Task {
+                await app.auth.signIn(with: .apple, using: webAuthenticationSession)
+                if app.auth.isSignedIn { onSignedIn() }
+            }
+        } label: {
+            HStack(spacing: 8) {
+                if isBusy {
+                    ProgressView().tint(colorScheme == .dark ? .black : .white)
+                } else {
+                    Image(systemName: "applelogo").font(.system(size: 19, weight: .semibold))
+                }
+                Text("Mit Apple anmelden").font(.system(size: 19, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity, minHeight: height)
+            .foregroundStyle(colorScheme == .dark ? Color.black : Color.white)
+            .background(Capsule().fill(colorScheme == .dark ? Color.white : Color.black))
+        }
+        .buttonStyle(.plain)
+        .disabled(isBusy)
+        .accessibilityLabel("Mit Apple anmelden")
     }
 
     private func providerButton<Logo: View>(_ provider: AuthProvider, title: String, @ViewBuilder logo: () -> Logo) -> some View {

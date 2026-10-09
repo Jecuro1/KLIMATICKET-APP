@@ -11,7 +11,7 @@ xcodebuild archive \
   -project KlimaBilanz.xcodeproj -scheme KlimaBilanz -configuration Release \
   -destination 'generic/platform=iOS' -archivePath build/KlimaBilanz.xcarchive \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
-  MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" \
+  MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" KB_NATIVE_APPLE_SIGNIN=YES \
   "${AUTH[@]}" > build/archive.log 2>&1 || { grep -E "error:" build/archive.log | sort -u | head -80; tail -40 build/archive.log; exit 1; }
 
 cat > build/ExportOptions.plist <<PLIST

@@ -57,8 +57,11 @@ Ohne Einrichtung läuft die App vollständig lokal. Für Konten + Sync zwischen 
 2. **SQL Editor** → Inhalt von `supabase/migrations/0001_init.sql` ausführen (Tabellen + Row Level Security).
 3. **Authentication › URL Configuration › Redirect URLs**: `klimabilanz://auth-callback` hinzufügen.
 4. **Authentication › Providers**:
-   - **Apple:** aktivieren, bei *Client IDs* die Bundle-ID `com.knitelarlberg.klimabilanz` eintragen
-     (nativer Login per ID-Token; benötigt Apple Developer Program).
+   - **Apple:** aktivieren. Für die per AltStore/SideStore installierte App läuft „Mit Apple anmelden“ über den
+     Web-Login – dafür im Apple-Developer-Portal eine *Services ID* (z. B. `com.knitelarlberg.klimabilanz.web`) mit
+     Return-URL `https://<projekt>.supabase.co/auth/v1/callback` und einen *Sign-in-with-Apple-Key* anlegen und in Supabase
+     eintragen. Für signierte TestFlight-Builds zusätzlich die Bundle-ID `com.knitelarlberg.klimabilanz` bei *Client IDs*
+     ergänzen (dann nativer Login per Face ID).
    - **Google:** In der Google Cloud Console einen OAuth-Client vom Typ *Web application* anlegen,
      als Redirect-URI `https://<projekt>.supabase.co/auth/v1/callback` eintragen, Client-ID + Secret in Supabase speichern.
    - **Azure (Microsoft):** In Microsoft Entra eine App-Registrierung anlegen („Konten in einem beliebigen
