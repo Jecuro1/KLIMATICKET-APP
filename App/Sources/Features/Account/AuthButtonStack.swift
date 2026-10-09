@@ -1,5 +1,6 @@
 import SwiftUI
 import AuthenticationServices
+import KlimaCloud
 
 /// "Mit Apple / Google / Microsoft anmelden" buttons following each provider's branding,
 /// shared by onboarding and settings. Calls `onSignedIn` after a successful sign-in.
@@ -14,9 +15,19 @@ struct AuthButtonStack: View {
 
     private let height: CGFloat = 54
 
+    /// Native Sign in with Apple: signed builds only, and – with a cloud – only when the server accepts it.
+    private var showsNativeApple: Bool {
+        AppConfig.supportsNativeAppleSignIn && (!app.auth.isCloudAvailable || app.auth.isProviderEnabled(.apple, native: true))
+    }
+
+    /// Apple through the Worker's web flow (sideloaded builds cannot carry the Sign in with Apple entitlement).
+    private var showsWebApple: Bool {
+        !showsNativeApple && app.auth.isCloudAvailable && app.auth.isProviderEnabled(.apple)
+    }
+
     var body: some View {
         VStack(spacing: 12) {
-            if AppConfig.supportsNativeAppleSignIn {
+            if showsNativeApple {
                 SignInWithAppleButton(.signIn) { request in
                     app.auth.prepareAppleRequest(request)
                 } onCompletion: { result in
@@ -29,13 +40,25 @@ struct AuthButtonStack: View {
                 .frame(height: height)
                 .clipShape(Capsule())
                 .accessibilityLabel("Mit Apple anmelden")
-            } else {
-                // Sideloaded builds can't carry the Sign in with Apple entitlement → secure web sign-in via Supabase.
+            } else if showsWebApple {
+                // Sideloaded builds can't carry the Sign in with Apple entitlement → secure web sign-in through the
+                // Cloudflare Worker (ASWebAuthenticationSession, PKCE).
                 appleWebButton
             }
 
-            providerButton(.google, title: "Mit Google anmelden") { GoogleLogo(size: 20) }
-            providerButton(.microsoft, title: "Mit Microsoft anmelden") { MicrosoftLogo(size: 18) }
+            if app.auth.isProviderEnabled(.google) {
+                providerButton(.google, title: "Mit Google anmelden") { GoogleLogo(size: 20) }
+            }
+            if app.auth.isProviderEnabled(.microsoft) {
+                providerButton(.microsoft, title: "Mit Microsoft anmelden") { MicrosoftLogo(size: 18) }
+            }
+
+            if app.auth.serverHasNoProviders {
+                Text("Die Anmeldung ist auf dem Server noch nicht eingerichtet.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
 
             if showsContinueWithoutAccount {
                 Button("Ohne Konto fortfahren") {
@@ -56,6 +79,8 @@ struct AuthButtonStack: View {
             }
         }
         .animation(.smooth, value: app.auth.lastError)
+        .animation(.smooth, value: app.auth.serverConfig)
+        .task { await app.auth.refreshServerConfig() }
     }
 
     private var appleWebButton: some View {
