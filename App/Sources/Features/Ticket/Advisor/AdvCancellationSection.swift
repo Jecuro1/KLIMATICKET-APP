@@ -76,9 +76,9 @@ struct AdvCancellationCard: View {
         let top = max(money, q.lostTripValue, 1)
         return VStack(spacing: Theme.Spacing.s) {
             AdvCompareBar(label: advice.isMonthlyPayment ? "Ersparnis" : "Erstattung", symbol: "arrow.uturn.backward.circle.fill",
-                          value: money, maxValue: top, color: Theme.positive, valueText: AdvText.euro(money))
+                          value: money, maxValue: top, color: Theme.positive, valueText: AdvText.cents(money))
             AdvCompareBar(label: "Fahrten bis Ablauf", symbol: "tram.fill", value: q.lostTripValue, maxValue: top,
-                          color: Theme.glacier, valueText: "≈ \(AdvText.euro(q.lostTripValue))",
+                          color: Theme.glacier, valueText: "≈\u{00A0}\(AdvText.euro(q.lostTripValue))",
                           badge: AdvBadge(text: "Prognose", tone: .neutral))
         }
     }
@@ -124,7 +124,7 @@ struct AdvCancellationCard: View {
         }
         let ridden = max(0, today.lostTripValue - end.lostTripValue)
         guard ridden >= 1 else { return "Gleich viel zurück – und bis dahin gilt dein Ticket weiter." }
-        return "Gleich viel zurück – und bis dahin fährst du weiter (≈ \(AdvText.euro(ridden)) an Fahrten)."
+        return "Gleich viel zurück – und bis dahin fährst du weiter (≈\u{00A0}\(AdvText.euro(ridden)) an Fahrten)."
     }
 
     private func breakdown(_ q: CancellationAdvice.Quote) -> some View {
@@ -153,7 +153,7 @@ struct AdvCancellationCard: View {
                             ? "Kündigst du bis \(Format.date(first.date, .long)), sparst du \(AdvText.cents(money)): keine weiteren \(first.unstartedMonths) Raten, minus Entgelt."
                             : "Kündigst du bis \(Format.date(first.date, .long)), bekommst du \(AdvText.cents(money)) zurück.")
             if first.lostTripValue > 0 {
-                Text("Bei deinem Tempo wären deine Fahrten ab dann noch ≈ \(AdvText.euro(first.lostTripValue)) wert\(first.lostTripValue > money ? " – mehr, als du zurückbekämst." : ".")")
+                Text("Bei deinem Tempo wären deine Fahrten ab dann noch ≈\u{00A0}\(AdvText.euro(first.lostTripValue)) wert\(first.lostTripValue > money ? " – mehr, als du zurückbekämst." : ".")")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -241,9 +241,12 @@ struct AdvCancellationChart: View {
     var months: [CancellationAdvice.Month]
     var showsLostValue: Bool
 
+    /// Scaled to what is drawn: refunds of the cancellable months and the trip value of the months still ahead
+    /// (months 1–6 only get a stub, their hypothetical refund must not flatten the chart).
     private var maxY: Double {
-        let top = months.map { max($0.saving, showsLostValue ? $0.lostTripValue : 0) }.max() ?? 0
-        return max(top, 20) * 1.22
+        let refunds = months.filter(\.isAllowed).map(\.saving)
+        let trips = showsLostValue ? months.filter { !$0.isPast }.map(\.lostTripValue) : []
+        return max((refunds + trips).max() ?? 0, 20) * 1.15
     }
 
     var body: some View {
@@ -263,9 +266,13 @@ struct AdvCancellationChart: View {
             AxisMarks(values: months.map { "\($0.index)" }) { value in
                 AxisValueLabel {
                     if let id = value.as(String.self), let month = months.first(where: { "\($0.index)" == id }) {
+                        // The current month is marked on the axis (a label above the bar would collide with the line).
                         Text(id)
                             .font(.caption2.weight(month.isCurrent ? .bold : .medium).monospacedDigit())
-                            .foregroundStyle(month.isCurrent ? Theme.textPrimary : Theme.textSecondary)
+                            .foregroundStyle(month.isCurrent ? Theme.positiveText : Theme.textSecondary)
+                            .padding(.horizontal, month.isCurrent ? 6 : 0)
+                            .padding(.vertical, month.isCurrent ? 1 : 0)
+                            .background(month.isCurrent ? Theme.positive.opacity(0.16) : Color.clear, in: .capsule)
                     }
                 }
             }
@@ -280,14 +287,6 @@ struct AdvCancellationChart: View {
         BarMark(x: .value("Monat", "\(month.index)"), y: .value("Erstattung", height), width: .ratio(0.62))
             .cornerRadius(4)
             .foregroundStyle(style(month))
-            .annotation(position: .top, spacing: 3) {
-                if month.isCurrent {
-                    Text("jetzt")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Theme.positiveText)
-                        .fixedSize()
-                }
-            }
             .accessibilityLabel("\(month.index). Gültigkeitsmonat\(month.isCurrent ? ", jetzt" : "")")
             .accessibilityValue(accessibilityValue(month))
     }
@@ -316,7 +315,7 @@ struct AdvCancellationChart: View {
     private func accessibilityValue(_ month: CancellationAdvice.Month) -> String {
         guard month.isAllowed else { return "nicht kündbar" }
         var text = month.saving > 0 ? "\(AdvText.euro(month.saving)) zurück" : "keine Erstattung"
-        if showsLostValue && !month.isPast { text += ", Fahrten danach ≈ \(AdvText.euro(month.lostTripValue))" }
+        if showsLostValue && !month.isPast { text += ", Fahrten danach ≈\u{00A0}\(AdvText.euro(month.lostTripValue))" }
         return text
     }
 }

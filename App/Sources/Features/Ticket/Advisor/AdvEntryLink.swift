@@ -45,11 +45,6 @@ private struct AdvEntryCard: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(topics)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Theme.textTertiary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
                 }
                 Spacer(minLength: Theme.Spacing.xs)
                 Image(systemName: "chevron.right")
@@ -66,10 +61,6 @@ private struct AdvEntryCard: View {
         let r = advice.renewal
         guard r.verdict != .tooEarly else { return "Verlängern, kündigen, 1. Klasse – aus deinen Fahrten berechnet" }
         return "\(AdvText.renewalTitle(r)) · \(AdvText.signed(r.projectedNextYearNet)) im Ticketjahr \(r.nextYearLabel)"
-    }
-
-    private var topics: String {
-        advice.advSections.map(\.title).joined(separator: " · ")
     }
 }
 

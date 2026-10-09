@@ -62,7 +62,7 @@ struct AdvRenewalCard: View {
     private var legend: some View {
         HStack(spacing: Theme.Spacing.s) {
             AdvLegendSwatch(style: AnyShapeStyle(AdvRenewalChart.actualGradient), label: "Bisher")
-            AdvLegendSwatch(style: AnyShapeStyle(Theme.glacier.opacity(0.22)), label: "Prognose", dashed: true)
+            AdvLegendSwatch(style: AnyShapeStyle(Theme.glacier.opacity(0.28)), label: "Prognose")
             StatsLegendItem(label: hasEmployerContribution ? "Dein Anteil" : "Ticketpreis", style: AnyShapeStyle(Theme.summit),
                             dashed: true)
             Spacer(minLength: 0)
@@ -79,7 +79,7 @@ struct AdvRenewalCard: View {
                                 detail: "\(AdvText.signed(summary.net)) gegenüber \(AdvText.euro(renewal.ownShare)) Preis"))
         } else {
             rows.append(AdvFact(label: "Bis Ablauf am \(Format.date(renewal.expiry))",
-                                value: "≈ \(AdvText.euro(renewal.projectedValueAtExpiry))",
+                                value: "≈\u{00A0}\(AdvText.euro(renewal.projectedValueAtExpiry))",
                                 detail: "\(AdvText.signed(renewal.projectedNetAtExpiry)) gegenüber \(AdvText.euro(renewal.ownShare)) Preis"))
         }
         rows.append(AdvFact(label: "Preis ab \(Format.date(renewal.renewalStart))", value: AdvText.euro(renewal.nextPrice),
@@ -87,7 +87,7 @@ struct AdvRenewalCard: View {
         rows.append(AdvFact(label: "Break-even \(renewal.nextYearLabel)", value: breakEvenValue, detail: breakEvenDetail))
         if renewal.fareGrowth > 1.0005 {
             let percent = Format.number((renewal.fareGrowth - 1) * 100, decimals: 1)
-            rows.append(AdvFact(label: "Normalpreise", value: "+ \(percent) %",
+            rows.append(AdvFact(label: "Normalpreise", value: "+\u{00A0}\(percent)\u{00A0}%",
                                 detail: "Die angekündigte Tariferhöhung der ÖBB ist eingerechnet."))
         }
         return rows
@@ -117,7 +117,7 @@ struct AdvRenewalCard: View {
     private var breakEvenValue: String {
         if renewal.nextOwnShare <= 0.01 { return "ab der 1. Fahrt" }
         guard let trips = renewal.nextYearBreakEvenTrips else { return "–" }
-        return "≈ \(AdvText.trips(trips))"
+        return "≈\u{00A0}\(AdvText.trips(trips))"
     }
 
     private var breakEvenDetail: String? {
@@ -142,9 +142,9 @@ struct AdvRenewalCard: View {
             return "Fährst du weiter wie bisher, sind deine Fahrten im Ticketjahr \(renewal.nextYearLabel) voraussichtlich \(value) wert – \(AdvText.euro(net)) mehr, als das Ticket kostet. Verlängern ist die gute Wahl."
         case .close:
             let trips = renewal.nextYearBreakEvenTrips.map { " Rund \(AdvText.trips($0)) wie deine im Jahr, und du bist auf der sicheren Seite." } ?? ""
-            return "Bei deinem Tempo wären es ≈ \(value) – ziemlich genau der Preis.\(trips)"
+            return "Bei deinem Tempo wären es ≈\u{00A0}\(value) – ziemlich genau der Preis.\(trips)"
         case .reconsider:
-            return "Deine Fahrten wären nächstes Jahr voraussichtlich nur ≈ \(value) wert, \(AdvText.euro(-net)) weniger als der Preis. Unter Statistik › „Welches Ticket lohnt sich?“ siehst du, ob ein regionales KlimaTicket günstiger wäre – oder du planst bewusst mehr Fahrten."
+            return "Deine Fahrten wären nächstes Jahr voraussichtlich nur ≈\u{00A0}\(value) wert, \(AdvText.euro(-net)) weniger als der Preis. Unter Statistik › „Welches Ticket lohnt sich?“ siehst du, ob ein regionales KlimaTicket günstiger wäre – oder du planst bewusst mehr Fahrten."
         case .tooEarly:
             return "Erfass noch ein paar Wochen lang deine Fahrten – dann sagen wir dir ehrlich, ob sich das nächste Jahr lohnt."
         }
@@ -191,7 +191,7 @@ struct AdvRenewalChart: View {
         .chartYAxis(.hidden)
         .chartXAxis {
             AxisMarks(values: columns.map(\.x)) { value in
-                AxisValueLabel {
+                AxisValueLabel(anchor: .top) {
                     if let x = value.as(Double.self), let column = columns.first(where: { $0.x == x }) {
                         Text(column.label)
                             .font(.caption.weight(.semibold).monospacedDigit())
@@ -206,26 +206,28 @@ struct AdvRenewalChart: View {
         .accessibilityValue(accessibilitySummary)
     }
 
+    /// The projected column is drawn full height in a soft tint, the logged value fills it from the bottom – no seam
+    /// between two rounded segments, and the column reads like a gauge that is filling up.
     @ChartContentBuilder
     private func barMarks(_ column: AdvYearColumn) -> some ChartContent {
         let left = column.x - Self.barHalfWidth
         let right = column.x + Self.barHalfWidth
-        if column.actual > 0 {
-            RectangleMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
-                          yStart: .value("Wert", 0.0), yEnd: .value("Wert", column.actual))
-                .cornerRadius(8)
-                .foregroundStyle(Self.actualGradient)
-                .annotation(position: .top, spacing: 4) {
-                    if column.forecast <= 0 { valueLabel(column) }
-                }
-        }
         if column.forecast > 0 {
             RectangleMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
-                          yStart: .value("Wert", column.actual), yEnd: .value("Wert", column.total))
-                .cornerRadius(8)
+                          yStart: .value("Wert", 0.0), yEnd: .value("Wert", column.total))
+                .cornerRadius(10)
                 .foregroundStyle((column.isNext ? Theme.dusk : Theme.glacier).opacity(column.isNext ? 0.30 : 0.22))
                 .annotation(position: .top, spacing: 4) {
                     valueLabel(column)
+                }
+        }
+        if column.actual > 0 {
+            RectangleMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
+                          yStart: .value("Wert", 0.0), yEnd: .value("Wert", column.actual))
+                .cornerRadius(10)
+                .foregroundStyle(Self.actualGradient)
+                .annotation(position: .top, spacing: 4) {
+                    if column.forecast <= 0 { valueLabel(column) }
                 }
         }
     }
@@ -248,7 +250,7 @@ struct AdvRenewalChart: View {
     }
 
     private func valueLabel(_ column: AdvYearColumn) -> some View {
-        Text(column.forecast > 0 ? "≈ \(AdvText.euro(column.total))" : AdvText.euro(column.total))
+        Text(column.forecast > 0 ? "≈\u{00A0}\(AdvText.euro(column.total))" : AdvText.euro(column.total))
             .font(.caption.weight(.bold).monospacedDigit())
             .foregroundStyle(Theme.textPrimary)
             .fixedSize()

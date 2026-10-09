@@ -117,7 +117,8 @@ enum AdvText {
     /// "+ € 640" / "– € 120" (whole euros).
     static func signed(_ value: Double) -> String {
         let rounded = value.rounded()
-        return rounded >= 0 ? "+ \(Format.euro(rounded, decimals: 0))" : "– \(Format.euro(-rounded, decimals: 0))"
+        // Non-breaking space: the sign never ends up alone at the end of a line.
+        return rounded >= 0 ? "+\u{00A0}\(Format.euro(rounded, decimals: 0))" : "–\u{00A0}\(Format.euro(-rounded, decimals: 0))"
     }
 
     static func euro(_ value: Double) -> String { Format.euro(value.rounded(), decimals: 0) }
@@ -281,8 +282,8 @@ extension TicketAdvice {
             let q = c.endOfMonth
             let money = q.map { AdvText.euro(max(0, c.isMonthlyPayment ? $0.saving : $0.refund)) } ?? "–"
             let lost = q.map { AdvText.euro($0.lostTripValue) } ?? "–"
-            detail = c.isMonthlyPayment ? "\(money) gespart vs. ≈ \(lost) an Fahrten bis Ablauf"
-                                        : "\(money) zurück vs. ≈ \(lost) an Fahrten bis Ablauf"
+            detail = c.isMonthlyPayment ? "\(money) gespart vs. ≈\u{00A0}\(lost) an Fahrten bis Ablauf"
+                                        : "\(money) zurück vs. ≈\u{00A0}\(lost) an Fahrten bis Ablauf"
         case .notYet:
             detail = "7. Gültigkeitsmonat · \(AdvText.countdown(to: c.possibleFrom))"
             if c.policy == .kennenlern { detail = "Kennenlern-Aktion · \(AdvText.countdown(to: c.possibleFrom))" }
@@ -307,9 +308,9 @@ extension TicketAdvice {
         if f.verdict == .noTrainTrips {
             detail = "Sobald du Zug fährst, rechnen wir es dir aus"
         } else if !f.hasUpgrade && f.cheapestOption == .vorteilsabo {
-            detail = "Tipp: Vorteilsabo ≈ \(AdvText.euro(f.vorteilsaboCost)) statt Upgrade \(AdvText.euro(f.upgradePrice))"
+            detail = "Tipp: Vorteilsabo ≈\u{00A0}\(AdvText.euro(f.vorteilsaboCost)) statt Upgrade \(AdvText.euro(f.upgradePrice))"
         } else {
-            detail = "≈ \(AdvText.euro(f.projectedSurcharge)) Aufpreis vs. \(AdvText.euro(f.upgradePrice)) Upgrade"
+            detail = "≈\u{00A0}\(AdvText.euro(f.projectedSurcharge)) Aufpreis vs. \(AdvText.euro(f.upgradePrice)) Upgrade"
         }
         return AdvGlance(section: .firstClass, verdict: AdvText.firstClassTitle(f), detail: detail, value: nil,
                          tone: AdvText.firstClassTone(f))
@@ -321,7 +322,7 @@ extension TicketAdvice {
         }
         let detail = f.isFamilyTicket
             ? "Kinderfahrten \(AdvText.euro(f.childValueSoFar)) vs. Aufschlag \(AdvText.euro(f.surcharge))"
-            : "Mitfahrende ≈ \(AdvText.euro(f.projectedChildValue)) vs. Aufschlag \(AdvText.euro(f.surcharge))"
+            : "Mitfahrende ≈\u{00A0}\(AdvText.euro(f.projectedChildValue)) vs. Aufschlag \(AdvText.euro(f.surcharge))"
         return AdvGlance(section: .family, verdict: AdvText.familyTitle(f), detail: detail, value: nil, tone: AdvText.familyTone(f))
     }
 

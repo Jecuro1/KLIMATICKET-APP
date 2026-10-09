@@ -189,7 +189,8 @@ struct TktEditSheet: View {
                 .task {
                     guard let scrollTarget else { return }
                     try? await Task.sleep(for: .milliseconds(450))
-                    proxy.scrollTo(scrollTarget, anchor: .top)
+                    // Slightly below the top so the section header stays visible under the toolbar.
+                    proxy.scrollTo(scrollTarget, anchor: UnitPoint(x: 0.5, y: 0.12))
                 }
             }
             .scrollContentBackground(.hidden)

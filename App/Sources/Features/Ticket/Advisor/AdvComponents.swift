@@ -27,7 +27,8 @@ struct AdvCardHeader: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Kicker(text: kicker)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    if let tone {
+                    // Neutral verdicts carry no symbol – an "i" here would compete with the ⓘ rules button.
+                    if let tone, tone != .neutral {
                         Image(systemName: tone.symbol)
                             .font(.headline)
                             .foregroundStyle(tone.textColor)
@@ -258,6 +259,8 @@ struct AdvCompareBar: View {
     var color: Color
     var valueText: String
     var badge: AdvBadge? = nil
+    /// Footnote below the bar (what the amount includes).
+    var detail: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -279,10 +282,16 @@ struct AdvCompareBar: View {
                     .lineLimit(1)
             }
             ProgressRail(progress: maxValue > 0 ? value / maxValue : 0, height: 8, fill: AnyShapeStyle(color))
+            if let detail {
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
-        .accessibilityValue(valueText)
+        .accessibilityValue(detail.map { "\(valueText), \($0)" } ?? valueText)
     }
 }
 

@@ -53,9 +53,9 @@ public enum TicketAddOn: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var detail: String {
         switch self {
-        case .firstClass: "1. Klasse in ÖBB-Fernverkehrszügen, Lounges, 10 Reservierungen"
-        case .vorteilsabo: "−30 % auf den Klassenwechsel, 2 Gratis-Klassenwechsel"
-        case .business: "20 Businessplätze im Railjet, nur mit 1.-Klasse-Upgrade"
+        case .firstClass: "1. Klasse im Fernverkehr, Lounges, 10 Reservierungen"
+        case .vorteilsabo: "−30 % je Klassenwechsel, 2 davon gratis"
+        case .business: "20 Businessplätze, nur mit dem Upgrade"
         }
     }
 

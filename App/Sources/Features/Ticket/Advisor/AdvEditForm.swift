@@ -67,7 +67,7 @@ struct AdvEditRenewalSection: View {
         }
         if let contribution = parsedContribution, contribution > 0, let fullPrice, fullPrice > 0 {
             let own = max(0, fullPrice - contribution)
-            text += " Deine Bilanz rechnet mit deinem Eigenanteil von \(Format.euroPrecise(own))."
+            text += " Deine Bilanz rechnet mit deinem Eigenanteil von \(Format.euro(own, decimals: own == own.rounded() ? 0 : 2))."
         } else {
             text += " Zahlt dein Arbeitgeber mit (Jobticket), rechnen wir die Bilanz auf deinen Eigenanteil."
         }

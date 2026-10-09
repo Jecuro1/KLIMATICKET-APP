@@ -11,7 +11,7 @@ struct AdvFirstClassCard: View {
     var body: some View {
         GlassCard(padding: AdvStyle.cardPadding) {
             VStack(alignment: .leading, spacing: AdvStyle.blockSpacing) {
-                AdvCardHeader(kicker: "1.-Klasse-Upgrade – lohnt sich das?", title: AdvText.firstClassTitle(advice),
+                AdvCardHeader(kicker: "1.-Klasse-Upgrade", title: AdvText.firstClassTitle(advice),
                               tone: AdvText.firstClassTone(advice), info: AdvRules.firstClass)
                 if advice.verdict == .noTrainTrips {
                     Text("Sobald du Zugfahrten erfasst, rechnen wir dir hier aus, ob sich die 1. Klasse für dich auszahlt.")
@@ -27,13 +27,11 @@ struct AdvFirstClassCard: View {
 
     @ViewBuilder
     private var content: some View {
-        AdvFigure(value: "≈ \(AdvText.euro(advice.projectedSurcharge))", caption: figureCaption,
+        AdvFigure(value: "≈\u{00A0}\(AdvText.euro(advice.projectedSurcharge))", caption: figureCaption,
                   color: advice.projectedSurcharge >= advice.upgradePrice ? Theme.dusk : Theme.textPrimary)
-        ProgressRail(progress: advice.upgradePrice > 0 ? advice.projectedSurcharge / advice.upgradePrice : 0,
-                     leadingLabel: isExpired ? "Mehrwert" : "Prognose bis Ablauf",
-                     trailingLabel: "Upgrade \(AdvText.euro(advice.upgradePrice))",
-                     fill: AnyShapeStyle(LinearGradient(colors: [Theme.glacier, Theme.dusk], startPoint: .leading, endPoint: .trailing)))
-        if !advice.hasUpgrade {
+        if advice.hasUpgrade {
+            upgradeComparison
+        } else {
             options
         }
         AdvFactList(rows: facts)
@@ -61,15 +59,28 @@ struct AdvFirstClassCard: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Kicker(text: "Was wäre am günstigsten?")
             AdvCompareBar(label: "Einzeln aufzahlen", symbol: "ticket.fill", value: advice.projectedSurcharge, maxValue: top,
-                          color: Theme.glacier, valueText: "≈ \(AdvText.euro(advice.projectedSurcharge))",
+                          color: Theme.glacier, valueText: "≈\u{00A0}\(AdvText.euro(advice.projectedSurcharge))",
                           badge: cheapest == .payPerTrip ? cheapestBadge : nil)
-            AdvCompareBar(label: "Vorteilsabo (\(AdvText.euro(advice.vorteilsaboPrice)))", symbol: "percent",
+            AdvCompareBar(label: "Vorteilsabo", symbol: "percent",
                           value: advice.vorteilsaboCost, maxValue: top, color: Theme.dusk,
-                          valueText: "≈ \(AdvText.euro(advice.vorteilsaboCost))",
-                          badge: cheapest == .vorteilsabo ? cheapestBadge : nil)
+                          valueText: "≈\u{00A0}\(AdvText.euro(advice.vorteilsaboCost))",
+                          badge: cheapest == .vorteilsabo ? cheapestBadge : nil,
+                          detail: "\(AdvText.euro(advice.vorteilsaboPrice)) Abo, dann −30\u{00A0}% je Klassenwechsel, 2 gratis")
             AdvCompareBar(label: "Jahres-Upgrade", symbol: "sofa.fill", value: advice.upgradePrice, maxValue: top,
                           color: Theme.dawn, valueText: AdvText.euro(advice.upgradePrice),
                           badge: cheapest == .upgrade ? cheapestBadge : nil)
+        }
+    }
+
+    /// Upgrade holders: value of the 1st class (projected) vs. what the upgrade cost.
+    private var upgradeComparison: some View {
+        let top = max(advice.projectedSurcharge, advice.upgradePrice, 1)
+        return VStack(spacing: Theme.Spacing.s) {
+            AdvCompareBar(label: "Mehrwert 1. Klasse", symbol: "sofa.fill", value: advice.projectedSurcharge, maxValue: top,
+                          color: Theme.dusk, valueText: "≈\u{00A0}\(AdvText.euro(advice.projectedSurcharge))",
+                          badge: isExpired ? nil : AdvBadge(text: "Prognose", tone: .neutral))
+            AdvCompareBar(label: "Dein Upgrade", symbol: "ticket.fill", value: advice.upgradePrice, maxValue: top,
+                          color: Theme.dawn, valueText: AdvText.euro(advice.upgradePrice))
         }
     }
 
@@ -79,7 +90,7 @@ struct AdvFirstClassCard: View {
         var rows = [AdvFact(label: "Aufpreis pro Fahrt", value: "⌀ \(AdvText.cents(advice.averageSurchargePerLeg))",
                             detail: "je Richtung, über \(AdvText.trips(advice.trainLegs)) gerechnet")]
         if let needed = advice.legsNeeded {
-            rows.append(AdvFact(label: "Das Upgrade rechnet sich ab", value: "≈ \(AdvText.trips(needed))",
+            rows.append(AdvFact(label: "Lohnt sich ab", value: "≈\u{00A0}\(AdvText.trips(needed))",
                                 detail: "Fahrten wie deine in einem Ticketjahr"))
         }
         if advice.hasUpgrade {
@@ -96,18 +107,18 @@ struct AdvFirstClassCard: View {
         let price = AdvText.euro(advice.upgradePrice)
         switch advice.verdict {
         case .worthIt:
-            return "Fährst du deine Zugstrecken in der 1. Klasse, wären die Aufzahlungen ≈ \(value) wert – mehr als die \(price) fürs Jahres-Upgrade."
+            return "Fährst du deine Zugstrecken in der 1. Klasse, wären die Aufzahlungen ≈\u{00A0}\(value) wert – mehr als die \(price) fürs Jahres-Upgrade."
         case .notWorthIt:
-            var text = "Für deine Fahrten wären die Aufzahlungen ≈ \(value) – deutlich weniger als die \(price) fürs Jahres-Upgrade."
+            var text = "Für deine Fahrten wären die Aufzahlungen ≈\u{00A0}\(value) – deutlich weniger als die \(price) fürs Jahres-Upgrade."
             if advice.cheapestOption == .vorteilsabo {
                 text += " Gönnst du dir nur ab und zu die 1. Klasse, ist das Vorteilsabo die günstigste Wahl."
             }
             return text
         case .paidOff:
-            return "Deine Fahrten in der 1. Klasse wären einzeln ≈ \(value) teurer gewesen – das Upgrade um \(price) hat sich gelohnt."
+            return "Deine Fahrten in der 1. Klasse wären einzeln ≈\u{00A0}\(value) teurer gewesen – das Upgrade um \(price) hat sich gelohnt."
         case .notPaidOff:
             let missing = AdvText.euro(max(0, advice.upgradePrice - advice.projectedSurcharge))
-            return "Bis Ablauf kommst du voraussichtlich auf ≈ \(value) Mehrwert – \(missing) fehlen noch, bis das Upgrade um \(price) drin ist."
+            return "Bis Ablauf kommst du voraussichtlich auf ≈\u{00A0}\(value) Mehrwert – \(missing) fehlen noch, bis das Upgrade um \(price) drin ist."
         case .noTrainTrips:
             return ""
         }
@@ -145,10 +156,7 @@ struct AdvFamilyCard: View {
         let shown = advice.isFamilyTicket ? advice.childValueSoFar : advice.projectedChildValue
         AdvFigure(value: AdvText.euro(shown), caption: figureCaption,
                   color: shown >= advice.surcharge ? Theme.positive : Theme.textPrimary)
-        ProgressRail(progress: advice.surcharge > 0 ? shown / advice.surcharge : 0,
-                     leadingLabel: advice.isFamilyTicket ? "Kinderfahrten" : "Mitfahrende",
-                     trailingLabel: "Aufschlag \(AdvText.euro(advice.surcharge))",
-                     fill: AnyShapeStyle(LinearGradient(colors: [Theme.pine, Theme.glacier], startPoint: .leading, endPoint: .trailing)))
+        comparison(shown)
         AdvFactList(rows: facts)
         Text(paragraph)
             .font(.subheadline)
@@ -170,6 +178,20 @@ struct AdvFamilyCard: View {
         AdvNote(symbol: "info.circle", text: ruleNote)
     }
 
+    /// Children's value vs. the surcharge on one scale – also readable when the value is far above the surcharge.
+    private func comparison(_ shown: Double) -> some View {
+        let top = max(shown, advice.surcharge, 1)
+        let projected = !advice.isFamilyTicket && !isExpired
+        return VStack(spacing: Theme.Spacing.s) {
+            AdvCompareBar(label: advice.isFamilyTicket ? "Kinderfahrten bisher" : "Mitfahrende als Kinder",
+                          symbol: "figure.and.child.holdinghands", value: shown, maxValue: top,
+                          color: Theme.pine, valueText: projected ? "≈\u{00A0}\(AdvText.euro(shown))" : AdvText.euro(shown),
+                          badge: projected ? AdvBadge(text: "Prognose", tone: .neutral) : nil)
+            AdvCompareBar(label: "Familienaufschlag", symbol: "plus.circle.fill", value: advice.surcharge, maxValue: top,
+                          color: Theme.dawn, valueText: AdvText.euro(advice.surcharge))
+        }
+    }
+
     private var figureCaption: String {
         if advice.isFamilyTicket {
             return "Wert der Kinderfahrten bisher – zum ÖBB-Kinderpreis"
@@ -184,7 +206,7 @@ struct AdvFamilyCard: View {
                     detail: "⌀ \(Format.number(advice.averageChildren, decimals: 1)) Kinder pro Fahrt, je Richtung gezählt"),
         ]
         if advice.isFamilyTicket && !isExpired {
-            rows.append(AdvFact(label: "Prognose bis Ablauf", value: "≈ \(AdvText.euro(advice.projectedChildValue))"))
+            rows.append(AdvFact(label: "Prognose bis Ablauf", value: "≈\u{00A0}\(AdvText.euro(advice.projectedChildValue))"))
         }
         return rows
     }
@@ -197,13 +219,13 @@ struct AdvFamilyCard: View {
         case .paidOff:
             return "Deine Kinder sind schon um \(value) mitgefahren – \(AdvText.euro(advice.childValueSoFar - advice.surcharge)) mehr als der Aufschlag."
         case .onTrack:
-            return "Bisher \(value). Bei eurem Tempo kommt ihr bis Ablauf auf ≈ \(projected) – der Aufschlag holt sich herein."
+            return "Bisher \(value). Bei eurem Tempo kommt ihr bis Ablauf auf ≈\u{00A0}\(projected) – der Aufschlag holt sich herein."
         case .notPaidOff:
-            return "Bei eurem Tempo kommt ihr bis Ablauf auf ≈ \(projected) – weniger als die \(surcharge) Aufschlag. Fahren die Kinder selten mit, reicht beim nächsten Mal vielleicht das Ticket ohne Familie."
+            return "Bei eurem Tempo kommt ihr bis Ablauf auf ≈\u{00A0}\(projected) – weniger als die \(surcharge) Aufschlag. Fahren die Kinder selten mit, reicht beim nächsten Mal vielleicht das Ticket ohne Familie."
         case .worthSwitching:
-            return "Waren deine Mitfahrenden Kinder von 6 bis 14, hätten sie mit KlimaTicket Familie bis Ablauf ≈ \(projected) gespart – mehr als der Aufschlag von \(surcharge)."
+            return "Waren deine Mitfahrenden Kinder von 6 bis 14, hätten sie mit KlimaTicket Familie bis Ablauf ≈\u{00A0}\(projected) gespart – mehr als der Aufschlag von \(surcharge)."
         case .notWorthSwitching:
-            return "Als Kinder wären deine Mitfahrenden bis Ablauf ≈ \(projected) wert – weniger als der Aufschlag von \(surcharge)."
+            return "Als Kinder wären deine Mitfahrenden bis Ablauf ≈\u{00A0}\(projected) wert – weniger als der Aufschlag von \(surcharge)."
         case .noChildTrips:
             return ""
         }
@@ -263,7 +285,7 @@ struct AdvJobticketCard: View {
 
     private func breakEvenText(_ date: Date?, paid: Bool) -> String {
         guard let date else { return isExpired ? "nicht erreicht" : "erst nach Ablauf" }
-        return paid ? "seit \(Format.date(date, .long))" : "≈ \(Format.date(date, .long))"
+        return paid ? "seit \(Format.date(date, .long))" : "≈\u{00A0}\(Format.date(date, .long))"
     }
 
     private var paragraph: String {
