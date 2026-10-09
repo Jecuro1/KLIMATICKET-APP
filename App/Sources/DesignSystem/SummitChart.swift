@@ -22,9 +22,11 @@ struct SummitChart: View {
             let size = geo.size
             let layout = Layout(size: size, start: start, end: end, maxY: maxY)
             ZStack(alignment: .topLeading) {
+                gainZone(layout: layout)
                 ridges(layout: layout)
                 valueLine(layout: layout)
                 forecastLine(layout: layout)
+                milestones(layout: layout)
                 if showsLabels { markers(layout: layout) }
             }
         }
@@ -94,6 +96,7 @@ struct SummitChart: View {
 
     private func valueLine(layout: Layout) -> some View {
         let points = series.map { CGPoint(x: layout.x($0.date), y: layout.y($0.value)) }
+        let priceY = layout.y(price)
         return ZStack {
             SmoothPath(points: points)
                 .trim(from: 0, to: reveal)
@@ -103,7 +106,79 @@ struct SummitChart: View {
             SmoothPath(points: points)
                 .trim(from: 0, to: reveal)
                 .stroke(Theme.progressGradient, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+            // Above the summit line the route turns pine-green: every further trip is profit.
+            if isPaidOff {
+                SmoothPath(points: points)
+                    .trim(from: 0, to: reveal)
+                    .stroke(Theme.positive, style: StrokeStyle(lineWidth: 4.5, lineCap: .round, lineJoin: .round))
+                    .mask(alignment: .top) {
+                        Rectangle().frame(height: max(priceY, 0))
+                    }
+            }
         }
+    }
+
+    /// Hatched band above the ticket price: the profit zone.
+    private func gainZone(layout: Layout) -> some View {
+        let priceY = layout.y(price)
+        return ZStack(alignment: .topTrailing) {
+            HatchShape(spacing: 7)
+                .stroke(Theme.positive.opacity(colorScheme == .dark ? 0.16 : 0.12), lineWidth: 1)
+                .background(Theme.positive.opacity(colorScheme == .dark ? 0.05 : 0.04))
+                .frame(height: max(priceY, 0))
+                .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom))
+            if showsLabels {
+                Text("GEWINNZONE")
+                    .font(.caption2.weight(.bold))
+                    .tracking(1)
+                    .foregroundStyle(Theme.positive)
+                    .padding(.trailing, 12)
+                    .padding(.top, max(priceY - 18, 2))
+                    .opacity(isPaidOff ? 1 : 0.7)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .opacity(reveal)
+        .accessibilityHidden(true)
+    }
+
+    /// Base camp (25 %), hut (50 %) and summit ridge (75 %) on the route – solid when reached, ghosted ahead.
+    private func milestones(layout: Layout) -> some View {
+        let marks = [Milestone(fraction: 0.25, symbol: "tent.fill"), Milestone(fraction: 0.5, symbol: "house.fill"),
+                     Milestone(fraction: 0.75, symbol: "mountain.2.fill")]
+        return ZStack(alignment: .topLeading) {
+            ForEach(marks) { mark in
+                let target = price * mark.fraction
+                let reached = series.first { $0.value >= target }
+                let point = milestonePoint(target: target, reached: reached, layout: layout)
+                Image(systemName: mark.symbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(reached != nil ? Color.white : Theme.textSecondary)
+                    .frame(width: 20, height: 20)
+                    .background(Circle().fill(reached != nil ? AnyShapeStyle(Theme.accentSecondary) : AnyShapeStyle(.ultraThinMaterial)))
+                    .overlay(Circle().stroke(.white.opacity(0.7), lineWidth: 1))
+                    .position(point)
+                    .opacity(reached != nil ? reveal : reveal * 0.8)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private struct Milestone: Identifiable {
+        let fraction: Double
+        let symbol: String
+        var id: Double { fraction }
+    }
+
+    private func milestonePoint(target: Double, reached: CumulativePoint?, layout: Layout) -> CGPoint {
+        if let reached { return CGPoint(x: layout.x(reached.date), y: layout.y(reached.value)) }
+        // Ahead: interpolate along the forecast segment towards the summit.
+        guard let last = series.last, price > last.value else {
+            return CGPoint(x: layout.x(summitDate), y: layout.y(target))
+        }
+        let t = (target - last.value) / (price - last.value)
+        let x0 = layout.x(last.date), x1 = layout.x(summitDate)
+        return CGPoint(x: x0 + (x1 - x0) * CGFloat(t), y: layout.y(target))
     }
 
     private func forecastLine(layout: Layout) -> some View {
@@ -238,6 +313,21 @@ struct SmoothPath: Shape {
             let c1 = CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6)
             let c2 = CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
             p.addCurve(to: p2, control1: c1, control2: c2)
+        }
+        return p
+    }
+}
+
+/// Diagonal hatch lines.
+struct HatchShape: Shape {
+    var spacing: CGFloat = 8
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        var x = rect.minX - rect.height
+        while x < rect.maxX {
+            p.move(to: CGPoint(x: x, y: rect.maxY))
+            p.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
+            x += spacing
         }
         return p
     }

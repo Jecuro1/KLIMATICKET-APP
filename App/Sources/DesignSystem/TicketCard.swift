@@ -44,6 +44,8 @@ struct TicketCard: View {
     /// −1…1 device tilt (MotionTilt.roll / .pitch); 0 = static.
     var roll: Double = 0
     var pitch: Double = 0
+    /// Whether the user stored a photo of the real ticket (shown on the back side).
+    var hasPhoto: Bool = false
 
     var body: some View {
         let ink = theme.ink
@@ -82,18 +84,16 @@ struct TicketCard: View {
             perforation(ink: ink)
 
             HStack(spacing: Theme.Spacing.s) {
-                Image(systemName: "qrcode")
-                    .font(.system(size: 34))
-                    .padding(8)
-                    .background(.white.opacity(theme == .signal ? 0.9 : 0.95), in: .rect(cornerRadius: 10))
-                    .foregroundStyle(.black)
+                Image(systemName: hasPhoto ? "photo.fill" : "wallet.pass")
+                    .font(.system(size: 22, weight: .semibold))
+                    .frame(width: 46, height: 46)
+                    .background(ink.opacity(0.14), in: .rect(cornerRadius: 12))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Nur mit amtlichem Lichtbildausweis gültig")
-                        .font(.caption)
-                        .opacity(0.85)
-                    Text("Digitale Kopie · offizielles Ticket vorzeigen")
+                    Text("Begleitkarte · kein Fahrschein")
+                        .font(.caption.weight(.semibold))
+                    Text(hasPhoto ? "Antippen für dein Ticket-Foto" : "Bei Kontrollen das Original-Ticket zeigen")
                         .font(.caption2)
-                        .opacity(0.7)
+                        .opacity(0.75)
                 }
                 Spacer()
                 hologram
