@@ -234,6 +234,10 @@ private struct AchBook {
     }
 
     var total: Int { all.count }
+    /// Share of achievements unlocked (6 of 17 → 0.35) – what the ring centre shows, matching the big count.
+    var unlockedShare: Double { all.isEmpty ? 0 : Double(unlocked.count) / Double(all.count) }
+    /// Any open achievement already started – only then does the ring carry thin partial lines (and a legend).
+    var hasPartialProgress: Bool { upcoming.contains { $0.progress > 0 } }
     /// Ring order: unlocked first, then upcoming.
     var ordered: [Achievement] { unlocked + upcoming }
 
@@ -295,11 +299,22 @@ private struct AchSummaryCard: View {
         .animation(.spring(duration: 0.8, bounce: 0.15), value: appeared)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Gipfelbuch")
-        .accessibilityValue("\(book.unlocked.count) von \(book.total) Erfolgen erreicht, Gesamtfortschritt \(AchFormat.percent(book.meanProgress))")
+        .accessibilityValue(accessibilitySummary)
     }
 
+    /// Same wording as on screen: share unlocked first, the average incl. partial progress only as the legend says it.
+    private var accessibilitySummary: String {
+        var value = "\(book.unlocked.count) von \(book.total) Erfolgen erreicht, \(AchFormat.percent(book.unlockedShare))"
+        if showsLegend {
+            value += ". Durchschnittlich \(AchFormat.percent(book.meanProgress)) inklusive Teilfortschritt"
+        }
+        return value
+    }
+
+    private var showsLegend: Bool { book.hasPartialProgress && !book.upcoming.isEmpty }
+
     private var ring: some View {
-        AchCollectionRing(items: book.ordered, reveal: appeared, mean: book.meanProgress, size: min(scaledRing, 132))
+        AchCollectionRing(items: book.ordered, reveal: appeared, share: book.unlockedShare, size: min(scaledRing, 132))
     }
 
     private var countBlock: some View {
@@ -319,6 +334,22 @@ private struct AchSummaryCard: View {
             }
             Text(caption)
                 .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if showsLegend {
+                legend
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    /// Teaches the ring: thick metal = erreicht (centre), thin glacier line = partial progress of open achievements.
+    private var legend: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            AchPartialKey()
+            Text("Ø \(AchFormat.percent(book.meanProgress)) inkl. Teilfortschritt")
+                .font(.caption)
+                .monospacedDigit()
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -351,7 +382,7 @@ private struct AchSummaryCard: View {
                     .matchedTransitionSource(id: sourceID, in: zoom)
                 VStack(alignment: .leading, spacing: 2) {
                     Kicker(text: kicker, color: isClose ? Theme.summitText : Theme.textSecondary)
-                    Text(next.title)
+                    Text(AchText.title(next))
                         .font(Theme.Typography.headline)
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(2)
@@ -379,12 +410,13 @@ private struct AchSummaryCard: View {
     }
 }
 
-/// Segmented ring: one segment per achievement. Unlocked segments glow in their tier gradient, the others fill
-/// with their partial progress – the whole ring equals the overall progress shown in the centre.
+/// Segmented ring: one segment per achievement. Unlocked segments are full-width metal in their tier colours – together
+/// they equal the share in the centre ("35 % erreicht" next to "6 von 17"). Open achievements keep a quiet track with a
+/// thin glacier line for their partial progress, so the partial fills never read as earned.
 private struct AchCollectionRing: View {
     let items: [Achievement]
     let reveal: Bool
-    let mean: Double
+    let share: Double
     let size: CGFloat
 
     var body: some View {
@@ -394,14 +426,13 @@ private struct AchCollectionRing: View {
                 AchRingSegment(index: index, count: items.count, item: item, reveal: reveal, lineWidth: lineWidth)
             }
             VStack(spacing: 0) {
-                // Floored: 16 of 17 done + one at 94 % must not read "100 %".
-                Text(AchFormat.percent(reveal ? mean : 0))
+                Text(AchFormat.percent(reveal ? share : 0))
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: reveal ? mean : 0))
+                    .contentTransition(.numericText(value: reveal ? share : 0))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text("gesamt")
+                Text("erreicht")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
@@ -430,17 +461,38 @@ private struct AchRingSegment: View {
             Circle()
                 .trim(from: start, to: end)
                 .stroke(Theme.textTertiary.opacity(0.2), style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
-            Circle()
-                .trim(from: start, to: start + (end - start) * fill)
-                .stroke(fillStyle, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+            if item.isUnlocked {
+                // Metal sweep along the segment itself (a ring-wide gradient left the pale end on white segments).
+                Circle()
+                    .trim(from: start, to: start + (end - start) * fill)
+                    .stroke(AngularGradient(colors: AchTierStyle.strokeColors(item.tier), center: .center,
+                                            startAngle: .degrees(360 * start), endAngle: .degrees(360 * end)),
+                            style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+            } else if fill > 0 {
+                Circle()
+                    .trim(from: start, to: start + (end - start) * fill)
+                    .stroke(Theme.glacier, style: StrokeStyle(lineWidth: AchPartialKey.thinWidth(lineWidth), lineCap: .butt))
+            }
         }
         .rotationEffect(.degrees(-90))
         .padding(lineWidth / 2)
         .animation(.spring(duration: 0.6, bounce: 0.1).delay(0.12 + min(Double(index) * 0.03, 0.5)), value: reveal)
     }
+}
 
-    private var fillStyle: AnyShapeStyle {
-        item.isUnlocked ? AnyShapeStyle(Theme.tierGradient(item.tier)) : AnyShapeStyle(Theme.glacier.opacity(0.6))
+/// Legend key for the ring's partial lines: a short track with the thin glacier line inside.
+private struct AchPartialKey: View {
+    static func thinWidth(_ lineWidth: CGFloat) -> CGFloat { max(2, lineWidth * 0.36) }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            Capsule().fill(Theme.textTertiary.opacity(0.2))
+                .frame(width: 18, height: 7)
+            Capsule().fill(Theme.glacier)
+                .frame(width: 11, height: 2.5)
+                .padding(.leading, 2)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -451,9 +503,7 @@ private struct AchTierTally: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            AchTierCoin(tier: tier, size: 20)
-                .saturation(done > 0 ? 1 : 0)
-                .opacity(done > 0 ? 1 : 0.55)
+            AchTierCoin(tier: tier, size: 20, muted: done == 0)
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: "\(done)/\(total)")
                     .font(.subheadline.weight(.semibold))
@@ -528,18 +578,22 @@ private struct AchBadgeCell: View {
                              ringProgress: appeared ? achievement.progress : 0,
                              bounceTick: bounceTick)
                     .matchedTransitionSource(id: achievement.id, in: zoom)
-                VStack(spacing: 2) {
-                    Text(achievement.title)
+                // Caption hugs the name (no reserved second line → no hole under one-line names); cells are
+                // top-aligned, so leftover row height falls below the caption.
+                VStack(spacing: 3) {
+                    Text(AchText.title(achievement))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(isLarge ? 5 : 2, reservesSpace: !isLarge)
+                        .lineLimit(titleLines(isLarge: isLarge))
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                     subtitle
                 }
             }
             .padding(.vertical, Theme.Spacing.s)
-            .padding(.horizontal, Theme.Spacing.xxs)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 2)
+            .frame(maxWidth: .infinity, alignment: .top)
             .contentShape(.rect)
         }
         .buttonStyle(AchPressButtonStyle())
@@ -549,6 +603,13 @@ private struct AchBadgeCell: View {
         .accessibilityLabel(achievement.title)
         .accessibilityValue(voiceOverValue)
         .accessibilityHint("Zeigt Details zu diesem Erfolg")
+    }
+
+    /// Single words ("Klimaschützer:in") stay on one line and shrink a touch rather than split mid-word;
+    /// phrases wrap at spaces/hyphens. Accessibility sizes wrap freely (soft hyphens keep the joints clean).
+    private func titleLines(isLarge: Bool) -> Int {
+        if isLarge { return 5 }
+        return AchText.isSingleWord(achievement) ? 1 : 2
     }
 
     @ViewBuilder
