@@ -4,7 +4,7 @@ import KlimaCore
 
 // MARK: - Section title
 
-/// Title + caption above a gallery stage ("Startbildschirm").
+/// Title + caption above a gallery stage ("Home-Bildschirm").
 struct WidStageTitle: View {
     var title: String
     var caption: String
@@ -43,7 +43,7 @@ struct WidHomeStage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            WidStageTitle(title: "Startbildschirm", caption: "Klein, mittel und groß – Amortisation und Schnellerfassung.")
+            WidStageTitle(title: "Home-Bildschirm", caption: "Klein, mittel und groß – Amortisation und Schnellerfassung.")
                 .widAppear(1, appeared)
             stage
         }
@@ -59,6 +59,7 @@ struct WidHomeStage: View {
             tile(.systemLarge, caption: "Amortisation · Groß", index: 4) {
                 AmortizationWidgetView(snapshot: snapshot, family: .systemLarge, isInteractive: false)
             }
+            .id(WidGallerySection.large)
             tile(.systemMedium, caption: "Schnellerfassung · Mittel", index: 5) {
                 QuickLogWidgetView(snapshot: snapshot, family: .systemMedium, isInteractive: false)
             }
@@ -78,10 +79,10 @@ struct WidHomeStage: View {
 
     private var smallRow: some View {
         HStack(alignment: .top, spacing: 24 * scale) {
-            tile(.systemSmall, caption: "Amortisation", index: 2) {
+            tile(.systemSmall, caption: "Amortisation · Klein", index: 2) {
                 AmortizationWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false)
             }
-            tile(.systemSmall, caption: "Schnellerfassung", index: 2) {
+            tile(.systemSmall, caption: "Schnellerfassung · Klein", index: 2) {
                 QuickLogWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false)
             }
         }
@@ -129,30 +130,24 @@ private struct WidGalleryTile<Content: View>: View {
     }
 }
 
-/// Colourful iOS-style wallpaper built from the Alpine palette (deeper in dark mode).
+/// Calm alpine-dusk wallpaper: muted glacier blue into dusk violet with a hint of alpenglow on the right (deeper in
+/// dark mode). Mid-toned on purpose: the light widgets stand out against it, it does not tint them, and the white
+/// captions keep ≥ 4.5:1 everywhere (the earlier rainbow mesh went down to 3.4:1 on its coral side).
 private struct WidWallpaper: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     private static let points: [SIMD2<Float>] = [
         [0, 0], [0.5, 0], [1, 0],
         [0, 0.42], [0.6, 0.5], [1, 0.38],
         [0, 1], [0.45, 1], [1, 1],
     ]
 
-    var body: some View {
-        MeshGradient(width: 3, height: 3, points: Self.points, colors: colors)
-    }
+    private static let colors: [Color] = [
+        Color(light: "#3D679F", dark: "#1C3454"), Color(light: "#4B629F", dark: "#223154"), Color(light: "#5F5D9E", dark: "#2A2A55"),
+        Color(light: "#5A7DB5", dark: "#28426A"), Color(light: "#6670AE", dark: "#2F3765"), Color(light: "#9A6A8E", dark: "#4A3150"),
+        Color(light: "#3F6496", dark: "#18304E"), Color(light: "#485A92", dark: "#1D2B4E"), Color(light: "#4E4F8A", dark: "#222447"),
+    ]
 
-    private var colors: [Color] {
-        let base: [Color] = [
-            Theme.glacier, Theme.dusk, Theme.alpenglow,
-            Theme.glacier2, Theme.dusk.mix(with: Theme.glacier, by: 0.4), Theme.dawn,
-            Theme.pine.mix(with: Theme.glacier, by: 0.45), Theme.glacier, Theme.dusk,
-        ]
-        if colorScheme == .dark {
-            return base.map { $0.mix(with: .black, by: 0.42) }
-        }
-        return base.map { $0.mix(with: .white, by: 0.04) }
+    var body: some View {
+        MeshGradient(width: 3, height: 3, points: Self.points, colors: Self.colors)
     }
 }
 

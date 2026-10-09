@@ -6,6 +6,8 @@ import KlimaCore
 
 /// The widgets' brand background: "Morgendämmerung" (light) or "Blaue Stunde" (dark) with the summit glow.
 /// The extension installs it via `widgetBrandBackground(_:)`; the in-app gallery draws it directly.
+/// Static and star-free (DESIGN_FINAL_SYNTHESIS §7: "Widgets render a static mesh"): at widget size every
+/// star lands next to a numeral and reads as stray punctuation.
 struct WidSkyBackground: View {
     var family: WidgetFamily
 
@@ -17,13 +19,9 @@ struct WidSkyBackground: View {
             LinearGradient(colors: baseColors(dark: dark), startPoint: .top, endPoint: .bottom)
             RadialGradient(colors: [Theme.dusk.opacity(dark ? 0.30 : 0.20), .clear],
                            center: .topTrailing, startRadius: 0, endRadius: glowRadius * 1.1)
-            RadialGradient(colors: [(dark ? Theme.alpenglow : Theme.dawn2).opacity(dark ? 0.34 : 0.78), .clear],
+            RadialGradient(colors: [(dark ? Theme.alpenglow : Theme.dawn2).opacity(dark ? 0.28 : 0.66), .clear],
                            center: UnitPoint(x: 0.78, y: glowY),
                            startRadius: 0, endRadius: glowRadius)
-            if dark {
-                WidStarsShape(count: family == .systemSmall ? 16 : 30, seed: 7)
-                    .fill(Color.white.opacity(0.55))
-            }
         }
     }
 
@@ -85,8 +83,10 @@ struct WidSummitArt: View {
     var todayLabel: String? = nil
     /// … and the ticket price beside the summit flag ("€ 1.400").
     var summitLabel: String? = nil
-    /// Valley mist: the ridges fade out from `mistFrom` (unit height) down to `mistOpacity` at the bottom edge.
+    /// Valley mist: the ridges fade out from `mistFrom` (unit height) down to `mistOpacity` at `mistTo`
+    /// (the bottom edge by default; earlier where a footer sits below the ridge).
     var mistFrom: CGFloat = 0.72
+    var mistTo: CGFloat = 1
     var mistOpacity: Double = 0.35
 
     @Environment(\.widgetRenderingMode) private var renderingMode
@@ -130,6 +130,7 @@ struct WidSummitArt: View {
         }
         .mask {
             LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: mistFrom),
+                                   .init(color: .black.opacity(mistOpacity), location: max(mistTo, mistFrom)),
                                    .init(color: .black.opacity(mistOpacity), location: 1)],
                            startPoint: .top, endPoint: .bottom)
         }
@@ -432,30 +433,6 @@ struct WidFlagShape: Shape {
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + rect.height * 0.23))
         path.addLine(to: CGPoint(x: rect.minX + pole, y: rect.minY + rect.height * 0.46))
         path.closeSubpath()
-        return path
-    }
-}
-
-/// Sparse deterministic star field in the upper half (dark skies).
-struct WidStarsShape: Shape {
-    var count: Int
-    var seed: UInt64
-
-    func path(in rect: CGRect) -> Path {
-        var state: UInt64 = seed &* 0x2545_F491_4F6C_DD1D | 1
-        func next() -> CGFloat {
-            state ^= state << 13
-            state ^= state >> 7
-            state ^= state << 17
-            return CGFloat(state % 10_000) / 10_000
-        }
-        var path = Path()
-        for _ in 0..<max(count, 0) {
-            let x = next() * rect.width
-            let y = next() * next() * rect.height * 0.55
-            let r = 0.45 + next() * 0.7
-            path.addEllipse(in: CGRect(x: rect.minX + x, y: rect.minY + y, width: r * 2, height: r * 2))
-        }
         return path
     }
 }

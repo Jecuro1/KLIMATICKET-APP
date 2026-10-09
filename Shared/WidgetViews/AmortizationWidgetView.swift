@@ -153,7 +153,7 @@ private struct WidAmortizationLarge: View {
             Spacer(minLength: 6)
             Text(WidInsight.validityText(snapshot))
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -169,7 +169,7 @@ private struct WidAmortizationLarge: View {
             Text(detail)
                 .font(.system(size: 12.5, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -217,7 +217,7 @@ private struct WidAmortizationLarge: View {
             if let label {
                 Text(label)
                     .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
             }
         }
         .lineLimit(1)
@@ -234,7 +234,7 @@ private struct WidAmortizationLarge: View {
                     .widgetAccentable()
                 Text("Lege Favoriten an, um hier mit einem Tipp zu erfassen.")
                     .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
             }

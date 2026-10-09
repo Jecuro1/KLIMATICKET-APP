@@ -232,6 +232,11 @@ struct ScreenshotRouter: View {
             NavigationStack { SettingsView() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
+        // MARK: polish-widgets – lower part of the widget gallery (large + quick log; lock screen + guide)
+        case "widgets2":
+            NavigationStack { WidgetGalleryView(screenshotSection: .large) }
+        case "widgets3":
+            NavigationStack { WidgetGalleryView(screenshotSection: .lock) }
         case "hero":
             DesignSystemPreview()
         default:

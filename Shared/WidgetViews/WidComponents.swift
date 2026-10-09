@@ -20,7 +20,7 @@ struct WidEyebrow: View {
             Text(text.uppercased(with: WidFormat.locale))
                 .font(.system(size: 10.5, weight: .semibold))
                 .tracking(1)
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -51,7 +51,7 @@ struct WidPercentNumeral: View {
                 .minimumScaleFactor(0.55)
             Text(verbatim: "%")
                 .font(.system(size: size * 0.4, weight: .light, design: .rounded))
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.widSecondary)
                 .padding(.top, size * 0.14)
         }
         .widgetAccentable()
@@ -72,7 +72,7 @@ struct WidVerdictLine: View {
         line
             .font(.system(size: size, weight: .medium))
             .monospacedDigit()
-            .foregroundStyle(Theme.textSecondary)
+            .foregroundStyle(.widSecondary)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
     }
@@ -114,7 +114,7 @@ struct WidForecastBlock: View {
                 .minimumScaleFactor(0.7)
             Text(info.caption)
                 .font(.system(size: 11.5, weight: .medium))
-                .foregroundStyle(Theme.textSecondary)
+                .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -266,7 +266,7 @@ private struct WidFavoriteLabel: View {
                 Text(WidFormat.euroPrecise(favorite.value))
                     .font(.system(size: 11.5, weight: .medium))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
                     .lineLimit(1)
             }
             .layoutPriority(1)
@@ -291,14 +291,16 @@ private struct WidFavoriteLabel: View {
             .widgetAccentable()
     }
 
+    /// Dark: a night-glass capsule that sits *into* the sky (as in the widget mockup) – a white wash would brighten
+    /// the alpenglow behind the right-hand buttons and pull the price below 4.5:1.
     private var fillColor: Color {
         guard renderingMode == .fullColor else { return Color.white.opacity(0.12) }
-        return colorScheme == .dark ? Color.white.opacity(0.09) : Color.white.opacity(0.62)
+        return colorScheme == .dark ? Theme.background.opacity(0.3) : Color.white.opacity(0.62)
     }
 
     private var rimColor: Color {
         guard renderingMode == .fullColor else { return Color.white.opacity(0.2) }
-        return colorScheme == .dark ? Color.white.opacity(0.13) : Color.white.opacity(0.85)
+        return colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.85)
     }
 }
 
@@ -353,7 +355,7 @@ struct WidEmptyView: View {
                     .foregroundStyle(Theme.textPrimary)
                 Text(Self.message)
                     .font(.system(size: isSmall ? 12 : 13.5))
-                    .foregroundStyle(Theme.textSecondary)
+                    .foregroundStyle(.widSecondary)
                     .lineLimit(isSmall ? 3 : 2)
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: messageWidth, alignment: .leading)

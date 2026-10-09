@@ -97,6 +97,27 @@ extension WidgetFamily {
     }
 }
 
+// MARK: - Ink
+
+/// Secondary text on the widget skies. `Theme.textSecondary` is translucent and drops below 4.5:1 where it sits
+/// on the summit glow (3.9:1 for "in 73 Tagen"); widgets are read at a glance, so in full colour they use an
+/// opaque ink (≥ 4.8:1 on every part of both skies). In the accented / clear / vibrant styles the system recolours
+/// everything, and the translucent theme ink keeps the primary/secondary hierarchy there.
+struct WidSecondaryInk: ShapeStyle {
+    func resolve(in environment: EnvironmentValues) -> Color {
+        guard environment.widgetRenderingMode == .fullColor else { return Theme.textSecondary }
+        return environment.colorScheme == .dark ? Self.dark : Self.light
+    }
+
+    private static let light = Color(hex: "#3E4A5C")
+    private static let dark = Color(hex: "#C9D2E0")
+}
+
+extension ShapeStyle where Self == WidSecondaryInk {
+    /// Secondary widget text (see `WidSecondaryInk`).
+    static var widSecondary: WidSecondaryInk { WidSecondaryInk() }
+}
+
 // MARK: - Deep links
 
 enum WidDeepLink {
