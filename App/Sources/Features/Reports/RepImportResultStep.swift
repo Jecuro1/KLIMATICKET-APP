@@ -14,7 +14,7 @@ struct RepImportResultStep: View {
     var body: some View {
         hero
             .frame(maxWidth: .infinity)
-            .padding(.top, Theme.Spacing.l)
+            .padding(.top, Theme.Spacing.xs)
 
         if model.isUndone {
             undoneCard
@@ -33,14 +33,14 @@ struct RepImportResultStep: View {
             ZStack {
                 Circle()
                     .fill((model.isUndone ? Theme.textTertiary : Theme.pine).opacity(0.16))
-                    .frame(width: 118, height: 118)
+                    .frame(width: 100, height: 100)
                     .scaleEffect(appeared ? 1 : 0.6)
                 Circle()
                     .fill(model.isUndone ? AnyShapeStyle(Theme.textTertiary.gradient) : AnyShapeStyle(Theme.pine.gradient))
-                    .frame(width: 82, height: 82)
+                    .frame(width: 70, height: 70)
                     .shadow(color: (model.isUndone ? Color.black : Theme.pine).opacity(0.28), radius: 16, y: 8)
                 Image(systemName: model.isUndone ? "arrow.uturn.backward" : "checkmark")
-                    .font(.system(size: 34, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(.white)
                     .contentTransition(.symbolEffect(.replace))
                     .symbolEffect(.bounce, value: model.importRevision)
@@ -59,7 +59,7 @@ struct RepImportResultStep: View {
                     .multilineTextAlignment(.center)
             } else if let summary {
                 Text("\(summary.imported)")
-                    .font(.system(size: 88, weight: .thin, design: .rounded))
+                    .font(.system(size: 76, weight: .thin, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .contentTransition(.numericText(value: Double(summary.imported)))

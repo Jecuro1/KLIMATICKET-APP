@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Charts
 import KlimaCore
 
@@ -153,6 +154,7 @@ struct RepCoverPage: View {
     let data: RepReportData
     var number: Int
     var count: Int
+    var skyImage: UIImage? = nil
 
     static let skyHeight: CGFloat = 392
 
@@ -160,7 +162,7 @@ struct RepCoverPage: View {
 
     var body: some View {
         RepPrintPage(number: number, count: count) {
-            RepCoverSky(data: data)
+            RepCoverSky(data: data, backdropImage: skyImage)
                 .frame(width: RepPrint.pageSize.width, height: RepCoverPage.skyHeight)
         } content: {
             VStack(alignment: .leading, spacing: 0) {
@@ -176,6 +178,8 @@ struct RepCoverPage: View {
                     .padding(.top, 14)
                 kpis
                     .padding(.top, 22)
+                highlights
+                    .padding(.top, 20)
                 Spacer(minLength: 12)
                 ticketStrip
             }
@@ -260,6 +264,35 @@ struct RepCoverPage: View {
                         tint: Theme.dusk)
             RepPrintKPI(value: co2.value, unit: co2.unit, label: "CO₂ gespart", symbol: "leaf.fill", tint: Theme.pine)
         }
+    }
+
+    /// Four quiet facts under the KPI tiles (no panel – hairline dividers only).
+    private var highlights: some View {
+        let records = data.snapshot.records
+        var facts: [(String, String)] = []
+        if let best = records.bestMonth { facts.append(("Bester Monat", "\(StatsNames.wideMonth(best.month)) · \(Format.euro(best.value, decimals: 0))")) }
+        if let longest = records.longestTrip { facts.append(("Längste Fahrt", Format.km(longest.distanceKm))) }
+        facts.append(("Reisetage", "\(summary.travelDays)"))
+        facts.append(("Ø pro Fahrt", Format.euroPrecise(summary.averageValuePerTrip)))
+        return HStack(alignment: .top, spacing: 0) {
+            ForEach(Array(facts.enumerated()), id: \.offset) { index, fact in
+                if index > 0 {
+                    Rectangle().fill(RepPrint.panelStroke).frame(width: 0.6, height: 30)
+                        .padding(.horizontal, 12)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    RepPrintKicker(text: fact.0)
+                    Text(fact.1)
+                        .font(RepPrint.font(11, .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 2)
     }
 
     private var ticketStrip: some View {
@@ -393,28 +426,22 @@ struct RepPrintProgress: View {
 /// the value route climbing it (forecast dotted) and the flag at break-even.
 struct RepCoverSky: View {
     let data: RepReportData
+    /// Pre-rendered backdrop (PDF only): PDF shadings drop the alpha fall-off of the glow gradients,
+    /// so the soft sky is embedded as a 3× bitmap while route, labels and text stay vector.
+    var backdropImage: UIImage? = nil
 
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
             let geometry = RepSummitGeometry(data: data, size: size)
             ZStack(alignment: .topLeading) {
-                LinearGradient(stops: [.init(color: Color(hex: "#D4E6F8"), location: 0),
-                                       .init(color: Color(hex: "#E4E2F7"), location: 0.42),
-                                       .init(color: Color(hex: "#FBE2D2"), location: 0.72),
-                                       .init(color: .white, location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                RadialGradient(colors: [Theme.dawn2.opacity(0.75), Theme.dawn2.opacity(0)],
-                               center: UnitPoint(x: min(0.92, geometry.summit.x / size.width + 0.06), y: 0.56),
-                               startRadius: 0, endRadius: 230)
-                RidgeShape(peakX: 0.2, peakY: 0.6, seed: 3, roughness: 0.7)
-                    .fill(Theme.dusk.opacity(0.14))
-                RidgeShape(peakX: 0.9, peakY: 0.62, seed: 11, roughness: 0.6)
-                    .fill(Theme.glacier.opacity(0.12))
-                RidgeShape(peakX: geometry.summit.x / size.width, peakY: geometry.summit.y / size.height, seed: 7, roughness: 0.42)
-                    .fill(LinearGradient(colors: [Color.white.opacity(0.95), .white], startPoint: .top, endPoint: .bottom))
-                RidgeShape(peakX: geometry.summit.x / size.width, peakY: geometry.summit.y / size.height, seed: 7, roughness: 0.42)
-                    .stroke(Theme.dusk.opacity(0.22), lineWidth: 0.8)
+                if let backdropImage {
+                    Image(uiImage: backdropImage)
+                        .resizable()
+                        .frame(width: size.width, height: size.height)
+                } else {
+                    RepCoverSkyBackdrop(data: data)
+                }
                 priceLine(geometry)
                 route(geometry)
                 markers(geometry)
@@ -498,6 +525,37 @@ struct RepCoverSky: View {
     }
 }
 
+/// Soft sky of the cover: dawn gradient, sun glow, far ridges and the white summit mountain.
+struct RepCoverSkyBackdrop: View {
+    let data: RepReportData
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            let geometry = RepSummitGeometry(data: data, size: size)
+            ZStack(alignment: .topLeading) {
+                LinearGradient(stops: [.init(color: Color(hex: "#D4E6F8"), location: 0),
+                                       .init(color: Color(hex: "#E4E2F7"), location: 0.42),
+                                       .init(color: Color(hex: "#FBE2D2"), location: 0.72),
+                                       .init(color: .white, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [Theme.dawn2.opacity(0.75), Theme.dawn2.opacity(0)],
+                               center: UnitPoint(x: min(0.92, geometry.summit.x / size.width + 0.06), y: 0.56),
+                               startRadius: 0, endRadius: 230)
+                RidgeShape(peakX: 0.2, peakY: 0.6, seed: 3, roughness: 0.7)
+                    .fill(Theme.dusk.opacity(0.12))
+                RidgeShape(peakX: 0.9, peakY: 0.62, seed: 11, roughness: 0.6)
+                    .fill(Theme.glacier.opacity(0.12))
+                RidgeShape(peakX: geometry.summit.x / size.width, peakY: geometry.summit.y / size.height, seed: 7, roughness: 0.42)
+                    .fill(LinearGradient(colors: [Color.white.opacity(0.95), .white], startPoint: .top, endPoint: .bottom))
+                RidgeShape(peakX: geometry.summit.x / size.width, peakY: geometry.summit.y / size.height, seed: 7, roughness: 0.42)
+                    .stroke(Theme.dusk.opacity(0.22), lineWidth: 0.8)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Maps the cumulative value series onto the cover sky (x = ticket year, y = value with the ticket price at the summit).
 struct RepSummitGeometry {
     let size: CGSize
@@ -557,22 +615,30 @@ struct RepAnalysisPage: View {
                 HStack(alignment: .top, spacing: 12) {
                     RepPrintPanel(title: "Verkehrsmittel") {
                         RepModeBars(data: data)
+                            .frame(maxHeight: .infinity, alignment: .top)
                     }
+                    .frame(maxHeight: .infinity)
                     RepPrintPanel(title: "Rekorde") {
                         RepRecordsList(data: data)
+                            .frame(maxHeight: .infinity, alignment: .top)
                     }
+                    .frame(maxHeight: .infinity)
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 costs
                 HStack(alignment: .top, spacing: 12) {
                     RepPrintPanel(title: "Top-Strecken") {
                         RepTopRoutes(data: data, limit: data.categories.isEmpty ? 5 : 4)
+                            .frame(maxHeight: .infinity, alignment: .top)
                     }
+                    .frame(maxHeight: .infinity)
                     if !data.categories.isEmpty {
                         RepPrintPanel(title: "Wofür du gefahren bist") {
                             RepCategoryList(data: data)
+                                .frame(maxHeight: .infinity, alignment: .top)
                         }
                         .frame(width: 190)
+                        .frame(maxHeight: .infinity)
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -902,12 +968,13 @@ struct RepTablePage: View {
         HStack(spacing: 8) {
             Text("Datum").frame(width: 38, alignment: .leading)
             Text("Strecke").frame(maxWidth: .infinity, alignment: .leading)
-            Text("Verkehrsmittel").frame(width: 74, alignment: .leading)
+            Text("Verkehrsmittel").frame(width: 78, alignment: .leading)
             Text("km").frame(width: 34, alignment: .trailing)
             Text("Wert").frame(width: 56, alignment: .trailing)
         }
-        .font(RepPrint.font(7, .semibold))
-        .tracking(0.6)
+        .font(RepPrint.font(6.5, .semibold))
+        .tracking(0.4)
+        .lineLimit(1)
         .textCase(.uppercase)
         .foregroundStyle(Theme.textSecondary)
         .padding(.horizontal, 8)
@@ -917,7 +984,7 @@ struct RepTablePage: View {
 
     private func monthRow(start: Date, trips: Int, value: Double, km: Double, continued: Bool) -> some View {
         HStack(spacing: 8) {
-            Text("\(StatsNames.wideMonth(start)) \(Calendar.vienna.component(.year, from: start))\(continued ? " (Forts.)" : "")")
+            Text(verbatim: "\(StatsNames.wideMonth(start)) \(String(Calendar.vienna.component(.year, from: start)))\(continued ? " (Fortsetzung)" : "")")
                 .font(RepPrint.font(9, .bold))
                 .foregroundStyle(Theme.textPrimary)
             Spacer(minLength: 8)
@@ -967,7 +1034,7 @@ struct RepTablePage: View {
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
-            .frame(width: 74, alignment: .leading)
+            .frame(width: 78, alignment: .leading)
             Text(trip.totalDistanceKm > 0 ? Format.number(trip.totalDistanceKm, decimals: trip.totalDistanceKm < 10 ? 1 : 0) : "–")
                 .monospacedDigit()
                 .foregroundStyle(Theme.textSecondary)

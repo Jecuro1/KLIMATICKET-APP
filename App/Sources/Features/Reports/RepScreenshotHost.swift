@@ -3,13 +3,14 @@ import SwiftData
 import KlimaCore
 
 /// CI screenshot routes of this module (`-KBScreenshot <screen> -KBDemo YES`):
-/// - `importMapping` / `importPreview` / `importResult`: the CSV import sheet over Einstellungen, with the bundled sample file
-/// - `report`: the Jahresbericht preview sheet over Statistik
+/// - `importPick` / `importMapping` / `importPreview` / `importResult`: the CSV import sheet over Einstellungen (sample file)
+/// - `importEntry`: the Einstellungen › Daten section with the two new rows
+/// - `report`: the Jahresbericht preview sheet over Statistik (`reportPDF2`/`reportPDF3`: scrolled to page 2/3 of the real PDF)
 /// - `reportPage1` … `reportPage4`: one printed page, scaled to the screen width (layout QA)
 struct RepScreenshotHost: View {
     let screen: String
 
-    static let screens: Set<String> = ["importMapping", "importPreview", "importResult", "report",
+    static let screens: Set<String> = ["importPick", "importMapping", "importPreview", "importResult", "importEntry", "report", "reportPDF2", "reportPDF3",
                                        "reportPage1", "reportPage2", "reportPage3", "reportPage4"]
 
     @Environment(AppState.self) private var app
@@ -18,7 +19,7 @@ struct RepScreenshotHost: View {
     var body: some View {
         content
             .task {
-                guard !screen.hasPrefix("reportPage") else { return }
+                guard !screen.hasPrefix("reportPage"), screen != "importEntry" else { return }
                 try? await Task.sleep(for: .milliseconds(600))
                 isPresenting = true
             }
@@ -27,17 +28,40 @@ struct RepScreenshotHost: View {
     @ViewBuilder
     private var content: some View {
         switch screen {
-        case "importMapping", "importPreview", "importResult":
+        case "importPick", "importMapping", "importPreview", "importResult":
             NavigationStack { SettingsView() }
                 .sheet(isPresented: $isPresenting) {
-                    RepImportFlow(preset: screen == "importMapping" ? .mapping : screen == "importPreview" ? .preview : .result)
+                    RepImportFlow(preset: preset)
                 }
-        case "report":
+        case "importEntry":
+            NavigationStack {
+                List {
+                    SetDataSection()
+                }
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background { SetBackdrop() }
+                .navigationTitle("Einstellungen")
+            }
+        case "report", "reportPDF2", "reportPDF3":
             MainTabView()
                 .onAppear { app.selectedTab = .stats }
-                .sheet(isPresented: $isPresenting) { RepReportSheet() }
+                .sheet(isPresented: $isPresenting) {
+                    RepReportSheet(previewPage: screen == "reportPDF2" ? 1 : screen == "reportPDF3" ? 2 : 0)
+                }
         default:
             RepPagePreview(pageNumber: Int(screen.dropFirst("reportPage".count)) ?? 1)
+        }
+    }
+}
+
+extension RepScreenshotHost {
+    fileprivate var preset: RepImportPreset {
+        switch screen {
+        case "importPick": .pick
+        case "importMapping": .mapping
+        case "importPreview": .preview
+        default: .result
         }
     }
 }

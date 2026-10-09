@@ -132,22 +132,27 @@ struct RepColumnRow: View {
     @Bindable var model: RepImportModel
     let column: Int
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         let field = model.field(for: column)
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.s) {
-                tile(field)
-                labels
-                Spacer(minLength: Theme.Spacing.xs)
-                menu(field)
-            }
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        tile(field)
+                        labels
+                    }
+                    menu(field)
+                }
+            } else {
                 HStack(spacing: Theme.Spacing.s) {
                     tile(field)
                     labels
+                    Spacer(minLength: Theme.Spacing.xs)
+                    menu(field)
+                        .layoutPriority(2)
                 }
-                menu(field)
-                    .padding(.leading, 44)
             }
         }
         .padding(.horizontal, Theme.Spacing.m)
@@ -171,7 +176,9 @@ struct RepColumnRow: View {
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
+                .truncationMode(.tail)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .layoutPriority(1)
     }
 

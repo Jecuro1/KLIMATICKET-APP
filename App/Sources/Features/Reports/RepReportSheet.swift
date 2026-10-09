@@ -8,6 +8,8 @@ import KlimaCore
 struct RepReportSheet: View {
     /// Ticket year to start with (nil = the active ticket).
     var ticketID: UUID? = nil
+    /// Page the preview opens on (0-based; screenshots/QA).
+    var previewPage: Int = 0
 
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -112,7 +114,6 @@ struct RepReportSheet: View {
     private func headerLine(_ data: RepReportData) -> String {
         var parts = [RepText.trips(data.summary.tripCount)]
         if let report { parts.append(report.pageCount == 1 ? "1 Seite A4" : "\(report.pageCount) Seiten A4") }
-        parts.append(data.ticketName)
         return parts.joined(separator: " · ")
     }
 
@@ -120,7 +121,7 @@ struct RepReportSheet: View {
     private var preview: some View {
         ZStack {
             if let report {
-                RepPDFPreview(url: report.url, key: report.key)
+                RepPDFPreview(url: report.url, key: report.key, startPage: previewPage)
                     .transition(.opacity)
                     .accessibilityLabel("Vorschau des Jahresberichts, \(report.pageCount) Seiten")
             }
@@ -200,10 +201,11 @@ struct RepReportSheet: View {
         }
         failed = false
         isRendering = true
-        // Let the sheet appear (and show the spinner) before the main-actor rendering work starts.
-        try? await Task.sleep(for: .milliseconds(LaunchMode.isScreenshot ? 50 : 180))
+        // Let the sheet finish its transition (and show the spinner) before the main-actor rendering work starts.
+        try? await Task.sleep(for: .milliseconds(420))
         guard !Task.isCancelled else { return }
-        let rendered = RepPDFRenderer.render(data, key: key)
+        let rendered = await RepPDFRenderer.render(data, key: key)
+        guard !Task.isCancelled else { return }
         withAnimation(.smooth(duration: 0.35)) {
             report = rendered
             failed = rendered == nil
@@ -216,6 +218,7 @@ struct RepReportSheet: View {
 struct RepPDFPreview: UIViewRepresentable {
     let url: URL
     let key: String
+    var startPage: Int = 0
 
     final class Coordinator {
         var loadedKey: String?
@@ -238,7 +241,11 @@ struct RepPDFPreview: UIViewRepresentable {
     func updateUIView(_ view: PDFView, context: Context) {
         guard context.coordinator.loadedKey != key else { return }
         context.coordinator.loadedKey = key
-        view.document = PDFDocument(url: url)
+        let document = PDFDocument(url: url)
+        view.document = document
         view.autoScales = true
+        if startPage > 0, let page = document?.page(at: startPage) {
+            DispatchQueue.main.async { view.go(to: page) }
+        }
     }
 }
