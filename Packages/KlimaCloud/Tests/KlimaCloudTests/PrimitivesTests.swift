@@ -144,9 +144,11 @@ final class CallbackTests: XCTestCase {
         XCTAssertEqual(parse("error=invalid_id_token&error_description=nonce+mismatch&state=mine"), .authorization(""))
         XCTAssertEqual(parse("error=invalid_id_token&state=mine")?.errorDescription,
                        "Die Anmeldung hat nicht geklappt. Bitte versuch es noch einmal.")
-        // An error with somebody else's state is still a state mismatch; without a state it is reported as is.
+        // Errors need the app's state too: somebody else's state or none at all is a state mismatch, so a crafted
+        // link cannot put its own "provider" text into the app.
         XCTAssertEqual(parse("error=access_denied&state=theirs"), .stateMismatch)
-        XCTAssertEqual(parse("error=access_denied"), .cancelled)
+        XCTAssertEqual(parse("error=access_denied"), .stateMismatch)
+        XCTAssertEqual(parse("error=provider_error&error_description=Ruf+uns+an%3A+0800+123"), .stateMismatch)
     }
 
     func testFirstOccurrenceWins() {

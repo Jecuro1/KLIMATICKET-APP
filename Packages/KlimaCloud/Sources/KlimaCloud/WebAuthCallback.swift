@@ -8,13 +8,13 @@ public enum WebAuthCallback {
     /// `.api(503, "server_not_configured", …)`, `.authorization(<sanitized provider text>)`, `.missingCode`.
     public static func parse(_ url: URL, expectedState: String) -> Result<String, CloudError> {
         let parameters = self.parameters(url)
-        if let error = parameters["error"], !error.isEmpty {
-            // A forged error redirect can at worst show an error, so errors do not need a matching state.
-            if let state = parameters["state"], state != expectedState { return .failure(.stateMismatch) }
-            return .failure(map(error: error, description: parameters["error_description"]))
-        }
+        // The Worker puts the app's state on every redirect, errors included. Without it the URL was not produced by
+        // this sign-in: a code would be login CSRF, and an error could carry a crafted "provider" text into the app.
         guard let state = parameters["state"], constantTimeEquals(state, expectedState) else {
             return .failure(.stateMismatch)
+        }
+        if let error = parameters["error"], !error.isEmpty {
+            return .failure(map(error: error, description: parameters["error_description"]))
         }
         guard let code = parameters["code"], !code.isEmpty else { return .failure(.missingCode) }
         return .success(code)

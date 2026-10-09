@@ -1,6 +1,7 @@
 // Rate limits (docs/CLOUDFLARE_BACKEND.md §2.8): fixed windows in D1, 429 + Retry-After, app redirects on
 // /start and /callback, per-user account deletion limit, fail open.
 import { beforeAll, describe, expect, it } from "vitest";
+import { clientIp, rateLimitSubjectForIp } from "../src/http";
 import { loadKeys } from "../src/keys";
 import { LIMITS, bucketFor } from "../src/ratelimit";
 import {
@@ -78,7 +79,7 @@ describe("rate limits", () => {
     const windowStart = Math.floor(deps.now() / w) * w;
     await db()
       .prepare("INSERT OR REPLACE INTO rate_limits (bucket, window_start, count) VALUES (?1, ?2, 30)")
-      .bind(await bucketFor(keys, "auth_callback", ip), windowStart)
+      .bind(await bucketFor(keys, "auth_callback", rateLimitSubjectForIp(ip)), windowStart)
       .run();
     const pk = await appPkce();
     const start = await call(deps, get(startUrl("google", pk)), world.env());
@@ -117,6 +118,39 @@ describe("rate limits", () => {
       .run();
     await expectError(await call(deps, postJson("/v1/account/delete", {}, bearer(s.accessToken))), 429, "rate_limited");
     expect((await call(deps, get("/v1/me", bearer(s.accessToken)))).status).toBe(200);
+  });
+
+  it("IPv6 clients share one bucket per /64 (rotating the interface id does not reset the limit)", async () => {
+    const w = LIMITS.auth_token.windowMs;
+    deps.clock.t = Math.ceil(deps.clock.t / w) * w + 1000;
+    const prefix = `2001:db8:${unique("p").length.toString(16)}${Math.floor(Math.random() * 0xfff).toString(16)}:7`;
+    for (let i = 0; i < 120; i++) {
+      // A different address of the same /64 on every request.
+      expect((await call(deps, tokenAttempt(`${prefix}:${i.toString(16)}:0:0:${(i * 7).toString(16)}`))).status).toBe(400);
+    }
+    await expectError(await call(deps, tokenAttempt(`${prefix}::ffff`)), 429, "rate_limited");
+    // The neighbouring /64 is somebody else.
+    expect((await call(deps, tokenAttempt(`${prefix.slice(0, -1)}8::1`))).status).toBe(400);
+  });
+
+  it("normalizes client addresses for the limiter", () => {
+    expect(rateLimitSubjectForIp("203.0.113.7")).toBe("203.0.113.7");
+    expect(rateLimitSubjectForIp("2001:DB8:0:12:abcd::1")).toBe("2001:db8:0:12::/64");
+    expect(rateLimitSubjectForIp("2001:db8:0000:0012:1:2:3:4")).toBe("2001:db8:0:12::/64");
+    expect(rateLimitSubjectForIp("2001:db8::")).toBe("2001:db8:0:0::/64");
+    expect(rateLimitSubjectForIp("::1")).toBe("0:0:0:0::/64");
+    expect(rateLimitSubjectForIp("[2001:db8:1:2::5]")).toBe("2001:db8:1:2::/64");
+    expect(rateLimitSubjectForIp("fe80::1%en0")).toBe("fe80:0:0:0::/64");
+    // IPv4-mapped IPv6 is the IPv4 client, in dotted or hex form.
+    expect(rateLimitSubjectForIp("::ffff:192.0.2.1")).toBe("192.0.2.1");
+    expect(rateLimitSubjectForIp("::ffff:c000:201")).toBe("192.0.2.1");
+    expect(rateLimitSubjectForIp("64:ff9b::192.0.2.1")).toBe("64:ff9b:0:0::/64");
+    // Unparsable values are used as they are (never throw).
+    expect(rateLimitSubjectForIp("1::2::3")).toBe("1::2::3");
+    expect(rateLimitSubjectForIp("1:2:3")).toBe("1:2:3");
+    expect(rateLimitSubjectForIp("::ffff:300.1.1.1")).toBe("::ffff:300.1.1.1");
+    expect(clientIp(new Request("https://x/", { headers: { "CF-Connecting-IP": " " } }))).toBe("unknown");
+    expect(clientIp(new Request("https://x/"))).toBe("unknown");
   });
 
   it("buckets are HMACs of the subject (no raw IPs stored)", async () => {

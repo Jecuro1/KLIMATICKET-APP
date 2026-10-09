@@ -170,7 +170,8 @@ this; the server MUST also accept `application/json` with the same fields).
 - Anything else → `400 unsupported_grant_type`. Success → `200` token response (§2.7.1).
 
 **App side**: the callback URL MUST carry the same `state` the app generated (else the error
-`stateMismatch`); `error=access_denied` = the user cancelled (silent, no error text).
+`stateMismatch`) – error redirects included, so a crafted link cannot show its own "provider" text in the app;
+`error=access_denied` = the user cancelled (silent, no error text).
 
 ### 2.4 Native Sign in with Apple (signed builds only)
 
@@ -268,7 +269,8 @@ when it gets `400` + `{"error":"invalid_grant"}` + the `X-KB-API: 1` header (§3
 ### 2.8 Rate limiting (D1 fixed window, no Durable Objects)
 
 `bucket = "<name>:" + base64url(HMAC(rate-limit key, subject))[0..22]`, where the subject is `CF-Connecting-IP` (or
-`"unknown"`) or the user id. The upsert pattern is in `test/contract-sql.test.ts` (window = `floor(now / W) * W`).
+`"unknown"`) or the user id. IPv6 addresses count per **/64** (`2001:db8:1:2::/64`; one subscriber gets a whole /64,
+so per-address buckets would never fill), IPv4-mapped IPv6 as the IPv4 address. The upsert pattern is in `test/contract-sql.test.ts` (window = `floor(now / W) * W`).
 Over the limit → `429 rate_limited` with `Retry-After` = seconds until the window ends; on `/start` and `/callback`
 the app redirect carries `error=rate_limited` instead. If D1 fails, the limiter **fails open** (and logs).
 
@@ -313,7 +315,9 @@ D1 free-tier write quota.
 - HTML pages (errors and the callback fallback): German text, every interpolated value HTML-escaped,
   `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`.
 - Logging (`console.log` → Workers Logs): request id, route, status, duration, error codes. **Never** log tokens,
-  codes, verifiers, id_tokens, secrets, e-mails, names, IPs or row contents.
+  codes, verifiers, id_tokens, secrets, e-mails, names, IPs or row contents. The platform's invocation logs record
+  request URLs, so `wrangler.template.toml` sets `observability.redact_query_string = true` (provider `code`/`state`
+  on `/callback`, PKCE values on `/start`).
 
 ---
 
@@ -533,7 +537,8 @@ Swift DTO and the schema map together.
   on `backend/package-lock.json`), `npm ci`, `npm run typecheck`, `npm test`.
 - Job **deploy** (`needs: test`, `concurrency: {group: backend-deploy, cancel-in-progress: false}`). It runs when
   `github.event_name == 'workflow_dispatch' || github.ref_name == 'main' || github.ref_name == 'claude/klimabilanz-ios-app'`.
-  Env: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (secrets), `WRANGLER_SEND_METRICS=false`. Steps:
+  Env: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (secrets; passed **per step** to the steps that call
+  Cloudflare, never job-wide, so `npm ci` install scripts never see them), `WRANGLER_SEND_METRICS=false`. Steps:
   1. **Gate**: if either Cloudflare secret is empty, print
      `::notice title=Backend nicht bereitgestellt::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID fehlen – siehe docs/SETUP.md §3`,
      write the same line to `$GITHUB_STEP_SUMMARY`, set the output `skip=true`, and **exit 0**. Every later step has
@@ -665,7 +670,8 @@ Public types (names binding, internals free):
   `sessionExpired`, or `api(400, "invalid_grant", _)` that came from our API, recognized by `X-KB-API: 1`). A
   response without `X-KB-API` (captive portal, proxy HTML) maps to `http(status, …)` and never signs anyone out.
 - `HTTPTransport` protocol `send(_ URLRequest) async throws -> (Data, HTTPURLResponse)` and `URLSessionTransport`
-  (ephemeral, 30 s, no cache, no cookies).
+  (ephemeral, 30 s, no cache, no cookies, **never follows redirects**: the API has none, and following one would replay
+  the bearer token and body against the `Location`).
 - `CloudAPIClient` (Sendable struct; `baseURL`, `transport`, `appVersion`, `build`, `osVersion`):
   `fetchConfig()`, `authorizeURL(provider:codeChallenge:state:redirectURI:)`, `exchangeCode(_:codeVerifier:redirectURI:)`,
   `signInWithApple(identityToken:rawNonce:authorizationCode:fullName:)`, `refresh(_:)`, `logout(_:)` (best effort, sends

@@ -12,6 +12,9 @@ preview_urls = false
 
 [observability]
 enabled = true
+# Workers Logs record request URLs: strip query strings, so provider codes and flow state (/callback) and PKCE values
+# (/start) never land in the logs (§2.10).
+redact_query_string = true
 
 [triggers]
 # Daily cleanup of expired auth state (§3.10).

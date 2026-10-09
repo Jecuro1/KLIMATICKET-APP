@@ -34,9 +34,10 @@ export function unique(prefix = "u"): string {
   return `${prefix}${counter}${base64urlEncode(crypto.getRandomValues(new Uint8Array(6)))}`;
 }
 
+/** A fresh client address. Rate limits bucket IPv6 by /64, so the counter goes into the prefix. */
 export function uniqueIp(): string {
   counter++;
-  return `2001:db8::${counter.toString(16)}:${Math.floor(Math.random() * 0xffff).toString(16)}`;
+  return `2001:db8:${(counter & 0xffff).toString(16)}:${Math.floor(Math.random() * 0xffff).toString(16)}::1`;
 }
 
 export function uuid(): string {

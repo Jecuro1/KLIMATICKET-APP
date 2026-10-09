@@ -108,6 +108,55 @@ kann). Es gibt kein Tracking.
 > (bis Commit `0cb2acd`). Ein altes Supabase-Projekt wird nicht mehr verwendet und kann gelöscht werden. Daten, die
 > schon auf einem iPhone sind, übernimmt die App beim ersten Abgleich automatisch in das neue Konto.
 
+### Was du jetzt tun musst – Checkliste
+
+Abhaken von oben nach unten. Die Einzelheiten stehen in den Abschnitten 3.1–3.4; `<subdomain>` ist deine
+workers.dev-Subdomain aus Schritt 2.
+
+- [ ] **1. Workflows in `main` übernehmen** (einmalig): GitHub → **Pull requests › New pull request** → *base*
+      `main`, *compare* `claude/klimabilanz-ios-app` → **Create pull request** → **Merge pull request** →
+      **Confirm merge**. Erst dann zeigt GitHub unter *Actions* den Knopf **Run workflow**.
+- [ ] **2. Cloudflare-Subdomain:** [dash.cloudflare.com](https://dash.cloudflare.com) → links **Workers & Pages**
+      (bzw. *Compute (Workers)*) einmal öffnen. Fragt Cloudflare nach einer Subdomain: Namen wählen → bestätigen.
+- [ ] **3. Account ID kopieren:** auf derselben Seite rechts *Account details* → **Account ID** → Kopier-Symbol.
+- [ ] **4. API-Token erstellen:** Profil-Symbol oben rechts → **My Profile** → **API Tokens** → **Create Token** →
+      *Custom token* → **Get started** → Name `KlimaBilanz GitHub Deploy` → vier Zeilen *Permissions*:
+      `Account · Workers Scripts · Edit`, `Account · D1 · Edit`, `Account · Account Settings · Read`,
+      `User · User Details · Read` → *Account Resources* `Include · <dein Konto>` → *Client IP Address Filtering*
+      leer → **Continue to summary** → **Create Token** → Token kopieren (wird nur einmal angezeigt).
+- [ ] **5. GitHub-Secrets:** Repo → **Settings › Secrets and variables › Actions** → Tab **Secrets** →
+      **New repository secret**: `CLOUDFLARE_API_TOKEN` (Token aus 4) und `CLOUDFLARE_ACCOUNT_ID` (ID aus 3).
+- [ ] **6. Backend bereitstellen:** **Actions** → **Backend** → **Run workflow** → *Use workflow from*: Branch
+      `claude/klimabilanz-ios-app` (der aktuelle Stand; `main` geht auch) → **Run workflow**. Nach 1–2 Minuten grün;
+      den Lauf öffnen → die **Zusammenfassung** zeigt Worker-Adresse und Rückruf-Adressen.
+- [ ] **7. Google (kostenlos):** [console.cloud.google.com](https://console.cloud.google.com) → Projekt `KlimaBilanz`
+      anlegen → **Google Auth Platform** → *Get started* (App-Name, Support-E-Mail, Zielgruppe **Extern**) →
+      **Audience › Publish app** → **Clients › Create client** → Typ **Web application** →
+      *Authorized redirect URIs* → **Add URI**:
+      `https://klimabilanz-api.<subdomain>.workers.dev/v1/auth/google/callback` → **Create** → Client-ID und
+      Client-Secret kopieren → GitHub-Secrets `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+- [ ] **8. Microsoft (kostenlos, optional):** [entra.microsoft.com](https://entra.microsoft.com) →
+      **App registrations › New registration** → Name `KlimaBilanz` → Kontotypen „**beliebiges
+      Organisationsverzeichnis … und persönliche Microsoft-Konten**“ → Redirect URI Plattform **Web**:
+      `https://klimabilanz-api.<subdomain>.workers.dev/v1/auth/microsoft/callback` → **Register** →
+      *Application (client) ID* kopieren → **Certificates & secrets › New client secret** → **Value** kopieren →
+      GitHub-Secrets `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` (Ablaufdatum notieren).
+- [ ] **9. Apple (optional, nur mit Apple Developer Program 99 €/Jahr):** App ID
+      `com.knitelarlberg.klimabilanz` mit *Sign in with Apple*; **Services ID** `com.knitelarlberg.klimabilanz.web` →
+      *Sign in with Apple › Configure* → *Domains*: `klimabilanz-api.<subdomain>.workers.dev`, *Return URLs*:
+      `https://klimabilanz-api.<subdomain>.workers.dev/v1/auth/apple/callback`; **Keys** → neuer Schlüssel mit
+      *Sign in with Apple* → `.p8` herunterladen → GitHub-Secrets `APPLE_SERVICES_ID`, `APPLE_TEAM_ID`,
+      `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (ganzer Dateiinhalt), `APPLE_BUNDLE_ID` = `com.knitelarlberg.klimabilanz`.
+- [ ] **10. Backend erneut bereitstellen:** **Actions › Backend › Run workflow** (Branch wie in 6; geänderte Secrets
+      starten keinen Lauf von selbst). In der Zusammenfassung muss bei deinen Anbietern „aktiv“ stehen.
+- [ ] **11. App bauen:** **Actions › iOS › Run workflow** (Branch wie in 6) → die neue `.ipa` aus dem Lauf
+      (*Artifacts*) per AltStore/SideStore/Sideloadly installieren.
+- [ ] **12. Ausprobieren:** in der App *Einstellungen › Konto* anmelden, ein zweites Gerät mit **demselben Anbieter**
+      anmelden, eine Fahrt eintragen → erscheint nach dem Abgleich auf beiden Geräten.
+
+Die Rückruf-Adressen müssen **Zeichen für Zeichen** mit denen aus der Zusammenfassung übereinstimmen (`https://`, kein
+`/` am Ende). Mit eigener Domain (§3.5) gelten die Adressen mit deiner Domain.
+
 ### 3.1 Cloudflare vorbereiten (einmalig, etwa 5 Minuten)
 
 1. **workers.dev-Subdomain festlegen.** Auf [dash.cloudflare.com](https://dash.cloudflare.com) links
@@ -136,6 +185,10 @@ kann). Es gibt kein Tracking.
      eine Mal an.
 
    Der Token darf nur Worker und D1 verwalten – er kommt nicht an deine Domains, DNS-Einträge oder andere Dienste.
+   Er kann aber **alle** Worker und D1-Datenbanken dieses Cloudflare-Kontos ändern (Cloudflare kennt keine
+   Berechtigung für nur einen Worker). Bewahre ihn deshalb nur als GitHub-Secret auf; die Workflows reichen ihn nur
+   an die Schritte weiter, die Cloudflare aufrufen, und geben ihn nie aus. Wird er bekannt: unter *API Tokens* →
+   **Roll** bzw. **Delete** und das Secret in GitHub ersetzen.
 
 ### 3.2 GitHub verbinden und Backend bereitstellen
 

@@ -55,9 +55,10 @@ final class E2ETests: XCTestCase {
     func testConfigReflectsSecrets() async throws {
         let config = try await client.fetchConfig()
         XCTAssertEqual(config.apiVersion, 1)
-        XCTAssertTrue(config.googleWeb)          // dummy credentials in the e2e env file
-        XCTAssertFalse(config.microsoftWeb)
-        XCTAssertFalse(config.appleWeb)
+        // run-e2e.sh configures all three web sign-ins (pointed at the fake OIDC server), but no APPLE_BUNDLE_ID.
+        XCTAssertTrue(config.googleWeb)
+        XCTAssertTrue(config.microsoftWeb)
+        XCTAssertTrue(config.appleWeb)          // the Apple .p8 key parses
         XCTAssertFalse(config.appleNative)
         XCTAssertEqual(config.minAppVersion, "1.0.0")
         XCTAssertEqual(config.syncTables, SyncTables.all)
@@ -86,12 +87,24 @@ final class E2ETests: XCTestCase {
         XCTAssertEqual(back.scheme, "klimabilanz")
         XCTAssertEqual(WebAuthCallback.parse(back, expectedState: state).failure, .authorization(""))
 
-        // A provider without secrets is disabled.
-        let microsoft = client.authorizeURL(provider: "microsoft", codeChallenge: PKCE.challenge(for: verifier), state: state,
-                                            redirectURI: seed.redirect)
-        let disabled = WebAuthCallback.parse(try await location(of: microsoft), expectedState: state).failure
-        XCTAssertEqual(disabled?.code, "provider_disabled")
-        XCTAssertEqual(disabled?.message(providerName: "Microsoft"), "Die Anmeldung mit Microsoft ist auf dem Server noch nicht eingerichtet.")
+        // Microsoft: /common, response_mode=query; Apple: form_post without PKCE.
+        let microsoft = try await location(of: client.authorizeURL(provider: "microsoft", codeChallenge: PKCE.challenge(for: verifier),
+                                                                   state: state, redirectURI: seed.redirect))
+        XCTAssertEqual(microsoft.host, "login.microsoftonline.com")
+        XCTAssertEqual(microsoft.path, "/common/oauth2/v2.0/authorize")
+        XCTAssertEqual(WebAuthCallback.parameters(microsoft)["response_mode"], "query")
+        let apple = try await location(of: client.authorizeURL(provider: "apple", codeChallenge: PKCE.challenge(for: verifier),
+                                                               state: state, redirectURI: seed.redirect))
+        XCTAssertEqual(apple.host, "appleid.apple.com")
+        XCTAssertEqual(WebAuthCallback.parameters(apple)["response_mode"], "form_post")
+        XCTAssertNil(WebAuthCallback.parameters(apple)["code_challenge"])
+
+        // A redirect_uri outside the allow-list never redirects anywhere (HTML 400, no open redirect).
+        let foreign = client.authorizeURL(provider: "google", codeChallenge: PKCE.challenge(for: verifier), state: state,
+                                          redirectURI: "https://evil.example/cb")
+        let (_, page) = try await rawRequest(URLRequest(url: foreign))
+        XCTAssertEqual(page.statusCode, 400)
+        XCTAssertNil(page.value(forHTTPHeaderField: "Location"))
     }
 
     func testNativeAppleIsDisabledWithoutBundleID() async throws {
@@ -339,19 +352,14 @@ final class E2ETests: XCTestCase {
 
     /// The `Location` of a redirect, without following it.
     private func location(of url: URL) async throws -> URL {
-        let session = URLSession(configuration: .ephemeral, delegate: NoRedirects(), delegateQueue: nil)
-        defer { session.finishTasksAndInvalidate() }
-        let (_, response) = try await session.data(for: URLRequest(url: url))
-        let http = try XCTUnwrap(response as? HTTPURLResponse)
+        let (_, http) = try await rawRequest(URLRequest(url: url))
         XCTAssertTrue([302, 303].contains(http.statusCode), "status \(http.statusCode)")
         XCTAssertEqual(http.value(forHTTPHeaderField: "X-KB-API"), "1")
         return try XCTUnwrap(http.value(forHTTPHeaderField: "Location").flatMap(URL.init(string:)))
     }
-}
 
-private final class NoRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
-                    newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        completionHandler(nil)
+    /// One request through the app's own transport (which never follows redirects).
+    private func rawRequest(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await URLSessionTransport().send(request)
     }
 }

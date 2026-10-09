@@ -228,8 +228,56 @@ export function requestIdFor(request: Request, randomBytes: (n: number) => Uint8
   return hex;
 }
 
+/**
+ * Rate-limit subject of the client (§2.8): `CF-Connecting-IP`, where IPv6 addresses are reduced to their /64. A single
+ * subscriber or VM gets a whole /64, so per-address buckets would let one client rotate through 2^64 addresses and
+ * never hit a limit. IPv4-mapped IPv6 (`::ffff:a.b.c.d`) counts as the IPv4 address.
+ */
 export function clientIp(request: Request): string {
-  return request.headers.get("CF-Connecting-IP") ?? "unknown";
+  const raw = request.headers.get("CF-Connecting-IP");
+  if (raw === null || raw.trim() === "") return "unknown";
+  return rateLimitSubjectForIp(raw);
+}
+
+const HEXTET_RE = /^[0-9a-f]{1,4}$/;
+const IPV4_RE = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+
+function ipv4(s: string): number[] | null {
+  const m = IPV4_RE.exec(s);
+  if (!m) return null;
+  const parts = m.slice(1).map(Number);
+  return parts.every((p) => p <= 255) ? parts : null;
+}
+
+/** IPv4 unchanged, IPv6 → `"<first four hextets>::/64"`; anything unparsable is used as is (capped). */
+export function rateLimitSubjectForIp(ip: string): string {
+  const s = ip.trim().toLowerCase();
+  if (!s.includes(":")) return s.slice(0, 64);
+  let addr = s.replace(/^\[|\]$/g, "").replace(/%.*$/, "");
+  // Embedded IPv4 in the last 32 bits (e.g. ::ffff:192.0.2.1) → two hextets.
+  const lastColon = addr.lastIndexOf(":");
+  const tail = addr.slice(lastColon + 1);
+  if (tail.includes(".")) {
+    const v4 = ipv4(tail);
+    if (!v4) return s.slice(0, 64);
+    addr = `${addr.slice(0, lastColon + 1)}${((v4[0]! << 8) | v4[1]!).toString(16)}:${((v4[2]! << 8) | v4[3]!).toString(16)}`;
+  }
+  const halves = addr.split("::");
+  if (halves.length > 2) return s.slice(0, 64);
+  const head = halves[0] === "" ? [] : halves[0]!.split(":");
+  const rest = halves.length === 2 ? (halves[1] === "" ? [] : halves[1]!.split(":")) : [];
+  const missing = 8 - head.length - rest.length;
+  if ((halves.length === 2 && missing < 1) || (halves.length === 1 && missing !== 0)) return s.slice(0, 64);
+  const hextets = [...head, ...Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...rest];
+  if (hextets.length !== 8 || !hextets.every((h) => HEXTET_RE.test(h))) return s.slice(0, 64);
+  const groups = hextets.map((h) => h.replace(/^0+(?=.)/, ""));
+  if (groups.slice(0, 5).every((g) => g === "0") && groups[5] === "ffff") {
+    // ::ffff:c000:201 written in hex: still the IPv4 client.
+    const a = parseInt(hextets[6]!, 16);
+    const b = parseInt(hextets[7]!, 16);
+    return [a >> 8, a & 0xff, b >> 8, b & 0xff].join(".");
+  }
+  return `${groups.slice(0, 4).join(":")}::/64`;
 }
 
 // Control characters (C0, DEL, C1) and lone surrogates.
