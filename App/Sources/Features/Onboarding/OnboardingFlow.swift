@@ -359,6 +359,9 @@ private struct OnbProgressTrail: View {
                     .frame(width: 12, height: 12)
                     .overlay { Circle().stroke(Theme.accentSecondary, lineWidth: 3) }
                     .shadow(color: Theme.accentSecondary.opacity(0.45), radius: 4)
+                    // At the summit the gold flag takes over – the climber steps aside instead of covering its foot.
+                    .scaleEffect(progress >= 1 ? 0.4 : 1)
+                    .opacity(progress >= 1 ? 0 : 1)
                     .offset(x: x - 6)
                 FlagShape()
                     .fill(progress >= 1 ? Theme.gold : Theme.summit)
