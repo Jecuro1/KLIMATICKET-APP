@@ -2,8 +2,8 @@
  "schema": "klimabilanz.places.golden/2",
  "engine": "scripts/places_reference.py == Packages/KlimaCore/Sources/KlimaCore/Places (weights v1)",
  "dataset_sha256_16": {
-  "places.bin": "ba824851cc1ae301",
-  "localities.bin": "e9614337c81f5312"
+  "places.bin": "98044d749c1c40f6",
+  "localities.bin": "0ea37ce590ed0d51"
  },
  "records": 60761,
  "how_to_read": "offline_top5 = search_offline(limit 12); merged_top5 = merge(offline, live fixture) top 5; prefixes = public search(limit 20). 'S:' stop/station, 'Ort:' locality, 'A:' address, 'P:' POI.",

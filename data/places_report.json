@@ -1,5 +1,4 @@
 {
- "generated": "2026-10-09T14:18:07+00:00",
  "inputs": {
   "oevgk_dbf": {
    "path": "Haltestellenkategorien_20251022_revised.dbf",
@@ -229,13 +228,361 @@
  },
  "size": {
   "places.bin": {
-   "bytes": 3060746,
-   "gzip -9": 1193688
+   "bytes": 1190424,
+   "gzip -9": 1185589
+  },
+  "stops_osm.bin": {
+   "bytes": 224848,
+   "gzip -9": 224762
   },
   "localities.bin": {
-   "bytes": 1482788,
-   "gzip -9": 641587
+   "bytes": 637416,
+   "gzip -9": 636647
   }
  },
- "attribution": "Haltestellen/Orte (places.bin) – Datenquellen und Lizenzen\n• Haltestellenliste: Mobilitätsverbünde Österreich OG (Haltestellen-WFS, Stand 10/2025), bereitgestellt über\n  ÖV-Güteklassen 2025 (ÖROK / BMIMI / AustriaTech, https://www.mobilitydata.gv.at/daten/öv-güteklassen).\n  Bei Nutzung von data.mobilitaetsverbuende.at: „Datenquelle: Mobilitätsverbünde Österreich OG,\n  Datenlizenz Mobilitätsverbünde Österreich v1.1 (https://data.mobilitaetsverbuende.at); verändert\n  (zusammengeführt, gekürzt, Koordinaten umgerechnet).“\n• Bahnhöfe: ÖBB-Personenverkehr AG, Soll-Fahrplan GTFS 2026, CC BY 4.0 (https://data.oebb.at).\n• Wien: Stadt Wien – data.wien.gv.at (Wiener Linien GTFS), CC BY 4.0.\n• Steiermark: Land Steiermark – data.steiermark.gv.at (Haltestellen des Verkehrsverbundes Steiermark), CC BY 4.0.\n• Gemeinden/Bundesländer: Statistik Austria – data.statistik.gv.at (Gemeindegrenzen 01.01.2026), CC BY 4.0.\n• EVA-Nummern der Bahnhöfe: Datenquelle ÖBB-Infrastruktur AG (Verzeichnis der Verkehrsstationen), CC BY 3.0 AT.\n• Orte (localities.bin): © OpenStreetMap-Mitwirkende, ODbL 1.0 (https://www.openstreetmap.org/copyright);\n  localities.bin ist eine abgeleitete Datenbank unter ODbL 1.0. places.bin enthält keine OSM-Daten."
+ "attribution": "Haltestellen/Orte (places.bin) – Datenquellen und Lizenzen\n• Haltestellenliste: Mobilitätsverbünde Österreich OG (Haltestellen-WFS, Stand 10/2025), bereitgestellt über\n  ÖV-Güteklassen 2025 (ÖROK / BMIMI / AustriaTech, https://www.mobilitydata.gv.at/daten/öv-güteklassen).\n  Bei Nutzung von data.mobilitaetsverbuende.at: „Datenquelle: Mobilitätsverbünde Österreich OG,\n  Datenlizenz Mobilitätsverbünde Österreich v1.1 (https://data.mobilitaetsverbuende.at); verändert\n  (zusammengeführt, gekürzt, Koordinaten umgerechnet).“\n• Bahnhöfe: ÖBB-Personenverkehr AG, Soll-Fahrplan GTFS 2026, CC BY 4.0 (https://data.oebb.at).\n• Wien: Stadt Wien – data.wien.gv.at (Wiener Linien GTFS), CC BY 4.0.\n• Steiermark: Land Steiermark – data.steiermark.gv.at (Haltestellen des Verkehrsverbundes Steiermark), CC BY 4.0.\n• Gemeinden/Bundesländer: Statistik Austria – data.statistik.gv.at (Gemeindegrenzen 01.01.2026), CC BY 4.0.\n• EVA-Nummern der Bahnhöfe: Datenquelle ÖBB-Infrastruktur AG (Verzeichnis der Verkehrsstationen), CC BY 3.0 AT.\n• Orte (localities.bin): © OpenStreetMap-Mitwirkende, ODbL 1.0 (https://www.openstreetmap.org/copyright);\n  localities.bin ist eine abgeleitete Datenbank unter ODbL 1.0. places.bin enthält keine OSM-Daten.\n• Linien (places.bin, Format v2): ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · Stadt Wien –\n  data.wien.gv.at, Wiener Linien Fahrplandaten (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at, Haltestellen und\n  Linienverkehr des Verkehrsverbundes Steiermark (CC BY 4.0) · Linien je Haltestelle: ÖV-Güteklassen 2025\n  (ÖROK/BMIMI/AustriaTech; Daten der Mobilitätsverbünde Österreich OG), verändert (zusammengeführt).\n• Linienverläufe, weitere Linien, Skigebiete, Lifte, Barrierefreiheit, Orte (stops_osm.bin, localities.bin):\n  © OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright); abgeleitete Datenbanken unter ODbL 1.0.\n• Skigebiete, Regionen, Betreibernamen, KlimaTicket-Regeln: eigene Zusammenstellung (scripts/places_curated.py).",
+ "v2": {
+  "files": {
+   "places.bin": 1190424,
+   "stops_osm.bin": 224848,
+   "localities.bin": 637416
+  },
+  "total_bytes": 2052688,
+  "budget_bytes": 5000000,
+  "gzip": {
+   "places.bin": 1185589,
+   "stops_osm.bin": 224762,
+   "localities.bin": 636647
+  },
+  "sizes": {
+   "places.bin": {
+    "RECS": {
+     "raw": 1111908,
+     "stored": 467679,
+     "codec": 1,
+     "count": 39711,
+     "crc32": 144895074
+    },
+    "STRS": {
+     "raw": 1645163,
+     "stored": 539518,
+     "codec": 1,
+     "count": 0,
+     "crc32": 1964234464
+    },
+    "GEMS": {
+     "raw": 16880,
+     "stored": 7732,
+     "codec": 1,
+     "count": 2110,
+     "crc32": 4065590905
+    },
+    "EXTR": {
+     "raw": 14922,
+     "stored": 7434,
+     "codec": 1,
+     "count": 0,
+     "crc32": 3774942248
+    },
+    "LCAT": {
+     "raw": 66936,
+     "stored": 10494,
+     "codec": 1,
+     "count": 2789,
+     "crc32": 3416434817
+    },
+    "LNAM": {
+     "raw": 2096,
+     "stored": 2096,
+     "codec": 0,
+     "count": 524,
+     "crc32": 88090044
+    },
+    "LSTP": {
+     "raw": 308569,
+     "stored": 124649,
+     "codec": 1,
+     "count": 65535,
+     "crc32": 333765079
+    },
+    "RPRD": {
+     "raw": 8820,
+     "stored": 8820,
+     "codec": 0,
+     "count": 1470,
+     "crc32": 3491600782
+    },
+    "GTAG": {
+     "raw": 6586,
+     "stored": 1178,
+     "codec": 1,
+     "count": 2110,
+     "crc32": 1894210466
+    },
+    "TAGS": {
+     "raw": 66651,
+     "stored": 9721,
+     "codec": 1,
+     "count": 6511,
+     "crc32": 3602079090
+    },
+    "META": {
+     "raw": 44827,
+     "stored": 10654,
+     "codec": 1,
+     "count": 0,
+     "crc32": 1473763665
+    },
+    "BASE": {
+     "raw": 32,
+     "stored": 32,
+     "codec": 0,
+     "count": 0,
+     "crc32": 2477053702
+    }
+   },
+   "stops_osm.bin": {
+    "STRS": {
+     "raw": 102323,
+     "stored": 36542,
+     "codec": 1,
+     "count": 0,
+     "crc32": 891058698
+    },
+    "LCAT": {
+     "raw": 15072,
+     "stored": 6773,
+     "codec": 1,
+     "count": 628,
+     "crc32": 950739286
+    },
+    "LNAM": {
+     "raw": 8672,
+     "stored": 3667,
+     "codec": 1,
+     "count": 2168,
+     "crc32": 1197869174
+    },
+    "LPAT": {
+     "raw": 31856,
+     "stored": 19071,
+     "codec": 1,
+     "count": 1991,
+     "crc32": 4013671368
+    },
+    "LSTP": {
+     "raw": 146902,
+     "stored": 71866,
+     "codec": 1,
+     "count": 12193,
+     "crc32": 4043254843
+    },
+    "TAGS": {
+     "raw": 234199,
+     "stored": 65790,
+     "codec": 1,
+     "count": 45465,
+     "crc32": 2787237093
+    },
+    "META": {
+     "raw": 84822,
+     "stored": 20805,
+     "codec": 1,
+     "count": 0,
+     "crc32": 3769635018
+    },
+    "BASE": {
+     "raw": 32,
+     "stored": 32,
+     "codec": 0,
+     "count": 0,
+     "crc32": 2477053702
+    }
+   },
+   "localities.bin": {
+    "RECS": {
+     "raw": 589400,
+     "stored": 326920,
+     "codec": 1,
+     "count": 21050,
+     "crc32": 1658256520
+    },
+    "STRS": {
+     "raw": 750144,
+     "stored": 256670,
+     "codec": 1,
+     "count": 0,
+     "crc32": 4125703532
+    },
+    "GEMS": {
+     "raw": 16880,
+     "stored": 7739,
+     "codec": 1,
+     "count": 2110,
+     "crc32": 3229198504
+    },
+    "EXTR": {
+     "raw": 126300,
+     "stored": 45906,
+     "codec": 1,
+     "count": 0,
+     "crc32": 2224799451
+    }
+   }
+  },
+  "counts": {
+   "stops": 39711,
+   "lines_official": 2789,
+   "lines_extra_osm": 628,
+   "pairs_official": 71098,
+   "pairs_osm": 12193,
+   "lifts": 670,
+   "operators_official": 4,
+   "operators_extra": 334,
+   "lnam_official": 524,
+   "lnam_osm": 2168,
+   "ski_areas_curated": 153,
+   "ski_areas_osm": 56,
+   "ski_alliances": 9,
+   "klimaticket_default": 37977,
+   "lines_patched": 1991,
+   "lines_patched_superseded": 88,
+   "osm_duplicate_dropped": 782,
+   "rail_category_stations": 1470,
+   "stops_overriding_gem_regions": 21,
+   "superseded_successor_pairs": 2382,
+   "tags_official": 6511,
+   "tags_osm": 45465,
+   "termini_kind1": 588,
+   "termini_kind2": 2212
+  },
+  "coverage": {
+   "by_state": {
+    "B": {
+     "stops": 1634,
+     "pct_official": 86.0,
+     "pct_merged": 87.6
+    },
+    "K": {
+     "stops": 3419,
+     "pct_official": 79.5,
+     "pct_merged": 81.5
+    },
+    "NÖ": {
+     "stops": 8984,
+     "pct_official": 82.9,
+     "pct_merged": 85.5
+    },
+    "OÖ": {
+     "stops": 5828,
+     "pct_official": 85.3,
+     "pct_merged": 87.1
+    },
+    "S": {
+     "stops": 2712,
+     "pct_official": 82.5,
+     "pct_merged": 89.3
+    },
+    "ST": {
+     "stops": 8996,
+     "pct_official": 81.2,
+     "pct_merged": 82.6
+    },
+    "T": {
+     "stops": 3922,
+     "pct_official": 76.5,
+     "pct_merged": 84.2
+    },
+    "V": {
+     "stops": 2140,
+     "pct_official": 80.6,
+     "pct_merged": 84.8
+    },
+    "W": {
+     "stops": 1958,
+     "pct_official": 92.6,
+     "pct_merged": 93.8
+    },
+    "X": {
+     "stops": 118,
+     "pct_official": 90.7,
+     "pct_merged": 91.5
+    }
+   },
+   "by_mode": {
+    "bus": {
+     "stops": 36842,
+     "pct_official": 82.3,
+     "pct_merged": 85.2
+    },
+    "cable/ondemand": {
+     "stops": 356,
+     "pct_official": 24.4,
+     "pct_merged": 38.2
+    },
+    "rail": {
+     "stops": 1777,
+     "pct_official": 94.6,
+     "pct_merged": 96.8
+    },
+    "ship": {
+     "stops": 96,
+     "pct_official": 0.0,
+     "pct_merged": 33.3
+    },
+    "subway": {
+     "stops": 84,
+     "pct_official": 100.0,
+     "pct_merged": 100.0
+    },
+    "tram": {
+     "stops": 556,
+     "pct_official": 99.6,
+     "pct_merged": 99.6
+    }
+   }
+  },
+  "check": {
+   "coverage": {
+    "merged_pct": 85.36,
+    "with_departures_pct": 99.98,
+    "official_pct": 82.42,
+    "stops": 39711,
+    "stops_with_lines": 33897,
+    "stops_with_lines_official": 32729
+   },
+   "spot_checks": {
+    "passed": 51,
+    "total": 51
+   },
+   "termini": {
+    "lines_kind2": 2212,
+    "lines_kind1": 588,
+    "lines_without": 617,
+    "outside_component": 0,
+    "examples": []
+   },
+   "sha256": {
+    "places.bin": "98044d749c1c40f6002c6ea897b124227f58fbcd3097bb3560cddd9dc1c506bc",
+    "stops_osm.bin": "f2cf2524c8cc7dcf6508517de717cf2f8b0e6e2923aecc03b0375a0c11aaeaea",
+    "localities.bin": "0ea37ce590ed0d510ece259f59ef7d0874f20c5150a3dcbc8eaf44224c0bdad7"
+   }
+  },
+  "self_test_errors": [],
+  "inputs": {
+   "oevgk_dbf": "b74685261b253af1",
+   "oebb_gtfs_stops": "651b7e0b41bfa4b4",
+   "wl_stops": "e3b4ac49bece0bef",
+   "stmk_dbf": "4ff66cceb2a20bb4",
+   "gemeinden_shp": "a57b0ca2060b83d6",
+   "app_stations": "0ded06cda27b73c1",
+   "lines_official": "f9b09c608f39bffd",
+   "tags_official_records": "ed9f7669303ccf0a",
+   "lines_full": "8a771ea1f065f622",
+   "tags": "407e3222a79f86d8",
+   "osm_json": "149bfeb8678482b2"
+  },
+  "zlib": "1.3",
+  "build_date": "2026-10-09"
+ }
 }
