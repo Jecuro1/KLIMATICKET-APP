@@ -9,7 +9,8 @@ name: iOS
 #     screenshots; a manual run captures them when the "screenshots" input is set).
 # Screenshots are uploaded as the run artifact "screenshots-<build>" (README.md inside names version and commit);
 # there is no screenshots branch any more.
-# Optional signed build + TestFlight upload kicks in automatically when the signing secrets exist (see docs/SETUP.md).
+# Optional signed build + TestFlight upload kicks in automatically when the signing secrets exist (see docs/SETUP.md);
+# release runs then also publish an ad-hoc build for "Direkt installieren" (itms-services, docs/DIREKT_INSTALLIEREN.md).
 
 on:
   push:
@@ -315,17 +316,25 @@ jobs:
           name: screenshots-${{ steps.version.outputs.build }}
           path: shots
 
-      - name: Signed build + TestFlight (optional)
+      - name: Signed build – TestFlight + Direkt installieren (optional)
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          # The App Store Connect key: the text of AuthKey_XXXX.p8 (can be pasted on an iPhone) or base64 of the file.
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           ASC_KEY_BASE64: ${{ secrets.ASC_KEY_BASE64 }}
           VERSION: ${{ steps.version.outputs.version }}
           BUILD: ${{ steps.version.outputs.build }}
+          # Releases also export the ad-hoc .ipa for direct install (dist/ota); variable TESTFLIGHT=false skips the upload.
+          ADHOC: ${{ steps.version.outputs.release }}
+          TESTFLIGHT: ${{ vars.TESTFLIGHT }}
         run: |
-          if [ -z "$APPLE_TEAM_ID" ] || [ -z "$ASC_KEY_BASE64" ]; then
+          if [ -z "$APPLE_TEAM_ID" ] || [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || { [ -z "$ASC_KEY_P8" ] && [ -z "$ASC_KEY_BASE64" ]; }; then
+            if [ -n "$APPLE_TEAM_ID$ASC_KEY_ID$ASC_ISSUER_ID$ASC_KEY_P8$ASC_KEY_BASE64" ]; then
+              echo "::warning title=Signierter Build::Nicht alle Secrets gesetzt – nötig: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID und ASC_KEY_P8 (oder ASC_KEY_BASE64). docs/DIREKT_INSTALLIEREN.md"
+            fi
             echo "Keine Signing-Secrets – überspringe signierten Build (unsignierte .ipa wurde erstellt)."
             exit 0
           fi
@@ -342,11 +351,27 @@ jobs:
           # Immutable per-tag .ipa URL, so the sha256 in the source always matches the file behind it.
           IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, steps.version.outputs.tag) || format('https://github.com/{0}/releases/download/{1}', github.repository, steps.version.outputs.tag) }}
           MINIMUM_SUPPORTED_VERSION: ${{ vars.MINIMUM_SUPPORTED_VERSION }}
+          # Direct install: manifest.plist + ad-hoc .ipa are release assets of this tag; OTA_BASE_URL (e.g.
+          # https://<worker>/v1/ota, docs/DIREKT_INSTALLIEREN.md) serves them without GitHub's download redirect.
+          OTA_BASE_URL: ${{ vars.OTA_BASE_URL }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
+          # Only when "Signed build" produced the ad-hoc .ipa: manifest.plist, and update.json gets otaManifestURL.
+          OTA_ARGS=()
+          if [ -f "dist/ota/KlimaBilanz-${VERSION}-adhoc.ipa" ]; then
+            OTA_BASE="${IPA_DOWNLOAD_BASE}"
+            if [ -n "${OTA_BASE_URL:-}" ]; then OTA_BASE="${OTA_BASE_URL%/}/${TAG}"; fi
+            if python3 scripts/make_ota_manifest.py --ipa "dist/ota/KlimaBilanz-${VERSION}-adhoc.ipa" --base-url "$OTA_BASE"; then
+              OTA_ARGS=(--ota-manifest dist/ota/manifest.plist --ota-manifest-url "${OTA_BASE}/manifest.plist")
+            else
+              echo "::error title=Direkt installieren::Kein manifest.plist – dieses Release bietet keine Direkt-Installation an"
+              rm -rf dist/ota
+            fi
+          fi
           # appPermissions, version, buildVersion, size and sha256 are all derived from the final .ipa
           # (entitlements as extracted with `ldid -e` in "Package .ipa").
-          python3 scripts/make_release_metadata.py dist --strict --entitlements build/entitlements/*.plist
+          python3 scripts/make_release_metadata.py dist --strict --entitlements build/entitlements/*.plist ${OTA_ARGS[@]+"${OTA_ARGS[@]}"}
           python3 -m json.tool dist/altstore-source.json > /dev/null
           python3 -m json.tool dist/update.json > /dev/null
 
@@ -381,6 +406,7 @@ jobs:
             dist/altstore-source.json
             dist/tariffs.json
             dist/AppIcon.png
+            dist/ota/*
           body_path: dist/RELEASE_NOTES.md
           generate_release_notes: true
 
@@ -399,6 +425,7 @@ jobs:
             dist/altstore-source.json
             dist/tariffs.json
             dist/AppIcon.png
+            dist/ota/*
           body_path: dist/RELEASE_NOTES.md
 
   perf:

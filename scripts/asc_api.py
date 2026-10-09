@@ -10,7 +10,8 @@ Commands:
       on an iPhone – lost line breaks, spaces or "smart" dashes are repaired) or ASC_KEY_BASE64 (base64 of the file).
   register-device --event FILE | --udid-env NAME  [--name NAME]
       Registers an iPhone (platform IOS) – idempotent: an existing device stays, a disabled one is enabled again.
-      The UDID comes from the workflow_dispatch event payload or an environment variable, never from the command line.
+      UDID and name come from the workflow_dispatch event payload (inputs.udid / inputs.name) or an environment
+      variable – never from the command line, where a log could show them.
   refresh-adhoc --bundle-id ID [--bundle-id ID ...]
       Deletes ad-hoc profiles of these bundle ids that miss an enabled iPhone (or are no longer valid), so the next
       `xcodebuild -exportArchive -allowProvisioningUpdates` creates them again – with every registered device.
@@ -393,11 +394,13 @@ def check_ipa(ipa_path, wanted=None):
 
 # ---------------------------------------------------------------- CLI
 
-def udid_from_args(args):
+def device_from_args(args):
+    """(raw UDID, name) from the event payload or the environment; --name wins over inputs.name."""
     if args.event:
         with open(args.event, encoding="utf-8") as f:
-            return str((json.load(f).get("inputs") or {}).get("udid", ""))
-    return os.environ.get(args.udid_env or "", "")
+            inputs = json.load(f).get("inputs") or {}
+        return str(inputs.get("udid") or ""), args.name or str(inputs.get("name") or "")
+    return os.environ.get(args.udid_env or "", ""), args.name or ""
 
 
 def main(argv=None, opener=None):
@@ -409,7 +412,7 @@ def main(argv=None, opener=None):
     src = p_reg.add_mutually_exclusive_group(required=True)
     src.add_argument("--event", help="workflow_dispatch event payload (GITHUB_EVENT_PATH)")
     src.add_argument("--udid-env", help="name of the environment variable holding the UDID")
-    p_reg.add_argument("--name", default="iPhone")
+    p_reg.add_argument("--name", help="device name (default: inputs.name of the event, else iPhone)")
     p_ref = sub.add_parser("refresh-adhoc")
     p_ref.add_argument("--bundle-id", action="append", required=True)
     sub.add_parser("devices")
@@ -424,9 +427,9 @@ def main(argv=None, opener=None):
             print("API-Schlüssel gelesen.")
             return 0
         if args.command == "register-device":
-            raw = udid_from_args(args)
+            raw, raw_name = device_from_args(args)
             udid = normalize_udid(raw)
-            name = normalize_name(args.name)
+            name = normalize_name(raw_name)
             client = client_from_env(opener=opener, redact=(raw.strip(), udid, name))
             result = register_device(client, udid, name)
             print({"created": "iPhone registriert.",

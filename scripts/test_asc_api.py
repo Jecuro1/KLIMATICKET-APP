@@ -329,6 +329,29 @@ class DeviceTests(unittest.TestCase):
         self.assertNotIn(UDID_NEW.lower(), text.lower())
         self.assertNotIn("Marcels", text)
         self.assertEqual(len(fake.devices), 1)
+        posted = [c[3] for c in fake.calls if c[0] == "POST"]
+        self.assertEqual(posted[0]["data"]["attributes"]["name"], "Marcels iPhone")
+
+    def test_cli_takes_the_name_from_the_event(self):
+        fake = FakeAsc()
+        with tempfile.TemporaryDirectory() as tmp:
+            event = os.path.join(tmp, "event.json")
+            with open(event, "w") as f:
+                json.dump({"inputs": {"udid": UDID_NEW, "name": "  Arbeits-iPhone "}}, f)
+            key = os.path.join(tmp, "k.p8")
+            open(key, "w").close()
+            old = dict(os.environ)
+            os.environ.update({"ASC_KEY_PATH": key, "ASC_KEY_ID": "K", "ASC_ISSUER_ID": "I"})
+            orig = asc_api.make_token
+            asc_api.make_token = lambda *a, **k: "TOKEN"
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(asc_api.main(["register-device", "--event", event], opener=fake), 0)
+            finally:
+                asc_api.make_token = orig
+                os.environ.clear()
+                os.environ.update(old)
+        self.assertEqual(fake.devices[0]["attributes"]["name"], "Arbeits-iPhone")
 
 
 class DevicesCommandTests(unittest.TestCase):
