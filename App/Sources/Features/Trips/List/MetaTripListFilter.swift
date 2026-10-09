@@ -76,7 +76,10 @@ struct MetaTripFilterCounts {
     init(trips: [TripEntity]) {
         var counts: [String: Int] = [:]
         var uncategorized = 0, induced = 0
+        var journeys = Set<UUID>()
         for trip in trips {
+            // MARK: trips – a journey counts once (its legs share purpose and "ohne KlimaTicket", docs/JOURNEYS.md)
+            if let journey = trip.journeyID, !journeys.insert(journey).inserted { continue }
             if trip.categoryRaw.isEmpty { uncategorized += 1 } else { counts[trip.categoryRaw, default: 0] += 1 }
             if trip.isInduced { induced += 1 }
         }

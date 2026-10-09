@@ -337,6 +337,16 @@ private struct TripListFavoriteRow: View {
             }
             let via = favorite.via   // MARK: via
             if !via.isEmpty { ViaCaption(vias: via, font: .footnote) }
+            let legs = favorite.legs   // MARK: trips – a Kombi-Vorlage: its legs' modes
+            if legs.count > 1 {
+                HStack(spacing: 6) {
+                    TripJourneyModeStrip(modes: legs.map(\.mode), font: .caption2.weight(.bold))
+                    Text("Kombi-Vorlage · \(TripJourneyFormat.legCount(legs.count))")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                }
+            }
             metaLine
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
@@ -365,7 +375,10 @@ private struct TripListFavoriteRow: View {
     }
 
     private var accessibilityLabel: String {
-        let route = "\(ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName)), \(favorite.mode.displayName)\(favorite.isRoundTrip ? ", hin und retour" : "")"   // MARK: via
+        let legs = favorite.legs   // MARK: trips
+        let modes = legs.count > 1 ? "Kombi-Vorlage mit \(TripJourneyFormat.legCount(legs.count)): \(TripJourneyFormat.modeList(legs.map(\.mode)))"
+            : favorite.mode.displayName
+        let route = "\(ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName)), \(modes)\(favorite.isRoundTrip ? ", hin und retour" : "")"   // MARK: via
         return hasCustomTitle ? "\(favorite.title): \(route)" : route
     }
 }

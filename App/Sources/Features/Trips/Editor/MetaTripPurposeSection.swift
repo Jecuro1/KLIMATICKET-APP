@@ -15,7 +15,8 @@ enum MetaCategorySource: Equatable {
 extension TripEditorModel {
     /// Changes whenever the inputs of the purpose suggestion change (route, mode, direction).
     var metaSuggestionKey: String {
-        "\(resolvedFromName.lowercased())|\(resolvedToName.lowercased())|\(mode.rawValue)|\(isRoundTrip)"
+        // MARK: trips – a journey is suggested for as a whole (start of the first leg → end of the last).
+        "\(journeyStartName.lowercased())|\(journeyEndName.lowercased())|\(legs.map(\.mode.rawValue).joined(separator: ","))|\(isRoundTrip)"
     }
 
     /// Chip tap: selects the purpose, or clears it when it is already selected.
@@ -38,7 +39,7 @@ extension TripEditorModel {
         }
         let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil && $0.categoryRaw != "" })
         let records = ((try? context.fetch(descriptor)) ?? []).map(\.record)
-        if let suggestion = CategoryStats.suggestedCategory(fromName: resolvedFromName, toName: resolvedToName,
+        if let suggestion = CategoryStats.suggestedCategory(fromName: journeyStartName, toName: journeyEndName,
                                                             in: records, excludingID: editingTrip?.id) {
             category = suggestion
             categorySource = .route

@@ -42,6 +42,17 @@ struct TripEdPriceCard: View {
                     .fill(Theme.separator)
                     .frame(height: 1)
                     .padding(.horizontal, Theme.Spacing.m)
+                // MARK: trips – the price above is one leg's; the journey's sum sits here
+                if model.isJourney {
+                    journeyTotalRow
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .padding(.vertical, 10)
+                        .motionTransition(.rise)
+                    Rectangle()
+                        .fill(Theme.separator)
+                        .frame(height: 1)
+                        .padding(.horizontal, Theme.Spacing.m)
+                }
                 roundTripRow
                     .padding(.horizontal, Theme.Spacing.m)
                     .padding(.vertical, 10)
@@ -123,9 +134,36 @@ struct TripEdPriceCard: View {
     }
 
     private var eyebrowText: String {
-        if model.isFareManual { return "Eigener Preis" }
-        if model.showsStoredFare { return "Erfasster Normalpreis" }
-        return model.estimate == nil ? "Normalpreis" : "Geschätzter Normalpreis"
+        // MARK: trips – a journey's price card shows the selected leg
+        let leg = model.isJourney ? "Etappe \(model.selectedLeg + 1) · " : ""
+        if model.isFareManual { return leg + "Eigener Preis" }
+        if model.showsStoredFare { return leg + "Erfasster Normalpreis" }
+        return leg + (model.estimate == nil ? "Normalpreis" : "Geschätzter Normalpreis")
+    }
+
+    /// "⦿ Reise gesamt · 3 Etappen ··· € 90,40" (per direction).
+    private var journeyTotalRow: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.s) {
+            TripEdIconTile(symbol: "point.3.connected.trianglepath.dotted", tint: Theme.accentSecondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Reise gesamt")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(TripJourneyFormat.legCount(model.legs.count)) · pro Richtung")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            Spacer(minLength: Theme.Spacing.xs)
+            Text(Format.euroPrecise(model.journeyFare))
+                .font(Theme.Typography.numberSmall)
+                .foregroundStyle(Theme.textPrimary)
+                .numericValue(model.journeyFare)
+                .lineLimit(1)
+                .layoutPriority(1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Reise gesamt, \(TripJourneyFormat.legCount(model.legs.count))")
+        .accessibilityValue("\(Format.euroPrecise(model.journeyFare)) pro Richtung")
     }
 
     private var infoButton: some View {

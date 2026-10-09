@@ -16,14 +16,15 @@ struct TripEditorView: View {
     }
 
     var body: some View {
-        TripEdSheet(app: app, draft: draft, editing: editingTrip)
+        TripEdSheet(app: app, draft: draft, editing: editingLegs)
     }
 
-    /// The trip being edited (looked up by `draft.editingTripID`).
-    private var editingTrip: TripEntity? {
-        guard let id = draft.editingTripID else { return nil }
+    /// The trip being edited (looked up by `draft.editingTripID`) – every leg of its journey, in travel order.  // MARK: trips
+    private var editingLegs: [TripEntity] {
+        guard let id = draft.editingTripID else { return [] }
         let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate<TripEntity> { $0.id == id })
-        return (try? context.fetch(descriptor))?.first
+        guard let trip = (try? context.fetch(descriptor))?.first else { return [] }
+        return Repository(context: context, app: app).journeyLegs(of: trip)
     }
 }
 
@@ -42,12 +43,14 @@ private struct TripEdSheet: View {
 
     @State private var picking: TripEdPick?
     @State private var selectionTick = 0
+    /// Bumps when a leg or a transfer was removed (one `.decrease` haptic).  // MARK: trips
+    @State private var removedTick = 0
     /// Saved: the button turns into "✓ Gespeichert" for a moment, then the sheet closes.
     @State private var isSaved = false
     @FocusState private var focus: TripEdField?
 
-    init(app: AppState, draft: TripDraft, editing: TripEntity?) {
-        _model = State(initialValue: TripEditorModel(app: app, draft: draft, editing: editing))
+    init(app: AppState, draft: TripDraft, editing: [TripEntity]) {
+        _model = State(initialValue: TripEditorModel(app: app, draft: draft, editing: editing, focus: draft.editingTripID))
     }
 
     var body: some View {
@@ -67,6 +70,7 @@ private struct TripEdSheet: View {
         .presentationDragIndicator(.visible)
         .haptic(.selection, trigger: model.mode)
         .haptic(.selection, trigger: selectionTick)
+        .haptic(.decrease, trigger: removedTick)   // MARK: trips
         // MARK: tripmeta – suggest the purpose from the favourite / the route's last trip.
         .onAppear { model.metaApplySuggestion(favorites: favorites, context: context) }
         .onChange(of: model.metaSuggestionKey) { _, _ in
@@ -85,15 +89,29 @@ private struct TripEdSheet: View {
                     }
                 }
                 Group {
-                    TripEdRouteCard(model: model) { pick in
+                    TripEdRouteCard(model: model, onPick: { pick in
                         focus = nil
                         picking = pick
+                    }, onSelectLeg: selectLeg, onRemoveLeg: { index in
+                        withMotion(Motion.smooth) { model.removeLeg(index) }
+                        removedTick += 1
+                    }, onRemoveTransfer: { stop in
+                        withMotion(Motion.smooth) { model.removeTransfer(stop) }
+                        removedTick += 1
+                    })
+                    // MARK: trips – which leg the mode strip and the price card edit
+                    if model.isJourney {
+                        TripEdLegFocusBar(model: model, onSelect: selectLeg)
+                            .padding(.top, Theme.Spacing.xxs)
+                            .motionTransition(.rise)
                     }
                     TripEdModePicker(model: model)
                     TripEdDateCard(model: model)
                     TripEdPriceCard(model: model, focus: $focus)
                     TripEdImpactCard(model: model)
-                    RideEdStartCard(model: model, isExistingFavorite: existingFavorite != nil) { dismiss() }  // MARK: live
+                    if !model.isJourney {   // MARK: trips – a Live-Fahrt follows one route
+                        RideEdStartCard(model: model, isExistingFavorite: existingFavorite != nil) { dismiss() }  // MARK: live
+                    }
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
                 // MARK: tripmeta – purpose chips scroll edge to edge, so the section sits outside the padded group.
@@ -132,14 +150,12 @@ private struct TripEdSheet: View {
             StationPickerView(
                 title: pick.pickerTitle,
                 selection: { station in
-                    // MARK: via – a via pick goes to its slot (TripEdViaRows.swift)
-                    withMotion(Motion.smooth) {
-                        if !model.tripEdSetVia(station, for: pick) { model.setStation(station, for: pick.endpoint) }
-                    }
+                    // MARK: via, trips – a via, transfer or new leg goes to its slot (TripEdComponents.tripEdApply)
+                    withMotion(Motion.smooth) { model.tripEdApply(station, for: pick) }
                     selectionTick += 1
                 },
                 customName: pick.tripEdAllowsCustomName ? { name in
-                    withMotion(Motion.smooth) { model.setCustomName(name, for: pick.endpoint) }
+                    withMotion(Motion.smooth) { model.tripEdApplyCustomName(name, for: pick) }
                     selectionTick += 1
                 } : nil)
             .toolbar {
@@ -173,6 +189,15 @@ private struct TripEdSheet: View {
 
     // MARK: Actions
 
+    // MARK: trips – a leg chip or the focus bar's ‹ › picks the leg the mode strip and the price card edit.
+    private func selectLeg(_ index: Int) {
+        guard index != model.selectedLeg, model.legs.indices.contains(index) else { return }
+        focus = nil
+        let changesMode = model.legs[index].mode != model.mode
+        withMotion(Motion.snappy) { model.selectLeg(index) }
+        if !changesMode { selectionTick += 1 }   // a new mode plays the strip's selection haptic already (one per action)
+    }
+
     private func applyFavorite(_ favorite: FavoriteRouteEntity) {
         focus = nil
         withMotion(Motion.smooth) { model.apply(favorite: favorite) }
@@ -201,15 +226,18 @@ private struct TripEdSheet: View {
         let wasEditing = model.isEditing
         guard let trip = model.save(context: context) else { return }
 
+        // MARK: trips – a journey is one save: the whole route and the value of every leg.
+        let total = model.totalValue
         if wasEditing {
-            let route = TripEdFormat.routeTitle(from: trip.fromName, to: trip.toName, roundTrip: trip.isRoundTrip)
-            app.showToast("checkmark.circle.fill", "Änderungen gespeichert", route + " · " + Format.euroPrecise(trip.totalValue))
+            let route = TripEdFormat.routeTitle(from: model.journeyStartName, to: model.journeyEndName, roundTrip: trip.isRoundTrip)
+            app.showToast("checkmark.circle.fill", "Änderungen gespeichert", route + " · " + Format.euroPrecise(total))
         } else {
-            var subtitle = TripEdFormat.plusEuro(trip.totalValue)
+            var subtitle = TripEdFormat.plusEuro(total)
+            if model.isJourney { subtitle = TripJourneyFormat.legCount(model.legs.count) + " · " + subtitle }
             if let outcome {
                 subtitle += outcome.before >= 1 ? " · reiner Gewinn" : " · jetzt \(Format.percent(outcome.after)) amortisiert"
             }
-            app.showToast("checkmark.circle.fill", "Fahrt gespeichert", subtitle)
+            app.showToast("checkmark.circle.fill", model.isJourney ? "Reise gespeichert" : "Fahrt gespeichert", subtitle)
         }
 
         // Crossed the summit with this trip → global celebration (consumed by the dashboard, once per ticket).
@@ -251,7 +279,7 @@ private struct TripEdSaveBar: View {
             .buttonStyle(.primary)
             .disabled(!model.canSave && !isSaved)
             .allowsHitTesting(!isSaved)
-            .accessibilityLabel(isSaved ? "Gespeichert" : (model.isEditing ? "Änderungen speichern" : "Fahrt speichern"))
+            .accessibilityLabel(isSaved ? "Gespeichert" : saveTitle)
             .accessibilityValue(model.totalValue > 0 && !isSaved ? Format.euroPrecise(model.totalValue) : "")
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -260,13 +288,18 @@ private struct TripEdSaveBar: View {
         .motionAnimation(Motion.smooth, value: model.validationHint)
     }
 
+    private var saveTitle: String {
+        if model.isEditing { return "Änderungen speichern" }
+        return model.isJourney ? "Reise speichern" : "Fahrt speichern"   // MARK: trips
+    }
+
     private var label: some View {
         HStack(spacing: Theme.Spacing.s) {
             Image(systemName: isSaved ? "checkmark.circle.fill" : "checkmark")
                 .font(.headline.weight(.bold))
                 .symbolReplaceTransition()
                 .symbolBounce(on: isSaved)
-            Text(isSaved ? "Gespeichert" : (model.isEditing ? "Änderungen speichern" : "Fahrt speichern"))
+            Text(isSaved ? "Gespeichert" : saveTitle)
                 .contentTransition(.opacity)
             if model.totalValue > 0 && !isSaved {
                 Capsule()

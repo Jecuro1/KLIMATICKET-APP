@@ -10,6 +10,7 @@ import KlimaCore
 /// rows dip under the finger and zoom into the detail; inserts, deletes and filter results animate as one list diff;
 /// a trip that was just logged glows once in its row. Swipe left: Löschen (with "Rückgängig") · Bearbeiten; swipe right:
 /// Nochmal · Favorit (KBTips.TripSwipe explains it once); long press: preview card + all actions.
+/// A journey ("Reise mit Etappen", docs/JOURNEYS.md) is one row; a tap unfolds its legs and "Reise ansehen".
 struct TripsView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -36,6 +37,9 @@ struct TripsView: View {
     @State private var freshTripID: UUID?
     /// KBTips.TripSwipe is eligible (TipKit decides; never in screenshot runs).
     @State private var showsSwipeTip = false
+    /// Journeys whose legs are unfolded (row ids).  // MARK: trips
+    @State private var expandedJourneys: Set<UUID> = []
+    @State private var expandTick = 0
 
     var body: some View {
         let content = makeContent()
@@ -51,6 +55,7 @@ struct TripsView: View {
         }
         .zoomTransitionScope()
         .haptic(.selection, trigger: selectionTick)
+        .haptic(.tap, trigger: expandTick)
         .onChange(of: trips.count) { oldCount, newCount in
             markFreshTrip(oldCount: oldCount, newCount: newCount)
         }
@@ -58,6 +63,12 @@ struct TripsView: View {
             for await shouldDisplay in KBTips.TripSwipe().shouldDisplayUpdates {
                 if shouldDisplay != showsSwipeTip { withMotion(Motion.smooth) { showsSwipeTip = shouldDisplay } }
             }
+        }
+        .task {
+            // CI screenshot "tripsJourney": the demo journey unfolded.
+            guard LaunchMode.screenshotScreen == "tripsJourney" else { return }
+            try? await Task.sleep(for: .milliseconds(300))
+            if let journey = TripListItem.group(trips).first(where: \.isJourney) { expandedJourneys.insert(journey.id) }
         }
     }
 
@@ -168,11 +179,125 @@ struct TripsView: View {
 
     private func monthSection(_ month: TripListMonth) -> some View {
         Section {
-            ForEach(month.trips) { trip in
-                row(for: trip)
+            ForEach(month.items) { item in
+                if item.isJourney {
+                    journeyRows(item)
+                } else {
+                    row(for: item.first)
+                }
             }
         } header: {
             TripListMonthHeader(month: month)
+        }
+    }
+
+    // MARK: trips – a journey: one row, its legs and "Reise ansehen" unfold below it
+
+    @ViewBuilder
+    private func journeyRows(_ item: TripListItem) -> some View {
+        let isExpanded = expandedJourneys.contains(item.id)
+        Button {
+            toggle(item)
+        } label: {
+            TripListJourneyRow(item: item, isExpanded: isExpanded)
+        }
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: item.id, cornerRadius: Theme.Radius.chip)
+        .listRowBackground(TripListCardBackground(isHighlighted: item.id == freshTripID))
+        .listRowSeparatorTint(Theme.separator)
+        .listRowSeparator(isExpanded ? .hidden : .automatic, edges: .bottom)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button(role: .destructive) {
+                deleteJourney(item, viaSwipe: true)
+            } label: {
+                Label("Löschen", systemImage: "trash")
+            }
+            Button {
+                swipeUsed()
+                actions.edit(item.first)
+            } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+            .tint(Theme.dusk)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                swipeUsed()
+                withMotion(Motion.smooth) { actions.repeatJourneyToday(item.legs) }
+            } label: {
+                Label("Nochmal", systemImage: "arrow.clockwise")
+            }
+            .tint(Theme.accent)
+            Button {
+                swipeUsed()
+                actions.addFavorite(journey: item.legs, favorites: favorites)
+            } label: {
+                Label("Vorlage", systemImage: "star.fill")
+            }
+            .tint(Theme.gold)
+        }
+        .contextMenu {
+            journeyContextMenu(item)
+        } preview: {
+            TripListJourneyPreviewCard(item: item)
+        }
+        if isExpanded {
+            ForEach(Array(item.legs.enumerated()), id: \.element.id) { index, leg in
+                Button {
+                    path.append(.trip(leg))
+                } label: {
+                    TripListJourneyLegRow(leg: leg, index: index, count: item.legs.count)
+                }
+                .buttonStyle(.pressableCard)
+                .zoomSource(id: leg.id, cornerRadius: Theme.Radius.chip)
+                .listRowBackground(TripListCardBackground())
+                .listRowSeparator(.hidden)
+            }
+            Button {
+                path.append(.journey(item.id))
+            } label: {
+                TripListJourneyDetailLinkRow(item: item)
+            }
+            .buttonStyle(.pressableCard)
+            .listRowBackground(TripListCardBackground())
+            .listRowSeparator(.hidden, edges: .top)
+            .listRowSeparatorTint(Theme.separator)
+        }
+    }
+
+    @ViewBuilder
+    private func journeyContextMenu(_ item: TripListItem) -> some View {
+        Button { path.append(.journey(item.id)) } label: { Label("Reise ansehen", systemImage: "point.3.connected.trianglepath.dotted") }
+        Button { actions.edit(item.first) } label: { Label("Bearbeiten", systemImage: "pencil") }
+        Button { withMotion(Motion.smooth) { actions.repeatJourneyToday(item.legs) } } label: {
+            Label("Heute nochmal fahren", systemImage: "arrow.clockwise")
+        }
+        Button { withMotion(Motion.smooth) { actions.duplicateJourney(item.legs) } } label: {
+            Label("Duplizieren", systemImage: "plus.square.on.square")
+        }
+        Button { actions.addFavorite(journey: item.legs, favorites: favorites) } label: {
+            Label("Als Kombi-Vorlage speichern", systemImage: "star")
+        }
+        MetaTripPurposeMenu(trip: item.first) { category, isInduced in
+            withMotion(Motion.snappy) { actions.setPurpose(journey: item.legs, category: category, isInduced: isInduced) }
+            selectionTick += 1
+        }
+        Divider()
+        Button(role: .destructive) { deleteJourney(item, viaSwipe: false) } label: { Label("Reise löschen", systemImage: "trash") }
+    }
+
+    private func toggle(_ item: TripListItem) {
+        withMotion(Motion.smooth) {
+            if expandedJourneys.contains(item.id) { expandedJourneys.remove(item.id) } else { expandedJourneys.insert(item.id) }
+        }
+        expandTick += 1
+    }
+
+    private func deleteJourney(_ item: TripListItem, viaSwipe: Bool) {
+        if viaSwipe { swipeUsed() }
+        withMotion(Motion.smooth) {
+            expandedJourneys.remove(item.id)
+            actions.deleteJourney(item.legs)
         }
     }
 
@@ -252,7 +377,7 @@ struct TripsView: View {
     /// The selected ticket year has no trips yet (e.g. a fresh follow-up ticket) while older trips exist.
     private func emptyPeriodState(_ content: TripListContent) -> some View {
         let lead: String = content.scopeTicket.map { "Im \(TripListFormat.periodLabel($0))" } ?? "In diesem Zeitraum"
-        let message = "\(lead) hast du noch keine Fahrt erfasst. Deine \(TripListFormat.tripCount(trips.count)) findest du unter „Alle Fahrten“."
+        let message = "\(lead) hast du noch keine Fahrt erfasst. Deine \(TripListFormat.tripCount(content.allTripCount)) findest du unter „Alle Fahrten“."
         return ContentUnavailableView {
             Label("Noch keine Fahrten", systemImage: "tram.fill")
                 .foregroundStyle(Theme.textPrimary)
@@ -310,8 +435,11 @@ struct TripsView: View {
     private func destination(for route: TripListRoute) -> some View {
         switch route {
         case .trip(let trip):
-            TripDetailView(trip: trip)
+            TripDetailView(trip: trip, openJourney: { id in path.append(.journey(id)) })   // MARK: trips
                 .zoomDestination(id: trip.id)
+        case .journey(let id):   // MARK: trips
+            TripJourneyDetailView(journeyID: id) { leg in path.append(.trip(leg)) }
+                .zoomDestination(id: id)
         case .favorites:
             FavoritesManagerView()
         }
@@ -355,8 +483,13 @@ struct TripsView: View {
         let purpose = categoryFilter
         let isFiltered = mode != nil || purpose.isActive || !tokens.isEmpty
         let index = contentCache.searchIndex
-        let visible = !isFiltered ? periodTrips : periodTrips.filter { trip in
-            (mode.map { trip.mode == $0 } ?? true) && purpose.matches(trip) && index.matches(trip, tokens: tokens)
+        // MARK: trips – rows are trips and journeys; a journey matches when any leg has the mode and every word appears
+        // in one of its legs ("Lech Wien").
+        let periodItems = TripListItem.group(periodTrips)
+        let visible = !isFiltered ? periodItems : periodItems.filter { item in
+            (mode.map { mode in item.legs.contains { $0.mode == mode } } ?? true)
+                && item.legs.contains(where: purpose.matches)
+                && tokens.allSatisfy { token in item.legs.contains { index.matches($0, tokens: [token]) } }
         }
         // The amortisation only when nothing is filtered (otherwise it would mislead) – memoised by Analytics.
         let summary: SavingsSummary? = isFiltered ? nil : scopeTicket.map {
@@ -367,12 +500,14 @@ struct TripsView: View {
             scope: scope,
             scopeTicket: scopeTicket,
             periodTrips: periodTrips,
-            visibleTrips: visible,
+            periodItemCount: periodItems.count,
+            allTripCount: Set(trips.map { $0.journeyID ?? $0.id }).count,
+            visibleItems: visible,
             months: TripListMonth.group(visible),
             modeOptions: modeOptions(for: periodTrips),
             summary: summary,
             stats: summary.map { TripListStats(count: $0.tripCount, distanceKm: $0.distanceKm, value: $0.totalValue) }
-                ?? TripListStats(visible),
+                ?? TripListStats(items: visible),
             // Stays visible on "Alle Fahrten" too – otherwise a single-ticket user could never switch back.
             showsScopePicker: !tickets.isEmpty && (tickets.count > 1 || scope == .all || periodTrips.count < trips.count),
             isFiltered: isFiltered,
@@ -497,7 +632,7 @@ struct TripsView: View {
         guard newCount > oldCount, !MotionPolicy.isStatic,
               let newest = trips.max(by: { $0.createdAt < $1.createdAt }),
               Date().timeIntervalSince(newest.createdAt) < 8 else { return }
-        let id = newest.id
+        let id = newest.journeyID ?? newest.id   // MARK: trips – a journey's row glows as a whole
         freshTripID = id
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.6))
@@ -607,28 +742,30 @@ private enum TripListScope: Hashable {
 
 private enum TripListRoute: Hashable {
     case trip(TripEntity)
+    /// MARK: trips – the journey detail (docs/JOURNEYS.md)
+    case journey(UUID)
     case favorites
 }
 
-/// One month section of the list (trips arrive sorted newest first).
+/// One month section of the list (rows arrive sorted newest first; a journey is one row).
 private struct TripListMonth: Identifiable {
     let id: Date
-    var trips: [TripEntity]
+    var items: [TripListItem]
 
-    var value: Double { trips.reduce(0) { $0 + $1.totalValue } }
+    var value: Double { items.reduce(0) { $0 + $1.totalValue } }
 
     /// "Oktober 2026" – formatted mid-month so time-zone offsets never shift it into the previous month.
     var title: String { Format.monthYear(id.addingTimeInterval(14 * 86_400)) }
 
-    static func group(_ trips: [TripEntity]) -> [TripListMonth] {
+    static func group(_ items: [TripListItem]) -> [TripListMonth] {
         let calendar = Calendar.vienna
         var result: [TripListMonth] = []
-        for trip in trips {
-            let month = calendar.date(from: calendar.dateComponents([.year, .month], from: trip.date)) ?? trip.date
+        for item in items {
+            let month = calendar.date(from: calendar.dateComponents([.year, .month], from: item.date)) ?? item.date
             if let last = result.indices.last, result[last].id == month {
-                result[last].trips.append(trip)
+                result[last].items.append(item)
             } else {
-                result.append(TripListMonth(id: month, trips: [trip]))
+                result.append(TripListMonth(id: month, items: [item]))
             }
         }
         return result
@@ -640,7 +777,10 @@ private struct TripListContent {
     var scope: TripListScope
     var scopeTicket: TicketEntity?
     var periodTrips: [TripEntity]
-    var visibleTrips: [TripEntity]
+    /// Rows of the period (a journey counts once) and of every ticket year.  // MARK: trips
+    var periodItemCount: Int
+    var allTripCount: Int
+    var visibleItems: [TripListItem]
     var months: [TripListMonth]
     var modeOptions: [TransportMode]
     /// Amortisation of the scope ticket – nil while filtering (it would mislead) and for "Alle Fahrten".
@@ -664,13 +804,14 @@ private struct TripListStats {
         self.value = value
     }
 
-    init(_ trips: [TripEntity]) {
+    /// What the filter shows: a journey is one "Fahrt", its legs add km and value.
+    init(items: [TripListItem]) {
         var distance = 0.0, value = 0.0
-        for trip in trips {
-            distance += trip.totalDistanceKm
-            value += trip.totalValue
+        for item in items {
+            distance += item.totalDistanceKm
+            value += item.totalValue
         }
-        self.init(count: trips.count, distanceKm: distance, value: value)
+        self.init(count: items.count, distanceKm: distance, value: value)
     }
 }
 
@@ -938,7 +1079,7 @@ private struct TripListSummaryCard: View {
 
     private var subline: String {
         if content.isFiltered {
-            return "\(Format.number(Double(content.visibleTrips.count))) von \(TripListFormat.tripCount(content.periodTrips.count)) · gefiltert"
+            return "\(Format.number(Double(content.visibleItems.count))) von \(TripListFormat.tripCount(content.periodItemCount)) · gefiltert"
         }
         if let ticket = content.scopeTicket {
             // The summit is the own share (price + add-ons − employer contribution) – name it when it differs.
@@ -964,10 +1105,10 @@ private struct TripListMonthHeader: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Spacer(minLength: Theme.Spacing.xs)
-            Text(TripListFormat.tripCount(month.trips.count))
+            Text(TripListFormat.tripCount(month.items.count))
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
-                .numericValue(Double(month.trips.count))
+                .numericValue(Double(month.items.count))
             Text(Format.euro(month.value, decimals: 0))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(Theme.textPrimary)

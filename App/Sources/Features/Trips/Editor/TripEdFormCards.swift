@@ -31,7 +31,10 @@ struct TripEdFavoritesRow: View {
 
     // MARK: via
     private func spokenRoute(_ favorite: FavoriteRouteEntity) -> String {
-        ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName) + (favorite.isRoundTrip ? ", hin und retour" : "")
+        let legs = favorite.legs   // MARK: trips
+        let combo = legs.count > 1 ? ", Kombi-Vorlage mit \(TripJourneyFormat.legCount(legs.count)): \(TripJourneyFormat.modeList(legs.map(\.mode)))" : ""
+        return ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName) + combo
+            + (favorite.isRoundTrip ? ", hin und retour" : "")
     }
 
     private func chip(_ favorite: FavoriteRouteEntity) -> some View {
@@ -48,6 +51,10 @@ struct TripEdFavoritesRow: View {
                     .symbolBounce(on: isSelected)
                 ViaRouteLabel(route: title, vias: favorite.via,   // MARK: via – "· über Feldkirch" when it fits, else ⦿
                               color: isSelected ? Theme.accentText : Theme.textPrimary)
+                let legs = favorite.legs   // MARK: trips – a Kombi-Vorlage shows its legs' modes
+                if legs.count > 1 {
+                    TripJourneyModeStrip(modes: legs.map(\.mode), font: .caption2.weight(.bold), plated: false)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -229,7 +236,7 @@ struct TripEdDetailsCard: View {
     private var favoriteRow: some View {
         if isExistingFavorite {
             HStack {
-                TripEdRowLabel(symbol: "star.fill", tint: Theme.gold, title: "Schon ein Favorit",
+                TripEdRowLabel(symbol: "star.fill", tint: Theme.gold, title: model.isJourney ? "Schon eine Kombi-Vorlage" : "Schon ein Favorit",
                                subtitle: "Mit einem Tap auf der Übersicht erfassbar")
                 Spacer(minLength: 0)
             }
@@ -238,8 +245,10 @@ struct TripEdDetailsCard: View {
             .accessibilityElement(children: .combine)
         } else {
             Toggle(isOn: favoriteBinding) {
-                TripEdRowLabel(symbol: "star.fill", tint: Theme.gold, title: "Als Favorit speichern",
-                               subtitle: "Für die Schnellerfassung auf der Übersicht")
+                // MARK: trips – a journey becomes a Kombi-Vorlage: every leg with one tap
+                TripEdRowLabel(symbol: "star.fill", tint: Theme.gold,
+                               title: model.isJourney ? "Als Kombi-Vorlage speichern" : "Als Favorit speichern",
+                               subtitle: model.isJourney ? "Alle Etappen mit einem Tap erfassen" : "Für die Schnellerfassung auf der Übersicht")
             }
             .tint(Theme.accent)
             .padding(.horizontal, Theme.Spacing.m)

@@ -203,6 +203,92 @@ struct TripListActions {
         celebrateIfCrossed(baseline, adding: trip, value: favorite.valuePerLog)
     }
 
+    // MARK: Journeys (docs/JOURNEYS.md) – one action for every leg, one toast, one commit
+
+    /// "Heute nochmal fahren" for a whole journey.
+    func repeatJourneyToday(_ legs: [TripEntity]) {
+        guard legs.count > 1 else { if let trip = legs.first { repeatToday(trip) }; return }
+        let baseline = breakEvenBaseline()
+        let copies = repository.repeatJourney(legs)
+        let value = copies.reduce(0) { $0 + $1.totalValue }
+        app.showToast("checkmark.circle.fill", "Reise nochmal erfasst",
+                      "Heute · \(Self.journeyTitle(legs)) · \(Format.euroPrecise(value))")
+        if let first = copies.first { celebrateIfCrossed(baseline, adding: first, value: value) }
+    }
+
+    /// Exact copy of a journey on the same day, note included.
+    func duplicateJourney(_ legs: [TripEntity]) {
+        guard legs.count > 1 else { if let trip = legs.first { duplicate(trip) }; return }
+        let baseline = breakEvenBaseline()
+        let note = legs.lazy.map(\.note).first { !$0.isEmpty } ?? ""
+        let copies = repository.repeatJourney(legs, on: legs[0].date, note: note)
+        let value = copies.reduce(0) { $0 + $1.totalValue }
+        app.showToast("plus.square.fill.on.square.fill", "Reise dupliziert",
+                      "\(Format.relativeDay(legs[0].date)) · \(Format.euroPrecise(value))")
+        if let first = copies.first { celebrateIfCrossed(baseline, adding: first, value: value) }
+    }
+
+    /// Soft-deletes every leg with "Rückgängig" on the toast.
+    func deleteJourney(_ legs: [TripEntity]) {
+        guard legs.count > 1 else { if let trip = legs.first { delete(trip) }; return }
+        repository.deleteTrips(legs)
+        let ids = legs.map(\.id)
+        let title = Self.journeyTitle(legs)
+        let app = app, context = context
+        app.showToast("trash.fill", "Reise gelöscht", title, actionTitle: "Rückgängig") {
+            TripListActions(app: app, context: context).restoreJourney(tripIDs: ids, title: title)
+        }
+    }
+
+    /// Undo of `deleteJourney` – looks the legs up again (after "Alle Daten löschen" they are gone: nothing happens).
+    func restoreJourney(tripIDs: [UUID], title: String) {
+        let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { tripIDs.contains($0.id) && $0.deletedAt != nil })
+        let found = (try? context.fetch(descriptor)) ?? []
+        guard !found.isEmpty else { return }
+        withMotion(Motion.smooth) { repository.restoreTrips(found) }
+        app.showToast("arrow.uturn.backward.circle.fill", "Reise wiederhergestellt", title)
+    }
+
+    /// The Kombi-Vorlage that already covers these legs (same stops and modes in order, same direction type), if any.
+    func existingFavorite(forJourney legs: [TripEntity], in favorites: [FavoriteRouteEntity]) -> FavoriteRouteEntity? {
+        guard legs.count > 1 else { return legs.first.flatMap { existingFavorite(for: $0, in: favorites) } }
+        return favorites.first { favorite in
+            let template = favorite.legs
+            guard favorite.deletedAt == nil, favorite.isRoundTrip == legs[0].isRoundTrip, template.count == legs.count else { return false }
+            return zip(template, legs).allSatisfy { $0.fromName == $1.fromName && $0.toName == $1.toName && $0.modeRaw == $1.modeRaw }
+        }
+    }
+
+    /// "Als Kombi-Vorlage speichern".
+    func addFavorite(journey legs: [TripEntity], favorites: [FavoriteRouteEntity]) {
+        guard legs.count > 1 else { if let trip = legs.first { addFavorite(trip, favorites: favorites) }; return }
+        if let existing = existingFavorite(forJourney: legs, in: favorites) {
+            app.showToast("star.circle.fill", "Schon eine Kombi-Vorlage", existing.displayTitle)
+            return
+        }
+        guard let favorite = repository.metaAddFavorite(fromJourney: legs) else { return }
+        app.showToast("star.circle.fill", "Als Kombi-Vorlage gespeichert",
+                      "\(TripListFormat.routeTitle(favorite.fromName, favorite.toName, roundTrip: favorite.isRoundTrip)) · \(TripJourneyFormat.legCount(legs.count))")
+    }
+
+    /// Purpose and "ohne KlimaTicket" for every leg (one commit).
+    func setPurpose(journey legs: [TripEntity], category: TripCategory?, isInduced: Bool) {
+        let changed = legs.filter { $0.category != category || $0.isInduced != isInduced }
+        guard !changed.isEmpty else { return }
+        for leg in changed {
+            leg.category = category
+            leg.isInduced = isInduced
+            leg.touch()
+        }
+        repository.commit()
+    }
+
+    /// "Lech → Wien Praterstern"
+    static func journeyTitle(_ legs: [TripEntity]) -> String {
+        guard let first = legs.first, let last = legs.last else { return "" }
+        return TripListFormat.routeTitle(first.fromName, last.toName, roundTrip: first.isRoundTrip)
+    }
+
     // MARK: Break-even
 
     private struct BreakEvenBaseline {

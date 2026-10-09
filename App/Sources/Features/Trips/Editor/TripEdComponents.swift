@@ -8,12 +8,25 @@ import KlimaCore
 // MARK: - Enums shared by the editor's subviews
 
 /// Which stop the station picker edits.
-enum TripEdPick: String, Identifiable {
+enum TripEdPick: Hashable, Identifiable {
+    /// Start / destination of the whole route.
     case from, to
-    // MARK: via – first / second via, or a new one (TripEdViaRows.swift)
+    // MARK: via – first / second via of the selected leg, or a new one (TripEdViaRows.swift)
     case via1, via2, viaNew
+    // MARK: trips – a transfer stop of a journey (index into the model's stops) / the destination of a new leg
+    case transfer(Int), legNew
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case .from: "from"
+        case .to: "to"
+        case .via1: "via1"
+        case .via2: "via2"
+        case .viaNew: "viaNew"
+        case .transfer(let stop): "transfer\(stop)"
+        case .legNew: "legNew"
+        }
+    }
 
     var endpoint: TripEditorModel.Endpoint { self == .from ? .from : .to }
 
@@ -22,6 +35,8 @@ enum TripEdPick: String, Identifiable {
         case .from: "Start wählen"
         case .to: "Ziel wählen"
         case .via1, .via2, .viaNew: "Über"
+        case .transfer: "Umstieg in"
+        case .legNew: "Weiter nach"
         }
     }
 }
@@ -95,12 +110,44 @@ extension TripEditorModel {
         return "\(mode.displayName) · \(Format.km(distanceKm))"
     }
 
-    /// Whether a favourite describes exactly the route currently in the form.
+    /// Whether a favourite describes exactly the route currently in the form (a Kombi-Vorlage: every leg).
     func tripEdMatches(_ favorite: FavoriteRouteEntity) -> Bool {
-        guard favorite.modeRaw == mode.rawValue, favorite.isRoundTrip == isRoundTrip else { return false }
+        guard favorite.isRoundTrip == isRoundTrip else { return false }
+        // MARK: trips – journeys match Kombi-Vorlagen leg by leg, single routes only single favourites.
+        let favoriteLegs = favorite.legs
+        guard isJourney == (favoriteLegs.count > 1) else { return false }
+        if isJourney {
+            guard favoriteLegs.count == legs.count else { return false }
+            return favoriteLegs.indices.allSatisfy { index in
+                let leg = favoriteLegs[index]
+                return leg.mode == legs[index].mode
+                    && Self.tripEdSameStop(leg.fromStationID, stops[index].station, leg.fromName, stops[index].resolvedName)
+                    && Self.tripEdSameStop(leg.toStationID, stops[index + 1].station, leg.toName, stops[index + 1].resolvedName)
+            }
+        }
+        guard favorite.modeRaw == mode.rawValue else { return false }
         guard tripEdViaMatches(favorite) else { return false }   // MARK: via
         return Self.tripEdSameStop(favorite.fromStationID, fromStation, favorite.fromName, resolvedFromName)
             && Self.tripEdSameStop(favorite.toStationID, toStation, favorite.toName, resolvedToName)
+    }
+
+    // MARK: trips – the station picker's result, wherever it goes (start, destination, via, transfer, new leg).
+    func tripEdApply(_ station: Station, for pick: TripEdPick) {
+        switch pick {
+        case .transfer(let stop): setStop(stop, station: station)
+        case .legNew: appendLeg(to: station)
+        case .from, .to: setStation(station, for: pick.endpoint)
+        case .via1, .via2, .viaNew: _ = tripEdSetVia(station, for: pick)
+        }
+    }
+
+    func tripEdApplyCustomName(_ name: String, for pick: TripEdPick) {
+        switch pick {
+        case .transfer(let stop): setCustomStop(stop, name: name)
+        case .legNew: appendLeg(customName: name)
+        case .from, .to: setCustomName(name, for: pick.endpoint)
+        case .via1, .via2, .viaNew: break
+        }
     }
 
     private static func tripEdSameStop(_ id: String?, _ station: Station?, _ name: String, _ resolved: String) -> Bool {

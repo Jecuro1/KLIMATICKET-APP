@@ -50,3 +50,23 @@ Tests: `TripJourneyTests` (KlimaCore).
 `journeyLegs(of:)` / `journeyLegs(_:)` (live legs in travel order), `saveJourney(inserting:updating:removing:)` (the
 editor), `deleteTrips` / `restoreTrips` (a journey with „Rückgängig"), `repeatJourney` („Nochmal", „Duplizieren" – new
 journey id), `metaAddFavorite(fromJourney:)` (Kombi-Vorlage), `logFavorite` / `undoLogFavorite` (every leg).
+
+## 5. Screens
+
+- **Fahrt erfassen** (`TripEditorModel`: `stops` + `legs`, `selectedLeg`): „⊕ Umsteigen? Etappe anhängen" under the
+  destination picks where the next leg goes („Weiter nach"). A journey's route card is its chain – Von · leg chip ·
+  „Umstieg" · leg chip · … · Nach (`TripEdJourneyRows.swift`). A chip (mode plate, km, price) selects the leg the mode
+  strip, the price card and the vias edit; „Etappe 2 von 3 ‹ ›" above the mode strip says which. Transfers: tap → picker,
+  ✕ → the two legs merge; a chip's context menu removes its leg. The swap button turns the whole journey around. The price
+  card shows the selected leg („Etappe 2 · Geschätzter Normalpreis") and „Reise gesamt"; the save bar and the „Wirkung"
+  card the journey's total. „Als Kombi-Vorlage speichern"; no Live-Fahrt for journeys (one route only).
+- **Fahrten** (`TripListItem`, `TripListJourneyViews.swift`): one row per journey – first start, last destination, the
+  legs' modes „🚌 › 🚆 › 🚇 3 Etappen ⌄", the summed value. A tap unfolds the legs (each opens its own detail) and „Reise
+  ansehen"; swipe/long press act on the whole journey (Löschen with „Rückgängig", Bearbeiten, Nochmal, Duplizieren,
+  Kombi-Vorlage, Kategorie). Filters: a journey shows when any leg has the mode; search words may hit different legs.
+- **Reise-Detail** (`TripJourneyDetailView`): total, leg timeline, km / CO₂ / Etappen / Anteil tiles, map with each leg in
+  its mode's colour, note, actions. A leg's own detail names its journey („Etappe 2 von 3 · Teil der Reise …").
+- **Favoriten**: Kombi-Vorlagen show their legs' modes; the editor's favourite chips too.
+
+Screenshot routes (the demo journey is seeded only into these launches, `TripScreenshotSeeds`): `tripsJourney`,
+`journeyDetail`, `addTripJourney`, `favoritesCombo`.

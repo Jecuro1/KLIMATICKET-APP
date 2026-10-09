@@ -9,6 +9,8 @@ import KlimaCore
 /// in one short stagger; scrolling, the numeral condenses behind the cards and the bar title becomes the route.
 struct TripDetailView: View {
     let trip: TripEntity
+    /// Opens the journey this trip is a leg of ("Reise mit Etappen") – nil where there is no journey detail to push.  // MARK: trips
+    var openJourney: ((UUID) -> Void)? = nil
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -30,6 +32,7 @@ struct TripDetailView: View {
     @State private var favoriteBurst = 0
     @State private var repeatTurns = 0
     @State private var routeCache = TripListDetailRouteCache()
+    @State private var journeyCache = TripListDetailJourneyCache()   // MARK: trips
     /// Scroll progress of the hero (0 at rest … 1 condensed) – read only by the hero's modifier.
     @State private var condense = ScrollCondense()
     /// The hero has scrolled away: the bar says which trip this is ("St. Anton → Lech"). Flips at a threshold only.
@@ -45,6 +48,10 @@ struct TripDetailView: View {
                     .reveal(.focus)
                 routeCard(info)
                     .reveal(order: 1)
+                if let journey = info.journey {   // MARK: trips – a leg: which journey it belongs to
+                    journeyCard(journey)
+                        .reveal(order: 1)
+                }
                 tiles(info)
                     .reveal(order: 2)
                 if let route = info.route {
@@ -388,6 +395,39 @@ struct TripDetailView: View {
         return "Für diese Haltestelle liegen keine Tarifdaten vor – der Normalpreis stammt aus deiner Erfassung."
     }
 
+    // MARK: trips – Etappe einer Reise
+
+    /// "🚌›🚆›🚇 · Etappe 2 von 3 · Lech → Wien Praterstern · Reise ›"
+    private func journeyCard(_ journey: TripListDetailJourney) -> some View {
+        GlassCard(padding: Theme.Spacing.m) {
+            HStack(spacing: Theme.Spacing.s) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        TripJourneyModeStrip(modes: journey.modes)
+                        Kicker(text: "Etappe \(journey.index + 1) von \(journey.modes.count)")
+                    }
+                    Text("Teil der Reise \(journey.title) · \(Format.euroPrecise(journey.totalValue))")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: Theme.Spacing.xs)
+                if let openJourney {
+                    Button {
+                        openJourney(journey.id)
+                    } label: {
+                        Label("Reise", systemImage: "chevron.right")
+                            .labelStyle(.titleOnly)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.glass)
+                    .accessibilityLabel("Ganze Reise ansehen")
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
     // MARK: Note
 
     private var trimmedNote: String { trip.note.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -457,7 +497,7 @@ struct TripDetailView: View {
             Button(role: .destructive) {
                 isConfirmingDelete = true
             } label: {
-                Label("Fahrt löschen", systemImage: "trash")
+                Label(info.journey == nil ? "Fahrt löschen" : "Etappe löschen", systemImage: "trash")   // MARK: trips
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.negative)
                     .padding(.vertical, Theme.Spacing.xs)
@@ -508,6 +548,7 @@ struct TripDetailView: View {
         let ticket = tickets.first { $0.period.contains(trip.date) }
 
         return TripListDetailInfo(
+            journey: journeyCache.value(for: trip, context: context),   // MARK: trips
             fromStation: resolved.fromStation,
             toStation: resolved.toStation,
             viaStations: resolved.viaStations,   // MARK: via
@@ -523,6 +564,8 @@ struct TripDetailView: View {
 // MARK: - Supporting types
 
 private struct TripListDetailInfo {
+    /// The journey this trip is a leg of (nil for a trip of its own).  // MARK: trips
+    var journey: TripListDetailJourney?
     var fromStation: Station?
     var toStation: Station?
     /// Resolved via stations in travel order (nil where a via has no known station).  // MARK: via
@@ -532,6 +575,35 @@ private struct TripListDetailInfo {
     var ticket: TicketEntity?
     var co2Kg: Double
     var isFavorite: Bool
+}
+
+// MARK: trips – the journey of a leg, looked up once per version of the trip
+private struct TripListDetailJourney {
+    var id: UUID
+    var index: Int
+    var modes: [TransportMode]
+    var title: String
+    var totalValue: Double
+}
+
+@MainActor
+private final class TripListDetailJourneyCache {
+    private var key: (id: UUID, updatedAt: Date)?
+    private var journey: TripListDetailJourney?
+
+    func value(for trip: TripEntity, context: ModelContext) -> TripListDetailJourney? {
+        if let key, key.id == trip.id, key.updatedAt == trip.updatedAt { return journey }
+        key = (trip.id, trip.updatedAt)
+        journey = nil
+        guard let id = trip.journeyID else { return nil }
+        let jid: UUID? = id
+        let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.journeyID == jid && $0.deletedAt == nil })
+        let legs = ((try? context.fetch(descriptor)) ?? []).sorted { ($0.legIndex, $0.createdAt) < ($1.legIndex, $1.createdAt) }
+        guard legs.count > 1, let index = legs.firstIndex(where: { $0.id == trip.id }) else { return nil }
+        journey = TripListDetailJourney(id: id, index: index, modes: legs.map(\.mode), title: TripListActions.journeyTitle(legs),
+                                        totalValue: legs.reduce(0) { $0 + $1.totalValue })
+        return journey
+    }
 }
 
 private struct TripListDetailRoute {

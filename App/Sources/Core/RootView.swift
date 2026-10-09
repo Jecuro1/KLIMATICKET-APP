@@ -355,6 +355,8 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { app.selectedTab = .ticket }
         case "tripEdit", "tripEditFare": // MARK: trips
             MainTabView().onAppear { app.selectedTab = .trips }
+        case "tripsJourney", "journeyDetail", "addTripJourney", "favoritesCombo": // MARK: trips – a demo journey for these launches
+            TripScreenshotJourneyHost(screen: screen)
         case "tripDetail":
             NavigationStack {
                 if let trip = Repository(context: context, app: app).liveTrips().first {

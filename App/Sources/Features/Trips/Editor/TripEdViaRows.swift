@@ -52,7 +52,7 @@ extension TripEditorModel {
     /// Applies a station picked for a via slot. False when `pick` is not a via (the caller sets start / destination).
     func tripEdSetVia(_ station: Station, for pick: TripEdPick) -> Bool {
         switch pick {
-        case .from, .to:
+        case .from, .to, .transfer, .legNew:   // MARK: trips
             return false
         case .via1, .via2:
             let index = pick == .via1 ? 0 : 1
@@ -84,7 +84,12 @@ extension TripEditorModel {
 
 extension TripEdPick {
     /// Vias are stations only: a free-text place could be neither priced nor drawn.
-    var tripEdAllowsCustomName: Bool { self == .from || self == .to }
+    var tripEdAllowsCustomName: Bool {
+        switch self {
+        case .via1, .via2, .viaNew: false
+        case .from, .to, .transfer, .legNew: true   // MARK: trips
+        }
+    }
 }
 
 // MARK: - Rows
@@ -264,7 +269,7 @@ private struct TripEdViaRow: View {
 
 /// The ⊕ of "Zwischenhalt hinzufügen", sitting on the route line: a small ring in the card colour (it cuts the dashed
 /// line), accent plus.
-private struct TripEdViaAddMark: View {
+struct TripEdViaAddMark: View {
     /// Opaque stand-in for the card surface over the sheet (Theme.surface is translucent) – only for tiny knock-outs.
     static let cardColor = Color(light: "#FCFDFE", dark: "#1D273C")
 
