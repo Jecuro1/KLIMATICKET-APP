@@ -10,7 +10,7 @@ public enum PKCE {
 
     /// base64url(SHA-256(verifier)) without padding: always 43 characters.
     public static func challenge(for verifier: String) -> String {
-        base64URL(Data(SHA256Digest.hash(Data(verifier.utf8))))
+        base64URL(Data(SHA256Hasher.hash(Data(verifier.utf8))))
     }
 
     /// `byteCount` bytes from the system CSPRNG (`SystemRandomNumberGenerator`: arc4random on Apple platforms,
@@ -27,7 +27,7 @@ public enum PKCE {
 
     /// Lowercase hex SHA-256 (the Apple request nonce is the hash of the raw nonce).
     public static func sha256Hex(_ string: String) -> String {
-        hex(SHA256Digest.hash(Data(string.utf8)))
+        hex(SHA256Hasher.hash(Data(string.utf8)))
     }
 
     public static func base64URL(_ data: Data) -> String {
@@ -50,7 +50,7 @@ public enum PKCE {
 }
 
 /// SHA-256: CryptoKit where it exists, otherwise the portable implementation below (Linux has no CryptoKit).
-enum SHA256Digest {
+enum SHA256Hasher {
     static func hash(_ data: Data) -> [UInt8] {
         #if canImport(CryptoKit)
         return Array(CryptoKit.SHA256.hash(data: data))

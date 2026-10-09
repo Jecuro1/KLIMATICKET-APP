@@ -61,14 +61,14 @@ final class CryptoTests: XCTestCase {
 
     func testPortableSHA256AgainstNISTVectors() {
         for (input, expected) in vectors {
-            XCTAssertEqual(PKCE.hex(SHA256Digest.portable(Data(input.utf8))), expected, input)
+            XCTAssertEqual(PKCE.hex(SHA256Hasher.portable(Data(input.utf8))), expected, input)
         }
-        XCTAssertEqual(PKCE.hex(SHA256Digest.portable(Data(repeating: 0x61, count: 1_000_000))),
+        XCTAssertEqual(PKCE.hex(SHA256Hasher.portable(Data(repeating: 0x61, count: 1_000_000))),
                        "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0")
         // Padding edge cases (55, 56, 63, 64 bytes) must agree with the platform implementation where there is one.
         for length in [55, 56, 63, 64, 65, 119, 120] {
             let data = Data((0..<length).map { UInt8($0 & 0xff) })
-            XCTAssertEqual(SHA256Digest.portable(data), SHA256Digest.hash(data), "length \(length)")
+            XCTAssertEqual(SHA256Hasher.portable(data), SHA256Hasher.hash(data), "length \(length)")
         }
     }
 
