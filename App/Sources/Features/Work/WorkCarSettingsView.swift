@@ -6,45 +6,54 @@ import KlimaCore
 struct WorkCarSettingsView: View {
     /// Shows a link to the "Öffis vs. Auto" screen (hidden when pushed from that screen).
     var showsDetailLink: Bool = true
+    /// Opens scrolled to the "Ohne Auto" fixed costs (QA screenshot "carSettingsDetails").
+    var focusesFixedCosts: Bool = false
 
     @Environment(AppState.self) private var app
     @State private var resetTrigger = 0
 
     var body: some View {
         @Bindable var settings = WorkSettings.shared
-        List {
-            modeSection(settings)
-            parameterSection(settings)
-            fixedCostsSection(settings)
-            assumptionsSection
-            if showsDetailLink {
-                Section {
-                    NavigationLink {
-                        WorkCarView()
-                    } label: {
-                        SetRowLabel(title: "Öffis vs. Auto ansehen", subtitle: "Kosten-Verlauf, Break-even, CO₂ und Zeit",
-                                    symbol: "chart.line.uptrend.xyaxis", tint: Theme.pine)
+        ScrollViewReader { proxy in
+            List {
+                modeSection(settings)
+                parameterSection(settings)
+                fixedCostsSection(settings)
+                assumptionsSection
+                if showsDetailLink {
+                    Section {
+                        NavigationLink {
+                            WorkCarView()
+                        } label: {
+                            SetRowLabel(title: "Öffis vs. Auto ansehen", subtitle: "Kosten-Verlauf, Break-even, CO₂ und Zeit",
+                                        symbol: "chart.line.uptrend.xyaxis", tint: Theme.pine)
+                        }
+                        .listRowBackground(Theme.surface)
                     }
-                    .listRowBackground(Theme.surface)
+                }
+                if !settings.isCarAtDefaults {
+                    Section {
+                        Button {
+                            withAnimation(.snappy) { settings.resetCar() }
+                            resetTrigger += 1
+                        } label: {
+                            Label("Standardwerte wiederherstellen", systemImage: "arrow.uturn.backward")
+                                .font(.body.weight(.medium))
+                        }
+                        .listRowBackground(Theme.surface)
+                    }
                 }
             }
-            if !settings.isCarAtDefaults {
-                Section {
-                    Button {
-                        withAnimation(.snappy) { settings.resetCar() }
-                        resetTrigger += 1
-                    } label: {
-                        Label("Standardwerte wiederherstellen", systemImage: "arrow.uturn.backward")
-                            .font(.body.weight(.medium))
-                    }
-                    .listRowBackground(Theme.surface)
-                }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(Theme.Spacing.l)
+            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .task {
+                guard focusesFixedCosts else { return }
+                try? await Task.sleep(for: .milliseconds(150))
+                proxy.scrollTo(Self.fixedCostsID, anchor: UnitPoint(x: 0.5, y: 0.22))
             }
         }
-        .listStyle(.insetGrouped)
-        .listSectionSpacing(Theme.Spacing.l)
-        .scrollContentBackground(.hidden)
-        .scrollDismissesKeyboard(.interactively)
         .background { SetBackdrop() }
         .navigationTitle("Auto-Vergleich")
         .navigationBarTitleDisplayMode(.large)
@@ -52,6 +61,8 @@ struct WorkCarSettingsView: View {
         .sensoryFeedback(.impact(weight: .light), trigger: settings.carGivenUp) { _, _ in app.settings.hapticsEnabled }
         .sensoryFeedback(.success, trigger: resetTrigger) { _, _ in app.settings.hapticsEnabled }
     }
+
+    private static let fixedCostsID = "work.car.fixedCosts"
 
     // MARK: Mode
 
@@ -189,6 +200,7 @@ struct WorkCarSettingsView: View {
                     SetRowLabel(title: "Auto abgeschafft", subtitle: "Eingesparte Fixkosten anteilig dazurechnen",
                                 symbol: "car.side.fill", tint: Theme.pine)
                 }
+                .id(Self.fixedCostsID)
                 if settings.carGivenUp {
                     WorkDecimalField(title: "Versicherung & Steuer", symbol: "checkmark.shield.fill", tint: Theme.glacier,
                                      value: $settings.insurance, unit: "€/Jahr", range: 0...20_000)

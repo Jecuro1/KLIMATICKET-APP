@@ -54,7 +54,7 @@ enum WorkDemo {
 
 /// CI screenshot routes of this module: car carDetails carSettings carSettingsDetails carCard work workDetails workSelf
 /// workAssign workContribution workPDF workLogbookPDF ("…Details" = the same screen scrolled further: carDetails to its
-/// middle – chart axis, legend, "So rechnen wir" –, the others to their end).
+/// middle – chart axis, legend, "So rechnen wir" –, carSettings to the fixed costs, work to its end).
 struct WorkScreenshotHost: View {
     let screen: String
 
@@ -86,8 +86,7 @@ struct WorkScreenshotHost: View {
         case "carSettings":
             NavigationStack { WorkCarSettingsView() }
         case "carSettingsDetails":
-            NavigationStack { WorkCarSettingsView() }
-                .defaultScrollAnchor(.bottom)
+            NavigationStack { WorkCarSettingsView(focusesFixedCosts: true) }
         case "carCard":
             NavigationStack { WorkCarCardPreview() }
         case "work", "workSelf":
