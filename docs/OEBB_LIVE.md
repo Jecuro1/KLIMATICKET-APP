@@ -960,6 +960,42 @@ Let `T` = the offline table price for the same request (`relations.price × fare
 | table (detour / advance) | „ÖBB-Standardticket {n}. Kl. · Tarif ab {dd.MM.yyyy}“, i.e. the existing `FareEstimator` text |
 | proxy (past day, same tariff) | append „ · Preis von heute (gleicher Tarif)“ |
 
+### B4.6 Via stops (additive, owner request 2026-10-09)
+
+„man sollte auch VIA Halte rein machen“: `PriceRequest.via: [PriceEndpoint]` (at most `JourneyQuery.maxViaStops`;
+decoding accepts requests without the key). `PriceRequest(journey:travelClass:discount:stations:via:)` takes the
+planner's `JourneyQuery.via`. The via route is priced as **one ticket where a back end supports it**, else as segments:
+
+1. **VAO** when 2nd class and every point (from, vias, to) has the same Verbund hint: TripSearch with
+   `viaLocL:[{"loc":{"lid","type"}}]`. [LIVE 2026-10-09, one request] VAO honours it: Innsbruck → Völs → Hall in Tirol
+   is „VVT 6 Zonen“ € 9,40 instead of the direct „3 Zonen“ € 4,70 [`FX/vao/vao_tripsearch_tariff_via_voels_ibk-hall`,
+   `FX/vao/golden_extra.json`]. Explanation suffix „ · über {Via}“.
+2. **Shop, planner journey** (`.connection` plan): the exact shop connection (same departure and arrival minute) → suffix
+   „ · über {Via}“; else the **same through train** (shop connection leaving at the same minute whose first train is
+   the journey's first train, and whose trains serve every via stop) → one Standard-Ticket, break of journey allowed →
+   suffix „ · über {Via} (durchgehendes Ticket)“. The shop timetable has no via parameter in our minimal flow (the SPA
+   attaches `customerVias` to `travelActions`, unverified; not used).
+3. **Segments** A → V₁ → V₂ → B, each through the normal chain (cache, VAO, shop) within the same budget (5 requests,
+   12 s). Explanation „Summe von {n} Teilstrecken über {Via}: {A} – {V} € x ({Quelle}) + {V} – {B} € y ({Quelle})“,
+   provider „ÖBB + VVV“, source = live when every part is live, else the least authoritative part. A segment the
+   budget cannot cover keeps its offline price (named in the explanation); such mixed results are not cached. The
+   direct table price is listed as alternative „Direkt ohne Zwischenhalt (Tarif-Tabelle)“.
+
+`offlineQuote` prices a via route as the sum of offline segments; `FareEstimator.estimateLive(from:to:via:…)` is the
+via variant of the contract API.
+
+### B4.7 Implementation notes (WP-B)
+
+- **Per-quote budget:** a task-local `PriceRequestBudget` (5 requests to shop + VAO, 12 s against the injected clock,
+  plus a real-time race) is spent by both clients before every request, retries and session renewals included. The shop
+  flow checks before timetable + offers that they still fit (no half-done flows). HAFAS LocMatch through `StationLinker`
+  is a separate provider budget (40/min) and cached 30 days; shop `stations?name=` results are cached in memory.
+- **Vorteilscard:** „ · mit Vorteilscard“ only when the shop applied a reduction (`relevantReductions`); a requested card
+  the shop did not apply gives „ · ohne Vorteilscard-Ermäßigung“ and `discount: .none`.
+- **ÖBB advance price without a table price:** the explanation is the live text plus „ · Vorverkaufspreis (heute gekauft)“.
+- **`quote()`** keeps the catalog's Kernzone fare for city hops (same rule as `estimateLive`, §B5 open item).
+- `LivePriceService.update(config:)` is `async` (it forwards the config to the shop and VAO clients).
+
 ## B5. VAO Verbund tariff (`VerbundTariffClient`, actor)
 
 ### B5.1 Request [LIVE `FX/vao/*`]
@@ -1565,6 +1601,8 @@ Tests go under `Packages/KlimaCore/Tests/KlimaCoreTests/Live/<Area>/`. XCTest (a
 2. The same in 1st class: owner ÖBB.
 3. Shop Wien Hbf→Salzburg, 2nd class: owner ÖBB, 40 < price < 120.
 4. VAO Ibk→Hall: > 0, provider VVT.
+5. **Via** (owner request 2026-10-09): VAO Innsbruck → Völs → Hall with `viaLocL` is priced, ≥ the direct 4,70 (§B4.6).
+   `KB_LIVE_RECORD_DIR=<dir>` writes the exchange in `FX/vao` format.
 
 ## D4. Device checklist (manual, before the first release with Live)
 
