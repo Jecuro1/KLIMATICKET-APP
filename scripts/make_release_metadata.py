@@ -18,8 +18,11 @@ if os.path.exists(notes_path):
 else:
     notes = ["Verbesserungen und Fehlerbehebungen"]
 
+import shutil
 with open(os.path.join("App", "Resources", "tariffs.json"), encoding="utf-8") as f:
     tariffs_version = json.load(f).get("version", 1)
+shutil.copy(os.path.join("App", "Resources", "tariffs.json"), os.path.join(dist, "tariffs.json"))
+shutil.copy(os.path.join("App", "Resources", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png"), os.path.join(dist, "AppIcon.png"))
 
 update = {
     "version": version,
@@ -30,6 +33,7 @@ update = {
     "altstoreSourceURL": f"{base}/altstore-source.json",
     "releaseNotes": notes,
     "tariffsVersion": tariffs_version,
+    "tariffsURL": f"{base}/tariffs.json",
 }
 source = {
     "name": "KlimaBilanz",

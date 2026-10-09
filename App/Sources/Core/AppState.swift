@@ -70,8 +70,8 @@ final class AppState {
     var isShowingAchievements = false
     var celebrateBreakEven = false
 
-    init(settings: AppSettings = AppSettings()) {
-        self.settings = settings
+    init(settings: AppSettings? = nil) {
+        self.settings = settings ?? AppSettings()
         self.stations = AppState.loadStations()
         let tariffs = TariffService()
         self.tariffs = tariffs

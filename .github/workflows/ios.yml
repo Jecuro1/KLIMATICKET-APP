@@ -180,6 +180,22 @@ jobs:
           name: screenshots-${{ steps.version.outputs.build }}
           path: shots
 
+      - name: Signed build + TestFlight (optional)
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_BASE64: ${{ secrets.ASC_KEY_BASE64 }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: |
+          if [ -z "$APPLE_TEAM_ID" ] || [ -z "$ASC_KEY_BASE64" ]; then
+            echo "Keine Signing-Secrets – überspringe signierten Build (unsignierte .ipa wurde erstellt)."
+            exit 0
+          fi
+          bash scripts/signed_build.sh
+
       - name: Release metadata (update.json + AltStore source)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
@@ -196,5 +212,24 @@ jobs:
             dist/*.ipa
             dist/update.json
             dist/altstore-source.json
+            dist/tariffs.json
+            dist/AppIcon.png
           body_path: dist/RELEASE_NOTES.md
           generate_release_notes: true
+
+      - name: Publish to public releases repository (enables auto-updates)
+        if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLIC_RELEASES_REPO != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ vars.PUBLIC_RELEASES_REPO }}
+          token: ${{ secrets.RELEASES_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          name: KlimaBilanz ${{ steps.version.outputs.version }}
+          make_latest: true
+          files: |
+            dist/*.ipa
+            dist/update.json
+            dist/altstore-source.json
+            dist/tariffs.json
+            dist/AppIcon.png
+          body_path: dist/RELEASE_NOTES.md
