@@ -1048,4 +1048,9 @@ golden diffs; all AT-C7 expectations and the prototype scores (207.6 / 63.5, 142
    candidate generation („warth am arlberg dorf“ must not turn „dorf“ into „Dorfgastein“).
 4. Generic words are never context words, also not by prefix („gletscher“ → „gletscherwelt“).
 5. The vocabulary words come from the query tokenizer; state abbreviations resolve through the lexicon (Vlbg → vorarlberg).
+6. A word that repeats an earlier query word is a name word again („innsbruck innsbruck“ needs two name words).
+
+Context sets are built at index time from the sorted table (`PlaceTable(records:municipalities:options:context:)`);
+425 terms on the shipped data. Release (Linux, one core): 100 typical queries 22 ms, 10 context-word queries 1.2 ms,
+enrichment parse 51 ms, `details(for:)` 0.33 ms.
 
