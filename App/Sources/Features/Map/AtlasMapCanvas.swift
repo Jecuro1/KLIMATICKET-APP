@@ -80,6 +80,11 @@ struct AtlasMapCanvas: View {
                     let r = context.region
                     debugText += String(format: " | cam %.3f %.3f d%.3f/%.3f", r.center.latitude, r.center.longitude,
                                         r.span.latitudeDelta, r.span.longitudeDelta)
+                    if let b = summary.bounds, let p = proxy.convert(b.center.coordinate, to: .local),
+                       let q = proxy.convert(CLLocationCoordinate2D(latitude: b.maxLatitude, longitude: b.minLongitude), to: .local),
+                       let z = proxy.convert(CLLocationCoordinate2D(latitude: b.minLatitude, longitude: b.maxLongitude), to: .local) {
+                        debugText += String(format: " | bc %.0f,%.0f nw %.0f,%.0f se %.0f,%.0f", p.x, p.y, q.x, q.y, z.x, z.y)
+                    }
                 }
             }
             .onChange(of: labelKey) {
@@ -97,6 +102,12 @@ struct AtlasMapCanvas: View {
             reframe(animated: !reduceMotion && !LaunchMode.isScreenshot)
         }
         .overlay(alignment: .center) {
+            if LaunchMode.isScreenshot {
+                Image(systemName: "plus").font(.system(size: 30, weight: .ultraLight)).foregroundStyle(.red)
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay(alignment: .top) {
             if LaunchMode.isScreenshot && !debugText.isEmpty {
                 Text(debugText)
                     .font(.system(size: 9, design: .monospaced))
@@ -135,6 +146,8 @@ struct AtlasMapCanvas: View {
 
     // MARK: Camera
 
+    private var fullHeight: CGFloat { viewport.size.height + viewport.insets.top + viewport.insets.bottom }
+
     private func reframe(animated: Bool) {
         guard viewport.size.width > 1, viewport.size.height > 1 else { return }
         let bounds: AtlasBounds
@@ -151,7 +164,7 @@ struct AtlasMapCanvas: View {
             bounds = AtlasBounds(points: [place.location]) ?? .austria
         }
         let region = Self.region(fitting: bounds, viewport: viewport,
-                                 coveredBottom: framing.coveredBottomFraction * viewport.size.height, padding: pad,
+                                 coveredBottom: framing.coveredBottomFraction * fullHeight, padding: pad,
                                  minimumSpanKm: framing.target == .overview ? 30 : 14)
         if LaunchMode.isScreenshot {
             debugText = String(format: "vp %.0fx%.0f t%.0f b%.0f | req %.3f %.3f d%.3f/%.3f", viewport.size.width,
@@ -166,20 +179,20 @@ struct AtlasMapCanvas: View {
     }
 
     /// Region that shows `bounds` in the visible part of the map – the safe rectangle minus anything else covering it.
+    /// `viewport.size` is the safe rectangle; the map itself extends under `viewport.insets` (bars, panel).
     static func region(fitting bounds: AtlasBounds, viewport: AtlasViewport, coveredBottom: CGFloat, padding: Double,
                        minimumSpanKm: Double) -> AtlasRegion {
-        let size = viewport.size
         let safe = viewport.insets
-        let extraBottom = Double(max(0, coveredBottom - safe.bottom))
+        let safeW = Double(max(viewport.size.width, 1)), safeH = Double(max(viewport.size.height, 1))
         if mapFramesInsideSafeArea {
-            let w = Double(max(size.width - safe.leading - safe.trailing, 1))
-            let h = Double(max(size.height - safe.top - safe.bottom, 1))
-            return Atlas.region(fitting: bounds, width: w, height: h, insets: AtlasInsets(bottom: extraBottom),
+            let extraBottom = Double(max(0, coveredBottom - safe.bottom))
+            return Atlas.region(fitting: bounds, width: safeW, height: safeH, insets: AtlasInsets(bottom: extraBottom),
                                 padding: padding, minimumSpanKm: minimumSpanKm)
         }
+        let fullW = safeW + Double(safe.leading + safe.trailing), fullH = safeH + Double(safe.top + safe.bottom)
         let insets = AtlasInsets(top: Double(safe.top), leading: Double(safe.leading),
                                  bottom: Double(max(safe.bottom, coveredBottom)), trailing: Double(safe.trailing))
-        return Atlas.region(fitting: bounds, width: Double(size.width), height: Double(size.height), insets: insets,
+        return Atlas.region(fitting: bounds, width: fullW, height: fullH, insets: insets,
                             padding: padding, minimumSpanKm: minimumSpanKm)
     }
 
