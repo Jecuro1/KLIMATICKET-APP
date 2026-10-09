@@ -15,6 +15,8 @@ Packages/KlimaCore/         Plattformunabhängige Logik (unter Linux & macOS tes
   TicketComparator.swift    „Was wäre wenn“ – welches Ticket wäre am günstigsten?
   Updates.swift             SemanticVersion, UpdateManifest, UpdateDecision
   CSVExport.swift           CSV-Export (Excel-AT kompatibel)
+Packages/KlimaCloud/        Cloud-Client ohne UI (nur Foundation, unter Linux & macOS testbar): HTTP-Client,
+                            Sitzung/Refresh, DTOs, Merge-Regel, PKCE, Zeitstempel (docs/CLOUDFLARE_BACKEND.md §6)
 Shared/                     In App UND Widget kompiliert
   Models.swift              SwiftData-Modelle: TicketEntity, TripEntity, FavoriteRouteEntity + DataSchema
   AppGroup.swift            App-Group-ID (inkl. AltStore/SideStore-Umschreibung)
@@ -26,14 +28,15 @@ App/Sources/
   Core/                     AppState (Services + Navigation), AppSettings, RootView, MainTabView,
                             ScreenshotRouter, Format (de-AT Formatierung), Shortcuts (Siri)
   Data/                     Analytics (AnalyticsSnapshot), Repository (alle Schreibzugriffe), DemoData
-  Services/                 AuthService, SupabaseClient, SyncService, UpdateService, TariffService,
+  Services/                 AuthService, SyncService, KeychainStore, UpdateService, TariffService,
                             NotificationService, LocationService
   DesignSystem/             Theme (Tokens), Komponenten, Hintergründe, Haptik
   Features/<Feature>/       Onboarding, Dashboard, Trips, Statistics, Ticket, Achievements, Settings, Updates, Account, Widgets
 App/Resources/              Assets, stations.json, tariffs.json, AppConfig.json
 Widgets/Sources/            WidgetKit-Extension
-supabase/migrations/        Cloud-Schema mit Row Level Security
+backend/                    Cloud-Backend: Cloudflare Worker (TypeScript) + D1-Schema (migrations/), Tests, Deploy-Skripte
 scripts/                    CI-Hilfsskripte, Tarif-Katalog-Generator
+.github/workflows/          ios.yml (App, Releases), backend.yml (Worker testen + bereitstellen)
 ```
 
 ## Regeln für den App-Code
@@ -65,12 +68,26 @@ CI legt die PNGs (hell/dunkel) im Branch `screenshots` ab.
 
 ## Login & Sync
 
-Apple (nativ, ID-Token), Google und Microsoft (PKCE-Webflow) über Supabase Auth; Sync über PostgREST mit
-Last-Writer-Wins auf `updated_at` und Soft-Deletes. Ohne Supabase-Konfiguration funktioniert die App
-vollständig lokal (Apple-Login lokal möglich).
+Eigenes Backend im Cloudflare-Konto des Betreibers (Vertrag: [CLOUDFLARE_BACKEND.md](CLOUDFLARE_BACKEND.md),
+Einrichtung: [SETUP.md §3](SETUP.md)): ein Worker `klimabilanz-api` (TypeScript, ohne Laufzeit-Abhängigkeiten,
+nur WebCrypto) und die D1-Datenbank `klimabilanz` mit **EU-Jurisdiktion**. `backend.yml` testet jeden Push und stellt
+von `main`/`claude/klimabilanz-ios-app` bzw. per *Run workflow* bereit (D1 anlegen, migrieren, Secrets, Deploy);
+ohne Cloudflare-Secrets wird nichts bereitgestellt. Der iOS-Build trägt die Worker-Adresse als `apiBaseURL` in
+`AppConfig.json` ein – ohne Adresse funktioniert die App vollständig lokal (Apple-Login lokal möglich).
 
-Details (`SyncService`, `supabase/migrations/0002_sync_hardening.sql`): Pull-Cursor ist die vom Server vergebene
-`server_rev` (pro Tabelle und Konto, Keyset-Seiten zu 500), nie die Geräteuhr; der Server-Trigger verwirft veraltete
-Schreibzugriffe und kappt Uhren, die mehr als 10 Minuten vorgehen. Lokale Daten gehören dem zuletzt synchronisierten
-Konto – bei einem anderen Konto pausiert der Sync (`pendingAccountSwitch`). Abmelden wirkt nur auf diesem Gerät,
-Kontolöschung läuft über die Edge Function `supabase/functions/delete-account`.
+- **Anmeldung:** Die App öffnet `/v1/auth/{google|microsoft|apple}/start` in `ASWebAuthenticationSession`
+  (Autorisierungscode + PKCE, Rückkehr über `klimabilanz://auth-callback`); der Worker spricht OIDC mit dem Anbieter
+  (state, nonce, JWKS-Prüfung) und gibt der App eigene Tokens: Access-Token (JWT, 15 min, bei jeder Anfrage gegen die
+  Sitzung geprüft) und rotierendes Refresh-Token (60 Tage gleitend, Wiederverwendung sperrt die Sitzung). Signierte
+  Builds nutzen den nativen Apple-Login (`/v1/auth/apple/native`). Konten hängen an (Anbieter, Anbieter-ID), nie
+  automatisch an der E-Mail. `/v1/config` meldet, welche Anbieter eingerichtet sind; die App blendet nur diese ein.
+- **Sync** (`SyncService` + `KlimaCloud`, `/v1/sync/push` und `/v1/sync/pull`): Pull-Cursor ist die vom Server
+  vergebene `server_rev` (globaler Zähler, pro Tabelle und Konto, Seiten zu 500), nie die Geräteuhr; der Server
+  verwirft veraltete Schreibzugriffe (neueste `updated_at` gewinnt), überspringt Echos und kappt Uhren, die mehr als
+  10 Minuten vorgehen. Löschen ist immer weich (`deleted_at`). Lokale Daten gehören dem zuletzt synchronisierten
+  Konto – bei einem anderen Konto pausiert der Sync (`pendingAccountSwitch`).
+- **Abmelden** wirkt nur auf diesem Gerät; **Konto löschen** (`/v1/account/delete`) entfernt alle Zeilen des Kontos
+  in einem Schritt, beendet alle Sitzungen sofort und widerruft das Apple-Token.
+
+Die frühere Supabase-Variante (PostgREST, Row Level Security, Edge Function) ist entfernt und nur noch in der
+Git-Historie (bis `0cb2acd`).

@@ -1724,7 +1724,7 @@ The amount shown for `partial` is the covered-part quote (§E6.2).
 | Price cache, station links | `Caches/Live/prices.json`, `Caches/Live/stations-link.json` | WP-B / WP-A (paths passed by WP-D) |
 | `PlannerOptions`, recents | UserDefaults `planner.options`, `planner.recents` | WP-E |
 | Tracked journey (for intents) | AppGroup defaults `liveJourney.current` (JSON `{journey, quote, travelClass}`) | WP-F |
-| Trip provenance | `TripEntity` new fields (below) + Supabase migration | WP-F |
+| Trip provenance | `TripEntity` new fields (below) + D1 migration (Cloudflare backend) | WP-F |
 
 **`TripEntity` additions** (`Shared/Models.swift`, all with defaults so lightweight migration works):
 
@@ -1741,22 +1741,28 @@ var arrivalAt: Date? = nil
 - `isFareManual == true` ⇒ `priceSourceRaw = "manual"`.
 - **`Repository.repeatTrip`** („Nochmal fahren“) copies the price but sets `priceSourceRaw` to `"table"`, or keeps `"manual"`. It clears `priceFetchedAt` and `journeyRef`.
 
-**Sync** (WP-F). `supabase/migrations/0003_trip_price_provenance.sql`:
+**Sync** (WP-F). The cloud backend is the Cloudflare Worker + D1 (`docs/CLOUDFLARE_BACKEND.md`; this section was
+adapted from the retired Supabase plan). New D1 migration `backend/migrations/0002_trip_price_provenance.sql`
+(SQLite: one column per `ALTER TABLE`; synced timestamps are canonical TEXT):
 
 ```sql
-alter table public.trips
-  add column if not exists price_source     text not null default '',
-  add column if not exists price_provider   text not null default '',
-  add column if not exists price_product    text not null default '',
-  add column if not exists price_fetched_at timestamptz,
-  add column if not exists journey_ref      text not null default '',
-  add column if not exists line_summary     text not null default '',
-  add column if not exists arrival_at       timestamptz;
+ALTER TABLE trips ADD COLUMN price_source     TEXT NOT NULL DEFAULT '';
+ALTER TABLE trips ADD COLUMN price_provider   TEXT NOT NULL DEFAULT '';
+ALTER TABLE trips ADD COLUMN price_product    TEXT NOT NULL DEFAULT '';
+ALTER TABLE trips ADD COLUMN price_fetched_at TEXT;
+ALTER TABLE trips ADD COLUMN journey_ref      TEXT NOT NULL DEFAULT '';
+ALTER TABLE trips ADD COLUMN line_summary     TEXT NOT NULL DEFAULT '';
+ALTER TABLE trips ADD COLUMN arrival_at       TEXT;
 ```
 
+- Per contract §4, a new sync column goes into the Worker's static schema map (`backend/src`), contract §3.5, the shared
+  fixture `backend/test/fixtures/contract-rows.json` and the Swift `TripDTO` **together**, always with a default, so
+  older apps that do not send it keep working. `backend.yml` applies the migration before it deploys the new Worker.
 - `TripDTO` gets the fields as optionals (`decodeIfPresent`).
-- **A server without the migration must keep syncing.** `SyncService` probes once per launch with `GET /rest/v1/trips?select=price_source&limit=0`. On 200, set `serverHasPriceProvenance = true`. On 400 (PGRST204/42703), encode the DTO **without** the new keys.
-- Check that `0002_sync_hardening.sql` triggers do not enumerate columns. If they do, extend them in 0003.
+- **A Worker without the migration must keep syncing** (the user may build the app before re-running *Actions › Backend*).
+  The Worker answers `422 unknown_field` for keys it does not know. Add an additive `features` array to
+  `GET /v1/config` (e.g. `["trip_price_provenance"]`); `SyncService` encodes the new keys only when the cached config
+  lists the feature, and otherwise encodes the DTO **without** them.
 
 ## E5. Trip editor live price (WP-F)
 
@@ -2133,7 +2139,7 @@ struct DemoPriceProvider: LivePriceProvider        // e.g. Innsbruck Hbf→Lech 
 6. No ÖBB colours.
 7. `check_integration.py` is green.
 
-## W-F: Trip logging, editor live price, persistence, sync, live follow (App target + Shared + Supabase)
+## W-F: Trip logging, editor live price, persistence, sync, live follow (App target + Shared + Cloudflare backend)
 
 **Owns (new)**
 - `App/Sources/Data/Repository+Journey.swift`
@@ -2142,7 +2148,7 @@ struct DemoPriceProvider: LivePriceProvider        // e.g. Innsbruck Hbf→Lech 
 - `App/Sources/Features/LiveJourney/{LiveJourneyTracker,LiveJourneyAccessory,ArrivalReminder}.swift`
 - `App/Sources/Services/NotificationCategories.swift`
 - `Shared/JourneyLogQueue.swift`, `Shared/JourneyIntents.swift` (`LogTrackedJourneyIntent: LiveActivityIntent`; Shared means both targets)
-- `supabase/migrations/0003_trip_price_provenance.sql`
+- `backend/migrations/0002_trip_price_provenance.sql` (+ the matching schema-map, contract and fixture entries, §E4)
 
 **May edit** (marked):
 - `Shared/Models.swift` (`TripEntity` fields only)
@@ -2207,7 +2213,7 @@ struct DemoPriceProvider: LivePriceProvider        // e.g. Innsbruck Hbf→Lech 
 | **R4** | iOS 26 search-role tab with `.searchable` behaviour is [ASSUMED] | Navigation glitches | `PlannerModel.navigationStyle = .plainTab` fallback |
 | **R5** | Valuation change: inside-Verbund trips use the Verbund tariff (−6 % … +28 % vs table) | New trips are valued differently from old ones | Legacy trips unchanged (D7); explanation popover; release note; follow-up F6 |
 | **R6** | Unmerged Phase-2 branches touch `RootView`, `TripEditorModel`, `DashboardView`, `SettingsView`, `SyncService` | Merge conflicts | Step 0 after merging them; marked, minimal edits |
-| **R7** | Supabase columns missing on the user's server | Sync failure | Probe before encoding new keys (§E4) |
+| **R7** | New columns missing on the user's Worker/D1 (backend not redeployed) | Sync failure (`422 unknown_field`) | Feature flag in `/v1/config` before encoding new keys (§E4) |
 | **R8** | `/gate` sends 95–410 KB uncompressed per search | Slow on cellular | No polylines in lists; remote switch to gzip mgate |
 | **R9** | Cancellations, partial cancellations and occupancy were never observed | Untested UI | Synthetic tests; validate on a strike or heavy-traffic day |
 | **R10** | No APNs for Live Activities in sideloaded builds | Stale Live Activity | Honest „Stand …“ state; `BGAppRefresh`; F7 |
