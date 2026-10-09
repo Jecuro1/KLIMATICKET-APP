@@ -64,7 +64,7 @@ struct WorkCarSettingsView: View {
         } header: {
             SetSectionHeader(title: "So rechnest du das Auto")
         } footer: {
-            SetFooter(text: "Andere Rechner nutzen noch das alte Kilometergeld von € 0,42. Seit 1. Jänner 2025 gilt für Pkw amtlich € 0,50 pro Kilometer.")
+            SetFooter(text: "Andere Rechner nutzen noch das alte Kilometergeld von €\u{00A0}0,42. Seit 1. Jänner 2025 gilt für Pkw amtlich €\u{00A0}0,50 pro Kilometer.")
         }
     }
 
@@ -73,28 +73,32 @@ struct WorkCarSettingsView: View {
         return Button {
             withAnimation(.snappy) { settings.carMode = mode }
         } label: {
-            HStack(spacing: Theme.Spacing.s) {
-                SetIconTile(symbol: mode.symbol, tint: mode.tint)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
-                        Text(mode.displayName)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer(minLength: Theme.Spacing.xs)
-                        Text(WorkFormat.perKm(rate(mode, settings: settings)))
-                            .font(.subheadline.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(isSelected ? Theme.accentText : Theme.textSecondary)
+            // Label (not a plain HStack) so the icon tile sits in the list's icon column like every other settings row.
+            Label {
+                HStack(spacing: Theme.Spacing.s) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+                            Text(mode.displayName)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Theme.textPrimary)
+                            Spacer(minLength: Theme.Spacing.xs)
+                            Text(WorkFormat.perKm(rate(mode, settings: settings)))
+                                .font(.subheadline.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(isSelected ? Theme.accentText : Theme.textSecondary)
+                        }
+                        Text(mode.explanation)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(mode.explanation)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
+                        .contentTransition(.symbolEffect(.replace))
                 }
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
-                    .contentTransition(.symbolEffect(.replace))
+            } icon: {
+                SetIconTile(symbol: mode.symbol, tint: mode.tint)
             }
             .padding(.vertical, 2)
             .contentShape(Rectangle())
@@ -131,7 +135,7 @@ struct WorkCarSettingsView: View {
                 }
                 .listRowBackground(Theme.surface)
             } footer: {
-                SetFooter(text: "Das Kilometergeld ist eine realistische Untergrenze der echten Autokosten. Mitfahrende (€ 0,15/km) zählt KlimaBilanz nicht dazu.")
+                SetFooter(text: "Das Kilometergeld ist eine realistische Untergrenze der echten Autokosten. Mitfahrende (€\u{00A0}0,15/km) zählt KlimaBilanz nicht dazu.")
             }
         case .fuelOnly:
             Section {
@@ -155,7 +159,7 @@ struct WorkCarSettingsView: View {
             } header: {
                 SetSectionHeader(title: "Dein Auto")
             } footer: {
-                SetFooter(text: "Beispielwerte: 6,5 l auf 100 km und € 1,65 pro Liter. Trag ein, was dein Auto wirklich braucht.")
+                SetFooter(text: "Beispielwerte: 6,5\u{00A0}l auf 100 km und €\u{00A0}1,65 pro Liter. Trag ein, was dein Auto wirklich braucht.")
             }
         case .fullCost:
             Section {
@@ -165,7 +169,7 @@ struct WorkCarSettingsView: View {
             } header: {
                 SetSectionHeader(title: "Deine Vollkosten")
             } footer: {
-                SetFooter(text: "Vollkosten enthalten Wertverlust, Versicherung, Steuer, Service, Reifen und Sprit. Der ÖAMTC-Autokostenrechner kommt für Kompakt- und Mittelklasse meist auf € 0,45–0,60 pro Kilometer.")
+                SetFooter(text: "Vollkosten enthalten Wertverlust, Versicherung, Steuer, Service, Reifen und Sprit. Der ÖAMTC-Autokostenrechner kommt für Kompakt- und Mittelklasse meist auf €\u{00A0}0,45–0,60 pro Kilometer.")
             }
         }
     }
@@ -220,7 +224,7 @@ struct WorkCarSettingsView: View {
             SetSectionHeader(title: "Ohne Auto")
         } footer: {
             SetFooter(text: settings.carGivenUp
-                      ? "Die Fixkosten laufen Tag für Tag mit – egal, wie viel du fährst. Vignette 2026: € \(Format.number(CarFixedCosts.vignette2026, decimals: 2)) (ASFINAG). Die übrigen Werte sind Beispiele für einen Kompaktwagen."
+                      ? "Die Fixkosten laufen Tag für Tag mit – egal, wie viel du fährst. Vignette 2026: \(Format.euroPrecise(CarFixedCosts.vignette2026)) (ASFINAG). Die übrigen Werte sind Beispiele für einen Kompaktwagen."
                       : "Hast du dein Auto für das KlimaTicket aufgegeben? Laut KlimaTicket-Report haben das 11 % der Befragten getan.")
         }
     }

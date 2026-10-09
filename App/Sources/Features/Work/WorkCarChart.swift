@@ -25,13 +25,19 @@ struct WorkCarChart: View {
 
     private var maxY: Double {
         let current = result.series.last?.value ?? 0
-        let forecast = result.forecast.last?.value ?? 0
-        return max(ticket * (isFull ? 1.32 : 1.15), current * 1.12, forecast * 1.08, 10)
+        // The compact card draws no forecast – scaling for it would squash the actual line into the bottom half.
+        let forecast = isFull ? (result.forecast.last?.value ?? 0) : 0
+        return max(ticket * (isFull ? 1.32 : 1.15), current * (isFull ? 1.12 : 1.08), forecast * 1.08, 10)
+    }
+
+    /// The car ends above the ticket line (actual or forecast) – the right side below the line is free for labels.
+    private var carEndsAboveTicket: Bool {
+        (result.forecast.last?.value ?? result.series.last?.value ?? 0) > ticket
     }
 
     var body: some View {
         chartWithAxes
-            .chartXScale(domain: start...end)
+            .chartXScale(domain: start...end, range: .plotDimension(startPadding: 0, endPadding: isFull ? 8 : 6))
             .chartYScale(domain: 0...maxY)
             .chartLegend(.hidden)
             .chartXSelection(value: isFull ? $selectedDate : .constant(nil))
@@ -135,7 +141,9 @@ struct WorkCarChart: View {
         RuleMark(y: .value("KlimaTicket", ticket))
             .lineStyle(StrokeStyle(lineWidth: isFull ? 2.5 : 2, lineCap: .round))
             .foregroundStyle(Theme.glacier)
-            .annotation(position: .top, alignment: .leading, spacing: 3) {
+            // Label where the car line is not: top-left while the car is still below the ticket, otherwise bottom-right
+            // (the car has climbed past the ticket there and the break-even flag sits top-left of its point).
+            .annotation(position: carEndsAboveTicket ? .bottom : .top, alignment: carEndsAboveTicket ? .trailing : .leading, spacing: 4) {
                 if isFull {
                     Text("KlimaTicket \(Format.euro(ticket, decimals: 0))")
                         .font(.caption2.weight(.bold))
@@ -179,7 +187,7 @@ struct WorkCarChart: View {
                         .frame(width: isFull ? 12 : 8, height: isFull ? 12 : 8)
                         .overlay(Circle().stroke(Theme.onAccent, lineWidth: 2))
                 }
-                .annotation(position: .top, spacing: 8) {
+                .annotation(position: .topLeading, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                     if isFull { flagPill(day, isForecast: false).opacity(selectedDate == nil ? grow : 0) }
                 }
         } else if isFull, let day = result.forecastBreakEvenDate {
@@ -190,7 +198,7 @@ struct WorkCarChart: View {
                         .background(Circle().fill(Theme.onAccent))
                         .frame(width: 12, height: 12)
                 }
-                .annotation(position: .top, spacing: 8) {
+                .annotation(position: .topLeading, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
                     flagPill(day, isForecast: true).opacity(selectedDate == nil ? grow : 0)
                 }
         }

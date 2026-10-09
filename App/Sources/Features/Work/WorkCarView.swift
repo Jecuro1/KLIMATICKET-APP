@@ -351,7 +351,7 @@ private struct WorkCarScreen: View {
         case .fuelOnly:
             "Nur Sprit: \(WorkFormat.liters(settings.litersPer100Km)) × \(Format.euroPrecise(settings.fuelPricePerLiter)) pro Liter."
         case .fullCost:
-            "Deine Vollkosten pro Kilometer (laut ÖAMTC typisch € 0,45–0,60 für Kompakt- und Mittelklasse)."
+            "Deine Vollkosten pro Kilometer (laut ÖAMTC typisch €\u{00A0}0,45–0,60 für Kompakt- und Mittelklasse)."
         }
     }
 

@@ -9,4 +9,12 @@ extension Repository {
         trip.category = category
         updateTrip(trip)
     }
+
+    /// Jobticket: what the employer pays (tax-free) for the ticket, clamped to price + extras. No-op when unchanged.
+    func workSetEmployerContribution(_ amount: Double, for ticket: TicketEntity) {
+        let clamped = min(max(0, amount), max(0, ticket.price + ticket.addOnPrice))
+        guard abs(ticket.employerContribution - clamped) > 0.004 else { return }
+        ticket.employerContribution = clamped
+        updateTicket(ticket)
+    }
 }

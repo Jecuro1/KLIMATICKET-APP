@@ -33,6 +33,7 @@ enum WorkPDF {
         var notes = [
             "Bewertet je Dienstreise mit dem Einzelfahrschein 2. Klasse ohne Sparschiene (Normalpreis je Richtung). Insgesamt absetzbar ist höchstens der selbst bezahlte Ticketpreis; ein steuerfreier Arbeitgeberzuschuss senkt diese Obergrenze (AK).",
             "Nur Fahrten, die der Arbeitgeber nicht als Reisekosten ersetzt hat.",
+            "↔ = hin & retour: km und Einzelfahrschein für beide Richtungen.",
         ]
         if data.firstClassBusinessTrips > 0 { notes.append("In der 1. Klasse erfasste Fahrten sind zum Preis der 2. Klasse bewertet.") }
         if business.spansSeveralYears { notes.append("Das Ticketjahr reicht über den Jahreswechsel – die Obergrenze ist chronologisch auf die Kalenderjahre verteilt.") }
@@ -42,7 +43,7 @@ enum WorkPDF {
             subtitle: "Dienstreisen mit dem eigenen KlimaTicket · Ticketjahr \(data.ticketYear)",
             meta: meta(data, includeEmployer: true),
             columns: [WorkPDFColumn(title: "Nr.", width: 26, alignment: .trailing), WorkPDFColumn(title: "Datum", width: 62),
-                      WorkPDFColumn(title: "Strecke", width: nil), WorkPDFColumn(title: "Verkehrsmittel", width: 74),
+                      WorkPDFColumn(title: "Strecke  (↔ hin & retour)", width: nil), WorkPDFColumn(title: "Verkehrsmittel", width: 74),
                       WorkPDFColumn(title: "km", width: 42, alignment: .trailing),
                       WorkPDFColumn(title: "Einzelfahrschein", width: 82, alignment: .trailing)],
             rows: rows, totals: totals, notes: notes, showsSignature: true)
@@ -74,6 +75,7 @@ enum WorkPDF {
         var notes = [
             "Seit 2022 sind 50 % einer nicht übertragbaren Jahreskarte pauschal als Betriebsausgabe absetzbar (1. Klasse inklusive, Familienaufschlag ausgenommen). Bei mehr als 50 % betrieblicher Nutzung kann stattdessen der betriebliche Anteil laut Öffi-Fahrtenbuch angesetzt werden (WKO).",
         ]
+        notes.append("↔ = hin & retour: km für beide Richtungen.")
         notes.append(countsCommute
                      ? "Betrieblich gezählt: Dienstreisen und Wege zur Betriebsstätte."
                      : "Betrieblich gezählt: nur Dienstreisen (Wege zur Betriebsstätte nicht eingerechnet).")
@@ -83,7 +85,7 @@ enum WorkPDF {
             subtitle: "Betriebliche und private Fahrten mit dem KlimaTicket · Ticketjahr \(data.ticketYear)",
             meta: meta(data, includeEmployer: false),
             columns: [WorkPDFColumn(title: "Nr.", width: 26, alignment: .trailing), WorkPDFColumn(title: "Datum", width: 62),
-                      WorkPDFColumn(title: "Strecke", width: nil), WorkPDFColumn(title: "Verkehrsmittel", width: 70),
+                      WorkPDFColumn(title: "Strecke  (↔ hin & retour)", width: nil), WorkPDFColumn(title: "Verkehrsmittel", width: 70),
                       WorkPDFColumn(title: "km", width: 40, alignment: .trailing), WorkPDFColumn(title: "Zweck", width: 110)],
             rows: rows, totals: totals, notes: notes, showsSignature: false)
     }
@@ -111,8 +113,9 @@ enum WorkPDF {
         date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year().locale(Format.locale))
     }
 
+    /// "St. Anton → Lech", round trips "St. Anton ↔ Innsbruck Hbf" (legend in the column title and the notes).
     private static func route(_ trip: WorkTaxTrip) -> String {
-        "\(TripRow.short(trip.fromName)) → \(TripRow.short(trip.toName))\(trip.isRoundTrip ? " · hin & retour" : "")"
+        "\(TripRow.short(trip.fromName)) \(trip.isRoundTrip ? "↔" : "→") \(TripRow.short(trip.toName))"
     }
 
     // MARK: Pagination

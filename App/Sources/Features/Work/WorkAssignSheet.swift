@@ -121,17 +121,21 @@ private struct WorkAssignRow: View {
         HStack(spacing: Theme.Spacing.s) {
             ModeIcon(mode: trip.mode, size: 34)
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(TripRow.short(trip.fromName)) → \(TripRow.short(trip.toName))")
+                Text("\(TripRow.short(trip.fromName)) \(trip.isRoundTrip ? "↔" : "→") \(TripRow.short(trip.toName))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text("\(Format.weekdayDayMonth(trip.date)) · \(Format.time(trip.date))\(trip.isRoundTrip ? " · hin & retour" : "")")
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(Format.weekdayDayMonth(trip.date)) · \(Format.time(trip.date))")
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(trip.fromName) nach \(trip.toName)\(trip.isRoundTrip ? ", hin und retour" : "")")
+            .accessibilityValue("\(Format.date(trip.date, .long)), \(Format.time(trip.date))")
             Spacer(minLength: Theme.Spacing.xs)
             Menu {
                 Picker("Zweck", selection: Binding(get: { trip.category }, set: { onAssign($0) })) {

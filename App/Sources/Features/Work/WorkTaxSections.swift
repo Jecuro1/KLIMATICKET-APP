@@ -7,8 +7,8 @@ import KlimaCore
 
 struct WorkJobticketCard: View {
     let data: WorkTaxData
+    var onEditContribution: () -> Void
 
-    @Environment(AppState.self) private var app
     @ScaledMetric(relativeTo: .title) private var percentSize: CGFloat = 34
 
     private var job: WorkTaxJobticket { data.job }
@@ -47,11 +47,17 @@ struct WorkJobticketCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             Text(job.ownShare > 0
-                 ? "Überall in KlimaBilanz zählt, was du selbst bezahlt hast (\(Format.euro(job.ownShare, decimals: 0))) – deshalb rentiert sich dein Ticket schneller. Den Zuschuss änderst du beim Ticket."
-                 : "Dein Arbeitgeber übernimmt das ganze Ticket – jede Fahrt ist für dich reiner Gewinn. Den Zuschuss änderst du beim Ticket.")
+                 ? "Überall in KlimaBilanz zählt, was du selbst bezahlt hast (\(Format.euro(job.ownShare, decimals: 0))) – deshalb rentiert sich dein Ticket schneller."
+                 : "Dein Arbeitgeber übernimmt das ganze Ticket – jede Fahrt ist für dich reiner Gewinn.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Button(action: onEditContribution) {
+                Label("Zuschuss ändern", systemImage: "pencil")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.glass)
+            .accessibilityHint("Öffnet die Eingabe des Arbeitgeberzuschusses")
         }
     }
 
@@ -78,18 +84,16 @@ struct WorkJobticketCard: View {
 
     private var noContributionContent: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            Text("Viele Arbeitgeber übernehmen das KlimaTicket ganz oder teilweise – steuerfrei. Trag den Zuschuss bei deinem Ticket ein: Dann misst KlimaBilanz die Bilanz an deinem Eigenanteil, und die Obergrenze für Dienstreisen passt automatisch.")
+            Text("Viele Arbeitgeber übernehmen das KlimaTicket ganz oder teilweise – steuerfrei. Trag den Zuschuss ein: Dann misst KlimaBilanz die Bilanz an deinem Eigenanteil, und die Obergrenze für Dienstreisen passt automatisch.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Button {
-                app.isShowingSettings = false
-                app.selectedTab = .ticket
-            } label: {
-                Label("Zuschuss beim Ticket eintragen", systemImage: "ticket.fill")
+            Button(action: onEditContribution) {
+                Label("Zuschuss eintragen", systemImage: "plus.circle.fill")
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.glass)
+            .accessibilityHint("Öffnet die Eingabe des Arbeitgeberzuschusses")
         }
     }
 }
@@ -130,7 +134,7 @@ struct WorkBusinessTripsCard: View {
     }
 
     private var explanation: String {
-        "Nutzt du dein selbst bezahltes KlimaTicket für Dienstreisen, kannst du pro Fahrt die Kosten eines entsprechenden Einzelfahrscheins (2. Klasse, keine Sparschiene) geltend machen – insgesamt aber höchstens, was du selbst für das Ticket bezahlt hast. Ein steuerfreier Arbeitgeberzuschuss senkt diese Obergrenze (Beispiel der AK: € 1.400 − € 800 = € 600). Das gilt nur, soweit dein Arbeitgeber die Fahrten nicht ersetzt."
+        "Nutzt du dein selbst bezahltes KlimaTicket für Dienstreisen, kannst du pro Fahrt die Kosten eines entsprechenden Einzelfahrscheins (2. Klasse, keine Sparschiene) geltend machen – insgesamt aber höchstens, was du selbst für das Ticket bezahlt hast. Ein steuerfreier Arbeitgeberzuschuss senkt diese Obergrenze (Beispiel der AK: €\u{00A0}1.400 − €\u{00A0}800 = €\u{00A0}600). Das gilt nur, soweit dein Arbeitgeber die Fahrten nicht ersetzt."
     }
 
     private var amountHeader: some View {
@@ -259,7 +263,7 @@ struct WorkPendlerCard: View {
     }
 
     private var withContribution: String {
-        "Stellt dir dein Arbeitgeber das Ticket ganz oder teilweise steuerfrei zur Verfügung, wird ein allfälliges Pendlerpauschale um genau diesen Betrag gekürzt – der Pendlereuro bleibt. Beispiel des BMF: € 2.016 Pendlerpauschale − € 1.000 Zuschuss = € 1.016. Die tatsächlichen Fahrtkosten kannst du nicht zusätzlich absetzen."
+        "Stellt dir dein Arbeitgeber das Ticket ganz oder teilweise steuerfrei zur Verfügung, wird ein allfälliges Pendlerpauschale um genau diesen Betrag gekürzt – der Pendlereuro bleibt. Beispiel des BMF: €\u{00A0}2.016 Pendlerpauschale − €\u{00A0}1.000 Zuschuss = €\u{00A0}1.016. Die tatsächlichen Fahrtkosten kannst du nicht zusätzlich absetzen."
     }
 
     private var withoutContribution: String {
@@ -481,7 +485,7 @@ struct WorkTripLine: View {
             .frame(width: 40, height: 42)
             .background(Theme.textTertiary.opacity(0.10), in: .rect(cornerRadius: 10, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(TripRow.short(trip.fromName)) → \(TripRow.short(trip.toName))")
+                Text("\(TripRow.short(trip.fromName)) \(trip.isRoundTrip ? "↔" : "→") \(TripRow.short(trip.toName))")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
@@ -499,15 +503,13 @@ struct WorkTripLine: View {
         }
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(Format.date(trip.date, .long)), \(trip.fromName) nach \(trip.toName)")
+        .accessibilityLabel("\(Format.date(trip.date, .long)), \(trip.fromName) nach \(trip.toName)\(trip.isRoundTrip ? ", hin und retour" : "")")
         .accessibilityValue("\(valueTitle) \(Format.euroPrecise(trip.totalValue))\(trip.note.isEmpty ? "" : ", \(trip.note)")")
     }
 
+    /// "Zug · Projektbesprechung Landhaus" or "Zug · 202 km" (↔ in the route line marks hin & retour).
     private var caption: String {
-        var parts = [trip.mode.displayName]
-        if trip.isRoundTrip { parts.append("hin & retour") }
-        if !trip.note.isEmpty { parts.append(trip.note) } else { parts.append(Format.km(trip.totalKm)) }
-        return parts.joined(separator: " · ")
+        [trip.mode.displayName, trip.note.isEmpty ? Format.km(trip.totalKm) : trip.note].joined(separator: " · ")
     }
 }
 

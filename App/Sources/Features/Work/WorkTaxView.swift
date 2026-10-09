@@ -45,8 +45,15 @@ private struct WorkTaxScreen: View {
     @Environment(AppState.self) private var app
     @State private var exports = WorkTaxExports()
     @State private var isAssigning = false
+    @State private var isEditingContribution = false
+    @State private var contributionSaves = 0
 
     private var settings: WorkSettings { .shared }
+
+    /// Prepared files of the ticket on screen (none while a switched ticket year is being prepared).
+    private var currentExports: WorkTaxExports {
+        exports.ticketID == data.ticket.id ? exports : WorkTaxExports()
+    }
 
     /// Rebuild exports whenever content that ends up in them changes.
     private var exportKey: String {
@@ -74,16 +81,16 @@ private struct WorkTaxScreen: View {
                 .accessibilityLabel("Beschäftigung")
 
                 if settings.role == .employee {
-                    WorkJobticketCard(data: data)
+                    WorkJobticketCard(data: data, onEditContribution: { isEditingContribution = true })
                         .statsEntrance(0)
-                    WorkBusinessTripsCard(data: data, exports: exports, onAssign: { isAssigning = true })
+                    WorkBusinessTripsCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
                         .statsEntrance(1)
                     WorkPendlerCard(data: data)
                         .statsEntrance(2)
                 } else {
                     WorkSelfEmployedCard(data: data)
                         .statsEntrance(0)
-                    WorkLogbookCard(data: data, exports: exports, onAssign: { isAssigning = true })
+                    WorkLogbookCard(data: data, exports: currentExports, onAssign: { isAssigning = true })
                         .statsEntrance(1)
                 }
                 WorkSourceLinks(sources: WorkSourceLinks.tax)
@@ -99,8 +106,16 @@ private struct WorkTaxScreen: View {
         .sheet(isPresented: $isAssigning) {
             WorkAssignSheet(period: data.period)
         }
+        .sheet(isPresented: $isEditingContribution) {
+            WorkContributionSheet(ticket: data.ticket) { contributionSaves += 1 }
+        }
         .sensoryFeedback(.selection, trigger: settings.role) { _, _ in app.settings.hapticsEnabled }
+        .sensoryFeedback(.success, trigger: contributionSaves) { _, _ in app.settings.hapticsEnabled }
         .task(id: exportKey) {
+            // PDF rendering runs on the main actor: let the screen (and its entrance) draw first, and coalesce rapid
+            // changes (e.g. assigning several trips in a row) – a newer key cancels this task during the pause.
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled else { return }
             exports = WorkTaxExports.make(data, countsCommute: settings.countsCommuteAsBusiness)
         }
     }

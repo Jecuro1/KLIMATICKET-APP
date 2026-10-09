@@ -66,6 +66,8 @@ struct WorkTaxData {
 
 /// Prepared export files (temporary directory) for the share sheet.
 struct WorkTaxExports: Equatable {
+    /// Ticket the files were made for (a switched ticket year never shares the previous year's files).
+    var ticketID: UUID?
     var businessPDF: URL?
     var businessCSV: URL?
     var logbookPDF: URL?
@@ -75,7 +77,7 @@ struct WorkTaxExports: Equatable {
     static func make(_ data: WorkTaxData, countsCommute: Bool) -> WorkTaxExports {
         let year = WorkFormat.fileYear(data.period)
         let holder = data.ticket.holderName.trimmingCharacters(in: .whitespacesAndNewlines)
-        var exports = WorkTaxExports()
+        var exports = WorkTaxExports(ticketID: data.ticket.id)
         if !data.business.trips.isEmpty {
             let csv = WorkTaxExport.businessTripsCSV(data.business, holder: holder, ticketName: data.ticket.name)
             exports.businessCSV = try? Backup.temporaryFile(named: "KlimaBilanz-Dienstreisen-\(year).csv", data: Data(csv.utf8))

@@ -41,7 +41,7 @@ enum WorkDemo {
         case "carSettings":
             settings.carMode = .fuelOnly
             settings.carGivenUp = true
-        case "work", "workPDF", "workAssign":
+        case "work", "workDetails", "workPDF", "workAssign", "workContribution":
             ticket?.employerContribution = 800      // AK example: € 1.400 − € 800 = € 600 own share
         case "workSelf", "workLogbookPDF":
             settings.role = .selfEmployed
@@ -52,7 +52,8 @@ enum WorkDemo {
     }
 }
 
-/// CI screenshot routes of this module: car carSettings carCard work workSelf workAssign workPDF workLogbookPDF.
+/// CI screenshot routes of this module: car carDetails carSettings carCard work workDetails workSelf workAssign
+/// workContribution workPDF workLogbookPDF ("…Details" = the same screen scrolled to its end).
 struct WorkScreenshotHost: View {
     let screen: String
 
@@ -69,7 +70,7 @@ struct WorkScreenshotHost: View {
             guard !isReady else { return }
             WorkDemo.prepare(screen: screen, context: context)
             isReady = true
-            if screen == "workAssign" {
+            if screen == "workAssign" || screen == "workContribution" {
                 try? await Task.sleep(for: .milliseconds(500))
                 showsSheet = true
             }
@@ -85,11 +86,24 @@ struct WorkScreenshotHost: View {
             NavigationStack { WorkCarCardPreview() }
         case "work", "workSelf":
             NavigationStack { WorkTaxView() }
+        case "workDetails":
+            NavigationStack { WorkTaxView() }
+                .defaultScrollAnchor(.bottom)
+        case "carDetails":
+            NavigationStack { WorkCarView() }
+                .defaultScrollAnchor(.bottom)
         case "workAssign":
             NavigationStack { WorkTaxView() }
                 .sheet(isPresented: $showsSheet) {
                     if let ticket = Repository(context: context, app: app).liveTickets().first {
                         WorkAssignSheet(period: ticket.period)
+                    }
+                }
+        case "workContribution":
+            NavigationStack { WorkTaxView() }
+                .sheet(isPresented: $showsSheet) {
+                    if let ticket = Repository(context: context, app: app).liveTickets().first {
+                        WorkContributionSheet(ticket: ticket)
                     }
                 }
         case "workPDF", "workLogbookPDF":
