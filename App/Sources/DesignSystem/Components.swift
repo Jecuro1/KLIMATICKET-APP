@@ -303,6 +303,22 @@ struct ToastOverlay: View {
                         Text(subtitle).font(.caption).foregroundStyle(Theme.textSecondary)
                     }
                 }
+                // MARK: trips – action button ("Rückgängig")
+                if let actionTitle = toast.actionTitle {
+                    Button {
+                        perform(toast)
+                    } label: {
+                        Text(actionTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.accentText)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Theme.accent.opacity(0.14), in: .capsule)
+                            .contentShape(.capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, Theme.Spacing.xxs)
+                }
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.vertical, Theme.Spacing.s)
@@ -313,6 +329,17 @@ struct ToastOverlay: View {
             .onTapGesture { withAnimation { app.toast = nil } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityActions {
+                if let actionTitle = toast.actionTitle {  // MARK: trips
+                    Button(actionTitle) { perform(toast) }
+                }
+            }
         }
+    }
+
+    // MARK: trips – closes the toast, then runs its action.
+    private func perform(_ toast: Toast) {
+        withAnimation(.easeOut(duration: 0.25)) { app.toast = nil }
+        toast.action?()
     }
 }

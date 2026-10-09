@@ -32,6 +32,11 @@ struct Toast: Identifiable, Equatable {
     var symbol: String
     var title: String
     var subtitle: String?
+    // MARK: trips – optional action button ("Rückgängig"); toasts compare by id (closures are not Equatable).
+    var actionTitle: String? = nil
+    var action: (@MainActor () -> Void)? = nil
+
+    static func == (lhs: Toast, rhs: Toast) -> Bool { lhs.id == rhs.id }
 }
 
 /// Prefill for the add-trip sheet (from favourites, widgets, intents, deep links, or "nochmal fahren").
@@ -121,13 +126,18 @@ final class AppState {
         await task.value
     }
 
-    func showToast(_ symbol: String, _ title: String, _ subtitle: String? = nil) {
+    /// `actionTitle`/`action` add a button (e.g. "Rückgängig"); such a toast stays 5 s instead of 2.6 s.  // MARK: trips
+    func showToast(_ symbol: String, _ title: String, _ subtitle: String? = nil,
+                   actionTitle: String? = nil, action: (@MainActor () -> Void)? = nil) {
         // A failed save was just reported: the caller's "Fahrt gespeichert" right after the write must not replace it.
         if let failedAt = saveFailureReportedAt, Date().timeIntervalSince(failedAt) < 1.5 { return }
-        withAnimation(.spring(duration: 0.45, bounce: 0.3)) { toast = Toast(symbol: symbol, title: title, subtitle: subtitle) }
+        withAnimation(.spring(duration: 0.45, bounce: 0.3)) {
+            toast = Toast(symbol: symbol, title: title, subtitle: subtitle, actionTitle: actionTitle, action: action)
+        }
         let id = toast?.id
+        let seconds: Double = action == nil ? 2.6 : 5
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2.6))
+            try? await Task.sleep(for: .seconds(seconds))
             if toast?.id == id { withAnimation(.easeOut(duration: 0.3)) { toast = nil } }
         }
     }

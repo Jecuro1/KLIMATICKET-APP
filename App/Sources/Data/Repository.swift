@@ -26,7 +26,7 @@ struct Repository {
         commit()
     }
 
-    /// Soft delete (kept as tombstone for sync), returns an undo closure.
+    /// Soft delete (kept as tombstone for sync); `restoreTrip` undoes it.
     func deleteTrip(_ trip: TripEntity) {
         trip.deletedAt = Date()
         trip.touch()
@@ -50,13 +50,13 @@ struct Repository {
         return trip
     }
 
-    /// Duplicates a past trip for today ("Nochmal fahren").
+    /// Duplicates a past trip for today ("Nochmal fahren"). `note` lets "Duplizieren" keep it in the same commit.  // MARK: trips
     @discardableResult
-    func repeatTrip(_ trip: TripEntity, on date: Date = Date()) -> TripEntity {
+    func repeatTrip(_ trip: TripEntity, on date: Date = Date(), note: String = "") -> TripEntity {
         let copy = TripEntity(date: date, fromName: trip.fromName, toName: trip.toName, fromStationID: trip.fromStationID,
                               toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm, fareEUR: trip.fareEUR,
                               isFareManual: trip.isFareManual, isRoundTrip: trip.isRoundTrip, travelClass: trip.travelClass,
-                              companions: trip.companions, states: trip.states)
+                              companions: trip.companions, states: trip.states, note: note)
         copy.categoryRaw = trip.categoryRaw
         copy.isInduced = trip.isInduced
         context.insert(copy)

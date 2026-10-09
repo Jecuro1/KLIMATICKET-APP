@@ -139,30 +139,40 @@ struct TripListActions {
 
     /// "Nochmal fahren" – logs the same trip for today.
     func repeatToday(_ trip: TripEntity) {
-        let before = paidOffState()
+        let baseline = breakEvenBaseline()
         let copy = repository.repeatTrip(trip)
         app.showToast("checkmark.circle.fill", "Nochmal erfasst",
                       "Heute · \(TripListFormat.routeTitle(copy.fromName, copy.toName)) · \(Format.euroPrecise(copy.totalValue))")
-        celebrateIfCrossed(before: before)
+        celebrateIfCrossed(baseline, adding: copy)
     }
 
-    /// Exact copy on the same day (e.g. the same route twice that day).
+    /// Exact copy on the same day (e.g. the same route twice that day), note included – one commit.
     func duplicate(_ trip: TripEntity) {
-        let before = paidOffState()
-        let repo = repository
-        let copy = repo.repeatTrip(trip, on: trip.date)
-        if !trip.note.isEmpty {
-            copy.note = trip.note
-            repo.updateTrip(copy)
-        }
+        let baseline = breakEvenBaseline()
+        let copy = repository.repeatTrip(trip, on: trip.date, note: trip.note)
         app.showToast("plus.square.fill.on.square.fill", "Fahrt dupliziert",
                       "\(Format.relativeDay(copy.date)) · \(Format.euroPrecise(copy.totalValue))")
-        celebrateIfCrossed(before: before)
+        celebrateIfCrossed(baseline, adding: copy)
     }
 
+    /// Soft delete with "Rückgängig" on the toast (a full swipe deletes without asking).
     func delete(_ trip: TripEntity) {
         repository.deleteTrip(trip)
-        app.showToast("trash.fill", "Fahrt gelöscht", TripListFormat.routeTitle(trip.fromName, trip.toName))
+        let id = trip.id
+        let app = app, context = context
+        app.showToast("trash.fill", "Fahrt gelöscht", TripListFormat.routeTitle(trip.fromName, trip.toName),
+                      actionTitle: "Rückgängig") {
+            TripListActions(app: app, context: context).restore(tripID: id)
+        }
+    }
+
+    /// Undo of `delete`. Looks the trip up again – after "Alle Daten löschen" it is gone, and nothing happens.
+    func restore(tripID: UUID) {
+        let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.id == tripID && $0.deletedAt != nil })
+        guard let trip = (try? context.fetch(descriptor))?.first else { return }
+        withAnimation(UIAccessibility.isReduceMotionEnabled ? nil : .snappy) { repository.restoreTrip(trip) }
+        app.showToast("arrow.uturn.backward.circle.fill", "Fahrt wiederhergestellt",
+                      TripListFormat.routeTitle(trip.fromName, trip.toName))
     }
 
     /// The favourite that already covers this route (same stations, mode and direction type), if any.
@@ -185,26 +195,36 @@ struct TripListActions {
 
     /// One-tap logging of a favourite ("Schnellerfassung").
     func log(_ favorite: FavoriteRouteEntity) {
-        let before = paidOffState()
+        let baseline = breakEvenBaseline()
         let trip = repository.logFavorite(favorite)
         app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(favorite.displayTitle) · \(Format.euroPrecise(trip.totalValue))")
-        celebrateIfCrossed(before: before)
+        celebrateIfCrossed(baseline, adding: trip)
     }
 
     // MARK: Break-even
 
-    private func paidOffState() -> (ticketID: UUID, isPaidOff: Bool)? {
-        let repo = repository
-        guard let ticket = Analytics.activeTicket(in: repo.liveTickets(), selectedID: app.settings.selectedTicketID) else { return nil }
-        let snapshot = Analytics.make(ticket: ticket, trips: repo.liveTrips(), catalog: app.catalog)
-        return (ticket.id, snapshot.summary.isPaidOff)
+    private struct BreakEvenBaseline {
+        var ticketID: UUID
+        var period: TicketPeriod
+        var value: Double
     }
 
-    /// Raises the global celebration flag when this action pushed the active ticket over its summit.
-    private func celebrateIfCrossed(before: (ticketID: UUID, isPaidOff: Bool)?) {
-        guard let before, !before.isPaidOff,
-              let after = paidOffState(), after.ticketID == before.ticketID, after.isPaidOff,
-              !app.settings.celebratedBreakEvenTicketIDs.contains(after.ticketID.uuidString) else { return }
+    /// The active ticket's value before a write: one fetch of its period's trips, no analytics pass (and none after the
+    /// write either – the new trip's value is simply added).
+    private func breakEvenBaseline() -> BreakEvenBaseline? {
+        let repo = repository
+        guard let ticket = Analytics.activeTicket(in: repo.liveTickets(), selectedID: app.settings.selectedTicketID) else { return nil }
+        let period = ticket.period
+        guard period.price > 0 else { return nil }
+        let value = repo.periodTrips(ticket).reduce(0) { $0 + $1.totalValue }
+        return BreakEvenBaseline(ticketID: ticket.id, period: period, value: value)
+    }
+
+    /// Raises the global celebration flag when `trip` pushed the active ticket over its summit (own share).
+    private func celebrateIfCrossed(_ baseline: BreakEvenBaseline?, adding trip: TripEntity) {
+        guard let baseline, baseline.value < baseline.period.price, baseline.period.contains(trip.date),
+              baseline.value + trip.totalValue >= baseline.period.price,
+              !app.settings.celebratedBreakEvenTicketIDs.contains(baseline.ticketID.uuidString) else { return }
         app.celebrateBreakEven = true
     }
 }
