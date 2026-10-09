@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreTransferable
 import KlimaCore
 
 // Cards of the "Arbeit & Steuer" screen. Copy: warm, precise, Du-Form; rules see KlimaCore/WorkTax.swift.
@@ -513,34 +514,36 @@ struct WorkTripLine: View {
     }
 }
 
-/// "Nachweis als PDF" + "CSV" share buttons (disabled while the files are being prepared).
+/// "Nachweis als PDF" + "CSV" share buttons (disabled until the documents are prepared). The files themselves are
+/// written when the share sheet exports them.
 struct WorkExportButtons: View {
-    let pdf: URL?
-    let csv: URL?
+    let pdf: WorkPDFExport?
+    let csv: WorkCSVExport?
     var pdfTitle: String
     var previewTitle: String
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            shareButton(url: pdf, title: pdfTitle, symbol: "doc.richtext.fill", prominent: true)
-            shareButton(url: csv, title: "CSV", symbol: "tablecells.fill", prominent: false)
+            shareButton(item: pdf, title: pdfTitle, previewTitle: previewTitle, symbol: "doc.richtext.fill", prominent: true)
+            shareButton(item: csv, title: "CSV", previewTitle: "\(previewTitle) (CSV)", symbol: "tablecells.fill", prominent: false)
                 .fixedSize()
         }
     }
 
     @ViewBuilder
-    private func shareButton(url: URL?, title: String, symbol: String, prominent: Bool) -> some View {
+    private func shareButton<Item: Transferable>(item: Item?, title: String, previewTitle: String, symbol: String,
+                                                  prominent: Bool) -> some View {
         let label = Label(title, systemImage: symbol)
             .font(.subheadline.weight(.semibold))
             .lineLimit(1)
             .frame(maxWidth: prominent ? .infinity : nil)
-        if let url {
+        if let item {
             if prominent {
-                ShareLink(item: url, preview: SharePreview(previewTitle, image: Image(systemName: symbol))) { label }
+                ShareLink(item: item, preview: SharePreview(previewTitle, image: Image(systemName: symbol))) { label }
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
             } else {
-                ShareLink(item: url, preview: SharePreview("\(previewTitle) (CSV)", image: Image(systemName: symbol))) { label }
+                ShareLink(item: item, preview: SharePreview(previewTitle, image: Image(systemName: symbol))) { label }
                     .buttonStyle(.glass)
                     .controlSize(.large)
             }

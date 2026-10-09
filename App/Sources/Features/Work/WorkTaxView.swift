@@ -55,13 +55,19 @@ private struct WorkTaxScreen: View {
         exports.ticketID == data.ticket.id ? exports : WorkTaxExports()
     }
 
-    /// Rebuild exports whenever content that ends up in them changes.
-    private var exportKey: String {
-        let latest = data.trips.map(\.date).max()?.timeIntervalSinceReferenceDate ?? 0
-        return [data.ticket.id.uuidString, "\(data.trips.count)", "\(data.business.trips.count)",
-                Format.number(data.business.total, decimals: 2), Format.number(data.job.ownShare, decimals: 2),
-                "\(settings.countsCommuteAsBusiness)", "\(data.selfEmployed.businessTripCount)", "\(latest)",
-                data.ticket.holderName, data.trips.map(\.note).joined()].joined(separator: "|")
+    /// Rebuild the export documents whenever content that ends up in them changes (trips incl. notes and purposes,
+    /// the business-trip cap, the own share, the commute setting, holder and ticket name).
+    private var exportKey: Int {
+        var hasher = Hasher()
+        hasher.combine(data.ticket.id)
+        hasher.combine(data.trips)
+        hasher.combine(data.business)
+        hasher.combine(data.job.ownShare)
+        hasher.combine(data.selfEmployed.businessTripCount)
+        hasher.combine(settings.countsCommuteAsBusiness)
+        hasher.combine(data.ticket.holderName)
+        hasher.combine(data.ticket.name)
+        return hasher.finalize()
     }
 
     var body: some View {
@@ -112,10 +118,7 @@ private struct WorkTaxScreen: View {
         .sensoryFeedback(.selection, trigger: settings.role) { _, _ in app.settings.hapticsEnabled }
         .sensoryFeedback(.success, trigger: contributionSaves) { _, _ in app.settings.hapticsEnabled }
         .task(id: exportKey) {
-            // PDF rendering runs on the main actor: let the screen (and its entrance) draw first, and coalesce rapid
-            // changes (e.g. assigning several trips in a row) – a newer key cancels this task during the pause.
-            try? await Task.sleep(for: .milliseconds(450))
-            guard !Task.isCancelled else { return }
+            // Only the documents are built here (rows, totals, CSV text); the PDFs are drawn when shared.
             exports = WorkTaxExports.make(data, countsCommute: settings.countsCommuteAsBusiness)
         }
     }

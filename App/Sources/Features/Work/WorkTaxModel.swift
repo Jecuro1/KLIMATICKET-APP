@@ -1,4 +1,6 @@
 import Foundation
+import CoreTransferable
+import UniformTypeIdentifiers
 import KlimaCore
 
 /// Everything the "Arbeit & Steuer" screen shows for one ticket period (rules in KlimaCore.WorkTax).
@@ -66,14 +68,16 @@ struct WorkTaxData {
     }
 }
 
-/// Prepared export files (temporary directory) for the share sheet.
-struct WorkTaxExports: Equatable {
+/// The share-sheet exports of one ticket year. Only the documents (rows, totals, CSV text) are prepared up front –
+/// the PDF pages are drawn and the files written when the share sheet asks for them. Writing both PDFs ran
+/// ImageRenderer on the main actor shortly after the screen opened and after every assigned trip.
+struct WorkTaxExports {
     /// Ticket the files were made for (a switched ticket year never shares the previous year's files).
     var ticketID: UUID?
-    var businessPDF: URL?
-    var businessCSV: URL?
-    var logbookPDF: URL?
-    var logbookCSV: URL?
+    var businessPDF: WorkPDFExport?
+    var businessCSV: WorkCSVExport?
+    var logbookPDF: WorkPDFExport?
+    var logbookCSV: WorkCSVExport?
 
     @MainActor
     static func make(_ data: WorkTaxData, countsCommute: Bool) -> WorkTaxExports {
@@ -82,16 +86,49 @@ struct WorkTaxExports: Equatable {
         var exports = WorkTaxExports(ticketID: data.ticket.id)
         if !data.business.trips.isEmpty {
             let csv = WorkTaxExport.businessTripsCSV(data.business, holder: holder, ticketName: data.ticket.name)
-            exports.businessCSV = try? Backup.temporaryFile(named: "KlimaBilanz-Dienstreisen-\(year).csv", data: Data(csv.utf8))
-            exports.businessPDF = WorkPDF.write(WorkPDF.businessDocument(data), named: "KlimaBilanz-Dienstreise-Nachweis-\(year).pdf")
+            exports.businessCSV = WorkCSVExport(text: csv, fileName: "KlimaBilanz-Dienstreisen-\(year).csv")
+            exports.businessPDF = WorkPDFExport(document: WorkPDF.businessDocument(data),
+                                                fileName: "KlimaBilanz-Dienstreise-Nachweis-\(year).pdf")
         }
         if !data.trips.isEmpty {
             let csv = WorkTaxExport.logbookCSV(trips: data.trips, summary: data.selfEmployed, countsCommute: countsCommute,
                                                holder: holder, ticketName: data.ticket.name)
-            exports.logbookCSV = try? Backup.temporaryFile(named: "KlimaBilanz-Oeffi-Fahrtenbuch-\(year).csv", data: Data(csv.utf8))
-            exports.logbookPDF = WorkPDF.write(WorkPDF.logbookDocument(data, countsCommute: countsCommute),
-                                               named: "KlimaBilanz-Oeffi-Fahrtenbuch-\(year).pdf")
+            exports.logbookCSV = WorkCSVExport(text: csv, fileName: "KlimaBilanz-Oeffi-Fahrtenbuch-\(year).csv")
+            exports.logbookPDF = WorkPDFExport(document: WorkPDF.logbookDocument(data, countsCommute: countsCommute),
+                                               fileName: "KlimaBilanz-Oeffi-Fahrtenbuch-\(year).pdf")
         }
         return exports
+    }
+}
+
+/// A4 PDF ("Dienstreise-Nachweis", "Öffi-Fahrtenbuch"), drawn into a temporary file on export.
+struct WorkPDFExport: Transferable {
+    let document: WorkPDFDocument
+    let fileName: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .pdf) { export in
+            SentTransferredFile(try await export.write())
+        }
+    }
+
+    @MainActor
+    func write() throws -> URL {
+        guard let url = WorkPDF.write(document, named: fileName) else { throw TktShareError.renderFailed }
+        return url
+    }
+}
+
+/// CSV export (Excel AT), written into a temporary file on export.
+struct WorkCSVExport: Transferable {
+    let text: String
+    let fileName: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .commaSeparatedText) { export in
+            let url = FileManager.default.temporaryDirectory.appending(path: export.fileName)
+            try Data(export.text.utf8).write(to: url, options: .atomic)
+            return SentTransferredFile(url)
+        }
     }
 }

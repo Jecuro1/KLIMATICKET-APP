@@ -43,9 +43,11 @@ struct WorkAssignSheet: View {
     }
 
     var body: some View {
+        // Filtered and grouped once per render (it ran twice, and every assignment re-renders the sheet).
+        let months = self.months
         NavigationStack {
             List {
-                if visibleTrips.isEmpty {
+                if months.isEmpty {
                     emptyState
                         .listRowBackground(Color.clear)
                 } else {

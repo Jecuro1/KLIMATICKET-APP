@@ -15,7 +15,8 @@ struct WorkCarChart: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var selectedDate: Date?
+    /// Scrub position (full style) – read only by the overlay, so scrubbing never rebuilds the chart.
+    @State private var scrub = StatsChartScrub()
 
     private var start: Date { Calendar.vienna.startOfDay(for: period.start) }
     private var end: Date { max(period.end, start.addingTimeInterval(86_400)) }
@@ -40,7 +41,7 @@ struct WorkCarChart: View {
             .chartXScale(domain: start...end, range: .plotDimension(startPadding: 0, endPadding: isFull ? 8 : 6))
             .chartYScale(domain: 0...maxY)
             .chartLegend(.hidden)
-            .chartXSelection(value: isFull ? $selectedDate : .constant(nil))
+            .chartXSelection(value: isFull ? scrub.binding : .constant(nil))
             .chartBackground { proxy in
                 GeometryReader { geo in
                     if let anchor = proxy.plotFrame {
@@ -48,8 +49,13 @@ struct WorkCarChart: View {
                     }
                 }
             }
+            .chartOverlay { proxy in
+                StatsScrubLayer(proxy: proxy, scrub: scrub, value: { date in carValue(at: date).map { $0 * grow } },
+                                markerColor: Theme.dawn, hapticsEnabled: app.settings.hapticsEnabled) { date, _ in
+                    if let car = carValue(at: date) { callout(date: date, car: car) }
+                }
+            }
             .environment(\.calendar, Calendar.vienna)
-            .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && app.settings.hapticsEnabled }
             .accessibilityLabel("Kosten-Verlauf Auto gegen KlimaTicket")
             .accessibilityValue(accessibilityText)
             .accessibilityHint(isFull ? "Zum Erkunden horizontal über das Diagramm streichen." : "")
@@ -76,7 +82,6 @@ struct WorkCarChart: View {
             ticketRule
             todayMarks
             breakEvenMarks
-            selectionMarks
         }
     }
 
@@ -126,11 +131,12 @@ struct WorkCarChart: View {
                     .symbolSize(26)
                     .foregroundStyle(Theme.alpenglow)
                     .annotation(position: .topLeading, spacing: 2) {
-                        Text("Prognose \(Format.euro(last.value, decimals: 0))")
-                            .font(.caption2.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.textSecondary)
-                            .opacity(selectedDate == nil ? grow : 0)
+                        StatsScrubFade(scrub: scrub, opacity: grow) {
+                            Text("Prognose \(Format.euro(last.value, decimals: 0))")
+                                .font(.caption2.weight(.semibold))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                     }
             }
         }
@@ -145,11 +151,12 @@ struct WorkCarChart: View {
             // (the car has climbed past the ticket there and the break-even flag sits top-left of its point).
             .annotation(position: carEndsAboveTicket ? .bottom : .top, alignment: carEndsAboveTicket ? .trailing : .leading, spacing: 4) {
                 if isFull {
-                    Text("KlimaTicket \(Format.euro(ticket, decimals: 0))")
-                        .font(.caption2.weight(.bold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.accentText)
-                        .opacity(selectedDate == nil ? 1 : 0)
+                    StatsScrubFade(scrub: scrub) {
+                        Text("KlimaTicket \(Format.euro(ticket, decimals: 0))")
+                            .font(.caption2.weight(.bold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.accentText)
+                    }
                 }
             }
     }
@@ -167,11 +174,12 @@ struct WorkCarChart: View {
                 }
                 .annotation(position: today.value > ticket * 0.9 ? .bottomTrailing : .topTrailing, spacing: 6) {
                     if isFull, isRunning {
-                        Text("HEUTE")
-                            .font(.caption2.weight(.bold))
-                            .tracking(0.8)
-                            .foregroundStyle(Theme.textSecondary)
-                            .opacity(selectedDate == nil ? 1 : 0)
+                        StatsScrubFade(scrub: scrub) {
+                            Text("HEUTE")
+                                .font(.caption2.weight(.bold))
+                                .tracking(0.8)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
                     }
                 }
         }
@@ -188,7 +196,7 @@ struct WorkCarChart: View {
                         .overlay(Circle().stroke(Theme.onAccent, lineWidth: 2))
                 }
                 .annotation(position: .topLeading, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                    if isFull { flagPill(day, isForecast: false).opacity(selectedDate == nil ? grow : 0) }
+                    if isFull { StatsScrubFade(scrub: scrub, opacity: grow) { flagPill(day, isForecast: false) } }
                 }
         } else if isFull, let day = result.forecastBreakEvenDate {
             PointMark(x: .value("Break-even", day), y: .value("KlimaTicket", ticket * grow))
@@ -199,23 +207,8 @@ struct WorkCarChart: View {
                         .frame(width: 12, height: 12)
                 }
                 .annotation(position: .topLeading, spacing: 4, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                    flagPill(day, isForecast: true).opacity(selectedDate == nil ? grow : 0)
+                    StatsScrubFade(scrub: scrub, opacity: grow) { flagPill(day, isForecast: true) }
                 }
-        }
-    }
-
-    @ChartContentBuilder
-    private var selectionMarks: some ChartContent {
-        if isFull, let selectedDate, let car = carValue(at: selectedDate) {
-            RuleMark(x: .value("Auswahl", selectedDate))
-                .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(Theme.textSecondary.opacity(0.6))
-                .annotation(position: .top, spacing: 0, overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                    callout(date: selectedDate, car: car)
-                }
-            PointMark(x: .value("Auswahl", selectedDate), y: .value("Auto", car * grow))
-                .symbolSize(70)
-                .foregroundStyle(Theme.dawn)
         }
     }
 
@@ -322,22 +315,21 @@ struct WorkCarChart: View {
            let x0 = proxy.position(forX: first.date), let x1 = proxy.position(forX: today.date),
            let yTop = proxy.position(forY: today.value * grow), let yBase = proxy.position(forY: ticket * grow),
            x1 - x0 > 70, yBase - yTop > 30 {
-            Text("+ \(Format.euro(result.savings, decimals: 0))")
-                .font(.caption.weight(.bold))
-                .monospacedDigit()
-                .foregroundStyle(Theme.positiveText)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Theme.positive.opacity(0.16), in: .capsule)
-                .fixedSize()
-                .position(x: x0 + (x1 - x0) * 0.72, y: yBase - (yBase - yTop) * 0.32)
-                .opacity(selectedDate == nil ? 1 : 0)
+            StatsScrubFade(scrub: scrub) {
+                Text("+ \(Format.euro(result.savings, decimals: 0))")
+                    .font(.caption.weight(.bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.positiveText)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Theme.positive.opacity(0.16), in: .capsule)
+                    .fixedSize()
+            }
+            .position(x: x0 + (x1 - x0) * 0.72, y: yBase - (yBase - yTop) * 0.32)
         }
     }
 
     // MARK: Scrubbing
-
-    private var selectedDay: Date? { selectedDate.map { Calendar.vienna.startOfDay(for: $0) } }
 
     /// Actual value up to today, forecast afterwards.
     private func carValue(at date: Date) -> Double? {
@@ -375,7 +367,8 @@ struct WorkCarChart: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .frostedCard(cornerRadius: 14)
+        .statsCalloutSurface()
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: Accessibility
