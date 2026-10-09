@@ -85,7 +85,9 @@ struct BreakEvenCelebration: View {
             VStack(spacing: Theme.Spacing.m) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 76, weight: .semibold))
-                    .foregroundStyle(Theme.positive.gradient)
+                    // White check (palette): the glow behind would otherwise tint the see-through checkmark.
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, Theme.positive.gradient)
                     .background {
                         // Static glow (no animation cost): the seal sits in light.
                         Circle()

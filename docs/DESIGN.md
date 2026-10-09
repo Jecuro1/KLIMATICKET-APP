@@ -154,6 +154,9 @@ ab dem du gratis fährst“. Folgeschritte schlicht auf ruhigem Himmel mit Forts
 - Schnellerfassung (interaktiv), Kontrollzentrum „Fahrt erfassen“. iOS-26-Render-Modi: Akzent-Elemente `widgetAccentable`.
 
 ## 6. Bewegung & Haptik
+> Vollständiges Motion-System (Tokens, Reveal, Zahlen, Haptik-Vokabular, Glas-Morph, Zoom, Scrollen, Feiern, Tipps,
+> Reduce Motion, Performance): **`docs/MOTION.md`**.
+
 - Hero-Zahl zählt hoch (`.numericText`, spring 0,6/0,15); Route `trim` 0→p (1,2–1,4 s); Kletterer-Halo pulsiert (2,4 s).
 - Himmel driftet minimal; Sterne funkeln. Reduce Motion: alles statisch, Crossfades.
 - Break-even: Fahne dawn→gold, Konfetti, `.sensoryFeedback(.success)`.
