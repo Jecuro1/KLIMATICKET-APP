@@ -25,6 +25,7 @@ struct MetaPurposeCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .title) private var spotlightSize: CGFloat = 30
     @State private var metric: Metric = .value
     @State private var selectedID: String?
@@ -229,9 +230,10 @@ struct MetaPurposeCard: View {
             .padding(.vertical, 7)
             .background {
                 if isSelected {
+                    // Glides between rows; Reduce Motion: cross-fades in place.
                     RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
                         .fill(color.opacity(0.12))
-                        .matchedGeometryEffect(id: "purpose.selection", in: rowSelection)
+                        .matchedGeometryEffect(id: "purpose.selection", in: rowSelection, isSource: !reduceMotion)
                 }
             }
             .contentShape(.rect(cornerRadius: Theme.Radius.modeTile))
