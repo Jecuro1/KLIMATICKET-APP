@@ -253,6 +253,9 @@ struct PlaceTagsBuilder {
     /// the state's default regional tickets.
     static func klimaTicket(_ v: String?, state: String?, catalog: SkiAreaCatalog) -> KlimaTicketValidity {
         guard let v, !v.isEmpty else {
+            // the default is Austrian: a stop abroad (state X) without its own tag – the build tags every one of them
+            // „no|Ausland“ or „border“, so this only matters when the TAGS section is missing – is not included
+            if state == "X" { return KlimaTicketValidity(status: .notIncluded, reason: "Ausland") }
             return KlimaTicketValidity(status: .valid, regionalTicketIDs: state.flatMap { catalog.defaultRegional[$0] } ?? [])
         }
         let parts = v.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false).map(String.init)

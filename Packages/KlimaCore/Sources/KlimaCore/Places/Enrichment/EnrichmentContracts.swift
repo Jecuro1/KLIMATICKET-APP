@@ -398,8 +398,10 @@ public struct GeoBox: Sendable, Hashable {
         self.maxLon = maxLon
     }
 
+    /// Plain comparisons, not `ClosedRange`: a box from data with min > max (or NaN) contains nothing instead of
+    /// trapping („Range requires lowerBound <= upperBound“).
     public func contains(_ p: GeoPoint) -> Bool {
-        (minLat...maxLat).contains(p.latitude) && (minLon...maxLon).contains(p.longitude)
+        p.latitude >= minLat && p.latitude <= maxLat && p.longitude >= minLon && p.longitude <= maxLon
     }
 }
 

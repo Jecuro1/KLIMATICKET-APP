@@ -105,11 +105,11 @@ public enum SpokenLabels {
             parts.append("fällt aus")
             return parts.joined(separator: ", ")
         }
-        let minutes = Int((effective.timeIntervalSince(now) / 60).rounded(.down))
+        let minutes = wholeMinutes(effective.timeIntervalSince(now), .down)
         if minutes <= 0 { parts.append("jetzt") } else { parts.append(minutes == 1 ? "in 1 Minute" : "in \(minutes) Minuten") }
         parts.append("um \(clock(effective, timeZone))")
         if let realtime {
-            let delay = Int((realtime.timeIntervalSince(planned) / 60).rounded())
+            let delay = wholeMinutes(realtime.timeIntervalSince(planned), .toNearestOrAwayFromZero)
             if delay >= 1 {
                 parts.append(delay == 1 ? "1 Minute verspätet" : "\(delay) Minuten verspätet")
             } else if delay <= -1 {
@@ -142,6 +142,8 @@ public enum SpokenLabels {
 
     /// „120 Meter“, „1,2 Kilometer“.
     public static func distance(_ meters: Double) -> String {
+        // `Int(_:)` traps on NaN/∞ (a distance from a broken coordinate); clamp to a sane range first
+        let meters = meters.isFinite ? min(max(0, meters), 100_000_000) : 0
         if meters < 1_000 { return "\(Int(meters.rounded())) Meter" }
         let km = (meters / 100).rounded() / 10
         let text = km == km.rounded() ? String(Int(km)) : String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")
@@ -152,6 +154,12 @@ public enum SpokenLabels {
     static func list(_ items: [String]) -> String {
         guard items.count > 1 else { return items.first ?? "" }
         return items.dropLast().joined(separator: ", ") + " und " + items.last!
+    }
+
+    /// Seconds → whole minutes without trapping on NaN/∞ or absurd dates (`Int(_:)` would).
+    static func wholeMinutes(_ seconds: TimeInterval, _ rule: FloatingPointRoundingRule) -> Int {
+        guard seconds.isFinite else { return 0 }
+        return Int((min(max(seconds, -1e9), 1e9) / 60).rounded(rule))
     }
 
     static func clock(_ date: Date, _ tz: TimeZone) -> String {
