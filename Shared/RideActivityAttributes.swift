@@ -17,20 +17,17 @@ struct RideActivityAttributes: ActivityAttributes {
         var payoff: RidePayoff?
         /// Expected arrival when known (live planner).
         var expectedArrival: Date?
-        /// 0…1 journey progress when known (live planner).
-        var progress: Double?
         /// Live line from the planner ("RJX 662 · pünktlich · Gl. 3").
         var status: RideStatusLine?
         /// When the ride was saved or ended (end states).
         var endedAt: Date?
 
         init(phase: RidePhase = .riding, valueEUR: Double, payoff: RidePayoff?, expectedArrival: Date? = nil,
-             progress: Double? = nil, status: RideStatusLine? = nil, endedAt: Date? = nil) {
+             status: RideStatusLine? = nil, endedAt: Date? = nil) {
             self.phase = phase
             self.valueEUR = valueEUR
             self.payoff = payoff
             self.expectedArrival = expectedArrival
-            self.progress = progress
             self.status = status
             self.endedAt = endedAt
         }

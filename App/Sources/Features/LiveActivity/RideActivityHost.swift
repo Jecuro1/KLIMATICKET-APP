@@ -65,21 +65,23 @@ private struct RideActivityHostModifier: ViewModifier {
         askNext()
     }
 
-    /// Toast (and the break-even celebration) for rides saved from the Live Activity.
+    /// Toast (and the break-even celebration) for rides saved from the Live Activity – worded like the trip editor's.
     private func announce(_ saved: [(record: RideRecord, trip: TripEntity)]) {
-        guard let first = saved.first else { return }
-        if saved.count == 1 {
-            let route = RideNames.route(from: first.trip.fromName, to: first.trip.toName, roundTrip: first.trip.isRoundTrip)
-            var subtitle = "\(route) · \(RideFormat.plusEuro(first.trip.totalValue))"
-            if let payoff = first.record.payoff, !payoff.isPaidOffBefore {
-                subtitle += " · \(Format.percent(payoff.after))"
-            }
-            app.showToast("checkmark.circle.fill", "Fahrt gespeichert", subtitle)
-        } else {
-            let total = saved.reduce(0) { $0 + $1.trip.totalValue }
-            app.showToast("checkmark.circle.fill", "\(saved.count) Fahrten gespeichert", "über die Live-Aktivität · \(RideFormat.plusEuro(total))")
-        }
+        guard !saved.isEmpty else { return }
+        let total = saved.reduce(0) { $0 + $1.trip.totalValue }
+        let title = saved.count == 1 ? "Fahrt gespeichert" : "\(saved.count) Fahrten gespeichert"
+        app.showToast("checkmark.circle.fill", title, Self.savedSubtitle(value: total, balance: RidePlanner.balance(context: context, app: app)))
         celebrateIfSummitReached(saved.map(\.record))
+    }
+
+    /// "+ € 47,00 · jetzt 78 % amortisiert" / "+ € 47,00 · reiner Gewinn"
+    private static func savedSubtitle(value: Double, balance: RidePlanner.Balance?) -> String {
+        var text = RideFormat.plusEuro(value)
+        if let balance {
+            let before = (balance.value - value) / balance.price
+            text += before >= 1 ? " · reiner Gewinn" : " · jetzt \(Format.percent(balance.value / balance.price)) amortisiert"
+        }
+        return text
     }
 
     private func celebrateIfSummitReached(_ records: [RideRecord]) {
@@ -114,7 +116,7 @@ private struct RideActivityHostModifier: ViewModifier {
         case .save:
             if let trip = repo.saveRide(record) {
                 app.showToast("checkmark.circle.fill", "Fahrt gespeichert",
-                              "\(RideNames.route(from: trip.fromName, to: trip.toName, roundTrip: trip.isRoundTrip)) · \(RideFormat.plusEuro(trip.totalValue))")
+                              Self.savedSubtitle(value: trip.totalValue, balance: RidePlanner.balance(context: context, app: app, at: trip.date)))
                 celebrateIfSummitReached([record])
             } else {
                 RideStore.remove(record.id)
@@ -144,8 +146,7 @@ private struct RideActivityHostModifier: ViewModifier {
     private static func question(_ record: RideRecord) -> String {
         let route = RideNames.route(from: record.trip.fromName, to: record.trip.toName, roundTrip: record.trip.isRoundTrip)
         let day = Format.relativeDay(record.startedAt)
-        let start = "\(day == "Heute" || day == "Gestern" ? day.lowercased() : "am \(day)") um \(Format.time(record.startedAt))"
-        return "Die Live-Aktivität deiner Fahrt \(route) (gestartet \(start)) ist beendet, ohne dass du sie gespeichert hast. "
-            + "Wert der Fahrt: \(Format.euroPrecise(record.trip.totalValue))."
+        let when = (day == "Heute" || day == "Gestern" ? day.lowercased() : "\(day)") + ", \(Format.time(record.startedAt))"
+        return "Deine Fahrt \(route) von \(when) ist beendet, aber noch nicht gespeichert. Wert: \(Format.euroPrecise(record.trip.totalValue))."
     }
 }

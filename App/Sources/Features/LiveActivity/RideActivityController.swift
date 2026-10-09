@@ -41,7 +41,6 @@ struct RideUpdate {
     var phase: RidePhase?
     var status: RideStatusLine?
     var expectedArrival: Date?
-    var progress: Double?
     var valueEUR: Double?
     var payoff: RidePayoff?
     /// Lights up the screen and plays the alert sound (e.g. "Angekommen in Innsbruck").
@@ -139,7 +138,6 @@ final class RideActivityController {
         if let phase = update.phase { state.phase = phase }
         if let status = update.status { state.status = status }
         if let arrival = update.expectedArrival { state.expectedArrival = arrival }
-        if let progress = update.progress { state.progress = min(max(progress, 0), 1) }
         if let value = update.valueEUR { state.valueEUR = value }
         if let payoff = update.payoff { state.payoff = payoff }
         let alert = update.alert.map { alert -> AlertConfiguration in
