@@ -46,11 +46,15 @@ Installation per AltStore, SideStore, Sideloadly oder TestFlight – Details in 
 - Cloud-Backend (Cloudflare Worker + D1): [docs/CLOUDFLARE_BACKEND.md](docs/CLOUDFLARE_BACKEND.md), Einrichtung in
   [docs/SETUP.md §3](docs/SETUP.md), Tests: `cd backend && npm ci && npm test`
 - Tarifkatalog neu bauen: `python3 scripts/build_tariffs.py` · Preistabelle: `python3 scripts/build_relations.py`
+- Haltestellen/Orte neu bauen: `sh scripts/fetch_places_sources.sh && python3 -I scripts/build_places.py`
+  (siehe [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md), Suche: [docs/PLACES.md](docs/PLACES.md))
 
 ## Datenquellen
 
-Ticketpreise: klimaticket.at & Verkehrsverbünde · Normalpreise: ÖBB Relationspreise · Haltestellen: ÖBB-Personenverkehr
-(GTFS, CC BY 4.0), ÖBB-Infrastruktur (CC BY 3.0 AT), © OpenStreetMap-Mitwirkende (ODbL), Stadt Wien – data.wien.gv.at
-(CC BY 4.0) · CO₂: Umweltbundesamt.
+Ticketpreise: klimaticket.at & Verkehrsverbünde · Normalpreise: ÖBB Relationspreise · Haltestellen (alle ~40.000
+österreichischen Haltestellen): Mobilitätsverbünde Österreich (Haltestellenverzeichnis, verändert), ÖBB-Personenverkehr
+(GTFS, CC BY 4.0), ÖBB-Infrastruktur (CC BY 3.0 AT), Stadt Wien – data.wien.gv.at (CC BY 4.0), Land Steiermark (CC BY 4.0),
+Statistik Austria (CC BY 4.0) · Orte: © OpenStreetMap-Mitwirkende (ODbL) · CO₂: Umweltbundesamt.
+Details und Lizenzen: [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 
 KlimaBilanz ist ein unabhängiges Projekt und steht in keiner Verbindung zur One Mobility GmbH oder zur ÖBB.

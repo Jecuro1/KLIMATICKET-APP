@@ -10,7 +10,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "KlimaCore"),
-        .testTarget(name: "KlimaCoreTests", dependencies: ["KlimaCore"]),
+        // Fixtures are read from disk via #filePath (shared with scripts/places_reference.py), not bundled.
+        .testTarget(name: "KlimaCoreTests", dependencies: ["KlimaCore"], exclude: ["Fixtures"]),
     ],
     swiftLanguageModes: [.v5]
 )

@@ -33,13 +33,14 @@ enum Copy {
     """
 
     static let privacy = """
-    Deine Daten gehören dir. Ohne Konto bleiben alle Fahrten ausschließlich auf deinem iPhone. Mit Konto werden sie verschlüsselt (TLS) in deine persönliche Cloud-Datenbank synchronisiert, auf die nur du Zugriff hast (Row Level Security). Es gibt kein Tracking, keine Werbung und keine Weitergabe an Dritte. Standortdaten werden nur kurz genutzt, um die nächste Haltestelle vorzuschlagen, und nie gespeichert.
+    Deine Daten gehören dir. Ohne Konto bleiben alle Fahrten ausschließlich auf deinem iPhone. Mit Konto werden sie verschlüsselt (TLS) in deine persönliche Cloud-Datenbank synchronisiert, auf die nur du Zugriff hast. Es gibt kein Tracking, keine Werbung und keine Weitergabe an Dritte. Standortdaten werden nur kurz genutzt, um die nächste Haltestelle vorzuschlagen, und nie gespeichert.
     """
 
     static let dataSources: [(title: String, detail: String)] = [
         ("Ticketpreise", "klimaticket.at (AGB 2021–2026) sowie die Websites der Verkehrsverbünde"),
         ("Normalpreise", "ÖBB Relationspreise (Standardticket, Tarif ab 14.12.2025), sonst Näherung nach Bahnkilometern; Kernzonen-Tarife der Verkehrsverbünde"),
-        ("Haltestellen", "ÖBB-Personenverkehr AG Soll-Fahrplan GTFS (CC BY 4.0), ÖBB-Infrastruktur AG Verkehrsstationen (CC BY 3.0 AT), © OpenStreetMap-Mitwirkende (ODbL), Stadt Wien – data.wien.gv.at (CC BY 4.0)"),
+        ("Haltestellen", "Mobilitätsverbünde Österreich OG, Haltestellenverzeichnis (Stand 10/2025, über ÖV-Güteklassen 2025 von ÖROK/BMIMI/AustriaTech), verändert (zusammengeführt, gekürzt, Koordinaten umgerechnet) · ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · ÖBB-Infrastruktur AG Verkehrsstationen (CC BY 3.0 AT) · Stadt Wien – data.wien.gv.at (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at (CC BY 4.0) · Statistik Austria – Gemeindegrenzen 2026 (CC BY 4.0)"),
+        ("Orte", "© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright)"),
         ("CO₂-Faktoren", "Umweltbundesamt, Emissionsfaktoren Personenverkehr"),
         ("Kilometergeld", "Reisegebührenvorschrift / BMF"),
     ]
