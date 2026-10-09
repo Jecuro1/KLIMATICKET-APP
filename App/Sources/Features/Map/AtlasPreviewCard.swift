@@ -11,9 +11,12 @@ struct AtlasPreviewCard: View {
     var ticketID: UUID? = nil
 
     @Environment(AppState.self) private var app
+    @State private var memo = AtlasSummaryMemo()
+    /// See `AtlasView.placesReady`: re-summarize once every Austrian stop can be resolved.
+    @State private var placesReady = PlaceIndexLoader.shared.current != nil
 
     var body: some View {
-        let summary = Atlas.summarize(snapshot.trips, stations: app.stations)
+        let summary = memo.summary(of: snapshot.trips, stations: app.stations, placesReady: placesReady)
         NavigationLink {
             AtlasView(initialTicketID: ticketID)
         } label: {
@@ -25,6 +28,10 @@ struct AtlasPreviewCard: View {
         .accessibilityValue(accessibilityValue(summary))
         .accessibilityHint("Öffnet die interaktive Karte")
         .accessibilityAddTraits(.isButton)
+        .task {
+            guard !placesReady, (try? await PlaceIndexLoader.shared.load()) != nil else { return }
+            placesReady = true
+        }
     }
 
     private func accessibilityValue(_ summary: AtlasSummary) -> String {
@@ -35,6 +42,26 @@ struct AtlasPreviewCard: View {
             parts.append("meistgefahren: \(top.from.name) und \(top.to.name)")
         }
         return parts.joined(separator: ", ")
+    }
+}
+
+/// Remembers the last summary so re-renders of the statistics screen don't re-aggregate (and re-resolve stops)
+/// for unchanged trips. A plain reference held in `@State`: reading it never triggers a view update.
+final class AtlasSummaryMemo {
+    private var key: Int?
+    private var cached = AtlasSummary.empty
+
+    @MainActor
+    func summary(of trips: [TripRecord], stations: StationIndex, placesReady: Bool) -> AtlasSummary {
+        var hasher = Hasher()
+        hasher.combine(trips)
+        hasher.combine(placesReady)
+        let key = hasher.finalize()
+        if key != self.key {
+            cached = Atlas.summarize(trips, stations: stations)
+            self.key = key
+        }
+        return cached
     }
 }
 

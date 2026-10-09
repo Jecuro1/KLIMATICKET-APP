@@ -61,6 +61,9 @@ struct AtlasView: View {
     @State private var didLaunch = false
     @State private var panelShown = LaunchMode.isScreenshot
     @State private var panelHeight: CGFloat = 0
+    /// The full stop database (bus, tram, cable-car stops) is attached to `app.stations` shortly after launch;
+    /// once it is, trips logged at those stops get their map position.
+    @State private var placesReady = PlaceIndexLoader.shared.current != nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var look: AtlasMapLook { AtlasMapLook(rawValue: lookRaw) ?? .standard }
@@ -104,6 +107,10 @@ struct AtlasView: View {
             recompute()
         }
         .task { await launch() }
+        .task {
+            guard !placesReady, (try? await PlaceIndexLoader.shared.load()) != nil else { return }
+            placesReady = true
+        }
         .sensoryFeedback(.selection, trigger: mode) { _, _ in app.settings.hapticsEnabled }
         .sensoryFeedback(.selection, trigger: pickedScope) { _, _ in app.settings.hapticsEnabled }
         .sensoryFeedback(.impact(weight: .light), trigger: selectionTick) { _, _ in app.settings.hapticsEnabled }
@@ -250,7 +257,7 @@ struct AtlasView: View {
     /// Changes whenever the shown trips could change (selection, filter, edits, sync).
     private var dataKey: String {
         let latest = trips.map(\.updatedAt).max()?.timeIntervalSince1970 ?? 0
-        return "\(scope)|\(mode?.rawValue ?? "alle")|\(trips.count)|\(latest)|\(tickets.count)"
+        return "\(scope)|\(mode?.rawValue ?? "alle")|\(trips.count)|\(latest)|\(tickets.count)|\(placesReady)"
     }
 
     private func recompute() {
@@ -261,7 +268,10 @@ struct AtlasView: View {
         summary = AtlasData.summary(records, mode: effectiveMode, stations: app.stations)
         if let id = sheet?.routeID, summary.route(id: id) == nil { sheet = nil }
         if let id = highlightedPlaceID, summary.place(id: id) == nil { highlightedPlaceID = nil }
-        framing = AtlasFraming(target: .overview, revision: framing.revision + 1)
+        // A selected route or focused station keeps the camera (e.g. when more stops resolve in the background).
+        if sheet?.routeID == nil, highlightedPlaceID == nil {
+            framing = AtlasFraming(target: .overview, revision: framing.revision + 1)
+        }
     }
 
     private func trips(for ids: [UUID]) -> [TripEntity] {

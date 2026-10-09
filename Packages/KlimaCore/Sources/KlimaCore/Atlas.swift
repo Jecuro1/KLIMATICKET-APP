@@ -305,12 +305,47 @@ public enum Atlas {
     public static let borderStations = ["Buchs SG", "St. Margrethen", "Lindau-Reutin", "Passau Hbf", "Simbach/Inn",
                                         "Tarvisio Boscoverde", "Innichen", "Brenner", "Sopron"]
 
-    /// Summary with stations resolved via the bundled index (ID first, then exact name/alias).
+    /// Summary with stations resolved via the station index (with the full stop database once it is attached):
+    /// ID first, then exact name/alias, then – for free-text stops from imports or older trips – a confident search hit.
     public static func summarize(_ trips: [TripRecord], stations: StationIndex) -> AtlasSummary {
         summarize(trips) { id, name in
             if let id, let station = stations.station(id: id) { return station }
-            return stations.station(named: name)
+            return stations.station(named: name) ?? approximateStation(named: name, in: stations)
         }
+    }
+
+    /// Best-effort position for a stop name without an exact entry ("Lech" → "Lech am Arlberg Rüfiplatz",
+    /// "Innsbruck Congress" → "Innsbruck Congress/Hofburg"): one of the top search hits, accepted only when its words
+    /// contain the name's words in order (as word prefixes). A single word must be the first word of the hit's full
+    /// name (not of an alias – "Messe-Prater" is an alias of "Wien Messe-Prater") or its municipality, so a bare
+    /// "Messe" or "Hauptplatz" never lands in a random city. Only for the map; fares never use it.
+    public static func approximateStation(named name: String, in stations: StationIndex) -> Station? {
+        let query = words(name)
+        guard let head = query.first, query.joined().count >= 3 else { return nil }
+        for candidate in stations.search(name, limit: 3) {
+            if query.count == 1 {
+                if words(candidate.name).first == head || candidate.municipality.map({ words($0) == query }) == true {
+                    return candidate
+                }
+            } else if ([candidate.name] + (candidate.aliases ?? [])).contains(where: { containsInOrder(query, in: words($0)) }) {
+                return candidate
+            }
+        }
+        return nil
+    }
+
+    static func words(_ text: String) -> [String] {
+        StationIndex.normalize(text).split(separator: " ").map(String.init)
+    }
+
+    /// Every query word starts one of `words`, in the same order.
+    static func containsInOrder(_ query: [String], in words: [String]) -> Bool {
+        var start = words.startIndex
+        for q in query {
+            guard let i = words[start...].firstIndex(where: { $0.hasPrefix(q) }) else { return false }
+            start = words.index(after: i)
+        }
+        return true
     }
 
     /// Aggregates trips into routes, places, states and extreme points.

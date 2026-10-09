@@ -109,6 +109,39 @@ final class AtlasTests: XCTestCase {
         XCTAssertEqual(s.places.first { $0.name == "Innsbruck Hauptbahnhof" }?.visits, 3)
     }
 
+    func testFreeTextStopsResolveOnlyOnConfidentSearchHits() {
+        let congress = Station(id: "at:47:61000", name: "Innsbruck Congress/Hofburg", lat: 47.2692, lon: 11.3946, state: "T",
+                               kind: .stop, municipality: "Innsbruck")
+        let lech = Station(id: "at:48:70000", name: "Lech am Arlberg Rüfiplatz", lat: 47.2081, lon: 10.1420, state: "V",
+                           kind: .stop, municipality: "Lech")
+        let messe = Station(id: "at:47:62000", name: "Innsbruck Messe", lat: 47.2700, lon: 11.4040, state: "T", kind: .stop,
+                            aliases: ["Messe"], municipality: "Innsbruck")
+        let idx = StationIndex(stations: [stAnton, innsbruck, congress, lech, messe])
+        XCTAssertEqual(Atlas.approximateStation(named: "Innsbruck Congress", in: idx)?.id, congress.id)
+        XCTAssertEqual(Atlas.approximateStation(named: "Lech", in: idx)?.id, lech.id)
+        // A single word must start the stop's full name (an alias is not enough) or be its municipality …
+        XCTAssertNil(Atlas.approximateStation(named: "Messe", in: idx))
+        XCTAssertEqual(Atlas.approximateStation(named: "Innsbruck Messe", in: idx)?.id, messe.id)
+        // … and unknown places stay unknown.
+        XCTAssertNil(Atlas.approximateStation(named: "Hungerburg", in: idx))
+        XCTAssertNil(Atlas.approximateStation(named: "Le", in: idx))
+
+        let s = Atlas.summarize([trip(stAnton, nil, toName: "Lech", mode: .bus),
+                                 trip(nil, nil, fromName: "Innsbruck Congress", toName: "Hungerburg", mode: .cableCar)],
+                                stations: idx)
+        XCTAssertEqual(s.routes.count, 1)
+        // Lech lies west of St. Anton, so it is the route's western end.
+        XCTAssertEqual(s.routes.first?.from.name, "Lech am Arlberg Rüfiplatz")
+        XCTAssertTrue(s.visitedStates.contains(.vorarlberg))
+        XCTAssertEqual(s.unmapped.map(\.knownPlaceName), ["Innsbruck Congress/Hofburg"])
+    }
+
+    func testWordOrderMatching() {
+        XCTAssertTrue(Atlas.containsInOrder(["innsbruck", "con"], in: ["innsbruck", "congress", "hofburg"]))
+        XCTAssertFalse(Atlas.containsInOrder(["congress", "innsbruck"], in: ["innsbruck", "congress"]))
+        XCTAssertFalse(Atlas.containsInOrder(["graz", "hbf"], in: ["graz", "jakominiplatz"]))
+    }
+
     func testSameStationIsAVisitWithoutRoute() {
         let s = Atlas.summarize([trip(wienRail, wienMetro)], stations: index)
         XCTAssertTrue(s.routes.isEmpty)
