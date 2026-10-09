@@ -1,0 +1,25 @@
+{
+ "vao/vao_tripsearch_tariff_via_voels_ibk-hall": {
+  "arrLid": "A=1@L=470118400@",
+  "connections": [
+   {
+    "fareSet": "VVT 6 Zonen",
+    "passesVia": true,
+    "product": "Einzelticket",
+    "statusCode": "OK",
+    "totalCents": 940
+   },
+   {
+    "fareSet": "VVT 6 Zonen",
+    "passesVia": true,
+    "product": "Einzelticket",
+    "statusCode": "OK",
+    "totalCents": 940
+   }
+  ],
+  "depLid": "A=1@L=470118700@",
+  "directCents": 470,
+  "outDate": "20261009",
+  "viaLid": "A=1@L=470119100@"
+ }
+}
