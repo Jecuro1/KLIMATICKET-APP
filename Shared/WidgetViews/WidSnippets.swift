@@ -92,11 +92,14 @@ struct WidLoggedSnippet: View {
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                    // Up to two lines: beside "+ € 47,00" one line cut "St. Anton am Arlberg → Innsbruck Hbf" after
+                    // the arrow – the destination is the part that matters.
                     Text(routeLine)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .layoutPriority(1)
                 Spacer(minLength: 6)
@@ -131,11 +134,13 @@ struct WidLoggedSnippet: View {
         .accessibilityValue(spokenValue)
     }
 
-    /// "St. Anton → Innsbruck · heute 07:42"
+    /// "St. Anton → Innsbruck Hbf" (short names, like the Live Activity) · "Heute, 07:42" for a favourite without stations.
     private var routeLine: String {
+        let route = [favorite?.fromName ?? "", favorite?.toName ?? ""].map(RideNames.short).filter { !$0.isEmpty }
+            .joined(separator: " → ")
+        guard route.isEmpty else { return route }
         let time = Date().formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(WidFormat.locale))
-        let route = [favorite?.fromName ?? "", favorite?.toName ?? ""].filter { !$0.isEmpty }.joined(separator: " → ")
-        return route.isEmpty ? "Heute, \(time)" : "\(route) · \(time)"
+        return "Heute, \(time)"
     }
 
     private func progressText(_ s: WidgetSnapshot) -> String {
