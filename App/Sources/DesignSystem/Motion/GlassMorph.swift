@@ -60,6 +60,7 @@ struct GlassSegmentedPicker<Value: Hashable, Label: View>: View {
 
     @Namespace private var namespace
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(selection: Binding<Value>, options: [Value], tint: Color = Theme.accent, @ViewBuilder label: @escaping (Value) -> Label) {
         _selection = selection
@@ -87,8 +88,9 @@ struct GlassSegmentedPicker<Value: Hashable, Label: View>: View {
         } label: {
             label(option)
                 .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.8)
+                .multilineTextAlignment(.center)
                 .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
