@@ -60,6 +60,7 @@ struct OpenAddTripIntent: AppIntent {
 
     static let pendingKey = "intent.openAddTrip"
 
+    @MainActor
     func perform() async throws -> some IntentResult {
         AppGroup.defaults.set(true, forKey: Self.pendingKey)
         NotificationCenter.default.post(name: QuickLogQueue.didEnqueue, object: nil)

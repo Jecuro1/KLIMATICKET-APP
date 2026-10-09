@@ -20,7 +20,7 @@ struct SettingsView: View {
         List {
             SetAccountSection()
             SetFareSection()
-            PerkSettingsSection()
+            PerkSettingsSection() // MARK: benefits
             SetDetectionSection()
             SetAppearanceSection()
             SetNotificationsSection()

@@ -9,6 +9,7 @@ struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
+    @State private var showsAccountSwitch = false
 
     var body: some View {
         @Bindable var app = app
@@ -36,10 +37,33 @@ struct RootView: View {
         .overlay(alignment: .top) {
             ToastOverlay()
         }
+        .alert("Anderes Konto angemeldet", isPresented: $showsAccountSwitch, presenting: app.sync.pendingAccountSwitch) { change in
+            Button("Daten dieses iPhones übernehmen") {
+                Task {
+                    await app.sync.mergeLocalDataIntoAccount(context: context, auth: app.auth)
+                    Repository(context: context, app: app).refreshWidgets()
+                }
+            }
+            Button(change.unsyncedItemCount > 0 ? "Durch Konto ersetzen (\(change.unsyncedItemCount) ungesichert)" : "Durch Daten des Kontos ersetzen",
+                   role: .destructive) {
+                Task {
+                    await app.sync.discardLocalDataAndSync(context: context, auth: app.auth)
+                    Repository(context: context, app: app).refreshWidgets()
+                }
+            }
+            Button("Abbrechen – abmelden", role: .cancel) {
+                Task { await app.sync.cancelAccountSwitch(auth: app.auth) }
+            }
+        } message: { change in
+            Text(Self.accountSwitchMessage(change))
+        }
+        .onChange(of: app.sync.pendingAccountSwitch, initial: true) { _, change in
+            showsAccountSwitch = change != nil && !LaunchMode.isScreenshot
+        }
         .preferredColorScheme(app.settings.appearance.colorScheme)
         .tint(Theme.accent)
         .onOpenURL { url in handleDeepLink(url) }
-        .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue).receive(on: RunLoop.main)) { _ in
             handleExternalRequests()
         }
         .task {
@@ -50,6 +74,7 @@ struct RootView: View {
             repo.configureTripDetection()
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
             await app.sync.sync(context: context, auth: app.auth)
+            repo.refreshWidgets()
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !LaunchMode.isScreenshot else { return }
@@ -57,8 +82,20 @@ struct RootView: View {
             Task {
                 if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
                 await app.sync.sync(context: context, auth: app.auth)
+                Repository(context: context, app: app).refreshWidgets()
             }
         }
+    }
+
+    private static func accountSwitchMessage(_ change: SyncService.AccountSwitch) -> String {
+        let previous = change.previousEmail ?? "einem anderen Konto"
+        let current = change.newEmail ?? "einem neuen Konto"
+        var text = "Auf diesem iPhone liegen \(change.localItemCount) Einträge von \(previous). Du bist jetzt mit \(current) angemeldet. "
+        text += "Sollen sie in dieses Konto übernommen oder durch die Daten des Kontos ersetzt werden?"
+        if change.unsyncedItemCount > 0 {
+            text += " \(change.unsyncedItemCount) Änderungen wurden noch nicht gesichert und gehen beim Ersetzen verloren."
+        }
+        return text
     }
 
     /// Pending quick logs (widgets/Siri) and "open add trip" requests from App Intents.

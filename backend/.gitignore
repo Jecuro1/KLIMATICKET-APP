@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+dist/
+# Rendered by CI from wrangler.template.toml (contains the D1 database id) – never committed.
+wrangler.toml
+.dev.vars
+.dev.vars.*
+*.secrets.json

@@ -1,0 +1,6 @@
+// Custom Swift availability domains used to model iOS availability on Linux.
+// See README.md ("Availability").
+module KBAvailability {
+  header "KBAvailability.h"
+  export *
+}

@@ -105,6 +105,7 @@ struct DashboardView: View {
                         .padding(.top, DashStyle.sectionSpacing)
                 }
 
+                // MARK: benefits
                 PerkSummaryCard()
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                     .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)

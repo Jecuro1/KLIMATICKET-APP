@@ -184,6 +184,14 @@ enum TktText {
         return "\(Format.number(shown)) %"
     }
 
+    /// The fraction rounded the way `percent` shows it, for components that format it themselves: the DS `TicketCard`
+    /// stub uses `Format.percent`, which would turn 99,6 % into "100 %" before the break-even (§4.3).
+    static func displayFraction(_ fraction: Double) -> Double {
+        let raw = max(fraction, 0) * 100
+        let shown = fraction < 1 ? min(99, raw.rounded()) : raw.rounded(.down)
+        return shown / 100
+    }
+
     /// Catalog texts carry internal references ("– Details siehe rules.exclusions."); strip them for display.
     static func cleanCatalogText(_ text: String) -> String {
         var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -191,6 +199,23 @@ enum TktText {
             result = String(result[..<range.lowerBound]) + "."
         }
         return result
+    }
+}
+
+// MARK: - Selection
+
+enum TktSelection {
+    /// `Repository.addTicket` selects the new ticket app-wide. While another ticket is valid today, a ticket year that has
+    /// not started yet must not replace it – Übersicht, Statistik and the widgets would show 0 % of a ticket you cannot use
+    /// yet. Restores the previous selection in that case; returns true when it did.
+    @MainActor
+    @discardableResult
+    static func keepRunningTicket(repo: Repository, app: AppState, added: TicketEntity,
+                                  previousSelection: UUID?, running: TicketEntity?) -> Bool {
+        guard let running, running.id != added.id, running.isActive, added.startDate > Date() else { return false }
+        app.settings.selectedTicketID = previousSelection
+        repo.refreshWidgets()
+        return true
     }
 }
 
