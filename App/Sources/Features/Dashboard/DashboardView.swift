@@ -420,8 +420,21 @@ private struct DashCondensedSummit: View {
     var onTap: () -> Void
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             if condense.isCondensed {
+                // A frosted band continues the status-bar scrim under the pill, so the rows scrolling beneath never read
+                // through around it; it fades out below the pill.
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .mask {
+                        LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.62),
+                                               .init(color: .clear, location: 1)],
+                                       startPoint: .top, endPoint: .bottom)
+                    }
+                    .frame(height: 66)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .motionTransition(.opacity)
                 Button(action: onTap) {
                     HStack(spacing: Theme.Spacing.xs) {
                         DashProgressDot(progress: summary.progressClamped, isPaidOff: summary.isPaidOff)
