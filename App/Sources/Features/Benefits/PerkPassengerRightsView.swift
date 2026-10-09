@@ -25,6 +25,8 @@ struct PerkPassengerRightsView: View {
     @State private var selectionTick = 0
     @State private var successTick = 0
 
+    private static let checklistID = "perk.rights.checklist"
+
     var body: some View {
         let haptics = app.settings.hapticsEnabled
         Group {
@@ -58,25 +60,34 @@ struct PerkPassengerRightsView: View {
         let months = PerkPassengerRights.validityMonths(start: ticket.startDate, end: ticket.endDate)
         let estimate = PerkPassengerRights.estimate(scheme: scheme, ticketPrice: ticket.price, badMonths: badMonths.count,
                                                     months: max(1, months.count), firstClassUpgradePrice: upgradePrice(ticket))
-        return ScrollView {
-            VStack(spacing: PerkStyle.cardSpacing) {
-                if scheme == .unknown {
-                    unknownSchemeCard
-                } else {
-                    PerkRightsEstimateCard(ticket: ticket, estimate: estimate, months: months, badMonths: badMonths,
-                                           onToggle: toggleMonth)
-                    PerkRightsFactsCard(scheme: scheme)
-                    PerkRightsChecklistCard(steps: steps(for: scheme, ticket: ticket), completed: completedSteps,
-                                            onToggle: { toggleStep($0, ticket: ticket) },
-                                            onOpen: { openURL($0) })
-                    reminderCard(ticket)
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: PerkStyle.cardSpacing) {
+                    if scheme == .unknown {
+                        unknownSchemeCard
+                    } else {
+                        PerkRightsEstimateCard(ticket: ticket, estimate: estimate, months: months, badMonths: badMonths,
+                                               onToggle: toggleMonth)
+                        PerkRightsFactsCard(scheme: scheme)
+                        PerkRightsChecklistCard(steps: steps(for: scheme, ticket: ticket), completed: completedSteps,
+                                                onToggle: { toggleStep($0, ticket: ticket) },
+                                                onOpen: { openURL($0) })
+                            .id(Self.checklistID)
+                        reminderCard(ticket)
+                    }
+                    footer
+                        .padding(.top, Theme.Spacing.xs)
                 }
-                footer
-                    .padding(.top, Theme.Spacing.xs)
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+                .padding(.top, Theme.Spacing.xxs)
+                .padding(.bottom, Theme.Spacing.xxl)
             }
-            .padding(.horizontal, Theme.Spacing.cardGutter)
-            .padding(.top, Theme.Spacing.xxs)
-            .padding(.bottom, Theme.Spacing.xxl)
+            .task {
+                // CI screenshot "passengerRightsChecklist": the lower half (checklist, reminder, sources).
+                guard LaunchMode.screenshotScreen == "passengerRightsChecklist" else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                proxy.scrollTo(Self.checklistID, anchor: .top)
+            }
         }
         .scrollIndicators(.hidden)
         .ambientBackground(.standard, glow: 0.45)
@@ -265,7 +276,7 @@ struct PerkPassengerRightsView: View {
                                detail: "Auf oebb.at/fahrgastrechte registrieren, deine Strecke angeben und das Konto für die Auszahlung hinterlegen.",
                                linkTitle: "oebb.at/fahrgastrechte", link: PerkRightsLinks.oebb),
                 PerkRightsStep(id: 1, title: "Nach Ablauf Geld erhalten",
-                               detail: "Lag ein Monat unter 95 %, zahlen die ÖBB nach Ablauf automatisch aus – ab \(payoutDay).",
+                               detail: "Lag ein Monat unter 95\u{00A0}%, zahlen die ÖBB nach Ablauf automatisch aus – ab \(payoutDay).",
                                linkTitle: nil, link: nil),
             ]
         case .unknown:
@@ -395,7 +406,7 @@ struct PerkRightsEstimateCard: View {
                 HStack(alignment: .center) {
                     Kicker(text: "Deine Schätzung")
                     Spacer(minLength: Theme.Spacing.xs)
-                    PerkPill(text: "\(Format.number(estimate.scheme.threshold * 100)) %-Garantie", symbol: "checkmark.shield.fill",
+                    PerkPill(text: "\(Format.number(estimate.scheme.threshold * 100))\u{00A0}%-Garantie", symbol: "checkmark.shield.fill",
                              foreground: Theme.positiveText, fill: Theme.pine)
                 }
                 VStack(alignment: .leading, spacing: 2) {
@@ -409,7 +420,7 @@ struct PerkRightsEstimateCard: View {
 
                 PerkMonthGrid(months: months, badMonths: badMonths, threshold: estimate.scheme.threshold, onToggle: onToggle)
                     .padding(.top, Theme.Spacing.xxs)
-                Text("Tippe die Monate an, in denen die ÖBB laut oebb.at/fahrgastrechte unter \(Format.number(estimate.scheme.threshold * 100)) % pünktlich waren.")
+                Text("Tippe die Monate an, in denen die ÖBB laut oebb.at/\u{2060}fahrgastrechte unter \(Format.number(estimate.scheme.threshold * 100))\u{00A0}% pünktlich waren.")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -422,10 +433,10 @@ struct PerkRightsEstimateCard: View {
 
                 VStack(spacing: Theme.Spacing.xs) {
                     if estimate.scheme == .klimaTicketOe {
-                        figureRow("Pro Monat unter 93 %", value: range(estimate.monthlyLow, estimate.monthlyHigh, decimals: 2))
+                        figureRow("Pro Monat unter 93\u{00A0}%", value: range(estimate.monthlyLow, estimate.monthlyHigh, decimals: 2))
                         figureRow("Höchstens im Ticketjahr", value: Format.euroPrecise(estimate.yearlyMaxHigh))
                     } else {
-                        figureRow("Pro Monat unter 95 %", value: "bis \(Format.euroPrecise(estimate.monthlyHigh))")
+                        figureRow("Pro Monat unter 95\u{00A0}%", value: "bis \(Format.euroPrecise(estimate.monthlyHigh))")
                         figureRow("Höchstens im Ticketjahr", value: "bis \(Format.euroPrecise(estimate.yearlyMaxHigh))")
                     }
                     if estimate.upgradeMonthly > 0 {
@@ -483,12 +494,12 @@ struct PerkRightsEstimateCard: View {
         let threshold = Format.number(estimate.scheme.threshold * 100)
         if estimate.badMonths > 0 {
             let monthsText = estimate.badMonths == 1 ? "1 Monat" : "\(estimate.badMonths) Monate"
-            return "für \(monthsText) unter \(threshold) % – einmal im Jahr nach Ablauf"
+            return "für \(monthsText) unter \(threshold)\u{00A0}% – einmal im Jahr nach Ablauf"
         }
         if estimate.scheme == .klimaTicketOe {
             return "je nach Pünktlichkeit der ÖBB in deinen \(estimate.months) Gültigkeitsmonaten – ausbezahlt einmal nach Ablauf."
         }
-        return "höchstens 10 % der Entschädigungsbasis – der Bahnanteil deines Ticketpreises."
+        return "höchstens 10\u{00A0}% der Entschädigungsbasis – der Bahnanteil deines Ticketpreises."
     }
 
     private func range(_ low: Double, _ high: Double, decimals: Int) -> String {
@@ -568,7 +579,7 @@ struct PerkMonthGrid: View {
         .buttonStyle(.plain)
         .disabled(isFuture && !isBad)
         .accessibilityLabel(longLabel(index))
-        .accessibilityValue(isBad ? "unter \(Format.number(threshold * 100)) % markiert" : (isFuture ? "noch nicht vorbei" : "nicht markiert"))
+        .accessibilityValue(isBad ? "unter \(Format.number(threshold * 100))\u{00A0}% markiert" : (isFuture ? "noch nicht vorbei" : "nicht markiert"))
         .accessibilityHint(isFuture ? "" : "Doppeltippen, um den Monat zu markieren")
         .accessibilityAddTraits(isBad ? .isSelected : [])
     }
@@ -628,18 +639,18 @@ struct PerkRightsFactsCard: View {
         switch scheme {
         case .klimaTicketOe, .unknown:
             return [
-                ("checkmark.shield.fill", "93 % Pünktlichkeit garantiert",
+                ("checkmark.shield.fill", "93\u{00A0}% Pünktlichkeit garantiert",
                  "Pro Gültigkeitsmonat und Bahnunternehmen. Ab 5 Minuten 30 Sekunden gilt ein Zug als verspätet, Ausfälle zählen mit."),
-                ("percent", "10 % je unpünktlichem Monat",
-                 "Du bekommst 10 % des Monatsanteils der Entschädigungsbasis – laut ÖBB derzeit € 4,35 pro Monat."),
+                ("percent", "10\u{00A0}% je unpünktlichem Monat",
+                 "Du bekommst 10\u{00A0}% des Monatsanteils der Entschädigungsbasis – laut ÖBB derzeit € 4,35 pro Monat."),
                 ("calendar.badge.checkmark", "Einmal im Jahr, nach Ablauf",
-                 "Höchstens 10 % der Entschädigungsbasis pro Jahr. Beträge unter € 4 können entfallen."),
+                 "Höchstens 10\u{00A0}% der Entschädigungsbasis pro Jahr. Beträge unter € 4 können entfallen."),
             ]
         case .regional:
             return [
-                ("checkmark.shield.fill", "95 % auf deiner Strecke",
-                 "Für Verbund-Jahreskarten garantieren die ÖBB 95 % Pünktlichkeit ihrer Nahverkehrszüge pro Monat."),
-                ("percent", "10 % je unpünktlichem Monat",
+                ("checkmark.shield.fill", "95\u{00A0}% auf deiner Strecke",
+                 "Für Verbund-Jahreskarten garantieren die ÖBB 95\u{00A0}% Pünktlichkeit ihrer Nahverkehrszüge pro Monat."),
+                ("percent", "10\u{00A0}% je unpünktlichem Monat",
                  "Basis ist der Bahnanteil deines Ticketpreises (ohne Bus und Stadtverkehr)."),
                 ("calendar.badge.checkmark", "Automatisch nach Ablauf",
                  "Bist du angemeldet, zahlen die ÖBB nach Ablauf deiner Jahreskarte automatisch aus."),

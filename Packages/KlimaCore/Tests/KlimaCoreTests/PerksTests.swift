@@ -97,6 +97,14 @@ final class PerksTests: XCTestCase {
         XCTAssertEqual(catalog.search("-50").map(\.id), ["cat"])
     }
 
+    func testSearchIgnoresNonBreakingSpaces() {
+        let partner = PerkPartner(id: "nb", name: "Nachtbus", category: .mobility, benefit: "\u{2212}50\u{00A0}% auf\u{00A0}€\u{00A0}7",
+                                  typicalSavingEUR: 3.5, region: "W", url: "https://example.org")
+        let nbCatalog = PerkCatalog(version: 1, asOf: "", source: "", partners: [partner])
+        XCTAssertEqual(nbCatalog.search("50 % auf").map(\.id), ["nb"])
+        XCTAssertEqual(nbCatalog.search("€ 7").map(\.id), ["nb"])
+    }
+
     func testSearchWithCategoryAndEmptyQuery() {
         XCTAssertEqual(catalog.search("", category: .leisure).map(\.id), ["sommer-bergbahnen", "kino"])
         XCTAssertEqual(catalog.search("   ").count, catalog.partners.count)

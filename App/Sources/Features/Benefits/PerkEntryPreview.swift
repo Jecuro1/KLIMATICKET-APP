@@ -26,3 +26,19 @@ struct PerkEntryPreview: View {
         .toolbarVisibility(.hidden, for: .navigationBar)
     }
 }
+
+/// Design QA screen (CI screenshot "benefitSettings"): the "Vorteilswelt" settings section in the settings list style.
+struct PerkSettingsPreview: View {
+    var body: some View {
+        List {
+            PerkSettingsSection()
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(Theme.Spacing.l)
+        .scrollContentBackground(.hidden)
+        .background { SetBackdrop() }
+        .tint(Theme.accent)
+        .navigationTitle("Einstellungen")
+        .navigationBarTitleDisplayMode(.large)
+    }
+}

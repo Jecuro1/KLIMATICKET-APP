@@ -34,7 +34,7 @@ struct PerkSummaryCard: View {
                         .font(.headline)
                         .foregroundStyle(Theme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("CAT −50 %, Museen, Sommer-Bergbahnen – erfasse genutzte Vorteile.")
+                    Text("CAT −50\u{00A0}%, Museen, Sommer-Bergbahnen – erfasse genutzte Vorteile.")
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -231,19 +231,21 @@ struct ScreenshotRouter: View {
         case "settings":
             NavigationStack { SettingsView() }
         // MARK: benefits
-        case "benefits", "benefitCatalog", "benefitEditor":
+        case "benefits", "benefitsHistory", "benefitCatalog", "benefitEditor":
             NavigationStack { PerkBenefitsView() }
-                .sheet(isPresented: .constant(screen != "benefits")) {
+                .sheet(isPresented: .constant(screen == "benefitCatalog" || screen == "benefitEditor")) {
                     if screen == "benefitCatalog" {
                         PerkCatalogSheet()
                     } else if let partner = PerkCatalogStore.shared.partner(id: "cat") {
                         NavigationStack { PerkEditorView(mode: .new(partner)) {} }
                     }
                 }
-        case "passengerRights":
+        case "passengerRights", "passengerRightsChecklist":
             NavigationStack { PerkPassengerRightsView() }
         case "benefitCard":
             NavigationStack { PerkEntryPreview() }
+        case "benefitSettings":
+            NavigationStack { PerkSettingsPreview() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
         case "hero":

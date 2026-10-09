@@ -212,6 +212,7 @@ enum PerkSearch {
     static func fold(_ text: String) -> String {
         text.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: Locale(identifier: "de_AT"))
             .replacingOccurrences(of: "−", with: "-")
+            .replacingOccurrences(of: "\u{00A0}", with: " ")
     }
 
     static func transliterate(_ text: String) -> String {

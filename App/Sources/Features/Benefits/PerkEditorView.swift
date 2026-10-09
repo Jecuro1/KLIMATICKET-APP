@@ -243,7 +243,7 @@ struct PerkEditorView: View {
     private var amountFooter: some View {
         if let partner {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
-                Text("Richtwert \(Format.euroPrecise(partner.typicalSavingEUR)) – passe ihn an deinen echten Preis an.")
+                Text("Richtwert \(Format.euroPrecise(partner.typicalSavingEUR)) – pass ihn bei Bedarf an.")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

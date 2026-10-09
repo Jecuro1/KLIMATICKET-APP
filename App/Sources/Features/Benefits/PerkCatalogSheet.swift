@@ -55,12 +55,6 @@ struct PerkCatalogSheet: View {
     private var list: some View {
         let results = catalog.search(query, category: category)
         return List {
-            Section {
-                chips
-                    .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xxs, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
             if query.isEmpty {
                 Section {
                     customRow
@@ -103,6 +97,8 @@ struct PerkCatalogSheet: View {
         .listSectionSpacing(Theme.Spacing.m)
         .scrollContentBackground(.hidden)
         .background { PerkSheetBackdrop() }
+        // Category chips stay put under the search field while the catalogue scrolls beneath them.
+        .safeAreaBar(edge: .top) { chips }
         .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: category)
     }
 
@@ -119,11 +115,11 @@ struct PerkCatalogSheet: View {
                         }
                     }
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, Theme.Spacing.xs)
             }
         }
+        .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
         .scrollIndicators(.hidden)
-        .scrollClipDisabled()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Nach Kategorie filtern")
     }

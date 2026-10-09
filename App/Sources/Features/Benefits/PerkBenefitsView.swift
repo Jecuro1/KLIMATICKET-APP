@@ -42,17 +42,21 @@ struct PerkBenefitsView: View {
         let period = PerkPeriod.current(tickets: tickets, selectedID: app.settings.selectedTicketID)
         let summary = PerkSummary.make(benefits: benefits, period: period)
         let haptics = app.settings.hapticsEnabled
-        List {
-            topSection(period: period, summary: summary)
-            if benefits.isEmpty {
-                emptySection
+        let groups = PerkMonthGroup.group(benefits)
+        ScrollViewReader { proxy in
+            List {
+                topSection(period: period, summary: summary)
+                ForEach(groups) { group in
+                    monthSection(group)
+                }
+                footerSection
             }
-            quickAddSection(isEmpty: benefits.isEmpty)
-            ForEach(PerkMonthGroup.group(benefits)) { group in
-                monthSection(group)
+            .task {
+                // CI screenshot "benefitsHistory": the month list below the hero.
+                guard LaunchMode.screenshotScreen == "benefitsHistory", let first = groups.first?.benefits.first else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                proxy.scrollTo(first.id, anchor: .center)
             }
-            rightsSection
-            footerSection
         }
         .listStyle(.insetGrouped)
         .listSectionSpacing(Theme.Spacing.m)
@@ -83,63 +87,78 @@ struct PerkBenefitsView: View {
 
     // MARK: Sections
 
-    @ViewBuilder
+    /// Hero, separation note, quick-add chips and the Fahrgastrechte entry in one full-width section: the cards
+    /// keep their soft shadows (an inset-grouped section clips everything at its edges) and the chips scroll
+    /// edge to edge.
     private func topSection(period: PerkPeriod, summary: PerkSummary) -> some View {
-        if !benefits.isEmpty {
-            Section {
-                PerkHeroCard(summary: summary, benefits: benefits, period: period)
-                    .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: 0, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                PerkSeparateNote(tripSummary: tripSummary, summary: summary)
-                    .listRowInsets(EdgeInsets(top: PerkStyle.cardSpacing, leading: 0, bottom: 0, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-            }
-        }
-    }
-
-    private var emptySection: some View {
         Section {
-            GlassCard(padding: Theme.Spacing.xxs) {
-                EmptyStateView(symbol: "gift",
-                               title: "Noch keine Vorteile erfasst",
-                               message: "Mit dem KlimaTicket sparst du auch abseits der Schiene – CAT −50 %, Museen, Sommer-Bergbahnen. Erfasse, was du nutzt: Wir zählen es als Zusatz-Ersparnis, getrennt von deiner Ticket-Bilanz.",
-                               actionTitle: "Vorteil erfassen") {
-                    sheet = .catalog
-                }
-            }
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: 0, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-        }
-    }
-
-    private func quickAddSection(isEmpty: Bool) -> some View {
-        Section {
-            ScrollView(.horizontal) {
-                GlassEffectContainer(spacing: Theme.Spacing.xs) {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        ForEach(quickAddPartners) { partner in
-                            PerkQuickAddChip(partner: partner) {
-                                sheet = .add(partner)
-                            }
-                        }
-                        allButton
+            VStack(alignment: .leading, spacing: 0) {
+                Group {
+                    if benefits.isEmpty {
+                        emptyCard
+                    } else {
+                        PerkHeroCard(summary: summary, benefits: benefits, period: period)
+                        PerkSeparateNote(tripSummary: tripSummary, summary: summary)
+                            .padding(.top, PerkStyle.cardSpacing)
                     }
-                    .padding(.vertical, Theme.Spacing.xxs)
                 }
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+
+                PerkListHeader(title: benefits.isEmpty ? "Beliebte Vorteile" : "Schnell erfassen")
+                    .padding(.horizontal, PerkStyle.headerLeading)
+                    .padding(.top, PerkStyle.sectionSpacing)
+                    .padding(.bottom, Theme.Spacing.xxs)
+                quickAddRow
+
+                PerkListHeader(title: "Fahrgastrechte")
+                    .padding(.horizontal, PerkStyle.headerLeading)
+                    .padding(.top, PerkStyle.sectionSpacing - Theme.Spacing.xs)
+                    .padding(.bottom, Theme.Spacing.xs)
+                PerkRightsTeaserCard(scheme: rightsScheme) {
+                    showsPassengerRights = true
+                }
+                .padding(.horizontal, Theme.Spacing.cardGutter)
             }
-            .scrollIndicators(.hidden)
-            .scrollClipDisabled()
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+            .padding(.top, Theme.Spacing.xxs)
+            // Room for the last card's shadow inside the section.
+            .padding(.bottom, Theme.Spacing.xl)
+            .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Schnell erfassen")
-        } header: {
-            PerkListHeader(title: isEmpty ? "Beliebte Vorteile" : "Schnell erfassen")
         }
+        .listSectionMargins(.horizontal, 0)
+    }
+
+    private var emptyCard: some View {
+        GlassCard(padding: Theme.Spacing.xxs) {
+            EmptyStateView(symbol: "gift",
+                           title: "Noch keine Vorteile erfasst",
+                           message: "Mit dem KlimaTicket sparst du auch abseits der Schiene – CAT −50\u{00A0}%, Museen, Sommer-Bergbahnen. Erfasse, was du nutzt: Wir zählen es als Zusatz-Ersparnis, getrennt von deiner Ticket-Bilanz.",
+                           actionTitle: "Vorteil erfassen") {
+                sheet = .catalog
+            }
+        }
+    }
+
+    private var quickAddRow: some View {
+        ScrollView(.horizontal) {
+            GlassEffectContainer(spacing: Theme.Spacing.xs) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    ForEach(quickAddPartners) { partner in
+                        PerkQuickAddChip(partner: partner) {
+                            sheet = .add(partner)
+                        }
+                    }
+                    allButton
+                }
+                // Breathing room for the glass shadows.
+                .padding(.vertical, Theme.Spacing.xs)
+            }
+        }
+        .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
+        .scrollIndicators(.hidden)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Schnell erfassen")
     }
 
     private var allButton: some View {
@@ -167,6 +186,7 @@ struct PerkBenefitsView: View {
         Section {
             ForEach(group.benefits) { benefit in
                 row(benefit)
+                    .id(benefit.id)
             }
         } header: {
             PerkMonthHeader(group: group)
@@ -209,19 +229,6 @@ struct PerkBenefitsView: View {
         }
         .accessibilityAction(named: "Heute nochmal genutzt") { repeatToday(benefit) }
         .accessibilityAction(named: "Löschen") { delete(benefit) }
-    }
-
-    private var rightsSection: some View {
-        Section {
-            PerkRightsTeaserCard {
-                showsPassengerRights = true
-            }
-            .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: 0, trailing: 0))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-        } header: {
-            PerkListHeader(title: "Fahrgastrechte")
-        }
     }
 
     private var footerSection: some View {
@@ -279,6 +286,12 @@ struct PerkBenefitsView: View {
             result.append(partner)
         }
         return result
+    }
+
+    /// Compensation scheme of the active ticket (KlimaTicket Ö: 93 %, regional: 95 %).
+    private var rightsScheme: PerkRightsScheme {
+        Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID).map { PerkRightsScheme.forFamily($0.family) }
+            ?? .klimaTicketOe
     }
 
     /// Trip payoff of the active ticket – shown next to (never mixed with) the Zusatz-Ersparnis.
@@ -399,6 +412,7 @@ struct PerkSeparateNote: View {
 
 /// Fahrgastrechte entry card inside the Vorteilswelt list.
 struct PerkRightsTeaserCard: View {
+    var scheme: PerkRightsScheme = .klimaTicketOe
     var action: () -> Void
 
     var body: some View {
@@ -417,7 +431,7 @@ struct PerkRightsTeaserCard: View {
                         .font(.headline)
                         .foregroundStyle(Theme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Unter 93 % Pünktlichkeit gibt's eine Entschädigung – Checkliste & Erinnerung.")
+                    Text(detail)
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -435,6 +449,11 @@ struct PerkRightsTeaserCard: View {
         }
         .buttonStyle(PerkPressableStyle())
         .accessibilityHint("Öffnet den Fahrgastrechte-Assistenten")
+    }
+
+    private var detail: String {
+        guard scheme != .unknown else { return "Was dir bei Verspätungen zusteht – Regeln, Checkliste & Erinnerung." }
+        return "Unter \(Format.number(scheme.threshold * 100))\u{00A0}% Pünktlichkeit gibt's eine Entschädigung – Checkliste & Erinnerung."
     }
 }
 

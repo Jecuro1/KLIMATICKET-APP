@@ -191,7 +191,8 @@ struct PerkCategoryLegend: View {
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)
                         .layoutPriority(1)
-                    Text(Format.euro(item.total, decimals: item.total >= 100 ? 0 : nil))
+                    // Whole euros like the hero total; cents only for amounts below one euro.
+                    Text(Format.euro(item.total, decimals: item.total >= 1 ? 0 : 2))
                         .font(.footnote.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)

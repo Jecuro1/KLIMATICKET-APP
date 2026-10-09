@@ -108,7 +108,7 @@ enum PerkReminderScheduler {
 
     static func body(ticketName: String, scheme: PerkRightsScheme) -> String {
         let threshold = Format.number(scheme.threshold * 100)
-        return "\(ticketName) ist abgelaufen. Lagen die ÖBB in einem Monat unter \(threshold) % Pünktlichkeit, steht dir jetzt eine Entschädigung zu – prüf deine Anmeldung auf oebb.at/fahrgastrechte."
+        return "\(ticketName) ist abgelaufen. Lagen die ÖBB in einem Monat unter \(threshold)\u{00A0}% Pünktlichkeit, steht dir jetzt eine Entschädigung zu – prüf deine Anmeldung auf oebb.at/fahrgastrechte."
     }
 }
 

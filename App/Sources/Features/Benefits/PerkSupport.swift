@@ -51,6 +51,8 @@ enum PerkStyle {
     /// Section spacing (DESIGN.md §3: 18–24) and card spacing (10–12) on the 4 pt grid.
     static let sectionSpacing: CGFloat = Theme.Spacing.l + Theme.Spacing.xxs
     static let cardSpacing: CGFloat = Theme.Spacing.s
+    /// Leading inset of in-row titles, matching the inset-grouped section headers (16 pt margin + 16 pt inset).
+    static let headerLeading: CGFloat = Theme.Spacing.cardGutter * 2
 
     /// Big light numeral (56 pt) for the hero totals; the views shrink it with `minimumScaleFactor` when space is short.
     static let heroNumber = Font.system(size: 56, weight: .light, design: .rounded).monospacedDigit()
