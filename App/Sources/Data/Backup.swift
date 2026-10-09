@@ -92,61 +92,51 @@ enum Backup {
     }
 
     /// Imports a backup; existing rows are only overwritten when the backup row is newer.
+    /// One fetch per table into an id index (not one fetch per row, which also re-scanned every pending insert:
+    /// quadratic on the main thread). The index is updated on insert, so ids repeated within the file still merge.
     static func importBackup(_ data: Data, context: ModelContext) throws -> ImportResult {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let file = try decoder.decode(BackupFile.self, from: data)
         var result = ImportResult()
-        for dto in file.tickets {
-            let id = dto.id
-            if let e = try context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.tickets += 1 }
-            } else {
-                let e = TicketEntity(productID: dto.product_id, name: dto.name, variant: .klassik, family: .oe, price: dto.price, startDate: dto.start_date)
-                e.id = dto.id
-                dto.apply(to: e)
-                context.insert(e)
-                result.tickets += 1
-            }
-        }
-        for dto in file.trips {
-            let id = dto.id
-            if let e = try context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.trips += 1 }
-            } else {
-                let e = TripEntity(date: dto.date, fromName: dto.from_name, toName: dto.to_name, mode: .train, distanceKm: dto.distance_km, fareEUR: dto.fare_eur)
-                e.id = dto.id
-                dto.apply(to: e)
-                context.insert(e)
-                result.trips += 1
-            }
-        }
-        for dto in file.favorites {
-            let id = dto.id
-            if let e = try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.favorites += 1 }
-            } else {
-                let e = FavoriteRouteEntity(fromName: dto.from_name, toName: dto.to_name, mode: .train, distanceKm: dto.distance_km, fareEUR: dto.fare_eur)
-                e.id = dto.id
-                dto.apply(to: e)
-                context.insert(e)
-                result.favorites += 1
-            }
-        }
-        for dto in file.benefits ?? [] {
-            let id = dto.id
-            if let e = try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { dto.apply(to: e); result.benefits += 1 }
-            } else {
-                let e = BenefitEntity(date: dto.date, partnerID: dto.partner_id, title: dto.title, savedEUR: dto.saved_eur)
-                e.id = dto.id
-                dto.apply(to: e)
-                context.insert(e)
-                result.benefits += 1
-            }
-        }
+        // Version-1 rows over existing entities keep the phase-2 columns the file does not know (keepingLocalExtras).
+        result.tickets = try merge(file.tickets, context: context, id: \TicketEntity.id, updatedAt: \.updatedAt,
+                                   apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
+        result.trips = try merge(file.trips, context: context, id: \TripEntity.id, updatedAt: \.updatedAt,
+                                 apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
+        result.favorites = try merge(file.favorites, context: context, id: \FavoriteRouteEntity.id, updatedAt: \.updatedAt,
+                                     apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
+        result.benefits = try merge(file.benefits ?? [], context: context, id: \BenefitEntity.id, updatedAt: \.updatedAt,
+                                    apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
         try context.save()
         return result
+    }
+
+    /// Inserts rows with unknown ids and applies rows newer than the local entity. Returns the number of changed rows.
+    private static func merge<Row: SyncRow, Entity: PersistentModel>(
+        _ rows: [Row], context: ModelContext, id: KeyPath<Entity, UUID>, updatedAt: KeyPath<Entity, Date>,
+        apply: (Row, Entity) -> Void, make: (Row) -> Entity
+    ) throws -> Int {
+        guard !rows.isEmpty else { return 0 }
+        var byID: [UUID: Entity] = [:]
+        for entity in try context.fetch(FetchDescriptor<Entity>()) where byID[entity[keyPath: id]] == nil {
+            byID[entity[keyPath: id]] = entity
+        }
+        var changed = 0
+        for row in rows {
+            if let entity = byID[row.id] {
+                if row.updated_at > entity[keyPath: updatedAt] {
+                    apply(row, entity)
+                    changed += 1
+                }
+            } else {
+                let entity = make(row)
+                context.insert(entity)
+                byID[row.id] = entity
+                changed += 1
+            }
+        }
+        return changed
     }
 
     /// Writes export data to a temporary file suitable for ShareLink / fileExporter.

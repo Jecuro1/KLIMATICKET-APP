@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import KlimaCore
 
 /// Everything derived from one ticket period + its trips. Pure value, cheap to recompute.
@@ -31,12 +32,40 @@ struct AnalyticsSnapshot {
 }
 
 enum Analytics {
+    /// Snapshot of `ticket`'s period from `trips` (any superset of the period's live trips works the same).
+    /// Only trips inside the period are mapped to records, and the result is memoised on its exact inputs
+    /// (AnalyticsMemo): the views and the widget builder that ask for the same period after one change – and every
+    /// re-render while scrolling or typing – share one computation.
+    @MainActor
     static func make(ticket: TicketEntity, trips: [TripEntity], catalog: TariffCatalog, now: Date = Date()) -> AnalyticsSnapshot {
         // MARK: Diagnostics – count/duration per session (Einstellungen › Diagnose), signpost for the perf tests.
         Diagnostics.measure("Analytics.make") {
-            make(period: ticket.period, records: trips.filter { $0.deletedAt == nil }.map(\.record), catalog: catalog, now: now)
+            let period = ticket.period
+            var inPeriod: [TripEntity] = []
+            var stamps: [AnalyticsMemo.TripStamp] = []
+            var pastTrips = 0
+            for trip in trips where trip.deletedAt == nil {
+                let date = trip.date
+                guard period.contains(date) else { continue }
+                inPeriod.append(trip)
+                stamps.append(AnalyticsMemo.TripStamp(id: trip.id, updatedAt: trip.updatedAt, date: date))
+                if date <= now { pastTrips += 1 }
+            }
+            let key = AnalyticsMemo.Key(period: period, kilometergeld: catalog.kilometergeldEUR, emissions: catalog.emissions,
+                                        day: AnalyticsMemo.calendar.startOfDay(for: now),
+                                        isAfterEnd: now > period.end, isBeforeEnd: now < period.end,
+                                        pastTrips: pastTrips, trips: stamps)
+            let hash = key.hashValue
+            if let cached = AnalyticsMemo.value(for: key, hash: hash) { return cached }
+            let snapshot = make(period: period, records: inPeriod.map(\.record), catalog: catalog, now: now)
+            AnalyticsMemo.insert(snapshot, for: key, hash: hash)
+            return snapshot
         }
     }
+
+    /// Drops all memoised snapshots (after a save).
+    @MainActor
+    static func invalidateCache() { AnalyticsMemo.removeAll() }
 
     static func make(period: TicketPeriod, records allRecords: [TripRecord], catalog: TariffCatalog, now: Date = Date()) -> AnalyticsSnapshot {
         Diagnostics.measure("Analytics.compute") { compute(period: period, records: allRecords, catalog: catalog, now: now) }
@@ -69,5 +98,66 @@ enum Analytics {
         if let selectedID, let t = live.first(where: { $0.id == selectedID }) { return t }
         if let current = live.first(where: { $0.isActive }) { return current }
         return live.max { $0.startDate < $1.startDate }
+    }
+}
+
+/// Memo behind `Analytics.make(ticket:trips:…)`. The key holds every input the pipeline reads:
+/// • the period and the two catalog values it uses (Kilometergeld, emission factors),
+/// • `now`, reduced to what the calculations compare: the Vienna day, whether it is past/before the period end, and how
+///   many of the trips lie in the past (`date <= now`, which picks the same trips for the same count),
+/// • per live in-period trip, in order: id, date and `updatedAt`. Every edit stamps `updatedAt` (`touch()` – the
+///   invariant the cloud push relies on too); as a second line of defence every save clears the memo (Repository,
+///   SyncService and, for anything else, `ModelContext.didSave`).
+@MainActor
+enum AnalyticsMemo {
+    struct TripStamp: Hashable {
+        var id: UUID
+        var updatedAt: Date
+        var date: Date
+    }
+
+    struct Key: Hashable {
+        var period: TicketPeriod
+        var kilometergeld: Double
+        var emissions: EmissionFactors
+        var day: Date
+        var isAfterEnd: Bool
+        var isBeforeEnd: Bool
+        var pastTrips: Int
+        var trips: [TripStamp]
+    }
+
+    /// `Calendar.vienna` builds a new calendar on every access – one instance for the memo keys.
+    static let calendar = Calendar.vienna
+    /// Distinct inputs alive at once: the active ticket, older ticket years (Ticket tab), the editor's before/after.
+    static let capacity = 8
+
+    private static var entries: [(hash: Int, key: Key, value: AnalyticsSnapshot)] = []
+    private static var saveObserver: NSObjectProtocol?
+
+    static func value(for key: Key, hash: Int) -> AnalyticsSnapshot? {
+        observeSaves()
+        guard let index = entries.firstIndex(where: { $0.hash == hash && $0.key == key }) else { return nil }
+        let entry = entries.remove(at: index)
+        entries.insert(entry, at: 0)
+        return entry.value
+    }
+
+    static func insert(_ value: AnalyticsSnapshot, for key: Key, hash: Int) {
+        entries.insert((hash, key, value), at: 0)
+        if entries.count > capacity { entries.removeLast(entries.count - capacity) }
+    }
+
+    static func removeAll() { entries.removeAll() }
+
+    private static func observeSaves() {
+        guard saveObserver == nil else { return }
+        saveObserver = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { _ in
+            if Thread.isMainThread {
+                MainActor.assumeIsolated { removeAll() }
+            } else {
+                Task { @MainActor in removeAll() }
+            }
+        }
     }
 }

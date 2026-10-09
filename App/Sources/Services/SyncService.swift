@@ -46,6 +46,9 @@ final class SyncService {
     var isPaused: Bool { pendingAccountSwitch != nil }
     /// The server rejected this app version (`426`); an app update is needed before sync works again.
     private(set) var requiresAppUpdate = false
+    /// True while every local row is replaced wholesale ("Durch Daten des Kontos ersetzen", "Alles löschen" on this
+    /// iPhone). RootView shows a placeholder meanwhile, so no screen still holds a model that is about to be deleted.
+    private(set) var isReplacingLocalData = false
 
     private let client: CloudAPIClient?
     private let defaults = UserDefaults.standard
@@ -112,8 +115,11 @@ final class SyncService {
         do {
             guard client != nil, let uid = auth.session?.user.id.lowercased(), pendingAccountSwitch == nil,
                   SyncOwnerStore.owner(defaults)?.userID == uid else {
-                try deleteAllLocalData(context)
-                try context.save()
+                try await performLocalDataReplacement {
+                    try deleteAllLocalData(context)
+                    try context.save()
+                }
+                Analytics.invalidateCache()
                 return true
             }
             let now = Date()
@@ -122,6 +128,7 @@ final class SyncService {
             for e in try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil })) { e.deletedAt = now; e.updatedAt = now }
             for e in try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt == nil })) { e.deletedAt = now; e.updatedAt = now }
             try context.save()
+            Analytics.invalidateCache()
             while isRunning { try? await Task.sleep(for: .milliseconds(100)) }   // a running pass may predate the tombstones
             await run(.normal, context: context, auth: auth)
             guard case .synced = state else { return false }
@@ -132,11 +139,22 @@ final class SyncService {
             for e in try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt != nil })) { context.delete(e) }
             for e in try context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt != nil })) { context.delete(e) }
             try context.save()
+            Analytics.invalidateCache()
             return true
         } catch {
             state = .failed(Self.message(for: error))
             return false
         }
+    }
+
+    /// Runs `replace` (synchronous: delete, insert, save) only after the UI dropped every screen that could still hold
+    /// one of the rows about to be deleted – a pushed TripDetailView keeps its `TripEntity`, and SwiftData traps when a
+    /// view reads a deleted model.
+    func performLocalDataReplacement(_ replace: () throws -> Void) async rethrows {
+        isReplacingLocalData = true
+        defer { isReplacingLocalData = false }
+        try? await Task.sleep(for: .milliseconds(350))   // RootView swaps MainTabView for a placeholder meanwhile
+        try replace()
     }
 
     // MARK: Run loop
@@ -257,32 +275,41 @@ final class SyncService {
             // The account may have changed while waiting for the network.
             guard auth.session?.user.id.lowercased() == uid else { throw SyncAbort.accountChanged }
 
-            // 3) Merge and save; cursors only move after a successful save.
-            var localTickets: [TicketEntity] = []
-            var localTrips: [TripEntity] = []
-            var localFavorites: [FavoriteRouteEntity] = []
-            var localBenefits: [BenefitEntity] = []
-            if mode == .replaceLocal {
-                try deleteAllLocalData(context)
-            } else {
-                localTickets = try context.fetch(FetchDescriptor<TicketEntity>())
-                localTrips = try context.fetch(FetchDescriptor<TripEntity>())
-                localFavorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>())
-                localBenefits = try context.fetch(FetchDescriptor<BenefitEntity>())
+            // 3) Merge and save; cursors only move after a successful save. Local rows are only fetched for tables
+            //    that pulled something (most passes pull nothing – no main-thread fetch of every row then).
+            let mergeAll = { (replacing: Bool) throws in
+                func local<Entity: PersistentModel>(_ type: Entity.Type, pulled: Int) throws -> [Entity] {
+                    replacing || pulled == 0 ? [] : try context.fetch(FetchDescriptor<Entity>())
+                }
+                self.merge(tickets.rows, into: try local(TicketEntity.self, pulled: tickets.rows.count), userID: uid,
+                           dirtyAfter: pushWatermark, context: context,
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TicketDTO($0, userID: uid) },
+                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                self.merge(trips.rows, into: try local(TripEntity.self, pulled: trips.rows.count), userID: uid,
+                           dirtyAfter: pushWatermark, context: context,
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TripDTO($0, userID: uid) },
+                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                self.merge(favorites.rows, into: try local(FavoriteRouteEntity.self, pulled: favorites.rows.count), userID: uid,
+                           dirtyAfter: pushWatermark, context: context,
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { FavoriteDTO($0, userID: uid) },
+                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                self.merge(benefits.rows, into: try local(BenefitEntity.self, pulled: benefits.rows.count), userID: uid,
+                           dirtyAfter: pushWatermark, context: context,
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { BenefitDTO($0, userID: uid) },
+                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                if context.hasChanges { try context.save() }
             }
-            merge(tickets.rows, into: localTickets, userID: uid, dirtyAfter: pushWatermark, context: context,
-                  id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TicketDTO($0, userID: uid) },
-                  apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
-            merge(trips.rows, into: localTrips, userID: uid, dirtyAfter: pushWatermark, context: context,
-                  id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TripDTO($0, userID: uid) },
-                  apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
-            merge(favorites.rows, into: localFavorites, userID: uid, dirtyAfter: pushWatermark, context: context,
-                  id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { FavoriteDTO($0, userID: uid) },
-                  apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
-            merge(benefits.rows, into: localBenefits, userID: uid, dirtyAfter: pushWatermark, context: context,
-                  id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { BenefitDTO($0, userID: uid) },
-                  apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
-            try context.save()
+            if mode == .replaceLocal {
+                try await performLocalDataReplacement {
+                    // The account may also change while the screens are reset.
+                    guard auth.session?.user.id.lowercased() == uid else { throw SyncAbort.accountChanged }
+                    try deleteAllLocalData(context)
+                    try mergeAll(true)
+                }
+            } else {
+                try mergeAll(false)
+            }
+            Analytics.invalidateCache()
 
             SyncOwnerStore.setCursor(tickets.maxRev, table: TicketDTO.table, userID: uid, defaults)
             SyncOwnerStore.setCursor(trips.maxRev, table: TripDTO.table, userID: uid, defaults)

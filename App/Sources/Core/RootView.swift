@@ -18,6 +18,12 @@ struct RootView: View {
         Group {
             if let screen = LaunchMode.screenshotScreen {
                 ScreenshotRouter(screen: screen)
+            } else if app.sync.isReplacingLocalData {
+                // Every local row is being replaced (account data, "Alles löschen"): no screen may still hold one of
+                // them – SwiftData traps when a view reads a deleted model (SyncService.performLocalDataReplacement).
+                AmbientBackground()
+                    .overlay { ProgressView() }
+                    .transition(.opacity)
             } else if !app.settings.onboardingCompleted || tickets.isEmpty {
                 OnboardingFlow()
                     .transition(.opacity.combined(with: .scale(scale: 1.02)))
