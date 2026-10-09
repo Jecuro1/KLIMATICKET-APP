@@ -334,6 +334,8 @@ struct ScreenshotRouter: View {
             NavigationStack { FavoritesManagerView() }
         case "achievements":
             NavigationStack { AchievementsView() }
+        case "achievementDetail": // MARK: stats – Gipfelbuch with the detail sheet of its highest medal open
+            NavigationStack { AchievementsView(opensDetailForScreenshot: true) }
         case "settings":
             NavigationStack { SettingsView() }
         // MARK: polish-settings – lower parts of the long settings list

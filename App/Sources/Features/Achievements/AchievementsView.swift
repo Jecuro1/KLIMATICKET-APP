@@ -10,6 +10,9 @@ import KlimaCore
 /// the bounce and the detail selection live in `AchBookScreen`, so they no longer re-run the analytics pipeline
 /// (three passes in the first 600 ms, one more per opened or closed medallion).
 struct AchievementsView: View {
+    /// CI screenshot "achievementDetail": opens the detail sheet of the first (highest) earned medal.
+    var opensDetailForScreenshot = false
+
     @Environment(AppState.self) private var app
 
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
@@ -19,7 +22,8 @@ struct AchievementsView: View {
         let snap = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
             .map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) }
         AchBookScreen(book: snap.map { AchBook($0.achievements) },
-                      year: snap.map { AchFormat.ticketYear($0.ticket) } ?? "")
+                      year: snap.map { AchFormat.ticketYear($0.ticket) } ?? "",
+                      opensDetailForScreenshot: opensDetailForScreenshot)
             .equatable()
     }
 }
@@ -28,9 +32,10 @@ struct AchievementsView: View {
 private struct AchBookScreen: View, Equatable {
     let book: AchBook?
     let year: String
+    var opensDetailForScreenshot = false
 
     nonisolated static func == (lhs: AchBookScreen, rhs: AchBookScreen) -> Bool {
-        lhs.year == rhs.year && lhs.book?.all == rhs.book?.all
+        lhs.year == rhs.year && lhs.book?.all == rhs.book?.all && lhs.opensDetailForScreenshot == rhs.opensDetailForScreenshot
     }
 
     @Environment(AppState.self) private var app
@@ -89,6 +94,11 @@ private struct AchBookScreen: View, Equatable {
         }
         .onAppear(perform: startEntrance)
         .task { await bounceAfterEntrance() }
+        .task {
+            guard opensDetailForScreenshot, LaunchMode.isScreenshot, let first = book?.unlocked.first ?? book?.upcoming.first else { return }
+            try? await Task.sleep(for: .milliseconds(700))
+            showDetail(first, sourceID: first.id, year: year)
+        }
     }
 
     // MARK: Header

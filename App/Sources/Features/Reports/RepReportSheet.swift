@@ -35,7 +35,8 @@ struct RepReportSheet: View {
         let inPeriod = trips.filter { ticket.period.contains($0.date) }
         let value = inPeriod.reduce(0) { $0 + $1.totalValue }
         let latest = inPeriod.map(\.updatedAt).max()?.timeIntervalSince1970 ?? 0
-        return "\(ticket.id)|\(ticket.updatedAt.timeIntervalSince1970)|\(inPeriod.count)|\(Int(value * 100))|\(Int(latest))|\(benefits.count)"
+        // `value` interpolated as is: Int(value * 100) would trap on a non-finite sum.
+        return "\(ticket.id)|\(ticket.updatedAt.timeIntervalSince1970)|\(inPeriod.count)|\(value)|\(latest)|\(benefits.count)"
     }
 
     var body: some View {

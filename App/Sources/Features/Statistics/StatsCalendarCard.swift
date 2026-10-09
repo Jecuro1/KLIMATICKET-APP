@@ -7,6 +7,7 @@ struct StatsCalendarCard: View {
     let snapshot: AnalyticsSnapshot
 
     @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .caption2) private var cell: CGFloat = 15
     @State private var selectedDay: Date?
     @State private var memo = StatsHeatmapMemo()
@@ -96,7 +97,7 @@ struct StatsCalendarCard: View {
         .padding(.vertical, Theme.Spacing.xs)
         .background(Theme.textTertiary.opacity(0.08), in: .rect(cornerRadius: Theme.Radius.modeTile, style: .continuous))
         .accessibilityElement(children: .combine)
-        .animation(.snappy(duration: 0.25), value: selectedDay)
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.25), value: selectedDay)
     }
 
     private func heatDay(for date: Date?, in weeks: [StatsHeatWeek]) -> StatsHeatDay? {
@@ -188,10 +189,11 @@ struct StatsCalendarCard: View {
                         shape.strokeBorder(Theme.textPrimary, lineWidth: 1.5)
                     }
                 }
-                .scaleEffect(selectedDay == day.date ? 1.18 : 1)
+                // Reduce Motion: the ring marks the day without the pop.
+                .scaleEffect(selectedDay == day.date && !reduceMotion ? 1.18 : 1)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    withAnimation(.snappy(duration: 0.25)) {
+                    withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .snappy(duration: 0.25)) {
                         selectedDay = selectedDay == day.date ? nil : day.date
                     }
                 }
