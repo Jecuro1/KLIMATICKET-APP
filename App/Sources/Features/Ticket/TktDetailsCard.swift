@@ -366,7 +366,11 @@ private struct TktHistoryRow: View {
         if summary.isPaidOff {
             return ("+ " + SummitFigures.euro(summary.shownProfitEuro), "rentiert", Theme.positiveText)
         }
-        return ("– " + SummitFigures.euro(summary.shownRemainingEuro), t.isExpired ? "nicht rentiert" : "noch offen",
-                t.isExpired ? Theme.summitText : Theme.textPrimary)
+        // A running year is not a loss yet: "€ 350 noch offen" (like "Noch € 350" on the Übersicht); only an expired
+        // year that never paid off shows the minus.
+        if t.isExpired {
+            return ("– " + SummitFigures.euro(summary.shownRemainingEuro), "nicht rentiert", Theme.summitText)
+        }
+        return (SummitFigures.euro(summary.shownRemainingEuro), "noch offen", Theme.textPrimary)
     }
 }
