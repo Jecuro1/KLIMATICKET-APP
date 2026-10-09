@@ -25,6 +25,13 @@ typecheck: 2 error(s) in 41s
 ```
 
 Exit status: 0 = no errors, 1 = errors, 2 = the harness itself failed (e.g. a broken stub).
+
+`error: failed to produce diagnostic for expression` is a real error too: the expression does not
+type-check, but the compiler could not say why (typical for an overload set reached through implicit
+members such as `.value(...)`). Xcode's Swift 6.3 reports the same or a "no exact matches" error. Narrow it
+down by giving the arguments explicit types; e.g. `BarMark(xStart: .value(...), xEnd: .value(...),
+yStart: .value(...), yEnd: .value(...))` hits this because `BarMark` has no initializer taking four
+`PlottableValue`s (`RectangleMark` does).
 `[widgets]` / `[app]` marks an error in `Shared/` that only one target reports.
 
 Requirements: Linux, Swift 6.3.x toolchain (`swiftc` on `PATH`, tested with swift-6.3.3-RELEASE), python3, git.
@@ -38,7 +45,7 @@ iOS SDK .swiftinterface files ──gen/transform.py──▶ Stubs/<M>/<M>.swif
 hand-written Stubs/<M>/*.swift (Objective-C / C frameworks) ───────────────────────┤
 Stubs/KBAvailability (availability domains, Clang module) ─────────────────────────┤
 Macros/* (compiler plugins: @Model, @Query, #Preview, @Entry, ...) ──────────────────┤
-Packages/KlimaCore/Sources (the real package) ─────────────────────────────────────┤
+Packages/*/Sources (the real local packages) ──────────────────────────────────────┤
 App/Sources, Shared, Widgets/Sources ──preprocess.py──▶ swiftc -emit-sil (Swift 5 mode) ┘
 ```
 
@@ -146,7 +153,12 @@ built against the toolchain's own swift-syntax (`usr/lib/swift/host`) and loaded
 
 ### 6. Compilation
 
-* KlimaCore is compiled from the checkout into a module first (its errors are reported too).
+* The local Swift packages listed under `packages:` in `project.yml` (KlimaCore, KlimaCloud, ...) are
+  compiled from the checkout into modules first, in dependency order (`Package.swift` targets, language mode
+  from `swiftLanguageModes` / tools version). Their errors are reported too. Each target only sees the
+  packages `project.yml` lists in its `dependencies` (plus their dependencies), so `import KlimaCloud` in
+  `Shared/` or `Widgets/` fails for the widget, as it would fail to build or link in Xcode. A target whose
+  package has errors is not checked (stderr says so).
 * Each target is compiled in one `swiftc -emit-sil -wmo` invocation (`--fast`: `-typecheck -j<cpus>`) with
   `-swift-version 5 -strict-concurrency=minimal -parse-as-library`, the stub search paths, the macro plugins,
   `-enable-cross-import-overlays` (`import SwiftData` + `import SwiftUI` pulls in `_SwiftData_SwiftUI`, as on
@@ -176,6 +188,10 @@ Further checks:
 * **No false positives on every CI-green commit** (GitHub Actions `iOS` workflow, success): `26aec96`,
   `92595f9`, `a92db26`, `2571fc3`, `dd873af`, `838900a`, `16206e7`, `1f5f87e`, `3c2453a`, `82339c8`,
   `86240d8`, `f63b2fb` → 0 errors each (the Reports branch needed a PDFKit stub and the CGContext PDF API).
+  Second round (last green runs of the `wip/*` branches): `acc5d9f`, `bb35fdf`, `2161db0`, `80dbf8d`
+  (integration), `c57c7de`, `0d9baa2`, `2b1fafb` (p2-map), `4ff4623` (p2-reports), `93f3b4b`, `08d1559`,
+  `a2cfd5b` (cloudflare) → 0 errors each; the last two needed support for the second local package
+  (`KlimaCloud`).
 * **Injected errors are caught** (one per category): extraneous label (`padding(.horizontal, top:)`), missing
   member, `Bool` passed for `Binding<Bool>`, `for` loop in a `@ViewBuilder`, optional member access,
   non-exhaustive `switch`, duplicate type, main-actor call from a nonisolated context, missing
