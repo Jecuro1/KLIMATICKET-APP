@@ -58,30 +58,31 @@ struct RootView: View {
             Text(Self.accountSwitchMessage(change))
         }
         .onChange(of: app.sync.pendingAccountSwitch, initial: true) { _, change in
-            showsAccountSwitch = change != nil && !LaunchMode.isScreenshot
+            showsAccountSwitch = change != nil && !LaunchMode.isSandboxed
         }
         .preferredColorScheme(app.settings.appearance.colorScheme)
         .tint(Theme.accent)
+        .diagnosticsNavigationTracking() // MARK: Diagnostics – breadcrumbs (tab, global sheets)
         .onOpenURL { url in handleDeepLink(url) }
         .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue).receive(on: RunLoop.main)) { _ in
             handleExternalRequests()
         }
         .task {
-            guard !LaunchMode.isScreenshot else { return }
+            guard !LaunchMode.isSandboxed else { return }
             handleExternalRequests()
             let repo = Repository(context: context, app: app)
             repo.refreshWidgets()
             repo.configureTripDetection()
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
-            await app.sync.sync(context: context, auth: app.auth)
+            await Diagnostics.measureAsync("Sync") { await app.sync.sync(context: context, auth: app.auth) }
             repo.refreshWidgets()
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !LaunchMode.isScreenshot else { return }
+            guard phase == .active, !LaunchMode.isSandboxed else { return }
             handleExternalRequests()
             Task {
                 if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
-                await app.sync.sync(context: context, auth: app.auth)
+                await Diagnostics.measureAsync("Sync") { await app.sync.sync(context: context, auth: app.auth) }
                 Repository(context: context, app: app).refreshWidgets()
             }
         }
@@ -212,6 +213,9 @@ struct ScreenshotRouter: View {
     @ViewBuilder
     private var content: some View {
         switch screen {
+        // MARK: Diagnostics
+        case "diagnostics":
+            NavigationStack { SetDiagnosticsPage() }
         case "onboarding":
             OnboardingFlow()
         case "trips":

@@ -119,6 +119,22 @@ targets:
     dependencies:
       - package: KlimaCore
 
+  # MARK: Diagnostics – XCUITest performance tests (CI job "perf": "[perf]" in the commit message or workflow_dispatch
+  # perf=true). Not part of the KlimaBilanz scheme, so the regular device/simulator builds stay unchanged.
+  KlimaBilanzPerfTests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PerfTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.knitelarlberg.klimabilanz.perftests
+        PRODUCT_NAME: KlimaBilanzPerfTests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: KlimaBilanz
+    dependencies:
+      - target: KlimaBilanz
+
 schemes:
   KlimaBilanz:
     build:
@@ -128,3 +144,17 @@ schemes:
       config: Debug
     archive:
       config: Release
+
+  KlimaBilanzPerf:
+    build:
+      targets:
+        KlimaBilanz: all
+        KlimaBilanzPerfTests: [test]
+    run:
+      config: Release
+    test:
+      # Optimised build – Debug SwiftUI is several times slower and would measure the wrong thing.
+      config: Release
+      gatherCoverageData: false
+      targets:
+        - name: KlimaBilanzPerfTests

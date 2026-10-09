@@ -76,4 +76,11 @@ enum LaunchMode {
     static var screenshotScreen: String? { UserDefaults.standard.string(forKey: "KBScreenshot") }
     static var isScreenshot: Bool { screenshotScreen != nil }
     static var useDemoData: Bool { UserDefaults.standard.bool(forKey: "KBDemo") }
+
+    // MARK: Diagnostics
+    /// `-KBPerf YES`: CI performance tests (KlimaBilanzPerfTests) – the normal tab interface with in-memory demo data
+    /// (`-KBPerfTrips <n>` adds n synthetic trips), no network, no sync, no permission prompts, animations on.
+    static var isPerf: Bool { UserDefaults.standard.bool(forKey: "KBPerf") }
+    /// Screenshot or performance run: isolated in-memory data, no side effects.
+    static var isSandboxed: Bool { isScreenshot || isPerf }
 }

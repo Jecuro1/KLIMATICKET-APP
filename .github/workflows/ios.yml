@@ -23,6 +23,10 @@ on:
         description: "Release veröffentlichen, z. B. v1.0.1 (leer = kein Release). Legt Tag + GitHub Release mit .ipa, update.json und AltStore-Quelle an."
         type: string
         default: ""
+      perf:
+        description: "Performance-Tests (XCUITest im Simulator: Start, Scroll-Hitches je Bildschirm, Tab-Runde)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -234,6 +238,15 @@ jobs:
           path: dist/*.ipa
           if-no-files-found: error
 
+      - name: Upload dSYM (symbolicates crash reports from Einstellungen › Diagnose & Stabilität)
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: dSYM-${{ steps.version.outputs.version }}-${{ steps.version.outputs.build }}
+          path: build/device/Build/Products/Release-iphoneos/*.dSYM
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Build for simulator
         if: env.SHOTS == 'true'
         run: |
@@ -345,3 +358,90 @@ jobs:
             dist/tariffs.json
             dist/AppIcon.png
           body_path: dist/RELEASE_NOTES.md
+
+  perf:
+    # XCUITest performance tests (target KlimaBilanzPerfTests, scheme KlimaBilanzPerf, Release build) on the
+    # simulator: launch time, scroll hitch ratios per screen, a tab tour with CPU/memory – plus what the app's own
+    # DiagnosticsService recorded (watchdog hangs, Analytics.make timings). Only with "[perf]" in the commit message
+    # or a manual run with perf=true; the regular build job is not affected.
+    name: Performance (XCUITest, simulator)
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.perf) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[perf]'))
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: |
+          CURRENT=$(xcodebuild -version | head -1 | awk '{print $2}')
+          if [ "${CURRENT%%.*}" -lt 26 ]; then
+            XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+            sudo xcode-select -s "$XCODE/Contents/Developer"
+          fi
+          xcodebuild -version
+
+      - name: Install tools
+        run: brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Boot simulator
+        run: |
+          UDID=$(python3 scripts/pick_simulator.py)
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$UDID" 2>/dev/null || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Run performance tests
+        id: tests
+        run: |
+          mkdir -p build/perf
+          set +e
+          xcodebuild test \
+            -project KlimaBilanz.xcodeproj -scheme KlimaBilanzPerf \
+            -destination "id=$UDID" \
+            -derivedDataPath build/perf/dd -resultBundlePath build/perf/Perf.xcresult \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            > build/perf/test.log 2>&1
+          STATUS=$?
+          set -e
+          grep -E "error:|measured \[|Test Case .*(passed|failed)|Executed [0-9]+ test" build/perf/test.log | grep -v "SourcePackages" | tail -150 || true
+          if [ $STATUS -ne 0 ]; then tail -60 build/perf/test.log; fi
+          exit $STATUS
+
+      - name: Collect the app's diagnostics
+        if: always()
+        run: |
+          DATA=$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data 2>/dev/null || true)
+          if [ -n "$DATA" ] && [ -d "$DATA/Library/Application Support/Diagnostics" ]; then
+            cp -R "$DATA/Library/Application Support/Diagnostics" build/perf/app-diagnostics
+            ls -la build/perf/app-diagnostics
+          else
+            echo "::notice::Keine Diagnosedaten der App gefunden"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          python3 scripts/perf_summary.py build/perf/test.log --diagnostics build/perf/app-diagnostics \
+            --json build/perf/perf-summary.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-${{ github.run_number }}
+          path: |
+            build/perf/test.log
+            build/perf/perf-summary.json
+            build/perf/app-diagnostics
+            build/perf/Perf.xcresult
+          if-no-files-found: warn
+          retention-days: 30

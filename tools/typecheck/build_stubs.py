@@ -60,6 +60,7 @@ MODULES = [
     ("WidgetKit", ["AppIntents", "_AppIntents_SwiftUI", "SwiftUI", "DeveloperToolsSupport", "ActivityKit"]),
     ("UserNotifications", ["FoundationShim", "CoreLocation"]),
     ("CoreMotion", ["FoundationShim"]),
+    ("MetricKit", ["FoundationShim"]),
     ("ImageIO", ["CoreGraphics", "FoundationShim"]),
     ("MapKit", ["CoreLocation", "UIKit", "FoundationShim"]),
     ("_MapKit_SwiftUI", ["MapKit", "SwiftUI", "CoreLocation"]),
