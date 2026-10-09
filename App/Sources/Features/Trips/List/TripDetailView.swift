@@ -27,6 +27,7 @@ struct TripDetailView: View {
     @State private var isShowingFareInfo = false
     @State private var successTick = 0
     @State private var warningTick = 0
+    @State private var routeCache = TripListDetailRouteCache()
 
     init(trip: TripEntity) {
         self.trip = trip
@@ -45,7 +46,9 @@ struct TripDetailView: View {
                     routeCard(info)
                     tiles(info)
                     if let route = info.route {
+                        // Map(initialPosition:) frames the region once – a new route (Bearbeiten) needs a new map.
                         TripListDetailMap(route: route, mode: trip.mode)
+                            .id(route.identity)
                     }
                     fareCard(info)
                     if !trimmedNote.isEmpty {
@@ -270,8 +273,9 @@ struct TripDetailView: View {
     private func shareTile(_ info: TripListDetailInfo) -> some View {
         var value = "–"
         var unit: String?
-        if let ticket = info.ticket, ticket.price > 0 {
-            let percent = trip.totalValue / ticket.price * 100
+        // Against the own share (price + add-ons − employer contribution) – the summit everything else measures.
+        if let share = info.ticket?.ownShare, share > 0 {
+            let percent = trip.totalValue / share * 100
             value = Format.number(percent, decimals: percent < 10 ? 1 : 0)
             unit = "%"
         }
@@ -487,36 +491,16 @@ struct TripDetailView: View {
     // MARK: Derived data
 
     private func makeInfo() -> TripListDetailInfo {
-        let stations = app.stations
-        let fromStation = trip.fromStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.fromName)
-        let toStation = trip.toStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.toName)
-
-        var estimate: FareEstimate?
-        var route: TripListDetailRoute?
-        if let fromStation, let toStation, fromStation.id != toStation.id {
-            // Re-run the estimator to explain the price (and to compare with manual prices).
-            estimate = app.estimator.estimate(from: fromStation, to: toStation, mode: trip.mode,
-                                              travelClass: trip.travelClass, discount: app.settings.defaultDiscount,
-                                              date: trip.date)
-            route = TripListDetailRoute(
-                from: CLLocationCoordinate2D(latitude: fromStation.lat, longitude: fromStation.lon),
-                to: CLLocationCoordinate2D(latitude: toStation.lat, longitude: toStation.lon),
-                fromName: trip.fromName,
-                toName: trip.toName,
-                fromLabel: TripRow.short(trip.fromName),
-                toLabel: TripRow.short(trip.toName),
-                straightKm: fromStation.location.distanceKm(to: toStation.location)
-            )
-        }
+        let resolved = routeCache.value(for: trip, app: app)
 
         // Only the ticket this trip actually counts towards – a trip outside every validity has no share ("–").
         let ticket = tickets.first { $0.period.contains(trip.date) }
 
         return TripListDetailInfo(
-            fromStation: fromStation,
-            toStation: toStation,
-            estimate: estimate,
-            route: route,
+            fromStation: resolved.fromStation,
+            toStation: resolved.toStation,
+            estimate: resolved.estimate,
+            route: resolved.route,
             ticket: ticket,
             co2Kg: app.catalog.emissions.savedKg(km: trip.totalDistanceKm, mode: trip.mode),
             isFavorite: actions.existingFavorite(for: trip, in: favorites) != nil
@@ -544,6 +528,60 @@ private struct TripListDetailRoute {
     var fromLabel: String
     var toLabel: String
     var straightKm: Double
+
+    var identity: String { "\(from.latitude),\(from.longitude)|\(to.latitude),\(to.longitude)" }
+}
+
+/// Stations, estimate and map route of the shown trip – resolved once per version of the trip (`updatedAt`), not on every
+/// body pass: a name lookup of a custom place ("Lech") searches the whole stop database.
+@MainActor
+private final class TripListDetailRouteCache {
+    struct Resolved {
+        var fromStation: Station?
+        var toStation: Station?
+        var estimate: FareEstimate?
+        var route: TripListDetailRoute?
+    }
+
+    private var key: (id: UUID, updatedAt: Date)?
+    private var resolved = Resolved()
+
+    func value(for trip: TripEntity, app: AppState) -> Resolved {
+        if let key, key.id == trip.id, key.updatedAt == trip.updatedAt { return resolved }
+        let stations = app.stations
+        let fromStation = trip.fromStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.fromName)
+        let toStation = trip.toStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.toName)
+        var result = Resolved(fromStation: fromStation, toStation: toStation)
+        if let fromStation, let toStation, fromStation.id != toStation.id {
+            result.estimate = Self.estimate(for: trip, from: fromStation, to: toStation, app: app)
+            result.route = TripListDetailRoute(
+                from: CLLocationCoordinate2D(latitude: fromStation.lat, longitude: fromStation.lon),
+                to: CLLocationCoordinate2D(latitude: toStation.lat, longitude: toStation.lon),
+                fromName: trip.fromName,
+                toName: trip.toName,
+                fromLabel: TripRow.short(trip.fromName),
+                toLabel: TripRow.short(trip.toName),
+                straightKm: fromStation.location.distanceKm(to: toStation.location)
+            )
+        }
+        key = (trip.id, trip.updatedAt)
+        resolved = result
+        return result
+    }
+
+    /// Re-runs the estimator to explain the price (and to compare with own prices). The Vorteilscard choice is not saved
+    /// per trip: when only the other discount explains the saved price, that estimate is the explanation.
+    private static func estimate(for trip: TripEntity, from: Station, to: Station, app: AppState) -> FareEstimate {
+        let estimator = app.estimator
+        let preferred = app.settings.defaultDiscount
+        let estimate = estimator.estimate(from: from, to: to, mode: trip.mode, travelClass: trip.travelClass,
+                                          discount: preferred, date: trip.date)
+        guard !trip.isFareManual, abs(estimate.fareEUR - trip.fareEUR) >= 0.05 else { return estimate }
+        let other: FareDiscount = preferred == .none ? .vorteilscard : .none
+        let alternative = estimator.estimate(from: from, to: to, mode: trip.mode, travelClass: trip.travelClass,
+                                             discount: other, date: trip.date)
+        return abs(alternative.fareEUR - trip.fareEUR) < 0.05 ? alternative : estimate
+    }
 }
 
 /// One stop of the route hero: ring/dot on a dotted rail that lines up with the station name at any text size.
