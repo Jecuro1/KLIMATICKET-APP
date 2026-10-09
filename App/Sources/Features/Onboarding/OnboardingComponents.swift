@@ -5,7 +5,8 @@ import KlimaCore
 
 // MARK: - Page scaffold
 
-/// Scrollable step page: eyebrow + large title + subtitle, followed by the step's cards.
+/// Scrollable step page: eyebrow + large title + subtitle, followed by the step's cards. The header rises in first;
+/// the steps mark their cards with `onbReveal(order:)` so they follow in reading order (first visit only).
 struct OnbPage<Content: View>: View {
     var kicker: String?
     var title: String
@@ -17,6 +18,7 @@ struct OnbPage<Content: View>: View {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 OnbPageHeader(kicker: kicker, title: title, subtitle: subtitle)
                     .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
+                    .onbReveal()
                 content
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -27,6 +29,7 @@ struct OnbPage<Content: View>: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .scrollIndicators(.hidden)
+        .revealScope()
     }
 }
 
@@ -180,58 +183,56 @@ struct OnbBadge: View {
     }
 }
 
-/// Subtle press feedback for card-like buttons.
-struct OnbPressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.92 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Motion
 
-/// Staggered entrance (fade + rise + optional scale). Crossfade only with Reduce Motion.
-struct OnbEntrance: ViewModifier {
-    var isVisible: Bool
-    var delay: Double
-    var offset: CGFloat
-    var scale: CGFloat
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(isVisible ? 1 : 0)
-            .scaleEffect(isVisible || reduceMotion ? 1 : scale)
-            .offset(y: isVisible || reduceMotion ? 0 : offset)
-            .animation(reduceMotion ? .easeOut(duration: 0.3) : .spring(duration: 0.6, bounce: 0.22).delay(delay), value: isVisible)
-    }
+extension EnvironmentValues {
+    /// The flow shows this page for the first time: its entrance plays. Going back to a page shows it at once
+    /// (docs/MOTION.md §1.4 – "Einmal, nicht immer").
+    @Entry var onbFirstVisit: Bool = true
 }
 
 extension View {
-    func onbEntrance(_ isVisible: Bool, delay: Double = 0, offset: CGFloat = 14, scale: CGFloat = 1) -> some View {
-        modifier(OnbEntrance(isVisible: isVisible, delay: delay, offset: offset, scale: scale))
+    /// `reveal(_:order:)` of the motion system, on the first visit of the page only. The decision is taken once per
+    /// view (when it appears), so the page that is just leaving never switches its look mid-transition.
+    func onbReveal(_ style: RevealStyle = .rise, order: Int = 0) -> some View {
+        modifier(OnbRevealModifier(style: style, order: order))
     }
 }
 
-/// Gentle ±amplitude hover (floating glass chips). Static when inactive.
-struct OnbFloating: ViewModifier {
-    var amplitude: CGFloat
-    var duration: Double
-    var isActive: Bool
+private struct OnbRevealModifier: ViewModifier {
+    let style: RevealStyle
+    let order: Int
+    @Environment(\.onbFirstVisit) private var firstVisit
+    @State private var latched: Bool?
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if isActive {
-            content.phaseAnimator([false, true]) { view, isUp in
-                view.offset(y: isUp ? -amplitude : amplitude)
-            } animation: { _ in
-                .easeInOut(duration: duration)
-            }
-        } else {
-            content
-        }
+        content
+            .if(latched ?? firstVisit) { $0.reveal(style, order: order) }
+            .onAppear { if latched == nil { latched = firstVisit } }
+    }
+}
+
+/// A step covers itself with a sheet (legal text, station search): the flow pauses the sky and every continuous effect
+/// underneath (`ambientSkyPaused`), like RootView does for the app's own sheets.
+struct OnbCoveredKey: PreferenceKey {
+    static let defaultValue = false
+
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
+/// Device-tilt parallax for the welcome scene's layers: deeper layers move less, the glass chips in front the most.
+/// Only the offset of the layer changes (no redraw of its shapes); nothing moves while `isActive` is false.
+struct OnbParallax: ViewModifier {
+    let tilt: MotionTilt
+    /// Points the layer moves at full tilt.
+    let depth: CGFloat
+    let isActive: Bool
+
+    func body(content: Content) -> some View {
+        content.offset(x: isActive ? CGFloat(tilt.roll) * depth : 0,
+                       y: isActive ? CGFloat(tilt.pitch) * depth * 0.6 : 0)
     }
 }
 

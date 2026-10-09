@@ -3,10 +3,17 @@ import KlimaCore
 
 /// Step 5 – renewal reminders (30 / 7 / 1 Tage vorher): a preview banner, the concrete dates and a toggle.
 /// Permission is requested when the user continues (see OnboardingFlow).
+/// Motion: the sample notification drops in from the top like a real one (first visit), the reminder dates follow one
+/// by one; switching on rings the bell, switching off morphs it into the struck-through bell and dims the dates.
 struct OnbRemindersStep: View {
     @Bindable var model: OnboardingModel
     @Environment(AppState.self) private var app
-    @State private var bannerVisible = LaunchMode.isScreenshot
+    @Environment(\.onbFirstVisit) private var firstVisit
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The banner has dropped in (first visit only; screenshots and later visits start in place).
+    @State private var bannerDropped = false
+
+    private var isBannerHidden: Bool { !bannerDropped && firstVisit && !MotionPolicy.isStatic }
 
     var body: some View {
         OnbPage(kicker: OnboardingModel.Step.notifications.kicker,
@@ -14,24 +21,33 @@ struct OnbRemindersStep: View {
                 subtitle: "Wir sagen dir rechtzeitig Bescheid, bevor dein Ticket abläuft – damit du nahtlos verlängern kannst.") {
             notificationPreview
             scheduleCard
+                .onbReveal(order: 2)
             Label("Nur lokale Mitteilungen auf deinem iPhone – du kannst sie jederzeit in den Einstellungen ändern.",
                   systemImage: "lock.fill")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, Theme.Spacing.xxs)
+                .onbReveal(.fade, order: 8)
         }
-        .onAppear {
-            guard !bannerVisible else { return }
-            bannerVisible = true
+        .onAppear(perform: dropBanner)
+        .haptic(.selection, trigger: model.remindersEnabled)
+    }
+
+    private func dropBanner() {
+        guard !bannerDropped else { return }
+        guard isBannerHidden else {
+            bannerDropped = true
+            return
         }
-        .sensoryFeedback(.selection, trigger: model.remindersEnabled) { _, _ in app.settings.hapticsEnabled }
+        let animation = reduceMotion ? Motion.crossfade : Motion.bouncy.delay(0.12)
+        withAnimation(animation) { bannerDropped = true }
     }
 
     private var remindersBinding: Binding<Bool> {
         Binding(
             get: { model.remindersEnabled },
-            set: { isOn in withAnimation(.smooth(duration: 0.35)) { model.remindersEnabled = isOn } }
+            set: { isOn in withMotion(Motion.smooth) { model.remindersEnabled = isOn } }
         )
     }
 
@@ -61,7 +77,9 @@ struct OnbRemindersStep: View {
         .padding(14)
         .frostedCard(cornerRadius: Theme.Radius.formGroup)
         .opacity(model.remindersEnabled ? 1 : 0.5)
-        .onbEntrance(bannerVisible, delay: 0.1, offset: -18, scale: 0.96)
+        .opacity(isBannerHidden ? 0 : 1)
+        .scaleEffect(isBannerHidden && !reduceMotion ? 0.96 : 1, anchor: .top)
+        .offset(y: isBannerHidden && !reduceMotion ? -22 : 0)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Beispiel-Mitteilung")
         .accessibilityValue("Noch 7 Tage gültig. \(model.ticketName) läuft bald ab – denk an die Verlängerung.")
@@ -71,8 +89,10 @@ struct OnbRemindersStep: View {
         GlassCard {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Toggle(isOn: remindersBinding) {
-                    OnbToggleLabel(symbol: "bell.badge.fill", tint: Theme.dawn,
+                    OnbToggleLabel(symbol: model.remindersEnabled ? "bell.badge.fill" : "bell.slash.fill", tint: Theme.dawn,
                                    title: "Verlängerung erinnern", subtitle: "30, 7 und 1 Tag vor Ablauf")
+                        .symbolReplaceTransition()
+                        .setSymbolOnEnable(model.remindersEnabled, .wiggle)
                 }
                 .tint(Theme.accent)
                 OnbDivider(inset: 0)
@@ -86,16 +106,18 @@ struct OnbRemindersStep: View {
     private var timeline: some View {
         let previews = model.reminderPreviews
         return VStack(alignment: .leading, spacing: 0) {
-            ForEach(previews) { item in
+            ForEach(Array(previews.enumerated()), id: \.element.id) { index, item in
                 OnbTimelineRow(symbol: "bell.fill",
                                tint: item.offset == 1 ? Theme.alpenglow : Theme.dawn,
                                title: item.offset == 1 ? "1 Tag vorher" : "\(item.offset) Tage vorher",
                                detail: Format.date(item.date, .long),
                                isFirst: item.id == previews.first?.id,
                                isLast: false)
+                    .onbReveal(order: 3 + index)
             }
             OnbTimelineRow(symbol: "flag.fill", tint: Theme.summit, title: "Ablauf deines Tickets",
                            detail: Format.date(model.endDate, .long), isFirst: previews.isEmpty, isLast: true)
+                .onbReveal(order: 3 + previews.count)
         }
         .accessibilityElement(children: .combine)
     }

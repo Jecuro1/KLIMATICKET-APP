@@ -5,11 +5,29 @@ import KlimaCore
 
 /// Onboarding: Willkommen → Ticket → Gültigkeit & Preis → Strecke → Erinnerungen → Fertig.
 /// A custom paged flow on the alpine sky with a fixed progress trail, back button and primary CTA.
+///
+/// Motion (docs/MOTION.md): pages slide in the direction of travel on `Motion.smooth`; each page's entrance plays on its
+/// first visit only (`onbReveal`); the climber on the trail walks to the next waypoint and the flag waves at the end;
+/// the CTA's arrow nudges forward the moment a step can be continued. One light tap per page change.
 struct OnboardingFlow: View {
     @Environment(AppState.self) private var app
+    /// CI screenshots of the later steps (`onboardingTicket` … `onboardingDone`): the flow opens on that step.
+    var screenshotStep: OnboardingModel.Step? = nil
 
     var body: some View {
-        OnbFlowHost(app: app)
+        OnbFlowHost(app: app, screenshotStep: screenshotStep)
+    }
+
+    /// The step a CI screenshot route opens (`-KBScreenshot onboardingHabits`), nil for any other screen.
+    static func screenshotStep(for screen: String) -> OnboardingModel.Step? {
+        switch screen {
+        case "onboardingTicket": .ticket
+        case "onboardingValidity": .validity
+        case "onboardingHabits": .habits
+        case "onboardingReminders": .notifications
+        case "onboardingDone": .done
+        default: nil
+        }
     }
 }
 
@@ -17,16 +35,31 @@ private struct OnbFlowHost: View {
     @State private var model: OnboardingModel
     @State private var isForward = true
     @State private var isBusy = false
-    @State private var welcomeHasAnimated = LaunchMode.isScreenshot
-    @State private var finishCount = 0
+    /// Pages shown so far, and whether the page on screen is new (its entrance plays) or one the user went back to.
+    @State private var visitedSteps: Set<OnboardingModel.Step> = []
+    @State private var isFirstVisit = true
+    /// A step's own sheet is up (legal text, station search): sky and continuous effects underneath pause.
+    @State private var isCoveredBySheet = false
+    /// Counts the moments a step becomes ready to continue – the CTA's arrow nudges forward each time.
+    @State private var readyNudge = 0
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.ambientSkyPaused) private var isCoveredByAppSheet
 
-    init(app: AppState) {
-        _model = State(initialValue: OnboardingModel(app: app))
+    init(app: AppState, screenshotStep: OnboardingModel.Step? = nil) {
+        let model = OnboardingModel(app: app)
+        if let screenshotStep {
+            model.step = screenshotStep
+            // "Deine Strecke" with the demo commute, so the preview (and the done page's favourite) are on screen.
+            model.homeStation = app.stations.station(named: "St. Anton am Arlberg")
+            model.commuteDestination = app.stations.station(named: "Innsbruck Hbf")
+            model.holderName = "Lena Hofer"
+        }
+        _model = State(initialValue: model)
+        _visitedSteps = State(initialValue: [model.step])
     }
 
     private var step: OnboardingModel.Step { model.step }
@@ -36,18 +69,22 @@ private struct OnbFlowHost: View {
             ZStack {
                 if step == .welcome {
                     // Full-bleed brand page – outside the step chrome so nothing shifts while it leaves.
-                    OnbWelcomeStep(model: model, animatesEntrance: !welcomeHasAnimated) {
+                    OnbWelcomeStep(model: model, animatesEntrance: isFirstVisit && !MotionPolicy.isStatic) {
                         go(to: .ticket)
                     }
-                    .onAppear { welcomeHasAnimated = true }
                     .transition(pageTransition)
                 } else {
                     stepContainer
                         .transition(pageTransition)
                 }
             }
+            .environment(\.onbFirstVisit, isFirstVisit)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { skyBackground }
+            .environment(\.ambientSkyPaused, isCoveredByAppSheet || isCoveredBySheet)
+            .onPreferenceChange(OnbCoveredKey.self) { covered in
+                isCoveredBySheet = covered
+            }
             .toolbar(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -57,8 +94,11 @@ private struct OnbFlowHost: View {
                 }
             }
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: step) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.success, trigger: finishCount) { _, _ in app.settings.hapticsEnabled }
+        // One light tap per page; finishing is confirmed by the "Ticket angelegt" toast and its own haptic.
+        .haptic(.tap, trigger: step)
+        .onChange(of: model.canContinue) { wasReady, isReady in
+            if !wasReady && isReady { readyNudge += 1 }
+        }
     }
 
     // MARK: Pages
@@ -100,8 +140,9 @@ private struct OnbFlowHost: View {
                            removal: .offset(x: -dx).combined(with: .opacity))
     }
 
-    private var pageAnimation: Animation {
-        reduceMotion ? .easeInOut(duration: 0.3) : .spring(duration: 0.55, bounce: 0.12)
+    /// nil in screenshots (end state at once), a cross-fade under Reduce Motion.
+    private var pageAnimation: Animation? {
+        MotionPolicy.animation(Motion.smooth)
     }
 
     // MARK: Background
@@ -138,6 +179,7 @@ private struct OnbFlowHost: View {
             .accessibilityLabel("Zurück")
 
             OnbProgressTrail(progress: step.progress, accessibilityText: progressText)
+                .motionAnimation(Motion.smooth, value: step)
 
             Color.clear
                 .frame(width: 44, height: 44)
@@ -160,14 +202,20 @@ private struct OnbFlowHost: View {
                 if isBusy {
                     ProgressView()
                         .tint(Theme.onAccent)
+                        .motionTransition(.pop)
                 }
                 Text(primaryTitle)
+                    .contentTransition(.interpolate)
                 if !isBusy && step != .done {
                     Image(systemName: "arrow.right")
                         .font(.headline)
+                        .symbolEffect(.wiggle.forward, value: readyNudge)
+                        .symbolEffectsRemoved(reduceMotion || MotionPolicy.isStatic)
+                        .motionTransition(.pop)
                 }
             }
-            .animation(.snappy(duration: 0.25), value: primaryTitle)
+            .motionAnimation(Motion.snappy, value: primaryTitle)
+            .motionAnimation(Motion.snappy, value: isBusy)
         }
         .buttonStyle(.primary)
         .disabled(!model.canContinue || isBusy)
@@ -235,7 +283,6 @@ private struct OnbFlowHost: View {
             isBusy = true
             Task {
                 await model.finish(context: context)
-                finishCount += 1
                 isBusy = false
                 app.showToast("checkmark.circle.fill", "Ticket angelegt", model.ticketName)
             }
@@ -251,6 +298,8 @@ private struct OnbFlowHost: View {
     private func go(to target: OnboardingModel.Step) {
         guard target != step else { return }
         dismissKeyboard()
+        isFirstVisit = !visitedSteps.contains(target)
+        visitedSteps.insert(target)
         let forward = target.rawValue > step.rawValue
         if forward == isForward {
             withAnimation(pageAnimation) { model.step = target }
@@ -268,15 +317,23 @@ private struct OnbFlowHost: View {
     }
 }
 
-/// "Dein Weg zum Gipfel": route-gradient progress with a climber dot and the summit flag at the end.
+/// "Dein Weg zum Gipfel": route-gradient progress with a climber dot, a waypoint per setup step and the summit flag at
+/// the end. The climber walks to the next waypoint (render transforms: the fill is a scaled capsule, the dot an offset),
+/// passed waypoints light up, and the flag turns gold and waves once when the setup is done.
 private struct OnbProgressTrail: View {
     var progress: Double
     var accessibilityText: String
 
+    /// Waypoints of the numbered steps (Ticket, Gültigkeit, Strecke, Erinnerungen).
+    private static let waypoints: [Double] = (1...OnboardingModel.Step.numberedCount).map {
+        Double($0) / Double(OnboardingModel.Step.allCases.count - 1)
+    }
+
     var body: some View {
         GeometryReader { geo in
             let trackWidth = max(geo.size.width - 16, 1)
-            let x = trackWidth * CGFloat(min(max(progress, 0), 1))
+            let fraction = CGFloat(min(max(progress, 0), 1))
+            let x = trackWidth * fraction
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Theme.textTertiary.opacity(0.25))
@@ -285,8 +342,18 @@ private struct OnbProgressTrail: View {
                     .fill(Theme.routeGradient)
                     .frame(width: trackWidth, height: 5)
                     .mask(alignment: .leading) {
-                        Capsule().frame(width: max(x, 5), height: 5)
+                        Capsule()
+                            .frame(width: trackWidth, height: 5)
+                            .scaleEffect(x: max(fraction, 5 / trackWidth), anchor: .leading)
                     }
+                ForEach(Self.waypoints, id: \.self) { point in
+                    let isPassed = progress >= point - 0.001
+                    Circle()
+                        .fill(isPassed ? Color.white : Theme.textTertiary.opacity(0.45))
+                        .frame(width: 5, height: 5)
+                        .scaleEffect(isPassed ? 1 : 0.8)
+                        .offset(x: trackWidth * CGFloat(point) - 2.5)
+                }
                 Circle()
                     .fill(Color.white)
                     .frame(width: 12, height: 12)
@@ -296,6 +363,7 @@ private struct OnbProgressTrail: View {
                 FlagShape()
                     .fill(progress >= 1 ? Theme.gold : Theme.summit)
                     .frame(width: 12, height: 17)
+                    .celebrate(trigger: progress >= 1, haptic: nil)
                     .offset(x: trackWidth + 3, y: -6)
             }
             .frame(height: geo.size.height)

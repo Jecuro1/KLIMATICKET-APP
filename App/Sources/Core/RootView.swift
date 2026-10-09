@@ -334,6 +334,9 @@ struct ScreenshotRouter: View {
             NavigationStack { SetDiagnosticsPage() }
         case "onboarding":
             OnboardingFlow()
+        // MARK: settings – the onboarding steps after the welcome page (the habits step with the demo commute)
+        case "onboardingTicket", "onboardingValidity", "onboardingHabits", "onboardingReminders", "onboardingDone":
+            OnboardingFlow(screenshotStep: OnboardingFlow.screenshotStep(for: screen))
         case "replacingData": // MARK: global – the placeholder while local data is replaced (RootView)
             DataReplacementView()
         case "trips":

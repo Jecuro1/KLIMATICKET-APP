@@ -1,13 +1,19 @@
 import SwiftUI
 import KlimaCore
 
-/// Step 6 – celebration: brand mark with a bouncing check, confetti, the ticket as companion card
-/// (tilt sheen) and a summary of price, cost per day and validity. "Los geht’s" lives in the flow footer.
+/// Step 6 – celebration: brand mark with a check that pops in, the ticket as companion card (tilt sheen) and a summary
+/// of price, cost per day and validity. "Los geht’s" lives in the flow footer.
+///
+/// Motion (docs/MOTION.md §11): a short, on-system celebration instead of a long confetti rain – the brand mark pops and
+/// lifts, a ring and a burst of dots leave the check (≈ 0.7 s, no haptic of its own: the page change already tapped and
+/// "Los geht’s" ends with the toast's success). The ticket is dealt in, "Pro Tag" counts in. First visit only;
+/// Reduce Motion: fades only.
 struct OnbDoneStep: View {
     var model: OnboardingModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = LaunchMode.isScreenshot
-    @State private var showsConfetti = false
+    @Environment(\.onbFirstVisit) private var firstVisit
+    @State private var appeared = MotionPolicy.isStatic
+    @State private var celebration = 0
     @State private var tilt = MotionTilt()
 
     var body: some View {
@@ -16,9 +22,11 @@ struct OnbDoneStep: View {
                 hero
                 ticketPreview
                 summaryCard
+                    .onbReveal(order: 4)
                 if let trips = model.commuteBreakEvenTrips,
                    let from = model.homeStation, let to = model.commuteDestination {
                     commuteNote(trips: trips, from: from, to: to)
+                        .onbReveal(order: 5)
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -28,25 +36,19 @@ struct OnbDoneStep: View {
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .overlay {
-            if showsConfetti {
-                ConfettiView(colors: Theme.celebrationColors, count: 70)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-        }
+        .revealScope()
         .onAppear {
             if !reduceMotion { tilt.start() }
             guard !appeared else { return }
-            withAnimation(.spring(duration: 0.8, bounce: 0.28)) { appeared = true }
-            if !reduceMotion {
-                showsConfetti = true
-                // ConfettiView's TimelineView keeps redrawing every frame after the burst – remove it once it's over.
-                Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(3.4))
-                    showsConfetti = false
-                }
+            guard firstVisit else {
+                appeared = true
+                return
+            }
+            withMotion(Motion.bouncy) { appeared = true }
+            guard !reduceMotion else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(260))   // the check has popped in
+                celebration += 1
             }
         }
         .onDisappear {
@@ -60,15 +62,18 @@ struct OnbDoneStep: View {
         VStack(spacing: Theme.Spacing.s) {
             ZStack(alignment: .bottomTrailing) {
                 OnbBrandMark(size: 84)
+                    .celebrate(trigger: celebration, haptic: nil)
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 30, weight: .bold))
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(Color.white, Theme.positive)
-                    .symbolEffect(.bounce, value: appeared)
-                    .scaleEffect(appeared ? 1 : 0.2)
+                    .symbolEffect(.bounce, value: celebration)
+                    .celebrationRing(trigger: celebration, color: Theme.positive)
+                    .scaleEffect(appeared || reduceMotion ? 1 : 0.2)
                     .opacity(appeared ? 1 : 0)
                     .offset(x: 10, y: 10)
             }
+            .celebrationBurst(trigger: celebration)
             .padding(.bottom, Theme.Spacing.xs)
             .accessibilityHidden(true)
 
@@ -76,11 +81,13 @@ struct OnbDoneStep: View {
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
+                .onbReveal(.focus, order: 1)
             Text("Dein Weg zum Gipfel beginnt jetzt. Erfasse deine Fahrten – wir zeigen dir, wann sich dein Ticket rentiert.")
                 .font(Theme.Typography.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+                .onbReveal(order: 2)
         }
         .padding(.horizontal, Theme.Spacing.xs)
     }
@@ -97,10 +104,11 @@ struct OnbDoneStep: View {
                    theme: .twilight, // = the theme the new TicketEntity gets (themeRaw default "twilight")
                    roll: tilt.roll,
                    pitch: tilt.pitch)
-            .rotation3DEffect(.degrees(appeared ? 0 : 16), axis: (x: 1, y: 0, z: 0))
-            .offset(y: appeared ? 0 : 36)
+            // Dealt onto the table: tips up out of a slight tilt and settles (Reduce Motion: fades in).
+            .rotation3DEffect(.degrees(appeared || reduceMotion ? 0 : 16), axis: (x: 1, y: 0, z: 0))
+            .offset(y: appeared || reduceMotion ? 0 : 36)
             .opacity(appeared ? 1 : 0)
-            .animation(reduceMotion ? .easeOut(duration: 0.3) : .spring(duration: 0.9, bounce: 0.25).delay(0.1), value: appeared)
+            .motionAnimation(Motion.gentle.delay(0.12), value: appeared)
             .padding(.horizontal, Theme.Spacing.xxs)
     }
 
@@ -128,8 +136,16 @@ struct OnbDoneStep: View {
         stat(label: "Ticketpreis", value: Format.euro(model.price), symbol: "eurosign.circle.fill", tint: Theme.summit)
     }
 
+    /// The page's one count-in: what the ticket costs per day of validity. The final figure reserves the width, so the
+    /// summary never flips between its row and stacked layouts while counting.
     private var perDayStat: some View {
-        stat(label: "Pro Tag", value: Format.euroPrecise(model.costPerDay), symbol: "calendar", tint: Theme.accent)
+        stat(label: "Pro Tag", value: Format.euroPrecise(model.costPerDay), symbol: "calendar", tint: Theme.accent) { final in
+            Text(final)
+                .hidden()
+                .overlay(alignment: .leading) {
+                    CountUpText(value: model.costPerDay, delay: 0.35) { Format.euroPrecise($0) }
+                }
+        }
     }
 
     private var validUntilStat: some View {
@@ -137,6 +153,11 @@ struct OnbDoneStep: View {
     }
 
     private func stat(label: String, value: String, symbol: String, tint: Color) -> some View {
+        stat(label: label, value: value, symbol: symbol, tint: tint) { Text($0) }
+    }
+
+    private func stat<Value: View>(label: String, value: String, symbol: String, tint: Color,
+                                   @ViewBuilder figure: (String) -> Value) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
             Label {
                 Text(label)
@@ -146,7 +167,7 @@ struct OnbDoneStep: View {
             }
             .font(.caption.weight(.medium))
             .foregroundStyle(Theme.textSecondary)
-            Text(value)
+            figure(value)
                 .font(Theme.Typography.numberSmall)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)

@@ -3,6 +3,8 @@ import KlimaCore
 
 /// Step 3 – validity start (graphical calendar), computed end date, the catalog price for that start,
 /// an optional manual price, holder name and ticket number.
+/// Motion: the cards rise in on the first visit; picking a day rolls the end date, the day count and the price (a
+/// different tariff period shows at once), the badge morphs between "Offizieller Preis" and "Eigener Preis".
 struct OnbValidityStep: View {
     @Bindable var model: OnboardingModel
     @Environment(AppState.self) private var app
@@ -17,9 +19,13 @@ struct OnbValidityStep: View {
                 title: "Gültigkeit & Preis",
                 subtitle: "Wähle deinen ersten Geltungstag – wir berechnen das Ablaufdatum und den Preis, der für diesen Start gilt.") {
             calendarCard
+                .onbReveal(order: 1)
             periodCard
+                .onbReveal(order: 2)
             priceCard
+                .onbReveal(order: 3)
             holderSection
+                .onbReveal(order: 4)
         }
         .onAppear {
             isEditingPrice = model.customPrice != nil
@@ -27,9 +33,9 @@ struct OnbValidityStep: View {
         }
         .onChange(of: priceText) { _, newValue in
             guard isEditingPrice || model.scope == .custom else { return }
-            withAnimation(.snappy(duration: 0.3)) { model.customPrice = OnbPriceParser.parse(newValue) }
+            withMotion(Motion.snappy) { model.customPrice = OnbPriceParser.parse(newValue) }
         }
-        .sensoryFeedback(.selection, trigger: model.startDate) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: model.startDate)
     }
 
     // MARK: Calendar
@@ -48,7 +54,7 @@ struct OnbValidityStep: View {
             get: { model.startDate },
             set: { newValue in
                 let day = Calendar.vienna.startOfDay(for: newValue)
-                withAnimation(.snappy(duration: 0.35)) { model.startDate = day }
+                withMotion(Motion.snappy) { model.startDate = day }
             }
         )
     }
@@ -89,7 +95,7 @@ struct OnbValidityStep: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Theme.accent.opacity(0.12), in: .capsule)
-                    .contentTransition(.numericText())
+                    .numericValue(Double(model.validityDays))
             }
         }
         .accessibilityElement(children: .combine)
@@ -115,13 +121,14 @@ struct OnbValidityStep: View {
                     Kicker(text: "Ticketpreis")
                     Spacer(minLength: Theme.Spacing.xs)
                     priceBadge
+                        .motionAnimation(Motion.snappy, value: model.isPriceFromCatalog)
                 }
                 Text(model.price > 0 ? Format.euro(model.price) : "€ –")
                     .font(Theme.Typography.priceNumeral)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText(value: model.price))
+                    .numericValue(model.price)
                     .accessibilityLabel("Ticketpreis")
                     .accessibilityValue(model.price > 0 ? Format.euro(model.price) : "noch offen")
                 priceExplanation
@@ -143,8 +150,10 @@ struct OnbValidityStep: View {
     private var priceBadge: some View {
         if model.isPriceFromCatalog {
             OnbBadge(title: "Offizieller Preis", symbol: "checkmark.seal.fill", tint: Theme.positive, textColor: Theme.positiveText)
+                .motionTransition(.pop)
         } else if model.customPrice != nil {
             OnbBadge(title: "Eigener Preis", symbol: "pencil", tint: Theme.accent, textColor: Theme.accentText)
+                .motionTransition(.pop)
         }
     }
 
@@ -197,8 +206,9 @@ struct OnbValidityStep: View {
                 Button("Zurücksetzen", action: resetPrice)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.accentText)
+                    .buttonStyle(.pressable)
             }
-            .transition(.opacity)
+            .motionTransition(.opacity)
         } else {
             Button(action: startEditingPrice) {
                 HStack(spacing: Theme.Spacing.s) {
@@ -218,13 +228,13 @@ struct OnbValidityStep: View {
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-            .transition(.opacity)
+            .buttonStyle(.pressableCard)
+            .motionTransition(.opacity)
         }
     }
 
     private func startEditingPrice() {
-        withAnimation(.snappy(duration: 0.3)) { isEditingPrice = true }
+        withMotion(Motion.snappy) { isEditingPrice = true }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(120))
             focus = .price
@@ -233,7 +243,7 @@ struct OnbValidityStep: View {
 
     private func resetPrice() {
         focus = nil
-        withAnimation(.snappy(duration: 0.3)) {
+        withMotion(Motion.snappy) {
             isEditingPrice = false
             priceText = ""
             model.customPrice = nil

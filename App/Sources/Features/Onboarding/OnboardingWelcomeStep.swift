@@ -2,8 +2,15 @@ import SwiftUI
 import SwiftData
 import KlimaCore
 
-/// Step 1 – brand moment: summit scene with floating glass chips, "Hat sich dein Ticket schon rentiert?",
-/// page dots, sign-in buttons (or "Weiter" when already signed in), "Ohne Konto fortfahren · Demo ansehen" and the legal footnote.
+/// Step 1 – brand moment: summit scene with glass chips, "Hat sich dein Ticket schon rentiert?", page dots, sign-in
+/// buttons (or "Weiter" when already signed in with an account), "Ohne Konto fortfahren · Demo ansehen" and the legal
+/// footnote.
+///
+/// Motion (docs/MOTION.md): the page waits one beat on the plain sky while the sample year's figures are worked out, then
+/// enters in reading order – brand mark, scene, headline, buttons. In the scene the climber walks the route up to the
+/// demo's amortisation while "Amortisiert" counts with it; when it arrives, the break-even chip – the "aha" – pops in
+/// and the climber's halo starts to pulse. The layers shift with the phone's tilt (parallax). First visit only;
+/// Reduce Motion: fades, no parallax, no halo.
 struct OnbWelcomeStep: View {
     var model: OnboardingModel
     var animatesEntrance: Bool
@@ -12,33 +19,54 @@ struct OnbWelcomeStep: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.colorScheme) private var colorScheme
-    @State private var appeared: Bool
-    @State private var signedInOnAppear: Bool?
+    /// Figures of the sample year behind "Demo ansehen" – the scene shows exactly what the demo will show. Seeding the
+    /// in-memory store takes a moment on the main thread, so it runs after the first frame and before any entrance
+    /// animation starts (nothing stutters); later visits and screenshots have them at once.
+    @State private var figures: OnbDemoFigures?
+    /// Decided once: an account (Apple, Google, Microsoft) shows "Weiter"; a local profile ("Ohne Konto fortfahren"
+    /// earlier) still gets the sign-in buttons when the user comes back to this page.
+    @State private var hasAccountOnAppear: Bool?
     @State private var legalDocument: OnbLegalDocument?
     @State private var isConfirmingDemo = false
-    /// Figures of the sample year behind "Demo ansehen" – the scene shows exactly what the demo will show.
-    private let figures: OnbDemoFigures
 
     init(model: OnboardingModel, animatesEntrance: Bool, onContinue: @escaping () -> Void) {
         self.model = model
         self.animatesEntrance = animatesEntrance
         self.onContinue = onContinue
-        self.figures = OnbDemoFigures.current(catalog: model.app.catalog)
-        _appeared = State(initialValue: !animatesEntrance)
+        _figures = State(initialValue: LaunchMode.isScreenshot ? OnbDemoFigures.current(catalog: model.app.catalog)
+                                                               : OnbDemoFigures.cachedFigures)
+    }
+
+    private var hasAccount: Bool {
+        guard app.auth.isSignedIn, let profile = app.auth.profile else { return false }
+        return profile.provider != .local
     }
 
     var body: some View {
-        ViewThatFits(in: .vertical) {
-            content(flexibleHero: true)
-            ScrollView {
-                content(flexibleHero: false)
+        Group {
+            if let figures {
+                ViewThatFits(in: .vertical) {
+                    content(figures: figures, flexibleHero: true)
+                    ScrollView {
+                        content(figures: figures, flexibleHero: false)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                // The entrance starts when the content does (not when the empty sky appeared).
+                .revealScope()
+            } else {
+                Color.clear
             }
-            .scrollIndicators(.hidden)
+        }
+        .task {
+            guard figures == nil else { return }
+            try? await Task.sleep(for: .milliseconds(60))   // let the sky's first frame reach the screen
+            figures = OnbDemoFigures.current(catalog: model.app.catalog)
         }
         .onAppear {
-            if signedInOnAppear == nil { signedInOnAppear = app.auth.isSignedIn }
-            if !appeared { appeared = true }
+            if hasAccountOnAppear == nil { hasAccountOnAppear = hasAccount }
         }
+        .preference(key: OnbCoveredKey.self, value: legalDocument != nil)
         .sheet(item: $legalDocument) { document in
             OnbLegalSheet(document: document)
         }
@@ -52,9 +80,9 @@ struct OnbWelcomeStep: View {
 
     // MARK: Layout
 
-    private func content(flexibleHero: Bool) -> some View {
+    private func content(figures: OnbDemoFigures, flexibleHero: Bool) -> some View {
         VStack(spacing: 0) {
-            OnbWelcomeHero(figures: figures, animatesEntrance: animatesEntrance, isVisible: appeared)
+            OnbWelcomeHero(figures: figures, animatesEntrance: animatesEntrance, isCovered: legalDocument != nil)
                 .frame(minHeight: flexibleHero ? 236 : 300,
                        idealHeight: flexibleHero ? 236 : 300,
                        maxHeight: flexibleHero ? 420 : 300)
@@ -62,7 +90,7 @@ struct OnbWelcomeStep: View {
             headline
                 .padding(.top, Theme.Spacing.m)
                 .padding(.horizontal, Theme.Spacing.screen)
-                .onbEntrance(appeared, delay: 0.1)
+                .onbReveal(.focus, order: 2)
 
             Text(Self.subline)
                 .font(Theme.Typography.body)
@@ -71,21 +99,21 @@ struct OnbWelcomeStep: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, Theme.Spacing.xs)
                 .padding(.horizontal, Theme.Spacing.screen)
-                .onbEntrance(appeared, delay: 0.18)
+                .onbReveal(order: 3)
 
-            OnbPageDots(count: OnboardingModel.Step.numberedCount + 1, current: 0)
+            OnbPageDots(count: OnboardingModel.Step.numberedCount + 1, current: 0, animates: animatesEntrance)
                 .padding(.top, Theme.Spacing.m)
-                .onbEntrance(appeared, delay: 0.24, offset: 0)
+                .onbReveal(.fade, order: 4)
 
             authArea
                 .padding(.top, Theme.Spacing.l)
                 .padding(.horizontal, Theme.Spacing.screen)
-                .onbEntrance(appeared, delay: 0.28)
+                .onbReveal(order: 5)
 
             legal
                 .padding(.top, Theme.Spacing.xxs)
                 .padding(.horizontal, Theme.Spacing.xl)
-                .onbEntrance(appeared, delay: 0.36)
+                .onbReveal(.fade, order: 6)
         }
         .padding(.bottom, Theme.Spacing.xs)
         .frame(maxWidth: 560)
@@ -133,7 +161,7 @@ struct OnbWelcomeStep: View {
 
     @ViewBuilder
     private var authArea: some View {
-        if signedInOnAppear ?? app.auth.isSignedIn {
+        if hasAccountOnAppear ?? hasAccount {
             VStack(spacing: Theme.Spacing.s) {
                 Button(action: onContinue) {
                     HStack(spacing: Theme.Spacing.xs) {
@@ -181,7 +209,8 @@ struct OnbWelcomeStep: View {
 
     private var continueWithoutAccountButton: some View {
         Button {
-            app.auth.continueWithoutAccount()
+            // Back on this page after "Ohne Konto fortfahren": the local profile stays (no second one).
+            if !app.auth.isSignedIn { app.auth.continueWithoutAccount() }
             onContinue()
         } label: {
             Text("Ohne Konto fortfahren")
@@ -191,7 +220,7 @@ struct OnbWelcomeStep: View {
                 .frame(minHeight: 44)
                 .contentShape(.rect)
         }
-        .buttonStyle(OnbPressableStyle())
+        .buttonStyle(.pressable)
     }
 
     private var demoButton: some View {
@@ -209,7 +238,7 @@ struct OnbWelcomeStep: View {
             .frame(minHeight: 44)
             .contentShape(.rect)
         }
-        .buttonStyle(OnbPressableStyle())
+        .buttonStyle(.pressable)
         .accessibilityHint("Lädt ein Beispieljahr zum Ausprobieren")
     }
 
@@ -244,6 +273,9 @@ struct OnbDemoFigures {
 
     @MainActor private static var cached: OnbDemoFigures?
 
+    /// The figures if they were worked out earlier in this launch (going back to the welcome page).
+    @MainActor static var cachedFigures: OnbDemoFigures? { cached }
+
     @MainActor
     static func current(catalog: TariffCatalog) -> OnbDemoFigures {
         if let cached { return cached }
@@ -277,44 +309,70 @@ struct OnbDemoFigures {
 
 // MARK: - Page dots
 
-/// Pager dots under the subtitle (welcome + the numbered setup steps); the current page is a wide capsule.
+/// Pager dots under the subtitle (welcome + the numbered setup steps); the current page is a wide capsule that
+/// stretches out of its dot on the first visit.
 private struct OnbPageDots: View {
     var count: Int
     var current: Int
+    var animates: Bool
+
+    @State private var isStretched: Bool
+
+    init(count: Int, current: Int, animates: Bool) {
+        self.count = count
+        self.current = current
+        self.animates = animates
+        _isStretched = State(initialValue: !animates)
+    }
 
     var body: some View {
         HStack(spacing: 6) {
             ForEach(0..<count, id: \.self) { index in
+                let isCurrent = index == current
                 Capsule()
-                    .fill(index == current ? AnyShapeStyle(Theme.textPrimary.opacity(0.85)) : AnyShapeStyle(Theme.textTertiary.opacity(0.55)))
-                    .frame(width: index == current ? 22 : 7, height: 7)
+                    .fill(isCurrent ? AnyShapeStyle(Theme.textPrimary.opacity(0.85)) : AnyShapeStyle(Theme.textTertiary.opacity(0.55)))
+                    .frame(width: isCurrent && isStretched ? 22 : 7, height: 7)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Seite \(current + 1) von \(count)")
+        .task {
+            guard !isStretched else { return }
+            try? await Task.sleep(for: .milliseconds(420))
+            withMotion(Motion.bouncy) { isStretched = true }
+        }
     }
 }
 
 // MARK: - Hero scene
 
-/// Brand mark above an alpine scene: ridges with the route climbing to the summit flag and three floating glass chips.
+/// Brand mark above an alpine scene: ridges with the route climbing to the summit flag and three glass chips.
 /// The climber sits at the demo's amortisation along the route (arc length), with milestone dots at 25 % and 50 %.
 /// Scene geometry is in unit coordinates of the area below the brand, so the composition holds from iPhone SE to Pro Max.
 private struct OnbWelcomeHero: View {
     var figures: OnbDemoFigures
     var animatesEntrance: Bool
-    var isVisible: Bool
+    /// The legal sheet is up: the parallax stops (the halo pauses through `ambientSkyPaused`).
+    var isCovered: Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var reveal: CGFloat
+    @Environment(\.scenePhase) private var scenePhase
+    /// 0 … 1 – the climb: the walked route draws from the valley, the climber rides its tip, "Amortisiert" counts with it.
+    @State private var climb: CGFloat
+    /// The climber has arrived: the break-even chip pops in and the halo starts.
+    @State private var hasArrived: Bool
+    @State private var tilt = MotionTilt()
+    @State private var isOnScreen = false
+    @State private var isTilting = false
 
-    init(figures: OnbDemoFigures, animatesEntrance: Bool, isVisible: Bool) {
+    init(figures: OnbDemoFigures, animatesEntrance: Bool, isCovered: Bool) {
         self.figures = figures
         self.animatesEntrance = animatesEntrance
-        self.isVisible = isVisible
-        _reveal = State(initialValue: animatesEntrance ? 0 : 1)
+        self.isCovered = isCovered
+        _climb = State(initialValue: animatesEntrance ? 0 : 1)
+        _hasArrived = State(initialValue: !animatesEntrance)
     }
 
     private static let summit = CGPoint(x: 0.70, y: 0.13)
@@ -326,12 +384,18 @@ private struct OnbWelcomeHero: View {
     ]
     private static let milestones: [CGFloat] = [0.25, 0.5]
 
-    private var isAnimated: Bool { !reduceMotion && !LaunchMode.isScreenshot }
     private var progress: CGFloat { CGFloat(min(max(figures.amortized, 0.04), 1)) }
+
+    /// Parallax runs while the scene is on screen, the app active, nothing covers it, Reduce Motion is off.
+    private var wantsTilt: Bool {
+        isOnScreen && scenePhase == .active && !isCovered && !reduceMotion && !MotionPolicy.isStatic
+            && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             brand
+                .onbReveal(.pop, order: 0)
             GeometryReader { geo in
                 scene(geo.size)
             }
@@ -340,36 +404,66 @@ private struct OnbWelcomeHero: View {
             .accessibilityLabel("Beispiel: Ticket zu \(figures.percentText) amortisiert, Break-even am \(figures.breakEvenText), \(Int(figures.co2Kg.rounded())) Kilogramm CO₂ gespart")
         }
         .onAppear {
-            guard reveal < 1 else { return }
-            if reduceMotion {
-                reveal = 1
-            } else {
-                withAnimation(.easeOut(duration: 1.2).delay(0.1)) { reveal = 1 }
-            }
+            isOnScreen = true
+            startClimb()
         }
+        .onDisappear { isOnScreen = false }
+        .onChange(of: wantsTilt, initial: true) { _, wants in
+            guard wants != isTilting else { return }
+            isTilting = wants
+            if wants { tilt.start() } else { tilt.stop() }
+        }
+    }
+
+    /// The climb on the countIn curve (fast start, long soft landing), then the "aha": the break-even chip.
+    private func startClimb() {
+        guard climb < 1 else { return }
+        if reduceMotion {
+            withAnimation(Motion.crossfade) {
+                climb = 1
+                hasArrived = true
+            }
+            return
+        }
+        withAnimation(Motion.countIn.delay(0.25)) {
+            climb = 1
+        } completion: {
+            withMotion(Motion.bouncy) { hasArrived = true }
+        }
+    }
+
+    private func parallax(_ depth: CGFloat) -> OnbParallax {
+        OnbParallax(tilt: tilt, depth: depth, isActive: isTilting)
     }
 
     private func scene(_ size: CGSize) -> some View {
         let split = Self.split(Self.path, at: progress, in: size)
         return ZStack(alignment: .topLeading) {
             glow(size)
+                .modifier(parallax(2))
+                .onbReveal(.fade, order: 0)
             ridges
-            routeLayer(walked: split.walked, ahead: split.ahead)
-            ForEach(Self.milestones.filter { $0 < progress - 0.08 }, id: \.self) { fraction in
-                let point = Self.split(Self.path, at: fraction, in: size).point
-                milestoneDot
-                    .onbEntrance(isVisible, delay: 0.35 + Double(fraction), offset: 0, scale: 0.4)
-                    .position(x: size.width * point.x, y: size.height * point.y)
+                .onbReveal(.fade, order: 1)
+            ZStack(alignment: .topLeading) {
+                routeLayer(walked: split.walked, ahead: split.ahead)
+                ForEach(Self.milestones.filter { $0 < progress - 0.08 }, id: \.self) { fraction in
+                    let point = Self.split(Self.path, at: fraction, in: size).point
+                    milestoneDot
+                        .modifier(OnbPassReveal(climb: climb, at: fraction / progress))
+                        .position(x: size.width * point.x, y: size.height * point.y)
+                }
+                summitMarker
+                    .onbReveal(.pop, order: 3)
+                    .position(x: size.width * Self.summit.x + 8, y: size.height * Self.summit.y - 12)
+                if progress < 1 {
+                    climberMarker
+                        .modifier(OnbAlongPath(points: split.walked, size: size, fraction: climb))
+                }
             }
-            summitMarker
-                .onbEntrance(isVisible, delay: 0.4, offset: 6, scale: 0.6)
-                .position(x: size.width * Self.summit.x + 8, y: size.height * Self.summit.y - 12)
-            if progress < 1 {
-                climberMarker
-                    .onbEntrance(isVisible, delay: 0.85, offset: 0, scale: 0.4)
-                    .position(x: size.width * split.point.x, y: size.height * split.point.y)
-            }
+            .frame(width: size.width, height: size.height, alignment: .topLeading)
+            .modifier(parallax(6))
             chips(size)
+                .modifier(parallax(11))
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
@@ -402,10 +496,10 @@ private struct OnbWelcomeHero: View {
             .frame(width: size.width * 0.68, height: size.width * 0.68)
             .position(x: size.width * Self.summit.x, y: size.height * Self.summit.y + 24)
             .blur(radius: 14)
-            .opacity(isVisible ? 1 : 0)
-            .animation(.easeOut(duration: 0.9), value: isVisible)
     }
 
+    /// Three ridges at three depths: the far ones barely move with the tilt, the frosted front ridge (with the route on
+    /// it) the most – the scene gains depth without any redraw.
     private var ridges: some View {
         let dark = colorScheme == .dark
         let front = RidgeShape(peakX: Self.summit.x, peakY: Self.summit.y, seed: 7, roughness: 0.42)
@@ -417,18 +511,23 @@ private struct OnbWelcomeHero: View {
         return ZStack {
             RidgeShape(peakX: 0.90, peakY: 0.22, seed: 3, roughness: 0.7)
                 .fill(Theme.glacier.opacity(dark ? 0.13 : 0.16))
+                .modifier(parallax(1.5))
             RidgeShape(peakX: 0.30, peakY: 0.36, seed: 19, roughness: 0.6)
                 .fill(Theme.dusk.opacity(dark ? 0.20 : 0.14))
-            if !reduceTransparency {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .clipShape(front)
+                .modifier(parallax(3.5))
+            ZStack {
+                if !reduceTransparency {
+                    Rectangle()
+                        .fill(.ultraThinMaterial)
+                        .clipShape(front)
+                }
+                front.fill(LinearGradient(stops: frontFill, startPoint: .top, endPoint: .bottom))
+                front.stroke(LinearGradient(colors: dark ? [Color.white.opacity(0.18), Theme.dawn.opacity(0.85)]
+                                                         : [Color.white.opacity(0.7), Color.white],
+                                            startPoint: .leading, endPoint: .trailing),
+                             lineWidth: 1.3)
             }
-            front.fill(LinearGradient(stops: frontFill, startPoint: .top, endPoint: .bottom))
-            front.stroke(LinearGradient(colors: dark ? [Color.white.opacity(0.18), Theme.dawn.opacity(0.85)]
-                                                     : [Color.white.opacity(0.7), Color.white],
-                                        startPoint: .leading, endPoint: .trailing),
-                         lineWidth: 1.3)
+            .modifier(parallax(6))
         }
         .mask {
             LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.6),
@@ -437,19 +536,20 @@ private struct OnbWelcomeHero: View {
         }
     }
 
+    /// The dashed way ahead is there from the start (the goal); the walked part draws up to the climber.
     private func routeLayer(walked: [CGPoint], ahead: [CGPoint]) -> some View {
         ZStack {
             OnbPolygon(points: walked, closed: false)
-                .trim(from: 0, to: reveal)
+                .trim(from: 0, to: climb)
                 .stroke(Theme.routeGradient, style: StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
                 .blur(radius: 9)
                 .opacity(0.55)
             OnbPolygon(points: walked, closed: false)
-                .trim(from: 0, to: reveal)
+                .trim(from: 0, to: climb)
                 .stroke(Theme.routeGradient, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
             OnbPolygon(points: ahead, closed: false)
-                .trim(from: 0, to: reveal)
                 .stroke(Theme.textSecondary.opacity(0.85), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 6]))
+                .onbReveal(.fade, order: 2)
         }
     }
 
@@ -477,52 +577,56 @@ private struct OnbWelcomeHero: View {
         .frame(width: 28, height: 36, alignment: .topLeading)
     }
 
+    /// "Du bist hier": a quiet ring on the way up; once arrived, the motion system's halo pulses while it can be seen.
     private var climberMarker: some View {
         ZStack {
-            if isAnimated {
-                Circle()
-                    .fill(Theme.dusk.opacity(0.4))
-                    .frame(width: 36, height: 36)
-                    .phaseAnimator([false, true]) { halo, expanded in
-                        halo
-                            .scaleEffect(expanded ? 1.45 : 0.7)
-                            .opacity(expanded ? 0 : 0.9)
-                    } animation: { expanded in
-                        expanded ? .easeOut(duration: 2.4) : .linear(duration: 0.05)
-                    }
-            } else {
-                Circle()
-                    .fill(Theme.dusk.opacity(0.28))
-                    .frame(width: 34, height: 34)
-            }
+            Circle()
+                .fill(Theme.dusk.opacity(0.24))
+                .frame(width: 30, height: 30)
             Circle()
                 .fill(Color.white)
                 .frame(width: 15, height: 15)
                 .overlay { Circle().stroke(Theme.dusk, lineWidth: 4) }
                 .shadow(color: Theme.dusk.opacity(0.5), radius: 6)
+                .background {
+                    if hasArrived {
+                        Color.clear
+                            .frame(width: 24, height: 24)
+                            .pulsingHalo(Theme.dusk, scale: 1.9)
+                    }
+                }
         }
         .frame(width: 40, height: 40)
     }
 
     /// Chip order and tiles as in mock 05 / DESIGN_FINAL_SYNTHESIS §9.1: Break-even (flag), Amortisiert (percent), CO₂ (leaf).
+    /// "Amortisiert" counts with the climb; "Break-even" – where the climb leads – pops in when the climber arrives.
     private func chips(_ size: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
-            OnbStatChip(symbol: "flag.fill", tile: [Color(hex: "#FF9E7A"), Color(hex: "#D9573A")],
-                        label: "Break-even", value: figures.breakEvenText)
-                .modifier(OnbFloating(amplitude: 4, duration: 2.6, isActive: isAnimated))
-                .onbEntrance(isVisible, delay: 0.3, offset: 10, scale: 0.85)
+            if hasArrived {
+                OnbStatChip(symbol: "flag.fill", tile: [Color(hex: "#FF9E7A"), Color(hex: "#D9573A")], label: "Break-even") {
+                    Text(figures.breakEvenText)
+                }
+                .motionTransition(.asymmetric(insertion: .scale(scale: 0.7, anchor: .bottomLeading).combined(with: .opacity),
+                                              removal: .opacity))
                 .offset(x: size.width * 0.11, y: 4)
-            OnbStatChip(symbol: "percent", tile: [Color(hex: "#6CB6FF"), Color(hex: "#5B5FD6")],
-                        label: "Amortisiert", value: figures.percentText)
-                .modifier(OnbFloating(amplitude: 4, duration: 3.1, isActive: isAnimated))
-                .onbEntrance(isVisible, delay: 0.4, offset: 10, scale: 0.85)
-                .offset(x: 14, y: size.height * 0.40)
-            OnbStatChip(symbol: "leaf.fill", tile: [Color(hex: "#5FD3A2"), Color(hex: "#1E7F62")],
-                        label: "CO₂ gespart", value: figures.co2Text)
-                .modifier(OnbFloating(amplitude: 4, duration: 3.5, isActive: isAnimated))
-                .onbEntrance(isVisible, delay: 0.5, offset: 10, scale: 0.85)
-                .frame(width: max(size.width - 14, 0), alignment: .trailing)
-                .offset(y: size.height * 0.63)
+            }
+            OnbStatChip(symbol: "percent", tile: [Color(hex: "#6CB6FF"), Color(hex: "#5B5FD6")], label: "Amortisiert") {
+                // The final figure reserves the width; the counting figure sits on top of it.
+                Text(figures.percentText)
+                    .hidden()
+                    .overlay(alignment: .leading) {
+                        OnbClimbPercent(climb: climb, total: figures.amortized)
+                    }
+            }
+            .onbReveal(order: 2)
+            .offset(x: 14, y: size.height * 0.40)
+            OnbStatChip(symbol: "leaf.fill", tile: [Color(hex: "#5FD3A2"), Color(hex: "#1E7F62")], label: "CO₂ gespart") {
+                Text(figures.co2Text)
+            }
+            .onbReveal(order: 5)
+            .frame(width: max(size.width - 14, 0), alignment: .trailing)
+            .offset(y: size.height * 0.63)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
     }
@@ -539,19 +643,69 @@ private struct OnbWelcomeHero: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 6)
         .padding(.bottom, 10)
-        .onbEntrance(isVisible, delay: 0, offset: 8, scale: 0.92)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("KlimaBilanz")
         .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// Floating glass chip with a gradient icon tile ("Break-even · 21. Dez.").
-private struct OnbStatChip: View {
+/// Positions the climber on the walked route at `fraction` of its length – animatable, so it rides the route's tip
+/// frame by frame while the trim draws it.
+private struct OnbAlongPath: ViewModifier, Animatable {
+    var points: [CGPoint]
+    var size: CGSize
+    var fraction: CGFloat
+
+    var animatableData: CGFloat {
+        get { fraction }
+        set { fraction = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let point = OnbWelcomeHero.split(points, at: fraction, in: size).point
+        content.position(x: size.width * point.x, y: size.height * point.y)
+    }
+}
+
+/// A milestone dot grows in the moment the climb passes it (`at` = its share of the walked route).
+private struct OnbPassReveal: ViewModifier, Animatable {
+    var climb: CGFloat
+    var at: CGFloat
+
+    var animatableData: CGFloat {
+        get { climb }
+        set { climb = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        let t = min(max((climb - at) / 0.06, 0), 1)
+        content
+            .scaleEffect(0.3 + 0.7 * t)
+            .opacity(Double(t))
+    }
+}
+
+/// "75 %" counting with the climb (the number itself interpolates, so it reads like a counter).
+private struct OnbClimbPercent: View, Animatable {
+    var climb: CGFloat
+    var total: Double
+
+    var animatableData: CGFloat {
+        get { climb }
+        set { climb = newValue }
+    }
+
+    var body: some View {
+        Text(Format.percent(total * Double(climb)))
+    }
+}
+
+/// Glass chip with a gradient icon tile ("Break-even · 21. Dez.").
+private struct OnbStatChip<Value: View>: View {
     var symbol: String
     var tile: [Color]
     var label: String
-    var value: String
+    @ViewBuilder var value: () -> Value
 
     var body: some View {
         HStack(spacing: 9) {
@@ -569,7 +723,7 @@ private struct OnbStatChip: View {
                 Text(label)
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
-                Text(value)
+                value()
                     .font(.subheadline.weight(.bold).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
             }

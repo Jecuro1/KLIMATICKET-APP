@@ -2,21 +2,41 @@ import SwiftUI
 import KlimaCore
 
 /// Step 2 – which ticket: KlimaTicket Ö variants, a federal state's regional tickets, or a custom ticket.
+/// Motion: the scope capsule glides (motion system `GlassSegmentedPicker`, with its selection haptic), the cards rise in
+/// one after the other on the first visit and dip under the finger; the picked card's ring and check morph in.
 struct OnbTicketStep: View {
     @Bindable var model: OnboardingModel
     @Environment(AppState.self) private var app
+
+    private static let scopes: [TicketFamily] = [.oe, .regional, .custom]
 
     var body: some View {
         OnbPage(kicker: OnboardingModel.Step.ticket.kicker,
                 title: "Welches Ticket hast du?",
                 subtitle: "Wir rechnen mit dem offiziellen Preis – anpassen kannst du ihn jederzeit.") {
-            OnbScopePicker(selection: model.scope) { scope in
-                withAnimation(.snappy(duration: 0.3)) { model.selectScope(scope) }
+            GlassSegmentedPicker(selection: scopeBinding, options: Self.scopes) { scope in
+                Text(Self.title(for: scope))
             }
-            scopeContent
+            .onbReveal(order: 1)
+            // Outgoing and incoming content share the space while they cross-fade – nothing below jumps.
+            ZStack(alignment: .top) {
+                scopeContent
+            }
         }
-        .sensoryFeedback(.selection, trigger: model.selectedProductID) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.selection, trigger: model.scope) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: model.selectedProductID)
+    }
+
+    /// The picker sets the scope inside `withMotion(Motion.snappy)`, so the content below changes on the same spring.
+    private var scopeBinding: Binding<TicketFamily> {
+        Binding(get: { model.scope }, set: { model.selectScope($0) })
+    }
+
+    private static func title(for scope: TicketFamily) -> String {
+        switch scope {
+        case .oe: "Österreich"
+        case .regional: "Bundesland"
+        case .custom: "Eigenes"
+        }
     }
 
     @ViewBuilder
@@ -24,92 +44,36 @@ struct OnbTicketStep: View {
         switch model.scope {
         case .oe:
             oeSection
-                .transition(.opacity)
+                .motionTransition(.opacity)
         case .regional:
             OnbRegionalSection(model: model)
-                .transition(.opacity)
+                .motionTransition(.opacity)
         case .custom:
             OnbCustomTicketForm(model: model)
-                .transition(.opacity)
+                .motionTransition(.opacity)
         }
     }
 
     private var oeSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             OnbSectionLabel(title: "KlimaTicket Ö")
-            ForEach(model.oeProducts) { product in
+                .onbReveal(order: 2)
+            ForEach(Array(model.oeProducts.enumerated()), id: \.element.id) { index, product in
                 OnbProductCard(product: product,
                                price: product.price(forStart: model.startDate),
                                isSelected: model.selectedProductID == product.id,
                                isCompact: false) {
-                    withAnimation(.snappy(duration: 0.25)) { model.selectProduct(product) }
+                    withMotion(Motion.snappy) { model.selectProduct(product) }
                 }
+                .onbReveal(order: 3 + index)
             }
             Label("Ganz Österreich: Bahn, Bus, Bim und U-Bahn in der 2. Klasse.", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, Theme.Spacing.xxs)
                 .padding(.top, Theme.Spacing.xxs)
+                .onbReveal(.fade, order: 9)
         }
-    }
-}
-
-// MARK: - Scope picker
-
-private struct OnbScopeOption: Identifiable {
-    let scope: TicketFamily
-    let title: String
-    var id: String { scope.rawValue }
-}
-
-/// Glass segmented control "Österreich · Bundesland · Eigenes" with a sliding selection capsule.
-private struct OnbScopePicker: View {
-    var selection: TicketFamily
-    var onSelect: (TicketFamily) -> Void
-
-    @Namespace private var namespace
-    @Environment(\.colorScheme) private var colorScheme
-
-    private let options: [OnbScopeOption] = [
-        OnbScopeOption(scope: .oe, title: "Österreich"),
-        OnbScopeOption(scope: .regional, title: "Bundesland"),
-        OnbScopeOption(scope: .custom, title: "Eigenes"),
-    ]
-
-    var body: some View {
-        HStack(spacing: Theme.Spacing.xxs) {
-            ForEach(options) { option in
-                segment(option)
-            }
-        }
-        .padding(Theme.Spacing.xxs)
-        .glassEffect(.regular, in: .capsule)
-    }
-
-    private func segment(_ option: OnbScopeOption) -> some View {
-        let isSelected = option.scope == selection
-        return Button {
-            onSelect(option.scope)
-        } label: {
-            Text(option.title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-                .frame(maxWidth: .infinity, minHeight: 40)
-                .padding(.horizontal, Theme.Spacing.xxs)
-                .background {
-                    if isSelected {
-                        Capsule()
-                            .fill(colorScheme == .dark ? Theme.surfaceSecondary : Theme.surface)
-                            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.3 : 0.1), radius: 6, y: 2)
-                            .matchedGeometryEffect(id: "scope-selection", in: namespace)
-                    }
-                }
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -157,7 +121,7 @@ private struct OnbProductCard: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(isCompact ? .body : .title3)
                     .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
             }
             .padding(.horizontal, Theme.Spacing.m)
             .padding(.vertical, isCompact ? 11 : 14)
@@ -169,7 +133,7 @@ private struct OnbProductCard: View {
             }
             .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
         }
-        .buttonStyle(OnbPressableStyle())
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(product.name)
         .accessibilityValue("\(Format.euro(price)) pro Jahr, \(OnbProductCopy.detail(for: product))")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -211,7 +175,7 @@ private struct OnbRegionalSection: View {
                        price: product.price(forStart: model.startDate),
                        isSelected: model.selectedProductID == product.id,
                        isCompact: compact) {
-            withAnimation(.snappy(duration: 0.25)) { model.selectProduct(product) }
+            withMotion(Motion.snappy) { model.selectProduct(product) }
         }
     }
 
@@ -221,7 +185,10 @@ private struct OnbRegionalSection: View {
                 HStack(spacing: Theme.Spacing.xs) {
                     ForEach(model.statesWithRegionalProducts) { state in
                         Chip(title: state.displayName, isSelected: state == model.selectedState) {
-                            withAnimation(.snappy(duration: 0.3)) { model.selectState(state) }
+                            withMotion(Motion.snappy) {
+                                model.selectState(state)
+                                proxy.scrollTo(state, anchor: .center)
+                            }
                         }
                         .id(state)
                     }
@@ -234,6 +201,7 @@ private struct OnbRegionalSection: View {
             .onAppear {
                 proxy.scrollTo(model.selectedState, anchor: .center)
             }
+            .haptic(.selection, trigger: model.selectedState)
         }
     }
 }

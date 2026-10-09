@@ -3,6 +3,9 @@ import KlimaCore
 
 /// Step 4 (optional) – usual route: home station → destination, round trip, Vorteilscard,
 /// and a live preview after how many trips the ticket pays off.
+/// Motion: the cards rise in on the first visit; a picked station morphs into place, the swap arrows turn with a bouncy
+/// spring and a tap; once both stations are set the preview rises in and its number counts up – the first "aha" of the
+/// setup – and every option change rolls it.
 struct OnbHabitsStep: View {
     @Bindable var model: OnboardingModel
     @Environment(AppState.self) private var app
@@ -14,14 +17,18 @@ struct OnbHabitsStep: View {
                 title: "Deine Strecke",
                 subtitle: "Mit deiner üblichen Strecke siehst du sofort, wann sich dein Ticket rentiert. Sie wird dein erster Favorit.") {
             routeCard
+                .onbReveal(order: 1)
             optionsGroup
+                .onbReveal(order: 2)
             previewCard
+                .onbReveal(order: 3)
         }
+        .preference(key: OnbCoveredKey.self, value: pickerTarget != nil)
         .sheet(item: $pickerTarget) { target in
             OnbStationPicker(title: target.title,
                              near: target == .to ? model.homeStation?.location : model.commuteDestination?.location,
                              excludedID: target == .to ? model.homeStation?.id : model.commuteDestination?.id) { station in
-                withAnimation(.snappy(duration: 0.35)) {
+                withMotion(Motion.smooth) {
                     switch target {
                     case .from: model.homeStation = station
                     case .to: model.commuteDestination = station
@@ -29,7 +36,7 @@ struct OnbHabitsStep: View {
                 }
             }
         }
-        .sensoryFeedback(.selection, trigger: model.commuteBreakEvenTrips) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: model.commuteBreakEvenTrips)
     }
 
     // MARK: Route
@@ -47,7 +54,7 @@ struct OnbHabitsStep: View {
                 }
                 if model.homeStation != nil || model.commuteDestination != nil {
                     swapButton
-                        .transition(.scale.combined(with: .opacity))
+                        .motionTransition(.pop)
                 }
             }
         }
@@ -68,11 +75,14 @@ struct OnbHabitsStep: View {
                         .foregroundStyle(station == nil ? Theme.accentText : Theme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .contentTransition(.interpolate)
                     if let station {
                         Text(OnbStationText.subtitle(for: station))
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                             .lineLimit(1)
+                            .contentTransition(.opacity)
+                            .motionTransition(.opacity)
                     }
                 }
                 Spacer(minLength: Theme.Spacing.xxs)
@@ -83,7 +93,7 @@ struct OnbHabitsStep: View {
             .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(target == .from ? "Von" : "Nach")
         .accessibilityValue(station?.name ?? "nicht gewählt")
         .accessibilityHint("Öffnet die Haltestellensuche")
@@ -92,19 +102,19 @@ struct OnbHabitsStep: View {
     private var swapButton: some View {
         Button {
             swapTurns += 1
-            withAnimation(.bouncy) { model.swapStations() }
+            withMotion(Motion.bouncy) { model.swapStations() }
         } label: {
             Image(systemName: "arrow.up.arrow.down")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Theme.accent)
                 .rotationEffect(.degrees(Double(swapTurns) * 180))
-                .animation(.bouncy, value: swapTurns)
+                .motionAnimation(Motion.bouncy, value: swapTurns)
                 .frame(width: 44, height: 44)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: .circle)
-        .sensoryFeedback(.selection, trigger: swapTurns) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.tap, trigger: swapTurns)
         .accessibilityLabel("Start und Ziel tauschen")
     }
 
@@ -113,22 +123,24 @@ struct OnbHabitsStep: View {
     private var vorteilscardBinding: Binding<Bool> {
         Binding(
             get: { model.discount == .vorteilscard },
-            set: { isOn in withAnimation(.snappy(duration: 0.3)) { model.discount = isOn ? .vorteilscard : .none } }
+            set: { isOn in withMotion(Motion.snappy) { model.discount = isOn ? .vorteilscard : .none } }
         )
     }
 
     private var roundTripBinding: Binding<Bool> {
         Binding(
             get: { model.commuteRoundTrip },
-            set: { isOn in withAnimation(.snappy(duration: 0.3)) { model.commuteRoundTrip = isOn } }
+            set: { isOn in withMotion(Motion.snappy) { model.commuteRoundTrip = isOn } }
         )
     }
 
+    /// The preview's number rolls with every switch (and plays the selection tick), so no extra haptic here.
     private var optionsGroup: some View {
         OnbFormGroup {
             Toggle(isOn: roundTripBinding) {
                 OnbToggleLabel(symbol: "arrow.left.arrow.right", tint: Theme.dusk,
                                title: "Hin- und Rückfahrt", subtitle: "Wert wird verdoppelt")
+                    .setSymbolOnEnable(model.commuteRoundTrip)
             }
             .tint(Theme.accent)
             .padding(.vertical, Theme.Spacing.s)
@@ -137,6 +149,7 @@ struct OnbHabitsStep: View {
                 OnbToggleLabel(symbol: "percent", tint: Theme.dawn,
                                title: "Vorteilscard",
                                subtitle: "Einzeltickets kosten dann rund die Hälfte – wir rechnen ehrlich mit diesem Preis.")
+                    .setSymbolOnEnable(model.discount == .vorteilscard)
             }
             .tint(Theme.accent)
             .padding(.vertical, Theme.Spacing.s)
@@ -150,7 +163,7 @@ struct OnbHabitsStep: View {
         if let trips = model.commuteBreakEvenTrips, let estimate = model.commuteEstimate {
             OnbCommutePreview(trips: trips, estimate: estimate, isRoundTrip: model.commuteRoundTrip,
                               valuePerTrip: model.commuteValuePerTrip ?? estimate.fareEUR, ticketPrice: model.price)
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                .motionTransition(.rise)
         } else {
             GlassCard {
                 HStack(spacing: Theme.Spacing.m) {
@@ -172,7 +185,7 @@ struct OnbHabitsStep: View {
                 }
             }
             .accessibilityElement(children: .combine)
-            .transition(.opacity)
+            .motionTransition(.opacity)
         }
     }
 }
@@ -199,23 +212,25 @@ private struct OnbCommutePreview: View {
                     Image(systemName: "flag.fill")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Theme.summitText)
+                        .setSymbolEffect(.wiggle, trigger: trips)
                     Kicker(text: "Deine Vorschau", color: Theme.summitText)
                 }
                 Text("Mit dieser Strecke rentiert sich dein Ticket nach ca.")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                // The aha: the number counts up when the preview first appears, then rolls with every change.
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
-                    Text(Format.number(Double(trips)))
+                    CountUpText(value: Double(trips), delay: 0.12) { Format.number($0) }
                         .font(Theme.Typography.priceNumeral)
                         .foregroundStyle(Theme.textPrimary)
-                        .contentTransition(.numericText(value: Double(trips)))
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                     Text(unit)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.interpolate)
                 }
                 Text("Danach fährst du gratis – jede weitere Fahrt ist Gewinn.")
                     .font(.subheadline)
@@ -228,6 +243,7 @@ private struct OnbCommutePreview: View {
                         Text("\(Format.euroPrecise(estimate.fareEUR)) pro Richtung")
                             .font(.subheadline.weight(.semibold).monospacedDigit())
                             .foregroundStyle(Theme.textPrimary)
+                            .numericValue(estimate.fareEUR)
                         Text(estimate.explanation)
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
@@ -241,6 +257,7 @@ private struct OnbCommutePreview: View {
                 Text("\(trips) × \(Format.euroPrecise(valuePerTrip)) ≥ \(Format.euro(ticketPrice)) Ticketpreis")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)
+                    .contentTransition(.numericText())
             }
         }
         .accessibilityElement(children: .ignore)
@@ -350,6 +367,7 @@ private struct OnbStationPicker: View {
             .disabled(isLocating)
             ForEach(nearby.filter { $0.station.id != excludedID }) { item in
                 row(item.station, distanceKm: item.distanceKm)
+                    .motionTransition(.rise)
             }
             if locationFailed {
                 Text("Standort nicht verfügbar – such einfach nach dem Namen.")
@@ -413,9 +431,11 @@ private struct OnbStationPicker: View {
         locator = service
         Task {
             let found = await service.nearestStations(in: app.stations, limit: 4)
-            nearby = found.map { OnbNearbyStation(station: $0.station, distanceKm: $0.distanceKm) }
-            locationFailed = found.isEmpty
-            isLocating = false
+            withMotion(Motion.smooth) {
+                nearby = found.map { OnbNearbyStation(station: $0.station, distanceKm: $0.distanceKm) }
+                locationFailed = found.isEmpty
+                isLocating = false
+            }
         }
     }
 }
