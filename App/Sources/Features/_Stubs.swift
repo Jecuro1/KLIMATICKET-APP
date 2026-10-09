@@ -3,7 +3,6 @@ import SwiftUI
 import KlimaCore
 
 struct TicketView: View { var body: some View { NavigationStack { Text("Ticket").navigationTitle("Ticket") } } }
-struct OnboardingFlow: View { var body: some View { Text("Willkommen") } }
 struct TripEditorView: View { let draft: TripDraft; var body: some View { Text("Fahrt") } }
 struct StationPickerView: View {
     let title: String

@@ -10,7 +10,6 @@ import KlimaCore
 struct SetFareSection: View {
     @Environment(AppState.self) private var app
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
-    @State private var homeCustomName = ""
 
     var body: some View {
         @Bindable var settings = app.settings
@@ -62,7 +61,9 @@ struct SetFareSection: View {
 
     private var homeStationRow: some View {
         NavigationLink {
-            StationPickerView(title: "Heimatbahnhof", selection: homeStation, customName: $homeCustomName)
+            StationPickerView(title: "Heimatbahnhof") { station in
+                app.settings.homeStationID = station.id
+            }
         } label: {
             SetRowLabel(title: "Heimatbahnhof", subtitle: homeStationSubtitle, symbol: "house.fill", tint: Theme.pine)
         }
@@ -73,13 +74,6 @@ struct SetFareSection: View {
                 }
             }
         }
-    }
-
-    private var homeStation: Binding<Station?> {
-        Binding(
-            get: { app.settings.homeStationID.flatMap { app.stations.station(id: $0) } },
-            set: { app.settings.homeStationID = $0?.id }
-        )
     }
 
     private var homeStationSubtitle: String {
