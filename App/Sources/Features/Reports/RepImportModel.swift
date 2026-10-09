@@ -145,7 +145,8 @@ final class RepImportModel {
         }
         let decoded = CSVImport.decode(data)
         let text = decoded.text
-        if text.contains("\u{0}") || text.hasPrefix("%PDF") || text.hasPrefix("PK") {
+        // Binary files (Excel .xlsx/Numbers are ZIP archives, PDFs) – CSV text never contains NUL bytes.
+        if text.contains("\u{0}") || text.hasPrefix("%PDF-") || text.hasPrefix("PK\u{3}\u{4}") {
             loadError = "„\(name)“ ist keine Text-Datei. Exportiere deine Tabelle als CSV (Trennzeichen getrennt) und versuch es noch einmal."
             return
         }
