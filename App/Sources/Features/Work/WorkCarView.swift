@@ -136,11 +136,7 @@ private struct WorkCarScreen: View {
     private var heroCard: some View {
         GlassCard(padding: Theme.Spacing.l) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-                    Kicker(text: result.isCheaperThanCar ? "Günstiger als mit dem Auto" : "Noch bis zum Gleichstand mit dem Auto")
-                    Spacer(minLength: Theme.Spacing.xs)
-                    modeChip
-                }
+                Kicker(text: result.isCheaperThanCar ? "Günstiger als mit dem Auto" : "Noch bis zum Gleichstand mit dem Auto")
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                     WorkEuroNumeral(value: abs(result.isCheaperThanCar ? result.savings : result.remainingToBreakEven),
                                     size: numeralSize, color: result.isCheaperThanCar ? Theme.positive : Theme.textPrimary)
@@ -158,6 +154,7 @@ private struct WorkCarScreen: View {
                         ticketColumn
                     }
                 }
+                modeChip
             }
         }
     }
@@ -166,18 +163,22 @@ private struct WorkCarScreen: View {
         NavigationLink {
             WorkCarSettingsView(showsDetailLink: false)
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Image(systemName: settings.carMode.symbol)
                     .font(.caption.weight(.bold))
-                Text(WorkCarCalc.modeSummary(result))
-                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(settings.carMode.tint)
+                Text("Berechnung: \(WorkCarCalc.modeSummary(result))")
+                    .font(.footnote.weight(.semibold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.textTertiary)
             }
             .foregroundStyle(Theme.textPrimary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .glassEffect(.regular.interactive(), in: .capsule)
         }
         .buttonStyle(.plain)
