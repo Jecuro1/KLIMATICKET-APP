@@ -195,6 +195,8 @@ struct ScreenshotRouter: View {
             NavigationStack { SettingsView() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
+        case "car", "carSettings", "carCard", "work", "workSelf", "workAssign", "workPDF", "workLogbookPDF":
+            WorkScreenshotHost(screen: screen)
         case "hero":
             DesignSystemPreview()
         default:
