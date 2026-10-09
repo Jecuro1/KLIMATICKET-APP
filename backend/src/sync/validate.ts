@@ -75,6 +75,8 @@ export function normalizeRow(schema: TableSchema, raw: unknown, index: number, u
     const value = Object.hasOwn(raw, col.name) ? raw[col.name] : undefined;
     if (value === undefined || value === null) {
       if (col.required) throw invalid(index, col.name, "required");
+      // Left out of the JSON: the upsert keeps the stored value, a new row gets the default (schema.ts).
+      if (col.keepWhenAbsent) continue;
       out[col.name] = col.nullable ? null : (col.default ?? null);
       continue;
     }

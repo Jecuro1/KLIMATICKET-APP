@@ -9,6 +9,8 @@ import KlimaCloud
 /// relies on the DTOs' phase-2 columns (trip category & "ohne Ticket nicht gefahren", favourite category, ticket
 /// auto-renewal, employer contribution, add-ons). Version-1 files still restore: those columns are optional, and when a
 /// file lacks them the values of an existing entity stay untouched (new entities keep the model defaults).
+/// Trips and favourites also carry `via` (docs/VIA.md) – additive within version 2: older apps ignore the key, files
+/// without it keep an existing entity's vias.
 struct BackupFile: Codable {
     var format: String = "klimabilanz-backup"
     var version: Int = 2

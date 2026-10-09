@@ -170,6 +170,7 @@ describe("GET /v1/config", () => {
       providers: { google: { web: false }, microsoft: { web: false }, apple: { web: false, native: false } },
       min_app_version: "1.0.0",
       sync_tables: ["tickets", "trips", "favorite_routes", "benefits"],
+      features: ["trip_via"],
       limits: { push_max_rows: 500, pull_max_limit: 500, max_body_bytes: 1048576 },
       server_time: "2026-10-09T12:00:00.000000Z",
     });

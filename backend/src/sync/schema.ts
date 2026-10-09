@@ -15,6 +15,11 @@ export interface Column {
   nullable: boolean;
   /** Default for optional, non-nullable columns (normalized value). */
   default?: string | number;
+  /**
+   * Absent or null in a push keeps the stored value (a new row gets `default`) instead of resetting it – for columns
+   * that older apps do not know, so their edits never wipe what a newer app wrote (e.g. `via`, docs/VIA.md §3).
+   */
+  keepWhenAbsent?: boolean;
 }
 
 export interface TableSchema {
@@ -43,6 +48,11 @@ const O = (name: string, type: ColumnType, def: string | number, max?: number): 
   default: def,
 });
 const N = (name: string, type: ColumnType, max?: number): Column => ({ name, type, max, required: false, nullable: true });
+/** Optional, kept when absent (see `keepWhenAbsent`). */
+const K = (name: string, type: ColumnType, def: string | number, max?: number): Column => ({
+  ...O(name, type, def, max),
+  keepWhenAbsent: true,
+});
 
 const ID = R("id", "uuid");
 const CREATED = R("created_at", "timestamp");
@@ -91,6 +101,7 @@ const DEFINITIONS: Record<SyncTable, Column[]> = {
     R("note", "text", 10000),
     O("category", "text", "", 50),
     O("is_induced", "bool", 0),
+    K("via", "text", "", 1000),
     CREATED,
     UPDATED,
     DELETED,
@@ -110,6 +121,7 @@ const DEFINITIONS: Record<SyncTable, Column[]> = {
     R("sort_index", "int"),
     R("usage_count", "int"),
     O("category", "text", "", 50),
+    K("via", "text", "", 1000),
     CREATED,
     UPDATED,
     DELETED,
@@ -129,12 +141,26 @@ const DEFINITIONS: Record<SyncTable, Column[]> = {
 
 const IMMUTABLE = new Set(["id", "created_at"]);
 
+/** SQL literal of a schema default (static values from DEFINITIONS, never input). */
+function sqlLiteral(value: string | number | undefined): string {
+  if (value === undefined) return "NULL";
+  return typeof value === "number" ? String(value) : `'${value.replace(/'/g, "''")}'`;
+}
+
+/** The pushed value; for `keepWhenAbsent` columns the stored one (then the default) when the push leaves it out. */
+function selectExpression(table: SyncTable, col: Column): string {
+  const pushed = `j.value ->> '$.${col.name}'`;
+  if (!col.keepWhenAbsent) return pushed;
+  const stored = `(SELECT k.${col.name} FROM ${table} AS k WHERE k.user_id = ?1 AND k.id = j.value ->> '$.id')`;
+  return `COALESCE(${pushed}, ${stored}, ${sqlLiteral(col.default)})`;
+}
+
 function build(name: SyncTable): TableSchema {
   const columns = DEFINITIONS[name];
   const names = columns.map((c) => c.name);
   const updateColumns = names.filter((c) => !IMMUTABLE.has(c));
   const contentColumns = updateColumns.filter((c) => c !== "updated_at");
-  const selectList = names.map((c) => `j.value ->> '$.${c}'`).join(", ");
+  const selectList = columns.map((c) => selectExpression(name, c)).join(", ");
   // §3.6: the revision reserve (UPDATE sync_state … RETURNING) runs first in the same batch; row i of the
   // normalized array gets revision R - n + i + 1. Last writer wins on updated_at; echoes (no content change) skip.
   const upsertSql =

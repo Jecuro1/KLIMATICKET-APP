@@ -73,6 +73,7 @@
         "note": "Railjet – „ruhig“ ✓",
         "category": "work",
         "is_induced": false,
+        "via": "at:47:1187\tInnsbruck Hauptbahnhof\nat:45:50002\tSalzburg Hauptbahnhof",
         "created_at": "2026-10-08T05:50:12.500000Z",
         "updated_at": "2026-10-08T05:50:12.500000+02:00",
         "deleted_at": null
@@ -96,6 +97,7 @@
         "note": "Railjet – „ruhig“ ✓",
         "category": "work",
         "is_induced": false,
+        "via": "at:47:1187\tInnsbruck Hauptbahnhof\nat:45:50002\tSalzburg Hauptbahnhof",
         "created_at": "2026-10-08T05:50:12.500000Z",
         "updated_at": "2026-10-08T03:50:12.500000Z",
         "deleted_at": null,
@@ -117,6 +119,7 @@
         "sort_index": 2,
         "usage_count": 17,
         "category": "",
+        "via": "\tLech Postamt",
         "created_at": "2026-05-01T10:00:00.000000Z",
         "updated_at": "2026-09-30T18:00:00.000000Z",
         "deleted_at": "2026-09-30T18:00:00.000000Z"
@@ -137,6 +140,7 @@
         "sort_index": 2,
         "usage_count": 17,
         "category": "",
+        "via": "\tLech Postamt",
         "created_at": "2026-05-01T10:00:00.000000Z",
         "updated_at": "2026-09-30T18:00:00.000000Z",
         "deleted_at": "2026-09-30T18:00:00.000000Z",

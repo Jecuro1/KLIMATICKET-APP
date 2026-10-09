@@ -146,6 +146,17 @@ final class ClientRequestTests: XCTestCase {
         let empty = try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"providers":{"apple":{}}}"#.utf8))
         XCTAssertFalse(empty.hasAnyProvider(native: true))
         XCTAssertEqual(empty.apiVersion, 1)
+        XCTAssertEqual(empty.features, [], "a Worker before `features` supports nothing additive")
+        XCTAssertFalse(empty.supports(CloudFeature.tripVia))
+    }
+
+    func testConfigFeatures() throws {
+        let config = try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"api_version":1,"features":["trip_via","later"]}"#.utf8))
+        XCTAssertTrue(config.supports(CloudFeature.tripVia))
+        XCTAssertFalse(config.supports("unknown"))
+        XCTAssertEqual(try JSONDecoder().decode(CloudConfig.self, from: try JSONEncoder().encode(config)), config)
+        // A malformed list is ignored, not fatal.
+        XCTAssertEqual(try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"features":"trip_via"}"#.utf8)).features, [])
     }
 }
 

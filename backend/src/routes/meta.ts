@@ -18,12 +18,20 @@ export async function health(env: Env, deps: Deps, info: RequestInfo): Promise<R
   return json(info, { ok: false }, 503);
 }
 
+/**
+ * Additive capabilities of this Worker + D1 (contract §3.3). An app sends a newer sync column only when the feature is
+ * listed – a Worker without the migration answers `422 unknown_field` for keys it does not know.
+ * - `trip_via`: `via` on trips and favorite_routes (migration 0002, docs/VIA.md §3).
+ */
+export const FEATURES = ["trip_via"] as const;
+
 export async function config(env: Env, deps: Deps, info: RequestInfo): Promise<Response> {
   return json(info, {
     api_version: 1,
     providers: await providerFlags(env, deps),
     min_app_version: (env.MIN_APP_VERSION ?? "").trim() || "1.0.0",
     sync_tables: [...SYNC_TABLES],
+    features: [...FEATURES],
     limits: { push_max_rows: PUSH_MAX_ROWS, pull_max_limit: PULL_MAX_LIMIT, max_body_bytes: MAX_PUSH_BODY_BYTES },
     server_time: canonicalFromMs(deps.now()),
   });

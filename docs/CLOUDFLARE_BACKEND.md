@@ -389,11 +389,17 @@ Unknown path → `404 not_found`; wrong method → `405`.
   "providers": { "google": {"web": true}, "microsoft": {"web": false}, "apple": {"web": true, "native": true} },
   "min_app_version": "1.0.0",
   "sync_tables": ["tickets", "trips", "favorite_routes", "benefits"],
+  "features": ["trip_via"],
   "limits": { "push_max_rows": 500, "pull_max_limit": 500, "max_body_bytes": 1048576 },
   "server_time": "2026-10-09T12:00:00.000000Z" }
 ```
 All flags are `false` when `SESSION_SIGNING_KEY` is unusable. The app caches the last answer and hides the buttons of
 disabled providers (§6.3).
+
+`features` lists additive capabilities of this Worker + D1 (`backend/src/routes/meta.ts` › `FEATURES`). The app sends a
+newer sync column only when its feature is listed – a Worker without the migration answers `422 unknown_field` – and
+takes that column from pulled rows only then (`CloudConfig.supports`). Missing `features` (older Worker) = none.
+`trip_via`: `via` on trips and favorite_routes (migration `0002_via.sql`, docs/VIA.md).
 
 ### 3.4 Wire values
 
@@ -411,7 +417,8 @@ The Swift `APITimestamp` (formerly `PostgresTimestamp`) already writes exactly t
 ### 3.5 Synced tables (columns = Swift DTOs = D1 schema)
 
 "push" = key in push rows: **R** required, **O** optional (absent or `null` means the default; the nullable ones
-are stored as NULL). Every row MAY also contain `user_id` (it MUST equal the token user, case-insensitive, else
+are stored as NULL), **K** optional and kept (absent or `null` keeps the stored value, a new row gets the default – for
+columns older apps do not know, so their edits never wipe them). Every row MAY also contain `user_id` (it MUST equal the token user, case-insensitive, else
 `422 user_mismatch`) and `server_rev` (ignored). Any other key → `422 unknown_field`. Pull rows always contain
 **every** column below plus `user_id` and `server_rev` (nullable columns as JSON `null`).
 
@@ -424,12 +431,13 @@ are stored as NULL). Every row MAY also contain `user_id` (it MUST equal the tok
 **trips**: `id` uuid R · `date` timestamp R · `from_name` text(200) R · `to_name` text(200) R · `from_station_id` text(100)-or-null O ·
 `to_station_id` text(100)-or-null O · `mode` text(50) R · `distance_km` real R · `fare_eur` real R · `is_fare_manual` bool R ·
 `is_round_trip` bool R · `travel_class` text(50) R · `companions` int R · `states` text(200) R · `note` text(10000) R ·
-`category` text(50) O ('') · `is_induced` bool O (false) · `created_at` R · `updated_at` R · `deleted_at` O (null)
+`category` text(50) O ('') · `is_induced` bool O (false) · `via` text(1000) K ('') · `created_at` R · `updated_at` R ·
+`deleted_at` O (null)
 
 **favorite_routes**: `id` uuid R · `title` text(200) R · `from_name` text(200) R · `to_name` text(200) R ·
 `from_station_id` O · `to_station_id` O · `mode` text(50) R · `distance_km` real R · `fare_eur` real R · `is_round_trip` bool R ·
-`states` text(200) R · `sort_index` int R · `usage_count` int R · `category` text(50) O ('') · `created_at` R · `updated_at` R ·
-`deleted_at` O (null)
+`states` text(200) R · `sort_index` int R · `usage_count` int R · `category` text(50) O ('') · `via` text(1000) K ('') ·
+`created_at` R · `updated_at` R · `deleted_at` O (null)
 
 **benefits**: `id` uuid R · `date` timestamp R · `partner_id` text(100) R · `title` text(200) R · `saved_eur` real R ·
 `note` text(10000) R · `created_at` R · `updated_at` R · `deleted_at` O (null)

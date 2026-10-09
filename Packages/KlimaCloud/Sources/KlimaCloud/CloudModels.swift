@@ -81,6 +81,12 @@ public struct CloudUser: Codable, Equatable, Sendable {
     }
 }
 
+/// Names in `CloudConfig.features` (contract §3.3).
+public enum CloudFeature {
+    /// `via` on trips and favorite_routes (backend migration 0002, docs/VIA.md §3).
+    public static let tripVia = "trip_via"
+}
+
 /// `GET /v1/config` (contract §3.3). Decoding tolerates unknown and missing keys (missing provider flags = disabled).
 public struct CloudConfig: Codable, Equatable, Sendable {
     public var apiVersion: Int
@@ -94,10 +100,12 @@ public struct CloudConfig: Codable, Equatable, Sendable {
     public var pushMaxRows: Int?
     public var pullMaxLimit: Int?
     public var maxBodyBytes: Int?
+    /// Additive server capabilities (`features`, contract §3.3), e.g. `CloudFeature.tripVia`. Empty for older Workers.
+    public var features: [String]
 
     public init(apiVersion: Int = 1, googleWeb: Bool = false, microsoftWeb: Bool = false, appleWeb: Bool = false,
                 appleNative: Bool = false, minAppVersion: String? = nil, syncTables: [String] = [], serverTime: Date? = nil,
-                pushMaxRows: Int? = nil, pullMaxLimit: Int? = nil, maxBodyBytes: Int? = nil) {
+                pushMaxRows: Int? = nil, pullMaxLimit: Int? = nil, maxBodyBytes: Int? = nil, features: [String] = []) {
         self.apiVersion = apiVersion
         self.googleWeb = googleWeb
         self.microsoftWeb = microsoftWeb
@@ -109,7 +117,11 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         self.pushMaxRows = pushMaxRows
         self.pullMaxLimit = pullMaxLimit
         self.maxBodyBytes = maxBodyBytes
+        self.features = features
     }
+
+    /// The server lists `feature` (e.g. `CloudFeature.tripVia`): the app may send the sync keys that come with it.
+    public func supports(_ feature: String) -> Bool { features.contains(feature) }
 
     /// At least one way to sign in is enabled on the server (`native` = this build can use native Sign in with Apple).
     public func hasAnyProvider(native: Bool) -> Bool {
@@ -118,7 +130,7 @@ public struct CloudConfig: Codable, Equatable, Sendable {
 
     private enum Keys: String, CodingKey {
         case apiVersion = "api_version", providers, minAppVersion = "min_app_version", syncTables = "sync_tables"
-        case limits, serverTime = "server_time"
+        case limits, serverTime = "server_time", features
     }
 
     private enum ProviderKeys: String, CodingKey { case google, microsoft, apple }
@@ -133,6 +145,7 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         minAppVersion = (try? c.decodeIfPresent(String.self, forKey: .minAppVersion)).flatMap { $0 }
         syncTables = (try? c.decodeIfPresent([String].self, forKey: .syncTables)).flatMap { $0 } ?? []
         serverTime = (try? c.decodeIfPresent(String.self, forKey: .serverTime)).flatMap { $0 }.flatMap(APITimestamp.date(from:))
+        features = (try? c.decodeIfPresent([String].self, forKey: .features)).flatMap { $0 } ?? []
 
         func flag(_ provider: ProviderKeys, _ key: FlagKeys) -> Bool {
             guard let providers = try? c.nestedContainer(keyedBy: ProviderKeys.self, forKey: .providers),
@@ -165,6 +178,7 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         try c.encodeIfPresent(minAppVersion, forKey: .minAppVersion)
         try c.encode(syncTables, forKey: .syncTables)
         try c.encodeIfPresent(serverTime.map(APITimestamp.string(from:)), forKey: .serverTime)
+        if !features.isEmpty { try c.encode(features, forKey: .features) }
         if pushMaxRows != nil || pullMaxLimit != nil || maxBodyBytes != nil {
             var limits = c.nestedContainer(keyedBy: LimitKeys.self, forKey: .limits)
             try limits.encodeIfPresent(pushMaxRows, forKey: .pushMaxRows)

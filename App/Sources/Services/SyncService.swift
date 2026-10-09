@@ -230,6 +230,11 @@ final class SyncService {
             return next
         }
 
+        // MARK: via – `via` goes up only to a Worker that knows the column (else 422 unknown_field) and is taken from pulled
+        // rows only then: a stale server value must not wipe vias this device could not upload (docs/VIA.md §3).
+        await auth.refreshServerConfig()
+        let syncsVia = auth.serverConfig?.supports(CloudFeature.tripVia) ?? false
+
         let started = Date()
         do {
             // 1) Push (not when replacing local data – it is about to be discarded).
@@ -244,8 +249,8 @@ final class SyncService {
                 let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.updatedAt > since }))
                 let benefits = try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.updatedAt > since }))
                 let ticketRows = tickets.map { TicketDTO($0, userID: uid) }
-                let tripRows = trips.map { TripDTO($0, userID: uid) }
-                let favoriteRows = favorites.map { FavoriteDTO($0, userID: uid) }
+                let tripRows = trips.map { TripDTO($0, userID: uid, includesVia: syncsVia) }
+                let favoriteRows = favorites.map { FavoriteDTO($0, userID: uid, includesVia: syncsVia) }
                 let benefitRows = benefits.map { BenefitDTO($0, userID: uid) }
                 _ = try await client.push(table: TicketDTO.table, rows: ticketRows, session: provider)
                 _ = try await client.push(table: TripDTO.table, rows: tripRows, session: provider)
@@ -287,12 +292,12 @@ final class SyncService {
                            apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
                 self.merge(trips.rows, into: try local(TripEntity.self, pulled: trips.rows.count), userID: uid,
                            dirtyAfter: pushWatermark, context: context,
-                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TripDTO($0, userID: uid) },
-                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { TripDTO($0, userID: uid, includesVia: syncsVia) },
+                           apply: { $0.keepingVia(!syncsVia).apply(to: $1) }, make: { $0.makeEntity() })
                 self.merge(favorites.rows, into: try local(FavoriteRouteEntity.self, pulled: favorites.rows.count), userID: uid,
                            dirtyAfter: pushWatermark, context: context,
-                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { FavoriteDTO($0, userID: uid) },
-                           apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
+                           id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { FavoriteDTO($0, userID: uid, includesVia: syncsVia) },
+                           apply: { $0.keepingVia(!syncsVia).apply(to: $1) }, make: { $0.makeEntity() })
                 self.merge(benefits.rows, into: try local(BenefitEntity.self, pulled: benefits.rows.count), userID: uid,
                            dirtyAfter: pushWatermark, context: context,
                            id: { $0.id }, updatedAt: { $0.updatedAt }, snapshot: { BenefitDTO($0, userID: uid) },
@@ -467,21 +472,32 @@ extension TicketDTO {
 }
 
 extension TripDTO {
-    init(_ e: TripEntity, userID: String) {
+    /// `includesVia`: false for a server without `CloudFeature.tripVia` (the key is then left out; backups always carry it).
+    init(_ e: TripEntity, userID: String, includesVia: Bool = true) {
         self.init(id: e.id, user_id: userID, date: e.date, from_name: e.fromName, to_name: e.toName,
                   from_station_id: e.fromStationID, to_station_id: e.toStationID, mode: e.modeRaw, distance_km: e.distanceKm,
                   fare_eur: e.fareEUR, is_fare_manual: e.isFareManual, is_round_trip: e.isRoundTrip,
                   travel_class: e.travelClassRaw, companions: e.companions, states: e.statesRaw, note: e.note,
-                  category: e.categoryRaw, is_induced: e.isInduced,
+                  category: e.categoryRaw, is_induced: e.isInduced, via: includesVia ? e.viaRaw : nil,
                   created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
+    /// nil `via` (older server or backup) keeps the entity's vias.
     func apply(to e: TripEntity) {
         e.date = date; e.fromName = from_name; e.toName = to_name; e.fromStationID = from_station_id; e.toStationID = to_station_id
         e.modeRaw = mode; e.distanceKm = distance_km; e.fareEUR = fare_eur; e.isFareManual = is_fare_manual
         e.isRoundTrip = is_round_trip; e.travelClassRaw = travel_class; e.companions = companions; e.statesRaw = states
         e.note = note; e.categoryRaw = category ?? ""; e.isInduced = is_induced ?? false
+        if let via { e.viaRaw = via }   // MARK: via
         e.createdAt = created_at; e.updatedAt = updated_at; e.deletedAt = deleted_at
+    }
+
+    /// The row without its `via` when `keep` (the entity's vias then stay as they are).
+    func keepingVia(_ keep: Bool) -> TripDTO {
+        guard keep else { return self }
+        var copy = self
+        copy.via = nil
+        return copy
     }
 
     func makeEntity() -> TripEntity {
@@ -493,19 +509,29 @@ extension TripDTO {
 }
 
 extension FavoriteDTO {
-    init(_ e: FavoriteRouteEntity, userID: String) {
+    /// `includesVia`: as on `TripDTO.init(_:userID:includesVia:)`.
+    init(_ e: FavoriteRouteEntity, userID: String, includesVia: Bool = true) {
         self.init(id: e.id, user_id: userID, title: e.title, from_name: e.fromName, to_name: e.toName,
                   from_station_id: e.fromStationID, to_station_id: e.toStationID, mode: e.modeRaw, distance_km: e.distanceKm,
                   fare_eur: e.fareEUR, is_round_trip: e.isRoundTrip, states: e.statesRaw, sort_index: e.sortIndex,
-                  usage_count: e.usageCount, category: e.categoryRaw,
+                  usage_count: e.usageCount, category: e.categoryRaw, via: includesVia ? e.viaRaw : nil,
                   created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
+    /// nil `via` keeps the entity's vias.
     func apply(to e: FavoriteRouteEntity) {
         e.title = title; e.fromName = from_name; e.toName = to_name; e.fromStationID = from_station_id; e.toStationID = to_station_id
         e.modeRaw = mode; e.distanceKm = distance_km; e.fareEUR = fare_eur; e.isRoundTrip = is_round_trip; e.statesRaw = states
         e.sortIndex = sort_index; e.usageCount = usage_count; e.categoryRaw = category ?? ""
+        if let via { e.viaRaw = via }   // MARK: via
         e.createdAt = created_at; e.updatedAt = updated_at; e.deletedAt = deleted_at
+    }
+
+    func keepingVia(_ keep: Bool) -> FavoriteDTO {
+        guard keep else { return self }
+        var copy = self
+        copy.via = nil
+        return copy
     }
 
     func makeEntity() -> FavoriteRouteEntity {

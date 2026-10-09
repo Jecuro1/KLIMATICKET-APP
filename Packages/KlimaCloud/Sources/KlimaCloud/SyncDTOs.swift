@@ -93,6 +93,9 @@ public struct TripDTO: SyncRow {
     public var note: String
     public var category: String?
     public var is_induced: Bool?
+    /// Via stops (`TripViaCodec` text, '' = direct; docs/VIA.md). Sent only to a server with the `trip_via` feature;
+    /// nil = not sent / not known (the server then keeps what it has).
+    public var via: String?
     public var created_at: Date
     public var updated_at: Date
     public var deleted_at: Date?
@@ -102,7 +105,7 @@ public struct TripDTO: SyncRow {
     public init(id: UUID, user_id: String, date: Date, from_name: String, to_name: String, from_station_id: String? = nil,
                 to_station_id: String? = nil, mode: String, distance_km: Double, fare_eur: Double, is_fare_manual: Bool,
                 is_round_trip: Bool, travel_class: String, companions: Int, states: String, note: String,
-                category: String? = nil, is_induced: Bool? = nil, created_at: Date, updated_at: Date,
+                category: String? = nil, is_induced: Bool? = nil, via: String? = nil, created_at: Date, updated_at: Date,
                 deleted_at: Date? = nil, server_rev: Int64? = nil) {
         self.id = id
         self.user_id = user_id
@@ -122,6 +125,7 @@ public struct TripDTO: SyncRow {
         self.note = note
         self.category = category
         self.is_induced = is_induced
+        self.via = via
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at
@@ -147,6 +151,8 @@ public struct FavoriteDTO: SyncRow {
     public var sort_index: Int
     public var usage_count: Int
     public var category: String?
+    /// Via stops, as on `TripDTO.via`.
+    public var via: String?
     public var created_at: Date
     public var updated_at: Date
     public var deleted_at: Date?
@@ -155,8 +161,8 @@ public struct FavoriteDTO: SyncRow {
 
     public init(id: UUID, user_id: String, title: String, from_name: String, to_name: String, from_station_id: String? = nil,
                 to_station_id: String? = nil, mode: String, distance_km: Double, fare_eur: Double, is_round_trip: Bool,
-                states: String, sort_index: Int, usage_count: Int, category: String? = nil, created_at: Date,
-                updated_at: Date, deleted_at: Date? = nil, server_rev: Int64? = nil) {
+                states: String, sort_index: Int, usage_count: Int, category: String? = nil, via: String? = nil,
+                created_at: Date, updated_at: Date, deleted_at: Date? = nil, server_rev: Int64? = nil) {
         self.id = id
         self.user_id = user_id
         self.title = title
@@ -172,6 +178,7 @@ public struct FavoriteDTO: SyncRow {
         self.sort_index = sort_index
         self.usage_count = usage_count
         self.category = category
+        self.via = via
         self.created_at = created_at
         self.updated_at = updated_at
         self.deleted_at = deleted_at

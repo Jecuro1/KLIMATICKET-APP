@@ -251,6 +251,45 @@ describe("last writer wins", () => {
     });
   });
 
+  it("via (docs/VIA.md): new rows default to '', an older app's push without it keeps the stored value, '' clears", async () => {
+    const s = await directSession(deps);
+    const id = uuid();
+    const via = "at:48:817\tFeldkirch\n\tLech Postamt";
+    // New row from an older app (no via key) → default.
+    await pushOk(s, "trips", [trip({ id })]);
+    expect((await stored(s, "trips", id))!.via).toBe("");
+    // A newer app writes the vias.
+    await pushOk(s, "trips", [trip({ id, via, updated_at: ts(2) })]);
+    expect((await stored(s, "trips", id))!.via).toBe(via);
+    // The older app edits the note: absent (or null) via keeps the stored vias, the edit applies.
+    const older = await pushOk(s, "trips", [trip({ id, note: "älter", updated_at: ts(3) })]);
+    expect(older.applied).toBe(1);
+    expect((await stored(s, "trips", id))!).toMatchObject({ via, note: "älter" });
+    await pushOk(s, "trips", [trip({ id, note: "null", via: null, updated_at: ts(4) })]);
+    expect((await stored(s, "trips", id))!).toMatchObject({ via, note: "null" });
+    // Echo of the older app's row (same content, no via) is skipped, not applied.
+    const echo = await pushOk(s, "trips", [trip({ id, note: "null", updated_at: ts(4) })]);
+    expect(echo).toMatchObject({ applied: 0, skipped: 1 });
+    // The newer app removes the vias.
+    await pushOk(s, "trips", [trip({ id, note: "null", via: "", updated_at: ts(5) })]);
+    expect((await stored(s, "trips", id))!.via).toBe("");
+
+    const favorite = {
+      id: uuid(), title: "", from_name: "Innsbruck Hbf", to_name: "Bregenz", mode: "train", distance_km: 202.8, fare_eur: 43.3,
+      is_round_trip: false, states: "T,V", sort_index: 0, usage_count: 0, created_at: ts(1), updated_at: ts(1),
+      via: "at:48:817\tFeldkirch",
+    };
+    await pushOk(s, "favorite_routes", [favorite]);
+    const { via: _dropped, ...withoutVia } = favorite;
+    await pushOk(s, "favorite_routes", [{ ...withoutVia, usage_count: 3, updated_at: ts(2) }]);
+    expect((await stored(s, "favorite_routes", favorite.id))!).toMatchObject({ via: "at:48:817\tFeldkirch", usage_count: 3 });
+  });
+
+  it("rejects an over-long via", async () => {
+    const s = await directSession(deps);
+    await expectError(await push(s, "trips", [trip({ id: uuid(), via: "x".repeat(1001) })]), 422, "invalid_row");
+  });
+
   it("assigns one global, strictly increasing revision across tables", async () => {
     const s = await directSession(deps);
     const a = await pushOk(s, "trips", [trip({ id: uuid() })]);
