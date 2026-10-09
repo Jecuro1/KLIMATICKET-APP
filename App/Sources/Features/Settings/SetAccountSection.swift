@@ -11,6 +11,8 @@ struct SetAccountSection: View {
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
 
     @State private var isConfirmingSignOut = false
+    @State private var isConfirmingDelete = false
+    @State private var deleteError: String?
     @State private var showsConnect = false
     @State private var syncTrigger = 0
 
@@ -78,6 +80,9 @@ struct SetAccountSection: View {
         }
         if profile != nil {
             signOutRow
+        }
+        if isCloudActive {
+            deleteAccountRow
         }
     }
 
@@ -166,6 +171,32 @@ struct SetAccountSection: View {
         }
     }
 
+    /// App Store guideline 5.1.1(v): an account created in the app must be deletable in the app.
+    private var deleteAccountRow: some View {
+        Button(role: .destructive) {
+            isConfirmingDelete = true
+        } label: {
+            HStack(spacing: Theme.Spacing.xs) {
+                if app.auth.isDeletingAccount { ProgressView().controlSize(.small) }
+                Text("Konto löschen")
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(Theme.negativeText)
+        }
+        .disabled(app.auth.isDeletingAccount)
+        .confirmationDialog("Konto endgültig löschen?", isPresented: $isConfirmingDelete, titleVisibility: .visible) {
+            Button("Konto löschen", role: .destructive) { deleteAccount() }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Dein Konto und alle Daten in der Cloud werden gelöscht. Die Fahrten auf diesem iPhone bleiben erhalten.")
+        }
+        .alert("Löschen fehlgeschlagen", isPresented: Binding(get: { deleteError != nil }, set: { if !$0 { deleteError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(deleteError ?? "")
+        }
+    }
+
     private var footerText: String {
         if isCloudActive {
             return "Deine Fahrten werden verschlüsselt mit deiner persönlichen Cloud-Datenbank abgeglichen – nur du hast Zugriff."
@@ -183,6 +214,18 @@ struct SetAccountSection: View {
         let name = app.auth.profile?.displayName
         app.showToast("checkmark.circle.fill", "Angemeldet", name.map { "Servus, \($0)!" })
         Task { await app.sync.sync(context: context, auth: app.auth) }
+    }
+
+    private func deleteAccount() {
+        Task {
+            do {
+                try await app.auth.deleteAccount()
+                showsConnect = false
+                app.showToast("person.crop.circle.badge.xmark", "Konto gelöscht", "Deine Fahrten bleiben auf diesem iPhone")
+            } catch {
+                deleteError = error.localizedDescription
+            }
+        }
     }
 
     private func signOut() {
@@ -418,13 +461,13 @@ private struct SetCloudSetupPage: View {
         Step(id: 1, title: "Supabase-Projekt anlegen",
              detail: "Erstelle ein kostenloses Projekt auf supabase.com."),
         Step(id: 2, title: "Datenbank vorbereiten",
-             detail: "Führe im SQL Editor die Datei supabase/migrations/0001_init.sql aus. Sie legt die Tabellen samt Row Level Security an – jede:r sieht nur die eigenen Fahrten."),
+             detail: "Führe im SQL Editor nacheinander supabase/migrations/0001_init.sql und 0002_sync_hardening.sql aus. Sie legen die Tabellen samt Row Level Security an – jede:r sieht nur die eigenen Fahrten. Für „Konto löschen“ zusätzlich die Edge Function bereitstellen: supabase functions deploy delete-account --no-verify-jwt --use-api"),
         Step(id: 3, title: "Redirect-URL eintragen",
              detail: "Unter Authentication › URL Configuration › Redirect URLs: klimabilanz://auth-callback hinzufügen."),
         Step(id: 4, title: "Anbieter aktivieren",
              detail: "Apple: Für per AltStore/SideStore installierte Builds läuft die Anmeldung über den Web-Login – dafür im Apple-Developer-Portal eine Services ID (z. B. com.knitelarlberg.klimabilanz.web) mit der Return-URL https://<projekt>.supabase.co/auth/v1/callback und einen Sign-in-with-Apple-Key anlegen. Signierte TestFlight-Builds brauchen zusätzlich die Bundle-ID com.knitelarlberg.klimabilanz als Client ID.\nGoogle: OAuth-Client vom Typ „Web application“ mit der Redirect-URI https://<projekt>.supabase.co/auth/v1/callback, Client-ID und Secret in Supabase speichern.\nMicrosoft: App-Registrierung in Entra (beliebige Organisationen und persönliche Konten), gleiche Redirect-URI, Client-Secret erzeugen, in Supabase als URL https://login.microsoftonline.com/common eintragen."),
         Step(id: 5, title: "Schlüssel hinterlegen",
-             detail: "In GitHub unter Settings › Secrets and variables › Actions › Variables: SUPABASE_URL und SUPABASE_ANON_KEY (der öffentliche anon-Key) setzen."),
+             detail: "In GitHub unter Settings › Secrets and variables › Actions › Variables: SUPABASE_URL und SUPABASE_ANON_KEY (der öffentliche „Publishable key“ sb_publishable_… bzw. der bisherige anon-Key) setzen."),
         Step(id: 6, title: "Neu bauen",
              detail: "Unter Actions › iOS › Run workflow einen neuen Build starten und installieren – danach sind Login und Sync aktiv."),
     ]

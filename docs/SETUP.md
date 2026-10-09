@@ -114,7 +114,9 @@ Ohne Einrichtung läuft die App vollständig lokal. Für Konten + Sync zwischen 
      Secret und als URL `https://login.microsoftonline.com/common` eintragen.
 5. In GitHub unter **Variables** setzen:
    - `SUPABASE_URL` = `https://<projekt>.supabase.co`
-   - `SUPABASE_ANON_KEY` = der *anon/public* Key (ist für Apps vorgesehen und darf öffentlich sein)
+   - `SUPABASE_ANON_KEY` = der öffentliche *Publishable key* (`sb_publishable_…`, unter Project Settings › API Keys) –
+     alternativ der bisherige *anon*-Key, den Supabase bis Ende 2026 auslaufen lässt. Beide sind für Apps vorgesehen
+     und dürfen öffentlich sein.
 6. **Konto löschen** (Pflicht für den App Store, Richtlinie 5.1.1(v)): die Edge Function
    `supabase/functions/delete-account` einmal deployen – mit der Supabase CLI im Repo-Ordner:
    ```bash

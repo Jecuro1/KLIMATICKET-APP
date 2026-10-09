@@ -150,12 +150,29 @@ struct Repository {
 
     // MARK: Bulk
 
+    /// Local-only wipe (no cloud account, or sync not configured).
     func deleteAllData() {
         try? context.delete(model: TripEntity.self)
         try? context.delete(model: FavoriteRouteEntity.self)
         try? context.delete(model: TicketEntity.self)
+        try? context.delete(model: BenefitEntity.self)
         app.settings.selectedTicketID = nil
         commit(sync: false)
+    }
+
+    /// "Alles löschen" that also reaches the cloud: with a signed-in account every row is tombstoned and uploaded
+    /// first, otherwise the data would come back with the next full download. Returns false when the upload failed
+    /// (the tombstones stay hidden on the device and the next sync uploads them).
+    @discardableResult
+    func deleteAllDataEverywhere() async -> Bool {
+        guard app.auth.isSignedIn, app.auth.isCloudAvailable else {
+            deleteAllData()
+            return true
+        }
+        let ok = await app.sync.deleteAllDataEverywhere(context: context, auth: app.auth)
+        app.settings.selectedTicketID = nil
+        refreshWidgets()
+        return ok
     }
 
     func liveTrips() -> [TripEntity] {
