@@ -259,6 +259,8 @@ struct WidFavoriteButton: View {
     /// Logged a moment ago (`WidgetSnapshot.justLogged`): "✓ Gerade erfasst" instead of "+ € 22,80".
     var justLogged: Bool = false
 
+    @Environment(\.widPreviewAction) private var previewAction
+
     var body: some View {
         if isInteractive {
             Button(intent: LogFavoriteTripIntent(favoriteID: favorite.id, title: favorite.title)) {
@@ -267,6 +269,15 @@ struct WidFavoriteButton: View {
             .buttonStyle(.plain)
             .accessibilityLabel(spokenTitle)
             .accessibilityValue(spokenValue)
+        } else if let previewAction {
+            // The gallery's "Probier's aus": the preview reacts like the widget, nothing is saved.
+            Button { previewAction.logFavorite(favorite) } label: {
+                WidFavoriteLabel(favorite: favorite, justLogged: justLogged)
+            }
+            .buttonStyle(WidPreviewPressStyle())
+            .accessibilityLabel(spokenTitle)
+            .accessibilityValue(spokenValue)
+            .accessibilityHint("Vorschau – es wird nichts gespeichert")
         } else {
             WidFavoriteLabel(favorite: favorite, justLogged: justLogged)
                 .accessibilityElement(children: .ignore)
@@ -354,6 +365,38 @@ private struct WidFavoriteLabel: View {
     private var rimColor: Color {
         guard renderingMode == .fullColor else { return Color.white.opacity(0.2) }
         return colorScheme == .dark ? Color.white.opacity(0.16) : Color.white.opacity(0.85)
+    }
+}
+
+// MARK: - In-app previews
+
+/// In-app previews only (widget gallery): what a tap on a preview's favourite does – the preview logs it for show,
+/// nothing is saved. Nil in the widget extension, where the buttons run `LogFavoriteTripIntent`.
+struct WidPreviewAction {
+    var logFavorite: @MainActor (WidgetSnapshot.Favorite) -> Void
+}
+
+extension EnvironmentValues {
+    @Entry var widPreviewAction: WidPreviewAction? = nil
+}
+
+/// Finger-down feedback of the gallery's preview buttons (`Motion.press` / `Motion.release`; Reduce Motion: a dim).
+struct WidPreviewPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        WidPreviewPressLabel(configuration: configuration)
+    }
+}
+
+private struct WidPreviewPressLabel: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let pressed = configuration.isPressed
+        configuration.label
+            .scaleEffect(pressed && !reduceMotion ? Motion.Distance.pressScale : 1)
+            .opacity(pressed ? 0.86 : 1)
+            .animation(pressed ? Motion.press : Motion.release, value: pressed)
     }
 }
 

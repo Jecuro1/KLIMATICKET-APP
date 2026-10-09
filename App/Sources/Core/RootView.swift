@@ -376,6 +376,11 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView(screenshotSection: .large) }
         case "widgets3":
             NavigationStack { WidgetGalleryView(screenshotSection: .lock) }
+        // MARK: widgets – Siri & Kurzbefehle + guide; a favourite tapped in the try-out (checkmark, rolled figures)
+        case "widgets4":
+            NavigationStack { WidgetGalleryView(screenshotSection: .siri) }
+        case "widgetsTryOut":
+            NavigationStack { WidgetGalleryView(screenshotSection: .large, screenshotTriesFavorite: true) }
         // MARK: work
         case "car", "carDetails", "carSettings", "carSettingsDetails", "carCard", "work", "workDetails", "workSelf",
              "workAssign", "workContribution", "workPDF", "workLogbookPDF":

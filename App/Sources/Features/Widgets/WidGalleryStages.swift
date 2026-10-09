@@ -29,9 +29,12 @@ struct WidStageTitle: View {
 
 /// All home-screen widgets at their real size (small 170 × 170, medium 364 × 170, large 364 × 382),
 /// scaled down only when the screen is narrower than a 6.3" iPhone, on a wallpaper-like gradient.
+/// The favourite buttons are live for show ("Probier's aus", see `WidgetGalleryView.logInPreview`).
 struct WidHomeStage: View {
     let snapshot: WidgetSnapshot
-    let appeared: Bool
+    /// A favourite was tapped in a preview: the figures shown are the try-out's, "Zurücksetzen" brings back the real ones.
+    var isPreviewing: Bool = false
+    var onReset: () -> Void = {}
 
     @State private var stageWidth: CGFloat = 382
 
@@ -44,9 +47,39 @@ struct WidHomeStage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             WidStageTitle(title: "Home-Bildschirm", caption: "Klein, mittel und groß – Amortisation und Schnellerfassung.")
-                .widAppear(1, appeared)
+                .reveal(order: 1)
             stage
+            tryOutHint
+                .reveal(order: 5)
         }
+    }
+
+    /// "Probier's aus" – or, after a tap, the way back to the real figures.
+    private var tryOutHint: some View {
+        HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+            Image(systemName: isPreviewing ? "checkmark.circle.fill" : "hand.tap.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(isPreviewing ? Theme.positive : Theme.accent)
+                .symbolReplaceTransition()
+                .accessibilityHidden(true)
+            Text(isPreviewing ? "Nur eine Vorschau – gespeichert wurde nichts."
+                              : "Probier’s aus: Tipp auf einen Favoriten und sieh, wie das Widget reagiert.")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentTransition(.opacity)
+            if isPreviewing {
+                Button("Zurücksetzen", action: onReset)
+                    .font(.footnote.weight(.semibold))
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .tint(Theme.accent)
+                    .motionTransition(.pop)
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.screen)
+        .motionAnimation(Motion.snappy, value: isPreviewing)
     }
 
     private var stage: some View {
@@ -91,7 +124,7 @@ struct WidHomeStage: View {
     private func tile<Content: View>(_ family: WidgetFamily, caption: String, index: Int,
                                      @ViewBuilder content: () -> Content) -> some View {
         WidGalleryTile(family: family, caption: caption, scale: scale, spokenValue: spokenValue, content: content())
-            .widAppear(index, appeared)
+            .reveal(order: index)
     }
 
     private var spokenValue: String { WidInsight.spokenSummary(snapshot) }
@@ -131,7 +164,8 @@ private struct WidGalleryTile<Content: View>: View {
                 .minimumScaleFactor(0.75)
                 .frame(maxWidth: size.width * scale)
         }
-        .accessibilityElement(children: .ignore)
+        // The preview's favourite buttons stay reachable for VoiceOver ("Probier's aus").
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Widget-Vorschau: \(caption)")
         .accessibilityValue(spokenValue)
     }

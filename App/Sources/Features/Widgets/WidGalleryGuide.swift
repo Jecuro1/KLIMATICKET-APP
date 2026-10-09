@@ -4,19 +4,23 @@ import KlimaCore
 
 // MARK: - Control Center
 
-/// Control Center preview (the real control is `KlimaControlWidget` in the extension) – tapping it here
-/// opens "Fahrt erfassen", exactly like the control does.
+/// Control Center preview with both real controls (`KlimaControlWidget`, `KlimaFavoriteControl` in the extension):
+/// "Fahrt erfassen" opens the editor here as it does there; the favourite control logs for show ("Erfasst"),
+/// nothing is saved.
 struct WidControlCenterSection: View {
+    /// The favourite the preview control stands for (the first one; a sample without favourites).
+    var favorite: WidgetSnapshot.Favorite?
     var onTry: () -> Void
 
-    @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var taps = 0
+    @State private var addTaps = 0
+    @State private var favoriteTaps = 0
+    @State private var showsLogged = false
 
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            WidStageTitle(title: "Kontrollzentrum", caption: "Ein Tipp – und du bist mitten im Erfassen.")
+            WidStageTitle(title: "Kontrollzentrum & Aktionstaste",
+                          caption: "Ein Druck – und du bist mitten im Erfassen. Oder die Lieblingsfahrt ist schon gespeichert.")
             GlassCard(padding: Theme.Spacing.m) {
                 layout {
                     panel
@@ -25,7 +29,8 @@ struct WidControlCenterSection: View {
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
         }
-        .sensoryFeedback(.impact(weight: .medium), trigger: taps) { _, _ in haptics }
+        .haptic(.tap, trigger: addTaps)
+        .haptic(.success, trigger: favoriteTaps)
     }
 
     private var layout: AnyLayout {
@@ -34,29 +39,45 @@ struct WidControlCenterSection: View {
             : AnyLayout(HStackLayout(alignment: .center, spacing: Theme.Spacing.m))
     }
 
-    private func tryIt() {
-        taps += 1
+    private func tryAdd() {
+        addTaps += 1
         onTry()
     }
 
-    /// Mini Control Center: three generic system controls and the KlimaBilanz button.
+    /// The preview of "Lieblingsfahrt erfassen": checkmark + "Erfasst" for a moment, like the real control.
+    private func tryFavorite() {
+        favoriteTaps += 1
+        let tap = favoriteTaps
+        withMotion(Motion.bouncy) { showsLogged = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.6))
+            guard favoriteTaps == tap else { return }
+            withMotion(Motion.smooth) { showsLogged = false }
+        }
+    }
+
+    /// Mini Control Center: two generic system controls, "Fahrt erfassen" and the wide favourite control.
     private var panel: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.formGroup, style: .continuous)
         return Grid(horizontalSpacing: 10, verticalSpacing: 10) {
             GridRow {
                 genericControl("flashlight.off.fill")
-                genericControl("timer")
+                genericControl("camera.fill")
             }
             GridRow {
-                genericControl("camera.fill")
-                klimaControl
+                genericControl("timer")
+                addControl
+            }
+            GridRow {
+                favoriteControl
+                    .gridCellColumns(2)
             }
         }
         .padding(12)
         .background {
             shape.fill(Theme.background)
                 .overlay {
-                    RadialGradient(colors: [Theme.dusk.opacity(0.45), .clear], center: .bottomTrailing, startRadius: 0, endRadius: 110)
+                    RadialGradient(colors: [Theme.dusk.opacity(0.45), .clear], center: .bottomTrailing, startRadius: 0, endRadius: 120)
                         .clipShape(shape)
                 }
         }
@@ -74,46 +95,93 @@ struct WidControlCenterSection: View {
             .accessibilityHidden(true)
     }
 
-    private var klimaControl: some View {
-        Button(action: tryIt) {
+    private var addControl: some View {
+        Button(action: tryAdd) {
             Image(systemName: "plus.circle.fill")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Theme.onAccent)
-                .symbolEffect(.bounce, value: taps)
+                .symbolBounce(on: addTaps)
                 .frame(width: 46, height: 46)
                 .background(Circle().fill(Theme.ctaGradient))
-                .shadow(color: Theme.accent.opacity(0.5), radius: 8, y: 3)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable(scale: 0.9))
         .accessibilityLabel("Fahrt erfassen")
         .accessibilityHint("Öffnet das Erfassen einer neuen Fahrt")
     }
 
-    private var copy: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label {
-                Text("Fahrt erfassen")
-            } icon: {
-                Image(systemName: "plus.circle.fill").foregroundStyle(Theme.accent)
+    /// 2 × 1 like the real wide control: gold disc + favourite name + value / "Erfasst".
+    private var favoriteControl: some View {
+        let title = favorite?.title ?? "Pendeln"
+        let symbol = favorite?.modeSymbol ?? "train.side.front.car"
+        return Button(action: tryFavorite) {
+            HStack(spacing: 8) {
+                Image(systemName: showsLogged ? "checkmark" : symbol)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .symbolReplaceTransition()
+                    .frame(width: 34, height: 34)
+                    .background(Circle().fill(showsLogged ? AnyShapeStyle(Theme.positive.gradient) : AnyShapeStyle(Theme.gold.gradient)))
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(showsLogged ? "Erfasst" : WidFormat.euroPrecise(favorite?.value ?? 22.8))
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .foregroundStyle(Color.white.opacity(0.7))
+                        .lineLimit(1)
+                        .contentTransition(.opacity)
+                }
+                Spacer(minLength: 0)
             }
-            .font(.headline)
-            .foregroundStyle(Theme.textPrimary)
-            // Footnote like the other descriptions here: at subheadline size the narrow column split three
-            // compounds in a row ("Kontroll-", "Sperrbild-", "Akti-").
-            Text("Öffnet KlimaBilanz direkt beim Erfassen einer neuen Fahrt – aus dem Kontrollzentrum, vom Sperrbildschirm oder über die Aktionstaste.")
-                .font(.footnote)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(action: tryIt) {
+            .padding(.leading, 6)
+            .padding(.trailing, 8)
+            .frame(width: 102, height: 46)
+            .background(Capsule().fill(Color.white.opacity(0.14)))
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.pressable(scale: 0.95))
+        .accessibilityLabel("\(title) erfassen")
+        .accessibilityValue(showsLogged ? "Erfasst" : "")
+        .accessibilityHint("Vorschau – es wird nichts gespeichert")
+    }
+
+    private var copy: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            controlRow(symbol: "plus.circle.fill", tint: Theme.accent, title: "Fahrt erfassen",
+                       text: "Öffnet KlimaBilanz direkt beim Erfassen einer neuen Fahrt.")
+            controlRow(symbol: "star.circle.fill", tint: Theme.gold, title: "Lieblingsfahrt erfassen",
+                       text: "Speichert deine gewählte Lieblingsfahrt sofort – ohne die App zu öffnen.")
+            Button(action: tryAdd) {
                 Label("Ausprobieren", systemImage: "hand.tap.fill")
                     .font(.subheadline.weight(.semibold))
             }
             .buttonStyle(.glass)
             .controlSize(.small)
             .tint(Theme.accent)
-            .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // Footnote like the other descriptions here: at subheadline size the narrow column split compounds
+    // ("Kontroll-", "Sperrbild-", "Akti-").
+    private func controlRow(symbol: String, tint: Color, title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: symbol).foregroundStyle(tint)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -146,10 +214,7 @@ struct WidGuideSection: View {
     @Binding var topic: WidGuideTopic
     let snapshot: WidgetSnapshot
 
-    @Environment(AppState.self) private var app
-
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             WidStageTitle(title: "So fügst du sie hinzu", caption: "In wenigen Sekunden eingerichtet – ganz ohne Konto.")
             topicChips
@@ -157,7 +222,7 @@ struct WidGuideSection: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     steps
                         .id(topic)
-                        .transition(.opacity)
+                        .motionTransition(.rise)
                     Rectangle()
                         .fill(Theme.separator)
                         .frame(height: 1)
@@ -167,7 +232,7 @@ struct WidGuideSection: View {
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
         }
-        .sensoryFeedback(.selection, trigger: topic) { _, _ in haptics }
+        .haptic(.selection, trigger: topic)
     }
 
     private var topicChips: some View {
@@ -176,7 +241,7 @@ struct WidGuideSection: View {
                 HStack(spacing: Theme.Spacing.xs) {
                     ForEach(WidGuideTopic.allCases) { item in
                         Chip(title: item.title, symbol: item.symbol, isSelected: topic == item) {
-                            withAnimation(.smooth(duration: 0.3)) { topic = item }
+                            withMotion(Motion.smooth) { topic = item }
                         }
                     }
                 }
@@ -221,6 +286,8 @@ struct WidGuideSection: View {
                  text: "Passt zu den iOS-Stilen „Getönt“ und „Klar“ – Zahl, Route und Fahne übernehmen deine Akzentfarbe.")
             note(symbol: "arrow.triangle.2.circlepath", tint: Theme.pine,
                  text: "Nach jeder erfassten Fahrt aktualisieren sich alle Widgets automatisch.")
+            note(symbol: "clock.fill", tint: Theme.gold,
+                 text: "Auch im StandBy: Lädt dein iPhone quer, zeigt das kleine Widget dein Ticket groß neben der Uhr.")
         }
     }
 
@@ -268,8 +335,8 @@ struct WidGuideSection: View {
             return [
                 "Streiche vom rechten oberen Rand nach unten, um das Kontrollzentrum zu öffnen.",
                 "Tippe oben links auf „+“ und dann auf „Steuerelement hinzufügen“.",
-                "Suche nach „KlimaBilanz“ und wähle „Fahrt erfassen“.",
-                "Tipp: „Fahrt erfassen“ kannst du auch der Aktionstaste oder dem Sperrbildschirm zuweisen.",
+                "Suche nach „KlimaBilanz“ und wähle „Fahrt erfassen“ oder „Lieblingsfahrt erfassen“ – dann die Fahrt dazu.",
+                "Tipp: Beide kannst du auch der Aktionstaste oder dem Sperrbildschirm zuweisen.",
             ]
         }
     }
