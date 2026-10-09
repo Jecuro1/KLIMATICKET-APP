@@ -221,7 +221,8 @@ struct RepCoverPage: View {
     private var payoffBlock: some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(alignment: .top, spacing: 2) {
-                Text(Format.number(summary.amortizedFraction * 100))
+                // Spec §4.3 like the app's hero: never "100" before the break-even.
+                Text(Format.number(SummitFigures.percent(summary.amortizedFraction)))
                     .font(.system(size: 104, weight: .ultraLight, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
@@ -240,7 +241,7 @@ struct RepCoverPage: View {
                     .font(RepPrint.font(10.5, .semibold))
                     .foregroundStyle(summary.isPaidOff ? Theme.positiveText : Theme.summitText)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\(Format.euro(summary.totalValue, decimals: 0)) Fahrtenwert von \(Format.euro(data.ownShare)) \(data.employerContribution > 0 ? "Eigenanteil" : "Ticketpreis")")
+                Text("\(SummitFigures.euro(summary.shownTotalEuro)) Fahrtenwert von \(SummitFigures.euro(data.ownShare)) \(data.employerContribution > 0 ? "Eigenanteil" : "Ticketpreis")")
                     .font(RepPrint.font(9.5))
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -253,9 +254,9 @@ struct RepCoverPage: View {
         let co2 = StatsCalc.co2Parts(summary.co2SavedKg)
         return HStack(spacing: 10) {
             if summary.isPaidOff {
-                RepPrintKPI(value: "+ \(Format.euro(summary.net, decimals: 0))", unit: nil, label: "gespart", symbol: "eurosign", tint: Theme.pine)
+                RepPrintKPI(value: "+ \(SummitFigures.euro(summary.shownProfitEuro))", unit: nil, label: "gespart", symbol: "eurosign", tint: Theme.pine)
             } else {
-                RepPrintKPI(value: Format.euro(summary.remainingToBreakEven, decimals: 0), unit: nil, label: "noch bis zum Gipfel",
+                RepPrintKPI(value: SummitFigures.euro(summary.shownRemainingEuro), unit: nil, label: "noch bis zum Gipfel",
                             symbol: "flag.fill", tint: Theme.dawn)
             }
             RepPrintKPI(value: Format.number(Double(summary.tripCount)), unit: nil, label: summary.tripCount == 1 ? "Fahrt" : "Fahrten",

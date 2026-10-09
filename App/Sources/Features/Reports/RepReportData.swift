@@ -126,18 +126,20 @@ struct RepReportData {
 
     // MARK: Wording
 
-    /// "Noch € 350 bis zum Break-even" / "Rentiert seit 14. Dez. · + € 412".
+    /// "Noch € 350 bis zum Break-even" / "Rentiert seit 14. Dez. · + € 412" – the app's whole-euro figures
+    /// (`SummitFigures`), so the printed amounts match the Übersicht and Statistik.
     var verdict: String {
         if summary.isPaidOff {
             if let date = summary.paidOffDate {
-                return "Rentiert seit \(Format.dayMonth(date)) · + \(Format.euro(summary.net, decimals: 0)) gespart"
+                return "Rentiert seit \(Format.dayMonth(date)) · + \(SummitFigures.euro(summary.shownProfitEuro)) gespart"
             }
-            return "Rentiert · + \(Format.euro(summary.net, decimals: 0)) gespart"
+            return "Rentiert · + \(SummitFigures.euro(summary.shownProfitEuro)) gespart"
         }
+        let remaining = SummitFigures.euro(summary.shownRemainingEuro)
         if isRunning, summary.forecastReachesBreakEven, let date = summary.forecastBreakEvenDate {
-            return "Noch \(Format.euro(summary.remainingToBreakEven, decimals: 0)) · Break-even voraussichtlich \(Format.dayMonth(date))"
+            return "Noch \(remaining) · Break-even voraussichtlich \(Format.dayMonth(date))"
         }
-        return "Noch \(Format.euro(summary.remainingToBreakEven, decimals: 0)) bis zum Break-even"
+        return "Noch \(remaining) bis zum Break-even"
     }
 
     /// "1. März 2026 – 28. Februar 2027"

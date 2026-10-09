@@ -82,6 +82,9 @@ enum RepPDFRenderer {
         guard let pdf = CGContext(url as CFURL, mediaBox: &mediaBox, info as CFDictionary) else { return nil }
         let sky = skyImage(data)
         for (index, page) in pages.enumerated() {
+            // A newer render (other ticket year, edited trips) cancelled this one: stop instead of drawing every
+            // remaining page into a file the next render is about to replace.
+            if Task.isCancelled { break }
             let content = view(for: page, data: data, number: index + 1, count: pages.count, skyImage: sky)
             let renderer = ImageRenderer(content: content)
             renderer.proposedSize = ProposedViewSize(RepPrint.pageSize)
