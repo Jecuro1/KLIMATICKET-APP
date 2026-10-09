@@ -139,6 +139,16 @@ struct Repository {
         commit()
     }
 
+    // MARK: trips – undo of deleteFavorite ("Rückgängig" on the toast)
+    func restoreFavorites(_ favorites: [FavoriteRouteEntity]) {
+        guard !favorites.isEmpty else { return }
+        for favorite in favorites {
+            favorite.deletedAt = nil
+            favorite.touch()
+        }
+        commit()
+    }
+
     // MARK: Tickets
 
     func addTicket(_ ticket: TicketEntity) {

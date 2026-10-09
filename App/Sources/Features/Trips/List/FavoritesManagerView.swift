@@ -13,8 +13,6 @@ struct FavoritesManagerView: View {
 
     /// Favourite in the "Favorit bearbeiten" sheet (name + purpose).
     @State private var editTarget: FavoriteRouteEntity?
-    @State private var successTick = 0
-    @State private var warningTick = 0
     /// Captured on first appearance (see `backdrop`).
     @State private var isInSettingsSheet: Bool?
 
@@ -51,8 +49,8 @@ struct FavoritesManagerView: View {
             try? await Task.sleep(for: .milliseconds(600))
             editTarget = favorites.first
         }
-        .sensoryFeedback(.success, trigger: successTick, condition: { _, _ in hapticsEnabled })
-        .sensoryFeedback(.warning, trigger: warningTick, condition: { _, _ in hapticsEnabled })
+        // Inserts, deletes and an undo slide into place (the toasts play the haptics).
+        .motionAnimation(Motion.smooth, value: favorites.count)
     }
 
     // MARK: Sections
@@ -178,11 +176,8 @@ struct FavoritesManagerView: View {
 
     // MARK: Actions
 
-    private var hapticsEnabled: Bool { app.settings.hapticsEnabled }
-
     private func log(_ favorite: FavoriteRouteEntity) {
-        TripListActions(app: app, context: context).log(favorite)
-        successTick += 1
+        withMotion(Motion.snappy) { TripListActions(app: app, context: context).log(favorite) }
     }
 
     /// The editor applies the favourite like its favourites row: stored fare when there is no estimate, category (F21).
@@ -214,21 +209,38 @@ struct FavoritesManagerView: View {
     }
 
     private func delete(_ favorite: FavoriteRouteEntity) {
-        let title = favorite.displayTitle
-        withAnimation(.snappy) {
+        withMotion(Motion.smooth) {
             Repository(context: context, app: app).deleteFavorite(favorite)
         }
-        app.showToast("trash.fill", "Favorit gelöscht", title)
-        warningTick += 1
+        offerUndo(for: [favorite])
     }
 
     private func deleteFavorites(at offsets: IndexSet) {
         let items = offsets.map { favorites[$0] }
         let repository = Repository(context: context, app: app)
-        withAnimation(.snappy) {
+        withMotion(Motion.smooth) {
             for item in items { repository.deleteFavorite(item) }
         }
-        warningTick += 1
+        offerUndo(for: items)
+    }
+
+    /// "Favorit gelöscht · Rückgängig" (warning haptic from the toast) – the undo brings the favourites back in place.
+    /// It looks them up again: after "Alle Daten löschen" they are gone and nothing happens.
+    private func offerUndo(for deleted: [FavoriteRouteEntity]) {
+        guard let first = deleted.first else { return }
+        let single = deleted.count == 1
+        let name = first.displayTitle
+        let ids = deleted.map(\.id)
+        let app = app, context = context
+        app.showToast("trash.fill", single ? "Favorit gelöscht" : "\(deleted.count) Favoriten gelöscht", single ? name : nil,
+                      actionTitle: "Rückgängig") {
+            let descriptor = FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { ids.contains($0.id) && $0.deletedAt != nil })
+            let found = (try? context.fetch(descriptor)) ?? []
+            guard !found.isEmpty else { return }
+            withMotion(Motion.smooth) { Repository(context: context, app: app).restoreFavorites(found) }
+            app.showToast("arrow.uturn.backward.circle.fill", single ? "Favorit wiederhergestellt" : "Favoriten wiederhergestellt",
+                          single ? name : nil)
+        }
     }
 
     /// Persists the new order as consecutive sortIndex values (touch() keeps sync last-writer-wins correct).
@@ -254,6 +266,8 @@ private struct TripListFavoriteRow: View {
     let onLog: () -> Void
 
     @Environment(\.editMode) private var editMode
+    /// Just logged: the "+" turns into a check for a moment (the toast confirms with its haptic).
+    @State private var justLogged = false
 
     private var isEditing: Bool { editMode?.wrappedValue.isEditing ?? false }
     private var valuePerUse: Double { favorite.fareEUR * (favorite.isRoundTrip ? 2 : 1) }
@@ -276,20 +290,32 @@ private struct TripListFavoriteRow: View {
             .accessibilityAction { if !isEditing { onEdit() } }
 
             if !isEditing {
-                Button(action: onLog) {
-                    Image(systemName: "plus")
+                Button(action: logNow) {
+                    Image(systemName: justLogged ? "checkmark" : "plus")
                         .font(.body.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(justLogged ? Theme.positiveText : Theme.accent)
+                        .symbolReplaceTransition()
                         .frame(width: 38, height: 38)
-                        .glassEffect(.regular.interactive(), in: .circle)
+                        .glassEffect(justLogged ? .regular.tint(Theme.positive.opacity(0.25)).interactive() : .regular.interactive(),
+                                     in: .circle)
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("\(favorite.displayTitle) jetzt erfassen")
-                .transition(.scale.combined(with: .opacity))
+                .motionTransition(.pop)
             }
         }
         .padding(.vertical, Theme.Spacing.xxs)
-        .animation(.snappy, value: isEditing)
+        .motionAnimation(Motion.snappy, value: isEditing)
+    }
+
+    private func logNow() {
+        guard !justLogged else { return }
+        onLog()
+        withMotion(Motion.bouncy) { justLogged = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.4))
+            withMotion(Motion.smooth) { justLogged = false }
+        }
     }
 
     private var details: some View {
@@ -313,6 +339,7 @@ private struct TripListFavoriteRow: View {
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(2)
+                .numericValue(Double(favorite.usageCount))
         }
     }
 
