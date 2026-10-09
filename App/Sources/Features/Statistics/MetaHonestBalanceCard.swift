@@ -14,7 +14,7 @@ struct MetaHonestBalanceCard: View {
     static let explanation = """
     Nicht jede Fahrt spart Geld. Fahrten, die du ohne KlimaTicket gar nicht gemacht hättest – der spontane Ausflug, der Besuch am Wochenende –, hättest du auch nie bezahlt. Sie sind echter Mehrwert, aber keine Ersparnis.
 
-    Die ehrliche Bilanz zählt deshalb nur Fahrten, für die du sonst ein Ticket gekauft hättest. Laut KlimaTicket-Report des Klimaministeriums (BMIMI) wären bis zu 8 % der KlimaTicket-Fahrten ohne Ticket nicht unternommen worden.
+    Die ehrliche Bilanz zählt deshalb nur Fahrten, für die du sonst ein Ticket gekauft hättest. Laut KlimaTicket-Report des Mobilitätsministeriums (BMIMI) wären bis zu 8 % der KlimaTicket-Fahrten ohne Ticket gar nicht unternommen worden.
     """
 
     var body: some View {
@@ -271,7 +271,7 @@ struct MetaHonestBalanceCard: View {
     }
 
     private func researchText(_ balance: HonestBalance) -> String {
-        let research = "Laut KlimaTicket-Report des Klimaministeriums wären bis zu \(Format.percent(HonestBalance.researchInducedShare)) aller KlimaTicket-Fahrten ohne Ticket gar nicht passiert"
+        let research = "Laut KlimaTicket-Report des Mobilitätsministeriums wären bis zu \(Format.percent(HonestBalance.researchInducedShare)) aller KlimaTicket-Fahrten ohne Ticket gar nicht passiert"
         if balance.hasInducedTrips {
             return "\(research) – bei dir sind es \(Format.percent(balance.inducedTripShare))."
         }

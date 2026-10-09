@@ -269,8 +269,9 @@ private struct TripListFavoriteRow: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityValue(spokenMeta)
-            .accessibilityHint("Öffnet Name und Kategorie")
-            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(isEditing ? "" : "Öffnet Name und Kategorie")
+            .accessibilityAddTraits(isEditing ? [] : .isButton)
+            .accessibilityAction { if !isEditing { onEdit() } }
 
             if !isEditing {
                 Button(action: onLog) {
