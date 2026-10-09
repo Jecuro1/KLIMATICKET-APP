@@ -1,0 +1,26 @@
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+!Packages/**/*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcresult
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Secrets (never commit real keys)
+Config/Secrets.xcconfig
+*.p12
+*.mobileprovision
+AuthKey_*.p8
+
+# OS / tools
+.DS_Store
+node_modules/
