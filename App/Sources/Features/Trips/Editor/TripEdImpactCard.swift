@@ -1,0 +1,186 @@
+import SwiftUI
+import SwiftData
+import KlimaCore
+
+/// "Wirkung": what this trip does to the active ticket – "Danach 77 % amortisiert", "+ € 47,00", the
+/// rail with the new segment glowing/striped on top of the current progress, "73 → 77 % · + 3,8 %" and the
+/// summit price. The new segment grows in on appear and follows every change of the form.
+struct TripEdImpactCard: View {
+    let model: TripEditorModel
+
+    @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
+    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
+    /// Trips created after the sheet opened (i.e. the one this sheet just saved) are left out, so the preview
+    /// stays put while the sheet slides away.
+    @State private var openedAt = Date()
+    @State private var revealed = false
+
+    var body: some View {
+        if let impact = currentImpact {
+            SurfaceCard(padding: 14, cornerRadius: Theme.Radius.formGroup) {
+                content(impact)
+            }
+            .onAppear { reveal() }
+        }
+    }
+
+    // MARK: Model
+
+    private struct Impact {
+        var before: Double
+        var after: Double
+        var added: Double
+        var price: Double
+        var inPeriod: Bool
+        /// Editing: `before` is the ticket without this trip, `added` its (new) full value.
+        var isEditing: Bool
+
+        var delta: Double { max(0, after - before) }
+        var isPaidOffAlready: Bool { before >= 1 }
+        var reachesSummit: Bool { before < 1 && after >= 1 }
+    }
+
+    private var currentImpact: Impact? {
+        guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID),
+              ticket.price > 0 else { return nil }
+        let baseline = trips.filter { $0.createdAt < openedAt }
+        let summary = Analytics.make(ticket: ticket, trips: baseline, catalog: app.catalog).summary
+        guard let fractions = model.impact(on: summary) else { return nil }
+        let inPeriod = ticket.period.contains(model.date)
+        return Impact(before: fractions.before,
+                      after: inPeriod ? fractions.after : fractions.before,
+                      added: model.totalValue,
+                      price: summary.ticketPrice,
+                      inPeriod: inPeriod,
+                      isEditing: model.isEditing)
+    }
+
+    // MARK: Layout
+
+    private func content(_ impact: Impact) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+                Text(title(impact))
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                    .contentTransition(.numericText(value: impact.after))
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: Theme.Spacing.xs)
+                if impact.inPeriod && impact.added > 0 {
+                    Text(impact.isEditing ? Format.euroPrecise(impact.added) : TripEdFormat.plusEuro(impact.added))
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(Theme.summitText)
+                        .contentTransition(.numericText(value: impact.added))
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                }
+            }
+            rail(impact)
+            HStack(spacing: Theme.Spacing.xs) {
+                Text(footnote(impact))
+                    .contentTransition(.numericText(value: impact.after))
+                Spacer(minLength: Theme.Spacing.xs)
+                HStack(spacing: 3) {
+                    if impact.reachesSummit {
+                        Image(systemName: "flag.fill")
+                            .foregroundStyle(Theme.summitText)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                    Text("Gipfel " + Format.euro(impact.price))
+                }
+            }
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(Theme.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+        }
+        .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15), value: impact.after)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: impact.added)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Wirkung auf die Amortisation")
+        .accessibilityValue(spokenValue(impact))
+    }
+
+    private func title(_ impact: Impact) -> String {
+        if !impact.inPeriod { return "Außerhalb deines Ticketzeitraums" }
+        if impact.isPaidOffAlready { return "Schon rentiert – reiner Gewinn" }
+        if impact.added <= 0 { return "Aktuell \(Format.percent(impact.before)) amortisiert" }
+        if impact.reachesSummit { return "Damit ist dein Ticket rentiert!" }
+        if impact.isEditing { return "Mit dieser Fahrt \(Format.percent(impact.after)) amortisiert" }
+        return "Danach \(Format.percent(impact.after)) amortisiert"
+    }
+
+    private func footnote(_ impact: Impact) -> String {
+        if !impact.inPeriod { return "Zählt nicht zur Bilanz dieses Tickets" }
+        if impact.isPaidOffAlready {
+            return "Gewinn danach " + TripEdFormat.plusEuro((impact.after - 1) * impact.price)
+        }
+        if impact.added <= 0 { return "Vorschau, sobald der Preis feststeht" }
+        if impact.isEditing { return "Ohne diese Fahrt \(Format.percent(impact.before))" }
+        var text = "\(Format.number(impact.before * 100)) → \(Format.percent(impact.after))"
+        if impact.delta > 0 { text += " · + \(Format.number(impact.delta * 100, decimals: 1)) %" }
+        return text
+    }
+
+    private func spokenValue(_ impact: Impact) -> String {
+        if !impact.inPeriod { return "Die Fahrt liegt außerhalb des Ticketzeitraums und zählt nicht zur Bilanz." }
+        var text = "Von \(Format.percent(impact.before)) auf \(Format.percent(impact.after)) amortisiert"
+        if impact.added > 0 { text += ", plus \(Format.euroPrecise(impact.added))" }
+        if impact.reachesSummit { text += ". Damit ist das Ticket rentiert." }
+        return text
+    }
+
+    // MARK: Rail
+
+    private func rail(_ impact: Impact) -> some View {
+        let before = min(max(impact.before, 0), 1)
+        let target = min(max(impact.after, 0), 1)
+        let shown = revealed ? target : before
+        let height: CGFloat = 10
+        return GeometryReader { geo in
+            let width = geo.size.width
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Theme.textTertiary.opacity(0.18))
+                if shown > before + 0.0005 {
+                    newSegment
+                        .frame(width: max(height, width * shown))
+                        .transition(.opacity)
+                }
+                Capsule()
+                    .fill(impact.isPaidOffAlready ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(progressFill))
+                    .frame(width: max(height, width * before))
+            }
+        }
+        .frame(height: height)
+        .accessibilityHidden(true)
+    }
+
+    /// Current progress: glacier → dusk (the new segment is the dawn-coloured part beyond it).
+    private var progressFill: LinearGradient {
+        LinearGradient(colors: [Theme.glacier, Theme.dusk], startPoint: .leading, endPoint: .trailing)
+    }
+
+    /// The value this trip adds: dawn, diagonally striped, softly glowing.
+    private var newSegment: some View {
+        Capsule()
+            .fill(Theme.dawn)
+            .overlay {
+                HatchShape(spacing: 5)
+                    .stroke(Theme.onAccent.opacity(0.45), lineWidth: 1.5)
+                    .clipShape(Capsule())
+            }
+            .shadow(color: Theme.dawn.opacity(0.55), radius: 6)
+    }
+
+    private func reveal() {
+        guard !revealed else { return }
+        if reduceMotion || LaunchMode.isScreenshot {
+            revealed = true
+        } else {
+            withAnimation(.spring(duration: 0.8, bounce: 0.2).delay(0.35)) { revealed = true }
+        }
+    }
+}

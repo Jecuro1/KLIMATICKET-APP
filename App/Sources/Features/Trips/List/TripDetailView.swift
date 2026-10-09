@@ -488,8 +488,8 @@ struct TripDetailView: View {
             )
         }
 
+        // Only the ticket this trip actually counts towards – a trip outside every validity has no share ("–").
         let ticket = tickets.first { $0.period.contains(trip.date) }
-            ?? Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
 
         return TripListDetailInfo(
             fromStation: fromStation,

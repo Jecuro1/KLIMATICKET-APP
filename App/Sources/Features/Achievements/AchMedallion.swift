@@ -129,9 +129,12 @@ struct AchMedallion: View {
         return ZStack {
             Circle()
                 .stroke(Theme.textTertiary.opacity(0.22), lineWidth: lineWidth)
+            // Gradient spans the filled arc only (like ProgressRail): with a full-turn conic gradient the round
+            // start cap (just "before" 0°) would pick up the dawn end colour.
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(AngularGradient(colors: [Theme.glacier, Theme.dusk, Theme.dawn], center: .center, angle: .zero),
+                .stroke(AngularGradient(colors: [Theme.glacier, Theme.dusk, Theme.dawn], center: .center,
+                                        startAngle: .zero, endAngle: .degrees(360 * max(progress, 0.01))),
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .opacity(progress > 0 ? 1 : 0)

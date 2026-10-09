@@ -1,0 +1,376 @@
+import SwiftUI
+import WidgetKit
+import AppIntents
+import KlimaCore
+
+// MARK: - Typography
+
+/// Small uppercase eyebrow with a leading glyph ("⛰ AMORTISIERT").
+struct WidEyebrow: View {
+    var text: String
+    var symbol: String
+    var tint: Color = Theme.accent
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(tint)
+                .widgetAccentable()
+            Text(text.uppercased(with: WidFormat.locale))
+                .font(.system(size: 10.5, weight: .semibold))
+                .tracking(1)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// The signature thin "73 %" numeral (Apple-Weather style), sturdier with Bold Text.
+struct WidPercentNumeral: View {
+    var fraction: Double
+    var size: CGFloat
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.legibilityWeight) private var legibilityWeight
+
+    private var weight: Font.Weight {
+        if legibilityWeight == .bold { return .regular }
+        return colorScheme == .dark ? .thin : .light
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 1) {
+            Text(verbatim: String(WidFormat.percentValue(fraction)))
+                .font(.system(size: size, weight: weight, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+            Text(verbatim: "%")
+                .font(.system(size: size * 0.4, weight: .light, design: .rounded))
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.top, size * 0.14)
+        }
+        .widgetAccentable()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Amortisiert")
+        .accessibilityValue(WidFormat.percent(fraction))
+    }
+}
+
+/// "noch € 354" / "+ € 412 im Plus" – amounts emphasised, never colour-only.
+struct WidVerdictLine: View {
+    var snapshot: WidgetSnapshot
+    var size: CGFloat = 13
+    /// When paid off: "+ € 412 im Plus" (true) or the total value (false, if a forecast block already shows the profit).
+    var showsProfit: Bool = true
+
+    var body: some View {
+        line
+            .font(.system(size: size, weight: .medium))
+            .monospacedDigit()
+            .foregroundStyle(Theme.textSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+    }
+
+    private var line: Text {
+        if WidInsight.isPaidOff(snapshot) && !showsProfit {
+            let amount = Text(verbatim: WidFormat.euroWhole(snapshot.totalValue))
+                .fontWeight(.bold)
+                .foregroundStyle(Theme.textPrimary)
+            return Text("\(amount) Wert gesamt")
+        }
+        if WidInsight.isPaidOff(snapshot) {
+            let amount = Text(verbatim: "+ " + WidFormat.euroWhole(snapshot.net))
+                .fontWeight(.bold)
+                .foregroundStyle(Theme.positiveText)
+            return Text("\(amount) im Plus")
+        }
+        let amount = Text(verbatim: WidFormat.euroWhole(snapshot.remaining))
+            .fontWeight(.bold)
+            .foregroundStyle(Theme.textPrimary)
+        return Text("noch \(amount)")
+    }
+}
+
+/// Right-aligned forecast block ("⚑ BREAK-EVEN · 14. Dez. · in 66 Tagen").
+struct WidForecastBlock: View {
+    var snapshot: WidgetSnapshot
+    var valueSize: CGFloat = 21
+
+    var body: some View {
+        let info = WidInsight.forecast(snapshot)
+        VStack(alignment: .trailing, spacing: 1) {
+            WidEyebrow(text: info.kicker, symbol: info.symbol, tint: info.isPositive ? Theme.positive : Theme.dawn)
+            Text(info.value)
+                .font(.system(size: valueSize, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(info.isPositive ? Theme.positiveText : Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(info.caption)
+                .font(.system(size: 11.5, weight: .medium))
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .multilineTextAlignment(.trailing)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Progress
+
+/// Thin capsule progress bar; the fill is the accent group in tinted / clear styles.
+struct WidLinearBar: View {
+    var progress: Double
+    var fill: AnyShapeStyle = AnyShapeStyle(.primary)
+    var track: AnyShapeStyle = AnyShapeStyle(.tertiary)
+
+    var body: some View {
+        GeometryReader { geo in
+            let clamped = CGFloat(min(max(progress.isFinite ? progress : 0, 0), 1))
+            ZStack(alignment: .leading) {
+                Capsule().fill(track)
+                Capsule()
+                    .fill(fill)
+                    .frame(width: max(geo.size.height, geo.size.width * clamped))
+                    .widgetAccentable()
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Tiny progress ring + "73 %" for headers.
+struct WidMiniRing: View {
+    var fraction: Double
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ZStack {
+                Circle()
+                    .stroke(Theme.textTertiary, lineWidth: 2.5)
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(max(fraction, 0.02), 1)))
+                    .stroke(renderingMode == .fullColor ? AnyShapeStyle(Theme.routeGradient) : AnyShapeStyle(.primary),
+                            style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .widgetAccentable()
+            }
+            .frame(width: 14, height: 14)
+            Text(WidFormat.percent(fraction))
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Amortisiert")
+        .accessibilityValue(WidFormat.percent(fraction))
+    }
+}
+
+/// Mini amortisation footer for the quick-log widget ("▬▬▬▬░░ 73 %").
+struct WidProgressFooter: View {
+    var snapshot: WidgetSnapshot
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        HStack(spacing: 7) {
+            WidLinearBar(progress: snapshot.amortizedFraction,
+                         fill: renderingMode == .fullColor ? AnyShapeStyle(Theme.routeGradient) : AnyShapeStyle(.primary),
+                         track: AnyShapeStyle(Theme.textTertiary.opacity(0.45)))
+                .frame(height: 5)
+            Text(WidFormat.percent(snapshot.amortizedFraction))
+                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+                .fixedSize()
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Amortisiert")
+        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+    }
+}
+
+// MARK: - Favourites
+
+/// Round transport badge in the mode's landscape colour (always paired with the route title).
+struct WidModeBadge: View {
+    var symbol: String
+    var size: CGFloat = 26
+
+    var body: some View {
+        let color = WidMode.color(forSymbol: symbol)
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.46, weight: .semibold))
+            .foregroundStyle(Color.white)
+            .frame(width: size, height: size)
+            .background(
+                Circle().fill(LinearGradient(colors: [color, color.mix(with: .black, by: 0.22)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+            )
+            .widgetAccentable()
+            .accessibilityHidden(true)
+    }
+}
+
+/// One-tap favourite: logs the route via `LogFavoriteTripIntent` (interactive widgets, iOS 17+).
+struct WidFavoriteButton: View {
+    var favorite: WidgetSnapshot.Favorite
+    /// False in the in-app gallery (preview only – nothing gets logged).
+    var isInteractive: Bool = true
+
+    var body: some View {
+        if isInteractive {
+            Button(intent: LogFavoriteTripIntent(favoriteID: favorite.id, title: favorite.title)) {
+                WidFavoriteLabel(favorite: favorite)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(spokenTitle)
+            .accessibilityValue(WidFormat.euroPrecise(favorite.value))
+        } else {
+            WidFavoriteLabel(favorite: favorite)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(spokenTitle)
+                .accessibilityValue(WidFormat.euroPrecise(favorite.value))
+        }
+    }
+
+    private var spokenTitle: String { "\(favorite.title) erfassen" }
+}
+
+private struct WidFavoriteLabel: View {
+    let favorite: WidgetSnapshot.Favorite
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 15, style: .continuous)
+        HStack(spacing: 8) {
+            WidModeBadge(symbol: favorite.modeSymbol, size: 26)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(favorite.title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Text(WidFormat.euroPrecise(favorite.value))
+                    .font(.system(size: 11.5, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+            }
+            .layoutPriority(1)
+            Spacer(minLength: 2)
+            plus
+        }
+        .padding(.leading, 7)
+        .padding(.trailing, 7)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(shape.fill(fillColor))
+        .overlay(shape.strokeBorder(rimColor, lineWidth: 0.8))
+        .contentShape(shape)
+    }
+
+    private var plus: some View {
+        Image(systemName: "plus")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Theme.onAccent)
+            .frame(width: 22, height: 22)
+            .background(Circle().fill(renderingMode == .fullColor ? AnyShapeStyle(Theme.ctaGradient) : AnyShapeStyle(Color.white.opacity(0.25))))
+            .widgetAccentable()
+    }
+
+    private var fillColor: Color {
+        guard renderingMode == .fullColor else { return Color.white.opacity(0.12) }
+        return colorScheme == .dark ? Color.white.opacity(0.09) : Color.white.opacity(0.62)
+    }
+
+    private var rimColor: Color {
+        guard renderingMode == .fullColor else { return Color.white.opacity(0.2) }
+        return colorScheme == .dark ? Color.white.opacity(0.13) : Color.white.opacity(0.85)
+    }
+}
+
+// MARK: - Empty state
+
+/// Shown when the app has not written a snapshot yet (no ticket).
+struct WidEmptyView: View {
+    var family: WidgetFamily
+    var margins: EdgeInsets = WidLayout.defaultMargins
+
+    static let message = "Öffne KlimaBilanz, um dein Ticket anzulegen."
+
+    var body: some View {
+        switch family {
+        case .accessoryCircular:
+            ZStack {
+                Circle().stroke(.tertiary, lineWidth: 4)
+                Image(systemName: "mountain.2.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .widgetAccentable()
+            }
+            .padding(5)
+            .accessibilityLabel(Self.message)
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Label("KlimaBilanz", systemImage: "mountain.2.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .widgetAccentable()
+                Text("Ticket in der App anlegen")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .accessoryInline:
+            Label("KlimaBilanz öffnen", systemImage: "mountain.2.fill")
+        default:
+            systemEmpty
+        }
+    }
+
+    private var isSmall: Bool { family == .systemSmall }
+    private var messageWidth: CGFloat { isSmall ? CGFloat.infinity : 220 }
+
+    private var systemEmpty: some View {
+        ZStack(alignment: .topLeading) {
+            WidSummitArt(model: .decorative, top: isSmall ? 0.6 : 0.5, bottom: 1, scale: isSmall ? 0.85 : 1, showsRoute: false)
+            VStack(alignment: .leading, spacing: isSmall ? 6 : 8) {
+                WidEyebrow(text: "KlimaBilanz", symbol: "mountain.2.fill")
+                Text("Noch kein Ticket")
+                    .font(.system(size: isSmall ? 16 : 19, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(Self.message)
+                    .font(.system(size: isSmall ? 12 : 13.5))
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(isSmall ? 3 : 2)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: messageWidth, alignment: .leading)
+                if !isSmall {
+                    Text("App öffnen")
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.ctaGradient))
+                        .widgetAccentable()
+                        .padding(.top, 2)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(margins)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
