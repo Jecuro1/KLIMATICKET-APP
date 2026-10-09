@@ -42,6 +42,9 @@ for APPEARANCE in light dark; do
     xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
     xcrun simctl launch "$UDID" "$BUNDLE_ID" -KBScreenshot "$SCREEN" -KBDemo YES >/dev/null
     sleep "${SHOT_DELAY:-5}"
+    # MARK: stats – MapKit streams its tiles from the network; map screens get extra time so they don't capture the
+    # empty beige grid (the map screens open their sheets/camera moves after ~1 s on top).
+    case "$SCREEN" in map*) sleep "${MAP_TILE_DELAY:-6}" ;; esac
     xcrun simctl io "$UDID" screenshot --type=png "$OUT/${APPEARANCE}-${SCREEN}.png" >/dev/null 2>&1
     echo "captured $APPEARANCE-$SCREEN"
     sample_if_stuck "${APPEARANCE}-${SCREEN}"
