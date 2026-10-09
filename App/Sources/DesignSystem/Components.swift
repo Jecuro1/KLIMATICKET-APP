@@ -234,6 +234,7 @@ struct Chip: View {
 /// Full-width primary call to action with brand gradient.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion   // MARK: motion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -242,8 +243,10 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(Theme.ctaGradient.opacity(isEnabled ? 1 : 0.4), in: .capsule)
             .shadow(color: Theme.accent.opacity(isEnabled ? 0.35 : 0), radius: 16, y: 8)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
+            // MARK: motion – Motion.press / .release, no scaling under Reduce Motion
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(MotionPolicy.isStatic ? nil : (configuration.isPressed ? Motion.press : Motion.release), value: configuration.isPressed)
     }
 }
 
@@ -266,17 +269,21 @@ struct EmptyStateView: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(Theme.accent.gradient)
                 .symbolEffect(.pulse, options: .repeat(2))
+                .reveal(.pop)   // MARK: motion – staggered entrance (first appearance only)
             Text(title)
                 .font(Theme.Typography.title)
                 .multilineTextAlignment(.center)
+                .reveal(order: 1)
             Text(message)
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
+                .reveal(order: 2)
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.primary)
                     .padding(.top, Theme.Spacing.xs)
+                    .reveal(order: 3)
             }
         }
         .padding(Theme.Spacing.xl)
@@ -291,6 +298,8 @@ struct ToastOverlay: View {
     @Environment(AppState.self) private var app
     /// MARK: settings – false for a mirror above a sheet (Einstellungen): RootView's toast underneath already plays it.
     var playsHaptic = true
+    /// MARK: motion – the toast follows the finger; flick it up to dismiss.
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         if let toast = app.toast {
@@ -318,7 +327,7 @@ struct ToastOverlay: View {
                             .background(Theme.accent.opacity(0.14), in: .capsule)
                             .contentShape(.capsule)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)   // MARK: motion
                     .padding(.leading, Theme.Spacing.xxs)
                 }
             }
@@ -326,11 +335,26 @@ struct ToastOverlay: View {
             .padding(.vertical, Theme.Spacing.s)
             .glassEffect(.regular, in: .capsule)
             .padding(.top, Theme.Spacing.xs)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            // MARK: motion – drag: up follows 1:1, down rubber-bands; a flick up dismisses
+            .offset(y: dragOffset < 0 ? dragOffset : dragOffset * 0.15)
+            .gesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { dragOffset = $0.translation.height }
+                    .onEnded { value in
+                        if value.translation.height < -24 || value.predictedEndTranslation.height < -60 {
+                            withMotion(Motion.smooth) { app.toast = nil }
+                        } else {
+                            withMotion(Motion.bouncy) { dragOffset = 0 }
+                        }
+                    }
+            )
+            .onChange(of: toast.id) { _, _ in dragOffset = 0 }
+            .motionTransition(.drop)
             .sensoryFeedback(.success, trigger: toast.id, condition: { _, _ in playsHaptic && app.settings.hapticsEnabled })
-            .onTapGesture { withAnimation { app.toast = nil } }
+            .onTapGesture { withMotion(Motion.smooth) { app.toast = nil } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityAction(named: "Schließen") { app.toast = nil }   // MARK: motion – the swipe for VoiceOver
             .accessibilityActions {
                 if let actionTitle = toast.actionTitle {  // MARK: trips
                     Button(actionTitle) { perform(toast) }

@@ -66,12 +66,15 @@ struct ConfettiView: View {
 }
 
 /// Full-screen "Rentiert!" moment shown once per ticket when it pays off (and after a trip crosses break-even).
+/// Motion (docs/MOTION.md §11): the card springs in, the seal pops with a ring and a burst, the profit counts up –
+/// all within ~1 s; tapping anywhere skips it. Reduce Motion: cross-fade, no confetti, no ring or burst.
 struct BreakEvenCelebration: View {
     var ticketName: String
     var profit: Double
     var onDismiss: () -> Void
 
-    @State private var appear = false
+    @State private var appear = MotionPolicy.isStatic
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -83,35 +86,42 @@ struct BreakEvenCelebration: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 76, weight: .semibold))
                     .foregroundStyle(Theme.positive.gradient)
-                    .symbolEffect(.bounce, value: appear)
+                    .celebrate(trigger: appear, haptic: nil)
+                    .celebrationRing(trigger: appear, color: Theme.positive)
+                    .celebrationBurst(trigger: appear)
                 Text("Rentiert!")
                     .font(Theme.Typography.heroTitle)
+                    .reveal(.focus, delay: 0.12)
                 Text("Dein \(ticketName) hat sich bezahlt gemacht. Ab jetzt ist jede Fahrt reiner Gewinn.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
+                    .reveal(order: 1, delay: 0.12)
                 if profit > 0 {
-                    Text("+ \(Format.euro(profit))")
+                    CountUpText(value: profit, delay: 0.3) { "+ " + Format.euro($0) }
                         .font(Theme.Typography.numberLarge)
-                        .foregroundStyle(Theme.positive)
-                        .contentTransition(.numericText(value: profit))
+                        .foregroundStyle(Theme.positiveText)
+                        .reveal(order: 2, delay: 0.12)
                 }
                 Button("Weiter so") { onDismiss() }
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
                     .padding(.top, Theme.Spacing.s)
+                    .reveal(order: 3, delay: 0.12)
             }
             .padding(Theme.Spacing.xl)
             .glassEffect(.regular, in: .rect(cornerRadius: Theme.Radius.sheet))
             .padding(Theme.Spacing.l)
-            .scaleEffect(appear ? 1 : 0.85)
+            .scaleEffect(appear || reduceMotion ? 1 : 0.85)
             .opacity(appear ? 1 : 0)
         }
-        .sensoryFeedback(.success, trigger: appear)
+        .haptic(.success, trigger: appear, when: { old, new in !old && new })
         .onAppear {
-            withAnimation(.spring(duration: 0.6, bounce: 0.35)) { appear = true }
+            guard !appear else { return }
+            withMotion(Motion.bouncy) { appear = true }
         }
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape) { onDismiss() }
     }
 }

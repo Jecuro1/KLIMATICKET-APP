@@ -374,9 +374,14 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
         case "hero":
             DesignSystemPreview()
-        case "motionGallery", "motionGallery2", "motionGallery3": // MARK: motion – DEBUG builds only
+        case "motionGallery", "motionGallery2", "motionGallery3", "motionCelebration": // MARK: motion – DEBUG builds only
             #if DEBUG
-            MotionGalleryView(initialSection: screen == "motionGallery2" ? .controls : (screen == "motionGallery3" ? .celebrate : .top))
+            if screen == "motionCelebration" {
+                BreakEvenCelebration(ticketName: "KlimaTicket Ö Klassik", profit: 412) {}
+                    .background { AmbientBackground() }
+            } else {
+                MotionGalleryView(initialSection: screen == "motionGallery2" ? .controls : (screen == "motionGallery3" ? .celebrate : .top))
+            }
             #else
             MainTabView()
             #endif
