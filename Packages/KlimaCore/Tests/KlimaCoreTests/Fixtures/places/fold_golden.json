@@ -1,0 +1,2542 @@
+[
+ {
+  "input": "Innsbruck Hbf",
+  "fold": "innsbruck hbf",
+  "trailing": false,
+  "key": "innsbruck hbf",
+  "tokens": [
+   {
+    "raw": "innsbruck",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ibk",
+      0.9
+     ],
+     [
+      "innsbruck",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hbf",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Innsbruck Hauptbahnhof",
+  "fold": "innsbruck hauptbahnhof",
+  "trailing": false,
+  "key": "innsbruck hbf",
+  "tokens": [
+   {
+    "raw": "innsbruck",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ibk",
+      0.9
+     ],
+     [
+      "innsbruck",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hauptbahnhof",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "bahnhof",
+      0.8
+     ],
+     [
+      "bf",
+      0.8
+     ],
+     [
+      "bhf",
+      0.8
+     ],
+     [
+      "bhnf",
+      0.8
+     ],
+     [
+      "haupt",
+      0.8
+     ],
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "St.Pölten Hbf",
+  "fold": "st.polten hbf",
+  "trailing": false,
+  "key": "st polten hbf",
+  "tokens": [
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "polten",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "polten",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hbf",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "St. Pölten",
+  "fold": "st. polten",
+  "trailing": false,
+  "key": "st polten",
+  "tokens": [
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "polten",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "polten",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Sankt Pölten Hauptbahnhof",
+  "fold": "sankt polten hauptbahnhof",
+  "trailing": false,
+  "key": "st polten hbf",
+  "tokens": [
+   {
+    "raw": "sankt",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "polten",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "polten",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hauptbahnhof",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "bahnhof",
+      0.8
+     ],
+     [
+      "bf",
+      0.8
+     ],
+     [
+      "bhf",
+      0.8
+     ],
+     [
+      "bhnf",
+      0.8
+     ],
+     [
+      "haupt",
+      0.8
+     ],
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "St Poelten",
+  "fold": "st polten",
+  "trailing": false,
+  "key": "st polten",
+  "tokens": [
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "polten",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "polten",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Wörgl",
+  "fold": "worgl",
+  "trailing": false,
+  "key": "worgl",
+  "tokens": [
+   {
+    "raw": "worgl",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "worgl",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Woergl",
+  "fold": "worgl",
+  "trailing": false,
+  "key": "worgl",
+  "tokens": [
+   {
+    "raw": "worgl",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "worgl",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Kitzbühel",
+  "fold": "kitzbuhel",
+  "trailing": false,
+  "key": "kitzbuhel",
+  "tokens": [
+   {
+    "raw": "kitzbuhel",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "kitzbuhel",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Kitzbuehel",
+  "fold": "kitzbuhel",
+  "trailing": false,
+  "key": "kitzbuhel",
+  "tokens": [
+   {
+    "raw": "kitzbuhel",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "kitzbuhel",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Hall i.T.",
+  "fold": "hall i.t.",
+  "trailing": true,
+  "key": "hall in tirol",
+  "tokens": [
+   {
+    "raw": "hall",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hall",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "in",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "in",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "tirol",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "tirol",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Hall in Tirol",
+  "fold": "hall in tirol",
+  "trailing": false,
+  "key": "hall in tirol",
+  "tokens": [
+   {
+    "raw": "hall",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hall",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "in",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "in",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "tirol",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "tirol",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Bruck a.d.Mur",
+  "fold": "bruck a.d.mur",
+  "trailing": false,
+  "key": "bruck an der mur",
+  "tokens": [
+   {
+    "raw": "bruck",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "bruck",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "an",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "an",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "der",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "der",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "mur",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "mur",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Bruck/Mur",
+  "fold": "bruck/mur",
+  "trailing": false,
+  "key": "bruck mur",
+  "tokens": [
+   {
+    "raw": "bruck",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "bruck",
+      1.0
+     ],
+     [
+      "bruckmur",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "mur",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "mur",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Linz/Donau Hbf",
+  "fold": "linz/donau hbf",
+  "trailing": false,
+  "key": "linz donau hbf",
+  "tokens": [
+   {
+    "raw": "linz",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "linz",
+      1.0
+     ],
+     [
+      "linzdonau",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "donau",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "donau",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hbf",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Wr.Neustadt Hbf",
+  "fold": "wr.neustadt hbf",
+  "trailing": false,
+  "key": "wiener neustadt hbf",
+  "tokens": [
+   {
+    "raw": "wiener",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "wiener",
+      1.0
+     ],
+     [
+      "wr",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "neustadt",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "neustadt",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hbf",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Wiener Neustadt",
+  "fold": "wiener neustadt",
+  "trailing": false,
+  "key": "wiener neustadt",
+  "tokens": [
+   {
+    "raw": "wiener",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "wiener",
+      1.0
+     ],
+     [
+      "wr",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "neustadt",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "neustadt",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Hof b.Salzburg",
+  "fold": "hof b.salzburg",
+  "trailing": false,
+  "key": "hof bei salzburg",
+  "tokens": [
+   {
+    "raw": "hof",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hof",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "bei",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "bei",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "salzburg",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "salzburg",
+      1.0
+     ],
+     [
+      "sbg",
+      0.9
+     ],
+     [
+      "szbg",
+      0.9
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "St. Johann i.Pg.",
+  "fold": "st. johann i.pg.",
+  "trailing": true,
+  "key": "st johann im pongau",
+  "tokens": [
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "johann",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "johann",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "im",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "im",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "pongau",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "pongau",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Maria-Theresien-Straße 1",
+  "fold": "maria-theresien-strasse 1",
+  "trailing": false,
+  "key": "maria theresien str 1",
+  "tokens": [
+   {
+    "raw": "maria",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "maria",
+      1.0
+     ],
+     [
+      "mariatheresienstrasse",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "theresien",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "theresien",
+      1.0
+     ],
+     [
+      "theresienstrasse",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "strasse",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "str",
+      1.0
+     ],
+     [
+      "strasse",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "1",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": true,
+    "essential": false,
+    "forms": [
+     [
+      "1",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Mariahilferstraße",
+  "fold": "mariahilferstrasse",
+  "trailing": false,
+  "key": "mariahilferstrasse",
+  "tokens": [
+   {
+    "raw": "mariahilferstrasse",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "mariahilfer",
+      0.8
+     ],
+     [
+      "mariahilferstrasse",
+      1.0
+     ],
+     [
+      "str",
+      0.8
+     ],
+     [
+      "strasse",
+      0.8
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Floridsdorf (Wien)",
+  "fold": "floridsdorf (wien)",
+  "trailing": false,
+  "key": "floridsdorf wien",
+  "tokens": [
+   {
+    "raw": "floridsdorf",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "floridsdorf",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "wien",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "wien",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Wien Hbf (U)",
+  "fold": "wien hbf (u)",
+  "trailing": false,
+  "key": "wien hbf u",
+  "tokens": [
+   {
+    "raw": "wien",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "wien",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hbf",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "hauptbahnhof",
+      1.0
+     ],
+     [
+      "hbf",
+      1.0
+     ],
+     [
+      "hbhf",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "u",
+    "qualifier": true,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "u",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Innsbruck [DDr.]-Alois-Lugger-Platz",
+  "fold": "innsbruck [ddr.]-alois-lugger-platz",
+  "trailing": false,
+  "key": "innsbruck ddr alois lugger platz",
+  "tokens": [
+   {
+    "raw": "innsbruck",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ibk",
+      0.9
+     ],
+     [
+      "innsbruck",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "ddr",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "ddr",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "alois",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "alois",
+      1.0
+     ],
+     [
+      "aloisluggerplatz",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "lugger",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "lugger",
+      1.0
+     ],
+     [
+      "luggerplatz",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "platz",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "platz",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Ettendorf in Ktn Nord",
+  "fold": "ettendorf in ktn nord",
+  "trailing": false,
+  "key": "ettendorf in karnten nord",
+  "tokens": [
+   {
+    "raw": "ettendorf",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ettendorf",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "in",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "in",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "ktn",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "karnten",
+      1.0
+     ],
+     [
+      "ktn",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "nord",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "nord",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Waidhofen/Ybbs Schöffelstraße",
+  "fold": "waidhofen/ybbs schoffelstrasse",
+  "trailing": false,
+  "key": "waidhofen ybbs schoffelstrasse",
+  "tokens": [
+   {
+    "raw": "waidhofen",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "waidhofen",
+      1.0
+     ],
+     [
+      "waidhofenybbs",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "ybbs",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "ybbs",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "schoffelstrasse",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "schoffel",
+      0.8
+     ],
+     [
+      "schoffelstrasse",
+      1.0
+     ],
+     [
+      "str",
+      0.8
+     ],
+     [
+      "strasse",
+      0.8
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Weiß",
+  "fold": "weiss",
+  "trailing": false,
+  "key": "weiss",
+  "tokens": [
+   {
+    "raw": "weiss",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "weiss",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Straße",
+  "fold": "strasse",
+  "trailing": false,
+  "key": "str",
+  "tokens": [
+   {
+    "raw": "strasse",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "str",
+      1.0
+     ],
+     [
+      "strasse",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Groß-Enzersdorf",
+  "fold": "gross-enzersdorf",
+  "trailing": false,
+  "key": "gross enzersdorf",
+  "tokens": [
+   {
+    "raw": "gross",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "gross",
+      1.0
+     ],
+     [
+      "grossenzersdorf",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "enzersdorf",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "enzersdorf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Überackern",
+  "fold": "uberackern",
+  "trailing": false,
+  "key": "uberackern",
+  "tokens": [
+   {
+    "raw": "uberackern",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "uberackern",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Œuvre",
+  "fold": "ouvre",
+  "trailing": false,
+  "key": "ouvre",
+  "tokens": [
+   {
+    "raw": "ouvre",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ouvre",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Æble",
+  "fold": "able",
+  "trailing": false,
+  "key": "able",
+  "tokens": [
+   {
+    "raw": "able",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "able",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Łódź",
+  "fold": "lodz",
+  "trailing": false,
+  "key": "lodz",
+  "tokens": [
+   {
+    "raw": "lodz",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "lodz",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Kraków Główny",
+  "fold": "krakow glowny",
+  "trailing": false,
+  "key": "krakow glowny",
+  "tokens": [
+   {
+    "raw": "krakow",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "krakow",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "glowny",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "glowny",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Bratislava hl.st.",
+  "fold": "bratislava hl.st.",
+  "trailing": true,
+  "key": "bratislava hl st",
+  "tokens": [
+   {
+    "raw": "bratislava",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "bratislava",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "hl",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hl",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Szombathely",
+  "fold": "szombathely",
+  "trailing": false,
+  "key": "szombathely",
+  "tokens": [
+   {
+    "raw": "szombathely",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "szombathely",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Český Krumlov",
+  "fold": "cesky krumlov",
+  "trailing": false,
+  "key": "cesky krumlov",
+  "tokens": [
+   {
+    "raw": "cesky",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "cesky",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "krumlov",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "krumlov",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Sopron",
+  "fold": "sopron",
+  "trailing": false,
+  "key": "sopron",
+  "tokens": [
+   {
+    "raw": "sopron",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sopron",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Mürzzuschlag",
+  "fold": "murzzuschlag",
+  "trailing": false,
+  "key": "murzzuschlag",
+  "tokens": [
+   {
+    "raw": "murzzuschlag",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "murzzuschlag",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Göß",
+  "fold": "goss",
+  "trailing": false,
+  "key": "goss",
+  "tokens": [
+   {
+    "raw": "goss",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "goss",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Aéroport",
+  "fold": "aroport",
+  "trailing": false,
+  "key": "aroport",
+  "tokens": [
+   {
+    "raw": "aroport",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "aroport",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Hüttau",
+  "fold": "huttau",
+  "trailing": false,
+  "key": "huttau",
+  "tokens": [
+   {
+    "raw": "huttau",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "huttau",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Steuerberg",
+  "fold": "steurberg",
+  "trailing": false,
+  "key": "steurberg",
+  "tokens": [
+   {
+    "raw": "steurberg",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "steurberg",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Queen's",
+  "fold": "quen's",
+  "trailing": false,
+  "key": "quen s",
+  "tokens": [
+   {
+    "raw": "quen",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "quen",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "s",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "s",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Amstetten ---> Fa Avenarius",
+  "fold": "amstetten ---> fa avenarius",
+  "trailing": false,
+  "key": "amstetten fa avenarius",
+  "tokens": [
+   {
+    "raw": "amstetten",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "amstetten",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "fa",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "fa",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "avenarius",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "avenarius",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Nr.9",
+  "fold": "nr.9",
+  "trailing": false,
+  "key": "nr 9",
+  "tokens": [
+   {
+    "raw": "nr",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "nr",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "9",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": true,
+    "essential": false,
+    "forms": [
+     [
+      "9",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "U3",
+  "fold": "u3",
+  "trailing": false,
+  "key": "u3",
+  "tokens": [
+   {
+    "raw": "u3",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "u3",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "S-Bahn",
+  "fold": "s-bahn",
+  "trailing": false,
+  "key": "s bahn",
+  "tokens": [
+   {
+    "raw": "s",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "s",
+      1.0
+     ],
+     [
+      "sbahn",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "bahn",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "bahn",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Höchst/Rhein Postamt",
+  "fold": "hochst/rhein postamt",
+  "trailing": false,
+  "key": "hochst rhein postamt",
+  "tokens": [
+   {
+    "raw": "hochst",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hochst",
+      1.0
+     ],
+     [
+      "hochstrhein",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "rhein",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "rhein",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "postamt",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "postamt",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Altmünster/Traunsee",
+  "fold": "altmunster/traunsee",
+  "trailing": false,
+  "key": "altmunster traunsee",
+  "tokens": [
+   {
+    "raw": "altmunster",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "altmunster",
+      1.0
+     ],
+     [
+      "altmunstertraunsee",
+      0.95
+     ]
+    ]
+   },
+   {
+    "raw": "traunsee",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "traunsee",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Treffpunkt Museum",
+  "fold": "treffpunkt museum",
+  "trailing": false,
+  "key": "treffpunkt museum",
+  "tokens": [
+   {
+    "raw": "treffpunkt",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "treffpunkt",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "museum",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "museum",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Flughafen Wien (VIE)",
+  "fold": "flughafen wien (vie)",
+  "trailing": false,
+  "key": "flughafen wien vie",
+  "tokens": [
+   {
+    "raw": "flughafen",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "airport",
+      1.0
+     ],
+     [
+      "flughafen",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "wien",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "wien",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "vie",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "vie",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "hall in ",
+  "fold": "hall in ",
+  "trailing": true,
+  "key": "hall in",
+  "tokens": [
+   {
+    "raw": "hall",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "hall",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "in",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "in",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "st. ",
+  "fold": "st. ",
+  "trailing": true,
+  "key": "st",
+  "tokens": [
+   {
+    "raw": "st",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "sankt",
+      1.0
+     ],
+     [
+      "st",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "ibk",
+  "fold": "ibk",
+  "trailing": false,
+  "key": "innsbruck",
+  "tokens": [
+   {
+    "raw": "ibk",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ibk",
+      1.0
+     ],
+     [
+      "innsbruck",
+      0.9
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Lauterach in Vlbg",
+  "fold": "lauterach in vlbg",
+  "trailing": false,
+  "key": "lauterach in vorarlberg",
+  "tokens": [
+   {
+    "raw": "lauterach",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "lauterach",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "in",
+    "qualifier": false,
+    "stop": true,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "in",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "vlbg",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "vbg",
+      1.0
+     ],
+     [
+      "vlbg",
+      1.0
+     ],
+     [
+      "vorarlberg",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Kleinmariazell NÖ Abzw Ort",
+  "fold": "kleinmariazell no abzw ort",
+  "trailing": false,
+  "key": "kleinmariazell niederosterreich abzw ort",
+  "tokens": [
+   {
+    "raw": "kleinmariazell",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "kleinmariazell",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "no",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "niederosterreich",
+      1.0
+     ],
+     [
+      "no",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "abzw",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "abzw",
+      1.0
+     ],
+     [
+      "abzweigung",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "ort",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ort",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "ÄÖÜ äöü ß ẞ",
+  "fold": "aou aou ss ss",
+  "trailing": false,
+  "key": "aou aou ss ss",
+  "tokens": [
+   {
+    "raw": "aou",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "aou",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "aou",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "aou",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "ss",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ss",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "ss",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "ss",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "İstanbul",
+  "fold": "istanbul",
+  "trailing": false,
+  "key": "istanbul",
+  "tokens": [
+   {
+    "raw": "istanbul",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "istanbul",
+      1.0
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "input": "Lienz (Tirol) Bahnhof",
+  "fold": "lienz (tirol) bahnhof",
+  "trailing": false,
+  "key": "lienz tirol bf",
+  "tokens": [
+   {
+    "raw": "lienz",
+    "qualifier": false,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": true,
+    "forms": [
+     [
+      "lienz",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "tirol",
+    "qualifier": true,
+    "stop": false,
+    "generic": false,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "tirol",
+      1.0
+     ]
+    ]
+   },
+   {
+    "raw": "bahnhof",
+    "qualifier": false,
+    "stop": false,
+    "generic": true,
+    "numeric": false,
+    "essential": false,
+    "forms": [
+     [
+      "bahnhof",
+      1.0
+     ],
+     [
+      "bf",
+      1.0
+     ],
+     [
+      "bhf",
+      1.0
+     ],
+     [
+      "bhnf",
+      1.0
+     ]
+    ]
+   }
+  ]
+ }
+]

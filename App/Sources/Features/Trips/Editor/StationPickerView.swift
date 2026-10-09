@@ -28,10 +28,11 @@ struct StationPickerView: View {
     @State private var recents: [Station] = []
     @State private var popular: [Station] = []
 
-    init(title: String, selection: @escaping (Station) -> Void, customName: ((String) -> Void)? = nil) {
+    init(title: String, initialQuery: String = "", selection: @escaping (Station) -> Void, customName: ((String) -> Void)? = nil) {
         self.title = title
         self.selection = selection
         self.customName = customName
+        _query = State(initialValue: initialQuery)
     }
 
     var body: some View {
@@ -306,7 +307,7 @@ private struct TripEdStationRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            ModeIcon(mode: TripEdFormat.mode(for: station.kind), size: 34)
+            ModeIcon(mode: station.primaryMode, size: 34)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(station.name)
