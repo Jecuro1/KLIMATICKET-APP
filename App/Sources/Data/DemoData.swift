@@ -40,18 +40,18 @@ enum DemoData {
             let weekday = cal.component(.weekday, from: day) // 1 = So
             let roll = Double.random(in: 0..<1, using: &generator)
             var plans: [(Route, Int, Bool)] = []
-            // Tuned so the demo year sits at roughly 70–80 % amortisation (shows progress + forecast).
+            // Tuned (simulated exactly with this RNG) to 79 trips · € 1.050 · 75 % of € 1.400 – shows progress + forecast.
             if (2...6).contains(weekday) {
-                if roll < 0.035 { plans.append((routes[0], 7, true)) }
-                else if roll < 0.095 { plans.append((routes[1], 8, true)) }
-                else if roll < 0.145 { plans.append((routes[9], 17, false)) }
+                if roll < 0.02 { plans.append((routes[0], 7, true)) }
+                else if roll < 0.10 { plans.append((routes[1], 8, true)) }
+                else if roll < 0.30 { plans.append((routes[9], 17, false)) }
             } else {
-                if roll < 0.015 { plans.append((routes[4], 9, false)); plans.append((routes[6], 15, false)) }
-                else if roll < 0.04 { plans.append((routes[5], 10, true)) }
-                else if roll < 0.11 { plans.append((routes[2], 11, true)) }
-                else if roll < 0.16 { plans.append((routes[3], 12, false)) }
-                else if roll < 0.20 { plans.append((routes[7], 14, true)); plans.append((routes[8], 16, false)) }
-                else if roll < 0.22 { plans.append((routes[10], 9, false)) }
+                if roll < 0.01 { plans.append((routes[4], 9, false)); plans.append((routes[6], 15, false)) }
+                else if roll < 0.03 { plans.append((routes[5], 10, true)) }
+                else if roll < 0.18 { plans.append((routes[2], 11, true)) }
+                else if roll < 0.24 { plans.append((routes[3], 12, false)) }
+                else if roll < 0.28 { plans.append((routes[7], 14, true)); plans.append((routes[8], 16, false)) }
+                else if roll < 0.30 { plans.append((routes[10], 9, false)) }
             }
             for (route, hour, round) in plans {
                 let minute = Int.random(in: 0..<55, using: &generator)

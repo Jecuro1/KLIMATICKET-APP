@@ -14,6 +14,11 @@ xcrun simctl status_bar "$UDID" override --time "9:41" --dataNetwork 5g --wifiMo
 xcrun simctl install "$UDID" "$APP"
 xcrun simctl privacy "$UDID" grant notifications "$BUNDLE_ID" 2>/dev/null || true
 xcrun simctl privacy "$UDID" grant location "$BUNDLE_ID" 2>/dev/null || true
+# Austrian time zone for the app; warm-up launch so first-boot system banners are gone before capturing.
+export SIMCTL_CHILD_TZ="Europe/Vienna"
+xcrun simctl launch "$UDID" "$BUNDLE_ID" -KBScreenshot dashboard -KBDemo YES >/dev/null 2>&1 || true
+sleep 25
+xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
 
 for APPEARANCE in light dark; do
   xcrun simctl ui "$UDID" appearance "$APPEARANCE"

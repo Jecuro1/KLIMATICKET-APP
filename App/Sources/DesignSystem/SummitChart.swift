@@ -134,20 +134,20 @@ struct SummitChart: View {
     /// Hatched band above the ticket price: the profit zone.
     private func gainZone(layout: Layout) -> some View {
         let priceY = layout.y(price)
-        return ZStack(alignment: .topTrailing) {
-            HatchShape(spacing: 7)
-                .stroke(Theme.positive.opacity(colorScheme == .dark ? 0.16 : 0.12), lineWidth: 1)
-                .background(Theme.positive.opacity(colorScheme == .dark ? 0.05 : 0.04))
+        return ZStack(alignment: .topLeading) {
+            HatchShape(spacing: 8)
+                .stroke(Theme.positive.opacity(colorScheme == .dark ? 0.13 : 0.08), lineWidth: 1)
+                .background(Theme.positive.opacity(colorScheme == .dark ? 0.045 : 0.03))
                 .frame(height: max(priceY, 0))
-                .mask(LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom))
-            if showsLabels {
+                .mask(LinearGradient(colors: [.clear, .black.opacity(0.9)], startPoint: .top, endPoint: .bottom))
+            if showsLabels && priceY > 30 {
                 Text("GEWINNZONE")
                     .font(.caption2.weight(.bold))
                     .tracking(1)
                     .foregroundStyle(Theme.positiveText)
-                    .padding(.trailing, 12)
-                    .padding(.top, max(priceY - 18, 2))
-                    .opacity(isPaidOff ? 1 : 0.7)
+                    .padding(.leading, 14)
+                    .padding(.top, max(priceY - 40, 4))
+                    .opacity(isPaidOff ? 1 : 0.75)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -253,8 +253,9 @@ struct SummitChart: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .glassEffect(.regular, in: .capsule)
-                    .position(x: min(max(todayPoint.x - (nearSummit ? 40 : 0), 40), layout.size.width - 40),
-                              y: nearSummit ? min(todayPoint.y + 38, layout.size.height - 14) : max(todayPoint.y - 36, 14))
+                    // Near the summit the pill moves to the left of the climber so it never covers the flag.
+                    .position(x: nearSummit ? max(todayPoint.x - 62, 40) : min(max(todayPoint.x, 40), layout.size.width - 40),
+                              y: nearSummit ? todayPoint.y : max(todayPoint.y - 36, 14))
                     .opacity(reveal)
             }
         }

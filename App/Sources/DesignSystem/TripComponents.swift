@@ -29,7 +29,8 @@ struct RouteGlyph: View {
     }
 }
 
-/// Standard trip row: mode icon · "A → B" · "Heute, 07:42 · Zug · 101 km" · value.
+/// Standard trip row (rail-editorial layout): mode icon · stacked "von / nach" with a mini route glyph ·
+/// value and day/time on the trailing side. Station names never truncate mid-word (they scale slightly).
 struct TripRow: View {
     var fromName: String
     var toName: String
@@ -42,39 +43,39 @@ struct TripRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            ModeIcon(mode: mode, size: 42)
+            ModeIcon(mode: mode, size: 40)
+            MiniRouteGlyph(isRoundTrip: isRoundTrip, color: Theme.modeColor(mode))
+                .frame(width: 10, height: 34)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Text(TripRow.short(fromName))
-                    Image(systemName: isRoundTrip ? "arrow.left.arrow.right" : "arrow.right")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Theme.textTertiary)
-                    Text(TripRow.short(toName))
-                }
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-                Text(subtitle)
-                    .font(.subheadline)
+                Text(TripRow.short(fromName))
+                Text(TripRow.short(toName))
+            }
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundStyle(Theme.textPrimary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .layoutPriority(1)
+            Spacer(minLength: Theme.Spacing.xs)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(Format.euroPrecise(value))
+                    .font(Theme.Typography.numberSmall)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(trailingCaption)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
-            Spacer(minLength: Theme.Spacing.xs)
-            Text(Format.euroPrecise(value))
-                .font(Theme.Typography.numberSmall)
-                .foregroundStyle(Theme.textPrimary)
         }
         .padding(.vertical, Theme.Spacing.xs)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(fromName) nach \(toName), \(mode.displayName)\(isRoundTrip ? ", hin und retour" : "")")
-        .accessibilityValue("\(Format.euroPrecise(value)), \(Format.relativeDay(date)) \(Format.time(date))")
+        .accessibilityValue("\(Format.euroPrecise(value)), \(Format.relativeDay(date)) \(Format.time(date)), \(Format.km(distanceKm * (isRoundTrip ? 2 : 1)))")
     }
 
-    private var subtitle: String {
-        var parts: [String] = []
-        if showsDate { parts.append("\(Format.relativeDay(date)), \(Format.time(date))") }
-        parts.append(mode.displayName)
+    private var trailingCaption: String {
+        if showsDate { return "\(Format.relativeDay(date)) · \(Format.time(date))" }
+        var parts = [Format.time(date)]
         if distanceKm > 0 { parts.append(Format.km(distanceKm * (isRoundTrip ? 2 : 1))) }
         return parts.joined(separator: " · ")
     }
@@ -86,6 +87,25 @@ struct TripRow: View {
             n = String(n.dropLast(suffix.count))
         }
         return n
+    }
+}
+
+/// Two-stop vertical glyph used inside rows (hollow origin, filled destination; arrows for round trips).
+struct MiniRouteGlyph: View {
+    var isRoundTrip: Bool
+    var color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Circle().strokeBorder(color, lineWidth: 2).frame(width: 8, height: 8)
+            Capsule().fill(color.opacity(0.35)).frame(width: 2).frame(maxHeight: .infinity)
+            if isRoundTrip {
+                Circle().strokeBorder(color, lineWidth: 2).background(Circle().fill(color.opacity(0.5))).frame(width: 8, height: 8)
+            } else {
+                Circle().fill(color).frame(width: 8, height: 8)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
