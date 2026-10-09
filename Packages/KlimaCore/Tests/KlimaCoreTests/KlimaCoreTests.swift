@@ -248,6 +248,19 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertEqual(top.first?.trips, 3)
     }
 
+    func testTopRoutesCountRoundTripsOnce() {
+        let trips = [trip(date(2026, 1, 1), fare: 5, round: true), trip(date(2026, 1, 2), fare: 5),
+                     trip(date(2026, 1, 3), fare: 5, round: true, from: "St. Anton am Arlberg", to: "Innsbruck Hbf"),
+                     trip(date(2026, 1, 4), fare: 9, round: true, from: "Wien Hbf", to: "Linz Hbf")]
+        let top = StatsAggregator.topRoutes(trips)
+        XCTAssertEqual(top.count, 2)
+        XCTAssertEqual(top.first?.trips, 3)      // entries, as in "3 Fahrten" everywhere else
+        XCTAssertEqual(top.first?.legs, 5)       // 2 + 1 + 2 directions
+        XCTAssertEqual(top.first?.value ?? 0, 25, accuracy: 0.001)
+        XCTAssertEqual(top.last?.trips, 1)
+        XCTAssertEqual(top.last?.legs, 2)
+    }
+
     // MARK: Stations
 
     func testStationSearch() {

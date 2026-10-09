@@ -37,9 +37,12 @@ public struct RouteStat: Hashable, Sendable, Identifiable {
     public var key: String
     public var fromName: String
     public var toName: String
+    /// Logged entries on this route (a round trip counts once, like "Fahrten" everywhere else).
     public var trips: Int
     public var value: Double
     public var distanceKm: Double
+    /// Directions travelled (a round trip counts twice) – `legs - trips` entries were "Hin & retour".
+    public var legs: Int = 0
     public var id: String { key }
 }
 
@@ -121,12 +124,14 @@ public enum StatsAggregator {
         var map: [String: RouteStat] = [:]
         for t in trips {
             var r = map[t.routeKey] ?? RouteStat(key: t.routeKey, fromName: t.fromName, toName: t.toName, trips: 0, value: 0, distanceKm: 0)
-            r.trips += t.legs
+            r.trips += 1
+            r.legs += t.legs
             r.value += t.totalValue
             r.distanceKm += t.totalDistanceKm
             map[t.routeKey] = r
         }
-        return Array(map.values.sorted { ($0.trips, $0.value) > ($1.trips, $1.value) }.prefix(limit))
+        // Key as the last tie-breaker: a stable order on every render (dictionary order is not).
+        return Array(map.values.sorted { ($0.trips, $0.value, $1.key) > ($1.trips, $1.value, $0.key) }.prefix(limit))
     }
 
     public static func records(_ trips: [TripRecord], now: Date = Date(), calendar: Calendar = .vienna) -> TravelRecords {
