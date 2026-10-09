@@ -71,6 +71,9 @@ jobs:
           fi
       - name: Test CI scripts
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      # docs/LOGO_SPEC.md §1: ski-area and region logos come only from the Cloudflare logo pack, never from the repo.
+      - name: Trademark guard (no brand logos in the repo)
+        run: python3 -I tools/check_no_brand_logos.py . --hashes tools/brand_logo_hashes.txt
       # Optimised build: 100 typical place searches on the full dataset must take < 50 ms (docs/PLACES.md); context-word
       # queries and the stop enrichment (parse, details(for:) < 1 ms) stay cheap (docs/ENRICH_SPEC.md AT-C8).
       - name: Place search performance (release)

@@ -444,3 +444,21 @@ Die Landesregierungen der anderen 8 Länder müssen nicht angefragt werden; ihre
    - Unit-Tests in KlimaCore: `StoredZip` (Fixture-Zip ohne Logos), `BrandResolver` mit den Fällen Warth und St. Anton aus §7.
 3. **Freigaben:** Absender eintragen, Priorität 1 und 2 versenden, Antworten in `brand_status.json` eintragen und neu bauen.
 4. **Pflege:** Zillertal und die Logos mit nur kleiner Auflösung neu beschaffen, die Lücken aus §7 schließen und die Sonnenkopf-Zuordnung prüfen.
+
+---
+
+## 10. Stand im Repo (KlimaCore-Teil)
+
+- `Packages/KlimaCore/Sources/KlimaCore/Logos/LogoPack.swift`: `LogoConfig` (+ `LogoConfig.from(configJSON:)` für den
+  `logos`-Block), `LogoPackManifest`, `StoredZip` (alle Offsets geprüft, kein Absturz bei kaputten Dateien; Namen mit `..`,
+  führendem `/`, Backslash oder NUL werden abgelehnt), `LogoPackInstaller` (Hasher wird hereingereicht; dazu
+  `installed(in:)`, `versions(in:)`, `removeVersions(in:except:)`, `removeFiles(of:manifest:packDirectory:)` für
+  Aktivieren beim Start, alte Versionen löschen und `revoked`), `BrandResolver`/`StopBrands`/`StopBrandInput` und
+  `Landeswappen.assetName` / `packImagePath` (NÖ aus dem Paket nach `armsEnabled`).
+- `BrandResolver` erfüllt `AreaBrandProviding`: `PlaceMarkSelection.rowAreaMark(place:tags:brands:)` und
+  `heroAreaCells` liefern damit `.brand(id:)` oder – ohne Paket, bei `revoked`, `compact: none` – das eigene Wegzeichen.
+- Tests: `LogoPackTests` mit einem **synthetischen** Paket (einfarbige PNGs, zur Laufzeit erzeugt; kein echtes Logo),
+  Warth und St. Anton mit den echten Haltestellen-Tags aus `App/Resources`.
+- Schutz: `tools/check_no_brand_logos.py` + `tools/brand_logo_hashes.txt` (nur Hashes) laufen in der CI
+  („Trademark guard“); `.gitignore` enthält `*.logopack.zip`, `logo-pack/`, `brands/`.
+

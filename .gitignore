@@ -31,3 +31,9 @@ kb-stale.json
 .DS_Store
 node_modules/
 __pycache__/
+
+# Official logos (docs/LOGO_SPEC.md §1): ski-area / region logos live only in the Cloudflare logo pack, never in the
+# repo (tools/check_no_brand_logos.py guards it in CI). Landeswappen are bundled under Assets.xcassets/Wappen.
+*.logopack.zip
+logo-pack/
+brands/
