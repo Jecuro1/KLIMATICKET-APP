@@ -113,7 +113,6 @@ final class AppIconStore {
             completion(true)
             return
         }
-        let previous = current
         current = choice
         isChanging = true
         UIApplication.shared.setAlternateIconName(choice.alternateIconName) { error in
@@ -121,13 +120,19 @@ final class AppIconStore {
             Task { @MainActor in
                 let store = AppIconStore.shared
                 store.isChanging = false
-                if error != nil {
-                    withMotion(Motion.snappy) { store.current = previous }
-                    completion(false)
-                } else {
+                if error == nil {
                     UserDefaults.standard.set(choice.rawValue, forKey: AppIconStore.cacheKey) // MARK: settings
                     completion(true)
+                    return
                 }
+                // MARK: review-icons – an error (e.g. "Resource temporarily unavailable" after quick switches) does not
+                // prove the icon stayed: ask the system once (after a user action, not at launch) and show its answer.
+                let shown = AppIconChoice(alternateIconName: UIApplication.shared.alternateIconName)
+                UserDefaults.standard.set(shown.rawValue, forKey: AppIconStore.cacheKey)
+                if shown != store.current {
+                    withMotion(Motion.snappy) { store.current = shown }
+                }
+                completion(shown == choice)
             }
         }
     }
@@ -153,6 +158,7 @@ struct AppIconImage: View {
                                        startPoint: .topLeading, endPoint: .bottomTrailing),
                         lineWidth: max(0.5, size / 90))
             }
+            .accessibilityIgnoresInvertColors()  // MARK: review-icons – artwork, like the home screen (Smart Invert)
             .accessibilityHidden(true)
     }
 }

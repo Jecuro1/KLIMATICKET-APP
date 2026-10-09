@@ -14,13 +14,14 @@ struct AppIconPickerView: View {
 
     /// CI screenshot routes preselect an icon (UI state only, no system alert).
     var screenshotChoice: AppIconChoice? = nil
+    /// CI screenshot route `appIconAXList` opens scrolled to the end.  // MARK: review-icons
+    var screenshotAnchor: UnitPoint? = nil
 
     /// nil = follow the app's colour scheme.
     @State private var previewScheme: ColorScheme?
     @State private var showsNavigationTitle = false
     /// Bumped on every switch: drives the stage glow and the selection haptic.
     @State private var changeCount = 0
-    @State private var failureCount = 0
 
     @ScaledMetric(relativeTo: .body) private var scaledIconSize: CGFloat = 64
 
@@ -51,6 +52,7 @@ struct AppIconPickerView: View {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .scrollIndicators(.hidden)
+        .defaultScrollAnchor(screenshotAnchor)
         .revealScope()
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > 64
@@ -71,7 +73,6 @@ struct AppIconPickerView: View {
             .sharedBackgroundVisibility(.hidden)
         }
         .haptic(.selection, trigger: changeCount)
-        .haptic(.error, trigger: failureCount)
         .onAppear {
             if let screenshotChoice, LaunchMode.isScreenshot { store.select(screenshotChoice) }
         }
@@ -103,7 +104,11 @@ struct AppIconPickerView: View {
 
     private var activeCaption: some View {
         let choice = store.current
-        return HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+        // MARK: review-icons – at accessibility sizes the pill goes under the text instead of squeezing it
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs))
+        return layout {
             VStack(alignment: .leading, spacing: 2) {
                 Text(choice.title)
                     .font(.title3.weight(.bold))
@@ -113,8 +118,8 @@ struct AppIconPickerView: View {
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentTransition(.opacity)
-            Spacer(minLength: 0)
             SetPill(text: "Aktiv", symbol: "checkmark", tint: Theme.positiveText)
         }
         .motionAnimation(Motion.snappy, value: choice)
@@ -129,7 +134,12 @@ struct AppIconPickerView: View {
         SurfaceCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Kicker(text: "Alle Symbole")
-                IconCenteredGrid(minimumWidth: tileMinimum, spacing: Theme.Spacing.s, rowSpacing: Theme.Spacing.l) {
+                // MARK: review-icons – accessibility sizes: one row per icon (icon + name + description) instead of
+                // a 2-column grid whose names ("Sonnenaufgang") would break mid-word.
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.m))
+                    : AnyLayout(IconCenteredGrid(minimumWidth: tileMinimum, spacing: Theme.Spacing.s, rowSpacing: Theme.Spacing.l))
+                layout {
                     ForEach(AppIconChoice.allCases) { choice in
                         tile(choice)
                     }
@@ -139,17 +149,19 @@ struct AppIconPickerView: View {
         .padding(.horizontal, Theme.Spacing.cardGutter)
     }
 
-    private var tileMinimum: CGFloat {
-        max(iconSize + 30, dynamicTypeSize.isAccessibilitySize ? 140 : 92)
-    }
+    private var tileMinimum: CGFloat { max(iconSize + 30, 92) }
 
     private func tile(_ choice: AppIconChoice) -> some View {
         let isSelected = choice == store.current
         let ringRadius = iconSize * 0.2237 + 6  // concentric with the icon (6 pt padding)
+        let isRow = dynamicTypeSize.isAccessibilitySize
+        let layout = isRow
+            ? AnyLayout(HStackLayout(spacing: Theme.Spacing.m))
+            : AnyLayout(VStackLayout(spacing: Theme.Spacing.xs))
         return Button {
             select(choice)
         } label: {
-            VStack(spacing: Theme.Spacing.xs) {
+            layout {
                 AppIconImage(choice: choice, size: iconSize)
                     .shadow(color: Color(red: 26 / 255, green: 52 / 255, blue: 96 / 255).opacity(isSelected ? 0.26 : 0.12),
                             radius: isSelected ? 10 : 5, y: isSelected ? 6 : 3)
@@ -173,12 +185,26 @@ struct AppIconPickerView: View {
                         }
                     }
                     .scaleEffect(isSelected || reduceMotion ? 1 : 0.93)
-                Text(choice.title)
-                    .font(.footnote.weight(isSelected ? .semibold : .medium))
-                    .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                    .minimumScaleFactor(0.75)
-                    .multilineTextAlignment(.center)
+                if isRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(choice.title)
+                            .font(.body.weight(isSelected ? .semibold : .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text(choice.subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text(choice.title)
+                        .font(.footnote.weight(isSelected ? .semibold : .medium))
+                        .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .multilineTextAlignment(.center)
+                }
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -196,7 +222,7 @@ struct AppIconPickerView: View {
             changeCount += 1
             store.select(choice) { changed in
                 guard !changed else { return }
-                failureCount += 1
+                // One haptic per action (MOTION.md §6): the toast plays `.error` itself.
                 app.showToast("exclamationmark.triangle.fill", "App-Symbol nicht geändert", "Bitte versuch es gleich noch einmal.")
             }
         }
@@ -317,6 +343,8 @@ private struct IconHomeStage: View {
                 .accessibilityLabel(option == .light ? "Vorschau hell" : "Vorschau dunkel")
         }
         .fixedSize()
+        // MARK: review-icons – the stage is a fixed-size illustration; past AX2 the switch would cover the icon's label.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 }
 

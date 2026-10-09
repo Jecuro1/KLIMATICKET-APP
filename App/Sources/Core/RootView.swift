@@ -425,6 +425,12 @@ struct ScreenshotRouter: View {
             NavigationStack { AppIconPickerView() }
         case "appIconSunrise":
             NavigationStack { AppIconPickerView(screenshotChoice: .sonnenaufgang) }
+        // MARK: review-icons – accessibility text size: caption + stage (top) and the one-column icon list (bottom)
+        case "appIconAX", "appIconAXList":
+            NavigationStack {
+                AppIconPickerView(screenshotChoice: .gletscher, screenshotAnchor: screen == "appIconAXList" ? .bottom : nil)
+            }
+            .dynamicTypeSize(.accessibility3)
         case "hero":
             DesignSystemPreview()
         case "motionGallery", "motionGallery2", "motionGallery3", "motionCelebration": // MARK: motion – DEBUG builds only

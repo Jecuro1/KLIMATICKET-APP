@@ -170,6 +170,7 @@ struct SetAppIconView: View {
             .clipShape(shape)
             .overlay { shape.strokeBorder(Color.white.opacity(0.28), lineWidth: max(0.5, size / 120)) }
             .shadow(color: Color.black.opacity(0.16), radius: size / 10, y: size / 22)
+            .accessibilityIgnoresInvertColors()  // MARK: review-icons – artwork stays true under Smart Invert
             .accessibilityHidden(true)
     }
 }

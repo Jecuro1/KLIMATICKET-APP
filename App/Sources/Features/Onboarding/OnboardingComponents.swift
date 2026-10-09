@@ -237,55 +237,16 @@ struct OnbFloating: ViewModifier {
 
 // MARK: - Brand
 
-/// Vector rendition of the app icon: alpine sky, ridges, the route climbing to the dawn-coloured summit.
+// MARK: review-icons – the real home-screen icon ("Alpine Glass" or the App-Symbol the user picked, light/dark like the
+// home screen) instead of a vector drawing of the old artwork, so onboarding, notification preview and home screen match.
+/// The app icon as onboarding's brand mark.
 struct OnbBrandMark: View {
     var size: CGFloat = 56
 
-    private static let backRidge: [CGPoint] = [
-        CGPoint(x: 0, y: 0.68), CGPoint(x: 0.13, y: 0.58), CGPoint(x: 0.22, y: 0.63), CGPoint(x: 0.35, y: 0.49),
-        CGPoint(x: 0.44, y: 0.55), CGPoint(x: 0.52, y: 0.46), CGPoint(x: 0.60, y: 0.42), CGPoint(x: 0.74, y: 0.39),
-        CGPoint(x: 0.80, y: 0.44), CGPoint(x: 0.87, y: 0.48), CGPoint(x: 1, y: 0.44), CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 1),
-    ]
-    private static let frontRidge: [CGPoint] = [
-        CGPoint(x: 0, y: 0.86), CGPoint(x: 0.17, y: 0.74), CGPoint(x: 0.25, y: 0.77), CGPoint(x: 0.36, y: 0.63),
-        CGPoint(x: 0.43, y: 0.67), CGPoint(x: 0.625, y: 0.30), CGPoint(x: 0.70, y: 0.43), CGPoint(x: 0.76, y: 0.46),
-        CGPoint(x: 0.81, y: 0.42), CGPoint(x: 1, y: 0.66), CGPoint(x: 1, y: 1), CGPoint(x: 0, y: 1),
-    ]
-    private static let shadowFacet: [CGPoint] = [
-        CGPoint(x: 0.625, y: 0.30), CGPoint(x: 0.60, y: 0.46), CGPoint(x: 0.655, y: 0.51), CGPoint(x: 0.70, y: 0.43),
-    ]
-    private static let route: [CGPoint] = [
-        CGPoint(x: 0.115, y: 0.86), CGPoint(x: 0.245, y: 0.775), CGPoint(x: 0.355, y: 0.635),
-        CGPoint(x: 0.425, y: 0.68), CGPoint(x: 0.625, y: 0.295),
-    ]
-
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * 0.2237, style: .continuous)
-        let routeColors = TicketTheme.aurora.colors
-        ZStack {
-            LinearGradient(colors: TicketTheme.aurora.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [Theme.dawn.opacity(0.85), Theme.dawn.opacity(0)],
-                           center: UnitPoint(x: 0.62, y: 0.32), startRadius: 0, endRadius: size * 0.62)
-            OnbPolygon(points: Self.backRidge)
-                .fill(Color.white.opacity(0.34))
-            OnbPolygon(points: Self.frontRidge)
-                .fill(LinearGradient(colors: [Color.white, Color.white.opacity(0.86)], startPoint: .top, endPoint: .bottom))
-            OnbPolygon(points: Self.shadowFacet)
-                .fill(Theme.glacier.opacity(0.22))
-            OnbPolygon(points: Self.route, closed: false)
-                .stroke(LinearGradient(colors: [routeColors[0], routeColors[1]], startPoint: .bottomLeading, endPoint: .topTrailing),
-                        style: StrokeStyle(lineWidth: size * 0.068, lineCap: .round, lineJoin: .round))
-            Circle()
-                .fill(Theme.dawn)
-                .frame(width: size * 0.13, height: size * 0.13)
-                .overlay { Circle().stroke(Color.white, lineWidth: size * 0.035) }
-                .position(x: size * 0.625, y: size * 0.295)
-        }
-        .frame(width: size, height: size)
-        .clipShape(shape)
-        .overlay { shape.strokeBorder(Color.white.opacity(0.35), lineWidth: 1) }
-        .shadow(color: Theme.dusk.opacity(0.45), radius: size * 0.28, y: size * 0.12)
-        .accessibilityHidden(true)
+        AppIconImage(choice: AppIconStore.shared.current, size: size)
+            .shadow(color: Theme.dusk.opacity(0.45), radius: size * 0.28, y: size * 0.12)
+            .accessibilityHidden(true)
     }
 }
 
