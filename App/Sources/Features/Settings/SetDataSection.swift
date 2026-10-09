@@ -19,7 +19,13 @@ struct SetDataSection: View {
     @State private var deleteTrigger = 0
     @State private var successTrigger = 0
 
-    private var exportKey: String { "\(trips.count)|\(favorites.count)|\(tickets.count)" }
+    /// Changes whenever rows are added, removed or edited (e.g. by "Jetzt synchronisieren" or a restore),
+    /// so the prepared export files never go stale.
+    private var exportKey: String {
+        let dates: [Date?] = [trips.map(\.updatedAt).max(), favorites.map(\.updatedAt).max(), tickets.map(\.updatedAt).max()]
+        let latest: Double = dates.compactMap { $0 }.max()?.timeIntervalSinceReferenceDate ?? 0
+        return "\(trips.count)|\(favorites.count)|\(tickets.count)|\(latest)"
+    }
 
     var body: some View {
         Section {
@@ -137,7 +143,12 @@ struct SetDataSection: View {
             do {
                 let data = try Data(contentsOf: url)
                 let imported = try Backup.importBackup(data, context: context)
-                Repository(context: context, app: app).commit()
+                let repository = Repository(context: context, app: app)
+                repository.commit()
+                // Restored tickets need their renewal reminders (no-op when reminders are off).
+                for ticket in repository.liveTickets() where !ticket.isExpired {
+                    repository.scheduleReminders(for: ticket)
+                }
                 successTrigger += 1
                 app.showToast("checkmark.circle.fill", "Backup wiederhergestellt", imported.summary)
             } catch {
@@ -157,8 +168,21 @@ struct SetDataSection: View {
 
     private func deleteAll() {
         deleteTrigger += 1
-        Repository(context: context, app: app).deleteAllData()
-        app.isShowingSettings = false
-        app.showToast("trash.fill", "Alle Daten gelöscht", "Bereit für dein nächstes Ticket")
+        // The hard delete leaves no ticket behind to cancel its reminders later – do it first.
+        let ticketIDs = tickets.map(\.id)
+        let notifications = app.notifications
+        Task {
+            for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) }
+        }
+        let repo = Repository(context: context, app: app)
+        Task {
+            let ok = await repo.deleteAllDataEverywhere()
+            app.isShowingSettings = false
+            if ok {
+                app.showToast("trash.fill", "Alle Daten gelöscht", "Bereit für dein nächstes Ticket")
+            } else {
+                app.showToast("icloud.slash", "Auf diesem iPhone gelöscht", "Die Cloud wird beim nächsten Sync bereinigt")
+            }
+        }
     }
 }

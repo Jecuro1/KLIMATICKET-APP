@@ -301,6 +301,7 @@ final class OnboardingModel {
             let fav = FavoriteRouteEntity(title: "Pendeln", fromName: a.name, toName: b.name, fromStationID: a.id, toStationID: b.id,
                                           mode: .train, distanceKm: e.distanceKm, fareEUR: e.fareEUR, isRoundTrip: commuteRoundTrip,
                                           states: Array(Set([a.state, b.state])).sorted(), sortIndex: 0)
+            fav.categoryRaw = TripCategory.commute.rawValue
             repo.addFavorite(fav)
         }
         app.settings.onboardingCompleted = true

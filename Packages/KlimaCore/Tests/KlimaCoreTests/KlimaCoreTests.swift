@@ -302,4 +302,15 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertTrue(csv.hasPrefix("\u{FEFF}Datum;"))
         XCTAssertTrue(csv.contains("05.01.2026;07:00;\"A; B\";C;Zug;ja;20,0;12,50;25,00"))
     }
+
+    // MARK: Forecast
+
+    func testEarlyForecastStaysConservative() {
+        let t = ticket(price: 1400)
+        let trips = [trip(date(2026, 1, 1), fare: 25), trip(date(2026, 1, 2), fare: 25)]
+        let f = BreakEvenForecaster.forecast(ticket: t, trips: trips, now: date(2026, 1, 3, 12), calendar: cal)
+        // €50 spread over at least 21 days ≈ €2.38/day → well below a naive €16.67/day (×362 ≈ €6.000).
+        XCTAssertEqual(f.dailyPace, 50.0 / 21.0, accuracy: 0.001)
+        XCTAssertLessThan(f.projectedEndValue, 1000)
+    }
 }

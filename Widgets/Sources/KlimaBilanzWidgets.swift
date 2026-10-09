@@ -1,27 +1,13 @@
 import WidgetKit
 import SwiftUI
-import KlimaCore
 
-struct InfraEntry: TimelineEntry { let date: Date }
-
-struct InfraProvider: TimelineProvider {
-    func placeholder(in context: Context) -> InfraEntry { InfraEntry(date: .now) }
-    func getSnapshot(in context: Context, completion: @escaping (InfraEntry) -> Void) { completion(InfraEntry(date: .now)) }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<InfraEntry>) -> Void) {
-        completion(Timeline(entries: [InfraEntry(date: .now)], policy: .atEnd))
-    }
-}
-
-struct InfraWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "infra", provider: InfraProvider()) { _ in
-            Text("KlimaBilanz").containerBackground(.fill.tertiary, for: .widget)
-        }
-        .configurationDisplayName("KlimaBilanz")
-    }
-}
-
+/// KlimaBilanz widget extension: home & lock-screen amortisation, interactive quick log and the
+/// Control Center "Fahrt erfassen" button. All widget views live in Shared/WidgetViews (also used by the app's gallery).
 @main
 struct KlimaBilanzWidgetsBundle: WidgetBundle {
-    var body: some Widget { InfraWidget() }
+    var body: some Widget {
+        AmortizationWidget()
+        QuickLogWidget()
+        KlimaControlWidget()
+    }
 }

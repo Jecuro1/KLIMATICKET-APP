@@ -169,6 +169,12 @@ struct SetAppearanceSection: View {
                     SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
                                 symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
                 }
+                NavigationLink {
+                    WidgetGalleryView()
+                } label: {
+                    SetRowLabel(title: "Widgets & Kurzbefehle", subtitle: "Home- und Sperrbildschirm, Kontrollzentrum, Siri",
+                                symbol: "square.grid.2x2.fill", tint: Theme.glacier)
+                }
             }
             .listRowBackground(Theme.surface)
         } header: {
@@ -297,6 +303,7 @@ struct SetNotificationsSection: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @State private var status: UNAuthorizationStatus?
 
@@ -315,7 +322,12 @@ struct SetNotificationsSection: View {
                     updateRenewalReminders(enabled)
                 }
                 .task {
-                    status = await app.notifications.authorizationStatus()
+                    await refreshStatus()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    // Back from the iOS Settings app ("Einstellungen öffnen") – the permission may have changed.
+                    guard phase == .active else { return }
+                    Task { await refreshStatus() }
                 }
                 Toggle(isOn: $settings.weeklySummaryEnabled) {
                     SetRowLabel(title: "Wochenrückblick", subtitle: "Sonntags um 18 Uhr",
@@ -353,6 +365,16 @@ struct SetNotificationsSection: View {
             .controlSize(.small)
         }
         .padding(.vertical, 4)
+    }
+
+    private func refreshStatus() async {
+        let previous = status
+        let current = await app.notifications.authorizationStatus()
+        status = current
+        // Allowed again in the iOS Settings app: schedule what was skipped while notifications were off.
+        guard previous == .denied, current == .authorized || current == .provisional else { return }
+        if app.settings.renewalRemindersEnabled { updateRenewalReminders(true) }
+        if app.settings.weeklySummaryEnabled { await app.notifications.setWeeklySummary(enabled: true) }
     }
 
     private func updateRenewalReminders(_ enabled: Bool) {

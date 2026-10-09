@@ -40,7 +40,14 @@ struct OnbDoneStep: View {
             if !reduceMotion { tilt.start() }
             guard !appeared else { return }
             withAnimation(.spring(duration: 0.8, bounce: 0.28)) { appeared = true }
-            if !reduceMotion { showsConfetti = true }
+            if !reduceMotion {
+                showsConfetti = true
+                // ConfettiView's TimelineView keeps redrawing every frame after the burst – remove it once it's over.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3.4))
+                    showsConfetti = false
+                }
+            }
         }
         .onDisappear {
             if !reduceMotion { tilt.stop() }
@@ -87,7 +94,7 @@ struct OnbDoneStep: View {
                    validFrom: model.startDate,
                    validUntil: model.endDate,
                    ticketNumber: model.ticketNumber.trimmingCharacters(in: .whitespaces),
-                   theme: .aurora,
+                   theme: .twilight, // = the theme the new TicketEntity gets (themeRaw default "twilight")
                    roll: tilt.roll,
                    pitch: tilt.pitch)
             .rotation3DEffect(.degrees(appeared ? 0 : 16), axis: (x: 1, y: 0, z: 0))

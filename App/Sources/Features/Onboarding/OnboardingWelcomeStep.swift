@@ -67,7 +67,7 @@ struct OnbWelcomeStep: View {
                 .padding(.horizontal, Theme.Spacing.screen)
                 .onbEntrance(appeared, delay: 0.1)
 
-            Text(Copy.subline)
+            Text(Self.subline)
                 .font(Theme.Typography.body)
                 .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
@@ -90,6 +90,10 @@ struct OnbWelcomeStep: View {
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
     }
+
+    /// DESIGN.md §5.8 / DESIGN_FINAL_SYNTHESIS §9.1: the Rail-Editorial phrase ("den Tag, ab dem du gratis fährst")
+    /// is the visible subtitle under the headline (shorter than `Copy.subline`, so the layout still fits without scrolling).
+    static let subline = "Erfasse deine Fahrten – wir zeigen dir den Tag, ab dem du gratis fährst."
 
     /// "Hat sich dein Ticket" / "schon rentiert?" – second line in the route gradient.
     /// One Text, so both lines share the same scale when space is tight.

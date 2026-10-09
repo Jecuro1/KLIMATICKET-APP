@@ -157,7 +157,9 @@ struct OnbValidityStep: View {
                 } else {
                     Text("Offizieller Preis laut Tarif.")
                 }
-                if let upcoming = model.upcomingPricePoint, let date = OnboardingModel.date(fromISODay: upcoming.validFrom) {
+                // Before the oldest known tariff the catalog falls back to that tariff's price – don't announce it as a change.
+                if let upcoming = model.upcomingPricePoint, upcoming.priceEUR != model.catalogPrice,
+                   let date = OnboardingModel.date(fromISODay: upcoming.validFrom) {
                     Label("Für Tickets ab \(Format.date(date, .long)): \(Format.euro(upcoming.priceEUR))", systemImage: "arrow.up.right")
                         .font(.footnote)
                 }

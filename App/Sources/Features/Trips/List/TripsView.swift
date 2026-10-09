@@ -49,7 +49,9 @@ struct TripsView: View {
         List {
             if !trips.isEmpty {
                 headerSection(content)
-                if content.months.isEmpty {
+                if content.periodTrips.isEmpty {
+                    emptyPeriodSection(content)
+                } else if content.months.isEmpty {
                     noResultsSection(content)
                 } else {
                     ForEach(content.months) { month in
@@ -174,6 +176,26 @@ struct TripsView: View {
         }
     }
 
+    /// The selected ticket year has no trips yet (e.g. a fresh follow-up ticket) while older trips exist.
+    private func emptyPeriodSection(_ content: TripListContent) -> some View {
+        let lead: String = content.scopeTicket.map { "Im \(TripListFormat.periodLabel($0))" } ?? "In diesem Zeitraum"
+        let message = "\(lead) hast du noch keine Fahrt erfasst. Deine \(TripListFormat.tripCount(trips.count)) findest du unter „Alle Fahrten“."
+        return Section {
+            ContentUnavailableView {
+                Label("Noch keine Fahrten", systemImage: "tram.fill")
+                    .foregroundStyle(Theme.textPrimary)
+            } description: {
+                Text(message)
+                    .foregroundStyle(Theme.textSecondary)
+            } actions: {
+                Button("Alle Fahrten anzeigen") { scopeBinding.wrappedValue = .all }
+                    .buttonStyle(.glass)
+            }
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+
     private var emptyState: some View {
         EmptyStateView(symbol: "tram.fill",
                        title: "Noch keine Fahrten",
@@ -253,7 +275,8 @@ struct TripsView: View {
             months: TripListMonth.group(visible),
             modeOptions: modeOptions(for: periodTrips),
             snapshot: scopeTicket.map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) },
-            showsScopePicker: tickets.count > 1 || (scopeTicket != nil && periodTrips.count < trips.count),
+            // Stays visible on "Alle Fahrten" too – otherwise a single-ticket user could never switch back.
+            showsScopePicker: !tickets.isEmpty && (tickets.count > 1 || scope == .all || periodTrips.count < trips.count),
             isFiltered: mode != nil || !query.isEmpty,
             query: query
         )

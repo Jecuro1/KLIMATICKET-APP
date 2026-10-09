@@ -51,9 +51,12 @@ struct StatsScreen: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var grow: Double = 0
+    /// Already in the end state in screenshot mode (no empty first frame).
+    @State private var grow: Double = LaunchMode.isScreenshot ? 1 : 0
     @State private var showsInlineTitle = false
     @State private var shareImage: Image?
+    /// Key the current `shareImage` was rendered for – the tab re-runs `.task` on every re-appear.
+    @State private var shareImageKey: String?
 
     var body: some View {
         ScrollView {
@@ -91,7 +94,7 @@ struct StatsScreen: View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Ticketjahr \(StatsCalc.ticketYearLabel(snapshot.ticket))")
             Text("Statistik")
-                .font(.largeTitle.weight(.bold))
+                .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
             Text(subtitle)
@@ -136,16 +139,25 @@ struct StatsScreen: View {
             StatsTopRoutesCard(snapshot: snapshot, grow: grow)
                 .statsEntrance(5)
         }
+        // MARK: map
         AtlasPreviewCard(snapshot: snapshot, ticketID: ticket.id)
         StatsRecordsSection(snapshot: snapshot)
             .padding(.top, Theme.Spacing.s)
         StatsStatesCard(snapshot: snapshot)
-        StatsSummitBookRow(snapshot: snapshot)
+        // The Gipfelbuch sheet always shows the app-wide ticket – only offer it (with its counts) for that ticket,
+        // otherwise the row's "6/17" would contradict the sheet it opens.
+        if showsSummitBook {
+            StatsSummitBookRow(snapshot: snapshot)
+        }
         StatsTicketComparisonCard(snapshot: snapshot, products: app.catalog.products, variant: ticket.variant, grow: grow)
             .padding(.top, Theme.Spacing.s)
         StatsCarCO2Section(snapshot: snapshot, kilometergeld: app.catalog.kilometergeldEUR, grow: grow)
         StatsEffectiveCostsSection(snapshot: snapshot)
             .padding(.top, Theme.Spacing.s)
+    }
+
+    private var showsSummitBook: Bool {
+        Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)?.id == ticket.id
     }
 
     private var emptyTrips: some View {
@@ -169,6 +181,9 @@ struct StatsScreen: View {
                 .opacity(showsInlineTitle ? 1 : 0)
                 .accessibilityHidden(!showsInlineTitle)
         }
+        // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an
+        // empty pill while the title is faded out (same as the dashboard).
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItemGroup(placement: .topBarTrailing) {
             if tickets.count > 1 {
                 ticketMenu
@@ -217,11 +232,16 @@ struct StatsScreen: View {
 
     private var shareKey: String {
         let summary = snapshot.summary
-        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(ticket.name)"
+        // Everything the card prints: ticket, trips/value, price (own share) and the day (date line + forecast).
+        let day = Int(Calendar.vienna.startOfDay(for: Date()).timeIntervalSince1970)
+        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(Int(summary.ticketPrice.rounded()))-\(day)-\(ticket.name)"
     }
 
     private func renderShareImage() {
+        let key = shareKey
+        guard shareImage == nil || shareImageKey != key else { return }
         shareImage = StatsShareCard.render(snapshot: snapshot, ticketName: ticket.name)
+        shareImageKey = key
     }
 
     private func startEntrance() {

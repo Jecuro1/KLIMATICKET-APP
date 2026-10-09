@@ -16,6 +16,8 @@ struct FavoritesManagerView: View {
     @State private var isRenaming = false
     @State private var successTick = 0
     @State private var warningTick = 0
+    /// Captured on first appearance (see `backdrop`).
+    @State private var isInSettingsSheet: Bool?
 
     var body: some View {
         List {
@@ -29,7 +31,10 @@ struct FavoritesManagerView: View {
         .listStyle(.insetGrouped)
         .listSectionSpacing(Theme.Spacing.l)
         .scrollContentBackground(.hidden)
-        .ambientBackground()
+        .background { backdrop }
+        .onAppear {
+            if isInSettingsSheet == nil { isInSettingsSheet = app.isShowingSettings }
+        }
         .navigationTitle("Favoriten")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -139,6 +144,29 @@ struct FavoritesManagerView: View {
             Text("Oder wische in der Fahrtenliste eine Fahrt nach rechts und tippe auf „Favorit“.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
+        }
+    }
+
+    /// Inside the Settings sheet a calm surface with a pale sky (DESIGN.md §2 – no full sky mesh in sheets),
+    /// otherwise the alpine sky. Frozen on first appearance so it does not flip while the sheet closes for the editor.
+    @ViewBuilder
+    private var backdrop: some View {
+        if isInSettingsSheet ?? app.isShowingSettings {
+            ZStack(alignment: .top) {
+                Theme.sheetBackground
+                AmbientBackground(style: .standard, glow: 0.6)
+                    .opacity(0.55)
+                    .mask {
+                        LinearGradient(stops: [.init(color: .black, location: 0),
+                                               .init(color: .black.opacity(0.65), location: 0.22),
+                                               .init(color: .clear, location: 0.5)],
+                                       startPoint: .top, endPoint: .bottom)
+                    }
+            }
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+        } else {
+            AmbientBackground()
         }
     }
 

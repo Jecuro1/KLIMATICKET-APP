@@ -12,6 +12,7 @@ struct DashBalanceCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var summary: SavingsSummary { snapshot.summary }
+    private var isExpired: Bool { now > snapshot.ticket.end }
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.l, tint: summary.isPaidOff ? Theme.positive : nil) {
@@ -58,10 +59,11 @@ struct DashBalanceCard: View {
                 detailText("nach \(DashStyle.trips(tripsUntilPaidOff))")
             }
         } else {
-            column(kicker: "Bis zum Gipfel") {
+            // An expired ticket can't be paid off any more – no "≈ n Fahrten" still to go.
+            column(kicker: isExpired ? "Fehlte zum Gipfel" : "Bis zum Gipfel") {
                 DashEuroNumeral(amount: summary.remainingToBreakEven)
             } detail: {
-                if let n = snapshot.tripsToBreakEven, n > 0 {
+                if !isExpired, let n = snapshot.tripsToBreakEven, n > 0 {
                     detailText("≈ \(DashStyle.trips(n))")
                 }
             }
@@ -175,10 +177,16 @@ struct DashBalanceCard: View {
     private var footerPills: [PillModel] {
         var pills: [PillModel] = []
         if let delta = paceDelta {
-            if delta >= 0 {
+            if delta >= 0, summary.forecastReachesBreakEven {
                 pills.append(PillModel(id: "pace", symbol: "hare.fill",
                                        text: "Schneller als nötig · \(DashStyle.signedEuro(delta)) vor Plan",
                                        foreground: Theme.positiveText, tint: Theme.positive))
+            } else if delta >= 0 {
+                // Still ahead of the linear plan, but the recent pace no longer reaches the summit in time –
+                // "Schneller als nötig" would contradict the card's warning above.
+                pills.append(PillModel(id: "pace", symbol: "arrow.down.right",
+                                       text: "Noch vor Plan · \(DashStyle.signedEuro(delta)) · Tempo sinkt",
+                                       foreground: Theme.summitText, tint: Theme.summit))
             } else if summary.forecastReachesBreakEven {
                 // Behind the linear plan, but the recent pace already gets you to the summit in time.
                 pills.append(PillModel(id: "pace", symbol: "arrow.up.right",

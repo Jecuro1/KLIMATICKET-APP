@@ -190,6 +190,9 @@ struct DashboardView: View {
                 .opacity(showsInlineTitle ? 1 : 0)
                 .accessibilityHidden(!showsInlineTitle)
         }
+        // iOS 26 may wrap custom toolbar views in a shared glass capsule – it would stay visible as an
+        // empty pill while the title is faded out.
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .topBarTrailing) {
             DashAvatarButton(initials: app.auth.profile?.initials) {
                 app.isShowingSettings = true
@@ -223,17 +226,23 @@ struct DashboardView: View {
         }
     }
 
+    /// True while a sheet covers the dashboard (Settings, Gipfelbuch, add/edit trip, update). The celebration waits
+    /// until it is gone – otherwise confetti and haptics would play unseen and the ticket would still count as celebrated.
+    private var isCoveredBySheet: Bool {
+        app.isShowingSettings || app.isShowingAchievements || app.tripDraft != nil || app.updates.isPresentingSheet
+    }
+
     private func celebrationKey(ticket: TicketEntity?, snapshot: AnalyticsSnapshot?) -> String {
         guard let ticket, let snapshot else { return "none" }
-        let visible = app.selectedTab == .overview
+        let visible = app.selectedTab == .overview && !isCoveredBySheet
         return "\(ticket.id.uuidString)|\(snapshot.summary.isPaidOff)|\(visible)|\(app.celebrateBreakEven)"
     }
 
-    /// Shows the celebration once per ticket (ids in `celebratedBreakEvenTicketIDs`), only while this tab is visible.
-    /// Also consumes `app.celebrateBreakEven`.
+    /// Shows the celebration once per ticket (ids in `celebratedBreakEvenTicketIDs`), only while this tab is visible
+    /// and uncovered. Also consumes `app.celebrateBreakEven`.
     private func evaluateCelebration(ticket: TicketEntity?, snapshot: AnalyticsSnapshot?) {
-        guard !LaunchMode.isScreenshot, celebration == nil, app.selectedTab == .overview,
-              let ticket, let snapshot, snapshot.summary.isPaidOff else { return }
+        guard !LaunchMode.isScreenshot, celebration == nil, app.selectedTab == .overview, !isCoveredBySheet,
+              let ticket, let snapshot, snapshot.summary.isPaidOff, snapshot.summary.tripCount > 0 else { return }
         if app.celebrateBreakEven { app.celebrateBreakEven = false }
         let id = ticket.id.uuidString
         guard !app.settings.celebratedBreakEvenTicketIDs.contains(id) else { return }
