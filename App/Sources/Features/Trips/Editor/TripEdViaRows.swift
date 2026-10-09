@@ -103,7 +103,6 @@ struct TripEdViaRows: View {
     /// Width of a column centred on the route line, starting at the card's inset edge.
     private var markColumn: CGFloat { 2 * (leadingInset + lineOffset) }
 
-    @Environment(AppState.self) private var app
     @State private var removedTick = 0
 
     var body: some View {
