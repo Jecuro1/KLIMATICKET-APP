@@ -55,7 +55,7 @@ enum AtlasDemoData {
     static let noteMarker = "Ausflug"
 }
 
-/// CI screenshot scenes of the map ("map", "mapRoute", "mapRouteList", "mapDetails", "mapSatellite", "mapPreview")
+/// CI screenshot scenes of the map ("map", "mapRoute", "mapRouteList", "mapDetails", "mapFocus", "mapSatellite", "mapPreview")
 /// with the excursion demo year.
 struct AtlasScreenshotScene: View {
     let screen: String
@@ -76,6 +76,8 @@ struct AtlasScreenshotScene: View {
                     NavigationStack { AtlasView(launchFocus: .topRouteExpanded) }
                 case "mapDetails":
                     NavigationStack { AtlasView(launchFocus: .details) }
+                case "mapFocus":
+                    NavigationStack { AtlasView(launchFocus: .extreme(.south)) }
                 default:
                     NavigationStack { AtlasView() }
                 }

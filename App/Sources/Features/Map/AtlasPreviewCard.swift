@@ -30,7 +30,7 @@ struct AtlasPreviewCard: View {
     private func accessibilityValue(_ summary: AtlasSummary) -> String {
         var parts = ["\(summary.visitedStateCount) von 9 Bundesländern bereist",
                      AtlasFormat.stations(summary.places.count),
-                     summary.routes.count == 1 ? "1 Strecke" : "\(summary.routes.count) Strecken"]
+                     AtlasFormat.routes(summary.routes.count)]
         if let top = summary.topRoute {
             parts.append("meistgefahren: \(top.from.name) und \(top.to.name)")
         }
@@ -82,7 +82,7 @@ struct AtlasPreviewCardContent: View {
     private var footer: some View {
         HStack(spacing: Theme.Spacing.s) {
             Label(AtlasFormat.stations(summary.places.count), systemImage: "mappin.circle.fill")
-            Label(summary.routes.count == 1 ? "1 Strecke" : "\(summary.routes.count) Strecken", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+            Label(AtlasFormat.routes(summary.routes.count), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
             Spacer(minLength: 0)
             Text("Karte öffnen")
                 .foregroundStyle(Theme.accentText)

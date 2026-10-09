@@ -149,6 +149,12 @@ public struct AtlasExtremes: Hashable, Sendable {
     }
 
     public var isEmpty: Bool { north == nil }
+
+    /// Directions in which the place is the outermost one (e.g. `[.north, .east]` for a single Vienna trip),
+    /// in compass order. Empty for every other place.
+    public func directions(of placeID: String) -> [AtlasCompass] {
+        AtlasCompass.allCases.filter { place($0)?.id == placeID }
+    }
 }
 
 /// Geographic bounding box.
@@ -258,6 +264,8 @@ public struct AtlasSummary: Sendable {
     public var visitedStateCount: Int { visitedStates.count }
     public var isAllAustria: Bool { visitedStates.count == Atlas.austrianStates.count }
     public var topRoute: AtlasRoute? { routes.first }
+    /// One-way journeys without coordinates (a round trip counts twice) – the unit the route rows use.
+    public var unmappedLegCount: Int { unmapped.reduce(0) { $0 + $1.legs } }
     /// Places outside Austria (e.g. Gemeinschaftsbahnhöfe like Lindau-Reutin or Buchs SG).
     public var abroadPlaces: [AtlasPlace] { places.filter(\.isAbroad) }
 

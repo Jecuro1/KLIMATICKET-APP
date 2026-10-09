@@ -214,33 +214,33 @@ struct AtlasDetailsSheet: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { reader in
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xl - 4) {
-                    if !summary.extremes.isEmpty {
-                        extremesSection
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xl - 4) {
+                        if !summary.extremes.isEmpty {
+                            extremesSection
+                        }
+                        statesSection
+                        if !summary.abroadPlaces.isEmpty {
+                            abroadSection
+                        }
+                        if !summary.routes.isEmpty {
+                            routesSection
+                        }
+                        if !summary.unmapped.isEmpty {
+                            unmappedSection
+                        }
                     }
-                    statesSection
-                    if !summary.abroadPlaces.isEmpty {
-                        abroadSection
-                    }
-                    if !summary.routes.isEmpty {
-                        routesSection
-                    }
-                    if !summary.unmapped.isEmpty {
-                        unmappedSection
-                    }
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    .padding(.top, Theme.Spacing.xs)
+                    .padding(.bottom, Theme.Spacing.xl)
                 }
-                .padding(.horizontal, Theme.Spacing.cardGutter)
-                .padding(.top, Theme.Spacing.xs)
-                .padding(.bottom, Theme.Spacing.xl)
-            }
-            .scrollIndicators(.hidden)
-            .task {
-                guard startsAtRoutes else { return }
-                detent = .large
-                try? await Task.sleep(for: .milliseconds(450))
-                reader.scrollTo("routes", anchor: .top)
-            }
+                .scrollIndicators(.hidden)
+                .task {
+                    guard startsAtRoutes else { return }
+                    detent = .large
+                    try? await Task.sleep(for: .milliseconds(450))
+                    reader.scrollTo("routes", anchor: .top)
+                }
             }
             .navigationTitle("Deine Karte")
             .navigationSubtitle(scopeLabel)
@@ -423,7 +423,7 @@ struct AtlasDetailsSheet: View {
 
     private var unmappedSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            sectionTitle("Ohne Kartenposition", trailing: AtlasFormat.legs(summary.unmappedTripCount))
+            sectionTitle("Ohne Kartenposition", trailing: AtlasFormat.legs(summary.unmappedLegCount))
             Text("Für diese Haltestellen kennt die App keine Koordinaten. Die Fahrten zählen trotzdem voll in deiner Bilanz.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)

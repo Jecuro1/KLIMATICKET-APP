@@ -28,7 +28,8 @@ enum AtlasLabelSide: CaseIterable {
 }
 
 /// The interactive MapKit canvas: frequency-weighted route arcs (glow on the top/selected route), glass station dots
-/// sized by visits, collision-free labels for the five most visited stations, tap-to-select routes.
+/// sized by visits, compass marks on the four extreme points, collision-free labels for the five most visited stations,
+/// a soft focus circle around a station picked in the details sheet, tap-to-select routes.
 struct AtlasMapCanvas: View {
     let summary: AtlasSummary
     let look: AtlasMapLook
@@ -56,9 +57,16 @@ struct AtlasMapCanvas: View {
         MapReader { proxy in
             Map(position: $position, interactionModes: [.pan, .zoom]) {
                 AtlasRouteLayers(routes: summary.routes, selectedID: selectedRouteID, palette: palette, scale: 1)
+                if let place = highlightedPlaceID.flatMap(summary.place(id:)) {
+                    // Soft focus halo (≈ 1,2 km) around the station picked in the details sheet.
+                    MapCircle(center: place.location.coordinate, radius: 1_200)
+                        .foregroundStyle(palette.focus.opacity(0.16))
+                        .stroke(palette.focus.opacity(0.85), lineWidth: 1.5)
+                }
                 ForEach(dots) { dot in
                     Annotation(dot.place.name, coordinate: dot.place.location.coordinate, anchor: .center) {
                         AtlasStationDot(place: dot.place, diameter: dot.diameter, color: dot.color, label: dot.label,
+                                        compass: dot.compass, compassFill: palette.compassFill, compassInk: palette.compassInk,
                                         isDimmed: dot.isDimmed, isHighlighted: dot.isHighlighted)
                     }
                     .annotationTitles(.hidden)
@@ -102,6 +110,7 @@ struct AtlasMapCanvas: View {
         summary.places.map { place in
             AtlasDotModel(place: place, diameter: dotDiameter(place), color: palette.color(place.dominantMode),
                           label: labels[place.id].map { (TripRow.short(place.name), $0) },
+                          compass: summary.extremes.directions(of: place.id),
                           isDimmed: isDimmed(place), isHighlighted: place.id == highlightedPlaceID)
         }
     }
@@ -235,7 +244,14 @@ struct AtlasMapCanvas: View {
             dotRects[place.id] = CGRect(x: p.x - Double(d) / 2, y: p.y - Double(d) / 2, width: Double(d), height: Double(d))
         }
 
+        // Compass marks sit on the outer side of the extreme points – labels must not cover them.
         var taken: [CGRect] = []
+        for place in summary.places {
+            guard let dot = dotRects[place.id] else { continue }
+            for direction in summary.extremes.directions(of: place.id) {
+                taken.append(Self.compassRect(direction, dot: dot))
+            }
+        }
         var result: [String: AtlasLabelSide] = [:]
         for place in candidates {
             guard let dot = dotRects[place.id], visible.contains(CGPoint(x: dot.midX, y: dot.midY)) else { continue }
@@ -254,6 +270,13 @@ struct AtlasMapCanvas: View {
         if result != labels { labels = result }
     }
 
+    /// Frame of a compass mark next to a dot frame (`dot` = bead incl. its glass rim).
+    static func compassRect(_ direction: AtlasCompass, dot: CGRect) -> CGRect {
+        let offset = AtlasStationDot.compassOffset(direction, outer: dot.width)
+        let size = AtlasCompassBadge.size
+        return CGRect(x: dot.midX + offset.width - size / 2, y: dot.midY + offset.height - size / 2, width: size, height: size)
+    }
+
     static func labelRect(side: AtlasLabelSide, dot: CGRect, size: CGSize) -> CGRect {
         let gap: CGFloat = 4
         switch side {
@@ -270,8 +293,13 @@ struct AtlasMapCanvas: View {
         guard let top = summary.topRoute else {
             return summary.places.isEmpty ? "Noch keine Strecken mit Kartenposition" : AtlasFormat.stations(summary.places.count)
         }
-        return "\(summary.routes.count) Strecken, \(AtlasFormat.stations(summary.places.count)). "
+        var text = "\(summary.routes.count) Strecken, \(AtlasFormat.stations(summary.places.count)). "
             + "Meistgefahren: \(top.from.name) und \(top.to.name), \(AtlasFormat.legs(top.legs))."
+        if let north = summary.extremes.north, let south = summary.extremes.south,
+           let west = summary.extremes.west, let east = summary.extremes.east {
+            text += " Extrempunkte: Norden \(north.name), Süden \(south.name), Westen \(west.name), Osten \(east.name)."
+        }
+        return text
     }
 }
 
@@ -283,13 +311,23 @@ struct AtlasPalette {
     let look: AtlasMapLook
     let scheme: ColorScheme
 
-    func color(_ mode: TransportMode) -> Color {
-        var env = environment
-        if look == .satellite { env.colorScheme = .dark }
-        return Color(Theme.modeColor(mode).resolve(in: env))
-    }
+    func color(_ mode: TransportMode) -> Color { resolved(Theme.modeColor(mode)) }
 
     var casing: Color { AtlasLineStyle.casing(look: look, scheme: scheme) }
+
+    /// Focus halo around a picked station.
+    var focus: Color { resolved(Theme.summit) }
+
+    /// Compass marks: ink-coloured (navy on the light map, near-white on the dark map and on satellite imagery) so
+    /// they never read as a transport mode.
+    var compassFill: Color { resolved(Theme.textPrimary) }
+    var compassInk: Color { resolved(Color(light: "#FFFFFF", dark: "#0C1A2B")) }
+
+    private func resolved(_ color: Color) -> Color {
+        var env = environment
+        if look == .satellite { env.colorScheme = .dark }
+        return Color(color.resolve(in: env))
+    }
 }
 
 // MARK: - Route layers
@@ -359,6 +397,8 @@ struct AtlasDotModel: Identifiable {
     let diameter: CGFloat
     let color: Color
     let label: (String, AtlasLabelSide)?
+    /// Extreme-point directions of this station (compass marks).
+    let compass: [AtlasCompass]
     let isDimmed: Bool
     let isHighlighted: Bool
 
@@ -371,6 +411,9 @@ struct AtlasStationDot: View {
     let diameter: CGFloat
     let color: Color
     let label: (String, AtlasLabelSide)?
+    var compass: [AtlasCompass] = []
+    var compassFill: Color = Theme.textPrimary
+    var compassInk: Color = .white
     var isDimmed = false
     var isHighlighted = false
 
@@ -393,6 +436,12 @@ struct AtlasStationDot: View {
                     .shadow(color: .black.opacity(0.22), radius: 2.5, y: 1)
             }
             .background { if isHighlighted { highlightRing(size: outer) } }
+            .overlay {
+                ForEach(compass) { direction in
+                    AtlasCompassBadge(direction: direction, fill: compassFill, ink: compassInk)
+                        .offset(Self.compassOffset(direction, outer: outer))
+                }
+            }
             .overlay(alignment: labelAlignment) {
                 if let label {
                     AtlasMapLabel(text: label.0, isEmphasized: isHighlighted)
@@ -404,7 +453,24 @@ struct AtlasStationDot: View {
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(place.name)
-            .accessibilityValue("\(AtlasFormat.visits(place.visits)), \(AtlasFormat.stateSubtitle(place))")
+            .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        var parts = [AtlasFormat.visits(place.visits), AtlasFormat.stateSubtitle(place)]
+        parts += compass.map(\.superlative)
+        return parts.joined(separator: ", ")
+    }
+
+    /// Centre of a compass mark relative to the bead centre: just outside the glass rim, on the outer side.
+    static func compassOffset(_ direction: AtlasCompass, outer: CGFloat) -> CGSize {
+        let distance = outer / 2 + 2 + AtlasCompassBadge.size / 2
+        switch direction {
+        case .north: return CGSize(width: 0, height: -distance)
+        case .south: return CGSize(width: 0, height: distance)
+        case .west: return CGSize(width: -distance, height: 0)
+        case .east: return CGSize(width: distance, height: 0)
+        }
     }
 
     @ViewBuilder
@@ -459,5 +525,26 @@ struct AtlasMapLabel: View {
             .overlay(Capsule().strokeBorder(isEmphasized ? Theme.summit.opacity(0.8) : Color.white.opacity(0.35), lineWidth: 1))
             .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+    }
+}
+
+/// Compass mark on an extreme point: "N" on the northernmost station, "O" on the easternmost …
+struct AtlasCompassBadge: View {
+    static let size: CGFloat = 17
+
+    let direction: AtlasCompass
+    let fill: Color
+    let ink: Color
+
+    var body: some View {
+        Text(AtlasFormat.compassLetter(direction))
+            .font(.system(size: 9.5, weight: .heavy, design: .rounded))
+            .foregroundStyle(ink)
+            .frame(width: Self.size, height: Self.size)
+            .background(fill, in: .circle)
+            .overlay(Circle().strokeBorder(ink.opacity(0.9), lineWidth: 1))
+            .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+            .dynamicTypeSize(.large)
+            .accessibilityHidden(true)
     }
 }

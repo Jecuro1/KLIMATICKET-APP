@@ -96,6 +96,8 @@ final class AtlasTests: XCTestCase {
         XCTAssertEqual(s.mappedTripCount, 1)
         XCTAssertEqual(s.unmappedTripCount, 3)
         XCTAssertEqual(s.unmapped.count, 2)
+        // Entries vs. one-way journeys: the cable-car round trip counts twice.
+        XCTAssertEqual(s.unmappedLegCount, 4)
         // Sorted by legs: the tram pair (2 legs, newest first) ties with the cable car round trip (2 legs) – value breaks the tie.
         let tram = s.unmapped.first { $0.mode == .tram }
         XCTAssertEqual(tram?.legs, 2)
@@ -142,6 +144,17 @@ final class AtlasTests: XCTestCase {
         XCTAssertEqual(e.west?.name, "Bludenz")
         XCTAssertEqual(e.east?.name, "Wien Praterstern")
         XCTAssertEqual(e.place(.west)?.name, "Bludenz")
+    }
+
+    func testExtremeDirectionsPerPlace() {
+        let trips = [trip(bludenz, innsbruck), trip(wienRail, praterstern), trip(klagenfurt, innsbruck)]
+        let s = Atlas.summarize(trips, stations: index)
+        let id: (String) -> String = { name in s.places.first { $0.name == name }!.id }
+        XCTAssertEqual(s.extremes.directions(of: id("Wien Praterstern")), [.north, .east])
+        XCTAssertEqual(s.extremes.directions(of: id("Klagenfurt Hauptbahnhof")), [.south])
+        XCTAssertEqual(s.extremes.directions(of: id("Bludenz")), [.west])
+        XCTAssertEqual(s.extremes.directions(of: id("Innsbruck Hauptbahnhof")), [])
+        XCTAssertEqual(AtlasExtremes().directions(of: "x"), [])
     }
 
     func testLongestTripAndTotals() {

@@ -3,7 +3,7 @@ import SwiftData
 import KlimaCore
 
 /// Opening state for screenshots / deep entry points.
-enum AtlasLaunchFocus {
+enum AtlasLaunchFocus: Equatable {
     case none
     /// Selects the most travelled route (route sheet open).
     case topRoute
@@ -11,6 +11,8 @@ enum AtlasLaunchFocus {
     case topRouteExpanded
     /// Opens the details sheet.
     case details
+    /// Flies to an extreme point (as if picked in the details sheet).
+    case extreme(AtlasCompass)
 }
 
 /// Sheets of the map screen. All route sheets share one identity, so tapping another route updates the open sheet
@@ -58,6 +60,7 @@ struct AtlasView: View {
     @State private var selectionTick = 0
     @State private var didLaunch = false
     @State private var panelShown = LaunchMode.isScreenshot
+    @State private var panelHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var look: AtlasMapLook { AtlasMapLook(rawValue: lookRaw) ?? .standard }
@@ -82,6 +85,14 @@ struct AtlasView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomOverlay
         }
+        .overlay(alignment: .bottomTrailing) {
+            // Outside the inset on purpose: the map's own safe area ends at the panel, so Apple's attribution sits
+            // on the left of this row instead of floating mid-map.
+            recenterButton
+                .padding(.trailing, Theme.Spacing.cardGutter)
+                .padding(.bottom, panelHeight + Theme.Spacing.s)
+                .opacity(panelShown ? 1 : 0)
+        }
         .navigationTitle("Österreich-Karte")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -100,25 +111,27 @@ struct AtlasView: View {
 
     // MARK: Overlays
 
+    private var recenterButton: some View {
+        Button {
+            showOverview()
+        } label: {
+            Image(systemName: "scope")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel("Alle Strecken zeigen")
+    }
+
     private var bottomOverlay: some View {
-        VStack(alignment: .trailing, spacing: Theme.Spacing.s) {
-            Button {
-                showOverview()
-            } label: {
-                Image(systemName: "scope")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .frame(width: 44, height: 44)
-            }
-            .buttonStyle(.plain)
-            .glassEffect(.regular.interactive(), in: .circle)
-            .accessibilityLabel("Alle Strecken zeigen")
-            AtlasPanel(summary: summary, scopeLabel: scopeLabel, modeName: mode?.displayName) {
-                sheet = .details
-            }
+        AtlasPanel(summary: summary, scopeLabel: scopeLabel, modeName: mode?.displayName) {
+            sheet = .details
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.bottom, Theme.Spacing.xs)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { panelHeight = $0 }
         .opacity(panelShown ? 1 : 0)
         .offset(y: panelShown ? 0 : 40)
         .onAppear {
@@ -266,6 +279,8 @@ struct AtlasView: View {
             if let id = summary.topRoute?.id { select(id) }
         case .details:
             sheet = .details
+        case .extreme(let direction):
+            if let place = summary.extremes.place(direction) { focus(place) }
         case .none:
             break
         }

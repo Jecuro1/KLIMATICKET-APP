@@ -141,7 +141,7 @@ struct AtlasPanel: View {
             HStack(spacing: 6) {
                 Image(systemName: "mappin.slash")
                     .font(.caption.weight(.semibold))
-                Text("\(AtlasFormat.legs(summary.unmappedTripCount)) ohne Kartenposition")
+                Text("\(AtlasFormat.routes(summary.unmapped.count)) ohne Kartenposition")
                     .font(.footnote.weight(.medium))
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
@@ -152,7 +152,7 @@ struct AtlasPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityHint("Zeigt Fahrten, für die keine Bahnhofs-Koordinaten bekannt sind")
+        .accessibilityHint("Zeigt Strecken, für deren Haltestellen keine Koordinaten bekannt sind")
     }
 
     // MARK: Empty

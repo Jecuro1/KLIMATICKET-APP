@@ -73,6 +73,7 @@ enum AtlasFormat {
     static func legs(_ n: Int) -> String { n == 1 ? "1 Fahrt" : "\(Format.number(Double(n))) Fahrten" }
     static func visits(_ n: Int) -> String { n == 1 ? "1 Besuch" : "\(Format.number(Double(n))) Besuche" }
     static func stations(_ n: Int) -> String { n == 1 ? "1 Bahnhof" : "\(n) Bahnhöfe" }
+    static func routes(_ n: Int) -> String { n == 1 ? "1 Strecke" : "\(n) Strecken" }
 
     /// "St. Anton ⇄ Landeck-Zams"
     static func routeTitle(_ route: AtlasRoute) -> String {
@@ -91,6 +92,16 @@ enum AtlasFormat {
     /// "11,40° O"
     static func longitude(_ value: Double) -> String {
         "\(Format.number(abs(value), decimals: 2))° \(value >= 0 ? "O" : "W")"
+    }
+
+    /// German compass letter ("O" for Osten).
+    static func compassLetter(_ direction: AtlasCompass) -> String {
+        switch direction {
+        case .north: "N"
+        case .south: "S"
+        case .west: "W"
+        case .east: "O"
+        }
     }
 
     /// Coordinate that matters for an extreme point (latitude for north/south, longitude for west/east).
