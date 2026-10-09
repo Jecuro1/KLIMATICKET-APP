@@ -163,7 +163,7 @@ final class TripEditorModel {
             estimate = nil
             return
         }
-        estimate = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: discount)
+        estimate = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: discount, date: date)
     }
 
     /// Amortisation preview: fraction before and after saving this trip.

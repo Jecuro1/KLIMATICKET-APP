@@ -39,9 +39,10 @@ public struct FareEstimator: Sendable {
     }
 
     public func estimate(from: GeoPoint, to: GeoPoint, mode: TransportMode,
-                         travelClass: TravelClass = .second, discount: FareDiscount = .none) -> FareEstimate {
+                         travelClass: TravelClass = .second, discount: FareDiscount = .none, date: Date = Date()) -> FareEstimate {
         let straight = from.distanceKm(to: to)
         let model = catalog.fareModel
+        let index = catalog.fareFactor(on: date)
 
         // Same city & short hop (or an urban mode) → city single ticket.
         if let city = catalog.cityFares.first(where: { $0.contains(from) && $0.contains(to) }),
@@ -58,7 +59,7 @@ public struct FareEstimator: Sendable {
         }
 
         let km = model.railDistance(fromStraightLineKm: straight)
-        let fare = model.fare(railKm: km, travelClass: travelClass, discount: discount)
+        let fare = model.round(model.fare(railKm: km, travelClass: travelClass, discount: discount) * index)
         var parts = ["≈ \(Int(km.rounded())) km", "Standardticket \(travelClass == .first ? "1." : "2.") Kl."]
         if discount == .vorteilscard { parts.append("mit Vorteilscard") }
         return FareEstimate(
@@ -71,12 +72,12 @@ public struct FareEstimator: Sendable {
     }
 
     public func estimate(from: Station, to: Station, mode: TransportMode,
-                         travelClass: TravelClass = .second, discount: FareDiscount = .none) -> FareEstimate {
-        let geo = estimate(from: from.location, to: to.location, mode: mode, travelClass: travelClass, discount: discount)
+                         travelClass: TravelClass = .second, discount: FareDiscount = .none, date: Date = Date()) -> FareEstimate {
+        let geo = estimate(from: from.location, to: to.location, mode: mode, travelClass: travelClass, discount: discount, date: date)
         guard geo.method != .cityTicket, mode != .metro, mode != .tram,
               let base = relations.price(from: from.id, to: to.id) else { return geo }
         let model = catalog.fareModel
-        var value = base
+        var value = base * catalog.fareFactor(on: date)
         if travelClass == .first { value *= model.firstClassFactor }
         if let factor = model.discountFactors[discount.rawValue] { value *= factor }
         value = model.round(value)

@@ -1,0 +1,2028 @@
+{
+ "meta": {
+  "generated": "2026-10-09",
+  "purpose": "Estimate the regular-ticket value of each logged trip for the KlimaTicket break-even (\"hat sich das Ticket rentiert?\") calculation.",
+  "oebb_price_basis": "ÖBB Standardticket (Vollpreis, no discount), 2nd class, sales channel Online/Mobile (shop.oebbtickets.at / ÖBB App), bought on the day of travel = column \"ST VP 000\" in the official ÖBB Relationspreise tables valid from 14.12.2025.",
+  "oebb_valid_from": "2025-12-14",
+  "next_oebb_price_change": {
+   "date": "2026-12-13",
+   "avg_change_pct": 3.5,
+   "factor": 1.035,
+   "note": "ÖBB: Standardtickets and Vorteilscard +3.5% on average from 13.12.2026; Sparschiene from-prices unchanged. Check: Wien-Innsbruck 1st class online 14-1 days ahead 178.20 -> 184.44 (= x1.035 exactly; 178.20 is the ST VP 014-001 value in the table).",
+   "source_url": "https://www.vienna.at/oebb-erhoehen-ticketpreise-im-dezember-um-im-schnitt-35-prozent/10295222",
+   "source_url_2": "https://www.salzburg24.at/news/oesterreich/oebb-erhoehen-ticketpreise-im-dezember-art-330617",
+   "validation_of_parsed_table": [
+    "Wien-St. Veit/Glan 2nd online day-of: table 62.30 == press \"bisher 62,30\" (new 64.50); 15+ days: 58.60*1.035=60.65 ~ press 60.70",
+    "Linz-Kufstein 2nd Vorteilscard online day-of: table 31.90 == press \"bisher 31,90\" (new 33.00)",
+    "Wien-Innsbruck 1st online 14-1 days: table 178.20 == press 178.20 (new 184.44)"
+   ]
+  },
+  "raw_data_files": [
+   "oebb_relation_prices_major.json (exact official ÖBB prices: 33 major origins x all destinations = 29,883 relations, 2nd+1st class online day-of-travel, plus OSM coordinates for 818 station names)",
+   "examples.json (43 named relations with all channels, OSM rail km, haversine, detour)",
+   "pairs_all.json (210,807 origin-destination pairs with official price, OSM rail km, haversine km; fit input)",
+   "fit_all.json / fit_hav_all.json / detour_all.json / eval_all.json / adjust_all.json"
+  ],
+  "method": "Parsed 10 of the 37 official ÖBB Relationspreise PDFs (origins starting BJ-BZ, GOM-GZ, I, KA-KL, LA-LE, LF-LZ, SA-SC, SQ-ST, STA-SZ, WF-WZ). For each origin->destination the cheapest route variant was taken. Rail km = shortest path on the OpenStreetMap railway network (railway=rail|narrow_gauge, sidings/yards excluded) between OSM station nodes, plus one virtual edge Kufstein<->Salzburg Hbf (122.4 km) for the German \"DB Korridor\" (Rosenheim-Kufstein Grenze 31.868 km + Rosenheim-Salzburg Hbf 88.551 km per Wikipedia + ~2 km estimate). Intra-city pairs (e.g. Wien X -> Wien Y, flat 2.40) excluded from the fit. Robust (soft-L1) least squares on relative error."
+ },
+ "oebb_standard_ticket": {
+  "source_url": "https://www.oebb.at/static/tarife/de/relationspreise/index.html",
+  "tariff_table_published": true,
+  "tariff_table_note": "ÖBB does not publish a EUR-per-km formula (the Handbuch für Reisen mit den ÖBB in Österreich, valid from 15.10.2026, only says prices are shown in the sales systems). Instead ÖBB publishes per-relation price tables (Relationspreise) for every station pair, all channels, 1st/2nd class, Vorteilscard, week/month passes. Prices are symmetric (A->B == B->A, verified on 12,175 pairs).",
+  "model_price_vs_rail_km": {
+   "type": "piecewise_linear",
+   "x": "rail_km",
+   "knots_km": [
+    0.0,
+    10.0,
+    20.0,
+    30.0,
+    50.0,
+    75.0,
+    100.0,
+    150.0,
+    200.0,
+    250.0,
+    300.0,
+    400.0,
+    500.0,
+    600.0,
+    1000.0
+   ],
+   "values_eur": [
+    2.36,
+    2.42,
+    4.7,
+    7.1,
+    11.68,
+    17.23,
+    22.34,
+    33.92,
+    44.55,
+    53.62,
+    62.65,
+    77.56,
+    88.8,
+    94.83,
+    114.77
+   ],
+   "floor_eur": 2.4,
+   "cap_eur": 101.2,
+   "formula": "price = clamp(interp(rail_km, knots_km, values_eur), 2.40, 101.20); round to 0.10",
+   "fit_error_relative": {
+    "median": 0.0398,
+    "mean": 0.0793,
+    "p90": 0.158
+   },
+   "n_pairs": 208510,
+   "note": "Minimum fare 2.40 EUR and maximum (cap) 101.20 EUR (2nd class, online, day of travel) are taken directly from the tables (min/max observed; 9,079 relations sit exactly at 101.20). Effective rate ~0.22-0.24 EUR/km up to ~250 km, degressive beyond, cap reached at ~650-730 km (Wien-Bregenz, 697 km, is at the cap)."
+  },
+  "model_simple_two_segment": {
+   "formula": "price = clamp(a + b*km for km<=k1; a + b*k1 + b2*(km-k1) for km>k1, 2.40, 101.20)",
+   "a": 0.456,
+   "b": 0.2193,
+   "k1": 260.6,
+   "b2": 0.1274,
+   "fit_error_relative": {
+    "median": 0.0442,
+    "mean": 0.0817,
+    "p90": 0.1547
+   }
+  },
+  "model_power_law": {
+   "formula": "price = clamp(a * km^b, 2.40, 101.20)",
+   "a": 0.347,
+   "b": 0.9074,
+   "fit_error_relative": {
+    "median": 0.0545,
+    "mean": 0.0905,
+    "p90": 0.1822
+   }
+  },
+  "model_quadratic": {
+   "formula": "price = clamp(a + b*km - c*km^2, 2.40, 101.20)",
+   "a": -0.4058,
+   "b": 0.25167,
+   "c": 0.0001482,
+   "fit_error_relative": {
+    "median": 0.0437,
+    "mean": 0.0806,
+    "p90": 0.162
+   }
+  },
+  "model_price_vs_haversine_km": {
+   "type": "piecewise_linear",
+   "x": "haversine_km",
+   "knots_km": [
+    0.0,
+    5.0,
+    10.0,
+    20.0,
+    35.0,
+    50.0,
+    75.0,
+    100.0,
+    150.0,
+    200.0,
+    250.0,
+    300.0,
+    400.0,
+    600.0
+   ],
+   "values_eur": [
+    0.83,
+    2.15,
+    2.75,
+    6.57,
+    12.26,
+    17.0,
+    25.18,
+    35.56,
+    51.87,
+    63.09,
+    73.99,
+    84.58,
+    94.68,
+    106.28
+   ],
+   "floor_eur": 2.4,
+   "cap_eur": 101.2,
+   "fit_error_relative": {
+    "median": 0.09,
+    "mean": 0.1274,
+    "p90": 0.295
+   },
+   "n_pairs": 208510,
+   "note": "Calibrated on ALL station pairs (dominated by branch-line pairs with large detours) -> overestimates typical main-line trips; prefer haversine x detour_factor -> rail model for main-line trips."
+  },
+  "detour_factor": {
+   "all_station_pairs": {
+    "2-25km_haversine": {
+     "n": 9500,
+     "median": 1.548,
+     "mean": 2.13,
+     "p25": 1.195,
+     "p75": 2.237,
+     "p10": 1.075,
+     "p90": 3.622
+    },
+    "25-50km_haversine": {
+     "n": 13936,
+     "median": 1.607,
+     "mean": 1.9,
+     "p25": 1.323,
+     "p75": 2.135,
+     "p10": 1.179,
+     "p90": 2.917
+    },
+    "50-100km_haversine": {
+     "n": 36670,
+     "median": 1.591,
+     "mean": 1.784,
+     "p25": 1.357,
+     "p75": 2.02,
+     "p10": 1.238,
+     "p90": 2.586
+    },
+    "100-200km_haversine": {
+     "n": 80444,
+     "median": 1.609,
+     "mean": 1.678,
+     "p25": 1.424,
+     "p75": 1.869,
+     "p10": 1.3,
+     "p90": 2.151
+    },
+    "200-350km_haversine": {
+     "n": 50764,
+     "median": 1.505,
+     "mean": 1.538,
+     "p25": 1.4,
+     "p75": 1.647,
+     "p10": 1.322,
+     "p90": 1.798
+    },
+    "350-700km_haversine": {
+     "n": 19254,
+     "median": 1.417,
+     "mean": 1.434,
+     "p25": 1.351,
+     "p75": 1.498,
+     "p10": 1.304,
+     "p90": 1.587
+    },
+    "overall": {
+     "n": 210568,
+     "median": 1.539,
+     "mean": 1.675,
+     "p25": 1.386,
+     "p75": 1.793,
+     "p10": 1.279,
+     "p90": 2.17
+    }
+   },
+   "major_station_pairs": {
+    "2-25km_haversine": {
+     "n": 65,
+     "median": 1.153,
+     "mean": 1.187,
+     "p25": 1.09,
+     "p75": 1.195,
+     "p10": 1.052,
+     "p90": 1.28
+    },
+    "25-50km_haversine": {
+     "n": 92,
+     "median": 1.345,
+     "mean": 1.401,
+     "p25": 1.123,
+     "p75": 1.503,
+     "p10": 1.08,
+     "p90": 1.686
+    },
+    "50-100km_haversine": {
+     "n": 298,
+     "median": 1.527,
+     "mean": 1.682,
+     "p25": 1.231,
+     "p75": 2.023,
+     "p10": 1.132,
+     "p90": 2.598
+    },
+    "100-200km_haversine": {
+     "n": 597,
+     "median": 1.502,
+     "mean": 1.604,
+     "p25": 1.336,
+     "p75": 1.829,
+     "p10": 1.202,
+     "p90": 2.095
+    },
+    "200-350km_haversine": {
+     "n": 510,
+     "median": 1.505,
+     "mean": 1.523,
+     "p25": 1.36,
+     "p75": 1.649,
+     "p10": 1.296,
+     "p90": 1.782
+    },
+    "350-700km_haversine": {
+     "n": 263,
+     "median": 1.428,
+     "mean": 1.429,
+     "p25": 1.341,
+     "p75": 1.507,
+     "p10": 1.292,
+     "p90": 1.557
+    },
+    "overall": {
+     "n": 1825,
+     "median": 1.466,
+     "mean": 1.544,
+     "p25": 1.311,
+     "p75": 1.656,
+     "p10": 1.184,
+     "p90": 2.01
+    }
+   },
+   "named_examples": {
+    "n": 43,
+    "median": 1.202,
+    "mean": 1.242,
+    "p25": 1.117,
+    "p75": 1.348,
+    "p10": 1.07,
+    "p90": 1.502
+   }
+  },
+  "estimation_pipeline_errors": {
+   "all": {
+    "rail_km_model": {
+     "n": 208510,
+     "median": 0.04,
+     "mean": 0.079,
+     "p90": 0.158
+    },
+    "haversine_direct_model": {
+     "n": 208510,
+     "median": 0.09,
+     "mean": 0.127,
+     "p90": 0.295
+    },
+    "haversine_x_1.2_then_rail_model": {
+     "n": 208510,
+     "median": 0.185,
+     "mean": 0.213,
+     "p90": 0.414
+    },
+    "hav_x_1.15": {
+     "n": 208510,
+     "median": 0.215,
+     "mean": 0.239,
+     "p90": 0.438
+    },
+    "hav_x_1.2": {
+     "n": 208510,
+     "median": 0.185,
+     "mean": 0.213,
+     "p90": 0.414
+    },
+    "hav_x_1.25": {
+     "n": 208510,
+     "median": 0.158,
+     "mean": 0.19,
+     "p90": 0.391
+    },
+    "hav_x_1.3": {
+     "n": 208510,
+     "median": 0.135,
+     "mean": 0.17,
+     "p90": 0.367
+    },
+    "hav_x_1.35": {
+     "n": 208510,
+     "median": 0.115,
+     "mean": 0.154,
+     "p90": 0.345
+    },
+    "hav_x_1.4": {
+     "n": 208510,
+     "median": 0.101,
+     "mean": 0.141,
+     "p90": 0.325
+    },
+    "hav_x_1.5": {
+     "n": 208510,
+     "median": 0.091,
+     "mean": 0.129,
+     "p90": 0.302
+    }
+   },
+   "major": {
+    "rail_km_model": {
+     "n": 1825,
+     "median": 0.038,
+     "mean": 0.086,
+     "p90": 0.199
+    },
+    "haversine_direct_model": {
+     "n": 1825,
+     "median": 0.093,
+     "mean": 0.123,
+     "p90": 0.286
+    },
+    "haversine_x_1.2_then_rail_model": {
+     "n": 1825,
+     "median": 0.112,
+     "mean": 0.151,
+     "p90": 0.338
+    },
+    "hav_x_1.15": {
+     "n": 1825,
+     "median": 0.142,
+     "mean": 0.174,
+     "p90": 0.365
+    },
+    "hav_x_1.2": {
+     "n": 1825,
+     "median": 0.112,
+     "mean": 0.151,
+     "p90": 0.338
+    },
+    "hav_x_1.25": {
+     "n": 1825,
+     "median": 0.097,
+     "mean": 0.133,
+     "p90": 0.313
+    },
+    "hav_x_1.3": {
+     "n": 1825,
+     "median": 0.085,
+     "mean": 0.121,
+     "p90": 0.289
+    },
+    "hav_x_1.35": {
+     "n": 1825,
+     "median": 0.08,
+     "mean": 0.114,
+     "p90": 0.267
+    },
+    "hav_x_1.4": {
+     "n": 1825,
+     "median": 0.077,
+     "mean": 0.113,
+     "p90": 0.257
+    },
+    "hav_x_1.5": {
+     "n": 1825,
+     "median": 0.092,
+     "mean": 0.123,
+     "p90": 0.287
+    }
+   }
+  },
+  "optional_adjustments": {
+   "tariff_point_additive_eur_median_residual": {
+    "Wien": {
+     "median": -0.8,
+     "n": 404,
+     "p25": -1.45,
+     "p75": 0.09
+    },
+    "Graz": {
+     "median": -0.28,
+     "n": 131,
+     "p25": -0.73,
+     "p75": 0.1
+    },
+    "Linz": {
+     "median": 0.82,
+     "n": 368,
+     "p25": 0.17,
+     "p75": 2.03
+    },
+    "Salzburg": {
+     "median": 1.96,
+     "n": 223,
+     "p25": 0.19,
+     "p75": 3.59
+    },
+    "Innsbruck": {
+     "median": 1.67,
+     "n": 107,
+     "p25": 1.18,
+     "p75": 2.05
+    },
+    "Klagenfurt": {
+     "median": 0.59,
+     "n": 141,
+     "p25": -0.41,
+     "p75": 2.23
+    },
+    "St. Pölten": {
+     "median": 0.09,
+     "n": 465,
+     "p25": -1.88,
+     "p75": 2.38
+    }
+   },
+   "db_korridor_price_ratio_vs_model": {
+    "median": 1.05,
+    "n": 23704,
+    "p25": 1.033,
+    "p75": 1.102
+   },
+   "db_korridor_additive_eur_recommended": 9.5,
+   "note": "Residual analysis: trips to/from the tariff point \"Innsbruck\" cost ~+1.7 EUR more than the km model (tight IQR), \"Linz\" ~+0.9 EUR; others inconsistent. Routes through the German \"DB Korridor\" (Kufstein-Rosenheim-Salzburg, e.g. Innsbruck-Salzburg, Tirol/Vorarlberg-Linz/Wien) cost ~+9-10 EUR more than the km model below ~300 km (ratio 1.27 at 100-200 km, 1.18 at 200-300 km, shrinking towards the 101.20 cap). Apply only when no exact relation price is available."
+  },
+  "multipliers": {
+   "first_class_vs_second": 1.951,
+   "class_upgrade_2_to_1": 0.951,
+   "vorteilscard": 0.5,
+   "channel_vs_online": {
+    "Online/Mobile": 1.0,
+    "Automat (ticket machine)": 1.086,
+    "Personenkassa (counter)": 1.236,
+    "im Zug (on board, long distance)": 1.371,
+    "im Zug_short_trips_note": "on board adds ~14.40 EUR fixed for short trips (<15 EUR)"
+   },
+   "advance_purchase_vs_day_of_travel": {
+    "000 (day of travel)": 1.0,
+    "014-001 (1-14 days before)": 0.981,
+    "180-015 (15+ days before)": 0.941
+   },
+   "note": "Medians over ~95,000 relations (files I, LF-LZ, BJ-BZ); extremely tight distributions (1st/2nd 1.951-1.958 across all price bands)."
+  },
+  "examples": [
+   {
+    "from": "Wien",
+    "to": "Salzburg",
+    "table_direction": "as_listed",
+    "route_weg": "Neulengbach/Tullnerfeld - Wels - Attnang-Puchheim",
+    "eur_2nd_online_dayof": 67.7,
+    "eur_2nd_online_14_1d": 66.4,
+    "eur_2nd_online_15plus_d": 63.7,
+    "eur_2nd_vorteilscard_online_dayof": 33.9,
+    "eur_1st_online_dayof": 132.1,
+    "eur_2nd_automat_dayof": 73.5,
+    "eur_2nd_personenkassa_dayof": 83.7,
+    "eur_2nd_im_zug_dayof": 92.8,
+    "n_route_variants": 6,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Salzburg Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "rail_km_osm_shortest": 310.3,
+    "haversine_km": 251.3,
+    "detour_factor": 1.235
+   },
+   {
+    "from": "Wien",
+    "to": "Graz",
+    "table_direction": "as_listed",
+    "route_weg": "Baden/Ebenfurth - Muerzz.",
+    "eur_2nd_online_dayof": 44.3,
+    "eur_2nd_online_14_1d": 43.5,
+    "eur_2nd_online_15plus_d": 41.7,
+    "eur_2nd_vorteilscard_online_dayof": 22.2,
+    "eur_1st_online_dayof": 86.4,
+    "eur_2nd_automat_dayof": 48.1,
+    "eur_2nd_personenkassa_dayof": 54.8,
+    "eur_2nd_im_zug_dayof": 60.7,
+    "n_route_variants": 1,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Graz Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.0724,
+     15.41652
+    ],
+    "rail_km_osm_shortest": 210.6,
+    "haversine_km": 143.2,
+    "detour_factor": 1.471
+   },
+   {
+    "from": "Wien",
+    "to": "Linz",
+    "table_direction": "as_listed",
+    "route_weg": "Neulengbach/Tullnerfeld - ST. POELTEN - Poechlarn - St. Valentin",
+    "eur_2nd_online_dayof": 42.6,
+    "eur_2nd_online_14_1d": 41.8,
+    "eur_2nd_online_15plus_d": 40.1,
+    "eur_2nd_vorteilscard_online_dayof": 21.3,
+    "eur_1st_online_dayof": 83.1,
+    "eur_2nd_automat_dayof": 46.3,
+    "eur_2nd_personenkassa_dayof": 52.7,
+    "eur_2nd_im_zug_dayof": 58.4,
+    "n_route_variants": 5,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Linz Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     48.29024,
+     14.29186
+    ],
+    "rail_km_osm_shortest": 186.2,
+    "haversine_km": 154.9,
+    "detour_factor": 1.202
+   },
+   {
+    "from": "Wien",
+    "to": "Innsbruck",
+    "table_direction": "as_listed",
+    "route_weg": "Neulengbach/Tullnerfeld - Wels - Hallein - Zell/See",
+    "eur_2nd_online_dayof": 92.8,
+    "eur_2nd_online_14_1d": 91.0,
+    "eur_2nd_online_15plus_d": 87.3,
+    "eur_2nd_vorteilscard_online_dayof": 46.4,
+    "eur_1st_online_dayof": 181.0,
+    "eur_2nd_automat_dayof": 100.7,
+    "eur_2nd_personenkassa_dayof": 114.7,
+    "eur_2nd_im_zug_dayof": 127.2,
+    "n_route_variants": 4,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Innsbruck Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "rail_km_osm_shortest": 505.1,
+    "haversine_km": 386.0,
+    "detour_factor": 1.309
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Bregenz",
+    "table_direction": "as_listed",
+    "route_weg": "Dornbirn",
+    "eur_2nd_online_dayof": 43.3,
+    "eur_2nd_online_14_1d": 42.5,
+    "eur_2nd_online_15plus_d": 40.8,
+    "eur_2nd_vorteilscard_online_dayof": 21.7,
+    "eur_1st_online_dayof": 84.5,
+    "eur_2nd_automat_dayof": 47.0,
+    "eur_2nd_personenkassa_dayof": 53.5,
+    "eur_2nd_im_zug_dayof": 59.4,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Bregenz",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.50302,
+     9.73976
+    ],
+    "rail_km_osm_shortest": 192.8,
+    "haversine_km": 127.9,
+    "detour_factor": 1.507
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Landeck-Zams",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 17.6,
+    "eur_2nd_online_14_1d": 17.3,
+    "eur_2nd_online_15plus_d": 16.6,
+    "eur_2nd_vorteilscard_online_dayof": 8.8,
+    "eur_1st_online_dayof": 34.4,
+    "eur_2nd_automat_dayof": 19.1,
+    "eur_2nd_personenkassa_dayof": 21.8,
+    "eur_2nd_im_zug_dayof": 32.0,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Landeck-Zams",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.14817,
+     10.57837
+    ],
+    "rail_km_osm_shortest": 72.1,
+    "haversine_km": 63.4,
+    "detour_factor": 1.137
+   },
+   {
+    "from": "Bludenz",
+    "to": "Landeck-Zams",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 14.8,
+    "eur_2nd_online_14_1d": 14.6,
+    "eur_2nd_online_15plus_d": 14.0,
+    "eur_2nd_vorteilscard_online_dayof": 7.4,
+    "eur_1st_online_dayof": 28.9,
+    "eur_2nd_automat_dayof": 16.1,
+    "eur_2nd_personenkassa_dayof": 18.3,
+    "eur_2nd_im_zug_dayof": 29.2,
+    "n_route_variants": 1,
+    "osm_from": "Bludenz",
+    "osm_to": "Landeck-Zams",
+    "from_latlon": [
+     47.15472,
+     9.81489
+    ],
+    "to_latlon": [
+     47.14817,
+     10.57837
+    ],
+    "rail_km_osm_shortest": 63.9,
+    "haversine_km": 57.7,
+    "detour_factor": 1.107
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Salzburg",
+    "table_direction": "as_listed",
+    "route_weg": "Jenbach - Kufstein - DB KORRIDOR",
+    "eur_2nd_online_dayof": 55.2,
+    "eur_2nd_online_14_1d": 54.1,
+    "eur_2nd_online_15plus_d": 51.9,
+    "eur_2nd_vorteilscard_online_dayof": 27.6,
+    "eur_1st_online_dayof": 107.7,
+    "eur_2nd_automat_dayof": 59.9,
+    "eur_2nd_personenkassa_dayof": 68.2,
+    "eur_2nd_im_zug_dayof": 75.7,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Salzburg Hauptbahnhof",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "rail_km_osm_shortest": 194.8,
+    "haversine_km": 137.8,
+    "detour_factor": 1.414
+   },
+   {
+    "from": "Linz",
+    "to": "Salzburg",
+    "table_direction": "as_listed",
+    "route_weg": "Wels - Attnang-Puchheim",
+    "eur_2nd_online_dayof": 32.4,
+    "eur_2nd_online_14_1d": 31.8,
+    "eur_2nd_online_15plus_d": 30.5,
+    "eur_2nd_vorteilscard_online_dayof": 16.2,
+    "eur_1st_online_dayof": 63.2,
+    "eur_2nd_automat_dayof": 35.2,
+    "eur_2nd_personenkassa_dayof": 40.1,
+    "eur_2nd_im_zug_dayof": 46.8,
+    "n_route_variants": 1,
+    "osm_from": "Linz Hauptbahnhof",
+    "osm_to": "Salzburg Hauptbahnhof",
+    "from_latlon": [
+     48.29024,
+     14.29186
+    ],
+    "to_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "rail_km_osm_shortest": 125.0,
+    "haversine_km": 106.7,
+    "detour_factor": 1.172
+   },
+   {
+    "from": "Graz",
+    "to": "Klagenfurt",
+    "table_direction": "as_listed",
+    "route_weg": "Hengsberg/Lieboch",
+    "eur_2nd_online_dayof": 32.0,
+    "eur_2nd_online_14_1d": 31.4,
+    "eur_2nd_online_15plus_d": 30.1,
+    "eur_2nd_vorteilscard_online_dayof": 16.0,
+    "eur_1st_online_dayof": 62.4,
+    "eur_2nd_automat_dayof": 34.8,
+    "eur_2nd_personenkassa_dayof": 39.6,
+    "eur_2nd_im_zug_dayof": 46.4,
+    "n_route_variants": 3,
+    "osm_from": "Graz Hauptbahnhof",
+    "osm_to": "Klagenfurt Hauptbahnhof",
+    "from_latlon": [
+     47.0724,
+     15.41652
+    ],
+    "to_latlon": [
+     46.61569,
+     14.3137
+    ],
+    "rail_km_osm_shortest": 126.2,
+    "haversine_km": 98.1,
+    "detour_factor": 1.286
+   },
+   {
+    "from": "Innsbruck",
+    "to": "St. Anton am Arlberg",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 23.5,
+    "eur_2nd_online_14_1d": 23.1,
+    "eur_2nd_online_15plus_d": 22.1,
+    "eur_2nd_vorteilscard_online_dayof": 11.8,
+    "eur_1st_online_dayof": 45.9,
+    "eur_2nd_automat_dayof": 25.5,
+    "eur_2nd_personenkassa_dayof": 29.1,
+    "eur_2nd_im_zug_dayof": 37.9,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "St. Anton am Arlberg",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "rail_km_osm_shortest": 99.4,
+    "haversine_km": 87.0,
+    "detour_factor": 1.143
+   },
+   {
+    "from": "Wien",
+    "to": "St. Pölten",
+    "table_direction": "as_listed",
+    "route_weg": "Neulengbach/Tullnerfeld",
+    "eur_2nd_online_dayof": 13.7,
+    "eur_2nd_online_14_1d": 13.5,
+    "eur_2nd_online_15plus_d": 12.9,
+    "eur_2nd_vorteilscard_online_dayof": 6.9,
+    "eur_1st_online_dayof": 26.8,
+    "eur_2nd_automat_dayof": 14.9,
+    "eur_2nd_personenkassa_dayof": 17.0,
+    "eur_2nd_im_zug_dayof": 28.1,
+    "n_route_variants": 7,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "St. Pölten Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     48.20828,
+     15.62468
+    ],
+    "rail_km_osm_shortest": 64.2,
+    "haversine_km": 55.9,
+    "detour_factor": 1.148
+   },
+   {
+    "from": "Wien",
+    "to": "Klagenfurt",
+    "table_direction": "as_listed",
+    "route_weg": "Baden/Ebenfurth - Muerzz. - GRAZ - Hengsberg/Lieboch",
+    "eur_2nd_online_dayof": 69.0,
+    "eur_2nd_online_14_1d": 67.7,
+    "eur_2nd_online_15plus_d": 64.9,
+    "eur_2nd_vorteilscard_online_dayof": 34.5,
+    "eur_1st_online_dayof": 134.6,
+    "eur_2nd_automat_dayof": 74.9,
+    "eur_2nd_personenkassa_dayof": 85.3,
+    "eur_2nd_im_zug_dayof": 94.6,
+    "n_route_variants": 2,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Klagenfurt Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     46.61569,
+     14.3137
+    ],
+    "rail_km_osm_shortest": 327.2,
+    "haversine_km": 233.6,
+    "detour_factor": 1.401
+   },
+   {
+    "from": "Wien",
+    "to": "Bregenz",
+    "table_direction": "as_listed",
+    "route_weg": "Krems/Donau - Wels - DB KORRIDOR - Kufstein - Dornbirn",
+    "eur_2nd_online_dayof": 101.2,
+    "eur_2nd_online_14_1d": 99.2,
+    "eur_2nd_online_15plus_d": 95.2,
+    "eur_2nd_vorteilscard_online_dayof": 50.6,
+    "eur_1st_online_dayof": 197.4,
+    "eur_2nd_automat_dayof": 109.9,
+    "eur_2nd_personenkassa_dayof": 125.0,
+    "eur_2nd_im_zug_dayof": 138.7,
+    "n_route_variants": 3,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Bregenz",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.50302,
+     9.73976
+    ],
+    "rail_km_osm_shortest": 697.2,
+    "haversine_km": 501.0,
+    "detour_factor": 1.392
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Bludenz",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 32.0,
+    "eur_2nd_online_14_1d": 31.4,
+    "eur_2nd_online_15plus_d": 30.1,
+    "eur_2nd_vorteilscard_online_dayof": 16.0,
+    "eur_1st_online_dayof": 62.4,
+    "eur_2nd_automat_dayof": 34.8,
+    "eur_2nd_personenkassa_dayof": 39.6,
+    "eur_2nd_im_zug_dayof": 46.4,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Bludenz",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.15472,
+     9.81489
+    ],
+    "rail_km_osm_shortest": 136.0,
+    "haversine_km": 120.4,
+    "detour_factor": 1.13
+   },
+   {
+    "from": "Wien",
+    "to": "Wiener Neustadt Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "Baden/Ebenfurth",
+    "eur_2nd_online_dayof": 11.4,
+    "eur_2nd_online_14_1d": 11.2,
+    "eur_2nd_online_15plus_d": 10.8,
+    "eur_2nd_vorteilscard_online_dayof": 5.7,
+    "eur_1st_online_dayof": 22.3,
+    "eur_2nd_automat_dayof": 12.6,
+    "eur_2nd_personenkassa_dayof": 14.1,
+    "eur_2nd_im_zug_dayof": 25.8,
+    "n_route_variants": 2,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Wiener Neustadt Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.81107,
+     16.23365
+    ],
+    "rail_km_osm_shortest": 48.1,
+    "haversine_km": 42.9,
+    "detour_factor": 1.121
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Hall in Tirol",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 4.0,
+    "eur_2nd_online_14_1d": 3.8,
+    "eur_2nd_online_15plus_d": 3.4,
+    "eur_2nd_vorteilscard_online_dayof": 2.0,
+    "eur_1st_online_dayof": 7.8,
+    "eur_2nd_automat_dayof": 5.2,
+    "eur_2nd_personenkassa_dayof": 6.7,
+    "eur_2nd_im_zug_dayof": 18.4,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Hall in Tirol",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.277,
+     11.50165
+    ],
+    "rail_km_osm_shortest": 8.6,
+    "haversine_km": 7.7,
+    "detour_factor": 1.117
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Völs",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 3.3,
+    "eur_2nd_online_14_1d": 3.1,
+    "eur_2nd_online_15plus_d": 2.7,
+    "eur_2nd_vorteilscard_online_dayof": 1.7,
+    "eur_1st_online_dayof": 6.5,
+    "eur_2nd_automat_dayof": 4.5,
+    "eur_2nd_personenkassa_dayof": 6.0,
+    "eur_2nd_im_zug_dayof": 17.7,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Völs",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.25576,
+     11.32136
+    ],
+    "rail_km_osm_shortest": 7.8,
+    "haversine_km": 6.1,
+    "detour_factor": 1.279
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Telfs-Pfaffenhofen",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 7.8,
+    "eur_2nd_online_14_1d": 7.6,
+    "eur_2nd_online_15plus_d": 7.2,
+    "eur_2nd_vorteilscard_online_dayof": 3.9,
+    "eur_1st_online_dayof": 15.3,
+    "eur_2nd_automat_dayof": 9.0,
+    "eur_2nd_personenkassa_dayof": 10.5,
+    "eur_2nd_im_zug_dayof": 22.2,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Telfs-Pfaffenhofen",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.30066,
+     11.07865
+    ],
+    "rail_km_osm_shortest": 27.4,
+    "haversine_km": 24.7,
+    "detour_factor": 1.109
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Schwaz",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 8.0,
+    "eur_2nd_online_14_1d": 7.8,
+    "eur_2nd_online_15plus_d": 7.4,
+    "eur_2nd_vorteilscard_online_dayof": 4.0,
+    "eur_1st_online_dayof": 15.6,
+    "eur_2nd_automat_dayof": 9.2,
+    "eur_2nd_personenkassa_dayof": 10.7,
+    "eur_2nd_im_zug_dayof": 22.4,
+    "n_route_variants": 2,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Schwaz",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.34976,
+     11.70156
+    ],
+    "rail_km_osm_shortest": 26.8,
+    "haversine_km": 24.6,
+    "detour_factor": 1.089
+   },
+   {
+    "from": "Wien",
+    "to": "Mödling",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 3.7,
+    "eur_2nd_online_14_1d": 3.5,
+    "eur_2nd_online_15plus_d": 3.1,
+    "eur_2nd_vorteilscard_online_dayof": 1.9,
+    "eur_1st_online_dayof": 7.3,
+    "eur_2nd_automat_dayof": 4.9,
+    "eur_2nd_personenkassa_dayof": 6.4,
+    "eur_2nd_im_zug_dayof": 18.1,
+    "n_route_variants": 2,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Mödling",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     48.08579,
+     16.29576
+    ],
+    "rail_km_osm_shortest": 15.1,
+    "haversine_km": 12.6,
+    "detour_factor": 1.198
+   },
+   {
+    "from": "Wien",
+    "to": "Baden",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 6.2,
+    "eur_2nd_online_14_1d": 6.0,
+    "eur_2nd_online_15plus_d": 5.6,
+    "eur_2nd_vorteilscard_online_dayof": 3.1,
+    "eur_1st_online_dayof": 12.1,
+    "eur_2nd_automat_dayof": 7.4,
+    "eur_2nd_personenkassa_dayof": 8.9,
+    "eur_2nd_im_zug_dayof": 20.6,
+    "n_route_variants": 1,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Baden",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     48.00404,
+     16.24279
+    ],
+    "rail_km_osm_shortest": 25.9,
+    "haversine_km": 22.5,
+    "detour_factor": 1.151
+   },
+   {
+    "from": "Linz",
+    "to": "Wels Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 6.7,
+    "eur_2nd_online_14_1d": 6.5,
+    "eur_2nd_online_15plus_d": 6.1,
+    "eur_2nd_vorteilscard_online_dayof": 3.4,
+    "eur_1st_online_dayof": 13.1,
+    "eur_2nd_automat_dayof": 7.9,
+    "eur_2nd_personenkassa_dayof": 9.4,
+    "eur_2nd_im_zug_dayof": 21.1,
+    "n_route_variants": 1,
+    "osm_from": "Linz Hauptbahnhof",
+    "osm_to": "Wels Hauptbahnhof",
+    "from_latlon": [
+     48.29024,
+     14.29186
+    ],
+    "to_latlon": [
+     48.16595,
+     14.02651
+    ],
+    "rail_km_osm_shortest": 25.3,
+    "haversine_km": 24.0,
+    "detour_factor": 1.054
+   },
+   {
+    "from": "Bludenz",
+    "to": "Feldkirch",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 4.9,
+    "eur_2nd_online_14_1d": 4.7,
+    "eur_2nd_online_15plus_d": 4.3,
+    "eur_2nd_vorteilscard_online_dayof": 2.5,
+    "eur_1st_online_dayof": 9.6,
+    "eur_2nd_automat_dayof": 6.1,
+    "eur_2nd_personenkassa_dayof": 7.6,
+    "eur_2nd_im_zug_dayof": 19.3,
+    "n_route_variants": 1,
+    "osm_from": "Bludenz",
+    "osm_to": "Feldkirch",
+    "from_latlon": [
+     47.15472,
+     9.81489
+    ],
+    "to_latlon": [
+     47.24093,
+     9.60431
+    ],
+    "rail_km_osm_shortest": 20.4,
+    "haversine_km": 18.6,
+    "detour_factor": 1.097
+   },
+   {
+    "from": "Landeck-Zams",
+    "to": "St. Anton am Arlberg",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 6.7,
+    "eur_2nd_online_14_1d": 6.5,
+    "eur_2nd_online_15plus_d": 6.1,
+    "eur_2nd_vorteilscard_online_dayof": 3.4,
+    "eur_1st_online_dayof": 13.1,
+    "eur_2nd_automat_dayof": 7.9,
+    "eur_2nd_personenkassa_dayof": 9.4,
+    "eur_2nd_im_zug_dayof": 21.1,
+    "n_route_variants": 1,
+    "osm_from": "Landeck-Zams",
+    "osm_to": "St. Anton am Arlberg",
+    "from_latlon": [
+     47.14817,
+     10.57837
+    ],
+    "to_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "rail_km_osm_shortest": 27.3,
+    "haversine_km": 23.6,
+    "detour_factor": 1.157
+   },
+   {
+    "from": "Bregenz",
+    "to": "Dornbirn",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 3.0,
+    "eur_2nd_online_14_1d": 2.8,
+    "eur_2nd_online_15plus_d": 2.4,
+    "eur_2nd_vorteilscard_online_dayof": 1.5,
+    "eur_1st_online_dayof": 5.9,
+    "eur_2nd_automat_dayof": 4.2,
+    "eur_2nd_personenkassa_dayof": 5.7,
+    "eur_2nd_im_zug_dayof": 17.4,
+    "n_route_variants": 1,
+    "osm_from": "Bregenz",
+    "osm_to": "Dornbirn",
+    "from_latlon": [
+     47.50302,
+     9.73976
+    ],
+    "to_latlon": [
+     47.41758,
+     9.73867
+    ],
+    "rail_km_osm_shortest": 11.8,
+    "haversine_km": 9.5,
+    "detour_factor": 1.242
+   },
+   {
+    "from": "Salzburg",
+    "to": "Hallein",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 4.4,
+    "eur_2nd_online_14_1d": 4.2,
+    "eur_2nd_online_15plus_d": 3.8,
+    "eur_2nd_vorteilscard_online_dayof": 2.2,
+    "eur_1st_online_dayof": 8.6,
+    "eur_2nd_automat_dayof": 5.6,
+    "eur_2nd_personenkassa_dayof": 7.1,
+    "eur_2nd_im_zug_dayof": 18.8,
+    "n_route_variants": 1,
+    "osm_from": "Salzburg Hauptbahnhof",
+    "osm_to": "Hallein",
+    "from_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "to_latlon": [
+     47.68504,
+     13.09968
+    ],
+    "rail_km_osm_shortest": 17.9,
+    "haversine_km": 14.8,
+    "detour_factor": 1.209
+   },
+   {
+    "from": "Graz",
+    "to": "Leoben Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 15.4,
+    "eur_2nd_online_14_1d": 15.1,
+    "eur_2nd_online_15plus_d": 14.5,
+    "eur_2nd_vorteilscard_online_dayof": 7.7,
+    "eur_1st_online_dayof": 30.1,
+    "eur_2nd_automat_dayof": 16.8,
+    "eur_2nd_personenkassa_dayof": 19.1,
+    "eur_2nd_im_zug_dayof": 29.8,
+    "n_route_variants": 1,
+    "osm_from": "Graz Hauptbahnhof",
+    "osm_to": "Leoben Hauptbahnhof",
+    "from_latlon": [
+     47.0724,
+     15.41652
+    ],
+    "to_latlon": [
+     47.38666,
+     15.08973
+    ],
+    "rail_km_osm_shortest": 67.8,
+    "haversine_km": 42.8,
+    "detour_factor": 1.584
+   },
+   {
+    "from": "Wien",
+    "to": "Eisenstadt",
+    "table_direction": "as_listed",
+    "route_weg": "Bruck/Leitha",
+    "eur_2nd_online_dayof": 19.0,
+    "eur_2nd_online_14_1d": 18.7,
+    "eur_2nd_online_15plus_d": 17.9,
+    "eur_2nd_vorteilscard_online_dayof": 9.5,
+    "eur_1st_online_dayof": 37.1,
+    "eur_2nd_automat_dayof": 20.7,
+    "eur_2nd_personenkassa_dayof": 23.5,
+    "eur_2nd_im_zug_dayof": 33.4,
+    "n_route_variants": 1,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Eisenstadt",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     47.83925,
+     16.52928
+    ],
+    "rail_km_osm_shortest": 62.1,
+    "haversine_km": 40.1,
+    "detour_factor": 1.549
+   },
+   {
+    "from": "Wien",
+    "to": "Amstetten",
+    "table_direction": "as_listed",
+    "route_weg": "Neulengbach/Tullnerfeld - ST. POELTEN - Poechlarn",
+    "eur_2nd_online_dayof": 29.3,
+    "eur_2nd_online_14_1d": 28.8,
+    "eur_2nd_online_15plus_d": 27.6,
+    "eur_2nd_vorteilscard_online_dayof": 14.7,
+    "eur_1st_online_dayof": 57.2,
+    "eur_2nd_automat_dayof": 31.8,
+    "eur_2nd_personenkassa_dayof": 36.2,
+    "eur_2nd_im_zug_dayof": 43.7,
+    "n_route_variants": 5,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Amstetten",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     48.12155,
+     14.8786
+    ],
+    "rail_km_osm_shortest": 124.9,
+    "haversine_km": 111.4,
+    "detour_factor": 1.121
+   },
+   {
+    "from": "Linz",
+    "to": "Steyr",
+    "table_direction": "as_listed",
+    "route_weg": "St. Valentin",
+    "eur_2nd_online_dayof": 9.9,
+    "eur_2nd_online_14_1d": 9.7,
+    "eur_2nd_online_15plus_d": 9.3,
+    "eur_2nd_vorteilscard_online_dayof": 5.0,
+    "eur_1st_online_dayof": 19.4,
+    "eur_2nd_automat_dayof": 11.1,
+    "eur_2nd_personenkassa_dayof": 12.6,
+    "eur_2nd_im_zug_dayof": 24.3,
+    "n_route_variants": 1,
+    "osm_from": "Linz Hauptbahnhof",
+    "osm_to": "Steyr",
+    "from_latlon": [
+     48.29024,
+     14.29186
+    ],
+    "to_latlon": [
+     48.03843,
+     14.42345
+    ],
+    "rail_km_osm_shortest": 44.6,
+    "haversine_km": 29.7,
+    "detour_factor": 1.502
+   },
+   {
+    "from": "Graz",
+    "to": "Bruck a.d. Mur",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 11.8,
+    "eur_2nd_online_14_1d": 11.6,
+    "eur_2nd_online_15plus_d": 11.1,
+    "eur_2nd_vorteilscard_online_dayof": 5.9,
+    "eur_1st_online_dayof": 23.1,
+    "eur_2nd_automat_dayof": 13.0,
+    "eur_2nd_personenkassa_dayof": 14.6,
+    "eur_2nd_im_zug_dayof": 26.2,
+    "n_route_variants": 1,
+    "osm_from": "Graz Hauptbahnhof",
+    "osm_to": "Bruck an der Mur",
+    "from_latlon": [
+     47.0724,
+     15.41652
+    ],
+    "to_latlon": [
+     47.41387,
+     15.27944
+    ],
+    "rail_km_osm_shortest": 53.1,
+    "haversine_km": 39.4,
+    "detour_factor": 1.348
+   },
+   {
+    "from": "St. Anton am Arlberg",
+    "to": "Bludenz",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 8.6,
+    "eur_2nd_online_14_1d": 8.4,
+    "eur_2nd_online_15plus_d": 8.0,
+    "eur_2nd_vorteilscard_online_dayof": 4.3,
+    "eur_1st_online_dayof": 16.8,
+    "eur_2nd_automat_dayof": 9.8,
+    "eur_2nd_personenkassa_dayof": 11.3,
+    "eur_2nd_im_zug_dayof": 23.0,
+    "n_route_variants": 1,
+    "osm_from": "St. Anton am Arlberg",
+    "osm_to": "Bludenz",
+    "from_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "to_latlon": [
+     47.15472,
+     9.81489
+    ],
+    "rail_km_osm_shortest": 36.6,
+    "haversine_km": 34.4,
+    "detour_factor": 1.064
+   },
+   {
+    "from": "St. Anton am Arlberg",
+    "to": "Bregenz",
+    "table_direction": "as_listed",
+    "route_weg": "Dornbirn",
+    "eur_2nd_online_dayof": 20.9,
+    "eur_2nd_online_14_1d": 20.5,
+    "eur_2nd_online_15plus_d": 19.7,
+    "eur_2nd_vorteilscard_online_dayof": 10.5,
+    "eur_1st_online_dayof": 40.8,
+    "eur_2nd_automat_dayof": 22.7,
+    "eur_2nd_personenkassa_dayof": 25.9,
+    "eur_2nd_im_zug_dayof": 35.3,
+    "n_route_variants": 2,
+    "osm_from": "St. Anton am Arlberg",
+    "osm_to": "Bregenz",
+    "from_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "to_latlon": [
+     47.50302,
+     9.73976
+    ],
+    "rail_km_osm_shortest": 93.4,
+    "haversine_km": 57.7,
+    "detour_factor": 1.619
+   },
+   {
+    "from": "St. Anton am Arlberg",
+    "to": "Salzburg",
+    "table_direction": "as_listed",
+    "route_weg": "INNSBRUCK - Jenbach - Kufstein - DB KORRIDOR",
+    "eur_2nd_online_dayof": 70.6,
+    "eur_2nd_online_14_1d": 69.2,
+    "eur_2nd_online_15plus_d": 66.4,
+    "eur_2nd_vorteilscard_online_dayof": 35.3,
+    "eur_1st_online_dayof": 137.7,
+    "eur_2nd_automat_dayof": 76.7,
+    "eur_2nd_personenkassa_dayof": 87.2,
+    "eur_2nd_im_zug_dayof": 96.8,
+    "n_route_variants": 1,
+    "osm_from": "St. Anton am Arlberg",
+    "osm_to": "Salzburg Hauptbahnhof",
+    "from_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "to_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "rail_km_osm_shortest": 293.5,
+    "haversine_km": 222.3,
+    "detour_factor": 1.32
+   },
+   {
+    "from": "St. Anton am Arlberg",
+    "to": "Wien",
+    "table_direction": "as_listed",
+    "route_weg": "Jenbach - Kufstein - DB KORRIDOR - Wels - Neulengbach/Tullnerfeld",
+    "eur_2nd_online_dayof": 98.0,
+    "eur_2nd_online_14_1d": 96.1,
+    "eur_2nd_online_15plus_d": 92.2,
+    "eur_2nd_vorteilscard_online_dayof": 49.0,
+    "eur_1st_online_dayof": 191.1,
+    "eur_2nd_automat_dayof": 106.4,
+    "eur_2nd_personenkassa_dayof": 121.1,
+    "eur_2nd_im_zug_dayof": 134.3,
+    "n_route_variants": 4,
+    "osm_from": "St. Anton am Arlberg",
+    "osm_to": "Wien Hauptbahnhof",
+    "from_latlon": [
+     47.12738,
+     10.26732
+    ],
+    "to_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "rail_km_osm_shortest": 603.8,
+    "haversine_km": 472.4,
+    "detour_factor": 1.278
+   },
+   {
+    "from": "Landeck-Zams",
+    "to": "Imst-Pitztal",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 4.2,
+    "eur_2nd_online_14_1d": 4.0,
+    "eur_2nd_online_15plus_d": 3.6,
+    "eur_2nd_vorteilscard_online_dayof": 2.1,
+    "eur_1st_online_dayof": 8.2,
+    "eur_2nd_automat_dayof": 5.4,
+    "eur_2nd_personenkassa_dayof": 6.9,
+    "eur_2nd_im_zug_dayof": 18.6,
+    "n_route_variants": 1,
+    "osm_from": "Landeck-Zams",
+    "osm_to": "Imst-Pitztal",
+    "from_latlon": [
+     47.14817,
+     10.57837
+    ],
+    "to_latlon": [
+     47.21906,
+     10.7619
+    ],
+    "rail_km_osm_shortest": 17.0,
+    "haversine_km": 16.0,
+    "detour_factor": 1.062
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Kufstein",
+    "table_direction": "as_listed",
+    "route_weg": "Jenbach",
+    "eur_2nd_online_dayof": 18.6,
+    "eur_2nd_online_14_1d": 18.3,
+    "eur_2nd_online_15plus_d": 17.5,
+    "eur_2nd_vorteilscard_online_dayof": 9.3,
+    "eur_1st_online_dayof": 36.3,
+    "eur_2nd_automat_dayof": 20.2,
+    "eur_2nd_personenkassa_dayof": 23.0,
+    "eur_2nd_im_zug_dayof": 33.0,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Kufstein",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.58297,
+     12.16573
+    ],
+    "rail_km_osm_shortest": 72.3,
+    "haversine_km": 67.6,
+    "detour_factor": 1.07
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Wörgl Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "Jenbach",
+    "eur_2nd_online_dayof": 16.0,
+    "eur_2nd_online_14_1d": 15.7,
+    "eur_2nd_online_15plus_d": 15.1,
+    "eur_2nd_vorteilscard_online_dayof": 8.0,
+    "eur_1st_online_dayof": 31.2,
+    "eur_2nd_automat_dayof": 17.4,
+    "eur_2nd_personenkassa_dayof": 19.8,
+    "eur_2nd_im_zug_dayof": 30.4,
+    "n_route_variants": 1,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Wörgl Hauptbahnhof",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.49151,
+     12.06062
+    ],
+    "rail_km_osm_shortest": 58.8,
+    "haversine_km": 55.8,
+    "detour_factor": 1.054
+   },
+   {
+    "from": "Innsbruck",
+    "to": "Jenbach",
+    "table_direction": "as_listed",
+    "route_weg": "",
+    "eur_2nd_online_dayof": 10.1,
+    "eur_2nd_online_14_1d": 9.9,
+    "eur_2nd_online_15plus_d": 9.5,
+    "eur_2nd_vorteilscard_online_dayof": 5.1,
+    "eur_1st_online_dayof": 19.7,
+    "eur_2nd_automat_dayof": 11.3,
+    "eur_2nd_personenkassa_dayof": 12.8,
+    "eur_2nd_im_zug_dayof": 24.5,
+    "n_route_variants": 2,
+    "osm_from": "Innsbruck Hauptbahnhof",
+    "osm_to": "Jenbach",
+    "from_latlon": [
+     47.2633,
+     11.40102
+    ],
+    "to_latlon": [
+     47.38842,
+     11.77827
+    ],
+    "rail_km_osm_shortest": 34.1,
+    "haversine_km": 31.7,
+    "detour_factor": 1.076
+   },
+   {
+    "from": "Salzburg",
+    "to": "Villach Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "Hallein - Spittal-Millstsee",
+    "eur_2nd_online_dayof": 39.9,
+    "eur_2nd_online_14_1d": 39.2,
+    "eur_2nd_online_15plus_d": 37.6,
+    "eur_2nd_vorteilscard_online_dayof": 20.0,
+    "eur_1st_online_dayof": 77.9,
+    "eur_2nd_automat_dayof": 43.3,
+    "eur_2nd_personenkassa_dayof": 49.3,
+    "eur_2nd_im_zug_dayof": 54.7,
+    "n_route_variants": 1,
+    "osm_from": "Salzburg Hauptbahnhof",
+    "osm_to": "Villach Hauptbahnhof",
+    "from_latlon": [
+     47.81306,
+     13.04585
+    ],
+    "to_latlon": [
+     46.61862,
+     13.84844
+    ],
+    "rail_km_osm_shortest": 181.0,
+    "haversine_km": 146.0,
+    "detour_factor": 1.24
+   },
+   {
+    "from": "Wien",
+    "to": "Villach Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "Baden/Ebenfurth - Muerzz. - Leoben - Feldkirchen/Kaer.",
+    "eur_2nd_online_dayof": 69.7,
+    "eur_2nd_online_14_1d": 68.4,
+    "eur_2nd_online_15plus_d": 65.6,
+    "eur_2nd_vorteilscard_online_dayof": 34.9,
+    "eur_1st_online_dayof": 136.0,
+    "eur_2nd_automat_dayof": 75.7,
+    "eur_2nd_personenkassa_dayof": 86.1,
+    "eur_2nd_im_zug_dayof": 95.5,
+    "n_route_variants": 3,
+    "osm_from": "Wien Hauptbahnhof",
+    "osm_to": "Villach Hauptbahnhof",
+    "from_latlon": [
+     48.18499,
+     16.37794
+    ],
+    "to_latlon": [
+     46.61862,
+     13.84844
+    ],
+    "rail_km_osm_shortest": 357.6,
+    "haversine_km": 258.0,
+    "detour_factor": 1.386
+   },
+   {
+    "from": "Graz",
+    "to": "Villach Hbf",
+    "table_direction": "as_listed",
+    "route_weg": "Hengsberg/Lieboch - KLAGENFURT - Velden/Woerthers.",
+    "eur_2nd_online_dayof": 37.9,
+    "eur_2nd_online_14_1d": 37.2,
+    "eur_2nd_online_15plus_d": 35.7,
+    "eur_2nd_vorteilscard_online_dayof": 19.0,
+    "eur_1st_online_dayof": 74.0,
+    "eur_2nd_automat_dayof": 41.2,
+    "eur_2nd_personenkassa_dayof": 46.9,
+    "eur_2nd_im_zug_dayof": 52.3,
+    "n_route_variants": 1,
+    "osm_from": "Graz Hauptbahnhof",
+    "osm_to": "Villach Hauptbahnhof",
+    "from_latlon": [
+     47.0724,
+     15.41652
+    ],
+    "to_latlon": [
+     46.61862,
+     13.84844
+    ],
+    "rail_km_osm_shortest": 164.5,
+    "haversine_km": 129.5,
+    "detour_factor": 1.27
+   }
+  ],
+  "vorteilscard": {
+   "discount_on_standard_tickets": 0.5,
+   "validity_months": 12,
+   "prices_eur": {
+    "Classic": 73,
+    "Comfort": 89,
+    "Jugend (<26)": 21,
+    "Family": 21,
+    "Senior:in (65+)": 31,
+    "Senior:in Frei": 0
+   },
+   "note": "Classic is for everyone (the former Vorteilscard 66 was merged into Classic in 2025). Comfort adds 50% on seat reservations. Vorteilscard prices also rise ~3.5% on 13.12.2026 (new amounts not yet published).",
+   "source_url": "https://www.oebb.at/de/tickets-kundenkarten/kundenkarten/vorteilscard/alle-vorteilscards",
+   "confidence": "high"
+  },
+  "klimaticket_oe_reference": {
+   "Classic_eur": 1400.0,
+   "Jugend_Senior_Spezial_eur": 1050.0,
+   "Family_surcharge_eur": 140.0,
+   "note": "As listed in the VMOBIL tariff table \"Stand 01.06.2026\" (secondary listing; verify against klimaticket.at).",
+   "source_url": "https://www.vmobil.at/sites/default/files/2026-07/Tarifbestimmungen%2001.06.2026.pdf",
+   "confidence": "medium"
+  },
+  "detour_factor_recommended": {
+   "typical_main_line_trip": 1.2,
+   "banded_general": {
+    "haversine_lt_25km": 1.15,
+    "haversine_25_50km": 1.3,
+    "haversine_ge_50km": 1.45
+   },
+   "evidence": "Named example relations (43, typical city-to-city / along-line trips): median rail/haversine 1.20 (p25 1.12, p75 1.35; <50 km 1.15, >=50 km 1.26). Pairs among ~60 major stations (1,825): median 1.47 (2-25 km 1.15, 25-50 km 1.35, 50-350 km ~1.50, >350 km 1.43). All 210k station pairs: median 1.54 (branch-to-branch detours).",
+   "errors_vs_official_price": {
+    "named_examples": {
+     "rail_km_model": {
+      "median": 0.044,
+      "mean": 0.079,
+      "p90": 0.207
+     },
+     "haversine_x1.20_then_rail_model": {
+      "median": 0.078,
+      "mean": 0.109,
+      "p90": 0.234
+     },
+     "banded_detour_then_rail_model": {
+      "median": 0.091,
+      "mean": 0.123,
+      "p90": 0.266
+     },
+     "haversine_direct_model": {
+      "median": 0.165,
+      "mean": 0.165,
+      "p90": 0.319
+     }
+    },
+    "major_station_pairs": {
+     "banded_detour_then_rail_model": {
+      "median": 0.081,
+      "mean": 0.11,
+      "p90": 0.258
+     }
+    },
+    "all_station_pairs": {
+     "banded_detour_then_rail_model": {
+      "median": 0.092,
+      "mean": 0.135,
+      "p90": 0.318
+     }
+    }
+   }
+  },
+  "recommended_estimation_pipeline": [
+   "1. Exact lookup: if both stations are known and the pair is in oebb_relation_prices_major.json (29,883 official relations from 33 major origins incl. Wien, Innsbruck, Salzburg, Linz, Graz, Klagenfurt, St. Pölten, Landeck-Zams, St. Anton am Arlberg, Bludenz, Bregenz), use p2 (2nd) / p1 (1st). Prices are symmetric, so also look up B->A.",
+   "2. If the rail distance is known (journey planner leg distance or bundled rail graph): price = clamp(interp(rail_km, knots, values), 2.40, 101.20). Optional: +1.70 EUR if one end is the tariff point Innsbruck, +9.50 EUR (then cap 101.20) if the route uses the DB-Korridor via Kufstein-Rosenheim-Salzburg.",
+   "3. Otherwise: rail_km = haversine_km x detour (1.20 for an obvious along-the-line trip, else banded 1.15/1.30/1.45) and apply step 2.",
+   "4. Apply multipliers: 1st class x1.951; Vorteilscard x0.5; reference channel Online/Mobile day-of-travel (Automat x1.086, counter x1.236); from 13.12.2026 multiply by 1.035 and round to 0.10 EUR.",
+   "5. Local city trips: use city_and_regional_tickets.recommended_defaults_eur (e.g. Wien 3.20, Innsbruck 3.30).",
+   "6. Show the result as an estimate (\"ca.\"), and let the user override the value per trip."
+  ]
+ },
+ "city_and_regional_tickets": {
+  "note": "Single-ride / day tickets for the city core zones. Use as default value for a logged local trip (tram, bus, U-Bahn, S-Bahn inside a city). The ÖBB tables price intra-Wien rail trips at a flat 2.40 EUR (ÖBB-own city fare), but the fare actually paid by most riders is the Wiener Linien/VOR Kernzone ticket.",
+  "Wien": {
+   "operator": "Wiener Linien / VOR Kernzone 100",
+   "valid_from": "2026-01-01",
+   "single_eur": 3.2,
+   "single_digital_eur": 3.0,
+   "single_reduced_eur": 1.6,
+   "single_reduced_digital_eur": 1.5,
+   "24h_eur": 10.2,
+   "24h_digital_eur": 9.7,
+   "7d_eur": 28.9,
+   "7d_digital_eur": 25.2,
+   "31d_eur": 75.0,
+   "31d_digital_eur": 65.2,
+   "jahreskarte_eur": 467.0,
+   "jahreskarte_digital_eur": 461.0,
+   "notes": "48h/72h tickets discontinued 1.1.2026. Previous single price 2.40. Tariffs will be indexed to CPI from 2027 (details expected autumn 2026; CPI Aug25-Aug26 +3.2%).",
+   "source_url": "https://www.behindertenrat.at/wp-content/uploads/2025/09/WL_2025_Factsheet_A4_3seitig_Tarifanpassungen_web.pdf",
+   "source_url_2": "https://wien.orf.at/stories/3319878",
+   "source_note": "Official Wiener Linien factsheet \"Neue Tarifstruktur\" (09.2025), hosted by Österreichischer Behindertenrat; wienerlinien.at itself was bot-protected.",
+   "confidence": "high"
+  },
+  "Innsbruck": {
+   "operator": "IVB (Kernzone Innsbruck, VVT)",
+   "single_eur": 3.3,
+   "single_reduced_eur": 2.2,
+   "24h_eur": 7.3,
+   "24h_reduced_eur": 5.1,
+   "week_eur": 28.4,
+   "month_eur": 71.8,
+   "klimaticket_innsbruck_eur": 475.2,
+   "8_trips_eur": 19.1,
+   "notes": "Printed single valid 45 min, online 90 min. Validity date not stated on the page (retrieved 2026-10-09).",
+   "source_url": "https://www.ivb.at/en/passenger/tickets/overview-of-tickets/",
+   "source_url_2": "https://www.vvt.at/tickets/einzeltickets",
+   "confidence": "medium-high"
+  },
+  "Tirol_regional_VVT": {
+   "single_from_eur_per_zone": 1.6,
+   "city_bus_Kufstein_Schwaz_Lienz_eur": 1.6,
+   "notes": "Zone-based regional tariff; exact zone count per trip not modelled. For rail trips inside Tirol use the ÖBB relation price instead.",
+   "source_url": "https://www.vvt.at/tickets/einzeltickets",
+   "confidence": "medium"
+  },
+  "Vorarlberg_VMOBIL": {
+   "valid_from": "2026-06-01",
+   "60min_LOKAL_eur": 2.4,
+   "60min_REGIO_eur": 4.8,
+   "120min_MAXIMO_eur": 9.6,
+   "24h_LOKAL_eur": 4.6,
+   "24h_REGIO_eur": 9.2,
+   "24h_MAXIMO_eur": 18.4,
+   "month_LOKAL_eur": 35.0,
+   "month_REGIO_eur": 70.0,
+   "month_MAXIMO_eur": 140.0,
+   "driver_surcharge_eur": 0.5,
+   "klimaticket_vmobil_maximo_classic_eur": 448.0,
+   "klimaticket_vmobil_lokal_classic_eur": 264.0,
+   "notes": "New zone system LOKAL/REGIO/MAXIMO since 1.6.2026 (no separate city tariff; LOKAL = home municipality + neighbours).",
+   "source_url": "https://www.vmobil.at/sites/default/files/2026-07/Tarifbestimmungen%2001.06.2026.pdf",
+   "confidence": "high"
+  },
+  "Salzburg": {
+   "operator": "Salzburg Verkehr (Kernzone Stadt Salzburg)",
+   "valid_from": "2026-01-01",
+   "1h_ticket_eur": 2.6,
+   "1h_senior_eur": 2.1,
+   "1h_youth_eur": 1.8,
+   "notes": "Price for ticket machine / smartphone / online; 60 min unlimited transfers.",
+   "source_url": "https://salzburg-verkehr.at/en/tickets-fares/single-ride-tickets/1h-ticket/",
+   "confidence": "high"
+  },
+  "Linz": {
+   "operator": "LINZ AG LINIEN (Kernzone Linz, OÖVV)",
+   "valid_from": "2026-01-01",
+   "MIDI_single_long_eur": 3.2,
+   "MINI_short_hop_eur": 1.6,
+   "MAXI_24h_eur": 6.4,
+   "1h_ticket_mobile_eur": 3.2,
+   "week_eur": 20.3,
+   "month_eur": 64.5,
+   "klimaticket_kernzone_linz_eur": 467.0,
+   "notes": "MINI = boarding stop + max. 4 following stops. Outside the Kernzone the OÖVV regional tariff applies (not researched).",
+   "source_url": "https://www.linzag.at/media/dokumente/linien_1/vertragsbedingungen___tarifblaetter/Fahrpreise-Kernzone-Linz.pdf",
+   "confidence": "high"
+  },
+  "Graz": {
+   "operator": "Graz Linien (Verbund Linie Zone 101)",
+   "valid_from": "2026-07-01",
+   "stundenkarte_eur": 3.3,
+   "24h_eur": 7.2,
+   "week_eur": 20.8,
+   "month_eur": 69.0,
+   "klimaticket_steiermark_classic_eur": 532.0,
+   "source_url": "https://www.holding-graz.at/wp-content/uploads/2026/06/Tarifbestimmungen-und-Befoerderungsbedingungen-ab-1.7.2026.pdf",
+   "confidence": "high"
+  },
+  "Steiermark_regional_Verbund_Linie": {
+   "valid_from": "2026-05-01",
+   "superseded_note": "Verbund Linie raised tariffs ~3.5% on 1.7.2026 (Graz 1-zone 3.20 -> 3.30); the zone table below is the 1.5.2026 version, multiply by ~1.035 for current values (estimate).",
+   "stundenkarte_by_zones_eur": {
+    "1": 3.2,
+    "2": 6.1,
+    "3": 8.8,
+    "4": 11.3,
+    "5": 13.8,
+    "6": 16.3,
+    "7": 18.7,
+    "8": 21.2,
+    "9": 23.6,
+    "10": 26.0,
+    "11": 28.2,
+    "12": 30.5,
+    "13": 32.8,
+    "14": 34.6,
+    "15": 36.5,
+    "16+": 38.1
+   },
+   "24h_by_zones_eur": {
+    "1": 7.0,
+    "2": 12.2,
+    "3": 17.6,
+    "4": 22.6,
+    "5": 27.6,
+    "6": 32.6
+   },
+   "source_url": "https://www.verbundlinie.at/images/tarif/pdfs/tarifbestimmungen_010526.pdf",
+   "source_url_increase": "https://www.5min.at/steiermark/5202603110930/oeffis-werden-teurer-das-kosten-bus-und-bahn-in-der-steiermark-und-graz/",
+   "confidence": "medium"
+  },
+  "Klagenfurt": {
+   "operator": "KMG Klagenfurt Mobil (Kärntner Linien area)",
+   "60min_classic_eur": 2.6,
+   "60min_classic_app_or_prepaid_eur": 2.3,
+   "24h_classic_eur": 6.4,
+   "24h_classic_app_or_prepaid_eur": 5.6,
+   "72h_eur": 14.7,
+   "7d_eur": 19.2,
+   "30d_eur": 46.0,
+   "jahreskarte_plus_eur": 364.0,
+   "notes": "Price columns are unlabelled image alt-texts on the page; mapping 2.60 = bought on bus, 2.30 = app/prepaid card is an inference (KMG says app/prepaid stay cheaper). No validity date on page; Kärntner Linien raised regional tariffs ~2.76% on 1.7.2026.",
+   "source_url": "https://www.klagenfurtmobil.at/tarife-tickets/tariftabelle/",
+   "confidence": "medium-low"
+  },
+  "VVNB": {
+   "status": "Verkehrsverbund Niederösterreich-Burgenland no longer exists as a separate tariff: management merged into VOR (2002), tariff systems unified in 2016. Use VOR tariffs for Lower Austria/Burgenland.",
+   "source_url": "https://vor.at/fileadmin/CONTENT/Bilder/News/JB_2023_40-Jahre-VOR-Strecke.pdf",
+   "confidence": "high"
+  },
+  "recommended_defaults_eur": {
+   "Wien": 3.2,
+   "Innsbruck": 3.3,
+   "Graz": 3.3,
+   "Linz": 3.2,
+   "Salzburg": 2.6,
+   "Klagenfurt": 2.6,
+   "Vorarlberg_LOKAL": 2.4,
+   "fallback_other_towns": 2.4,
+   "note": "Full-fare standard (non-app) single ticket of the core zone. fallback_other_towns = ÖBB minimum fare 2.40 EUR (official minimum in the Relationspreise tables), used where no city tariff was verified (e.g. Villach, St. Pölten, Wels, Steyr city buses were NOT verified)."
+  }
+ },
+ "car_comparison": {
+  "kilometergeld_eur_per_km": 0.5,
+  "kilometergeld_passenger_surcharge_eur_per_km": 0.15,
+  "kilometergeld_valid_since": "2025-01-01",
+  "kilometergeld_annual_cap_km": 30000,
+  "kilometergeld_source_url": "https://www.oesterreich.gv.at/de/themen/steuern_und_finanzen/unterstuetzungen_beihilfen_und_foerderungen/pendlerpauschale_und_kilometergeld/Seite.350300",
+  "kilometergeld_confidence": "high",
+  "full_cost_per_km": {
+   "austria_average_eur": 0.41,
+   "midsize_petrol_eur": 0.47,
+   "compact_ev_eur": 0.38,
+   "small_ev_eur": 0.31,
+   "assumptions": "Ayvens Car Cost Index 2026: TCO over first 4 years at 30,000 km/year (depreciation, maintenance, tyres, energy, taxes, comprehensive insurance); per-km values = monthly cost / 2,500 km. At typical private mileage (10-15k km/year) per-km cost is substantially higher.",
+   "source_url": "https://durchblicker.at/b/autokosten-oesterreich",
+   "confidence": "medium",
+   "oeamtc_note": "No current (2026) ÖAMTC headline EUR/km figure found; ÖAMTC offers a per-model calculator (oeamtc.at Auto-Info). Older ÖAMTC example: 0.62 EUR/km at 12,000 km/yr, 0.40 EUR/km at 24,000 km/yr (~2023, outdated)."
+  },
+  "recommended_default_eur_per_km": 0.5,
+  "recommended_note": "Use the official Kilometergeld (0.50 EUR/km) as the car-cost comparison; it is close to real full costs of a mid-size car and is the number Austrians know."
+ },
+ "co2": {
+  "unit": "g CO2-equivalent per passenger-km",
+  "data_year": 2024,
+  "published": "Umweltbundesamt, Emissionskennzahlen Datenbasis 2024, aktualisiert Mai 2026",
+  "source_url": "https://www.umweltbundesamt.at/fileadmin/site/themen/mobilitaet/daten/ekz_pkm_verkehrsmittel.pdf",
+  "values": {
+   "car_average_incl_BEV": {
+    "direct": 136.7,
+    "upstream_fuel_or_electricity": 37.3,
+    "vehicle_production": 45.9,
+    "occupancy_persons": 1.13
+   },
+   "car_petrol": {
+    "direct": 134.5,
+    "upstream_fuel_or_electricity": 33.1,
+    "vehicle_production": 55.0
+   },
+   "car_diesel": {
+    "direct": 149.3,
+    "upstream_fuel_or_electricity": 40.9,
+    "vehicle_production": 38.3
+   },
+   "car_BEV_AT_electricity_mix": {
+    "direct": 0.0,
+    "upstream_fuel_or_electricity": 25.4,
+    "vehicle_production": 69.7
+   },
+   "rail_passenger_AT": {
+    "direct": 2.8,
+    "upstream_fuel_or_electricity": 4.4,
+    "vehicle_production": 1.1
+   },
+   "city_bus_public_transport": {
+    "direct": 40.1,
+    "upstream_fuel_or_electricity": 10.6,
+    "vehicle_production": 3.8
+   },
+   "coach": {
+    "direct": 34.6,
+    "upstream_fuel_or_electricity": 9.2,
+    "vehicle_production": 4.6
+   },
+   "domestic_flight_incl_nonCO2_factor2": {
+    "direct": 389,
+    "upstream_fuel_or_electricity": 41.2,
+    "vehicle_production": 0.8
+   }
+  },
+  "tram_and_ubahn": {
+   "value_direct_plus_upstream": 7.2,
+   "confidence": "low",
+   "note": "UBA list has no tram/U-Bahn line. Proxy: UBA electric rail value (direct+upstream). Wiener Linien state traction power for trams/U-Bahn/e-buses is 100% renewable.",
+   "source_url": "https://www.wienerlinien.at/nachhaltigkeit/erneuerbare-energiequellen"
+  },
+  "recommended_app_values_direct_plus_upstream": {
+   "car": 174.0,
+   "rail": 7.2,
+   "bus": 50.7,
+   "coach": 43.8,
+   "tram_ubahn": 7.2,
+   "note": "Well-to-wheel (direct + fuel/electricity supply), excluding vehicle production. Saved CO2 per trip = (174.0 - mode_value) * km. UBA warns values are not comparable with its earlier lists (method change)."
+  },
+  "confidence": "high"
+ }
+}

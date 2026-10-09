@@ -65,7 +65,7 @@ final class TariffService {
         fareModel: .fallback,
         cityFares: [],
         kilometergeldEUR: 0.50,
-        carFullCostPerKmEUR: 0.60,
+        carFullCostPerKmEUR: 0.47,
         emissions: .fallback
     )
 }

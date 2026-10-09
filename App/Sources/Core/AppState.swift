@@ -107,13 +107,18 @@ final class AppState {
 
     func presentAddTrip(_ draft: TripDraft = TripDraft()) { tripDraft = draft }
 
+    /// Exact ÖBB prices: relations-points.json + raw-DEFLATE compressed relations.bin (UInt16 triples).
     private static func loadRelations() -> RelationPriceTable {
-        guard let url = Bundle.main.url(forResource: "relations", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let table = try? RelationPriceTable(jsonData: data) else {
+        guard let pointsURL = Bundle.main.url(forResource: "relations-points", withExtension: "json"),
+              let binURL = Bundle.main.url(forResource: "relations", withExtension: "bin"),
+              let pointsData = try? Data(contentsOf: pointsURL),
+              let meta = try? JSONDecoder().decode(RelationPriceTable.PointsFile.self, from: pointsData),
+              let packed = try? Data(contentsOf: binURL),
+              let raw = try? (packed as NSData).decompressed(using: .zlib) as Data else {
             return .empty
         }
-        return table
+        return RelationPriceTable(validFrom: meta.validFrom, source: meta.source,
+                                  pointIDs: meta.points.map(\.stationID), triples: raw)
     }
 
     private static func loadStations() -> StationIndex {

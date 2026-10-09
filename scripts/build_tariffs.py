@@ -4,7 +4,7 @@ research data in data/. Bump CATALOG_VERSION whenever prices change so installed
 import json, os, re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CATALOG_VERSION = 3
+CATALOG_VERSION = 4
 STATE = {"Wien": "W", "Niederösterreich": "NÖ", "Oberösterreich": "OÖ", "Salzburg": "S", "Tirol": "T",
          "Vorarlberg": "V", "Kärnten": "K", "Steiermark": "ST", "Burgenland": "B"}
 LOCAL_SUBVARIANTS = {"innsbruck", "kufstein", "schwaz", "lienz", "st-anton", "regionen", "stadt_ermaessigt", "pluseins"}
@@ -56,6 +56,7 @@ def main():
         "carFullCostPerKmEUR": fares["carFullCostPerKmEUR"],
         "emissions": fares["emissions"],
         "notes": fares.get("notes", []),
+        "fareIndex": fares.get("fareIndex", []),
     }
     out = os.path.join(ROOT, "App", "Resources", "tariffs.json")
     with open(out, "w", encoding="utf-8") as f:

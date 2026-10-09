@@ -95,6 +95,40 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertTrue(e.explanation.contains("14.12.2025"))
     }
 
+    func testKnotModelMatchesOfficialExamples() {
+        let m = FareModel.fallback
+        // Wien–Salzburg: 310 km rail → official 67.70
+        XCTAssertEqual(m.fare(railKm: 310.3), 67.7, accuracy: 3.5)
+        // Wien–Graz: 210.6 km → 44.30
+        XCTAssertEqual(m.fare(railKm: 210.6), 44.3, accuracy: 3)
+        XCTAssertEqual(m.fare(railKm: 3), 2.4, accuracy: 0.01)          // minimum fare
+        XCTAssertEqual(m.fare(railKm: 2000), 101.2, accuracy: 0.01)    // cap
+    }
+
+    func testFareIndexAfterDecember2026() {
+        let catalog = TariffCatalog(version: 1, updatedAt: "", products: [], fareModel: .fallback, cityFares: [],
+                                    kilometergeldEUR: 0.5, carFullCostPerKmEUR: 0.47, emissions: .fallback,
+                                    fareIndex: [.init(validFrom: "2026-12-13", factor: 1.035)])
+        XCTAssertEqual(catalog.fareFactor(on: date(2026, 12, 12)), 1)
+        XCTAssertEqual(catalog.fareFactor(on: date(2026, 12, 13)), 1.035, accuracy: 0.0001)
+        let json = """
+        {"validFrom":"2025-12-14","source":"t","points":[{"name":"A","stationID":"a"},{"name":"B","stationID":"b"}],"prices":[[0,1,2350]]}
+        """.data(using: .utf8)!
+        let est = FareEstimator(catalog: catalog, relations: try! RelationPriceTable(jsonData: json))
+        let a = Station(id: "a", name: "St. Anton", lat: 47.127, lon: 10.267, state: "T")
+        let b = Station(id: "b", name: "Innsbruck", lat: 47.263, lon: 11.400, state: "T")
+        XCTAssertEqual(est.estimate(from: a, to: b, mode: .train, date: date(2026, 11, 1)).fareEUR, 23.5, accuracy: 0.001)
+        XCTAssertEqual(est.estimate(from: a, to: b, mode: .train, date: date(2027, 1, 10)).fareEUR, 24.3, accuracy: 0.001)
+    }
+
+    func testBinaryRelationTable() {
+        var data = Data()
+        for v: UInt16 in [0, 1, 677] { data.append(UInt8(v & 0xFF)); data.append(UInt8(v >> 8)) }
+        let t = RelationPriceTable(validFrom: "2025-12-14", source: "", pointIDs: ["x", "y"], triples: data)
+        XCTAssertEqual(t.price(from: "y", to: "x"), 67.7)
+        XCTAssertEqual(t.count, 1)
+    }
+
     func testEuroFormatting() {
         XCTAssertEqual(FareEstimator.euro(3.2), "€ 3,20")
         XCTAssertEqual(FareEstimator.euro(1300), "€ 1300,00")

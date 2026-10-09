@@ -1,8 +1,39 @@
 {
-  "fareModel": {"baseFee": 1.4, "bands": [{"upToKm": 20, "ratePerKm": 0.205}, {"upToKm": 50, "ratePerKm": 0.195}, {"upToKm": 100, "ratePerKm": 0.185}, {"upToKm": 200, "ratePerKm": 0.175}, {"upToKm": 400, "ratePerKm": 0.14}, {"upToKm": 2000, "ratePerKm": 0.07}], "minimumFare": 2.4, "maximumFare": 110, "roundingStep": 0.1, "firstClassFactor": 1.6, "detourFactor": 1.22, "discountFactors": {"none": 1.0, "vorteilscard": 0.5}},
-  "cityFares": [],
-  "kilometergeldEUR": 0.5,
-  "carFullCostPerKmEUR": 0.6,
-  "emissions": {"car": 166, "train": 8, "bus": 60, "tram": 26},
-  "notes": ["Platzhalter – wird durch Recherche ersetzt"]
+  "fareModel": {
+    "baseFee": 0.456,
+    "bands": [{"upToKm": 260.6, "ratePerKm": 0.2193}, {"upToKm": 5000, "ratePerKm": 0.1274}],
+    "minimumFare": 2.4,
+    "maximumFare": 101.2,
+    "roundingStep": 0.1,
+    "firstClassFactor": 1.951,
+    "detourFactor": 1.2,
+    "discountFactors": {"none": 1.0, "vorteilscard": 0.5},
+    "knots": [[0, 2.36], [10, 2.42], [20, 4.70], [30, 7.10], [50, 11.68], [75, 17.23], [100, 22.34], [150, 33.92], [200, 44.55], [250, 53.62], [300, 62.65], [400, 77.56], [500, 88.80], [600, 94.83], [1000, 114.77]],
+    "detourBands": [[25, 1.15], [10000, 1.22]]
+  },
+  "fareIndex": [{"validFrom": "2026-12-13", "factor": 1.035}],
+  "cityFares": [
+    {"id": "wien", "name": "Wien", "singleTicketEUR": 3.20, "latitude": 48.2085, "longitude": 16.3731, "radiusKm": 11.0},
+    {"id": "innsbruck", "name": "Innsbruck", "singleTicketEUR": 3.30, "latitude": 47.2654, "longitude": 11.3928, "radiusKm": 5.5},
+    {"id": "graz", "name": "Graz", "singleTicketEUR": 3.30, "latitude": 47.0707, "longitude": 15.4395, "radiusKm": 7.0},
+    {"id": "linz", "name": "Linz", "singleTicketEUR": 3.20, "latitude": 48.3059, "longitude": 14.2862, "radiusKm": 7.0},
+    {"id": "salzburg", "name": "Salzburg", "singleTicketEUR": 2.60, "latitude": 47.8095, "longitude": 13.0550, "radiusKm": 6.0},
+    {"id": "klagenfurt", "name": "Klagenfurt", "singleTicketEUR": 2.60, "latitude": 46.6247, "longitude": 14.3053, "radiusKm": 6.0},
+    {"id": "bregenz", "name": "Bregenz", "singleTicketEUR": 2.40, "latitude": 47.5031, "longitude": 9.7471, "radiusKm": 4.0},
+    {"id": "dornbirn", "name": "Dornbirn", "singleTicketEUR": 2.40, "latitude": 47.4125, "longitude": 9.7417, "radiusKm": 4.0},
+    {"id": "feldkirch", "name": "Feldkirch", "singleTicketEUR": 2.40, "latitude": 47.2371, "longitude": 9.5981, "radiusKm": 4.0},
+    {"id": "bludenz", "name": "Bludenz", "singleTicketEUR": 2.40, "latitude": 47.1547, "longitude": 9.8222, "radiusKm": 3.0},
+    {"id": "st-poelten", "name": "St. Pölten", "singleTicketEUR": 2.40, "latitude": 48.2047, "longitude": 15.6256, "radiusKm": 5.0},
+    {"id": "villach", "name": "Villach", "singleTicketEUR": 2.40, "latitude": 46.6111, "longitude": 13.8558, "radiusKm": 5.0}
+  ],
+  "kilometergeldEUR": 0.50,
+  "carFullCostPerKmEUR": 0.47,
+  "emissions": {"car": 174.0, "train": 7.2, "bus": 50.7, "tram": 7.2},
+  "notes": [
+    "Normalpreis = ÖBB-Standardticket 2. Klasse, online am Reisetag (Relationspreise ab 14.12.2025); ab 13.12.2026 +3,5 %.",
+    "Tarifmodell an 208.510 offiziellen Relationen kalibriert (Median-Abweichung 4 %).",
+    "Stadttarife: Einzelfahrt Vollpreis 2026 (Wien, Innsbruck, Graz, Linz, Salzburg, Klagenfurt, VMOBIL LOKAL); St. Pölten/Villach Näherung.",
+    "CO₂: Umweltbundesamt, Datenjahr 2024 (Pkw 174 g, Bahn 7,2 g, Bus 50,7 g pro Personenkilometer).",
+    "Kilometergeld 2026: 0,50 €/km."
+  ]
 }
