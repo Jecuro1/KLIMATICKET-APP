@@ -128,7 +128,7 @@ struct StatsScreen: View {
     @ViewBuilder
     private var secondarySections: some View {
         if !snapshot.topRoutes.isEmpty {
-            StatsGrowOnView(delay: Motion.Stagger.delay(8)) { StatsTopRoutesCard(snapshot: snapshot, grow: $0) }
+            StatsGrowOnView(delay: Motion.Stagger.delay(8)) { StatsTopRoutesCard(snapshot: snapshot, grow: $0, ticketID: ticket.id) }
                 .statsCard(order: 8)
         }
         // MARK: map

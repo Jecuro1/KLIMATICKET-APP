@@ -3,10 +3,13 @@ import KlimaCore
 
 // MARK: - Top-Strecken
 
-/// Ranked list of the most travelled routes with proportional bars.
+/// Ranked list of the most travelled routes with proportional bars. A row opens the map on that route (zooming out
+/// of the row, the camera gliding in and the route sheet opening).
 struct StatsTopRoutesCard: View {
     let snapshot: AnalyticsSnapshot
     let grow: Double
+    /// Ticket year the map opens with.
+    var ticketID: UUID? = nil
 
     var body: some View {
         let routes = snapshot.topRoutes
@@ -16,7 +19,17 @@ struct StatsTopRoutesCard: View {
                 StatsCardHeader(kicker: "Top-Strecken", title: "Deine Stammstrecken")
                 VStack(spacing: Theme.Spacing.s) {
                     ForEach(Array(routes.enumerated()), id: \.element.id) { index, route in
-                        row(route, rank: index + 1, fraction: Double(route.trips) / max(maxTrips, 1))
+                        let zoomID = "stats.route." + route.id
+                        NavigationLink {
+                            AtlasView(initialTicketID: ticketID, launchFocus: .route(from: route.fromName, to: route.toName))
+                                .zoomDestination(id: zoomID)
+                        } label: {
+                            row(route, rank: index + 1, fraction: Double(route.trips) / max(maxTrips, 1))
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.pressableCard)
+                        .zoomSource(id: zoomID, cornerRadius: Theme.Radius.modeTile)
+                        .accessibilityHint("Zeigt die Strecke auf der Karte")
                         if index < routes.count - 1 {
                             Rectangle()
                                 .fill(Theme.separator)
@@ -54,10 +67,17 @@ struct StatsTopRoutesCard: View {
                         .lineLimit(1)
                 }
                 ProgressRail(progress: fraction * grow, height: 6, fill: fill)
-                Text("\(StatsNames.trips(route.trips)) · \(Format.km(route.distanceKm))")
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textSecondary)
+                HStack(spacing: 4) {
+                    Text("\(StatsNames.trips(route.trips)) · \(Format.km(route.distanceKm))")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer(minLength: Theme.Spacing.xs)
+                    Label("Karte", systemImage: "map")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                        .labelStyle(AtlasCompactLabelStyle())
+                }
             }
         }
         .accessibilityElement(children: .ignore)

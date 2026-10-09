@@ -13,6 +13,8 @@ enum AtlasLaunchFocus: Equatable {
     case details
     /// Flies to an extreme point (as if picked in the details sheet).
     case extreme(AtlasCompass)
+    // MARK: stats – a "Top-Strecken" row opens the map on its route (matched by its two end stations)
+    case route(from: String, to: String)
 }
 
 /// Sheets of the map screen. All route sheets share one identity, so tapping another route updates the open sheet
@@ -294,7 +296,8 @@ struct AtlasView: View {
         guard !didLaunch else { return }
         didLaunch = true
         guard launchFocus != .none else { return }
-        try? await Task.sleep(for: .milliseconds(900))
+        // Screenshots wait for the tiles; a user arriving by zoom sees the camera glide in right after the push.
+        try? await Task.sleep(for: .milliseconds(LaunchMode.isScreenshot ? 900 : 520))
         switch launchFocus {
         case .topRoute, .topRouteExpanded:
             if let id = summary.topRoute?.id { select(id) }
@@ -302,8 +305,19 @@ struct AtlasView: View {
             sheet = .details
         case .extreme(let direction):
             if let place = summary.extremes.place(direction) { focus(place) }
+        case .route(let from, let to):
+            if let id = route(between: from, and: to)?.id { select(id) }
         case .none:
             break
         }
+    }
+
+    /// The map route between two stations (either direction); with several (e.g. via different stops) the most
+    /// travelled one. Names compare like the trip list shows them.
+    private func route(between a: String, and b: String) -> AtlasRoute? {
+        let wanted = Set([TripRow.short(a), TripRow.short(b)])
+        return summary.routes
+            .filter { Set([TripRow.short($0.from.name), TripRow.short($0.to.name)]) == wanted }
+            .max { $0.entries < $1.entries }
     }
 }
