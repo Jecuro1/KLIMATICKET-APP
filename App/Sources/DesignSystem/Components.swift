@@ -103,6 +103,7 @@ struct Kicker: View {
             .font(Theme.Typography.kicker)
             .tracking(1.2)
             .foregroundStyle(color)
+            .accessibilityLabel(Text(text))   // VoiceOver reads "Freitag, 9. Oktober", not spelled-out capitals
     }
 }
 

@@ -53,7 +53,7 @@ struct StoreRecoveryView: View {
 
     private var locked: some View {
         VStack(spacing: Theme.Spacing.l) {
-            header(symbol: "lock.fill", tint: Theme.accent,
+            header(symbol: "lock.fill", tint: Theme.accent, symbolColor: Theme.accent,
                    title: "iPhone entsperren",
                    message: "Nach einem Neustart bleiben deine Tickets und Fahrten verschlüsselt, bis du dein iPhone einmal entsperrst. Danach geht es automatisch weiter.")
             StatusCapsule(text: "Wartet auf das Entsperren …")
@@ -64,7 +64,7 @@ struct StoreRecoveryView: View {
         VStack(spacing: Theme.Spacing.l) {
             // Warm, not alarm red: nothing is lost, the screen explains what to do.
             header(symbol: failure.kind == .diskFull ? "externaldrive.fill.badge.xmark" : "externaldrive.badge.exclamationmark",
-                   tint: Theme.summit,
+                   tint: Theme.summit, symbolColor: Theme.summitText,
                    title: failure.kind == .diskFull ? "Kein Speicherplatz frei" : "Daten konnten nicht geöffnet werden",
                    message: message(for: failure))
 
@@ -110,9 +110,9 @@ struct StoreRecoveryView: View {
         }
     }
 
-    private func header(symbol: String, tint: Color, title: String, message: String) -> some View {
+    private func header(symbol: String, tint: Color, symbolColor: Color, title: String, message: String) -> some View {
         VStack(spacing: Theme.Spacing.m) {
-            StatusMedallion(symbol: symbol, tint: tint)
+            StatusMedallion(symbol: symbol, tint: tint, symbolColor: symbolColor)
                 .padding(.bottom, Theme.Spacing.xs)
             Kicker(text: "KlimaBilanz")
             Text(title)
@@ -149,14 +149,17 @@ struct StoreRecoveryView: View {
 /// The frosted disc with the state's symbol at the top of the store screens.
 private struct StatusMedallion: View {
     var symbol: String
+    /// The disc's wash.
     var tint: Color
+    /// The symbol – one solid colour, so the drive's outline stays legible on the light disc.
+    var symbolColor: Color
     @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 92
 
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: size * 0.4, weight: .regular))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(tint)
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(symbolColor)
             .frame(width: size, height: size)
             .frostedCard(cornerRadius: size / 2, tint: tint)
             .accessibilityHidden(true)
