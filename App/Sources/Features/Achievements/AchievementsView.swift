@@ -75,7 +75,11 @@ private struct AchBookScreen: View, Equatable {
                 } else {
                     EmptyStateView(symbol: "book.closed",
                                    title: "Dein Gipfelbuch ist noch leer",
-                                   message: "Lege dein KlimaTicket an und erfasse Fahrten – jeder erreichte Gipfel wird hier eingetragen.")
+                                   message: "Lege dein KlimaTicket an und erfasse Fahrten – jeder erreichte Gipfel wird hier eingetragen.",
+                                   actionTitle: "Zum Ticket") {
+                        app.isShowingAchievements = false
+                        app.selectedTab = .ticket
+                    }
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -133,7 +137,11 @@ private struct AchBookScreen: View, Equatable {
         section(title: "Erreicht", note: nil, items: book.unlocked, indexOffset: 0, year: year) {
             AchNoteCard(symbol: "flag",
                         title: "Noch kein Gipfel erreicht",
-                        message: "Erfasse deine erste Fahrt – „Eingestiegen“ ist dein erster Eintrag im Gipfelbuch.")
+                        message: "Erfasse deine erste Fahrt – „Eingestiegen“ ist dein erster Eintrag im Gipfelbuch.",
+                        actionTitle: "Erste Fahrt erfassen") {
+                // Closes the Gipfelbuch first when it is a sheet; the editor follows.
+                app.presentAddTripFromOutside()
+            }
         }
 
         section(title: "Als Nächstes", note: "Am nächsten zuerst", items: book.upcoming,
@@ -707,9 +715,25 @@ private struct AchNoteCard: View {
     let symbol: String
     let title: String
     let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.m) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                note
+                if let actionTitle, let action {
+                    Button(actionTitle, systemImage: "plus", action: action)
+                        .font(.subheadline.weight(.semibold))
+                        .buttonStyle(.glass)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private var note: some View {
+        Group {
             HStack(alignment: .top, spacing: Theme.Spacing.s) {
                 Image(systemName: symbol)
                     .font(.body.weight(.semibold))
