@@ -98,8 +98,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL }}
-          TARIFFS_URL: ${{ vars.TARIFFS_URL }}
+          # Public repo: update.json / tariffs.json come straight from this repo's latest GitHub Release
+          # (override with repository variables if the files are hosted elsewhere).
+          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL || format('https://github.com/{0}/releases/latest/download/update.json', github.repository) }}
+          TARIFFS_URL: ${{ vars.TARIFFS_URL || format('https://github.com/{0}/releases/latest/download/tariffs.json', github.repository) }}
         run: python3 scripts/write_app_config.py App/Resources/AppConfig.json
 
       - name: Generate Xcode project

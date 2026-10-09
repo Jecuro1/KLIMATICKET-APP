@@ -49,18 +49,17 @@ neuen Version ein Update-Fenster. Wohin „Jetzt aktualisieren“ führt, hängt
 > AltStore und SideStore installieren Updates **nicht unbemerkt im Hintergrund** – im Hintergrund erneuern sie nur
 > die 7-Tage-Signatur. Ein neues Update bestätigst du immer mit einem Tipp auf „Aktualisieren“.
 
-Damit das funktioniert, müssen die Update-Dateien **öffentlich** erreichbar sein (dieses Repo ist privat):
+Die Update-Dateien liegen direkt in den **GitHub Releases dieses (öffentlichen) Repos** – es ist nichts weiter
+einzurichten. Die App sucht unter
+`https://github.com/Jecuro1/KLIMATICKET-APP/releases/latest/download/update.json`, die AltStore/SideStore-Quelle ist
+`…/releases/latest/download/altstore-source.json`. (Nur wenn die Dateien woanders liegen sollen, z. B. bei einem
+privaten Repo: Variables `UPDATE_MANIFEST_URL`, `TARIFFS_URL`, `PUBLIC_DOWNLOAD_BASE_URL` bzw. ein separates
+öffentliches Release-Repo über `PUBLIC_RELEASES_REPO` + Secret `RELEASES_TOKEN` setzen.)
 
-1. Lege ein **öffentliches** Repository an, z. B. `Jecuro1/klimabilanz-releases`.
-2. Erzeuge ein Fine-grained Personal Access Token mit *Contents: Read & Write* nur für dieses Repo und
-   speichere es hier unter **Settings › Secrets and variables › Actions › Secrets** als `RELEASES_TOKEN`.
-3. Setze unter **Variables**:
-   - `PUBLIC_RELEASES_REPO` = `Jecuro1/klimabilanz-releases`
-   - `PUBLIC_DOWNLOAD_BASE_URL` = `https://github.com/Jecuro1/klimabilanz-releases/releases/latest/download`
-   - `UPDATE_MANIFEST_URL` = `https://github.com/Jecuro1/klimabilanz-releases/releases/latest/download/update.json`
-   - `TARIFFS_URL` = `https://github.com/Jecuro1/klimabilanz-releases/releases/latest/download/tariffs.json` *(optional – steht auch in `update.json`)*
-   - `MINIMUM_SUPPORTED_VERSION` = z. B. `1.0.0` *(optional – ältere Versionen sehen ein Update-Fenster, das sich nicht wegwischen lässt)*
-4. Neue Version veröffentlichen: in `project.yml` `MARKETING_VERSION` erhöhen, Release-Notizen in
+Optional unter **Settings › Secrets and variables › Actions › Variables**:
+   - `MINIMUM_SUPPORTED_VERSION` = z. B. `1.0.0` *(ältere Versionen sehen ein Update-Fenster, das sich nicht wegwischen lässt)*
+
+**Neue Version veröffentlichen:** in `project.yml` `MARKETING_VERSION` erhöhen, Release-Notizen in
    `docs/release-notes/<Version>.md` (Zeilen mit `- `) eintragen und einen Tag pushen: `git tag v1.1.0 && git push --tags`.
 
 CI baut dann die `.ipa`, erstellt `update.json` (In-App-Updater) und `altstore-source.json`
