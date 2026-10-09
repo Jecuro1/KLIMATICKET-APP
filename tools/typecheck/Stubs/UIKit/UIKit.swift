@@ -608,6 +608,8 @@ open class UIViewController: UIResponder, UITraitEnvironment, UIContentContainer
     open var traitCollection: UITraitCollection { _uiStub() }
     open var presentedViewController: UIViewController? { _uiStub() }
     open var presentingViewController: UIViewController? { _uiStub() }
+    open var isBeingPresented: Bool { _uiStub() }
+    open var isBeingDismissed: Bool { _uiStub() }
     open var parent: UIViewController? { _uiStub() }
     open var children: [UIViewController] { _uiStub() }
     open var preferredContentSize: CGSize = .zero

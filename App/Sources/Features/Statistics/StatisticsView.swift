@@ -75,6 +75,7 @@ struct StatsScreen: View {
             .padding(.top, Theme.Spacing.xxs)
             .padding(.bottom, Theme.Spacing.xxl)
         }
+        .accessibilityIdentifier("perf.scroll.stats") // MARK: perf – KlimaBilanzPerfTests
         .scrollIndicators(.hidden)
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > 64

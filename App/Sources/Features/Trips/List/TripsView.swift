@@ -63,6 +63,7 @@ struct TripsView: View {
                 }
             }
         }
+        .accessibilityIdentifier("perf.scroll.trips") // MARK: perf – KlimaBilanzPerfTests
         .listStyle(.insetGrouped)
         .listSectionSpacing(Theme.Spacing.m)
         .scrollContentBackground(.hidden)

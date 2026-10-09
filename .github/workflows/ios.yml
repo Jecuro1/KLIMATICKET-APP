@@ -382,15 +382,18 @@ jobs:
 
   perf:
     # XCUITest performance tests (target KlimaBilanzPerfTests, scheme KlimaBilanzPerf, Release build) on the
-    # simulator: launch time, scroll hitch ratios per screen, a tab tour with CPU/memory – plus what the app's own
-    # DiagnosticsService recorded (watchdog hangs, Analytics.make timings). Only with "[perf]" in the commit message
-    # or a manual run with perf=true; the regular build job is not affected.
+    # simulator, demo year and +1 500 trips: launches, flicks on every tab and the Gipfelbuch, a tab tour with
+    # clock/CPU/memory. The simulator reports no hitch metrics to XCTest, so the app measures itself in perf mode
+    # (PerfFrameMonitor: hitch time ratio per screen, transitions, launch, memory; hang watchdog; LaunchTrace).
+    # Then Time Profiler recordings of the app's own tour per screen (scripts/perf_profile.sh) name the main-thread
+    # hotspots. Everything lands in the run summary and the artifact perf-<run> (perf-summary.json = baseline).
+    # Only with "[perf]" in the commit message or a manual run with perf=true; the regular build job is not affected.
     name: Performance (XCUITest, simulator)
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.perf) ||
       (github.event_name == 'push' && contains(github.event.head_commit.message, '[perf]'))
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 80
     permissions:
       contents: read
     steps:
@@ -429,6 +432,7 @@ jobs:
             -project KlimaBilanz.xcodeproj -scheme KlimaBilanzPerf \
             -destination "id=$UDID" \
             -derivedDataPath build/perf/dd -resultBundlePath build/perf/Perf.xcresult \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
             > build/perf/test.log 2>&1
           STATUS=$?
@@ -436,6 +440,15 @@ jobs:
           grep -E "error:|measured \[|Test Case .*(passed|failed)|Executed [0-9]+ test" build/perf/test.log | grep -v "SourcePackages" | tail -150 || true
           if [ $STATUS -ne 0 ]; then tail -60 build/perf/test.log; fi
           exit $STATUS
+
+      - name: Profile (Time Profiler, the app's own tour per screen)
+        if: always() && steps.tests.outcome != 'cancelled'
+        continue-on-error: true
+        timeout-minutes: 15
+        run: |
+          APP=$(ls -d build/perf/dd/Build/Products/Release-iphonesimulator/KlimaBilanz.app 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then echo "::notice::Keine App gebaut – keine Profile"; exit 0; fi
+          bash scripts/perf_profile.sh "$UDID" "$APP" build/perf/profiles
 
       - name: Collect the app's diagnostics
         if: always()
@@ -447,12 +460,18 @@ jobs:
           else
             echo "::notice::Keine Diagnosedaten der App gefunden"
           fi
+          if [ -n "$DATA" ] && [ -f "$DATA/Documents/launch-trace.txt" ]; then
+            cp "$DATA/Documents/launch-trace.txt" build/perf/launch-trace.txt
+          fi
 
       - name: Summary
         if: always()
         run: |
           python3 scripts/perf_summary.py build/perf/test.log --diagnostics build/perf/app-diagnostics \
-            --json build/perf/perf-summary.json | tee -a "$GITHUB_STEP_SUMMARY"
+            --launch-trace build/perf/launch-trace.txt --profiles build/perf/profiles \
+            --json build/perf/perf-summary.json > build/perf/perf-summary.md
+          cat build/perf/perf-summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat build/perf/perf-summary.md
 
       - name: Upload results
         if: always()
@@ -462,7 +481,10 @@ jobs:
           path: |
             build/perf/test.log
             build/perf/perf-summary.json
+            build/perf/perf-summary.md
+            build/perf/launch-trace.txt
             build/perf/app-diagnostics
+            build/perf/profiles
             build/perf/Perf.xcresult
           if-no-files-found: warn
           retention-days: 30

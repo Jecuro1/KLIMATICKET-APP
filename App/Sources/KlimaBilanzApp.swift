@@ -25,7 +25,7 @@ struct KlimaBilanzApp: App {
             // MARK: Diagnostics – CI performance tests: the normal tab interface with in-memory demo data.
             let settings = PerfMode.makeSettings()
             let container = DataSchema.makeInMemoryContainer()
-            PerfMode.seed(into: container.mainContext)
+            PerfMode.seed(into: container.mainContext, settings: settings)
             launch = AppLaunch(store: StoreLoader(container: container)) { AppState(settings: settings) }
         } else {
             launch = AppLaunch(store: StoreLoader()) { AppState() }

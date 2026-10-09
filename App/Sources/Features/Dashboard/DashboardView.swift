@@ -113,6 +113,7 @@ struct DashboardView: View {
             .padding(.bottom, Theme.Spacing.xl)
             .animation(.smooth, value: suggestions.count)
         }
+        .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
         .modifier(DashScrollScrim())
         // The sun glow brightens towards the summit, capped so the verdict lines above it keep their contrast.
         .ambientBackground(.standard, glow: 0.4 + 0.4 * summary.progressClamped)

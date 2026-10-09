@@ -1,13 +1,18 @@
 import XCTest
 
-/// Launch time of the app in perf mode (demo year, in-memory store).
+/// Launch time of the app in perf mode (demo year, in-memory store). XCTest's launch metric reports nothing on the
+/// simulator; the app records every launch itself (first frame since process start / App.init, LaunchTrace marks,
+/// the first 4 s of frames) – these launches feed scripts/perf_summary.py.
 final class LaunchPerfTests: XCTestCase {
     @MainActor
     func testLaunch() {
         let options = XCTMeasureOptions()
         options.iterationCount = 5
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
-            PerfApp.make().launch()
+            let app = PerfApp.make()
+            app.launch()
+            // Give the app its launch window (PerfFrameMonitor measures 4 s of frames after the first one).
+            Thread.sleep(forTimeInterval: 5)
         }
     }
 }
@@ -16,37 +21,38 @@ final class LaunchPerfTests: XCTestCase {
 final class ScrollPerfTests: PerfTestCase {
     @MainActor
     func testScrollOverview() {
-        selectTab("Übersicht")
-        measureScroll(mainScrollContainer())
+        measureScroll(open(.overview))
     }
 
     @MainActor
     func testScrollTrips() {
-        selectTab("Fahrten")
-        measureScroll(mainScrollContainer(), swipes: 3)
+        measureScroll(open(.trips), swipes: 3)
     }
 
     @MainActor
     func testScrollStatistics() {
-        selectTab("Statistik")
-        measureScroll(mainScrollContainer())
+        measureScroll(open(.stats))
     }
 
     @MainActor
     func testScrollTicket() {
-        selectTab("Ticket")
-        measureScroll(mainScrollContainer())
-    }
-
-    @MainActor
-    func testScrollGipfelbuch() {
-        openGipfelbuch()
-        measureScroll(mainScrollContainer())
+        measureScroll(open(.ticket))
     }
 
     @MainActor
     func testTabSwitching() {
         measureTabTour()
+    }
+}
+
+/// The Gipfelbuch sheet, opened by the app itself after launch (`-KBPerfPresent gipfelbuch`) – no hunting for its
+/// entry point through the statistics.
+final class GipfelbuchPerfTests: PerfTestCase {
+    override var present: String? { "gipfelbuch" }
+
+    @MainActor
+    func testScrollGipfelbuch() {
+        measureScroll(open(.gipfelbuch))
     }
 }
 
@@ -56,20 +62,22 @@ final class HeavyDataPerfTests: PerfTestCase {
 
     @MainActor
     func testScrollOverviewHeavy() {
-        selectTab("Übersicht")
-        measureScroll(mainScrollContainer())
+        measureScroll(open(.overview))
     }
 
     @MainActor
     func testScrollTripsHeavy() {
-        selectTab("Fahrten")
-        measureScroll(mainScrollContainer(), swipes: 3)
+        measureScroll(open(.trips), swipes: 3)
     }
 
     @MainActor
     func testScrollStatisticsHeavy() {
-        selectTab("Statistik")
-        measureScroll(mainScrollContainer())
+        measureScroll(open(.stats))
+    }
+
+    @MainActor
+    func testScrollTicketHeavy() {
+        measureScroll(open(.ticket))
     }
 
     @MainActor

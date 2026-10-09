@@ -79,6 +79,7 @@ private struct AchBookScreen: View, Equatable {
             .padding(.top, showsSheetChrome ? Theme.Spacing.l : Theme.Spacing.s)
             .padding(.bottom, Theme.Spacing.xxl)
         }
+        .accessibilityIdentifier("perf.scroll.gipfelbuch") // MARK: perf – KlimaBilanzPerfTests
         .background { backdrop }
         .overlay(alignment: .topTrailing) { closeButton }
         .toolbar(.hidden, for: .navigationBar)

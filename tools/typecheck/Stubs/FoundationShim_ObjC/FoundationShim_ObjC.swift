@@ -371,3 +371,41 @@ public typealias OSStatus = Int32
 public typealias OSType = UInt32
 public let kCFBooleanTrue: CFBoolean! = nil
 public let kCFBooleanFalse: CFBoolean! = nil
+
+// MARK: - Key-value observing (NSKeyValueObserving.h + the Swift overlay's NSObject.observe(_:options:changeHandler:))
+
+public struct NSKeyValueObservingOptions: OptionSet, @unchecked Sendable {
+    public let rawValue: UInt
+    public init(rawValue: UInt) { self.rawValue = rawValue }
+    public static var new: NSKeyValueObservingOptions { .init(rawValue: 1) }
+    public static var old: NSKeyValueObservingOptions { .init(rawValue: 2) }
+    public static var initial: NSKeyValueObservingOptions { .init(rawValue: 4) }
+    public static var prior: NSKeyValueObservingOptions { .init(rawValue: 8) }
+}
+
+public enum NSKeyValueChange: UInt, @unchecked Sendable {
+    case setting = 1, insertion, removal, replacement
+}
+
+public struct NSKeyValueObservedChange<Value> {
+    public typealias Kind = NSKeyValueChange
+    public let kind: Kind
+    public let newValue: Value?
+    public let oldValue: Value?
+    public let indexes: IndexSet?
+    public let isPrior: Bool
+}
+
+open class NSKeyValueObservation: NSObject, @unchecked Sendable {
+    public func invalidate() { _kbUnimplemented() }
+}
+
+public protocol _KeyValueCodingAndObserving {}
+extension NSObject: _KeyValueCodingAndObserving {}
+
+extension _KeyValueCodingAndObserving {
+    public func observe<Value>(_ keyPath: KeyPath<Self, Value>, options: NSKeyValueObservingOptions = [],
+                               changeHandler: @escaping @Sendable (Self, NSKeyValueObservedChange<Value>) -> Void) -> NSKeyValueObservation {
+        _kbUnimplemented()
+    }
+}

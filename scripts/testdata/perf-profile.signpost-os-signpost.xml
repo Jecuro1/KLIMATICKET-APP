@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<trace-query-result><node><schema name="os-signpost"><col><mnemonic>time</mnemonic></col><col><mnemonic>event-type</mnemonic></col><col><mnemonic>identifier</mnemonic></col><col><mnemonic>name</mnemonic></col><col><mnemonic>subsystem</mnemonic></col><col><mnemonic>message</mnemonic></col></schema>
+<row><event-time id="1" fmt="00:04.9">4900000000</event-time><event-type id="2" fmt="Begin">Begin</event-type><os-signpost-identifier id="3" fmt="77">77</os-signpost-identifier><string id="4" fmt="Tour">Tour</string><subsystem id="5" fmt="com.knitelarlberg.klimabilanz">com.knitelarlberg.klimabilanz</subsystem><string id="6" fmt="scroll stats">scroll stats</string></row>
+<row><event-time id="7" fmt="00:06">6000000000</event-time><event-type id="8" fmt="End">End</event-type><os-signpost-identifier ref="3"/><string ref="4"/><subsystem ref="5"/><string id="9" fmt=""></string></row>
+</node></trace-query-result>

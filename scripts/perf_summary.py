@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Readable summary of the KlimaBilanzPerfTests run (CI job "perf").
 
-Usage: perf_summary.py <xcodebuild-test.log> [--diagnostics <app Diagnostics dir>] [--json out.json]
+Usage: perf_summary.py <xcodebuild-test.log> [--diagnostics <app Diagnostics dir>] [--launch-trace <file>]
+                       [--profiles <dir>] [--json out.json]
 
-Parses the "measured [Metric, unit] average: …" lines xcodebuild prints for every XCTest metric and renders Markdown
-(launch time, scroll hitch ratios per screen, tab tour clock/CPU/memory) for $GITHUB_STEP_SUMMARY. With
---diagnostics it also reports what the app's own DiagnosticsService recorded during the run (watchdog hangs,
-Analytics.make timings) – the same data a user exports from Einstellungen › Diagnose & Stabilität.
+Renders Markdown for $GITHUB_STEP_SUMMARY from
+  • the "measured [Metric, unit] average: …" lines xcodebuild prints for every XCTest metric (tab tour clock / CPU /
+    memory; launch and hitch metrics only where the simulator reports them – it reports none for hitches);
+  • the app's own measurements (--diagnostics): `perf-*.json` of PerfFrameMonitor – launch, hitch time ratio per
+    screen while scrolling (XCUITest swipes = "touch", the in-app tour = "tour"), tab / sheet transitions, memory –
+    plus what DiagnosticsService recorded (watchdog hangs per screen and data set, Analytics.make timings);
+  • the LaunchTrace marks of the perf launches (--launch-trace, Documents/launch-trace.txt);
+  • the Time Profiler hotspots per tour phase (--profiles, scripts/perf_profile.sh → *.profile.json).
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -149,9 +155,195 @@ def app_diagnostics(directory):
             "initToFirstFrameMs": [x for x in launches if x is not None]}
 
 
+def median(values):
+    values = sorted(v for v in values if v is not None)
+    if not values:
+        return None
+    mid = len(values) // 2
+    return values[mid] if len(values) % 2 else (values[mid - 1] + values[mid]) / 2
+
+
+def variant_label(extra_trips):
+    return "Demo-Jahr" if not extra_trips else f"+{extra_trips:,} Fahrten".replace(",", " ")
+
+
+SOURCE_LABELS = {"touch": "Wischen (XCUITest)", "tour": "Tour (2 400 pt/s)", "other": "programmatisch"}
+
+
+def perf_reports(directory):
+    """PerfFrameMonitor files (one per app launch)."""
+    if not directory or not os.path.isdir(directory):
+        return []
+    reports = []
+    for name in sorted(os.listdir(directory)):
+        if name.startswith("perf-") and name.endswith(".json") and name != "perf-tour.json":
+            data = read_json(os.path.join(directory, name))
+            if isinstance(data, dict) and "scroll" in data:
+                reports.append(data)
+    return reports
+
+
+def in_app(reports, events=None):
+    """Aggregates PerfFrameMonitor reports: scroll per (screen, data set, source), transitions, launch, memory, hangs."""
+    scroll, transitions, memory = {}, {}, {}
+    launches = []
+    session_variant = {}
+    for r in reports:
+        variant = variant_label(r.get("extraTrips") or 0)
+        if r.get("session"):
+            session_variant[r["session"][:8]] = variant
+        for rec in r.get("scroll") or []:
+            key = (rec["screen"], variant, rec["source"])
+            agg = scroll.setdefault(key, {"segments": 0, "frames": 0, "seconds": 0.0, "hitches": 0, "hitchMs": 0.0,
+                                          "severeHitches": 0, "longestFrameMs": 0.0, "distancePt": 0.0})
+            for field in ("segments", "frames", "seconds", "hitches", "hitchMs", "severeHitches", "distancePt"):
+                agg[field] += rec.get(field) or 0
+            agg["longestFrameMs"] = max(agg["longestFrameMs"], rec.get("longestFrameMs") or 0)
+        for t in r.get("transitions") or []:
+            transitions.setdefault((t["to"], variant), []).append(t)
+        for screen, mb in (r.get("footprintByScreenMB") or {}).items():
+            key = (screen, variant)
+            memory[key] = max(memory.get(key, 0), mb)
+        if not r.get("tour"):
+            launch = r.get("launch") or {}
+            frames = r.get("launchFrames") or {}
+            launches.append({"variant": variant, "processMs": launch.get("processToFirstFrameMs"),
+                             "initMs": launch.get("initToFirstFrameMs"), "firstTickMs": frames.get("firstFrameMs"),
+                             "longestAfterMs": frames.get("longestFrameMs"), "hitchAfterMs": frames.get("hitchMs"),
+                             "screen": frames.get("to")})
+    scroll_rows = []
+    for (screen, variant, source), a in sorted(scroll.items()):
+        ratio = a["hitchMs"] / a["seconds"] if a["seconds"] > 0 else None
+        scroll_rows.append({"screen": screen, "variant": variant, "source": source, "hitchRatio": ratio,
+                            "rating": rating(ratio), "fps": a["frames"] / a["seconds"] if a["seconds"] > 0 else None,
+                            **a})
+    transition_rows = []
+    for (to, variant), items in sorted(transitions.items()):
+        transition_rows.append({"to": to, "variant": variant, "count": len(items),
+                                "firstFrameMs": median([t.get("firstFrameMs") for t in items]),
+                                "firstFrameMaxMs": max((t.get("firstFrameMs") or 0) for t in items),
+                                "longestFrameMs": max((t.get("longestFrameMs") or 0) for t in items),
+                                "hitchMs": median([t.get("hitchMs") for t in items])})
+    launch_rows = []
+    for variant in sorted({l["variant"] for l in launches}):
+        items = [l for l in launches if l["variant"] == variant]
+        launch_rows.append({"variant": variant, "count": len(items),
+                            "processToFirstFrameMs": median([l["processMs"] for l in items]),
+                            "initToFirstFrameMs": median([l["initMs"] for l in items]),
+                            "longestFrameAfterMs": median([l["longestAfterMs"] for l in items]),
+                            "hitchAfterMs": median([l["hitchAfterMs"] for l in items])})
+    hangs = {}
+    for e in events or []:
+        if e.get("kind") != "watchdogHang":
+            continue
+        parts = str(e.get("id", "")).split("-")
+        variant = session_variant.get(parts[1] if len(parts) > 2 else "", "?")
+        slot = hangs.setdefault((e.get("screen") or "?", variant), {"count": 0, "longestMs": 0.0, "totalMs": 0.0})
+        slot["count"] += 1
+        slot["longestMs"] = max(slot["longestMs"], e.get("durationMs") or 0)
+        slot["totalMs"] += e.get("durationMs") or 0
+    return {"scroll": scroll_rows, "transitions": transition_rows, "launch": launch_rows,
+            "memory": [{"screen": k[0], "variant": k[1], "peakMB": v} for k, v in sorted(memory.items())],
+            "hangs": [{"screen": k[0], "variant": k[1], **v} for k, v in sorted(hangs.items(), key=lambda kv: -kv[1]["totalMs"])]}
+
+
+LAUNCH_LINE = re.compile(r"^[\d.]+ \+(?P<ms>\d+) ms  (?P<event>.+)$")
+
+
+def launch_trace(path):
+    """Median ms since App.init of every LaunchTrace mark, per perf data set ("launch perf+<n> pid …" blocks)."""
+    if not path or not os.path.isfile(path):
+        return None
+    runs = []
+    current = None
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            m = LAUNCH_LINE.match(line.strip())
+            if not m:
+                continue
+            event = m["event"]
+            if event.startswith("launch "):
+                run = event.split()[1]
+                current = {"run": run, "marks": {}} if run.startswith("perf") else None
+                if current:
+                    runs.append(current)
+            elif current is not None and not event.startswith("stall"):
+                current["marks"].setdefault(event, int(m["ms"]))
+    out = {}
+    for run in sorted({r["run"] for r in runs}):
+        items = [r for r in runs if r["run"] == run]
+        names = []
+        for r in items:
+            for name in r["marks"]:
+                if name not in names:
+                    names.append(name)
+        out[run] = {"launches": len(items),
+                    "marks": {n: median([r["marks"].get(n) for r in items]) for n in names}}
+    return out
+
+
+def profiles(directory):
+    if not directory or not os.path.isdir(directory):
+        return []
+    found = []
+    for path in sorted(glob.glob(os.path.join(directory, "*.profile.json"))):
+        data = read_json(path)
+        if isinstance(data, list):
+            found += data
+    return found
+
+
+def in_app_markdown(app, trace=None):
+    lines = []
+    if app["launch"]:
+        lines += ["### Start (von der App gemessen)", "",
+                  "| Daten | Starts | Prozessstart → erstes Bild | App.init → erstes Bild | längster Frame danach (4 s) | Ruckeln danach |",
+                  "|---|---:|---:|---:|---:|---:|"]
+        for l in app["launch"]:
+            lines.append(f"| {l['variant']} | {l['count']} | {fmt(l['processToFirstFrameMs'], 0)} ms | {fmt(l['initToFirstFrameMs'], 0)} ms | "
+                         f"{fmt(l['longestFrameAfterMs'], 0)} ms | {fmt(l['hitchAfterMs'], 0)} ms |")
+        lines.append("")
+    if trace:
+        for run, data in trace.items():
+            marks = " → ".join(f"{name} {ms:.0f}" for name, ms in sorted(data["marks"].items(), key=lambda kv: kv[1] or 0) if ms is not None)
+            lines += [f"LaunchTrace `{run}` ({data['launches']} Starts, Median ms seit App.init): {marks}", ""]
+    if app["scroll"]:
+        lines += ["### Scrollen (von der App gemessen: Hitch Time Ratio = ms Ruckeln pro s Scrollen; < 5 gut, 5–10 spürbar, ≥ 10 kritisch)", "",
+                  "| Bildschirm | Daten | Quelle | Hitch-Ratio | Hitches (≥ 3 Frames) | längster Frame | Bildrate | Scrollzeit | Bewertung |",
+                  "|---|---|---|---:|---:|---:|---:|---:|---|"]
+        for r in app["scroll"]:
+            lines.append(f"| {r['screen']} | {r['variant']} | {SOURCE_LABELS.get(r['source'], r['source'])} | {fmt(r['hitchRatio'])} ms/s | "
+                         f"{r['hitches']} ({r['severeHitches']}) | {fmt(r['longestFrameMs'], 0)} ms | {fmt(r['fps'], 0)} fps | "
+                         f"{fmt(r['seconds'])} s | {r['rating']} |")
+        lines.append("")
+    if app["transitions"]:
+        lines += ["### Bildschirmwechsel (Auswahl → erstes Bild; dann 1,5 s Frames)", "",
+                  "| nach | Daten | Wechsel | erstes Bild (Median / max) | längster Frame | Ruckeln (Median) |",
+                  "|---|---|---:|---:|---:|---:|"]
+        for t in app["transitions"]:
+            lines.append(f"| {t['to']} | {t['variant']} | {t['count']} | {fmt(t['firstFrameMs'], 0)} / {fmt(t['firstFrameMaxMs'], 0)} ms | "
+                         f"{fmt(t['longestFrameMs'], 0)} ms | {fmt(t['hitchMs'], 0)} ms |")
+        lines.append("")
+    if app["memory"]:
+        lines += ["### Speicher (phys_footprint, Spitze je Bildschirm)", "", "| Bildschirm | Daten | Spitze |", "|---|---|---:|"]
+        for m in app["memory"]:
+            lines.append(f"| {m['screen']} | {m['variant']} | {m['peakMB']:.0f} MB |")
+        lines.append("")
+    if app["hangs"]:
+        lines += ["### Hänger > 250 ms je Bildschirm und Datensatz (Watchdog)", "",
+                  "_Enthält auch die Zeit, in der XCUITest den Accessibility-Baum der App abfragt (läuft auf dem Hauptthread)._", "",
+                  "| Bildschirm | Daten | Anzahl | längster | gesamt |", "|---|---|---:|---:|---:|"]
+        for h in app["hangs"]:
+            lines.append(f"| {h['screen']} | {h['variant']} | {h['count']} | {h['longestMs']:.0f} ms | {h['totalMs']:.0f} ms |")
+        lines.append("")
+    return lines
+
+
 def markdown(summary, diag=None):
     lines = ["## KlimaBilanz – Performance (Simulator, Release)", ""]
-    if summary["testCount"] == 0:
+    app = (diag or {}).get("inApp")
+    has_app = bool(app and (app["scroll"] or app["launch"] or app["transitions"]))
+    if summary["testCount"] == 0 and not has_app:
         lines += ["Keine Messwerte im Log gefunden – siehe Artefakt `perf-*` (test.log, xcresult).", ""]
         return "\n".join(lines)
     if summary["failed"]:
@@ -160,8 +352,10 @@ def markdown(summary, diag=None):
     if launch:
         lines += [f"**App-Start** (XCTApplicationLaunchMetric, bis bedienbar): **{launch['seconds']:.3f} s** "
                   f"(± {launch['rsd']:.1f} %, Werte {', '.join(f'{v:.3f}' for v in launch['values'])})", ""]
-    if summary["scroll"]:
-        lines += ["### Scrollen (Hitch Time Ratio, ms Ruckeln pro s Scrollen; < 5 gut, 5–10 spürbar, ≥ 10 kritisch)", "",
+    if has_app:
+        lines += in_app_markdown(app, (diag or {}).get("launchTrace"))
+    if any(s["hitchRatio"] is not None for s in summary["scroll"]):
+        lines += ["### Scrollen laut XCTest (Hitch Time Ratio, ms Ruckeln pro s Scrollen; < 5 gut, 5–10 spürbar, ≥ 10 kritisch)", "",
                   "| Bildschirm | Ziehen + Auslaufen | nur Auslaufen | Hitches | Hitch-Dauer | Bildrate | Bewertung |",
                   "|---|---:|---:|---:|---:|---:|---|"]
         for s in summary["scroll"]:
@@ -174,6 +368,11 @@ def markdown(summary, diag=None):
         for t in summary["tabTour"]:
             lines.append(f"| {t['label']} | {fmt(t['clockSeconds'], 2)} s | {fmt(t['cpuSeconds'], 2)} s | {fmt(t['peakMemoryMB'], 0)} MB |")
         lines.append("")
+    if diag and diag.get("profiles"):
+        import perf_profile
+        lines += ["### Time Profiler: Hauptthread-Hotspots je Tour-Phase (+1 500 Fahrten)", "",
+                  "_Jedes Sample zählt für die innerste App-Funktion auf dem Stack – inklusive der SwiftUI-/SwiftData-/"
+                  "Foundation-Arbeit, die sie auslöst._", "", perf_profile.markdown(diag["profiles"]), ""]
     if diag:
         lines += [f"### Von der App selbst erfasst (DiagnosticsService, {diag['sessions']} Sitzungen)", ""]
         if diag["hangs"]:
@@ -201,6 +400,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("log")
     parser.add_argument("--diagnostics")
+    parser.add_argument("--launch-trace")
+    parser.add_argument("--profiles")
     parser.add_argument("--json")
     args = parser.parse_args(argv)
     try:
@@ -211,6 +412,12 @@ def main(argv=None):
         return 0
     summary = summarize(parse_log(text))
     diag = app_diagnostics(args.diagnostics)
+    if diag is not None or args.launch_trace or args.profiles:
+        diag = diag or {"sessions": 0, "hangs": 0, "hangsByScreen": {}, "timings": {}, "initToFirstFrameMs": []}
+        events = read_json(os.path.join(args.diagnostics, "events.json")) if args.diagnostics else None
+        diag["inApp"] = in_app(perf_reports(args.diagnostics), events if isinstance(events, list) else [])
+        diag["launchTrace"] = launch_trace(args.launch_trace)
+        diag["profiles"] = profiles(args.profiles)
     if args.json:
         with open(args.json, "w", encoding="utf-8") as f:
             json.dump({"summary": summary, "appDiagnostics": diag}, f, indent=2, ensure_ascii=False)

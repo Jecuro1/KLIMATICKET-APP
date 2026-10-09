@@ -1,12 +1,13 @@
 import Foundation
 
-/// Launch diagnostics for CI screenshot runs only (`-KBScreenshot`): wall-clock timestamps of the launch path and
-/// every main-thread stall over 250 ms in the first 20 s, appended to `Documents/launch-trace.txt`, which
-/// scripts/capture_screenshots.sh collects next to the screenshots. Does nothing in normal use.
+/// Launch diagnostics for CI runs only: wall-clock timestamps of the launch path, appended to
+/// `Documents/launch-trace.txt` – screenshot runs (`-KBScreenshot`, collected by scripts/capture_screenshots.sh) also
+/// log every main-thread stall over 250 ms in the first 20 s; performance runs (`-KBPerf`, collected by the CI job
+/// "perf") only the marks (their stalls come from the hang watchdog). Does nothing in normal use.
 final class LaunchTrace: @unchecked Sendable {
     static let shared = LaunchTrace()
 
-    let isEnabled = LaunchMode.isScreenshot
+    let isEnabled = LaunchMode.isScreenshot || LaunchMode.isPerf
     private let lock = NSLock()
     private let origin = Date()
     private var marked: Set<String> = []
@@ -21,14 +22,17 @@ final class LaunchTrace: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         guard marked.insert(event).inserted else { return }
-        if marked.count == 1 { append("launch \(LaunchMode.screenshotScreen ?? "-") pid \(ProcessInfo.processInfo.processIdentifier)") }
+        if marked.count == 1 {
+            let run = LaunchMode.screenshotScreen ?? (LaunchMode.isPerf ? "perf+\(UserDefaults.standard.integer(forKey: "KBPerfTrips"))" : "-")
+            append("launch \(run) pid \(ProcessInfo.processInfo.processIdentifier)")
+        }
         append(event)
     }
 
     /// Pings the main queue every 50 ms for 20 s; a ping answered late is a stall (the first one includes the time
     /// until the main run loop starts, i.e. everything before the first frame).
     func startStallMonitor() {
-        guard isEnabled else { return }
+        guard isEnabled, LaunchMode.isScreenshot else { return }
         lock.lock()
         let start = !monitoring
         monitoring = true

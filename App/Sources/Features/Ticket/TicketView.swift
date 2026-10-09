@@ -76,6 +76,7 @@ struct TicketView: View {
             ScrollView {
                 walletSections(ticket: ticket, snapshot: snapshot, proxy: proxy)
             }
+            .accessibilityIdentifier("perf.scroll.ticket") // MARK: perf – KlimaBilanzPerfTests
             .scrollEdgeEffectStyle(.soft, for: .all)
             .tktInlineTitleTracking(titleChrome)
             .ambientBackground(.standard, glow: 0.45 + 0.5 * snapshot.summary.progressClamped)

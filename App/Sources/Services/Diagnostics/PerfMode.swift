@@ -22,7 +22,13 @@ enum PerfMode {
         return settings
     }
 
-    static func seed(into context: ModelContext, now: Date = Date()) {
+    /// Demo year (+ `extraTrips`). Every seeded ticket counts as celebrated: the full-screen "Rentiert!" moment would
+    /// cover the screen the tests measure (it showed up with +1 500 trips and hid every scroll view).
+    static func seed(into context: ModelContext, settings: AppSettings, now: Date = Date()) {
+        defer {
+            let tickets = (try? context.fetch(FetchDescriptor<TicketEntity>())) ?? []
+            settings.celebratedBreakEvenTicketIDs = tickets.map(\.id.uuidString)
+        }
         DemoData.seed(into: context, now: now)
         let extra = extraTrips
         guard extra > 0 else { return }

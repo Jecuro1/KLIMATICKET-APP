@@ -119,3 +119,32 @@ open class CAShapeLayer: CALayer {
     open var strokeStart: CGFloat = 0
     open var strokeEnd: CGFloat = 1
 }
+
+// MARK: - CADisplayLink (CADisplayLink.h, CAFrameRateRange.h, CABase.h)
+
+/// struct CAFrameRateRange
+public struct CAFrameRateRange: Equatable, @unchecked Sendable {
+    public var minimum: Float
+    public var maximum: Float
+    public var preferred: Float?
+    public init(minimum: Float, maximum: Float, preferred: Float? = nil) {
+        self.minimum = minimum
+        self.maximum = maximum
+        self.preferred = preferred
+    }
+    public static let `default` = CAFrameRateRange(minimum: 0, maximum: 0, preferred: 0)
+}
+
+public func CACurrentMediaTime() -> CFTimeInterval { _caStub() }
+
+open class CADisplayLink: NSObject {
+    public init(target: Any, selector sel: Selector) { super.init() }
+    open func add(to runloop: RunLoop, forMode mode: RunLoop.Mode) { _caStub() }
+    open func remove(from runloop: RunLoop, forMode mode: RunLoop.Mode) { _caStub() }
+    open func invalidate() { _caStub() }
+    open var timestamp: CFTimeInterval { _caStub() }
+    open var duration: CFTimeInterval { _caStub() }
+    open var targetTimestamp: CFTimeInterval { _caStub() }
+    open var isPaused: Bool = false
+    open var preferredFrameRateRange: CAFrameRateRange = .default
+}

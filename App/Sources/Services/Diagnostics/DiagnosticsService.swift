@@ -101,6 +101,8 @@ final class DiagnosticsService: NSObject, MXMetricManagerSubscriber, @unchecked 
         }
 
         configureWatchdog()
+        // CI performance tests: frame pacing, transitions and memory per screen (perf-<session>.json).
+        if mode == .perf { PerfFrameMonitor.shared.start() }
         // Starts paused; `didBecomeActive` resumes it (the observers above exist before the app first becomes active –
         // `UIApplication.shared` must not be touched this early, `App.init` may run before it exists).
         if mode == .perf || isWatchdogEnabled { watchdog.start() }
@@ -172,6 +174,10 @@ final class DiagnosticsService: NSObject, MXMetricManagerSubscriber, @unchecked 
     }
 
     // MARK: Session
+
+    var currentSessionID: String { currentSession().id }
+    var currentLaunchTiming: LaunchTiming? { currentSession().launch }
+    var currentHangCount: Int { currentSession().hangCount }
 
     private func currentSession() -> DiagnosticsSession {
         lock.lock(); defer { lock.unlock() }
