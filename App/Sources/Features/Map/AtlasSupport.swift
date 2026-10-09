@@ -70,7 +70,8 @@ enum AtlasFormat {
         return "\(y1)/\(String(format: "%02d", y2 % 100))"
     }
 
-    static func legs(_ n: Int) -> String { n == 1 ? "1 Fahrt" : "\(Format.number(Double(n))) Fahrten" }
+    /// "16 Fahrten" – logged entries (a round trip counts once), like "Fahrten" everywhere else in the app.
+    static func trips(_ n: Int) -> String { n == 1 ? "1 Fahrt" : "\(Format.number(Double(n))) Fahrten" }
     static func visits(_ n: Int) -> String { n == 1 ? "1 Besuch" : "\(Format.number(Double(n))) Besuche" }
     static func stations(_ n: Int) -> String { n == 1 ? "1 Bahnhof" : "\(n) Bahnhöfe" }
     static func routes(_ n: Int) -> String { n == 1 ? "1 Strecke" : "\(n) Strecken" }

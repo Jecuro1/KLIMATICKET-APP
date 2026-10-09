@@ -178,7 +178,7 @@ struct AtlasMiniMap: View {
     private func topRouteChip(_ route: AtlasRoute) -> some View {
         HStack(spacing: 6) {
             AtlasModeDot(mode: route.dominantMode, size: 8)
-            Text("\(AtlasFormat.routeTitle(route)) · \(AtlasFormat.legs(route.legs))")
+            Text("\(AtlasFormat.routeTitle(route)) · \(AtlasFormat.trips(route.entries))")
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }

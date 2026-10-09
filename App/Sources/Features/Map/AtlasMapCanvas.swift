@@ -301,7 +301,7 @@ struct AtlasMapCanvas: View {
             return summary.places.isEmpty ? "Noch keine Strecken mit Kartenposition" : AtlasFormat.stations(summary.places.count)
         }
         var text = "\(summary.routes.count) Strecken, \(AtlasFormat.stations(summary.places.count)). "
-            + "Meistgefahren: \(top.from.name) und \(top.to.name), \(AtlasFormat.legs(top.legs))."
+            + "Meistgefahren: \(top.from.name) und \(top.to.name), \(AtlasFormat.trips(top.entries))."
         if let north = summary.extremes.north, let south = summary.extremes.south,
            let west = summary.extremes.west, let east = summary.extremes.east {
             text += " Extrempunkte: Norden \(north.name), Süden \(south.name), Westen \(west.name), Osten \(east.name)."

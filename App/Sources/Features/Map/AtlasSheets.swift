@@ -119,10 +119,10 @@ struct AtlasRouteDetail: View {
 
     private var tiles: some View {
         HStack(spacing: Theme.Spacing.xs) {
-            AtlasMiniStat(value: Format.number(Double(route.legs)), label: route.legs == 1 ? "Fahrt" : "Fahrten",
+            AtlasMiniStat(value: Format.number(Double(route.entries)), label: route.entries == 1 ? "Fahrt" : "Fahrten",
                           symbol: "arrow.left.arrow.right", color: Theme.accent)
             AtlasMiniStat(value: Format.km(route.distanceKm), label: "gefahren", symbol: "road.lanes", color: Theme.dusk)
-            AtlasMiniStat(value: Format.euroPrecise(route.value / Double(max(route.legs, 1))), label: "pro Fahrt",
+            AtlasMiniStat(value: Format.euroPrecise(route.value / Double(max(route.entries, 1))), label: "pro Fahrt",
                           symbol: "eurosign", color: Theme.summit)
         }
     }
@@ -394,7 +394,7 @@ struct AtlasDetailsSheet: View {
                 AtlasRouteName(route)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
-                Text("\(AtlasFormat.legs(route.legs)) · \(Format.km(route.distanceKm))")
+                Text("\(AtlasFormat.trips(route.entries)) · \(Format.km(route.distanceKm))")
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(Theme.textSecondary)
@@ -412,7 +412,7 @@ struct AtlasDetailsSheet: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Platz \(route.rank): \(route.from.name) und \(route.to.name)")
-        .accessibilityValue("\(AtlasFormat.legs(route.legs)), \(Format.euro(route.value, decimals: 0)), \(Format.km(route.distanceKm))")
+        .accessibilityValue("\(AtlasFormat.trips(route.entries)), \(Format.euro(route.value, decimals: 0)), \(Format.km(route.distanceKm))")
         .accessibilityHint("Zeigt die Strecke auf der Karte")
     }
 
@@ -420,7 +420,7 @@ struct AtlasDetailsSheet: View {
 
     private var unmappedSection: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            sectionTitle("Ohne Kartenposition", trailing: AtlasFormat.legs(summary.unmappedLegCount))
+            sectionTitle("Ohne Kartenposition", trailing: AtlasFormat.trips(summary.unmapped.reduce(0) { $0 + $1.entries }))
             Text("Für diese Haltestellen kennt die App keine Koordinaten. Die Fahrten zählen trotzdem voll in deiner Bilanz.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
@@ -462,11 +462,11 @@ struct AtlasDetailsSheet: View {
         .padding(.vertical, Theme.Spacing.s - 2)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.fromName) und \(item.toName), \(item.mode.displayName)")
-        .accessibilityValue("\(AtlasFormat.legs(item.legs)), \(Format.euro(item.value, decimals: 0)), ohne Kartenposition")
+        .accessibilityValue("\(AtlasFormat.trips(item.entries)), \(Format.euro(item.value, decimals: 0)), ohne Kartenposition")
     }
 
     private func unmappedCaption(_ item: AtlasUnmappedRoute) -> String {
-        var parts = [AtlasFormat.legs(item.legs)]
+        var parts = [AtlasFormat.trips(item.entries)]
         if let known = item.knownPlaceName { parts.append("nur \(TripRow.short(known)) bekannt") }
         return parts.joined(separator: " · ")
     }
