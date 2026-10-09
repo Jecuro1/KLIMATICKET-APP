@@ -228,8 +228,8 @@ struct RootView: View {
             guard let id = value("favorite").flatMap(UUID.init(uuidString:)) else { return }
             let repo = Repository(context: context, app: app)
             if let fav = repo.liveFavorites().first(where: { $0.id == id }) {
-                let trip = repo.logFavorite(fav)
-                app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(fav.displayTitle) · \(Format.euro(trip.totalValue))")
+                repo.logFavorite(fav)
+                app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(fav.displayTitle) · \(Format.euro(fav.valuePerLog))")   // MARK: trips
             }
         case "tab":
             if let tab = AppTab(rawValue: url.lastPathComponent) { app.selectedTab = tab }

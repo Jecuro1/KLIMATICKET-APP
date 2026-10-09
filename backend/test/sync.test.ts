@@ -285,6 +285,45 @@ describe("last writer wins", () => {
     expect((await stored(s, "favorite_routes", favorite.id))!).toMatchObject({ via: "at:48:817\tFeldkirch", usage_count: 3 });
   });
 
+  it("journeys (docs/JOURNEYS.md): new rows default to ''/0, an older app's push keeps journey_id, leg_index and legs", async () => {
+    const s = await directSession(deps);
+    const id = uuid();
+    const journey = "7c1d4e2a-9b3f-4a5e-8d6c-1f2e3a4b5c6d";
+    // New row from an older app (no journey keys) → defaults.
+    await pushOk(s, "trips", [trip({ id })]);
+    expect((await stored(s, "trips", id))!).toMatchObject({ journey_id: "", leg_index: 0 });
+    // A newer app makes it leg 2 of a journey.
+    await pushOk(s, "trips", [trip({ id, journey_id: journey, leg_index: 1, updated_at: ts(2) })]);
+    expect((await stored(s, "trips", id))!).toMatchObject({ journey_id: journey, leg_index: 1 });
+    // The older app edits the note: absent journey keys keep the stored journey, the edit applies.
+    const older = await pushOk(s, "trips", [trip({ id, note: "älter", updated_at: ts(3) })]);
+    expect(older.applied).toBe(1);
+    expect((await stored(s, "trips", id))!).toMatchObject({ journey_id: journey, leg_index: 1, note: "älter" });
+    // An echo of the older app's row (same content, no journey keys) is skipped.
+    const echo = await pushOk(s, "trips", [trip({ id, note: "älter", updated_at: ts(3) })]);
+    expect(echo).toMatchObject({ applied: 0, skipped: 1 });
+    // The newer app takes the leg out of the journey.
+    await pushOk(s, "trips", [trip({ id, note: "älter", journey_id: "", leg_index: 0, updated_at: ts(4) })]);
+    expect((await stored(s, "trips", id))!).toMatchObject({ journey_id: "", leg_index: 0 });
+
+    const legs = '[{"eur":5.8,"f":"Lech","km":16,"m":"bus","t":"Langen am Arlberg"},{"eur":36,"f":"Langen am Arlberg","km":144.2,"m":"train","t":"Innsbruck Hbf"}]';
+    const favorite = {
+      id: uuid(), title: "Kombi", from_name: "Lech", to_name: "Innsbruck Hbf", mode: "train", distance_km: 160.2, fare_eur: 41.8,
+      is_round_trip: false, states: "T,V", sort_index: 0, usage_count: 0, created_at: ts(1), updated_at: ts(1), legs,
+    };
+    await pushOk(s, "favorite_routes", [favorite]);
+    const { legs: _dropped, ...withoutLegs } = favorite;
+    await pushOk(s, "favorite_routes", [{ ...withoutLegs, usage_count: 4, updated_at: ts(2) }]);
+    expect((await stored(s, "favorite_routes", favorite.id))!).toMatchObject({ legs, usage_count: 4 });
+  });
+
+  it("rejects malformed journey keys", async () => {
+    const s = await directSession(deps);
+    await expectError(await push(s, "trips", [trip({ id: uuid(), journey_id: "x".repeat(37) })]), 422, "invalid_row");
+    await expectError(await push(s, "trips", [trip({ id: uuid(), leg_index: 1.5 })]), 422, "invalid_row");
+    await expectError(await push(s, "trips", [trip({ id: uuid(), leg_index: "1" })]), 422, "invalid_row");
+  });
+
   it("rejects an over-long via", async () => {
     const s = await directSession(deps);
     await expectError(await push(s, "trips", [trip({ id: uuid(), via: "x".repeat(1001) })]), 422, "invalid_row");

@@ -197,8 +197,9 @@ struct TripListActions {
     func log(_ favorite: FavoriteRouteEntity) {
         let baseline = breakEvenBaseline()
         let trip = repository.logFavorite(favorite)
-        app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(favorite.displayTitle) · \(Format.euroPrecise(trip.totalValue))")
-        celebrateIfCrossed(baseline, adding: trip)
+        // A Kombi-Vorlage logs every leg: the favourite's value is the whole journey.
+        app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(favorite.displayTitle) · \(Format.euroPrecise(favorite.valuePerLog))")
+        celebrateIfCrossed(baseline, adding: trip, value: favorite.valuePerLog)
     }
 
     // MARK: Break-even
@@ -220,10 +221,11 @@ struct TripListActions {
         return BreakEvenBaseline(ticketID: ticket.id, period: period, value: value)
     }
 
-    /// Raises the global celebration flag when `trip` pushed the active ticket over its summit (own share).
-    private func celebrateIfCrossed(_ baseline: BreakEvenBaseline?, adding trip: TripEntity) {
+    /// Raises the global celebration flag when `trip` (worth `value`, default its own) pushed the active ticket over its
+    /// summit (own share).
+    private func celebrateIfCrossed(_ baseline: BreakEvenBaseline?, adding trip: TripEntity, value: Double? = nil) {
         guard let baseline, baseline.value < baseline.period.price, baseline.period.contains(trip.date),
-              baseline.value + trip.totalValue >= baseline.period.price,
+              baseline.value + (value ?? trip.totalValue) >= baseline.period.price,
               !app.settings.celebratedBreakEvenTicketIDs.contains(baseline.ticketID.uuidString) else { return }
         app.celebrateBreakEven = true
     }

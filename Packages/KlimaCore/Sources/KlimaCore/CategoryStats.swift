@@ -97,21 +97,24 @@ public enum CategoryStats {
     public static func buckets(_ trips: [TripRecord]) -> [CategoryBucket] {
         guard !trips.isEmpty else { return [] }
         var map: [String: CategoryBucket] = [:]
+        // A journey counts once per bucket (docs/JOURNEYS.md); its legs add their values.
+        var journeys = JourneyCounter<String>()
+        var inducedJourneys = JourneyCounter<String>()
         for trip in trips {
             let key = trip.category?.rawValue ?? CategoryBucket.uncategorizedID
             var bucket = map[key] ?? CategoryBucket(category: trip.category)
-            bucket.trips += 1
+            bucket.trips += journeys.count(trip, in: key)
             bucket.legs += trip.legs
             bucket.value += trip.totalValue
             bucket.distanceKm += trip.totalDistanceKm
             if trip.isInduced {
-                bucket.inducedTrips += 1
+                bucket.inducedTrips += inducedJourneys.count(trip, in: key)
                 bucket.inducedValue += trip.totalValue
             }
             map[key] = bucket
         }
         let totalValue = trips.reduce(0) { $0 + $1.totalValue }
-        let totalTrips = Double(trips.count)
+        let totalTrips = Double(max(1, JourneySummary.tripCount(trips)))
         let order = TripCategory.allCases
         func rank(_ category: TripCategory?) -> Int { category.flatMap { order.firstIndex(of: $0) } ?? order.count }
         return map.values
@@ -132,16 +135,15 @@ public enum CategoryStats {
     /// Honest payoff of a ticket period. Trips outside the period are ignored (like `SavingsCalculator.summary`).
     public static func honestBalance(ticket: TicketPeriod, trips allTrips: [TripRecord]) -> HonestBalance {
         let trips = allTrips.filter { ticket.contains($0.date) }
-        var total = 0.0, extra = 0.0, induced = 0
+        var total = 0.0, extra = 0.0
         for trip in trips {
             total += trip.totalValue
-            if trip.isInduced {
-                extra += trip.totalValue
-                induced += 1
-            }
+            if trip.isInduced { extra += trip.totalValue }
         }
+        // Journeys count once (docs/JOURNEYS.md).
         return HonestBalance(ticketPrice: ticket.price, totalValue: total, realSavings: total - extra, extraValue: extra,
-                             tripCount: trips.count, inducedTripCount: induced)
+                             tripCount: JourneySummary.tripCount(trips),
+                             inducedTripCount: JourneySummary.tripCount(trips.filter(\.isInduced)))
     }
 
     /// Share of the value that is work-related (Arbeitsweg + Dienstreise) – nil when nothing is categorised yet.

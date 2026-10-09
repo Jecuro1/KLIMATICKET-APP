@@ -17,7 +17,8 @@ export interface Column {
   default?: string | number;
   /**
    * Absent or null in a push keeps the stored value (a new row gets `default`) instead of resetting it – for columns
-   * that older apps do not know, so their edits never wipe what a newer app wrote (e.g. `via`, docs/VIA.md §3).
+   * that older apps do not know, so their edits never wipe what a newer app wrote (e.g. `via`, docs/VIA.md §3; the journey
+   * columns, docs/JOURNEYS.md §3).
    */
   keepWhenAbsent?: boolean;
 }
@@ -102,6 +103,8 @@ const DEFINITIONS: Record<SyncTable, Column[]> = {
     O("category", "text", "", 50),
     O("is_induced", "bool", 0),
     K("via", "text", "", 1000),
+    K("journey_id", "text", "", 36),
+    K("leg_index", "int", 0),
     CREATED,
     UPDATED,
     DELETED,
@@ -122,6 +125,7 @@ const DEFINITIONS: Record<SyncTable, Column[]> = {
     R("usage_count", "int"),
     O("category", "text", "", 50),
     K("via", "text", "", 1000),
+    K("legs", "text", "", 4000),
     CREATED,
     UPDATED,
     DELETED,

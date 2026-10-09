@@ -148,11 +148,13 @@ final class ClientRequestTests: XCTestCase {
         XCTAssertEqual(empty.apiVersion, 1)
         XCTAssertEqual(empty.features, [], "a Worker before `features` supports nothing additive")
         XCTAssertFalse(empty.supports(CloudFeature.tripVia))
+        XCTAssertFalse(empty.supports(CloudFeature.tripJourney))
     }
 
     func testConfigFeatures() throws {
         let config = try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"api_version":1,"features":["trip_via","later"]}"#.utf8))
         XCTAssertTrue(config.supports(CloudFeature.tripVia))
+        XCTAssertFalse(config.supports(CloudFeature.tripJourney), "a Worker before migration 0003")
         XCTAssertFalse(config.supports("unknown"))
         XCTAssertEqual(try JSONDecoder().decode(CloudConfig.self, from: try JSONEncoder().encode(config)), config)
         // A malformed list is ignored, not fatal.
@@ -436,5 +438,34 @@ final class PushPullTests: XCTestCase {
         XCTAssertEqual(result.maxRev, 3)
         XCTAssertEqual(refreshed.value, 1)
         XCTAssertEqual(transport.requests.count, 2)
+    }
+}
+
+/// "Reise mit Etappen" keys on the wire (docs/JOURNEYS.md §3): nil = not sent (the server keeps what it has).
+final class JourneyDTOTests: XCTestCase {
+    func testJourneyKeysAreLeftOutWhenNil() throws {
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+        var trip = TripDTO(id: UUID(), user_id: "u", date: date, from_name: "Lech", to_name: "Langen am Arlberg", mode: "bus",
+                           distance_km: 16, fare_eur: 5.8, is_fare_manual: false, is_round_trip: false, travel_class: "second",
+                           companions: 0, states: "V", note: "", created_at: date, updated_at: date)
+        var keys = try XCTUnwrap(try JSONSerialization.jsonObject(with: CloudCoding.encoder.encode(trip)) as? [String: Any])
+        XCTAssertNil(keys["journey_id"])
+        XCTAssertNil(keys["leg_index"])
+        trip.journey_id = "7c1d4e2a-9b3f-4a5e-8d6c-1f2e3a4b5c6d"
+        trip.leg_index = 2
+        keys = try XCTUnwrap(try JSONSerialization.jsonObject(with: CloudCoding.encoder.encode(trip)) as? [String: Any])
+        XCTAssertEqual(keys["journey_id"] as? String, "7c1d4e2a-9b3f-4a5e-8d6c-1f2e3a4b5c6d")
+        XCTAssertEqual(keys["leg_index"] as? Int, 2)
+        let back = try CloudCoding.decoder.decode(TripDTO.self, from: CloudCoding.encoder.encode(trip))
+        XCTAssertEqual(back, trip)
+
+        var favorite = FavoriteDTO(id: UUID(), user_id: "u", title: "", from_name: "Lech", to_name: "Innsbruck Hbf", mode: "train",
+                                   distance_km: 160, fare_eur: 41.8, is_round_trip: false, states: "T,V", sort_index: 0,
+                                   usage_count: 0, created_at: date, updated_at: date)
+        keys = try XCTUnwrap(try JSONSerialization.jsonObject(with: CloudCoding.encoder.encode(favorite)) as? [String: Any])
+        XCTAssertNil(keys["legs"])
+        favorite.legs = ""
+        keys = try XCTUnwrap(try JSONSerialization.jsonObject(with: CloudCoding.encoder.encode(favorite)) as? [String: Any])
+        XCTAssertEqual(keys["legs"] as? String, "")
     }
 }

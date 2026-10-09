@@ -128,6 +128,10 @@ final class TripEntity {
     var isInduced: Bool = false
     /// Via stations in travel order, `TripViaCodec` encoding ("" = direct; docs/VIA.md). Distance and fare follow it.  // MARK: via
     var viaRaw: String = ""
+    /// "Reise mit Etappen" (docs/JOURNEYS.md): the journey this trip is a leg of (nil = a trip of its own) and its place in
+    /// travel order. Every leg keeps its own stations, mode, price and km; the legs share date, direction and purpose.  // MARK: trips
+    var journeyID: UUID?
+    var legIndex: Int = 0
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -187,7 +191,8 @@ final class TripEntity {
     var record: TripRecord {
         TripRecord(id: id, date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
                    mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, companions: companions,
-                   states: Set(states), category: category, isInduced: isInduced, via: via)
+                   states: Set(states), category: category, isInduced: isInduced, via: via,
+                   journeyID: journeyID, legIndex: legIndex)   // MARK: trips
     }
 
     func touch() { updatedAt = Date() }
@@ -212,6 +217,10 @@ final class FavoriteRouteEntity {
     var categoryRaw: String = ""
     /// Via stations in travel order, `TripViaCodec` encoding ("" = direct; docs/VIA.md).  // MARK: via
     var viaRaw: String = ""
+    /// "Kombi-Vorlage" (docs/JOURNEYS.md): the legs of a multi-leg favourite, `JourneyLegCodec` ("" = one route). The
+    /// favourite's own fields then describe the whole journey – first start, last destination, main mode, summed km and
+    /// fare – which is what widgets, Siri, older apps and the quick-log chips show.  // MARK: trips
+    var legsRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -260,6 +269,30 @@ final class FavoriteRouteEntity {
         trip.categoryRaw = categoryRaw
         trip.viaRaw = viaRaw   // MARK: via
         return trip
+    }
+
+    // MARK: trips – Kombi-Vorlage
+    var legs: [JourneyLeg] { JourneyLegCodec.decode(legsRaw) }
+    var isCombo: Bool { !legsRaw.isEmpty && legs.count > 1 }
+    /// What one log of this favourite adds (all legs, both directions for "hin & retour").
+    var valuePerLog: Double { fareEUR * (isRoundTrip ? 2 : 1) }
+
+    /// The trips one log creates: every leg of a Kombi-Vorlage as one journey (shared id, travel order), else `makeTrip`.
+    func makeTrips(on date: Date = Date()) -> [TripEntity] {
+        let legs = self.legs
+        guard legs.count > 1 else { return [makeTrip(on: date)] }
+        let journey = UUID()
+        return legs.enumerated().map { index, leg in
+            let trip = TripEntity(date: date, fromName: leg.fromName, toName: leg.toName, fromStationID: leg.fromStationID,
+                                  toStationID: leg.toStationID, mode: leg.mode, distanceKm: leg.distanceKm, fareEUR: leg.fareEUR,
+                                  isRoundTrip: isRoundTrip)
+            trip.statesRaw = leg.statesRaw
+            trip.viaRaw = leg.viaRaw
+            trip.categoryRaw = categoryRaw
+            trip.journeyID = journey
+            trip.legIndex = index
+            return trip
+        }
     }
 
     func touch() { updatedAt = Date() }

@@ -40,19 +40,26 @@ struct Repository {
     }
 
     /// Logs a favourite route right now ("Schnellerfassung").
+    /// A Kombi-Vorlage logs every leg as one journey; the first leg is returned (`favorite.valuePerLog` is what was added).  // MARK: trips
     @discardableResult
     func logFavorite(_ favorite: FavoriteRouteEntity, on date: Date = Date()) -> TripEntity {
-        let trip = favorite.makeTrip(on: date)
+        let trips = favorite.makeTrips(on: date)   // MARK: trips
         favorite.usageCount += 1
         favorite.touch()
-        context.insert(trip)
+        for trip in trips { context.insert(trip) }
         commit()
-        return trip
+        return trips[0]
     }
 
     // MARK: dashboardTicket – "Rückgängig" on the quick-log toast: removes the trip and gives back the favourite's use.
     func undoLogFavorite(_ trip: TripEntity, favorite: FavoriteRouteEntity?) {
-        trip.deletedAt = Date()
+        let now = Date()
+        // MARK: trips – a logged Kombi-Vorlage goes as a whole (every leg of its journey).
+        for leg in journeyLegs(of: trip) where leg !== trip {
+            leg.deletedAt = now
+            leg.touch()
+        }
+        trip.deletedAt = now
         trip.touch()
         if let favorite, favorite.usageCount > 0 {
             favorite.usageCount -= 1
@@ -98,9 +105,10 @@ struct Repository {
                 skipped += 1
                 continue
             }
-            let trip = fav.makeTrip(on: item.date)
-            context.insert(trip)
-            inserted.append(trip)
+            for trip in fav.makeTrips(on: item.date) {   // MARK: trips – every leg of a Kombi-Vorlage
+                context.insert(trip)
+                inserted.append(trip)
+            }
             if fav.deletedAt == nil {
                 if !touched.contains(where: { $0.favorite === fav }) { touched.append((fav, fav.usageCount, fav.updatedAt)) }
                 fav.usageCount += 1
@@ -123,6 +131,77 @@ struct Repository {
                           "Der Favorit existiert nicht mehr")
         }
         return inserted.count
+    }
+
+    // MARK: trips – "Reise mit Etappen" (docs/JOURNEYS.md): every leg is a trip; one commit per user action.
+
+    /// The live legs of `trip`'s journey in travel order (just `[trip]` for a trip of its own).
+    func journeyLegs(of trip: TripEntity) -> [TripEntity] {
+        guard let journeyID = trip.journeyID else { return [trip] }
+        let legs = journeyLegs(journeyID)
+        return legs.isEmpty ? [trip] : legs
+    }
+
+    func journeyLegs(_ journeyID: UUID) -> [TripEntity] {
+        let id: UUID? = journeyID
+        let predicate = #Predicate<TripEntity> { $0.journeyID == id && $0.deletedAt == nil }
+        let legs = (try? context.fetch(FetchDescriptor<TripEntity>(predicate: predicate))) ?? []
+        return legs.sorted { ($0.legIndex, $0.date, $0.createdAt) < ($1.legIndex, $1.date, $1.createdAt) }
+    }
+
+    /// The editor's save of a journey: new legs inserted, edited ones stamped, dropped ones tombstoned – one commit.
+    @discardableResult
+    func saveJourney(inserting new: [TripEntity], updating changed: [TripEntity], removing removed: [TripEntity]) -> Bool {
+        for trip in new { context.insert(trip) }
+        for trip in changed { trip.touch() }
+        let now = Date()
+        for trip in removed where trip.deletedAt == nil {
+            trip.deletedAt = now
+            trip.touch()
+        }
+        return commit()
+    }
+
+    /// Soft-deletes several trips at once (every leg of a journey); `restoreTrips` undoes it.
+    func deleteTrips(_ trips: [TripEntity]) {
+        let now = Date()
+        for trip in trips {
+            trip.deletedAt = now
+            trip.touch()
+        }
+        commit()
+    }
+
+    func restoreTrips(_ trips: [TripEntity]) {
+        guard !trips.isEmpty else { return }
+        for trip in trips {
+            trip.deletedAt = nil
+            trip.touch()
+        }
+        commit()
+    }
+
+    /// "Nochmal" / "Duplizieren" of a journey: every leg copied under a new journey id, in one commit. `note` goes on the
+    /// first leg (where the editor keeps a journey's note).
+    @discardableResult
+    func repeatJourney(_ legs: [TripEntity], on date: Date = Date(), note: String = "") -> [TripEntity] {
+        guard legs.count > 1 else { return legs.first.map { [repeatTrip($0, on: date, note: note)] } ?? [] }
+        let journey = UUID()
+        let copies = legs.enumerated().map { index, trip in
+            let copy = TripEntity(date: date, fromName: trip.fromName, toName: trip.toName, fromStationID: trip.fromStationID,
+                                  toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm, fareEUR: trip.fareEUR,
+                                  isFareManual: trip.isFareManual, isRoundTrip: trip.isRoundTrip, travelClass: trip.travelClass,
+                                  companions: trip.companions, states: trip.states, note: index == 0 ? note : "")
+            copy.categoryRaw = trip.categoryRaw
+            copy.isInduced = trip.isInduced
+            copy.viaRaw = trip.viaRaw
+            copy.journeyID = journey
+            copy.legIndex = index
+            return copy
+        }
+        for copy in copies { context.insert(copy) }
+        commit()
+        return copies
     }
 
     // MARK: Favourites

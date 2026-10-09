@@ -159,8 +159,9 @@ struct DashQuickLogSection: View {
         flashCheck(on: favorite.id)
         let undo = DashQuickLogUndo(app: app, context: context)
         let tripID = trip.id, favoriteID = favorite.id
-        let haptic = toastHaptic(adding: trip.totalValue)
-        app.showToast("checkmark.circle.fill", "Fahrt erfasst", toastSubtitle(adding: trip.totalValue),
+        let added = favorite.valuePerLog   // MARK: trips – every leg of a Kombi-Vorlage (= trip.totalValue for one route)
+        let haptic = toastHaptic(adding: added)
+        app.showToast("checkmark.circle.fill", "Fahrt erfasst", toastSubtitle(adding: added),
                       actionTitle: "Rückgängig", haptic: haptic ?? .success) {
             undo.undo(tripID: tripID, favoriteID: favoriteID)
         }

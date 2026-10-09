@@ -85,6 +85,8 @@ public struct CloudUser: Codable, Equatable, Sendable {
 public enum CloudFeature {
     /// `via` on trips and favorite_routes (backend migration 0002, docs/VIA.md §3).
     public static let tripVia = "trip_via"
+    /// `journey_id` + `leg_index` on trips and `legs` on favorite_routes (backend migration 0003, docs/JOURNEYS.md).
+    public static let tripJourney = "trip_journey"
 }
 
 /// `GET /v1/config` (contract §3.3). Decoding tolerates unknown and missing keys (missing provider flags = disabled).

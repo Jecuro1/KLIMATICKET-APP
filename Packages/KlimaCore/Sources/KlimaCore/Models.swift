@@ -398,10 +398,13 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
     public var isInduced: Bool
     /// Via stations in travel order (at most `TripVia.maxCount`); `distanceKm` and `fareEUR` already follow this route.
     public var via: [TripVia]
+    /// The multi-leg journey this trip is a leg of (nil = a trip of its own) and its position in it (docs/JOURNEYS.md).
+    public var journeyID: UUID?
+    public var legIndex: Int
 
     public init(id: UUID = UUID(), date: Date, fromName: String, toName: String, fromStationID: String? = nil, toStationID: String? = nil,
                 mode: TransportMode, distanceKm: Double, fareEUR: Double, isRoundTrip: Bool = false, companions: Int = 0, states: Set<String> = [],
-                category: TripCategory? = nil, isInduced: Bool = false, via: [TripVia] = []) {
+                category: TripCategory? = nil, isInduced: Bool = false, via: [TripVia] = [], journeyID: UUID? = nil, legIndex: Int = 0) {
         self.id = id
         self.date = date
         self.fromName = fromName
@@ -417,6 +420,8 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
         self.category = category
         self.isInduced = isInduced
         self.via = via
+        self.journeyID = journeyID
+        self.legIndex = legIndex
     }
 
     public var legs: Int { isRoundTrip ? 2 : 1 }

@@ -22,8 +22,9 @@ export async function health(env: Env, deps: Deps, info: RequestInfo): Promise<R
  * Additive capabilities of this Worker + D1 (contract §3.3). An app sends a newer sync column only when the feature is
  * listed – a Worker without the migration answers `422 unknown_field` for keys it does not know.
  * - `trip_via`: `via` on trips and favorite_routes (migration 0002, docs/VIA.md §3).
+ * - `trip_journey`: `journey_id` + `leg_index` on trips, `legs` on favorite_routes (migration 0003, docs/JOURNEYS.md §3).
  */
-export const FEATURES = ["trip_via"] as const;
+export const FEATURES = ["trip_via", "trip_journey"] as const;
 
 export async function config(env: Env, deps: Deps, info: RequestInfo): Promise<Response> {
   return json(info, {

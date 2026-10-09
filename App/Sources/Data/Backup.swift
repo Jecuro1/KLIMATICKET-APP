@@ -10,7 +10,8 @@ import KlimaCloud
 /// auto-renewal, employer contribution, add-ons). Version-1 files still restore: those columns are optional, and when a
 /// file lacks them the values of an existing entity stay untouched (new entities keep the model defaults).
 /// Trips and favourites also carry `via` (docs/VIA.md) – additive within version 2: older apps ignore the key, files
-/// without it keep an existing entity's vias.
+/// without it keep an existing entity's vias. The same for journeys (`journey_id`, `leg_index`, favourite `legs`;
+/// docs/JOURNEYS.md).  // MARK: trips
 struct BackupFile: Codable {
     var format: String = "klimabilanz-backup"
     var version: Int = 2

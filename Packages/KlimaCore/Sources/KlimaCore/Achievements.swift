@@ -26,6 +26,7 @@ public enum AchievementEngine {
                         progressLabel: "\(group(Int(min(current, target).rounded()))) / \(group(Int(target))) \(unit)".trimmingCharacters(in: .whitespaces))
         }
         let km = summary.distanceKm
+        let tripCount = JourneySummary.tripCount(trips)   // a journey is one "Fahrt" (docs/JOURNEYS.md)
         let modes = Set(trips.map(\.mode))
         let calendar = Calendar.vienna
         var nightOwl = false, earlyBird = false
@@ -37,7 +38,7 @@ public enum AchievementEngine {
 
         return [
             make("first-trip", "Eingestiegen", "Deine erste Fahrt erfasst", "figure.walk.departure", .bronze,
-                 current: Double(trips.count), target: 1, unit: "Fahrt"),
+                 current: Double(tripCount), target: 1, unit: "Fahrt"),
             make("quarter", "Ein Viertel geschafft", "25 % des Ticketpreises herausgefahren", "chart.pie", .bronze,
                  current: summary.amortizedFraction * 100, target: 25, unit: "%"),
             make("half", "Halbzeit", "50 % des Ticketpreises herausgefahren", "circle.lefthalf.filled", .silver,
@@ -57,7 +58,7 @@ public enum AchievementEngine {
             make("co2-1000", "Eine Tonne", "1 Tonne CO₂ eingespart", "tree.fill", .gold,
                  current: summary.co2SavedKg, target: 1_000, unit: "kg"),
             make("trips-100", "Stammgast", "100 Fahrten erfasst", "100.circle", .silver,
-                 current: Double(trips.count), target: 100, unit: "Fahrten"),
+                 current: Double(tripCount), target: 100, unit: "Fahrten"),
             make("states-5", "Bundesländer-Sammler:in", "In 5 Bundesländern unterwegs", "mappin.and.ellipse", .silver,
                  current: Double(records.statesVisited.count), target: 5, unit: "Länder"),
             make("states-9", "Ganz Österreich", "Alle 9 Bundesländer bereist", "flag.checkered", .platinum,

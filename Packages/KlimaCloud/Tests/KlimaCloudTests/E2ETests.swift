@@ -273,6 +273,7 @@ final class E2ETests: XCTestCase {
                     to_name: "Bludenz", mode: "train", distance_km: 21.3, fare_eur: 5.1, is_fare_manual: false,
                     is_round_trip: i % 3 == 0, travel_class: "second", companions: i % 4, states: "V", note: "#\(i)",
                     category: "", is_induced: false, via: i % 5 == 0 ? "at:48:817\tFeldkirch" : "",   // a current app always sends via
+                    journey_id: i % 7 == 0 ? "7c1d4e2a-9b3f-4a5e-8d6c-1f2e3a4b5c6d" : "", leg_index: i % 7 == 0 ? i % 3 : 0,   // … and its journey
                     created_at: base, updated_at: micro(base.addingTimeInterval(Double(i))))
         }
         let pushed = try await client.push(table: TripDTO.table, rows: many, session: provider)

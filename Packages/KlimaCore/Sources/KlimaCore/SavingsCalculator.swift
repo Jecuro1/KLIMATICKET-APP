@@ -60,6 +60,8 @@ public enum SavingsCalculator {
         let km = trips.reduce(0) { $0 + $1.totalDistanceKm }
         let co2 = trips.reduce(0) { $0 + emissions.savedKg(km: $1.totalDistanceKm, mode: $1.mode) }
         let legs = trips.reduce(0) { $0 + $1.legs }
+        // A journey (Bus → Zug → Bim) is one "Fahrt"; its legs add their values, km and CO₂ (docs/JOURNEYS.md).
+        let tripCount = JourneySummary.tripCount(trips)
         var memo = DayMemo(calendar)
         let days = Set(trips.map { memo.startOfDay($0.date) }).count
 
@@ -88,7 +90,7 @@ public enum SavingsCalculator {
             totalValue: value,
             net: value - ticket.price,
             amortizedFraction: fraction,
-            tripCount: trips.count,
+            tripCount: tripCount,
             legCount: legs,
             travelDays: days,
             distanceKm: km,
@@ -99,7 +101,7 @@ public enum SavingsCalculator {
             daysRemaining: daysRemaining,
             costPerDay: ticket.price / Double(daysTotal),
             valuePerDay: value / Double(daysElapsed),
-            averageValuePerTrip: trips.isEmpty ? 0 : value / Double(trips.count),
+            averageValuePerTrip: tripCount == 0 ? 0 : value / Double(tripCount),
             effectivePricePerKm: km > 0 ? ticket.price / km : nil,
             isPaidOff: value >= ticket.price,
             paidOffDate: paidOff,

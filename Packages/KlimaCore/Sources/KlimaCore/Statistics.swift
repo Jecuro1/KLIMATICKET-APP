@@ -60,11 +60,12 @@ public enum StatsAggregator {
     public static func months(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [MonthBucket] {
         var map: [Date: MonthBucket] = [:]
         var memo = DayMemo(calendar)
+        var journeys = JourneyCounter<Date>()
         for t in trips {
             guard let m = memo.startOfMonth(t.date) else { continue }
             var b = map[m] ?? MonthBucket(month: m, value: 0, trips: 0, distanceKm: 0)
             b.value += t.totalValue
-            b.trips += 1
+            b.trips += journeys.count(t, in: m)
             b.distanceKm += t.totalDistanceKm
             map[m] = b
         }
@@ -99,11 +100,12 @@ public enum StatsAggregator {
     public static func weekdays(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [WeekdayBucket] {
         var buckets = (1...7).map { WeekdayBucket(weekday: $0, trips: 0, value: 0) }
         var memo = DayMemo(calendar)
+        var journeys = JourneyCounter<Int>()
         for t in trips {
             // Calendar weekday: 1 = Sunday … 7 = Saturday → convert to Monday-first.
             let wd = memo.weekday(t.date)
             let idx = (wd + 5) % 7
-            buckets[idx].trips += 1
+            buckets[idx].trips += journeys.count(t, in: idx)
             buckets[idx].value += t.totalValue
         }
         return buckets
@@ -112,10 +114,11 @@ public enum StatsAggregator {
     public static func days(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [DayActivity] {
         var map: [Date: DayActivity] = [:]
         var memo = DayMemo(calendar)
+        var journeys = JourneyCounter<Date>()
         for t in trips {
             let d = memo.startOfDay(t.date)
             var a = map[d] ?? DayActivity(day: d, trips: 0, value: 0)
-            a.trips += 1
+            a.trips += journeys.count(t, in: d)
             a.value += t.totalValue
             map[d] = a
         }
@@ -124,7 +127,8 @@ public enum StatsAggregator {
 
     public static func topRoutes(_ trips: [TripRecord], limit: Int = 5) -> [RouteStat] {
         var map: [String: RouteStat] = [:]
-        for t in trips {
+        // A journey is one route, start of its first leg → end of its last (docs/JOURNEYS.md).
+        for t in JourneySummary.collapsed(trips) {
             var r = map[t.routeKey] ?? RouteStat(key: t.routeKey, fromName: t.fromName, toName: t.toName, trips: 0, value: 0, distanceKm: 0)
             r.trips += 1
             r.legs += t.legs
@@ -163,14 +167,27 @@ public enum StatsAggregator {
             stations.insert(t.toStationID ?? t.toName.lowercased())
             states.formUnion(t.states)
         }
+        // Records are about whole journeys; stations and states above count every leg.
+        let journeys = trips.contains(where: \.isJourneyLeg) ? JourneySummary.collapsed(trips) : trips
         return TravelRecords(
-            longestTrip: trips.max { $0.distanceKm < $1.distanceKm },
-            mostValuableTrip: trips.max { $0.totalValue < $1.totalValue },
+            longestTrip: journeys.max { $0.distanceKm < $1.distanceKm },
+            mostValuableTrip: journeys.max { $0.totalValue < $1.totalValue },
             bestMonth: months(trips, calendar: calendar).max { $0.value < $1.value },
             currentStreakDays: current,
             longestStreakDays: longest,
             statesVisited: states.subtracting([FederalState.foreign.rawValue]),
             uniqueStations: stations.count
         )
+    }
+}
+
+/// Counts a "Fahrt" once per bucket: a plain trip always, a journey's legs only the first time their journey shows up in
+/// the bucket (docs/JOURNEYS.md).
+struct JourneyCounter<Bucket: Hashable> {
+    private var seen: [Bucket: Set<UUID>] = [:]
+
+    mutating func count(_ trip: TripRecord, in bucket: Bucket) -> Int {
+        guard let journey = trip.journeyID else { return 1 }
+        return seen[bucket, default: []].insert(journey).inserted ? 1 : 0
     }
 }

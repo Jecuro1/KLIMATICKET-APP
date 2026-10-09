@@ -245,7 +245,7 @@ public enum CarComparison {
             costPerKm: costPerKm,
             railKm: railKm,
             roadKm: roadKm,
-            tripCount: trips.count,
+            tripCount: JourneySummary.tripCount(trips),   // a journey is one "Fahrt" (docs/JOURNEYS.md)
             legCount: legs,
             variableCost: variable,
             fixedCostsPerYear: fixedPerYear,

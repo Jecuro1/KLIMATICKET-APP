@@ -433,6 +433,7 @@ final class SimDevice {
                                travel_class: i % 7 == 0 ? "first" : "second", companions: i % 3, states: "V,T,S,W",
                                note: "#\(i)", category: i % 4 == 0 ? "work" : "", is_induced: i % 9 == 0,
                                via: i % 6 == 0 ? "at:47:1187\tInnsbruck Hauptbahnhof\n\tLech Postamt" : "",
+                               journey_id: i % 8 == 0 ? "7c1d4e2a-9b3f-4a5e-8d6c-1f2e3a4b5c6d" : "", leg_index: i % 8 == 0 ? 1 : 0,
                                created_at: at, updated_at: at)
             trips[trip.id] = trip
             return trip.id
