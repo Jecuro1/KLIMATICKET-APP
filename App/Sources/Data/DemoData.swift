@@ -28,10 +28,20 @@ enum DemoData {
         Route(from: "Graz Hauptbahnhof", to: "Klagenfurt Hauptbahnhof", fromID: "at:46:3040", toID: "at:42:3642", mode: .train, km: 128, fare: 32.0, states: ["K", "ST"]),
     ]
 
-    /// Fills the context with a ticket started ~222 days ago and ~90 trips.
+    /// Days of the sample year that carry trips (the plan below draws one roll per day).
+    static let seededDays = 223
+
+    /// Fills the context with a ticket started 222–228 days ago and 79 trips (€ 1.050 · 75 %).
     static func seed(into context: ModelContext, now: Date = Date()) {
         let cal = Calendar.vienna
-        let start = cal.date(byAdding: .day, value: -222, to: cal.startOfDay(for: now)) ?? now
+        // The plan depends on each day's weekday and was tuned for a ticket that starts on a Sunday. Started on another
+        // weekday the same rolls fell on other days: the demo drifted between 74 % and 101 % (paid off) from one day to
+        // the next – on Übersicht, in the onboarding showcase and in every CI screenshot. So the ticket starts on the
+        // Sunday 222–228 days ago and the plan covers exactly `seededDays` days from there (78–79 trips, 75 %).
+        let earliest = cal.date(byAdding: .day, value: -222, to: cal.startOfDay(for: now)) ?? now
+        let daysSinceSunday = (cal.component(.weekday, from: earliest) + 6) % 7   // weekday 1 = Sunday
+        let start = cal.date(byAdding: .day, value: -daysSinceSunday, to: earliest) ?? earliest
+        let lastDay = cal.date(byAdding: .day, value: seededDays - 1, to: start) ?? now
         let ticket = TicketEntity(productID: "oe-klassik", name: "KlimaTicket Ö Klassik", variant: .klassik, family: .oe,
                                   price: 1_400, startDate: start, holderName: "Lena Hofer", ticketNumber: "KT-2026-48 31 07")
         ticket.themeRaw = "twilight"
@@ -41,7 +51,7 @@ enum DemoData {
         var day = start
         var count = 0
         var seeded: [TripEntity] = [] // MARK: tripmeta
-        while day <= now {
+        while day <= lastDay {
             let weekday = cal.component(.weekday, from: day) // 1 = So
             let roll = Double.random(in: 0..<1, using: &generator)
             var plans: [(Route, Int, Bool)] = []
