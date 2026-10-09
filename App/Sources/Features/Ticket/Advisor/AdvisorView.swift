@@ -66,7 +66,8 @@ struct AdvisorView: View {
             .sharedBackgroundVisibility(.hidden)
         }
         .sheet(item: $editRequest) { request in
-            TktEditSheet(ticket: request.ticket, initial: request.draft)
+            // Opens on the renewal / employer-contribution fields the Ratgeber asks for.
+            TktEditSheet(ticket: request.ticket, initial: request.draft, scrollTarget: AdvEditAnchor.renewal)
         }
         .sensoryFeedback(.selection, trigger: jumpCount) { _, _ in app.settings.hapticsEnabled }
     }

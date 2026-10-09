@@ -183,7 +183,7 @@ struct AdvFamilyCard: View {
         let top = max(shown, advice.surcharge, 1)
         let projected = !advice.isFamilyTicket && !isExpired
         return VStack(spacing: Theme.Spacing.s) {
-            AdvCompareBar(label: advice.isFamilyTicket ? "Kinderfahrten bisher" : "Mitfahrende als Kinder",
+            AdvCompareBar(label: advice.isFamilyTicket ? "Kinderfahrten" : "Mitfahrende",
                           symbol: "figure.and.child.holdinghands", value: shown, maxValue: top,
                           color: Theme.pine, valueText: projected ? "≈\u{00A0}\(AdvText.euro(shown))" : AdvText.euro(shown),
                           badge: projected ? AdvBadge(text: "Prognose", tone: .neutral) : nil)

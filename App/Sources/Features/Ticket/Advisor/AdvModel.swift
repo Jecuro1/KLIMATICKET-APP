@@ -308,7 +308,7 @@ extension TicketAdvice {
         if f.verdict == .noTrainTrips {
             detail = "Sobald du Zug fährst, rechnen wir es dir aus"
         } else if !f.hasUpgrade && f.cheapestOption == .vorteilsabo {
-            detail = "Tipp: Vorteilsabo ≈\u{00A0}\(AdvText.euro(f.vorteilsaboCost)) statt Upgrade \(AdvText.euro(f.upgradePrice))"
+            detail = "Tipp: Vorteilsabo ≈\u{00A0}\(AdvText.euro(f.vorteilsaboCost)) statt Upgrade\u{00A0}\(AdvText.euro(f.upgradePrice))"
         } else {
             detail = "≈\u{00A0}\(AdvText.euro(f.projectedSurcharge)) Aufpreis vs. \(AdvText.euro(f.upgradePrice)) Upgrade"
         }
