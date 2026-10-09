@@ -601,8 +601,8 @@ private struct TripListSummaryCard: View {
     private func rail(_ summary: SavingsSummary) -> some View {
         ProgressRail(progress: summary.progressClamped * reveal,
                      leadingLabel: summary.isPaidOff
-                        ? "+ \(Format.euro(summary.net)) im Plus"
-                        : "Noch \(Format.euro(summary.remainingToBreakEven)) bis zum Gipfel",
+                        ? "+ \(SummitFigures.euro(summary.shownProfitEuro)) im Plus"
+                        : "Noch \(SummitFigures.euro(summary.shownRemainingEuro)) bis zum Gipfel",
                      trailingLabel: "Gipfel \(Format.euro(summary.ticketPrice))",
                      height: 8)
             .padding(.top, Theme.Spacing.xxs)
