@@ -66,6 +66,9 @@ struct AtlasView: View {
     @State private var highlightedPlaceID: String?
     @State private var selectionTick = 0
     @State private var didLaunch = false
+    /// For a few seconds after the launch focus was applied, a recomputed summary (stops resolving in the background)
+    /// re-applies it – so "top route" / a Top-Strecke ends on the route that is really meant.
+    @State private var launchFocusSettlesUntil: Date?
     @State private var panelShown = LaunchMode.isScreenshot
     @State private var panelHeight: CGFloat = 0
     @State private var recenterTick = 0
@@ -85,6 +88,7 @@ struct AtlasView: View {
     var body: some View {
         AtlasMapCanvas(summary: summary, look: look, selectedRouteID: sheet?.routeID,
                        highlightedPlaceID: highlightedPlaceID, framing: framing) { id in
+            launchFocusSettlesUntil = nil   // the user took over
             select(id)
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -131,6 +135,7 @@ struct AtlasView: View {
     private var recenterButton: some View {
         Button {
             recenterTick += 1
+            launchFocusSettlesUntil = nil
             showOverview()
         } label: {
             Image(systemName: "scope")
@@ -224,8 +229,8 @@ struct AtlasView: View {
             }
         case .details:
             AtlasDetailsSheet(summary: summary, scopeLabel: scopeLabel, startsAtRoutes: launchFocus == .details,
-                              onSelectRoute: { id in select(id) },
-                              onFocusPlace: { place in focus(place) })
+                              onSelectRoute: { id in launchFocusSettlesUntil = nil; select(id) },
+                              onFocusPlace: { place in launchFocusSettlesUntil = nil; focus(place) })
                 .zoomDestination(id: AtlasZoomID.details)
         }
     }
@@ -259,6 +264,7 @@ struct AtlasView: View {
     }
 
     private func sheetDismissed() {
+        launchFocusSettlesUntil = nil
         // Back to the whole map unless something else (a focused station) took over the camera.
         if sheet == nil, highlightedPlaceID == nil, framing.target != .overview {
             showOverview()
@@ -285,6 +291,9 @@ struct AtlasView: View {
         if sheet?.routeID == nil, highlightedPlaceID == nil {
             framing = AtlasFraming(target: .overview, revision: framing.revision + 1)
         }
+        if let until = launchFocusSettlesUntil, Date() < until {
+            applyLaunchFocus(isRetry: true)
+        }
     }
 
     private func trips(for ids: [UUID]) -> [TripEntity] {
@@ -307,15 +316,21 @@ struct AtlasView: View {
             // Let the summary recompute for the attached stops (onChange of dataKey) before picking from it.
             try? await Task.sleep(for: .milliseconds(150))
         }
+        applyLaunchFocus(isRetry: false)
+        launchFocusSettlesUntil = Date().addingTimeInterval(4)
+    }
+
+    /// Applies the launch focus; a retry (after a recompute) only acts when the target differs from what is shown.
+    private func applyLaunchFocus(isRetry: Bool) {
         switch launchFocus {
         case .topRoute, .topRouteExpanded:
-            if let id = summary.topRoute?.id { select(id) }
+            if let id = summary.topRoute?.id, !isRetry || sheet?.routeID != id { select(id) }
         case .details:
-            sheet = .details
+            if !isRetry { sheet = .details }
         case .extreme(let direction):
-            if let place = summary.extremes.place(direction) { focus(place) }
+            if !isRetry, let place = summary.extremes.place(direction) { focus(place) }
         case .route(let from, let to):
-            if let id = route(between: from, and: to)?.id { select(id) }
+            if let id = route(between: from, and: to)?.id, !isRetry || sheet?.routeID != id { select(id) }
         case .none:
             break
         }
