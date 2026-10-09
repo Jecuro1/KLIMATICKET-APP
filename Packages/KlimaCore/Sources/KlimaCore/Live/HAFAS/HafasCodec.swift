@@ -76,8 +76,7 @@ public enum HafasCodec {
     /// Same as `envelopeError(_:)` for another HAFAS back end (VAO): AUTH maps to `.blocked(provider)`.
     public static func envelopeError(_ data: Data, provider: LiveProvider) -> LiveError? {
         do {
-            let raw = try decodeRaw(data)
-            return topError(raw, provider: provider)
+            return topError(try decodeStatus(data), provider: provider)
         } catch let e as LiveError {
             return e
         } catch {
@@ -109,23 +108,40 @@ public enum HafasCodec {
     // MARK: - Envelope
 
     static func decodeRaw(_ data: Data) throws -> HafasRawResponse {
+        try decodeJSON(HafasRawResponse.self, data)
+    }
+
+    /// Top-level status only – much cheaper than `decodeRaw` (no service results are materialised).
+    static func decodeStatus(_ data: Data) throws -> HafasRawStatus {
+        try decodeJSON(HafasRawStatus.self, data)
+    }
+
+    private static func decodeJSON<T: Decodable>(_ type: T.Type, _ data: Data) throws -> T {
         guard let first = data.first(where: { !($0 == 0x20 || $0 == 0x0A || $0 == 0x0D || $0 == 0x09) }), first == UInt8(ascii: "{") else {
             throw LiveError.decoding("Keine JSON-Antwort")
         }
         do {
-            return try JSONDecoder().decode(HafasRawResponse.self, from: data)
+            return try JSONDecoder().decode(T.self, from: data)
         } catch {
             throw LiveError.decoding("Ungültiges JSON: \(error)")
         }
     }
 
     static func topError(_ raw: HafasRawResponse, provider: LiveProvider = .oebbHafas) -> LiveError? {
-        let code = raw.err ?? "OK"
+        topError(code: raw.err, errTxt: raw.errTxt, hammError: raw.hammError, provider: provider)
+    }
+
+    static func topError(_ status: HafasRawStatus, provider: LiveProvider = .oebbHafas) -> LiveError? {
+        topError(code: status.err, errTxt: status.errTxt, hammError: status.hammError, provider: provider)
+    }
+
+    static func topError(code err: String?, errTxt: String?, hammError: String?, provider: LiveProvider) -> LiveError? {
+        let code = err ?? "OK"
         switch code {
         case "OK": return nil
         case "AUTH": return .blocked(provider)
-        case "PARSE", "HAMM": return .decoding(raw.errTxt ?? raw.hammError ?? code)
-        default: return .hafas(code: code, message: raw.errTxt)
+        case "PARSE", "HAMM": return .decoding(errTxt ?? hammError ?? code)
+        default: return .hafas(code: code, message: errTxt)
         }
     }
 

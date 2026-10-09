@@ -27,6 +27,8 @@ public actor LiveHealth {
 
     static let failureThreshold = 3
     static let failureOpenSeconds: TimeInterval = 120
+    /// Upper bound for a server's `Retry-After` (the blocked circuit of HAFAS is 6 h, too).
+    static let maxRetryAfter: TimeInterval = 6 * 3600
 
     private let clock: @Sendable () -> Date
     private var statuses: [LiveProvider: Status] = [:]
@@ -57,7 +59,9 @@ public actor LiveHealth {
             s.openUntil = now.addingTimeInterval(p == .oebbHafas ? 6 * 3600 : 30 * 60)
         case .rateLimited(_, let retryAfter):
             s.lastError = e
-            s.openUntil = now.addingTimeInterval(max(1, retryAfter ?? 60))
+            // `Retry-After` comes from the server: "inf", "nan" or a year must not open the circuit forever.
+            let wait = retryAfter.flatMap { $0.isFinite ? $0 : nil } ?? 60
+            s.openUntil = now.addingTimeInterval(min(max(1, wait), Self.maxRetryAfter))
         case .http(let status, _) where status >= 500:
             s.lastError = e
             countFailure(&s, now: now)

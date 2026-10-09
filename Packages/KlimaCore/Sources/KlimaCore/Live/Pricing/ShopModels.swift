@@ -428,7 +428,9 @@ enum ShopTime {
         let ymd = parts[0].split(separator: "-").compactMap { Int($0) }
         let timePart = parts[1].split(separator: ".").first ?? ""
         let hms = timePart.split(separator: ":").compactMap { Int($0) }
-        guard ymd.count == 3, hms.count >= 2 else { return nil }
+        // Plausible ranges only: absurd components (corrupt input) must not reach the calendar arithmetic.
+        guard ymd.count == 3, hms.count >= 2, (1900...2200).contains(ymd[0]), (1...12).contains(ymd[1]), (1...31).contains(ymd[2]),
+              (0...47).contains(hms[0]), (0...59).contains(hms[1]), hms.count < 3 || (0...60).contains(hms[2]) else { return nil }
         var comps = DateComponents()
         comps.year = ymd[0]
         comps.month = ymd[1]
@@ -470,8 +472,8 @@ extension KeyedDecodingContainer {
         while !items.isAtEnd {
             if let v = try? items.decode(T.self) {
                 out.append(v)
-            } else {
-                _ = try? items.decode(SkipValue.self)
+            } else if (try? items.decode(SkipValue.self)) == nil {
+                break // the container did not advance: stop instead of spinning forever
             }
         }
         return out

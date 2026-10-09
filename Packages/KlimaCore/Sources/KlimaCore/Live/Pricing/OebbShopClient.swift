@@ -35,10 +35,12 @@ public actor OebbShopClient {
             self.init(number: n, name: location.name, coordinate: location.coordinate)
         }
 
+        /// Micro-degree coordinates; a missing or invalid coordinate (NaN, ±∞, out of range) is sent as 0/0.
         public init(number: Int, name: String, coordinate: GeoPoint?) {
+            let valid = coordinate.flatMap { HafasRequests.isValid($0) ? $0 : nil }
             self.init(number: number, name: name,
-                      latitude: coordinate.map { Int(($0.latitude * 1e6).rounded()) } ?? 0,
-                      longitude: coordinate.map { Int(($0.longitude * 1e6).rounded()) } ?? 0)
+                      latitude: valid.map { Int(($0.latitude * 1e6).rounded()) } ?? 0,
+                      longitude: valid.map { Int(($0.longitude * 1e6).rounded()) } ?? 0)
         }
 
         public var coordinate: GeoPoint? {

@@ -167,6 +167,11 @@ enum HafasRequests {
             loc: LocMatchLoc(type: types.rawValue, name: name.hasSuffix("?") ? name : name + "?"), maxLoc: maxResults, field: "S")))
     }
 
+    /// Finite latitude/longitude within ±90/±180 (the encoders convert to Int micro-degrees).
+    static func isValid(_ point: GeoPoint) -> Bool {
+        point.latitude.isFinite && point.longitude.isFinite && abs(point.latitude) <= 90 && abs(point.longitude) <= 180
+    }
+
     /// Coordinates are rounded to 3 decimals (≈ 110 m) before they leave the device (SPEC §2.7).
     static func locGeoPos(_ point: GeoPoint, maxDistanceMeters: Int, maxResults: Int, products: ProductMask) -> HafasServiceRequest<LocGeoPos> {
         let x = Int((point.longitude * 1000).rounded()) * 1000

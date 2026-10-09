@@ -13,12 +13,14 @@ public enum HTMLText {
     public static func plain(_ html: String?) -> String {
         guard let html, !html.isEmpty else { return "" }
         let chars = Array(html)
+        // A "<" after the last ">" can never open a tag: skip the search (keeps garbage like "<<<<…" linear).
+        let lastClose = chars.lastIndex(of: ">") ?? -1
         var out = ""
         out.reserveCapacity(chars.count)
         var i = 0
         while i < chars.count {
             let c = chars[i]
-            if c == "<", let close = chars[(i + 1)...].firstIndex(of: ">") {
+            if c == "<", i < lastClose, let close = chars[(i + 1)...].firstIndex(of: ">") {
                 let tag = String(chars[(i + 1)..<close]).lowercased().trimmingCharacters(in: .whitespaces)
                 if tag == "br" || tag.hasPrefix("br/") || tag.hasPrefix("br ") { out.append("\n") }
                 i = close + 1

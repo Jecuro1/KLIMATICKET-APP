@@ -42,6 +42,13 @@ struct HafasRawResponse: Decodable {
     @Lenient var svcResL: [HafasRawServiceResult]?
 }
 
+/// Top-level status only (`err`, `errTxt`, `hammError`): the cheap envelope check before the full decode.
+struct HafasRawStatus: Decodable {
+    @Lenient var err: String?
+    @Lenient var errTxt: String?
+    @Lenient var hammError: String?
+}
+
 struct HafasRawServiceResult: Decodable {
     @Lenient var meth: String?
     @Lenient var err: String?

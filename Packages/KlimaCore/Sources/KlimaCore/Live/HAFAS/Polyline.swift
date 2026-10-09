@@ -3,7 +3,7 @@ import Foundation
 /// Google encoded polylines (HAFAS `cfg.polyEnc:"GPA"`, field `crdEncYX`; SPEC §A3.4).
 public enum Polyline {
     /// Decodes an encoded polyline (lat/lon order, precision 1e5 by default). A truncated string stops at the last
-    /// complete point instead of failing.
+    /// complete point instead of failing; corrupt input never traps.
     public static func decode(_ encoded: String, precision: Int = 5) -> [GeoPoint] {
         let bytes = Array(encoded.utf8)
         let factor = pow(10.0, Double(precision))
@@ -20,15 +20,17 @@ public enum Polyline {
                 result |= (b & 0x1F) << shift
                 shift += 5
                 if b < 0x20 { return (result & 1) != 0 ? ~(result >> 1) : (result >> 1) }
-                if shift > 60 { return nil }
+                // A coordinate delta needs at most 7 chunks (35 bits); more is corrupt input.
+                if shift >= 35 { return nil }
             }
             return nil
         }
 
         while index < bytes.count {
             guard let dLat = next(), let dLon = next() else { break }
-            lat += dLat
-            lon += dLon
+            // Wrapping adds: a corrupt string must never trap (the points are garbage then, never a crash).
+            lat = lat &+ dLat
+            lon = lon &+ dLon
             points.append(GeoPoint(latitude: Double(lat) / factor, longitude: Double(lon) / factor))
         }
         return points

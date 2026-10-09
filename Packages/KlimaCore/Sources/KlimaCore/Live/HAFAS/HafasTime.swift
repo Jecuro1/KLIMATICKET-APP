@@ -10,7 +10,8 @@ public enum HafasTime {
     public static func date(base: String, time: String, tzOffsetMinutes: Int?) -> Date? {
         guard let ymd = civil(base), let t = clock(time) else { return nil }
         let days = daysFromCivil(ymd.y, ymd.m, ymd.d) + t.days
-        if let offset = tzOffsetMinutes {
+        // A UTC offset beyond ±24 h is corrupt input (it would overflow below): interpret the time in Vienna instead.
+        if let offset = tzOffsetMinutes, (-maxOffsetMinutes...maxOffsetMinutes).contains(offset) {
             let seconds = days * 86_400 + t.h * 3600 + t.min * 60 + t.s - offset * 60
             return Date(timeIntervalSince1970: TimeInterval(seconds))
         }
@@ -63,13 +64,18 @@ public enum HafasTime {
         return (yy, mm, dd)
     }
 
+    /// Largest accepted `[dd]` day offset and UTC offset (minutes). HAFAS sends two-digit day offsets and offsets of
+    /// ±60/120 min; larger values are corrupt and must not reach the arithmetic (integer overflow traps).
+    static let maxDayOffset = 99
+    static let maxOffsetMinutes = 24 * 60
+
     private static func clock(_ s: String) -> (days: Int, h: Int, min: Int, s: Int)? {
-        guard s.count >= 6 else { return nil }
+        guard s.count >= 6, s.count <= 8 + 2 else { return nil }
         let dayPart = s.dropLast(6)
         let tail = s.suffix(6)
         let days = dayPart.isEmpty ? 0 : digits(dayPart)
-        guard let days, let h = digits(tail.prefix(2)), let mi = digits(tail.dropFirst(2).prefix(2)), let se = digits(tail.suffix(2)),
-              h < 48, mi < 60, se < 61 else { return nil }
+        guard let days, days <= maxDayOffset, let h = digits(tail.prefix(2)), let mi = digits(tail.dropFirst(2).prefix(2)),
+              let se = digits(tail.suffix(2)), h < 48, mi < 60, se < 61 else { return nil }
         return (days, h, mi, se)
     }
 

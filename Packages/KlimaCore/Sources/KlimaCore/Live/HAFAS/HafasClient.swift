@@ -73,6 +73,9 @@ public actor HafasClient: TimetableService {
     }
 
     public func nearby(_ point: GeoPoint, maxDistanceMeters: Int, maxResults: Int, products: ProductMask) async throws -> [Location] {
+        // An invalid fix (NaN, ±∞, out of range – e.g. a CoreLocation "invalid" coordinate) has no stops nearby; it must
+        // never reach the encoder (Int(Double.nan) traps).
+        guard HafasRequests.isValid(point) else { return [] }
         let data = try await send([HafasRequests.locGeoPos(point, maxDistanceMeters: maxDistanceMeters, maxResults: maxResults, products: products)])
         return try HafasCodec.locations(from: data)
     }
@@ -154,8 +157,10 @@ public actor HafasClient: TimetableService {
 
         try await health.check(.oebbHafas)
         let data = try await exchange(svcReqL, profile: profile)
-        guard let primaryError = Self.profileError(data) else {
-            if let e = HafasCodec.envelopeError(data) {
+        // One cheap top-level status decode per response (the caller's codec decodes the body once more).
+        let status = try? HafasCodec.decodeStatus(data)
+        guard let primaryError = status.flatMap(Self.profileError) else {
+            if let e = Self.envelopeError(data, status: status) {
                 // Other top-level codes (e.g. a server-side FAIL): no breaker effect, surface to the caller.
                 await health.recordNotice(.oebbHafas, e)
                 throw e
@@ -167,13 +172,14 @@ public actor HafasClient: TimetableService {
         // AUTH / HAMM / PARSE on the active profile: one retry with the fallback profile (SPEC §A3.1).
         if !onFallback, let fallback, fallback.url != profile.url || fallback.aid != profile.aid {
             let second = try await exchange(svcReqL, profile: fallback)
-            if Self.profileError(second) == nil, HafasCodec.envelopeError(second) == nil {
+            let secondStatus = try? HafasCodec.decodeStatus(second)
+            if secondStatus.flatMap(Self.profileError) == nil, Self.envelopeError(second, status: secondStatus) == nil {
                 fallbackUntil = clock().addingTimeInterval(Self.fallbackHold)
                 await health.recordSuccess(.oebbHafas)
                 await health.recordNotice(.oebbHafas, primaryError)
                 return second
             }
-            let secondError = Self.profileError(second) ?? HafasCodec.envelopeError(second) ?? primaryError
+            let secondError = secondStatus.flatMap(Self.profileError) ?? Self.envelopeError(second, status: secondStatus) ?? primaryError
             let final: LiveError
             if case .blocked = primaryError { final = .blocked(.oebbHafas) }
             else if case .blocked = secondError { final = .blocked(.oebbHafas) }
@@ -187,11 +193,20 @@ public actor HafasClient: TimetableService {
 
     /// AUTH → `.blocked`, PARSE/HAMM → `.decoding`; nil for OK and other codes.
     static func profileError(_ data: Data) -> LiveError? {
-        guard let raw = try? HafasCodec.decodeRaw(data) else { return nil }
-        switch raw.err ?? "OK" {
-        case "AUTH", "PARSE", "HAMM": return HafasCodec.topError(raw)
+        (try? HafasCodec.decodeStatus(data)).flatMap(profileError)
+    }
+
+    static func profileError(_ status: HafasRawStatus) -> LiveError? {
+        switch status.err ?? "OK" {
+        case "AUTH", "PARSE", "HAMM": return HafasCodec.topError(status)
         default: return nil
         }
+    }
+
+    /// Envelope error from an already decoded status; a body whose status did not decode is `.decoding`.
+    private static func envelopeError(_ data: Data, status: HafasRawStatus?) -> LiveError? {
+        guard let status else { return HafasCodec.envelopeError(data) }
+        return HafasCodec.topError(status)
     }
 
     /// Throttle + transport + classification, with at most one retry. Transport-level failures are recorded in
