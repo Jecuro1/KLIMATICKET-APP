@@ -1,0 +1,34 @@
+# Declarations copied from the iOS SDK's Foundation.swiftinterface into the
+# generated FoundationShim module because swift-corelibs-foundation lacks them.
+#   type <Path>            the type and all its extensions
+#   member <Owner> <regex> members of `extension <Owner>` whose declaration matches
+# (module prefixes Swift./Foundation. are stripped from extension paths)
+type LocalizedStringResource
+type CustomLocalizedStringResourceConvertible
+type String.LocalizationValue
+type String.LocalizationOptions
+type AttributedString.LocalizationOptions
+type PredicateExpressions.StringLocalizedStandardContains
+member String init\(localized
+member AttributedString init\(localized
+member URL static var (documentsDirectory|applicationSupportDirectory|cachesDirectory|temporaryDirectory|libraryDirectory|homeDirectory|applicationDirectory|userDirectory|downloadsDirectory|desktopDirectory|moviesDirectory|musicDirectory|picturesDirectory|sharedPublicDirectory|trashDirectory|currentDirectory)\b
+member PredicateExpressions build_localizedStandardContains
+type AttributedString.FormattingOptions
+type AttributedString.InterpolationOptions
+type _FormatSpecifiable
+conform _FormatSpecifiable
+# Combine integration of Darwin Foundation (Foundation.swiftinterface imports Combine)
+conform TopLevelEncoder
+conform TopLevelDecoder
+conform Scheduler
+type NotificationCenter.Publisher
+member NotificationCenter func publisher\(for
+type Timer.TimerPublisher
+member Timer static func publish\(
+type URLSession.DataTaskPublisher
+member URLSession func dataTaskPublisher
+type RunLoop.SchedulerTimeType
+type RunLoop.SchedulerOptions
+type OperationQueue.SchedulerTimeType
+type OperationQueue.SchedulerOptions
+member URL func (startAccessingSecurityScopedResource|stopAccessingSecurityScopedResource)\b

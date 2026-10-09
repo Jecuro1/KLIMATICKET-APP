@@ -1,0 +1,8 @@
+# build products and caches
+/.build/
+# Generated locally from the iOS SDK's Swift interfaces by gen/regen_all.sh
+# (run.sh does this automatically). Not committed: they are derived from Apple's SDK.
+/Stubs/*/*.swiftinterface
+/Stubs/*/PRUNED.txt
+/Stubs/*/*.swiftcrossimport/
+__pycache__/
