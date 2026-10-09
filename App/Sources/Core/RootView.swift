@@ -195,8 +195,46 @@ struct ScreenshotRouter: View {
             NavigationStack { SettingsView() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
+        case "hero":
+            DesignSystemPreview()
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
+    }
+}
+
+/// Design-system QA screen (CI screenshot "hero"): hero, cards, rows and the ticket card with demo data.
+struct DesignSystemPreview: View {
+    @Environment(AppState.self) private var app
+    @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
+    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse) private var trips: [TripEntity]
+
+    var body: some View {
+        ScrollView {
+            if let ticket = tickets.first {
+                let snap = Analytics.make(ticket: ticket, trips: trips, catalog: app.catalog)
+                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                    Kicker(text: Format.weekdayDayMonth(Date()))
+                    Text("Übersicht").font(.largeTitle.bold())
+                    AmortizationHero(snapshot: snap, chartHeight: 220)
+                    HStack(spacing: Theme.Spacing.s) {
+                        StatTile(value: "\(snap.summary.tripCount)", label: "Fahrten", symbol: "tram.fill")
+                        StatTile(value: Format.number(snap.summary.co2SavedKg), unit: "kg", label: "CO₂ gespart", symbol: "leaf.fill", color: Theme.pine)
+                    }
+                    GlassCard(padding: Theme.Spacing.m) {
+                        VStack(spacing: 0) {
+                            ForEach(trips.prefix(3)) { TripRow(trip: $0) }
+                        }
+                    }
+                    TicketCard(title: ticket.name, subtitle: "Klassik · Gültig in ganz Österreich", holder: ticket.holderName,
+                               validFrom: ticket.startDate, validUntil: ticket.endDate, ticketNumber: ticket.ticketNumber,
+                               theme: .aurora, roll: 0.3, pitch: 0.1)
+                }
+                .padding(.horizontal, Theme.Spacing.screen)
+                .padding(.top, 60)
+                .padding(.bottom, 40)
+            }
+        }
+        .ambientBackground()
     }
 }
