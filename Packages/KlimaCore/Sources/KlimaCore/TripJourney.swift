@@ -96,11 +96,36 @@ public enum JourneyLegCodec {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// Decoded once per distinct text (views read a favourite's legs on every render – no JSON pass each time).
     public static func decode(_ raw: String) -> [JourneyLeg] {
-        guard !raw.isEmpty, let data = raw.data(using: .utf8),
-              let legs = try? JSONDecoder().decode([JourneyLeg].self, from: data) else { return [] }
-        let clean = sanitized(legs)
-        return clean.count > 1 ? clean : []
+        guard !raw.isEmpty else { return [] }
+        if let cached = memo.value(raw) { return cached }
+        var legs: [JourneyLeg] = []
+        if let data = raw.data(using: .utf8), let decoded = try? JSONDecoder().decode([JourneyLeg].self, from: data) {
+            let clean = sanitized(decoded)
+            legs = clean.count > 1 ? clean : []
+        }
+        memo.store(legs, for: raw)
+        return legs
+    }
+
+    private static let memo = Memo()
+
+    /// A small thread-safe memo of decoded texts (Kombi-Vorlagen are few; capped anyway).
+    private final class Memo: @unchecked Sendable {
+        private let lock = NSLock()
+        private var entries: [String: [JourneyLeg]] = [:]
+
+        func value(_ raw: String) -> [JourneyLeg]? {
+            lock.lock(); defer { lock.unlock() }
+            return entries[raw]
+        }
+
+        func store(_ legs: [JourneyLeg], for raw: String) {
+            lock.lock(); defer { lock.unlock() }
+            if entries.count >= 64 { entries.removeAll(keepingCapacity: true) }
+            entries[raw] = legs
+        }
     }
 
     static func sanitized(_ legs: [JourneyLeg]) -> [JourneyLeg] {

@@ -300,7 +300,8 @@ struct TripJourneyDetailView: View {
     // MARK: Actions
 
     private var actionButtons: some View {
-        VStack(spacing: Theme.Spacing.s) {
+        let isFavorite = isFavorite   // once per render
+        return VStack(spacing: Theme.Spacing.s) {
             Button {
                 repeatTurns += 1
                 actions.repeatJourneyToday(legs)
