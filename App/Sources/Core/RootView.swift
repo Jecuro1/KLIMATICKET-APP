@@ -237,6 +237,22 @@ struct ScreenshotRouter: View {
         // MARK: polish-settings – lower parts of the long settings list
         case "settings2", "settings3", "settingsEnd":
             NavigationStack { SettingsView(screenshotScreen: screen) }
+        // MARK: benefits
+        case "benefits", "benefitsHistory", "benefitCatalog", "benefitEditor":
+            NavigationStack { PerkBenefitsView() }
+                .sheet(isPresented: .constant(screen == "benefitCatalog" || screen == "benefitEditor")) {
+                    if screen == "benefitCatalog" {
+                        PerkCatalogSheet()
+                    } else if let partner = PerkCatalogStore.shared.partner(id: "cat") {
+                        NavigationStack { PerkEditorView(mode: .new(partner)) {} }
+                    }
+                }
+        case "passengerRights", "passengerRightsChecklist":
+            NavigationStack { PerkPassengerRightsView() }
+        case "benefitCard":
+            NavigationStack { PerkEntryPreview() }
+        case "benefitSettings":
+            NavigationStack { PerkSettingsPreview() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
         // MARK: polish-widgets – lower part of the widget gallery (large + quick log; lock screen + guide)

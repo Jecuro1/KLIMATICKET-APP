@@ -76,6 +76,7 @@ enum DemoData {
                                 fareEUR: routes[9].fare, states: routes[9].states, sortIndex: 3),
         ]
         favorites.forEach { context.insert($0) }
+        PerkDemoData.seed(into: context, ticket: ticket, now: now)
         try? context.save()
         print("Demo data: \(count) trips")
     }

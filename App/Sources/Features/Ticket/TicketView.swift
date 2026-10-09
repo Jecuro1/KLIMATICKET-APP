@@ -146,6 +146,9 @@ struct TicketView: View {
             }
             TktPaymentCard(ticket: ticket, totalValue: summary.totalValue)
                 .tktEntrance(4, visible: appeared)
+            // MARK: benefits
+            PerkSummaryCard()
+                .tktEntrance(4, visible: appeared)
         }
     }
 
