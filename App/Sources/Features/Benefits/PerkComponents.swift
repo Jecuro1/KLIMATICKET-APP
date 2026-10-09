@@ -99,7 +99,7 @@ struct PerkMonthlyChart: View {
                     .cornerRadius(3)
             }
         }
-        .chartXScale(domain: months.indices.map(String.init))
+        .chartXScale(domain: months.indices.map { String($0) })
         .chartYScale(domain: 0...max(maxTotal * 1.15, 5))
         .chartXAxis {
             AxisMarks { value in
@@ -146,7 +146,7 @@ struct PerkMonthlyChart: View {
     }
 
     private func monthTotals(_ entries: [Entry]) -> [Double] {
-        Dictionary(grouping: entries, by: \.monthIndex).values.map { $0.reduce(0) { $0 + $1.total } }
+        Dictionary(grouping: entries, by: \.monthIndex).values.map { group in group.reduce(0.0) { $0 + $1.total } }
     }
 
     private func axisLabel(_ id: String?, months: [DateInterval], todayIndex: Int?) -> Text {
@@ -165,7 +165,7 @@ struct PerkMonthlyChart: View {
     }
 
     private func accessibilitySummary(entries: [Entry], months: [DateInterval]) -> String {
-        let byMonth = Dictionary(grouping: entries, by: \.monthIndex).mapValues { $0.reduce(0) { $0 + $1.total } }
+        let byMonth = Dictionary(grouping: entries, by: \.monthIndex).mapValues { group in group.reduce(0.0) { $0 + $1.total } }
         guard let best = byMonth.max(by: { $0.value < $1.value }), months.indices.contains(best.key) else {
             return "Noch keine Vorteile in diesem Zeitraum"
         }

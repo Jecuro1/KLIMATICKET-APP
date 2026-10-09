@@ -33,6 +33,7 @@ struct PerkEditorView: View {
     @State private var note: String
     @State private var confirmsDelete = false
     @State private var copyTick = 0
+    @State private var copiedCode = false
     @FocusState private var focus: PerkEditorField?
 
     init(mode: PerkEditorMode, showsCloseButton: Bool = true, onDone: @escaping () -> Void) {
@@ -168,18 +169,28 @@ struct PerkEditorView: View {
             Button {
                 UIPasteboard.general.string = code
                 copyTick += 1
-                app.showToast("doc.on.doc.fill", "Code kopiert", code)
+                withAnimation(reduceMotion ? nil : .snappy) { copiedCode = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1.8))
+                    withAnimation(reduceMotion ? nil : .snappy) { copiedCode = false }
+                }
             } label: {
                 Label {
-                    Text("Code \(Text(code).fontWeight(.bold))")
+                    if copiedCode {
+                        Text("Kopiert")
+                            .fontWeight(.semibold)
+                    } else {
+                        Text("Code \(Text(code).fontWeight(.bold))")
+                    }
                 } icon: {
-                    Image(systemName: "doc.on.doc")
+                    Image(systemName: copiedCode ? "checkmark" : "doc.on.doc")
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .font(.subheadline)
                 .lineLimit(1)
             }
             .buttonStyle(.glass)
-            .accessibilityLabel("Rabattcode \(code) kopieren")
+            .accessibilityLabel(copiedCode ? "Rabattcode \(code) kopiert" : "Rabattcode \(code) kopieren")
         }
     }
 

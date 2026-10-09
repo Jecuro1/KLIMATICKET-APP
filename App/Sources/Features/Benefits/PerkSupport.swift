@@ -60,8 +60,8 @@ enum PerkStyle {
 // MARK: - Formatting
 
 enum PerkFormat {
-    /// "+ € 7,45" / "+ € 12"
-    static func plusEuro(_ value: Double) -> String { "+ " + Format.euro(value) }
+    /// "+ € 7,45" / "+ € 12,00" (always cents, like trip values)
+    static func plusEuro(_ value: Double) -> String { "+ " + Format.euroPrecise(value) }
 
     /// Whole euros for headline totals ("+ € 86").
     static func plusEuroRounded(_ value: Double) -> String { "+ " + Format.euro(value, decimals: 0) }
