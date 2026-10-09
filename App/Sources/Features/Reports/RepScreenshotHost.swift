@@ -6,12 +6,12 @@ import KlimaCore
 /// - `importPick` / `importMapping` / `importPreview` / `importResult`: the CSV import sheet over Einstellungen (sample file)
 /// - `importEntry`: the Einstellungen › Daten section with the two new rows
 /// - `report`: the Jahresbericht preview sheet over Statistik (`reportPDF2`/`reportPDF3`: scrolled to page 2/3 of the real PDF)
-/// - `reportPage1` … `reportPage4`: one printed page, scaled to the screen width (layout QA)
+/// - `reportPage1` … `reportPage4`, `reportPageLast`: one printed page, scaled to the screen width (layout QA)
 struct RepScreenshotHost: View {
     let screen: String
 
     static let screens: Set<String> = ["importPick", "importMapping", "importPreview", "importProblems", "importResult", "importEntry", "report", "reportPDF2", "reportPDF3",
-                                       "reportPage1", "reportPage2", "reportPage3", "reportPage4"]
+                                       "reportPage1", "reportPage2", "reportPage3", "reportPage4", "reportPageLast"]
 
     @Environment(AppState.self) private var app
     @State private var isPresenting = false
@@ -50,7 +50,8 @@ struct RepScreenshotHost: View {
                     RepReportSheet(previewPage: screen == "reportPDF2" ? 1 : screen == "reportPDF3" ? 2 : 0)
                 }
         default:
-            RepPagePreview(pageNumber: Int(screen.dropFirst("reportPage".count)) ?? 1)
+            // "reportPageLast" → the last page (trip table with the total line).
+            RepPagePreview(pageNumber: screen == "reportPageLast" ? Int.max : Int(screen.dropFirst("reportPage".count)) ?? 1)
         }
     }
 }

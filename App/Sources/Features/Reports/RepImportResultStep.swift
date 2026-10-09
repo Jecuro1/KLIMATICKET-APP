@@ -29,18 +29,18 @@ struct RepImportResultStep: View {
     // MARK: Hero
 
     private var hero: some View {
-        VStack(spacing: Theme.Spacing.s) {
+        VStack(spacing: Theme.Spacing.xs) {
             ZStack {
                 Circle()
                     .fill((model.isUndone ? Theme.textTertiary : Theme.pine).opacity(0.16))
-                    .frame(width: 100, height: 100)
+                    .frame(width: 84, height: 84)
                     .scaleEffect(appeared ? 1 : 0.6)
                 Circle()
                     .fill(model.isUndone ? AnyShapeStyle(Theme.textTertiary.gradient) : AnyShapeStyle(Theme.pine.gradient))
-                    .frame(width: 70, height: 70)
+                    .frame(width: 60, height: 60)
                     .shadow(color: (model.isUndone ? Color.black : Theme.pine).opacity(0.28), radius: 16, y: 8)
                 Image(systemName: model.isUndone ? "arrow.uturn.backward" : "checkmark")
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(.white)
                     .contentTransition(.symbolEffect(.replace))
                     .symbolEffect(.bounce, value: model.importRevision)
@@ -59,7 +59,7 @@ struct RepImportResultStep: View {
                     .multilineTextAlignment(.center)
             } else if let summary {
                 Text("\(summary.imported)")
-                    .font(.system(size: 76, weight: .thin, design: .rounded))
+                    .font(.system(size: 68, weight: .thin, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .contentTransition(.numericText(value: Double(summary.imported)))

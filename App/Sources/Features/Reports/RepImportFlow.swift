@@ -59,6 +59,7 @@ struct RepImportSteps: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
     @State private var isPickingFile = false
     @State private var templateURL: URL?
@@ -173,7 +174,7 @@ struct RepImportSteps: View {
                 .accessibilityLabel(count == 0 ? "Keine Fahrten zum Importieren" : "\(RepText.trips(count)) importieren")
                 .accessibilityValue(count == 0 ? "" : Format.euroPrecise(model.importValue))
             case .result:
-                HStack(spacing: Theme.Spacing.xs) {
+                resultLayout {
                     if !model.isUndone, !model.importedTrips.isEmpty {
                         RepGlassCapsuleButton(title: "Rückgängig", symbol: "arrow.uturn.backward", tint: Theme.negative,
                                               role: .destructive) {
@@ -191,6 +192,13 @@ struct RepImportSteps: View {
                 }
             }
         }
+    }
+
+    /// "Rückgängig" next to "Fertig"; stacked at accessibility text sizes.
+    private var resultLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
     }
 
     private func importLabel(count: Int) -> some View {

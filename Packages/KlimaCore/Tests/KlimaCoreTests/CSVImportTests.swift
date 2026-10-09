@@ -406,6 +406,23 @@ final class CSVImportTests: XCTestCase {
         XCTAssertFalse(CSVImport.Issue.missingDate.message.isEmpty)
     }
 
+    func testPlaceholderCellsCountAsEmpty() {
+        let rows = CSVImport.parse("""
+        Datum;Von;Nach;Preis;Hin & Retour;Notiz
+        09.10.2026;Wien;Linz;-;–;n/a
+        10.10.2026;Wien;Linz;k. A.;ja;-
+        """, delimiter: .semicolon)
+        let guess = CSVImport.guessMapping(rows: rows)
+        let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: true)
+        XCTAssertEqual(parsed.count, 2)
+        XCTAssertTrue(parsed.allSatisfy(\.isValid))
+        XCTAssertTrue(parsed.allSatisfy { $0.fare == nil && $0.note.isEmpty })
+        XCTAssertEqual(parsed.map(\.isRoundTrip), [false, true])
+        // A real value that merely starts with a dash is still a number.
+        XCTAssertEqual(CSVImport.number("-3,00"), -3)
+        XCTAssertFalse(CSVImport.isPlaceholder("Wien"))
+    }
+
     func testTotalValueSplitsIntoLegsWhenNoPrice() {
         let rows = CSVImport.parse("Datum;Strecke;Gesamtpreis;Retour\n09.10.2026;Wien – Linz;71,80;ja\n", delimiter: .semicolon)
         let guess = CSVImport.guessMapping(rows: rows)

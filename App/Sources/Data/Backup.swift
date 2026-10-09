@@ -19,6 +19,51 @@ struct BackupFile: Codable {
     var favorites: [FavoriteDTO]
     /// Absent in version-1 backups.
     var benefits: [BenefitDTO]?
+
+    private enum CodingKeys: String, CodingKey {
+        case format, version, exportedAt, appVersion, tickets, trips, favorites, benefits
+    }
+
+    init(tickets: [TicketDTO], trips: [TripDTO], favorites: [FavoriteDTO], benefits: [BenefitDTO]?) {
+        self.tickets = tickets
+        self.trips = trips
+        self.favorites = favorites
+        self.benefits = benefits
+    }
+
+    /// Tickets, trips and favourites must be readable; the benefits section is optional and tolerant
+    /// (rows from early version-2 test builds carry no `user_id`).
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        format = try c.decodeIfPresent(String.self, forKey: .format) ?? "klimabilanz-backup"
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        exportedAt = (try? c.decodeIfPresent(Date.self, forKey: .exportedAt)) ?? Date()
+        appVersion = (try? c.decodeIfPresent(String.self, forKey: .appVersion)) ?? ""
+        tickets = try c.decode([TicketDTO].self, forKey: .tickets)
+        trips = try c.decode([TripDTO].self, forKey: .trips)
+        favorites = try c.decode([FavoriteDTO].self, forKey: .favorites)
+        benefits = try c.decodeIfPresent([BackupBenefitRow].self, forKey: .benefits)?.map(\.dto)
+    }
+}
+
+/// Lenient reader for a benefit row: `user_id` and `note` may be missing.
+private struct BackupBenefitRow: Decodable {
+    var id: UUID
+    var user_id: String?
+    var date: Date
+    var partner_id: String
+    var title: String
+    var saved_eur: Double
+    var note: String?
+    var created_at: Date
+    var updated_at: Date
+    var deleted_at: Date?
+
+    var dto: BenefitDTO {
+        BenefitDTO(id: id, user_id: user_id ?? "", date: date, partner_id: partner_id, title: title,
+                   saved_eur: max(0, saved_eur), note: note ?? "", created_at: created_at, updated_at: updated_at,
+                   deleted_at: deleted_at)
+    }
 }
 
 @MainActor

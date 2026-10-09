@@ -223,6 +223,11 @@ struct StatsScreen: View {
                 ShareLink(item: shareImage, preview: SharePreview("Meine KlimaBilanz", image: shareImage)) {
                     Label("Bilanz als Bild teilen", systemImage: "photo")
                 }
+            } else {
+                Button {} label: {
+                    Label("Bilanz als Bild teilen", systemImage: "photo")
+                }
+                .disabled(true)
             }
             RepReportMenuButton { isShowingReport = true }
         } label: {

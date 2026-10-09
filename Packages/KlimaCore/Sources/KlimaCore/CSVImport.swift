@@ -844,6 +844,13 @@ public extension CSVImport {
         public var legs: Int { isRoundTrip ? 2 : 1 }
     }
 
+    /// Spreadsheet stand-ins for "nothing here" ("-", "–", "n/a", "k. A.") – treated like an empty cell, so a dash in
+    /// the price column means "estimate it", not "invalid price".
+    static func isPlaceholder(_ value: String) -> Bool {
+        let s = value.trimmingCharacters(in: .whitespaces).lowercased()
+        return ["-", "–", "—", "--", "?", "/", "n/a", "n.a.", "na", "k.a.", "k. a.", "keine angabe", "none", "null"].contains(s)
+    }
+
     /// Plausibility limit for a single direction (the most expensive Austrian standard ticket is far below this).
     static let implausibleFare: Double = 250
 
@@ -862,7 +869,7 @@ public extension CSVImport {
             func cell(_ f: Field) -> String? {
                 guard let i = index(f), i < cells.count else { return nil }
                 let v = unguard(cells[i].trimmingCharacters(in: .whitespacesAndNewlines))
-                return v.isEmpty ? nil : v
+                return v.isEmpty || isPlaceholder(v) ? nil : v
             }
             var issues: [Issue] = []
             var row = Row(line: offset + 1 + (hasHeader ? 1 : 0), date: nil, fromName: "", toName: "", fare: nil, distanceKm: nil, mode: nil,

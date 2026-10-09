@@ -6,6 +6,8 @@ import KlimaCore
 struct RepImportPreviewStep: View {
     @Bindable var model: RepImportModel
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private static let previewLimit = 250
 
     var body: some View {
@@ -57,10 +59,10 @@ struct RepImportPreviewStep: View {
                 }
                 .animation(.smooth, value: model.importValue)
 
-                HStack(spacing: Theme.Spacing.xs) {
+                pillLayout {
                     RepStatusPill(value: model.readyCandidates.count, label: "bereit", symbol: "checkmark", tint: Theme.pine,
                                   isSelected: model.filter == .ready) { toggleFilter(.ready) }
-                    RepStatusPill(value: model.duplicateCount, label: model.duplicateCount == 1 ? "Duplikat" : "Duplikate",
+                    RepStatusPill(value: model.duplicateCount, label: "doppelt",
                                   symbol: "doc.on.doc.fill", tint: Theme.gold, isSelected: model.filter == .problems) { toggleFilter(.problems) }
                     RepStatusPill(value: model.invalidCount, label: "Fehler", symbol: "exclamationmark", tint: Theme.negative,
                                   isSelected: model.filter == .problems) { toggleFilter(.problems) }
@@ -83,6 +85,13 @@ struct RepImportPreviewStep: View {
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// Three pills side by side; stacked at accessibility text sizes.
+    private var pillLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
     }
 
     private func toggleFilter(_ filter: RepImportModel.PreviewFilter) {
@@ -197,14 +206,26 @@ struct RepPreviewRow: View {
                 .overlay(alignment: .bottomTrailing) { statusBadge.offset(x: 5, y: 5) }
                 .padding(.top, 2)
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(candidate.date.map(Format.weekdayDayMonth) ?? "ohne Datum")
-                        .foregroundStyle(Theme.textSecondary)
-                    Text("· Zeile \(candidate.line)")
-                        .foregroundStyle(Theme.textTertiary)
+                // Date line carries the value on the right, so the route below gets the full width.
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Group {
+                        Text(candidate.date.map(Format.weekdayDayMonth) ?? "ohne Datum")
+                            .foregroundStyle(Theme.textSecondary)
+                        Text("· Zeile \(candidate.line)")
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    Spacer(minLength: Theme.Spacing.xs)
+                    if candidate.status != .invalid {
+                        Text(Format.euroPrecise(candidate.totalValue))
+                            .font(Theme.Typography.numberSmall)
+                            .foregroundStyle(isSkipped ? Theme.textTertiary : Theme.textPrimary)
+                            .strikethrough(isSkipped, color: Theme.textTertiary)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                    }
                 }
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
                 Text(routeText)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isSkipped ? Theme.textSecondary : Theme.textPrimary)
@@ -225,15 +246,7 @@ struct RepPreviewRow: View {
                     .labelStyle(RepCompactLabelStyle())
                 }
             }
-            Spacer(minLength: Theme.Spacing.xs)
-            if candidate.status != .invalid {
-                Text(Format.euroPrecise(candidate.totalValue))
-                    .font(Theme.Typography.numberSmall)
-                    .foregroundStyle(isSkipped ? Theme.textTertiary : Theme.textPrimary)
-                    .strikethrough(isSkipped, color: Theme.textTertiary)
-                    .lineLimit(1)
-                    .padding(.top, 14)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, Theme.Spacing.s)
         .padding(.vertical, 10)
@@ -276,7 +289,7 @@ struct RepPreviewRow: View {
     private var messages: [Message] {
         var list: [Message] = candidate.errors.map { Message(text: $0, symbol: "xmark.octagon.fill", color: Theme.negative) }
         if let duplicate = candidate.duplicateNote {
-            list.append(Message(text: skipsDuplicates ? "\(duplicate) – wird übersprungen" : duplicate,
+            list.append(Message(text: skipsDuplicates ? "\(duplicate) · wird übersprungen" : duplicate,
                                 symbol: "doc.on.doc.fill", color: Theme.summitText))
         }
         list += candidate.warnings.map { Message(text: $0, symbol: "exclamationmark.triangle.fill", color: Theme.summitText) }

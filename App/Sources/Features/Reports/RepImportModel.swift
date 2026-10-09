@@ -241,7 +241,7 @@ final class RepImportModel {
             if c.errors.isEmpty, let date = c.date {
                 let key = CSVImport.duplicateKey(date: date, fromName: c.fromName, toName: c.toName, fare: c.fare)
                 if let when = existingKeys[key] {
-                    c.duplicateNote = "Schon erfasst am \(Format.dayMonth(when)) – gleiche Strecke, gleicher Preis"
+                    c.duplicateNote = "Schon erfasst am \(Format.dayMonth(when))"
                     c.status = .duplicate
                 } else if let first = seen[key] {
                     c.duplicateNote = "Doppelt in der Datei (wie Zeile \(first))"
