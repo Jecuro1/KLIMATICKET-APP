@@ -306,9 +306,16 @@ public actor LivePriceService: LivePriceProvider {
     }
 
     private func shopQuote(_ request: PriceRequest, shop: OebbShopClient, budget: PriceRequestBudget) async throws -> PriceQuote {
-        let negKey = PriceCache.negativeKey(.oebbShop, request)
-        if let reason = cache.negative(for: negKey, now: clock()) { throw LiveError.noPrice(reason) }
         let plan = shopPlan(request, now: clock())
+        // A failure of one planner connection (e.g. `offerError` shortly before departure) blocks only that train; a
+        // relation-level failure blocks the relation for the day.
+        let negKey: String
+        if case .connection(let journey, _, _) = plan {
+            negKey = PriceCache.negativeConnectionKey(journey, travelClass: request.travelClass)
+        } else {
+            negKey = PriceCache.negativeKey(.oebbShop, request)
+        }
+        if let reason = cache.negative(for: negKey, now: clock()) { throw LiveError.noPrice(reason) }
         do {
             let quote: PriceQuote
             switch plan {
@@ -643,7 +650,8 @@ public actor LivePriceService: LivePriceProvider {
 
     private func cachedQuote(for request: PriceRequest, now: Date) -> PriceQuote? {
         if let journey = request.journey {
-            if let q = cache.quote(for: PriceCache.connectionKey(journey, travelClass: request.travelClass, discount: request.discount), now: now) {
+            if let q = cache.quote(for: PriceCache.connectionKey(journey, travelClass: request.travelClass, discount: request.discount,
+                                                                 via: request.via), now: now) {
                 return q
             }
             if let q = cache.quote(for: PriceCache.relationKey(request), now: now), q.source == .liveVerbund { return q }
@@ -656,7 +664,8 @@ public actor LivePriceService: LivePriceProvider {
     private func store(_ quote: PriceQuote, for request: PriceRequest) {
         let now = clock()
         if let journey = request.journey {
-            cache.insert(quote, for: PriceCache.connectionKey(journey, travelClass: request.travelClass, discount: request.discount), now: now)
+            cache.insert(quote, for: PriceCache.connectionKey(journey, travelClass: request.travelClass, discount: request.discount,
+                                                              via: request.via), now: now)
         }
         if request.journey == nil || quote.source == .liveVerbund {
             cache.insert(quote, for: PriceCache.relationKey(request), now: now)

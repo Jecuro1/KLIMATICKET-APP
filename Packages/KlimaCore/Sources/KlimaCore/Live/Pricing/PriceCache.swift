@@ -8,10 +8,13 @@ import Foundation
 /// |---|---|---|
 /// | Relation quote | `rel|fromKey|toKey|yyyy-MM-dd|class|discount` | 24 h |
 /// | Connection quote | `con|Journey.id|class|discount` | 24 h |
-/// | Negative | `neg|provider|fromKey|toKey|yyyy-MM-dd` | 24 h (VAO NA) / 1 h (shop noPrice) |
+/// | Negative | `neg|provider|fromKey|toKey|yyyy-MM-dd|class` | 24 h (VAO NA) / 1 h (shop noPrice) |
+/// | Negative, one planner connection | `neg|oebbShop|con|Journey.id|class` | 1 h |
 ///
 /// `fromKey` = `stationID ?? "eva:<hafasExtId>" ?? "name:<normalized name>"`. Via stops (owner request 2026-10-09) add
-/// `|via:<key>,<key>` at the end of relation and negative keys.
+/// `|via:<key>,<key>` at the end of relation, connection and negative keys. The class is part of the negative keys
+/// (review 2026-10-09): a 1st-class „kein Standard-Ticket“ must not block the 2nd-class price of the same relation, and a
+/// connection-level shop failure (`offerError` of one train) must not block the other trains of the day.
 public struct PriceCache: Sendable {
     public static let capacity = 500
     public static let quoteTTL: TimeInterval = 24 * 3600
@@ -59,8 +62,10 @@ public struct PriceCache: Sendable {
         return "name:\(StationIndex.normalize(e.name))"
     }
 
-    static func viaSuffix(_ r: PriceRequest) -> String {
-        r.via.isEmpty ? "" : "|via:" + r.via.prefix(JourneyQuery.maxViaStops).map(endpointKey).joined(separator: ",")
+    static func viaSuffix(_ r: PriceRequest) -> String { viaSuffix(r.via) }
+
+    static func viaSuffix(_ via: [PriceEndpoint]) -> String {
+        via.isEmpty ? "" : "|via:" + via.prefix(JourneyQuery.maxViaStops).map(endpointKey).joined(separator: ",")
     }
 
     static func day(_ date: Date) -> String { TicketProduct.isoDay(date, calendar: .vienna) }
@@ -70,12 +75,21 @@ public struct PriceCache: Sendable {
             + viaSuffix(r)
     }
 
-    public static func connectionKey(_ journey: Journey, travelClass: TravelClass, discount: FareDiscount) -> String {
-        ["con", journey.id, travelClass.rawValue, discount.rawValue].joined(separator: "|")
+    /// `via` = the request's via stops: the same journey priced with and without via stops gives different quotes
+    /// (one through ticket or a segment sum vs. the direct price), so they must not share a cache entry.
+    public static func connectionKey(_ journey: Journey, travelClass: TravelClass, discount: FareDiscount,
+                                     via: [PriceEndpoint] = []) -> String {
+        ["con", journey.id, travelClass.rawValue, discount.rawValue].joined(separator: "|") + viaSuffix(via)
     }
 
     public static func negativeKey(_ provider: LiveProvider, _ r: PriceRequest) -> String {
-        ["neg", provider.rawValue, endpointKey(r.from), endpointKey(r.to), day(r.departure)].joined(separator: "|") + viaSuffix(r)
+        ["neg", provider.rawValue, endpointKey(r.from), endpointKey(r.to), day(r.departure), r.travelClass.rawValue].joined(separator: "|")
+            + viaSuffix(r)
+    }
+
+    /// Negative shop result of one planner connection (plan `.connection`): blocks only that train.
+    public static func negativeConnectionKey(_ journey: Journey, travelClass: TravelClass) -> String {
+        ["neg", LiveProvider.oebbShop.rawValue, "con", journey.id, travelClass.rawValue].joined(separator: "|")
     }
 
     // MARK: - Access

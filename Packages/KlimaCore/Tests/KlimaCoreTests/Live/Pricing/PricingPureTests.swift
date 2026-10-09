@@ -64,8 +64,14 @@ final class PricingPureTests: XCTestCase {
     func testCacheKeys() {
         let r = PriceRequest(from: F.epWien, to: F.epSalzburg, departure: F.vienna("2026-10-10T23:30:00"), travelClass: .first, discount: .vorteilscard)
         XCTAssertEqual(PriceCache.relationKey(r), "rel|at:49:1349|at:45:50002|2026-10-10|first|vorteilscard")
-        XCTAssertEqual(PriceCache.negativeKey(.vaoTariff, r), "neg|vaoTariff|at:49:1349|at:45:50002|2026-10-10")
+        XCTAssertEqual(PriceCache.negativeKey(.vaoTariff, r), "neg|vaoTariff|at:49:1349|at:45:50002|2026-10-10|first")
         XCTAssertEqual(PriceCache.connectionKey(F.rjx19962, travelClass: .second, discount: .none), "con|\(F.rjx19962.id)|second|none")
+        // Review 2026-10-09: the class separates negative results; via stops separate connection quotes; a planner
+        // connection has its own negative key.
+        XCTAssertNotEqual(PriceCache.negativeKey(.oebbShop, r), PriceCache.negativeKey(.oebbShop, { var x = r; x.travelClass = .second; return x }()))
+        XCTAssertEqual(PriceCache.connectionKey(F.rjx19962, travelClass: .second, discount: .none, via: [F.epGraz]),
+                       "con|\(F.rjx19962.id)|second|none|via:at:46:3040")
+        XCTAssertEqual(PriceCache.negativeConnectionKey(F.rjx19962, travelClass: .first), "neg|oebbShop|con|\(F.rjx19962.id)|first")
         XCTAssertEqual(PriceCache.endpointKey(PriceEndpoint(name: "Wien Hbf (U)", hafasExtId: "1290401")), "eva:1290401")
         XCTAssertEqual(PriceCache.endpointKey(PriceEndpoint(name: "Innsbruck Hauptbahnhof")), "name:innsbruck hbf")
         var via = r

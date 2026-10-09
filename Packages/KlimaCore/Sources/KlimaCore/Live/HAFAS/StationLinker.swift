@@ -188,13 +188,10 @@ public actor StationLinker {
         return nil
     }
 
-    /// Minimal display-name stripping (cf. `DisplayNames`, SPEC §C3.3): parenthesised suffixes go ("Wien Hbf
-    /// (Bahnsteige 3-12)" → "Wien Hbf"), "St.Anton" gets its space.
+    /// Display name (SPEC §C3.3, `DisplayNames`): parenthesised suffixes go ("Wien Hbf (Bahnsteige 3-12)" → "Wien Hbf"),
+    /// "St.Anton" gets its space (and "St. Pölten" keeps a single one), "Hauptbahnhof" → "Hbf", a trailing " Bahnhof" goes.
     static func displayName(_ raw: String) -> String {
-        var s = raw
-        if let open = s.firstIndex(of: "(") { s = String(s[..<open]) }
-        s = s.replacingOccurrences(of: "St.", with: "St. ")
-        return s.trimmingCharacters(in: .whitespaces)
+        DisplayNames.name(raw)
     }
 
     private nonisolated static func firstToken(_ name: String) -> String? {

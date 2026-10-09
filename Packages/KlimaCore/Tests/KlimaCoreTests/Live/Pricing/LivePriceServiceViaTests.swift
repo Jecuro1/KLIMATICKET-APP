@@ -53,7 +53,7 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(q.amountEUR, 41.30)
         XCTAssertEqual(q.source, .liveOebb)
         XCTAssertEqual(q.connectionID, "exact000")
-        XCTAssertEqual(q.explanation, "Standard-Ticket 2. Kl. · ÖBB-Ticketshop · abgefragt 12:15 · Vorverkaufspreis (heute gekauft) · über Feldkirch Bahnhof")
+        XCTAssertEqual(q.explanation, "Standard-Ticket 2. Kl. · ÖBB-Ticketshop · abgefragt 12:15 · Vorverkaufspreis (heute gekauft) · über Feldkirch")
         XCTAssertEqual(r.transport.recorded.count, 4)
         XCTAssertEqual(q.shopURL, j.shopURL, "HAFAS trfRes link preferred")
     }
@@ -72,7 +72,7 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(q.connectionID, "through0")
         XCTAssertEqual(q.amountEUR, 41.30)
         XCTAssertEqual(q.explanation,
-                       "Standard-Ticket 2. Kl. · ÖBB-Ticketshop · abgefragt 12:15 · Vorverkaufspreis (heute gekauft) · über Feldkirch Bahnhof (durchgehendes Ticket)")
+                       "Standard-Ticket 2. Kl. · ÖBB-Ticketshop · abgefragt 12:15 · Vorverkaufspreis (heute gekauft) · über Feldkirch (durchgehendes Ticket)")
         let timetableBody = try r.transport.jsonBody(2)
         XCTAssertEqual(timetableBody["datetimeDeparture"] as? String, "2026-10-10T09:16:00.000")
         XCTAssertEqual((timetableBody["to"] as? [String: Any])?["number"] as? Int, 8100090)
@@ -95,7 +95,7 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(q.provider, "ÖBB + VVV")
         XCTAssertEqual(q.productName, "Standard-Ticket + VVV Vollpreis - 60/120 Minuten")
         XCTAssertEqual(q.explanation,
-                       "Summe von 2 Teilstrecken über Feldkirch: Innsbruck Hauptbahnhof – Feldkirch € 67,70 (ÖBB) + Feldkirch – Bregenz € 9,60 (VVV)")
+                       "Summe von 2 Teilstrecken über Feldkirch: Innsbruck Hbf – Feldkirch € 67,70 (ÖBB) + Feldkirch – Bregenz € 9,60 (VVV)")
         XCTAssertEqual(r.paths, [F.tokenSuffix, F.initSuffix, F.timetableSuffix, F.offersSuffix, "anachb.vor.at/hamm/gate"])
         XCTAssertLessThanOrEqual(r.transport.recorded.count, LivePriceService.maxRequestsPerQuote)
         XCTAssertNotNil(q.fetchedAt)
@@ -117,7 +117,7 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(q.source, .table, "not every part is live")
         XCTAssertEqual(q.amountEUR, 112.70, accuracy: 0.0001)
         XCTAssertEqual(q.explanation,
-                       "Summe von 2 Teilstrecken über Wien Hauptbahnhof: Graz Hauptbahnhof – Wien Hauptbahnhof € 45,00 (ÖBB) + Wien Hauptbahnhof – Salzburg Hauptbahnhof € 67,70 (Tarif-Tabelle)")
+                       "Summe von 2 Teilstrecken über Wien Hbf: Graz Hbf – Wien Hbf € 45,00 (ÖBB) + Wien Hbf – Salzburg Hbf € 67,70 (Tarif-Tabelle)")
         let n = r.transport.recorded.count
         r.clock.advance(70)
         let again = try await r.service.livePrice(req)
@@ -132,14 +132,14 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(q.amountEUR, 112.00, accuracy: 0.0001)
         XCTAssertEqual(q.source, .table)
         XCTAssertEqual(q.explanation,
-                       "Summe von 2 Teilstrecken über Wien Hauptbahnhof: Graz Hauptbahnhof – Wien Hauptbahnhof € 44,30 (Tarif-Tabelle) + Wien Hauptbahnhof – Salzburg Hauptbahnhof € 67,70 (Tarif-Tabelle)")
+                       "Summe von 2 Teilstrecken über Wien Hbf: Graz Hbf – Wien Hbf € 44,30 (Tarif-Tabelle) + Wien Hbf – Salzburg Hbf € 67,70 (Tarif-Tabelle)")
         XCTAssertNil(q.fetchedAt)
         // No direct table price for Graz → Salzburg in the excerpt: no alternative.
         XCTAssertTrue(q.alternatives.isEmpty)
         // Wien → Salzburg via Graz: a segment without table price makes the sum an estimate; the direct table price is offered.
         let detour = await r.service.offlineQuote(PriceRequest(from: F.epWien, to: F.epSalzburg, departure: F.now, via: [F.epGraz]))
         XCTAssertEqual(detour.source, .distanceModel)
-        XCTAssertTrue(detour.explanation.contains("€ 44,30 (Tarif-Tabelle) + Graz Hauptbahnhof – Salzburg Hauptbahnhof"), detour.explanation)
+        XCTAssertTrue(detour.explanation.contains("€ 44,30 (Tarif-Tabelle) + Graz Hbf – Salzburg Hbf"), detour.explanation)
         XCTAssertTrue(detour.explanation.hasSuffix("(Schätzung)"), detour.explanation)
         XCTAssertEqual(detour.alternatives, [PriceAlternative(source: .table, amountEUR: 67.70, label: "Direkt ohne Zwischenhalt (Tarif-Tabelle)")])
         XCTAssertEqual(detour.alternatives.first?.text, "Direkt ohne Zwischenhalt € 67,70 (Tarif-Tabelle)")
