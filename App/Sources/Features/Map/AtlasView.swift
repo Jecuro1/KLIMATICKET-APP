@@ -83,7 +83,6 @@ struct AtlasView: View {
             bottomOverlay
         }
         .navigationTitle("Österreich-Karte")
-        .navigationSubtitle(scopeLabel)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar { toolbarContent }
@@ -134,6 +133,25 @@ struct AtlasView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .principal) {
+            // Own glass capsule so the title stays legible on the muted map and on satellite imagery alike.
+            VStack(spacing: 0) {
+                Text("Österreich-Karte")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                Text(scopeLabel)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+                    .contentTransition(.opacity)
+            }
+            .lineLimit(1)
+            .padding(.horizontal, Theme.Spacing.m)
+            .padding(.vertical, 5)
+            .glassEffect(.regular, in: .capsule)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+        }
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItemGroup(placement: .topBarTrailing) {
             if !tickets.isEmpty {
                 Menu {

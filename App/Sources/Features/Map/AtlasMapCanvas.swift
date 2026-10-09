@@ -97,7 +97,7 @@ struct AtlasMapCanvas: View {
         .accessibilityValue(accessibilitySummary)
     }
 
-    /// Annotation models. The identity includes the visual state so MapKit always re-renders a changed dot.
+    /// Annotation models (stable identity per station; MapKit updates the hosted content in place).
     private var dots: [AtlasDotModel] {
         summary.places.map { place in
             AtlasDotModel(place: place, diameter: dotDiameter(place), color: palette.color(place.dominantMode),
@@ -362,10 +362,7 @@ struct AtlasDotModel: Identifiable {
     let isDimmed: Bool
     let isHighlighted: Bool
 
-    var id: String {
-        let side = label.map { "\($0.1)" } ?? "-"
-        return "\(place.id)|\(side)|\(isDimmed)|\(isHighlighted)|\(Int(diameter * 10))"
-    }
+    var id: String { place.id }
 }
 
 /// Small glass dot sized by visits, coloured by the station's main mode; optional name label beside it.
