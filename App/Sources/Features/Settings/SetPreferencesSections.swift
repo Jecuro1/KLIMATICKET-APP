@@ -134,13 +134,22 @@ struct SetCaptureSection: View {
                 .setSymbolEffect(.bounce, trigger: app.settings.homeStationID)
                 .motionAnimation(Motion.snappy, value: app.settings.homeStationID)
         }
+        // Removing is a swipe – and, for whoever does not know the gesture, the same action on a long press.
         .swipeActions(edge: .trailing) {
             if app.settings.homeStationID != nil {
-                Button("Entfernen", role: .destructive) {
-                    withMotion(Motion.snappy) { app.settings.homeStationID = nil }
-                }
+                Button("Entfernen", role: .destructive, action: removeHomeStation)
             }
         }
+        .contextMenu {
+            if app.settings.homeStationID != nil {
+                Button("Heimatbahnhof entfernen", systemImage: "house.slash", role: .destructive, action: removeHomeStation)
+            }
+        }
+        .haptic(.warning, trigger: app.settings.homeStationID, when: { old, new in old != nil && new == nil })
+    }
+
+    private func removeHomeStation() {
+        withMotion(Motion.snappy) { app.settings.homeStationID = nil }
     }
 
     private var homeStationSubtitle: String {
