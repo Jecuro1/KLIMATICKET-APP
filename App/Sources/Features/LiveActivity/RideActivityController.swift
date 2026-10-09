@@ -215,6 +215,11 @@ final class RideActivityController {
             .sorted { $0.startedAt < $1.startedAt }
     }
 
+    /// Previews and CI screenshots only: shows rides without a Live Activity behind them.
+    func showPreview(rides: [RideRecord]) {
+        self.rides = rides
+    }
+
     // MARK: Helpers
 
     private func activity(id: String) -> Activity<RideActivityAttributes>? {

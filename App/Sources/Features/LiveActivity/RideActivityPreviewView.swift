@@ -150,6 +150,10 @@ private struct RidePreviewLockStage: View {
                 .accessibilityHidden(true)
             RideLockScreenView(attributes: sample.attributes, state: sample.state, isInteractive: false)
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.6)
+                }
                 .shadow(color: Color.black.opacity(0.22), radius: 14, y: 8)
                 .padding(.top, 8)
             Text("Sperrbildschirm")
@@ -374,5 +378,28 @@ private struct RidePreviewSteps: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - CI screenshots
+
+extension View {
+    /// CI screenshot `addTripLive`: the trip editor opens scrolled to its end, where "Fahrt jetzt starten" sits.
+    func rideScreenshotScrollAnchor() -> some View {
+        defaultScrollAnchor(LaunchMode.screenshotScreen == "addTripLive" ? .bottom : nil)
+    }
+}
+
+extension RideActivityController {
+    /// CI screenshot `dashboardLive`: a ride 42 minutes in for the Übersicht capsule (CI has no real Live Activity).
+    func showScreenshotRide(context: ModelContext, app: AppState) {
+        guard LaunchMode.isScreenshot else { return }
+        let start = Date().addingTimeInterval(-(42 * 60 + 17))
+        let ride = Repository(context: context, app: app).liveFavorites().first(where: { $0.mode == .train })
+            .map { RidePlanner.ride(favorite: $0, context: context, app: app, startedAt: start) }
+            ?? RidePreviewSample.fallback(startedAt: start)
+        var record = ride.record
+        record.activityID = "screenshot"
+        showPreview(rides: [record])
     }
 }

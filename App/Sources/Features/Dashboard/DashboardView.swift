@@ -130,6 +130,7 @@ struct DashboardView: View {
                     app.updates.isPresentingSheet = true
                 }
             }
+            RideDashCapsule()  // MARK: live
             DashTicketPill(ticketName: ticket.name, status: ticketStatus(ticket, summary: snapshot.summary)) {
                 app.selectedTab = .ticket
             }

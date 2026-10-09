@@ -98,6 +98,7 @@ private struct TripEdSheet: View {
             .padding(.bottom, Theme.Spacing.l)
         }
         .scrollIndicators(.hidden)
+        .rideScreenshotScrollAnchor()  // MARK: live
         .scrollDismissesKeyboard(.interactively)
         .scrollEdgeEffectStyle(.soft, for: .bottom)
         .background { TripEdBackdrop() }

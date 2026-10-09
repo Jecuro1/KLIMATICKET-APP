@@ -192,7 +192,7 @@ struct ScreenshotRouter: View {
         content
             .task {
                 switch screen {
-                case "addTrip":
+                case "addTrip", "addTripLive":  // MARK: live (addTripLive)
                     var draft = TripDraft()
                     draft.fromName = "St. Anton am Arlberg"
                     draft.toName = "Innsbruck Hbf"
@@ -235,6 +235,8 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "liveActivityPreview":  // MARK: live
             NavigationStack { RideActivityPreviewView() }
+        case "dashboardLive":  // MARK: live
+            MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
         case "hero":
             DesignSystemPreview()
         default:

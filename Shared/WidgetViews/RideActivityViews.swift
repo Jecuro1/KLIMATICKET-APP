@@ -93,23 +93,23 @@ struct RideLockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             RideHeader(attributes: attributes, state: state, isStale: isStale, onDark: false)
-            Spacer(minLength: 7)
+            Spacer(minLength: 6)
             HStack(alignment: .bottom, spacing: 10) {
                 RideValueBlock(state: state, onDark: false)
                     .layoutPriority(1)
                 Spacer(minLength: 0)
                 RideSummitArt(climb: attributes.climb, payoff: payoff, onDark: false)
-                    .frame(width: 112, height: 50)
+                    .frame(width: 130, height: 54)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Unterwegs")
             .accessibilityValue(RideCopy.spokenSummary(attributes, state, isStale: isStale))
-            Spacer(minLength: 9)
+            Spacer(minLength: 8)
             RideActionRow(attributes: attributes, state: state, onDark: false, isInteractive: isInteractive)
         }
         .padding(.horizontal, 16)
-        .padding(.top, 13)
-        .padding(.bottom, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background { RideSkyBackdrop() }
         .activityBackgroundTint(Theme.background)
@@ -162,7 +162,7 @@ struct RideHeader: View {
             .layoutPriority(1)
             Spacer(minLength: 6)
             if !state.phase.isFinal {
-                RideTimer(attributes: attributes, onDark: onDark, size: 15)
+                RideTimer(attributes: attributes, onDark: onDark, size: 16)
             }
         }
         .accessibilityElement(children: .combine)
@@ -182,27 +182,26 @@ struct RideHeader: View {
     }
 }
 
-/// Elapsed time ("42:17", "1:05:09") – updated by the system every second.
+/// Elapsed time ("42:17", "1:05:09") – updated by the system every second. Digits only: the caption under the route
+/// ("Unterwegs seit 07:42") says what they count. A timer text takes the width of its longest value, so the frame is
+/// fixed and the digits sit at its trailing edge.
 struct RideTimer: View {
     var attributes: RideActivityAttributes
     var onDark: Bool
     var size: CGFloat
+    var weight: Font.Weight = .semibold
+    var isSecondary: Bool = false
 
     var body: some View {
-        HStack(spacing: 3) {
-            Image(systemName: "stopwatch")
-                .font(.system(size: size * 0.72, weight: .semibold))
-                .foregroundStyle(RidePalette.secondary(onDark))
-            Text(timerInterval: attributes.timerRange, countsDown: false)
-                .font(.system(size: size, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(RidePalette.primary(onDark))
-                .multilineTextAlignment(.trailing)
-                .lineLimit(1)
-                .frame(width: size * 3.9, alignment: .trailing)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Unterwegs seit \(RideFormat.time(attributes.startedAt))")
+        Text(timerInterval: attributes.timerRange, countsDown: false)
+            .font(.system(size: size, weight: weight, design: .rounded))
+            .monospacedDigit()
+            .foregroundStyle(isSecondary ? RidePalette.secondary(onDark) : RidePalette.primary(onDark))
+            .multilineTextAlignment(.trailing)
+            .lineLimit(1)
+            .frame(width: size * 3.9, alignment: .trailing)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Unterwegs seit \(RideFormat.time(attributes.startedAt))")
     }
 }
 
@@ -430,7 +429,7 @@ struct RideIslandTrailing: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(RidePalette.secondary(true))
             } else {
-                RideTimer(attributes: attributes, onDark: true, size: 12.5)
+                RideTimer(attributes: attributes, onDark: true, size: 13, weight: .medium, isSecondary: true)
             }
         }
         .padding(.trailing, 2)
@@ -695,11 +694,11 @@ struct RideSummitArt: View {
         let front = WidRidgeShape(peak: summit, seed: 7, drop: 0.86, roughness: 1)
         return ZStack {
             WidRidgeShape(peak: right, seed: 3, drop: 0.7, roughness: 1.2)
-                .fill(isDark ? Theme.glacier.opacity(onDark ? 0.22 : 0.18) : Theme.glacier.opacity(0.16))
+                .fill(isDark ? Theme.glacier.opacity(onDark ? 0.24 : 0.2) : Theme.glacier.opacity(0.22))
             WidRidgeShape(peak: left, seed: 11, drop: 0.8, roughness: 1.1)
-                .fill(isDark ? Theme.dusk.opacity(onDark ? 0.34 : 0.3) : Theme.dusk.opacity(0.2))
+                .fill(isDark ? Theme.dusk.opacity(onDark ? 0.36 : 0.32) : Theme.dusk.opacity(0.26))
             front.fill(LinearGradient(colors: frontColors, startPoint: .top, endPoint: .bottom))
-            front.stroke(LinearGradient(colors: rimColors, startPoint: .leading, endPoint: .trailing), lineWidth: 1)
+            front.stroke(LinearGradient(colors: rimColors, startPoint: .leading, endPoint: .trailing), lineWidth: 1.1)
         }
         .mask {
             LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.7),
@@ -711,13 +710,13 @@ struct RideSummitArt: View {
     private var frontColors: [Color] {
         if onDark { return [Color.white.opacity(0.2), Color.white.opacity(0.03)] }
         if isDark { return [Theme.glacier2.opacity(0.26), Theme.glacier2.opacity(0.03)] }
-        return [Color.white.opacity(0.9), Color.white.opacity(0.25)]
+        return [Color.white.opacity(0.95), Theme.glacier2.opacity(0.18)]
     }
 
     private var rimColors: [Color] {
         if onDark { return [Color.white.opacity(0.25), Theme.dawn2.opacity(0.7)] }
         if isDark { return [Theme.glacier2.opacity(0.28), Theme.dawn2.opacity(0.8)] }
-        return [Color.white.opacity(0.75), Color.white]
+        return [Theme.glacier.opacity(0.35), Theme.dawn.opacity(0.75)]
     }
 
     private func route(_ l: RideSummitLayout) -> some View {
