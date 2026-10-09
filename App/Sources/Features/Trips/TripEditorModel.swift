@@ -129,6 +129,12 @@ final class TripEditorModel {
             toName = station.name
         }
         if station.kind == .metro && (mode == .train || mode == .sBahn) { mode = .metro }
+        // Stops from the complete place database: pick the mode both ends share (e.g. bus stop → bus).
+        if station.kind == .stop {
+            let other = endpoint == .from ? toStation : fromStation
+            let candidate = station.primaryMode
+            if other == nil || other?.kind == .stop || other?.primaryMode == candidate { mode = candidate }
+        }
         recompute()
     }
 

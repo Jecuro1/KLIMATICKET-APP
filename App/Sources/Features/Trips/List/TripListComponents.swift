@@ -66,21 +66,9 @@ enum TripListFormat {
         count == 1 ? "1 Fahrt" : "\(Format.number(Double(count))) Fahrten"
     }
 
-    /// "Hauptbahnhof · Tirol", "Bahnhof · Vorarlberg", "U-Bahn-Station · Wien".
+    /// "Hauptbahnhof · Tirol", "Bahnhof · Vorarlberg", "Bushaltestelle · Warth · Vorarlberg".
     static func stationSubtitle(_ station: Station?) -> String? {
-        guard let station else { return nil }
-        let kind: String
-        if station.kind == .metro {
-            kind = "U-Bahn-Station"
-        } else if station.kind == .tramHub {
-            kind = "Haltestelle"
-        } else if station.name.contains("Hauptbahnhof") || station.name.hasSuffix("Hbf") {
-            kind = "Hauptbahnhof"
-        } else {
-            kind = "Bahnhof"
-        }
-        if let state = station.federalState { return "\(kind) · \(state.displayName)" }
-        return kind
+        station?.rowSubtitle
     }
 
     /// Search over station names, notes, the mode and the purpose (case- and diacritic-insensitive).

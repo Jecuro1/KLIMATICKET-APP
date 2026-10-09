@@ -32,19 +32,9 @@ enum TripEdFormat {
         name.replacingOccurrences(of: "Hauptbahnhof", with: "Hbf")
     }
 
-    /// "Hauptbahnhof · Tirol", "Bahnhof · Vorarlberg", "U-Bahn-Station · Wien".
+    /// "Hauptbahnhof · Tirol", "Bahnhof · Vorarlberg", "Bushaltestelle · Warth · Vorarlberg".
     static func stationSubtitle(_ station: Station) -> String {
-        let kind: String
-        switch station.kind {
-        case .metro:
-            kind = "U-Bahn-Station"
-        case .tramHub:
-            kind = "Haltestelle"
-        case .rail:
-            kind = (station.name.contains("Hauptbahnhof") || station.name.hasSuffix("Hbf")) ? "Hauptbahnhof" : "Bahnhof"
-        }
-        if let state = station.federalState { return "\(kind) · \(state.displayName)" }
-        return kind
+        station.rowSubtitle
     }
 
     /// Mode used for the coloured station icon.
@@ -53,6 +43,7 @@ enum TripEdFormat {
         case .rail: return .train
         case .metro: return .metro
         case .tramHub: return .tram
+        case .stop: return .bus
         }
     }
 
