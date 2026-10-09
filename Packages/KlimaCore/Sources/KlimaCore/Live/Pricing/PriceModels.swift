@@ -1,6 +1,6 @@
 import Foundation
 
-// CONTRACT (Step 0) – owned by WP-B after the contracts commit.
+// CONTRACT (Step 0) – owned by WP-B after the contracts commit. WP-B additions: `PriceRequest.via`, `PriceAlternative.text`.
 
 /// Where a regular fare came from. Raw values are persisted (TripEntity.priceSourceRaw, Supabase) – never rename.
 public enum PriceSource: String, Codable, Sendable, CaseIterable, Hashable {
@@ -69,9 +69,13 @@ public struct PriceRequest: Codable, Sendable, Hashable {
     public var discount: FareDiscount
     /// Set when the trip comes from the planner: the shop then prices exactly this connection (SPEC §B4.3).
     public var journey: Journey?
+    /// Via stops in travel order ("Über", owner request 2026-10-09; at most `JourneyQuery.maxViaStops` are used).
+    /// Empty = direct relation. See `LivePriceService` for how a via route is priced.
+    public var via: [PriceEndpoint]
 
     public init(from: PriceEndpoint, to: PriceEndpoint, departure: Date, mode: TransportMode = .train,
-                travelClass: TravelClass = .second, discount: FareDiscount = .none, journey: Journey? = nil) {
+                travelClass: TravelClass = .second, discount: FareDiscount = .none, journey: Journey? = nil,
+                via: [PriceEndpoint] = []) {
         self.from = from
         self.to = to
         self.departure = departure
@@ -79,6 +83,22 @@ public struct PriceRequest: Codable, Sendable, Hashable {
         self.travelClass = travelClass
         self.discount = discount
         self.journey = journey
+        self.via = via
+    }
+
+    private enum CodingKeys: String, CodingKey { case from, to, departure, mode, travelClass, discount, journey, via }
+
+    /// Tolerant decoding: `via` is missing in requests encoded before 2026-10-09.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        from = try c.decode(PriceEndpoint.self, forKey: .from)
+        to = try c.decode(PriceEndpoint.self, forKey: .to)
+        departure = try c.decode(Date.self, forKey: .departure)
+        mode = try c.decodeIfPresent(TransportMode.self, forKey: .mode) ?? .train
+        travelClass = try c.decodeIfPresent(TravelClass.self, forKey: .travelClass) ?? .second
+        discount = try c.decodeIfPresent(FareDiscount.self, forKey: .discount) ?? .none
+        journey = try c.decodeIfPresent(Journey.self, forKey: .journey)
+        via = try c.decodeIfPresent([PriceEndpoint].self, forKey: .via) ?? []
     }
 }
 
@@ -92,6 +112,16 @@ public struct PriceAlternative: Codable, Sendable, Hashable {
         self.source = source
         self.amountEUR = amountEUR
         self.label = label
+    }
+
+    /// Display line with the amount after the label and before a parenthesised note:
+    /// "Vorverkauf heute € 66,40", "ÖBB-Ticketshop € 91,50 (andere Route)", "Tarif-Tabelle € 67,70".
+    public var text: String {
+        let amount = FareEstimator.euro(amountEUR)
+        if let open = label.range(of: " (") {
+            return "\(label[..<open.lowerBound]) \(amount)\(label[open.lowerBound...])"
+        }
+        return "\(label) \(amount)"
     }
 }
 
