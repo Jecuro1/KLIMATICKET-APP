@@ -130,8 +130,9 @@ struct StatsMonthlyCard: View {
             .cornerRadius(5)
             .foregroundStyle(style(for: bar))
             .opacity(selectedID == nil || isSelected ? 1 : 0.35)
-            .annotation(position: .top, spacing: 3, overflowResolution: .init(x: .fit(to: .chart), y: .fit(to: .chart))) {
-                if isSelected {
+            .annotation(position: .top, spacing: 3, overflowResolution: calloutOverflow) {
+                // The callout sits on top of the whole stack: here only without a forecast segment above.
+                if isSelected && bar.projected <= 0 {
                     callout(bar)
                 } else if bar.isBest {
                     bestLabel(bar)
@@ -145,9 +146,19 @@ struct StatsMonthlyCard: View {
                 .cornerRadius(5)
                 .foregroundStyle(Theme.glacier.opacity(0.10))
                 .opacity(selectedID == nil || isSelected ? 1 : 0.35)
+                .annotation(position: .top, spacing: 3, overflowResolution: calloutOverflow) {
+                    if isSelected {
+                        callout(bar)
+                    }
+                }
                 .accessibilityLabel("\(StatsNames.wideMonth(bar.month)), Prognose")
                 .accessibilityValue(Format.euro(bar.projected, decimals: 0))
         }
+    }
+
+    /// Kept inside the plot on both axes (the first and last month, the tallest bar).
+    private var calloutOverflow: AnnotationOverflowResolution {
+        .init(x: .fit(to: .chart), y: .fit(to: .chart))
     }
 
     /// Callout over the bar under the finger: month, value, trips – and what is still expected this month.
