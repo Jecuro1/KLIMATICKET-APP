@@ -372,6 +372,25 @@ public struct Journey: Codable, Sendable, Hashable, Identifiable {
     public var arrival: StopEvent? { legs.last?.arrival }
 }
 
+extension Journey {
+    /// True when the journey stops at `location`: a leg boundary or a stopover of a ride leg (not one it passes without
+    /// stopping). Matched by extId, else by lid, else by a coordinate within 300 m (meta stations group member stops).
+    /// Used to verify via stops (SPEC §A3.3).
+    public func passes(_ location: Location) -> Bool {
+        func same(_ other: Location) -> Bool {
+            if let a = location.extId, let b = other.extId, a == b { return true }
+            if !location.lid.isEmpty, location.lid == other.lid { return true }
+            if let p = location.coordinate, let q = other.coordinate { return p.distanceKm(to: q) <= 0.3 }
+            return false
+        }
+        for leg in legs {
+            if same(leg.origin) || same(leg.destination) { return true }
+            if leg.kind == .ride, leg.stopovers.contains(where: { !$0.passesWithoutStop && same($0.location) }) { return true }
+        }
+        return false
+    }
+}
+
 public struct JourneyPage: Codable, Sendable, Hashable {
     public var journeys: [Journey]
     /// `outCtxScrB` / `outCtxScrF` – pass to `JourneyQuery.pageContext` for earlier/later results.
