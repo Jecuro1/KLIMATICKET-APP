@@ -28,7 +28,7 @@ struct SetAccountSection: View {
 
     private var hasAccountRows: Bool { profile != nil || !app.auth.isCloudAvailable }
 
-    /// Without Supabase only native Sign in with Apple (signed builds) works – the web flows all need the cloud.
+    /// Without the Cloudflare backend only native Sign in with Apple (signed builds) works – the web flows all need the cloud.
     private var canSignIn: Bool { app.auth.isCloudAvailable || AppConfig.supportsNativeAppleSignIn }
 
     var body: some View {
@@ -64,6 +64,9 @@ struct SetAccountSection: View {
             if isCloudActive {
                 syncStatusRow
                 syncNowRow
+                if app.sync.requiresAppUpdate {
+                    updateRow
+                }
             } else if app.auth.isCloudAvailable || (profile.provider == .local && AppConfig.supportsNativeAppleSignIn) {
                 connectRow
                 if showsConnect {
@@ -131,6 +134,16 @@ struct SetAccountSection: View {
         }
         .disabled(app.sync.state == .syncing)
         .settingsHaptic(.impact(weight: .light), trigger: syncTrigger, enabled: app.settings.hapticsEnabled)
+    }
+
+    /// The server no longer accepts this app version (`426`): offer the update right here.
+    private var updateRow: some View {
+        Button {
+            Task { await app.updates.checkIfDue(force: true) }
+        } label: {
+            SetRowLabel(title: "Nach Update suchen", subtitle: "Diese Version wird vom Server nicht mehr unterstützt",
+                        symbol: "arrow.down.app.fill", tint: Theme.accent)
+        }
     }
 
     private var connectRow: some View {
@@ -489,30 +502,28 @@ struct SetSignOutSection: View {
 // MARK: - Cloud setup page (summary of docs/SETUP.md §3)
 
 private struct SetCloudSetupPage: View {
-    @Environment(AppState.self) private var app
-    @State private var copyTrigger = 0
-    /// Inline confirmation – the global toast is hidden behind the settings sheet while this page is pushed.
-    @State private var didCopy = false
-
     private struct Step: Identifiable {
         let id: Int
         let title: String
         let detail: String
     }
 
+    private static let guideURL = URL(string: "https://github.com/Jecuro1/KLIMATICKET-APP/blob/main/docs/SETUP.md")
+    private static let dashboardURL = URL(string: "https://dash.cloudflare.com")
+
     private let steps: [Step] = [
-        Step(id: 1, title: "Supabase-Projekt anlegen",
-             detail: "Erstelle ein kostenloses Projekt auf supabase.com."),
-        Step(id: 2, title: "Datenbank vorbereiten",
-             detail: "Führe im SQL Editor nacheinander supabase/migrations/0001_init.sql und 0002_sync_hardening.sql aus. Sie legen die Tabellen samt Row Level Security an – jede:r sieht nur die eigenen Fahrten. Für „Konto löschen“ zusätzlich die Edge Function bereitstellen: supabase functions deploy delete-account --no-verify-jwt --use-api"),
-        Step(id: 3, title: "Redirect-URL eintragen",
-             detail: "Unter Authentication › URL Configuration › Redirect URLs: klimabilanz://auth-callback hinzufügen."),
-        Step(id: 4, title: "Anbieter aktivieren",
-             detail: "Apple: Für per AltStore/SideStore installierte Builds läuft die Anmeldung über den Web-Login – dafür im Apple-Developer-Portal eine Services ID (z. B. com.knitelarlberg.klimabilanz.web) mit der Return-URL https://<projekt>.supabase.co/auth/v1/callback und einen Sign-in-with-Apple-Key anlegen. Signierte TestFlight-Builds brauchen zusätzlich die Bundle-ID com.knitelarlberg.klimabilanz als Client ID.\nGoogle: OAuth-Client vom Typ „Web application“ mit der Redirect-URI https://<projekt>.supabase.co/auth/v1/callback, Client-ID und Secret in Supabase speichern.\nMicrosoft: App-Registrierung in Entra (beliebige Organisationen und persönliche Konten), gleiche Redirect-URI, Client-Secret erzeugen, in Supabase als URL https://login.microsoftonline.com/common eintragen."),
-        Step(id: 5, title: "Schlüssel hinterlegen",
-             detail: "In GitHub unter Settings › Secrets and variables › Actions › Variables: SUPABASE_URL und SUPABASE_ANON_KEY (der öffentliche „Publishable key“ sb_publishable_… bzw. der bisherige anon-Key) setzen."),
-        Step(id: 6, title: "Neu bauen",
-             detail: "Unter Actions › iOS › Run workflow einen neuen Build starten und installieren – danach sind Login und Sync aktiv."),
+        Step(id: 1, title: "Cloudflare-Konto & Subdomain",
+             detail: "Melde dich auf dash.cloudflare.com an (kostenlos). Unter Workers & Pages einmal eine workers.dev-Subdomain festlegen, z. B. „marcel“, und rechts die Account ID kopieren."),
+        Step(id: 2, title: "API-Token erstellen",
+             detail: "My Profile › API Tokens › Create Token › Custom token „KlimaBilanz GitHub Deploy“ mit genau vier Rechten: Account · Workers Scripts · Edit, Account · D1 · Edit, Account · Account Settings · Read und User · User Details · Read. Kein IP-Filter – den Token gleich kopieren."),
+        Step(id: 3, title: "GitHub-Secrets hinterlegen",
+             detail: "Im Repository unter Settings › Secrets and variables › Actions › Secrets: CLOUDFLARE_API_TOKEN und CLOUDFLARE_ACCOUNT_ID anlegen."),
+        Step(id: 4, title: "Backend bereitstellen",
+             detail: "Actions › Backend › Run workflow: legt die Datenbank „klimabilanz“ in der EU, den Worker und seinen Schlüssel an. Die Zusammenfassung des Laufs zeigt die Worker-Adresse und die Callback-URLs für die Anmeldeanbieter."),
+        Step(id: 5, title: "Anmeldeanbieter einrichten",
+             detail: "Google (kostenlos): OAuth-Client „Web application“ mit der Google-Callback-URL → Secrets GOOGLE_CLIENT_ID und GOOGLE_CLIENT_SECRET.\nMicrosoft (kostenlos): App-Registrierung in Entra für Organisations- und private Konten, Plattform „Web“ mit der Microsoft-Callback-URL → MICROSOFT_CLIENT_ID und MICROSOFT_CLIENT_SECRET.\nApple (nur mit dem kostenpflichtigen Apple Developer Program): Services ID mit der Apple-Callback-URL und ein Sign-in-with-Apple-Schlüssel → APPLE_SERVICES_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY und APPLE_BUNDLE_ID.\nDanach Actions › Backend noch einmal starten."),
+        Step(id: 6, title: "App neu bauen",
+             detail: "Actions › iOS › Run workflow: Der neue Build bekommt die Worker-Adresse automatisch. Installieren – danach sind Anmeldung und Abgleich aktiv."),
     ]
 
     var body: some View {
@@ -533,26 +544,17 @@ private struct SetCloudSetupPage: View {
             }
             Section {
                 Group {
-                    if let url = URL(string: "https://supabase.com") {
+                    if let url = Self.dashboardURL {
                         Link(destination: url) {
-                            SetRowLabel(title: "supabase.com öffnen", symbol: "safari.fill", tint: Theme.pine)
+                            SetRowLabel(title: "dash.cloudflare.com öffnen", symbol: "safari.fill", tint: Theme.pine)
                         }
                     }
-                    Button {
-                        UIPasteboard.general.string = AppConfig.authCallback
-                        copyTrigger += 1
-                        didCopy = true
-                        let trigger = copyTrigger
-                        Task {
-                            try? await Task.sleep(for: .seconds(2))
-                            if copyTrigger == trigger { didCopy = false }
+                    if let url = Self.guideURL {
+                        Link(destination: url) {
+                            SetRowLabel(title: "Anleitung öffnen", subtitle: "Schritt für Schritt, mit allen Details (docs/SETUP.md)",
+                                        symbol: "book.fill", tint: Theme.glacier)
                         }
-                    } label: {
-                        SetRowLabel(title: didCopy ? "Redirect-URL kopiert" : "Redirect-URL kopieren",
-                                    subtitle: AppConfig.authCallback,
-                                    symbol: didCopy ? "checkmark" : "doc.on.doc.fill", tint: Theme.glacier)
                     }
-                    .settingsHaptic(.success, trigger: copyTrigger, enabled: app.settings.hapticsEnabled)
                 }
                 .listRowBackground(Theme.surface)
             } footer: {
@@ -571,7 +573,7 @@ private struct SetCloudSetupPage: View {
         let local = AppConfig.supportsNativeAppleSignIn
             ? "„Mit Apple anmelden“ funktioniert auch ohne Cloud – Name und E-Mail bleiben dann nur auf diesem iPhone."
             : "Bis dahin funktioniert KlimaBilanz vollständig ohne Konto – alle Daten bleiben auf diesem iPhone."
-        return "\(local) Die ausführliche Anleitung steht in docs/SETUP.md."
+        return "\(local) Kosten: keine – die kostenlosen Cloudflare-Pläne reichen bei Weitem."
     }
 
     private var intro: some View {
@@ -581,7 +583,7 @@ private struct SetCloudSetupPage: View {
                 Text("Deine eigene Cloud")
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
-                Text("Ohne Einrichtung läuft KlimaBilanz vollständig lokal. Für Konten mit Apple, Google oder Microsoft und den Abgleich zwischen deinen Geräten brauchst du ein eigenes, kostenloses Supabase-Projekt.")
+                Text("Ohne Einrichtung läuft KlimaBilanz vollständig lokal. Für Konten mit Apple, Google oder Microsoft und den Abgleich zwischen deinen Geräten brauchst du dein eigenes, kostenloses Cloudflare-Konto – die Daten liegen dort in der EU.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

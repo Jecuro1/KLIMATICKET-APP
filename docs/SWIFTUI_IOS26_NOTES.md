@@ -1328,8 +1328,8 @@ struct AppleSignInButton: View {
         .clipShape(Capsule())
     }
 }
-// Supabase: try await client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: rawNonce))
-// Apple returns fullName/email ONLY on the first authorization. Persist them immediately (Supabase docs).
+// KlimaBilanz backend: POST /v1/auth/apple/native with identity_token + raw_nonce (docs/CLOUDFLARE_BACKEND.md §2.4).
+// Apple returns fullName/email ONLY on the first authorization. Send full_name with that first sign-in.
 ```
 
 ### 7.2 Google / Microsoft (OAuth) via `WebAuthenticationSession`
@@ -1337,7 +1337,7 @@ struct AppleSignInButton: View {
 ```swift
 struct OAuthButton: View {
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
-    let authorizeURL: URL            // provider or Supabase /authorize URL with redirect_to=klimabilanz://auth-callback
+    let authorizeURL: URL            // Worker /v1/auth/{provider}/start?…&redirect_uri=klimabilanz://auth-callback (PKCE)
 
     var body: some View {
         Button("Mit Google fortfahren") {
@@ -1366,8 +1366,8 @@ struct OAuthButton: View {
 Notes:
 - `.https(host:path:)` callbacks need Associated Domains (`webcredentials:` or `applinks:`), so they are not usable for sideloaded builds. Use
   `.customScheme`.
-- The supabase-swift SDK's `signInWithOAuth(provider:redirectTo:)` drives `ASWebAuthenticationSession` itself. Use the raw API only if you
-  bypass the SDK.
+- KlimaBilanz uses no auth SDK: the app drives `WebAuthenticationSession` itself and exchanges the returned `code` (+ PKCE verifier) at
+  the Worker's `/v1/auth/token` (docs/CLOUDFLARE_BACKEND.md §2.3).
 
 ---
 
