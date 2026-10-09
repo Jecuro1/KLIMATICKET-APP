@@ -136,6 +136,7 @@ struct StatsScreen: View {
             StatsTopRoutesCard(snapshot: snapshot, grow: grow)
                 .statsEntrance(5)
         }
+        AtlasPreviewCard(snapshot: snapshot, ticketID: ticket.id)
         StatsRecordsSection(snapshot: snapshot)
             .padding(.top, Theme.Spacing.s)
         StatsStatesCard(snapshot: snapshot)

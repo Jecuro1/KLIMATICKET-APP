@@ -197,6 +197,14 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "hero":
             DesignSystemPreview()
+        case "map":
+            NavigationStack { AtlasView() }
+        case "mapRoute":
+            NavigationStack { AtlasView(launchFocus: .topRoute) }
+        case "mapDetails":
+            NavigationStack { AtlasView(launchFocus: .details) }
+        case "mapPreview":
+            AtlasPreviewShowcase()
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
