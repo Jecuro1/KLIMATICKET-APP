@@ -1,0 +1,96 @@
+# KlimaBilanz Design System – SwiftUI API
+
+Alle Feature-Module bauen ausschließlich auf diesen Tokens und Komponenten auf.
+Tokens: `Shared/Theme.swift` (auch in Widgets nutzbar). Komponenten: `App/Sources/DesignSystem/`.
+
+## Tokens (`Theme`)
+
+| Token | Verwendung |
+|---|---|
+| `Theme.accent`, `Theme.accentSecondary`, `Theme.onAccent` | Marke, aktive Elemente, Text auf Akzent |
+| `Theme.background`, `Theme.surface`, `Theme.surfaceSecondary`, `Theme.separator` | Flächen |
+| `Theme.textPrimary/.textSecondary/.textTertiary` | Text |
+| `Theme.positive` | Wert, Ersparnis, „rentiert“ |
+| `Theme.remaining` / `Theme.summit` | noch offen bis Break-even, Gipfel/Ziel-Marker |
+| `Theme.negative`, `Theme.eco` | Verlust/Fehler, CO₂ |
+| `Theme.progressGradient` | Amortisations-Fortschritt |
+| `Theme.modeColor(_ mode: TransportMode) -> Color` | Farbe je Verkehrsmittel |
+| `Theme.tierGradient(_ tier: Achievement.Tier) -> LinearGradient` | Erfolge |
+| `Theme.celebrationColors: [Color]` | Konfetti |
+| `Theme.Typography.hero/.heroTitle/.numberLarge/.numberMedium/.numberSmall/.title/.sectionTitle/.headline/.body/.caption/.kicker` | Schrift |
+| `Theme.Spacing.xxs(4) xs(8) s(12) m(16) l(20) xl(28) xxl(40) screen(20)` | Abstände |
+| `Theme.Radius.chip(14) tile(20) card(28) sheet(36)` | Eckenradien (continuous) |
+
+Farb-Helfer: `Color(hex:)`, `Color(light:dark:)` (Strings oder Colors).
+
+## Container & Hintergrund
+
+```swift
+GlassCard(padding: CGFloat = 20, cornerRadius: CGFloat = 28, tint: Color? = nil, interactive: Bool = false) { content }
+SurfaceCard(padding: CGFloat = 20, cornerRadius: CGFloat = 28) { content }   // opak, für dichte Charts
+AmbientBackground(intensity: Double = 1)   // animierter Mesh-Verlauf
+view.ambientBackground(intensity: 1)       // als Screen-Hintergrund
+```
+
+## Texte & Überschriften
+
+```swift
+Kicker(text: String, color: Color = Theme.textSecondary)            // "FREITAG, 9. OKTOBER"
+SectionHeader(title: String, actionTitle: String? = nil, action: (() -> Void)? = nil)
+```
+
+## Kennzahlen
+
+```swift
+StatTile(value: String, unit: String? = nil, label: String, symbol: String, color: Color = Theme.accent)
+ProgressRail(progress: Double, preview: Double? = nil, leadingLabel: String? = nil, trailingLabel: String? = nil,
+             height: CGFloat = 10, fill: AnyShapeStyle = AnyShapeStyle(Theme.progressGradient))
+```
+
+## Fahrten & Verkehrsmittel
+
+```swift
+ModeIcon(mode: TransportMode, size: CGFloat = 40)
+TripRow(trip: TripEntity, showsDate: Bool = true)
+TripRow(fromName:toName:date:mode:distanceKm:value:isRoundTrip:showsDate:)
+TripRow.short(_ name: String) -> String            // "Innsbruck Hauptbahnhof" → "Innsbruck Hbf"
+RouteGlyph(color: Color = Theme.accent, endColor: Color = Theme.summit, height: CGFloat = 40)
+```
+
+## Bedienelemente
+
+```swift
+Chip(title: String, symbol: String? = nil, isSelected: Bool = false, tint: Color = Theme.accent, action: () -> Void)
+Button("…") { }.buttonStyle(.primary)       // volle Breite, Marken-Verlauf
+Button("…") { }.buttonStyle(.glass)         // iOS 26 Liquid Glass (sekundär)
+Button("…") { }.buttonStyle(.glassProminent) // iOS 26 Liquid Glass (primär, klein)
+AuthButtonStack(showsContinueWithoutAccount: Bool = false, onSignedIn: () -> Void = {}, onContinueWithoutAccount: () -> Void = {})
+GoogleLogo(size:), MicrosoftLogo(size:)
+```
+
+## Zustände & Feedback
+
+```swift
+EmptyStateView(symbol: String, title: String, message: String, actionTitle: String? = nil, action: (() -> Void)? = nil)
+ToastOverlay()                                   // global in RootView, via app.showToast(symbol, title, subtitle)
+ConfettiView(colors: [Color], count: Int = 90, duration: Double = 2.6)
+BreakEvenCelebration(ticketName: String, profit: Double, onDismiss: () -> Void)
+```
+
+## Bewegung
+
+```swift
+@State private var tilt = MotionTilt()   // .roll / .pitch in −1…1; tilt.start() onAppear, tilt.stop() onDisappear
+view.if(condition) { $0.modifier… }
+```
+
+## iOS-26-APIs, die im Projekt verwendet werden (geprüft)
+
+- `.glassEffect(_ glass: Glass = .regular, in: some Shape)`; `Glass.regular / .clear / .identity`, `.tint(Color)`, `.interactive()`
+- `GlassEffectContainer(spacing:) { … }`, `.glassEffectID(_:in:)` mit `@Namespace`
+- `.buttonStyle(.glass)`, `.buttonStyle(.glassProminent)`
+- `Tab(_:systemImage:value:role:)`, `.tabBarMinimizeBehavior(.onScrollDown)`
+- `MeshGradient(width:height:points:colors:smoothsColors:)`
+- `.contentTransition(.numericText(value:))`, `.symbolEffect(.bounce, value:)`, `.sensoryFeedback(_:trigger:)`
+- `.matchedTransitionSource(id:in:)` + `.navigationTransition(.zoom(sourceID:in:))`
+- Swift Charts: `LineMark`, `AreaMark`, `BarMark`, `SectorMark(angle:innerRadius:angularInset:)`, `RuleMark`, `PointMark`, `.chartXSelection(value:)`

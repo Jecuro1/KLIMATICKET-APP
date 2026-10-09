@@ -2,7 +2,6 @@
 import SwiftUI
 import KlimaCore
 
-struct DashboardView: View { var body: some View { NavigationStack { Text("Übersicht").navigationTitle("Übersicht") } } }
 struct TripsView: View { var body: some View { NavigationStack { Text("Fahrten").navigationTitle("Fahrten") } } }
 struct StatisticsView: View { var body: some View { NavigationStack { Text("Statistik").navigationTitle("Statistik") } } }
 struct TicketView: View { var body: some View { NavigationStack { Text("Ticket").navigationTitle("Ticket") } } }
