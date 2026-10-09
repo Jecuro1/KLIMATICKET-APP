@@ -125,8 +125,11 @@ enum Fixture {
         let obj = try XCTUnwrap(try json(path) as? [String: Any])
         let meta = obj["_meta"] as? [String: Any] ?? [:]
         let status = (meta["status"] as? Int) ?? 200
+        let recorded = (obj["response_headers"] ?? meta["response_headers"]) as? [String: String] ?? [:]
         if let html = obj["response_body_html_ip_redacted"] as? String {
-            return HTTPResponse(status: status == 200 ? 403 : status, headers: ["Content-Type": "text/html; charset=UTF-8"], body: Data(html.utf8))
+            var headers = recorded
+            headers["content-type"] = headers["content-type"] ?? "text/html; charset=UTF-8"
+            return HTTPResponse(status: status == 200 ? 403 : status, headers: headers, body: Data(html.utf8))
         }
         let response = obj["response"] ?? NSNull()
         let body: Data
@@ -137,7 +140,9 @@ enum Fixture {
         } else {
             body = Data("null".utf8)
         }
-        return HTTPResponse(status: status, headers: ["Content-Type": "application/json"], body: body)
+        var headers = recorded.filter { $0.key.lowercased() != "content-encoding" && $0.key.lowercased() != "content-length" }
+        headers["content-type"] = "application/json"
+        return HTTPResponse(status: status, headers: headers, body: body)
     }
 }
 
