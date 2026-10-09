@@ -128,10 +128,15 @@ struct StatsModesCard: View {
 
 // MARK: - Wochentage
 
-/// Trips per weekday – favourite day highlighted.
+/// Trips per weekday – favourite day highlighted. Drag across the bars (like the other charts): the day under the
+/// finger stays lit and its value shows in the footer line.
 struct StatsWeekdayCard: View {
     let snapshot: AnalyticsSnapshot
     let grow: Double
+
+    @Environment(AppState.self) private var app
+    /// Weekday under the finger ("Mo" … "So"); changes only when the finger crosses into another bar.
+    @State private var selectedName: String?
 
     private var favorite: WeekdayBucket? {
         snapshot.weekdays.filter { $0.trips > 0 }.max { ($0.trips, $0.value) < ($1.trips, $1.value) }
@@ -150,12 +155,36 @@ struct StatsWeekdayCard: View {
                 StatsCardHeader(kicker: "Wochentage", title: headline)
                 chart
                     .frame(height: 150)
-                Text("\(Format.percent(weekdayShare)) deiner Fahrten an Werktagen, \(Format.percent(1 - weekdayShare)) am Wochenende")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                // Both lines stay laid out (the hidden one transparent): the card keeps its height while scrubbing.
+                ZStack(alignment: .topLeading) {
+                    Text(shareText)
+                        .foregroundStyle(Theme.textSecondary)
+                        .opacity(selected == nil ? 1 : 0)
+                    Text(selectedText)
+                        .foregroundStyle(Theme.textPrimary)
+                        .contentTransition(.numericText())
+                        .opacity(selected == nil ? 0 : 1)
+                        .accessibilityHidden(selected == nil)
+                }
+                .font(.footnote)
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+                .motionAnimation(Motion.snappy, value: selectedName)
             }
         }
+    }
+
+    private var selected: WeekdayBucket? {
+        selectedName.flatMap { name in snapshot.weekdays.first { $0.shortName == name } }
+    }
+
+    private var shareText: String {
+        "\(Format.percent(weekdayShare)) deiner Fahrten an Werktagen, \(Format.percent(1 - weekdayShare)) am Wochenende"
+    }
+
+    private var selectedText: String {
+        guard let day = selected else { return " " }
+        return "\(StatsNames.wideWeekday(day.weekday)): \(StatsNames.trips(day.trips)) · \(Format.euro(day.value, decimals: 0)) Wert"
     }
 
     private var headline: String {
@@ -170,6 +199,7 @@ struct StatsWeekdayCard: View {
             BarMark(x: .value("Wochentag", day.shortName), y: .value("Fahrten", Double(day.trips) * grow), width: .ratio(0.56))
                 .cornerRadius(5)
                 .foregroundStyle(style(for: day))
+                .opacity(selectedName == nil || selectedName == day.shortName ? 1 : 0.35)
                 .annotation(position: .top, spacing: 3) {
                     Text("\(day.trips)")
                         .font(.caption2.weight(.bold))
@@ -194,7 +224,20 @@ struct StatsWeekdayCard: View {
             }
         }
         .chartLegend(.hidden)
+        .chartXSelection(value: selectionBinding)
+        .motionAnimation(Motion.snappy, value: selectedName)
+        .sensoryFeedback(.selection, trigger: selectedName) { _, new in
+            new != nil && app.settings.hapticsEnabled && !MotionPolicy.isStatic
+        }
         .accessibilityLabel("Fahrten pro Wochentag")
+    }
+
+    /// Writes only when the finger enters another bar – Charts reports the category on every touch-move frame.
+    private var selectionBinding: Binding<String?> {
+        Binding(get: { selectedName }, set: { new in
+            guard new != selectedName else { return }
+            selectedName = new
+        })
     }
 
     private func style(for day: WeekdayBucket) -> AnyShapeStyle {
