@@ -66,7 +66,8 @@ struct WorkDecimalField: View {
                     if !focused { text = formatted(value) }
                 }
                 .onChange(of: value) { _, newValue in
-                    if !isFocused { text = formatted(newValue) }
+                    // Typing sets `value` from `text` (they agree); a change from outside (preset, reset) rewrites the text.
+                    if !isFocused || CarInputParser.decimal(text, in: range) != newValue { text = formatted(newValue) }
                 }
                 .onAppear { text = formatted(value) }
                 .accessibilityLabel(title)
