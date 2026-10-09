@@ -108,9 +108,18 @@ struct RepImportResultStep: View {
                 }
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                ProgressRail(progress: before, preview: after,
-                             leadingLabel: "vorher \(Format.percent(before))",
-                             trailingLabel: after >= 1 ? "Gipfel erreicht ⚑" : "+ \(Format.number((after - before) * 100, decimals: 1)) Prozentpunkte")
+                RepImpactRail(before: before, after: after)
+                    .frame(height: 10)
+                HStack {
+                    Text("vorher \(Format.percent(before))")
+                    Spacer()
+                    Label(after >= 1 ? "Gipfel erreicht" : "+ \(Format.number((after - before) * 100, decimals: 1)) Prozentpunkte",
+                          systemImage: after >= 1 ? "flag.fill" : "arrow.up.right")
+                        .labelStyle(RepCompactLabelStyle())
+                        .foregroundStyle(Theme.positiveText)
+                }
+                .font(.caption.weight(.medium).monospacedDigit())
+                .foregroundStyle(Theme.textSecondary)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -164,5 +173,49 @@ struct RepImportResultStep: View {
             RepFeatureRow(symbol: "arrow.uturn.backward", tint: Theme.glacier, title: "Nichts verloren",
                           message: "Die Datei bleibt unverändert. Du kannst sie jederzeit erneut importieren.")
         }
+    }
+}
+
+/// Amortisation bar for the import result: what was there (route gradient) plus what the import added (pine),
+/// scaled so that values beyond 100 % still fit; a summit tick marks the ticket price.
+struct RepImpactRail: View {
+    var before: Double
+    var after: Double
+
+    @State private var grown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            let scale = max(1, after)
+            let beforeW = max(h, w * CGFloat(min(max(before, 0), scale) / scale))
+            let afterW = max(beforeW, w * CGFloat(min(max(after, 0), scale) / scale))
+            ZStack(alignment: .leading) {
+                Capsule().fill(Theme.textTertiary.opacity(0.18))
+                Capsule().fill(Theme.pine)
+                    .frame(width: grown ? afterW : beforeW)
+                Capsule().fill(Theme.routeGradient)
+                    .frame(width: beforeW)
+                    .overlay(alignment: .trailing) {
+                        Rectangle().fill(Theme.sheetBackground).frame(width: 2)
+                    }
+                    .clipShape(Capsule())
+                if scale > 1 {
+                    Rectangle().fill(Theme.summit)
+                        .frame(width: 2, height: h + 6)
+                        .offset(x: w / CGFloat(scale) - 1)
+                }
+            }
+        }
+        .onAppear {
+            guard !grown else { return }
+            if reduceMotion || LaunchMode.isScreenshot {
+                grown = true
+            } else {
+                withAnimation(.spring(duration: 0.9, bounce: 0.2).delay(0.25)) { grown = true }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }

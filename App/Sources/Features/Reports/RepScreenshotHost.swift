@@ -10,7 +10,7 @@ import KlimaCore
 struct RepScreenshotHost: View {
     let screen: String
 
-    static let screens: Set<String> = ["importPick", "importMapping", "importPreview", "importResult", "importEntry", "report", "reportPDF2", "reportPDF3",
+    static let screens: Set<String> = ["importPick", "importMapping", "importPreview", "importProblems", "importResult", "importEntry", "report", "reportPDF2", "reportPDF3",
                                        "reportPage1", "reportPage2", "reportPage3", "reportPage4"]
 
     @Environment(AppState.self) private var app
@@ -28,7 +28,7 @@ struct RepScreenshotHost: View {
     @ViewBuilder
     private var content: some View {
         switch screen {
-        case "importPick", "importMapping", "importPreview", "importResult":
+        case "importPick", "importMapping", "importPreview", "importProblems", "importResult":
             NavigationStack { SettingsView() }
                 .sheet(isPresented: $isPresenting) {
                     RepImportFlow(preset: preset)
@@ -61,6 +61,7 @@ extension RepScreenshotHost {
         case "importPick": .pick
         case "importMapping": .mapping
         case "importPreview": .preview
+        case "importProblems": .problems
         default: .result
         }
     }

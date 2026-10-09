@@ -37,7 +37,7 @@ struct RepImportFlow: View {
 
 /// Pre-filled states for CI screenshots (sample CSV with a duplicate of the newest demo trip).
 enum RepImportPreset {
-    case pick, mapping, preview, result
+    case pick, mapping, preview, problems, result
 
     @MainActor
     func apply(to model: RepImportModel, context: ModelContext) {
@@ -46,6 +46,7 @@ enum RepImportPreset {
         model.load(data: RepSampleData.csv(duplicating: trips.first), name: RepSampleData.fileName)
         guard self != .mapping else { return }
         model.buildPreview(existing: trips)
+        if self == .problems { model.filter = .problems }
         if self == .result { model.performImport(context: context) }
     }
 }
