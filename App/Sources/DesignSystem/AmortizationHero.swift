@@ -9,6 +9,15 @@ struct AmortizationHero: View {
 
     @State private var shownPercent: Double = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.legibilityWeight) private var legibilityWeight
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Ultralight like Apple Weather, but sturdier for Bold Text / Increase Contrast and glare in light mode.
+    private var numeralWeight: Font.Weight {
+        if legibilityWeight == .bold || contrast == .increased { return .regular }
+        return colorScheme == .light ? .light : .thin
+    }
 
     private var summary: SavingsSummary { snapshot.summary }
     private var percent: Double { (summary.amortizedFraction * 100).rounded() }
@@ -38,7 +47,7 @@ struct AmortizationHero: View {
     private var numeral: some View {
         HStack(alignment: .top, spacing: 2) {
             Text(Format.number(shownPercent))
-                .font(Theme.Typography.hero)
+                .font(.system(size: 96, weight: numeralWeight, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
                 .contentTransition(.numericText(value: shownPercent))
                 .lineLimit(1)
@@ -53,21 +62,31 @@ struct AmortizationHero: View {
         .accessibilityValue(Format.percent(summary.amortizedFraction))
     }
 
+    /// Verdict in words + the numbers behind it.
     @ViewBuilder
     private var caption: some View {
-        if summary.isPaidOff {
-            Label {
-                Text("Rentiert · \(Format.euro(summary.net)) im Plus")
-            } icon: {
-                Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.positive)
+        VStack(spacing: 4) {
+            if summary.isPaidOff {
+                Label {
+                    Text(summary.paidOffDate.map { "Rentiert seit \(Format.dayMonth($0))" } ?? "Rentiert")
+                } icon: {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.positive)
+                }
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                Text("\(Text("+ \(Format.euro(summary.net))").foregroundStyle(Theme.positiveText).fontWeight(.semibold)) gespart · \(Format.euro(summary.totalValue)) Wert")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                Text("Noch \(Text(Format.euro(summary.remainingToBreakEven)).foregroundStyle(Theme.accentText).fontWeight(.bold)) bis zum Break-even")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("\(Format.euro(summary.totalValue)) von \(Format.euro(summary.ticketPrice)) amortisiert")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
             }
-            .font(.title3.weight(.semibold))
-            .foregroundStyle(Theme.textPrimary)
-        } else {
-            Text("\(Text(Format.euro(summary.totalValue)).fontWeight(.semibold).foregroundStyle(Theme.textPrimary)) von \(Format.euro(summary.ticketPrice)) amortisiert")
-                .font(.title3)
-                .foregroundStyle(Theme.textSecondary)
-                .multilineTextAlignment(.center)
         }
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
     }
 }

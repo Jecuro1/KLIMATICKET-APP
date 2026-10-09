@@ -27,6 +27,11 @@ enum Theme {
     static let eco = Color(light: "#22A55B", dark: "#4ADE80")
     static let summit = Color(light: "#F08A4B", dark: "#FFA36B")
 
+    // Text-safe variants of the accents (≥ 4.5:1 on light backgrounds) – use these for small text.
+    static let positiveText = Color(light: "#0A7356", dark: "#3DDBA8")
+    static let summitText = Color(light: "#B2501E", dark: "#FFA36B")
+    static let accentText = Color(light: "#1F4FD1", dark: "#8FB0FF")
+
     static let celebrationColors: [Color] = [
         Color(hex: "#2F6BFF"), Color(hex: "#7B5CFF"), Color(hex: "#3DDBA8"), Color(hex: "#FFA36B"), Color(hex: "#FFD166"),
     ]

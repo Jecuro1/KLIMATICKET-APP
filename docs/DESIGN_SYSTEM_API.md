@@ -13,6 +13,7 @@ Tokens: `Shared/Theme.swift` (auch in Widgets nutzbar). Komponenten: `App/Source
 | `Theme.positive` | Wert, Ersparnis, „rentiert“ |
 | `Theme.remaining` / `Theme.summit` | noch offen bis Break-even, Gipfel/Ziel-Marker |
 | `Theme.negative`, `Theme.eco` | Verlust/Fehler, CO₂ |
+| `Theme.positiveText`, `Theme.summitText`, `Theme.accentText` | **Kontrast-sichere Varianten (≥ 4,5:1) für kleinen Text** – Akzentfarben sonst nur als Flächen oder große Schrift |
 | `Theme.progressGradient` | Amortisations-Fortschritt |
 | `Theme.modeColor(_ mode: TransportMode) -> Color` | Farbe je Verkehrsmittel |
 | `Theme.tierGradient(_ tier: Achievement.Tier) -> LinearGradient` | Erfolge |
