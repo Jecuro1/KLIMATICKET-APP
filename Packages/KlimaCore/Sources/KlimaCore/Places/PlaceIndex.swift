@@ -20,22 +20,26 @@ public final class PlaceIndex: @unchecked Sendable {
     public let localityCount: Int
     /// Seconds spent building the search structures (diagnostics).
     public let buildSeconds: Double
+    /// Format version and layers of the loaded files (ENRICH_SPEC §2.3; `hasOSMLayer` = M1).
+    public let dataInfo: PlaceDataInfo
 
     /// Ids of the "Beliebte Bahnhöfe" shown for an empty query (SUGGEST_SPEC §8).
     public static let topStationIDs = ["at:49:1349", "at:49:1468", "at:45:50002", "at:47:1187", "at:46:3040", "at:44:41164",
                                        "at:43:4848", "at:42:3642", "at:42:3654", "at:48:452"]
 
     public convenience init(dataset: PlaceDataset) {
-        self.init(stops: dataset.stops, localities: dataset.localities)
+        self.init(stops: dataset.stops, localities: dataset.localities, dataInfo: dataset.dataInfo)
     }
 
-    /// Loads and indexes the bundled binary files. Takes ~1–3 s for the full dataset: call it off the main thread
-    /// (`PlaceIndexLoader` does).
-    public convenience init(placesURL: URL, localitiesURL: URL?) throws {
-        self.init(dataset: try PlaceDataset(placesURL: placesURL, localitiesURL: localitiesURL))
+    /// Loads and indexes the bundled binary files (v1 or v2; `osmURL` = the optional ODbL layer stops_osm.bin).
+    /// Takes ~1–3 s for the full dataset: call it off the main thread (`PlaceIndexLoader` does).
+    public convenience init(placesURL: URL, localitiesURL: URL?, osmURL: URL? = nil) throws {
+        self.init(dataset: try PlaceDataset(placesURL: placesURL, localitiesURL: localitiesURL, osmURL: osmURL))
     }
 
-    init(stops: [PlaceRecord], localities: [PlaceRecord], municipalities: Set<String>? = nil) {
+    init(stops: [PlaceRecord], localities: [PlaceRecord], municipalities: Set<String>? = nil,
+         dataInfo: PlaceDataInfo? = nil) {
+        self.dataInfo = dataInfo ?? PlaceDataset.info(version: 1, stops: stops, official: nil, osm: nil, issue: nil)
         let t0 = Date()
         let munis = municipalities ?? Self.municipalityKeys(stops: stops, localities: localities)
         table = PlaceTable(records: stops + localities, municipalities: munis)

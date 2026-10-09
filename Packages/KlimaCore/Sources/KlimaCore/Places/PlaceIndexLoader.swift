@@ -15,11 +15,15 @@ public final class PlaceIndexLoader: @unchecked Sendable {
         case idle, loading, ready, failed(String)
     }
 
-    /// Loader for `places.bin` + `localities.bin` in the main bundle (nil URLs → `load()` throws).
+    /// Loader for `places.bin` + `localities.bin` (+ the optional OSM layer `stops_osm.bin`) in the main bundle
+    /// (nil places URL → `load()` throws).
     public static let shared = PlaceIndexLoader(bundle: .main)
 
     public let placesURL: URL?
     public let localitiesURL: URL?
+    /// Optional ODbL layer (ENRICH_SPEC §1.5). Missing, broken or from another build → official layer only
+    /// (`PlaceIndex.dataInfo.hasOSMLayer == false`, reason in `dataInfo.osmLayerNote`).
+    public let osmURL: URL?
     private let lock = NSLock()
     private var task: Task<PlaceIndex, Error>?
     private var index: PlaceIndex?
@@ -28,14 +32,16 @@ public final class PlaceIndexLoader: @unchecked Sendable {
 
     public enum LoadError: Error, Equatable { case resourceMissing }
 
-    public init(placesURL: URL?, localitiesURL: URL?) {
+    public init(placesURL: URL?, localitiesURL: URL?, osmURL: URL? = nil) {
         self.placesURL = placesURL
         self.localitiesURL = localitiesURL
+        self.osmURL = osmURL
     }
 
     public convenience init(bundle: Bundle) {
         self.init(placesURL: bundle.url(forResource: "places", withExtension: "bin"),
-                  localitiesURL: bundle.url(forResource: "localities", withExtension: "bin"))
+                  localitiesURL: bundle.url(forResource: "localities", withExtension: "bin"),
+                  osmURL: bundle.url(forResource: "stops_osm", withExtension: "bin"))
     }
 
     /// The index if it is ready (never blocks, never starts a build).
@@ -80,11 +86,11 @@ public final class PlaceIndexLoader: @unchecked Sendable {
         if let index { return Task { index } }
         if let task { return task }
         failure = nil
-        let places = placesURL, localities = localitiesURL
+        let places = placesURL, localities = localitiesURL, osm = osmURL
         let t = Task.detached(priority: priority) { [weak self] () throws -> PlaceIndex in
             do {
                 guard let places else { throw LoadError.resourceMissing }
-                let built = try PlaceIndex(placesURL: places, localitiesURL: localities)
+                let built = try PlaceIndex(placesURL: places, localitiesURL: localities, osmURL: osm)
                 self?.finish(built)
                 return built
             } catch {
