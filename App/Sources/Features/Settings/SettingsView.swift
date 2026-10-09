@@ -108,10 +108,15 @@ struct SettingsView: View {
 /// toast sits underneath the sheet, and an overlay on the list itself would vanish on every pushed page ("Favorit
 /// gelöscht" in Favoriten verwalten, a quick log from Widgets & Kurzbefehle) – above the stack it covers all of them.
 struct SettingsSheet: View {
+    /// The sheet's inline navigation bar ("Fertig", the fading title): the toast sits right below it instead of
+    /// covering the button.
+    private static let navigationBarClearance: CGFloat = 56
+
     var body: some View {
         NavigationStack { SettingsView() }
             .overlay(alignment: .top) {
                 ToastOverlay(playsHaptic: false)
+                    .padding(.top, Self.navigationBarClearance)
             }
     }
 }
