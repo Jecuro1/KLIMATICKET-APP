@@ -105,3 +105,15 @@ struct ViaRouteLabel: View {
         }
     }
 }
+
+extension View {
+    /// CI screenshots `addTripViaAX` / `tripDetailViaAX`: the via screens at the largest accessibility text size.
+    @ViewBuilder
+    func viaScreenshotTypeSize() -> some View {
+        if LaunchMode.screenshotScreen?.hasSuffix("ViaAX") == true {
+            dynamicTypeSize(.accessibility5)
+        } else {
+            self
+        }
+    }
+}

@@ -36,6 +36,10 @@ them in reverse (shown in the detail as „Zurück über …").
 Examples (tests in `TripViaTests`, real prices): Innsbruck → Feldkirch → Bregenz = € 43,30 official (not 36,00 + 8,90);
 Innsbruck → Villach → Graz = € 85,30 (468 tariff km; legs 62,60 + 37,90, direct 81,10).
 
+The live price layer's offline fallback for via routes between app stations (`LivePriceService.offlineQuote`,
+`FareEstimator.estimateLive(from:to:via:…)`) uses this same rule; only live segment quotes (separate Verbund/ÖBB tickets
+when no through ticket can be priced) are summed (`ViaPricing.combine`).
+
 Verbund/zone data beyond the Kernzonen is not in the tariff catalog; leaving a Kernzone prices the whole route on the
 distance tariff (as direct trips do). A manual price is never touched; editing keeps a saved price until the route,
 mode, class, Vorteilscard or tariff period changes (adding/removing a via counts as a route change).
@@ -46,8 +50,10 @@ mode, class, Vorteilscard or tariff period changes (adding/removing a via counts
   **K** = absent/null keeps the stored value, so an older app's edit never wipes vias). `/v1/config` lists
   `features: ["trip_via"]`; the app sends `via` and applies pulled values only when the server lists it
   (`CloudConfig.supports(CloudFeature.tripVia)`), else a Worker without the migration would answer `422 unknown_field`.
-  Inserts from the server take `via` whenever present. Known gap: rows pushed while the feature was off reach the server
-  without vias until they are edited again.
+  Inserts from the server take `via` whenever present. Rows pushed while the feature was off went up without vias: the
+  first sync with a Worker that lists `trip_via` also pushes every trip and favourite that has vias, once per account
+  (`SyncViaBackfill`; the server takes them unless another device changed the row later; rows without vias are never
+  re-sent, so nothing wipes vias another device uploaded).
 - **Backup:** v2 rows carry `via` (additive; older apps ignore it, files without it keep an entity's vias).
 - **CSV:** column „Über" after „Nach" („Landeck-Zams · Feldkirch"); import also reads „/", „>", „→", „|" and the
   headers Via/Zwischenhalt(e)/…; vias equal to start or destination are dropped, at most two. Files without the column
@@ -75,5 +81,11 @@ Feldkirch", „über Landeck-Zams und Feldkirch".
 - Karte (Atlas): a via route is its own route, drawn as gentle arcs through the via places.
 - Ratgeber: the 1st-class surcharge is priced on the via route.
 
-Screenshot routes: `addTripVia`, `tripDetailVia` (demo data: Langen → Bregenz über Bludenz, Innsbruck → Wien über
+Favourites: a route over other vias is another favourite (`TripVia.sameStops` – editor chips, „Als Favorit“ in the
+detail). A finished Live-Activity ride opened with „Bearbeiten“ keeps its vias.
+
+Dynamic Type: the via dots and the ⊕ grow with the text but stay below the fixed start/destination dots (capped), so
+they never spill out of the route column at AX5.
+
+Screenshot routes: `addTripVia`, `tripDetailVia`, `addTripViaAX`, `tripDetailViaAX` (AX5) (demo data: Langen → Bregenz über Bludenz, Innsbruck → Wien über
 Salzburg und Linz – both on the default path, so the demo totals are unchanged).

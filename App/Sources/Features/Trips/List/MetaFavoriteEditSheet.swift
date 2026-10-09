@@ -68,6 +68,7 @@ struct MetaFavoriteEditSheet: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
+                ViaCaption(vias: favorite.via, font: .subheadline)   // MARK: via
                 Text(routeMeta)
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)

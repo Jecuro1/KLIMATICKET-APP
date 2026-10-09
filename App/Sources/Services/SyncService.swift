@@ -236,6 +236,7 @@ final class SyncService {
         let syncsVia = auth.serverConfig?.supports(CloudFeature.tripVia) ?? false
         // MARK: trips – journeys (`journey_id`, `leg_index`, favourite `legs`) the same way (docs/JOURNEYS.md §3).
         let syncsJourney = auth.serverConfig?.supports(CloudFeature.tripJourney) ?? false
+        let viaBackfill = SyncViaBackfill.isNeeded(userID: uid, serverSyncsVia: syncsVia, defaults)
 
         let started = Date()
         do {
@@ -247,8 +248,12 @@ final class SyncService {
                 // Device clock went backwards since the last push: push everything (the server skips duplicates).
                 let since = lastPush > pushStarted ? Date.distantPast : lastPush
                 let tickets = try context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.updatedAt > since }))
-                let trips = try context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.updatedAt > since }))
-                let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.updatedAt > since }))
+                var trips = try context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.updatedAt > since }))
+                var favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.updatedAt > since }))
+                if viaBackfill {   // MARK: via – vias saved while the server could not take them (SyncViaBackfill)
+                    trips += try SyncViaBackfill.trips(unchangedSince: since, context: context)
+                    favorites += try SyncViaBackfill.favorites(unchangedSince: since, context: context)
+                }
                 let benefits = try context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.updatedAt > since }))
                 let ticketRows = tickets.map { TicketDTO($0, userID: uid) }
                 let tripRows = trips.map { TripDTO($0, userID: uid, includesVia: syncsVia, includesJourney: syncsJourney) }
@@ -259,6 +264,7 @@ final class SyncService {
                 _ = try await client.push(table: FavoriteDTO.table, rows: favoriteRows, session: provider)
                 _ = try await client.push(table: BenefitDTO.table, rows: benefitRows, session: provider)
                 SyncOwnerStore.setLastPush(pushStarted, userID: uid, defaults)
+                if viaBackfill { SyncViaBackfill.markDone(userID: uid, defaults) }   // MARK: via
                 pushWatermark = pushStarted
             }
 

@@ -28,9 +28,12 @@ private struct TripListViaDetailStop: View {
     let count: Int
     let color: Color
 
-    /// Caption line + half the name line (body) − the dot radius: the dot sits on the name.
-    @ScaledMetric(relativeTo: .body) private var dotTop: CGFloat = 29
-    @ScaledMetric(relativeTo: .body) private var dotSize: CGFloat = 8
+    /// Caption line + half the name line (body): where the dot's centre sits – on the name.
+    @ScaledMetric(relativeTo: .body) private var dotCenter: CGFloat = 33
+    @ScaledMetric(relativeTo: .body) private var scaledDot: CGFloat = 8
+    /// Below the 12 pt start / destination dots at every text size (they do not scale either).
+    private var dotSize: CGFloat { min(scaledDot, 10) }
+    private var dotTop: CGFloat { dotCenter - dotSize / 2 }
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {

@@ -175,11 +175,12 @@ struct TripListActions {
                       TripListFormat.routeTitle(trip.fromName, trip.toName))
     }
 
-    /// The favourite that already covers this route (same stations, mode and direction type), if any.
+    /// The favourite that already covers this route (same stations, vias, mode and direction type), if any.
     func existingFavorite(for trip: TripEntity, in favorites: [FavoriteRouteEntity]) -> FavoriteRouteEntity? {
         favorites.first { fav in
             fav.deletedAt == nil && fav.fromName == trip.fromName && fav.toName == trip.toName
                 && fav.modeRaw == trip.modeRaw && fav.isRoundTrip == trip.isRoundTrip
+                && TripVia.sameStops(fav.via, trip.via)   // MARK: via – a route over other vias is another favourite
         }
     }
 

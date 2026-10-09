@@ -126,23 +126,29 @@ final class LivePriceServiceViaTests: XCTestCase {
         XCTAssertEqual(again.amountEUR, 90.00, accuracy: 0.0001)
     }
 
-    func testOfflineViaQuoteSumsSegments() async {
+    func testOfflineViaQuoteIsOneTicketOnTheSummedTariffKm() async {
+        // docs/VIA.md §2, the rule of every saved trip: the ÖBB tariff is degressive – Graz → Wien → Salzburg is one ticket
+        // over 198.8 + 333.9 = 532.7 tariff km (€ 90,80), not two tickets (44,30 + 67,70 = 112,00).
         let r = PricingRig(routes: [])
         let q = await r.service.offlineQuote(PriceRequest(from: F.epGraz, to: F.epSalzburg, departure: F.now, via: [F.epWien]))
-        XCTAssertEqual(q.amountEUR, 112.00, accuracy: 0.0001)
-        XCTAssertEqual(q.source, .table)
-        XCTAssertEqual(q.explanation,
-                       "Summe von 2 Teilstrecken über Wien Hbf: Graz Hbf – Wien Hbf € 44,30 (Tarif-Tabelle) + Wien Hbf – Salzburg Hbf € 67,70 (Tarif-Tabelle)")
+        XCTAssertEqual(q.amountEUR, 90.80, accuracy: 0.0001)
+        XCTAssertEqual(q.source, .distanceModel)
+        XCTAssertEqual(q.explanation, "über Wien Hauptbahnhof · geschätzt nach Tarif-km · 2. Kl.")
         XCTAssertNil(q.fetchedAt)
         // No direct table price for Graz → Salzburg in the excerpt: no alternative.
         XCTAssertTrue(q.alternatives.isEmpty)
-        // Wien → Salzburg via Graz: a segment without table price makes the sum an estimate; the direct table price is offered.
+        // Wien → Salzburg via Graz: a real detour, never below the direct ticket; the direct table price is offered.
         let detour = await r.service.offlineQuote(PriceRequest(from: F.epWien, to: F.epSalzburg, departure: F.now, via: [F.epGraz]))
         XCTAssertEqual(detour.source, .distanceModel)
-        XCTAssertTrue(detour.explanation.contains("€ 44,30 (Tarif-Tabelle) + Graz Hbf – Salzburg Hbf"), detour.explanation)
-        XCTAssertTrue(detour.explanation.hasSuffix("(Schätzung)"), detour.explanation)
+        XCTAssertGreaterThan(detour.amountEUR, 67.70)
+        let twoTickets = F.estimator.estimate(from: F.wienHbf, to: F.graz, mode: .train, date: F.now).fareEUR
+            + F.estimator.estimate(from: F.graz, to: F.salzburg, mode: .train, date: F.now).fareEUR
+        XCTAssertLessThan(detour.amountEUR, twoTickets, "one ticket, cheaper than two")
+        XCTAssertEqual(detour.explanation, "über Graz Hauptbahnhof · geschätzt nach Tarif-km · 2. Kl.")
         XCTAssertEqual(detour.alternatives, [PriceAlternative(source: .table, amountEUR: 67.70, label: "Direkt ohne Zwischenhalt (Tarif-Tabelle)")])
         XCTAssertEqual(detour.alternatives.first?.text, "Direkt ohne Zwischenhalt € 67,70 (Tarif-Tabelle)")
+        // Exactly what the trip editor saves for this route.
+        XCTAssertEqual(detour.amountEUR, F.estimator.estimate(from: F.wienHbf, via: [F.graz], to: F.salzburg, mode: .train, date: F.now).fareEUR)
         // Via stops equal to an end are ignored; a free-text via without coordinates falls back to the direct relation.
         let same = await r.service.offlineQuote(PriceRequest(from: F.epWien, to: F.epSalzburg, departure: F.now, via: [F.epWien]))
         XCTAssertEqual(same.amountEUR, 67.70)

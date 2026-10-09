@@ -54,11 +54,12 @@ final class FareEstimatorLiveTests: XCTestCase {
         // Without via stops it is the plain call.
         let plain = await F.estimator.estimateLive(from: F.wienHbf, to: F.salzburg, via: [], mode: .train, date: F.now, live: nil)
         XCTAssertEqual(plain, F.estimator.estimate(from: F.wienHbf, to: F.salzburg, mode: .train, date: F.now))
-        // Offline via route = sum of the segments.
+        // Offline via route = the trip editor's rule (docs/VIA.md §2): one ticket on the summed tariff km, not 44,30 + 67,70.
         let via = await F.estimator.estimateLive(from: F.graz, to: F.salzburg, via: [F.wienHbf], mode: .train, date: F.now, live: nil)
-        XCTAssertEqual(via.fareEUR, 44.30 + 67.70, accuracy: 0.001)
-        XCTAssertEqual(via.method, .officialTable)
-        XCTAssertEqual(via.explanation, "Summe von 2 Teilstrecken über Wien Hbf: Graz Hbf – Wien Hbf € 44,30 (Tarif-Tabelle) + Wien Hbf – Salzburg Hbf € 67,70 (Tarif-Tabelle)")
+        XCTAssertEqual(via, F.estimator.estimate(from: F.graz, via: [F.wienHbf], to: F.salzburg, mode: .train, date: F.now))
+        XCTAssertEqual(via.fareEUR, 90.80, accuracy: 0.001)
+        XCTAssertEqual(via.method, .distanceTariff)
+        XCTAssertEqual(via.explanation, "über Wien Hauptbahnhof · geschätzt nach Tarif-km · 2. Kl.")
         // Live: the request carries the via stop.
         let stub = StubPriceProvider(.success(quote(.liveOebb, 99)))
         let live = await F.estimator.estimateLive(from: F.graz, to: F.salzburg, via: [F.wienHbf, F.graz], mode: .train, date: F.now, live: stub)

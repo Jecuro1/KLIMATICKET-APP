@@ -80,6 +80,11 @@ public extension TripVia {
         return name.compare(other.name, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
     }
 
+    /// Same via stops in the same order (`isSameStop` pairwise) – a route over other vias is another route (favourites).
+    static func sameStops(_ a: [TripVia], _ b: [TripVia]) -> Bool {
+        a.count == b.count && zip(a, b).allSatisfy { $0.isSameStop(as: $1) }
+    }
+
     /// Names for one line of text: "Feldkirch · Bludenz" (CSV column "Über", share text). `parseNames` reads it back.
     static func joinedNames(_ vias: [TripVia]) -> String {
         vias.map(\.name).joined(separator: " · ")

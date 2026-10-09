@@ -981,8 +981,11 @@ planner's `JourneyQuery.via`. The via route is priced as **one ticket where a ba
    budget cannot cover keeps its offline price (named in the explanation); such mixed results are not cached. The
    direct table price is listed as alternative „Direkt ohne Zwischenhalt (Tarif-Tabelle)“.
 
-`offlineQuote` prices a via route as the sum of offline segments; `FareEstimator.estimateLive(from:to:via:…)` is the
-via variant of the contract API.
+`offlineQuote` prices a via route between app stations like every saved trip (docs/VIA.md §2): one Standard-Ticket on
+the summed tariff km – the official A → B price when the vias lie on the default line, never below the direct ticket
+(the ÖBB tariff is degressive, two tickets would overstate it; review 2026-10-09). Endpoints without an app station keep
+the sum of offline segments. `FareEstimator.estimateLive(from:to:via:…)` is the via variant of the contract API and
+falls back to the same rule.
 
 ### B4.7 Implementation notes (WP-B)
 

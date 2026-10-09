@@ -120,11 +120,24 @@ public actor LivePriceService: LivePriceProvider {
     }
 
     /// Offline chain, no I/O: relation table × fare index (both endpoints app stations) → city ticket → distance
-    /// model from the coordinates → a 0 € quote „Kein Preis verfügbar – bitte eintragen“. Via routes: sum of segments.
+    /// model from the coordinates → a 0 € quote „Kein Preis verfügbar – bitte eintragen“. Via routes between app
+    /// stations: one ticket on the summed tariff km, like the trip editor (`FareEstimator.estimate(route:)`,
+    /// docs/VIA.md §2 – the ÖBB tariff is degressive, two tickets would overstate it); other via routes: sum of segments.
     public func offlineQuote(_ request: PriceRequest) -> PriceQuote {
         let request = Self.normalized(request)
         guard !request.via.isEmpty else { return offlineDirect(request) }
         let points = ViaPricing.points(request)
+        // MARK: via – the same rule as every saved trip.
+        let route = points.compactMap(appStation)
+        if route.count == points.count {
+            let estimate = estimator.estimate(route: route, mode: request.mode, travelClass: request.travelClass,
+                                              discount: request.discount, date: request.departure)
+            var quote = PriceQuote(estimate: estimate, request: request)
+            if let direct = directTableAlternative(request), abs(direct.amountEUR - quote.amountEUR) >= 0.05 {
+                quote.alternatives = [direct]
+            }
+            return quote
+        }
         let parts = (0..<(points.count - 1)).map { i in
             offlineDirect(segment(request, from: points[i], to: points[i + 1], index: i))
         }

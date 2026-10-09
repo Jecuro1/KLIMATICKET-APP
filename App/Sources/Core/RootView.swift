@@ -48,6 +48,7 @@ struct RootView: View {
         .animation(MotionPolicy.isStatic ? nil : Motion.crossfade, value: app.sync.isReplacingLocalData)
         .sheet(item: $app.tripDraft) { draft in
             TripEditorView(draft: draft)
+                .viaScreenshotTypeSize()   // MARK: via – addTripViaAX
         }
         .sheet(isPresented: $updates.isPresentingSheet) {
             UpdateSheet()
@@ -303,7 +304,7 @@ struct ScreenshotRouter: View {
                     draft.isRoundTrip = true
                     try? await Task.sleep(for: .milliseconds(600))
                     app.presentAddTrip(draft)
-                case "addTripVia": // MARK: via – editor with two via stops and the price
+                case "addTripVia", "addTripViaAX": // MARK: via – editor with two via stops and the price (AX5: largest text)
                     var draft = TripDraft()
                     let stations = app.stations
                     let from = stations.station(named: "Innsbruck Hbf"), to = stations.station(named: "Bregenz")
@@ -360,12 +361,13 @@ struct ScreenshotRouter: View {
                     TripDetailView(trip: trip)
                 }
             }
-        case "tripDetailVia": // MARK: via – the newest demo trip with via stops (Langen → Bregenz über Bludenz)
+        case "tripDetailVia", "tripDetailViaAX": // MARK: via – the newest demo trip with via stops (AX5: largest text)
             NavigationStack {
                 if let trip = Repository(context: context, app: app).liveTrips().first(where: { !$0.viaRaw.isEmpty }) {
                     TripDetailView(trip: trip)
                 }
             }
+            .viaScreenshotTypeSize()
         case "favoriteEdit": // MARK: tripmeta
             NavigationStack { FavoritesManagerView() }
         case "achievements":

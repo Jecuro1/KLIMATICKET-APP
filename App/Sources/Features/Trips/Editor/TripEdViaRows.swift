@@ -78,8 +78,7 @@ extension TripEditorModel {
 
     /// Whether `favorite` has the same vias as the form (a favourite with other vias is another route).
     func tripEdViaMatches(_ favorite: FavoriteRouteEntity) -> Bool {
-        let mine = viaRecords, theirs = favorite.via
-        return mine.count == theirs.count && zip(mine, theirs).allSatisfy { $0.isSameStop(as: $1) }
+        TripVia.sameStops(viaRecords, favorite.via)
     }
 }
 
@@ -170,7 +169,10 @@ private struct TripEdViaRow: View {
     var onTap: () -> Void
     var onRemove: () -> Void
 
-    @ScaledMetric(relativeTo: .body) private var dotSize: CGFloat = 9
+    @ScaledMetric(relativeTo: .body) private var scaledDot: CGFloat = 9
+    /// Grows a little with the text but stays below the start / destination dots (fixed 11 pt) – at AX5 an unbounded
+    /// dot would outgrow them and spill out of the route column.
+    private var dotSize: CGFloat { min(scaledDot, 10) }
     @State private var dragX: CGFloat = 0
 
     var body: some View {
@@ -266,7 +268,9 @@ private struct TripEdViaAddMark: View {
     /// Opaque stand-in for the card surface over the sheet (Theme.surface is translucent) – only for tiny knock-outs.
     static let cardColor = Color(light: "#FCFDFE", dark: "#1D273C")
 
-    @ScaledMetric(relativeTo: .footnote) private var size: CGFloat = 17
+    @ScaledMetric(relativeTo: .footnote) private var scaledSize: CGFloat = 17
+    /// Capped: the mark lives in the 17 pt route column – larger text sizes must not push it over the label.
+    private var size: CGFloat { min(scaledSize, 21) }
 
     var body: some View {
         Image(systemName: "plus")

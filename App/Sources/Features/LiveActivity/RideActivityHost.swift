@@ -131,6 +131,7 @@ private struct RideActivityHostModifier: ViewModifier {
             draft.mode = record.trip.mode
             draft.date = record.startedAt
             draft.isRoundTrip = record.trip.isRoundTrip
+            draft.via = record.trip.via   // MARK: via – "Bearbeiten" keeps the ride's via stops
             app.presentAddTrip(draft)
         case .discard:
             RideStore.remove(record.id)

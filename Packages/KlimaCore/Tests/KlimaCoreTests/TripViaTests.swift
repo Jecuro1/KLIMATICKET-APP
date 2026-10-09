@@ -103,6 +103,38 @@ final class TripViaTests: XCTestCase {
         XCTAssertEqual(bludenzRoute.distanceKm, 194.5, accuracy: 0.001)
     }
 
+    /// Owner checks (review 2026-10-09), real prices from relations.bin (Tarif ab 14.12.2025, 2. Kl.) and the bundled
+    /// fare curve (tariffs.json = `FareModel.fallback`): the via lies on the default line, so the official A → B price stays.
+    func testRealRoutesOverAStationOnTheLine() throws {
+        let wien = Station(id: "at:49:1349", name: "Wien Hauptbahnhof", lat: 48.18519, lon: 16.37641, state: "W")
+        let wrNeustadt = Station(id: "at:43:5210", name: "Wiener Neustadt Hauptbahnhof", lat: 47.81131, lon: 16.23362, state: "NÖ")
+        let salzburg = Station(id: "at:45:50002", name: "Salzburg Hauptbahnhof", lat: 47.81306, lon: 13.04513, state: "S")
+        let schwarzach = Station(id: "at:45:52197", name: "Schwarzach-St. Veit", lat: 47.31873, lon: 13.15461, state: "S")
+        let ids = [wien, wrNeustadt, graz, salzburg, schwarzach, villach].map(\.id)
+        let points = ids.enumerated().map { "{\"name\":\"\($0.offset)\",\"stationID\":\"\($0.element)\"}" }.joined(separator: ",")
+        let prices = [[0, 1, 1140], [1, 2, 3470], [0, 2, 4430], [3, 4, 1500], [4, 5, 2580], [3, 5, 3990]]
+        let json = "{\"validFrom\":\"2025-12-14\",\"source\":\"test\",\"points\":[\(points)],\"prices\":\(prices)}"
+        let est = FareEstimator(catalog: catalog(), relations: try RelationPriceTable(jsonData: Data(json.utf8)))
+
+        // Wien Hbf → Wiener Neustadt → Graz (Südbahn): 48.8 + 153.7 = 202.5 tariff km ≈ 198.8 of the relation → € 44,30.
+        let semmering = est.estimate(from: wien, via: [wrNeustadt], to: graz, mode: .train)
+        XCTAssertEqual(semmering.method, .officialTable)
+        XCTAssertEqual(semmering.fareEUR, 44.3, accuracy: 0.001, "not 11,40 + 34,70 = 46,10")
+        XCTAssertEqual(semmering.distanceKm, 177.5, accuracy: 0.2)
+        XCTAssertTrue(semmering.explanation.hasPrefix("über Wiener Neustadt Hauptbahnhof (am Weg) · ÖBB-Standardticket"))
+
+        // Salzburg Hbf → Schwarzach-St. Veit → Villach Hbf (Tauernbahn): 65.0 + 114.9 = 179.9 ≈ 178.1 → € 39,90.
+        let tauern = est.estimate(from: salzburg, via: [schwarzach], to: villach, mode: .train)
+        XCTAssertEqual(tauern.method, .officialTable)
+        XCTAssertEqual(tauern.fareEUR, 39.9, accuracy: 0.001, "not 15,00 + 25,80 = 40,80")
+        XCTAssertEqual(tauern.distanceKm, 182.5, accuracy: 0.2)
+
+        // Hin & Retour / the swapped route: the same ticket backwards (the editor's swap reverses the vias).
+        XCTAssertEqual(est.estimate(from: villach, via: [schwarzach], to: salzburg, mode: .train).fareEUR, 39.9, accuracy: 0.001)
+        XCTAssertEqual(est.estimate(from: graz, via: [wrNeustadt], to: wien, mode: .train, travelClass: .first, discount: .vorteilscard).fareEUR,
+                       est.estimate(from: wien, to: graz, mode: .train, travelClass: .first, discount: .vorteilscard).fareEUR, accuracy: 0.001)
+    }
+
     func testDetourIsPricedOnTheSummedTariffKm() throws {
         let est = try estimator()
         // Innsbruck → Villach → Graz: 299.7 + 168.7 = 468.4 tariff km (direct relation 431.5 km, € 81,10).
@@ -269,5 +301,12 @@ final class TripViaTests: XCTestCase {
         let t = TripRecord(date: Date(), fromName: "Innsbruck Hbf", toName: "Bregenz", mode: .train, distanceKm: 202.8, fareEUR: 43.3,
                            via: [TripVia(feldkirch)])
         XCTAssertEqual(t.stopNames, ["Innsbruck Hbf", "Feldkirch", "Bregenz"])
+    }
+
+    func testSameStops() {
+        XCTAssertTrue(TripVia.sameStops([], []))
+        XCTAssertTrue(TripVia.sameStops([TripVia(feldkirch)], [TripVia(name: "feldkirch")]), "a name-only via matches by name")
+        XCTAssertFalse(TripVia.sameStops([TripVia(feldkirch)], []), "a via route is not the direct favourite")
+        XCTAssertFalse(TripVia.sameStops([TripVia(feldkirch), TripVia(bludenz)], [TripVia(bludenz), TripVia(feldkirch)]), "order counts")
     }
 }
