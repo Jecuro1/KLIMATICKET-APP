@@ -1,0 +1,98 @@
+{
+ "lcg": "x = (x * 1103515245 + 12345) & 0x7FFFFFFF; byte = (x >> 16) & 0xFF (x starts at seed)",
+ "text": "text.txt (prefix of the given length)",
+ "vectors": [
+  {
+   "name": "empty",
+   "file": "empty.deflate",
+   "rawLength": 0,
+   "crc32": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "expect": {
+    "kind": "bytes",
+    "hex": ""
+   }
+  },
+  {
+   "name": "stored",
+   "file": "stored.deflate",
+   "rawLength": 66000,
+   "crc32": 1835006329,
+   "sha256": "ff3aefde3e745543de84aa51b70ecae6f0ed4c7c3e1c9d575230e1c095b5dc88",
+   "expect": {
+    "kind": "lcg",
+    "seed": 7,
+    "length": 66000
+   }
+  },
+  {
+   "name": "fixed",
+   "file": "fixed.deflate",
+   "rawLength": 6000,
+   "crc32": 3744767759,
+   "sha256": "937e54734f1efd6b38a3ab8bcc08cbddd6584a6c317d9d8ab9ebfe89ac737c8b",
+   "expect": {
+    "kind": "text",
+    "length": 6000
+   }
+  },
+  {
+   "name": "dynamic",
+   "file": "dynamic.deflate",
+   "rawLength": 24000,
+   "crc32": 101176048,
+   "sha256": "62d6a0546544f07f67851a0bcb5f2cff28c4eb8ce67e085b0126ca32bfa96ee1",
+   "expect": {
+    "kind": "text",
+    "length": 24000
+   }
+  },
+  {
+   "name": "huffman_only",
+   "file": "huffman_only.deflate",
+   "rawLength": 9000,
+   "crc32": 1190553045,
+   "sha256": "c3e218fb04c32bf92347ee9c1501178323d2d43a399ce06be814f33eece4a473",
+   "expect": {
+    "kind": "text",
+    "length": 9000
+   }
+  },
+  {
+   "name": "rle",
+   "file": "rle.deflate",
+   "rawLength": 12000,
+   "crc32": 2661887573,
+   "sha256": "b3e0432be023950d2b5180bd12aa834aacd66ac065f1adf2ede1a04411bdaeeb",
+   "expect": {
+    "kind": "lcg_repeat",
+    "seed": 3,
+    "length": 3000,
+    "times": 4
+   }
+  },
+  {
+   "name": "repetitive_1mib",
+   "file": "repetitive_1mib.deflate",
+   "rawLength": 1048576,
+   "crc32": 3209119493,
+   "sha256": "9923fc461d5850b888de83767b238555dfe01f35a2ee21b8f776076deffeec4b",
+   "expect": {
+    "kind": "repeat",
+    "text": "KlimaBilanz · Warth (Vorarlberg) Dorfplatz · 110 852 Skibus\n",
+    "length": 1048576
+   }
+  },
+  {
+   "name": "match258_dist32768",
+   "file": "match258_dist32768.deflate",
+   "rawLength": 33026,
+   "crc32": 3736723801,
+   "sha256": "a678287c12f3f584bc7f995abe4b9000488f41e0e8e67ea5ce114b74288bca4a",
+   "expect": {
+    "kind": "far_match",
+    "seed": 11
+   }
+  }
+ ]
+}

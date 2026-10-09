@@ -1,0 +1,252 @@
+# KlimaBilanz · Stop enrichment v2: every line, ski areas, regions, “Wegzeichen” badges, stop detail
+
+**Implementation spec v1 · 2026-10-09 · lead architect**
+
+> **Repo copy (Step 0, 2026-10-09).** This is the implementation spec as handed over by the lead architect, copied into
+> the repository so every work package can read it. Changes against the original:
+> - **Paths** point into the repository. Artefacts that only existed in the authoring session (prototypes, raw
+>   enrichment outputs, mockups, the OEBB contract drafts) are written as `$S/…` and marked *session artefact*; their
+>   results reach the repo through the work packages (Step 0 fixtures: `Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places/v2/`,
+>   written by `scripts/places_v2_fixtures.py`; Python ports: WP-D1).
+> - **Trunk-based:** the project now commits straight to `main`. Branch names in §0.2 and §5 (`claude/klimabilanz-ios-app`,
+>   `wip/enrich-*`) are historical; the merge order of §5 still holds, every step lands on `main`.
+> - **Logos – superseded by [`docs/LOGO_SPEC.md`](LOGO_SPEC.md):** the owner decided that original logos are shown
+>   („es müssen schon original logos auch sein … bundesland logos mit wappen“). LOGO_SPEC replaces **D10**, **§1.10.3**,
+>   **§1.10.4**, the „Zeichen und Namen“ text of **§1.10.2** and the Wappen/arms part of **AT-U6**:
+>   Landeswappen (all states except Niederösterreich) ship in the app bundle; ski-area and region logos come only through
+>   the Cloudflare logo pack and are never committed; KlimaCore gets the pure parts (`Logos/LogoPack.swift`: `LogoConfig`,
+>   manifest, `StoredZip`, installer, `BrandResolver`/`StopBrands`, `Landeswappen.assetName`). The own „Wegzeichen“
+>   badges of this spec remain the built-in rendering and the fallback everywhere (no pack, revoked brand, switch off).
+>   The seam for brand marks in rows and the detail hero is `PlaceMarkSelection.rowAreaMark` / `heroAreaCells`
+>   (`CORE/Places/Presentation/PlaceMarkSelection.swift`, LOGO_SPEC §4.1).
+
+**User request (verbatim):** „Es müssen alle Linien drinnen sein jede Haltestellen die es nur gibt und die sollen auch gute markiert mit mehreren icons sein wie dem Ski ARLBERG Logo sowie dem Landes Logo alles was dazu halt passt meine App muss sich von anderen stark abheben“
+
+In short:
+1. Every stop (all 39,711) shows **every line** that serves it, with mode, operator, termini and seasonal flags.
+2. Stops are **marked with several icons**: Bundesland, ski area, region, special places (main station, valley station, airport, P+R, barrier-free …), KlimaTicket validity.
+3. The marking is our **own design** („Wegzeichen“, docs: `enrich/design/BADGE_SPEC.md`). The **Ski Arlberg logo and the Landeswappen/Landeslogos are not used** (trademark / state laws, §1.10). The names appear as text, next to our own glyphs and the state colours as stripes. This is the legally safe way to the same effect, and it is what makes the app distinctive.
+4. Reference case that must work perfectly: typing **„Warth am Arlberg Dorfplatz“** puts `at:48:344` „Warth (Vorarlberg) Dorfplatz“ first. Its row shows **Vorarlberg · Ski Arlberg · 110 · 852 · Skibus**.
+
+---
+
+## 0. How to read this document
+
+| Tag | Meaning |
+|---|---|
+| **[MEASURED]** | Produced by the prototypes in `$SPEC/` on the real data on 2026-10-09. The numbers are reproducible. |
+| **[DATA]** | Taken from the enrichment outputs (`$LINES`, `$TAGS`) or their reports. |
+| **[DESIGN]** | Taken from `$DESIGN/BADGE_SPEC.md`. That document stays the visual source of truth. |
+| **[DECISION]** | Architect decision. Binding for the work packages. |
+
+### 0.1 Paths
+
+| Abbreviation | Path |
+|---|---|
+| `$S` | session scratchpad of the authoring session (**not in the repo**; everything needed long term is copied into the repo by WP-D1 / Step 0) |
+| `$PLACES` | base pipeline: `scripts/build_places.py`, `scripts/extract_osm_places.py`, `scripts/fetch_places_sources.sh`; build outputs `build/places/places.json`, `build/places/localities.json`, downloads `build/places-dl/` |
+| `$LINES` | line enrichment (session artefact `$S/enrich/lines/`, ported by WP-D1 to `scripts/build_lines.py`, `scripts/extract_osm_routes.py`); outputs `build/lines_full/` (with OSM), `build/lines_official/` (without OSM); Scotty samples `live/` (session artefact) |
+| `$TAGS` | tag enrichment (session artefact `$S/enrich/tags/`, ported by WP-D1 to `scripts/build_tags.py`, `scripts/places_curated.py`, `scripts/extract_osm_tags.py`); `spot_checks.json`; outputs `build/tags/tags.json`, `tags_app.json` |
+| `$DESIGN` | design hand-off (session artefact `$S/enrich/design/`: `BADGE_SPEC.md`, `swift/Wegzeichen.swift`, `mockups/*.png`, `tokens_check.json`); lands with WP-U1 |
+| `$SPEC` | prototypes of this spec (session artefact `$S/enrich/spec/`: `encode_v2.py`, `show_v2.py`, `proto_context_search.py`, `swift/Inflate.swift`, `swift/main.swift`, outputs `out_*`). Swift port: `CORE/Places/Format/` (WP-C1); Python port: `scripts/build_places.py` (WP-D1); small v2 fixtures from `encode_v2.py`: `Packages/KlimaCore/Tests/KlimaCoreTests/Fixtures/places/v2/` |
+| `REPO` | the repository root, branch `main` (trunk-based) |
+| `CORE` | `Packages/KlimaCore/Sources/KlimaCore/` |
+
+### 0.2 Baseline
+
+- **`wip/places` is merged.** It landed in `claude/klimabilanz-ios-app` as `62351c3` (2026-10-09 14:55). That merge brought `PlaceIndex`, `PlaceDataset` (v1 reader), `App/Resources/places.bin` (3,060,746 B) and `localities.bin` (1,482,788 B), `scripts/build_places.py` and `scripts/places_reference.py`. All work packages here start from `claude/klimabilanz-ios-app` at or after `62351c3`. **Do not** commit to `wip/places`.
+- **The ÖBB live layer (OEBB_LIVE WP-A: `HafasClient`, `StationLinker`, `TimetableService`) is on no branch yet.** Its contract types exist in `$S/oebb/contracts/` (session artefact; see `docs/OEBB_LIVE.md`). Live completion (§4) is therefore specified against those contracts, and the app stays **offline only** until WP-A merges.
+- **Parallel branches touch files we need** (checked with `git diff --name-only`):
+  - `TripEditorView.swift`: `wip/p2-tripmeta`, `wip/p2-live`
+  - `TripListComponents.swift`: `wip/p2-tripmeta`
+  - `WidComponents.swift`: `wip/polish-widgets`
+  - `DashSupport.swift`: `wip/polish-dashboard`
+  - `RootView.swift`: nearly every branch
+
+  §5 schedules the edits to these files last and keeps them minimal.
+
+---
+
+## 0.3 Summary of binding decisions
+
+| # | Decision |
+|---|---|
+| D1 | **Format:** the places data becomes **KBPL v2**, a section container with a directory and per-section raw DEFLATE. It is spread over **three files** so the licences stay separate: `places.bin` (official sources, no OSM), `stops_osm.bin` (new, ODbL) and `localities.bin` (ODbL, rewrapped). Everything the app needs fits in **2,036,472 B on disk [MEASURED]**. Today's v1 files take 4,543,534 B, so the bundle shrinks by 2.5 MB even though every line and tag is added. |
+| D2 | **Decoding:** a **pure-Swift `Inflate`** (RFC 1951) in KlimaCore, one code path on iOS and Linux CI. A CRC-32 per section guards it. It decodes all three files in **≈ 43 ms** (Swift 6.3.3 `-O`, one x86 core) **[MEASURED]**. Fuzzing 300 corruptions gave 0 traps, and the CRC caught all 13 silent ones. |
+| D3 | **Licence layering:** OSM-derived content goes only into ODbL files. These are OSM-only lines, OSM line attributes, ski areas, lifts, POI types and wheelchair data. The app **merges the layers at runtime**, the same way `places.bin` and `localities.bin` are handled today. If the OSM layer is missing or belongs to another build (`BASE` mismatch), the app runs on the official layer alone. |
+| D4 | **Lines model:** `Place.lines: [LineRef]` (the type of the existing internal `lines: String?` changes) plus `PlaceIndex.stopLines(for:) -> [StopLine]` for the detail screen. Compact rows show timetable-confirmed lines and special services. Lines known only from OSM appear in the detail with their source. |
+| D5 | **Tags model:** `Place.tags: PlaceTags` (ski area, regions, special types, services, lift, accessibility, KlimaTicket validity, Gemeinde/Bezirk). Lookup tables: `SkiArea`, `Region`, operators, networks, lifts. |
+| D6 | **Search:** **context words**. Ski-area, region and Bundesland names in a query (after the first word) count as a match when the place lies there (+10 points) and as a penalty when it does not (−30). „warth am arlberg dorfplatz“ then scores 207.6 against 63.5 for the next result, and „warth vorarlberg“ no longer ranks Warth/NÖ **[MEASURED]**. |
+| D7 | **Presentation logic is pure Swift in KlimaCore** and tested on Linux: `LineKind` classification, plate text, display order, title folding, German VoiceOver strings. SwiftUI only adds styling. OEBB_LIVE `LinePresentation.plate` **must delegate** to it, so live and offline lines look identical. |
+| D8 | **UI:** badge primitives that the widgets also need go to `Shared/Wegzeichen/`, because the widget target compiles only `Widgets/Sources` + `Shared` (project.yml lines 96–98). App-only composites go to `App/Sources/DesignSystem/Places/`, the new screen to `App/Sources/Features/Stops/`. |
+| D9 | **Live:** the stop detail fills missing lines and shows departures from ÖBB HAFAS StationBoard through `StationLinker`. This needs consent, the kill switch and the 40/min budget. Until OEBB WP-A exists, the departures section is hidden and the lines stay offline. |
+| D10 | **(Superseded by `docs/LOGO_SPEC.md`, see the note at the top.)** **Logos:** none are shipped. A separate logo pack exists (`$S/logos/package/`, session artefact, 99 brands, permission status „not yet requested“ for all). It is **not** part of these work packages and must not be committed. §1.10.4 defines an optional, permission-gated slot for later. |
+
+---
+
+# PART 1: Places data format v2
+
+## 1.1 Files and licence layering
+
+| File (App/Resources) | Content | Licence of the file | On disk [MEASURED] | gzip |
+|---|---|---|---|---|
+| `places.bin` (KBPL v2) | v1 records, names and Gemeinden (unchanged semantics) **+** official line catalogue, stop→lines, rail categories, official tags, Gemeinde tag defaults, lookup tables | official sources only: ÖV-GK/MVO, ÖBB GTFS CC BY 4.0, Wiener Linien CC BY 4.0, Land Steiermark CC BY 4.0, Statistik Austria CC BY 4.0, curated own work. **No OSM.** | 1,194,232 B | 1,190,448 |
+| `stops_osm.bin` (KBPL v2, **new**) | OSM-only lines (722), OSM attributes for 2,051 official lines (operator, name, termini, flags), 11,843 OSM-only stop–line pairs, OSM tags (ski, lift, wheelchair, P+R, airport …), lifts table, OSM-only ski areas | **ODbL 1.0** (derivative database of OSM) | 204,824 B | 204,862 |
+| `localities.bin` (KBPL v2 rewrap, same content) | 21,050 localities with main stop | **ODbL 1.0** | 637,416 B | 636,647 |
+| **Total** | | | **2,036,472 B** (budget ≤ 5,000,000 B ✓) | 2,031,957 |
+
+For comparison **[MEASURED]**:
+- v1 today: 3,060,746 + 1,482,788 = **4,543,534 B** on disk, 1,835,275 B gzip.
+- v2 with every section uncompressed (codec 0): **5,325,364 B**, which is over budget. This is why D1 compresses.
+- IPA impact: about +0.2 MB, because the IPA zip already compressed v1. On-device size: −2.5 MB.
+- Dropping next-stop ids would save another 61 KB (1,975,320 B). Not worth it: they disambiguate directions.
+
+## 1.2 Container KBPL v2 [DECISION]
+
+Little endian. The 64-byte header keeps the v1 prefix, so the existing `readBin` tooling still recognises the file.
+
+```
+header (64 B)
+  0  char[4] magic "KBPL"
+  4  u16 version = 2              (1 = legacy v1 layout; readers accept 1 and 2, reject > 2)
+  6  u16 flags = 0
+  8  u32 nRecords                 (RECS count; 0 in stops_osm.bin)
+ 12  u32 nGemeinden
+ 16  u8[32] reserved 0            (v1 offsets lived here; v2 readers use the directory)
+ 48  u32 nStopRecords             (stops come first in RECS, localities after; places.bin: all 39,711 are stops)
+ 52  u32 dirOffset
+ 56  u32 dirCount
+ 60  u32 reserved 0
+sections, each 4-byte aligned, in directory order
+directory: dirCount × 28 B
+  0  char[4] fourcc               ("RECS", "STRS", …)
+  4  u32 offset                   (from file start)
+  8  u32 storedLength
+ 12  u32 rawLength                (decoded length; Inflate allocates exactly this)
+ 16  u8  codec                    (0 = stored, 1 = raw DEFLATE RFC 1951, no zlib/gzip header)
+ 17  u8  0
+ 18  u16 countHint                (records/entries; informational, capped 65535)
+ 20  u32 crc32                    (CRC-32/ISO-HDLC = Python zlib.crc32 of the RAW bytes)
+ 24  u32 reserved 0
+```
+
+Reader rules:
+- An **unknown fourcc** is skipped. A **missing optional section** turns that feature off. `RECS`, `STRS` and `GEMS` are mandatory in `places.bin` and `localities.bin`.
+- A **CRC mismatch or Inflate error** throws `PlaceDataset.ReadError.corrupt(section:)`.
+  - For `places.bin` the loader goes to its existing failure state (`PlaceIndexLoader.State.failed`). The UI falls back to the legacy `StationIndex`, as today.
+  - For `stops_osm.bin` the app logs and runs on the official layer alone.
+- **Determinism:** two builds from the same inputs produced byte-identical files [MEASURED: same SHA-256 for all three files in two runs]. Python's `zlib.compress(level 9)` is deterministic for a fixed zlib version, and the build records `zlib.ZLIB_VERSION` in `places_report.json`.
+
+## 1.3 Codec, Inflate and CRC
+
+- **Pure Swift.** Reference implementation `$SPEC/swift/Inflate.swift` (~200 lines): canonical-Huffman single-level tables, stored/fixed/dynamic blocks, exact output size, throws on every malformed input, `crc32(_:)`. Its target home is `CORE/Places/Format/Inflate.swift`.
+- **Why not Apple's API:** `NSData.decompressed(using: .zlib)` does not exist in swift-corelibs-foundation, so the Linux CI could not test it. **[DECISION] One code path everywhere.** A Darwin fast path may be added later, behind `#if canImport(Compression)`, only if a device profile shows more than 60 ms.
+- **Measured** (Swift 6.3.3 release, Linux x86-64, one core; inflate + CRC, best of 5):
+
+  | File | Time |
+  |---|---|
+  | `places.bin` | 26.4 ms |
+  | `stops_osm.bin` | 4.3 ms |
+  | `localities.bin` | 12.0 ms |
+  | **Total** | **≈ 43 ms** |
+
+  Fuzzing (`$SPEC/swift/fuzz/`, 300 random flips/truncations of the STRS section): 287 threw, 13 decoded to wrong bytes and were caught by the CRC, 0 trapped.
+- **Codec per section:** codec 1 for every section larger than 4 KB, except `RPRD` (8,820 B) and `BASE`. Small sections stay codec 0 so they can be inspected in hex dumps.
+
+## 1.4 Sections of `places.bin` (official layer)
+
+Unless noted, the measured raw → stored sizes are from `$SPEC/out_deflate/sizes.json`.
+
+| fourcc | Raw → stored | Layout |
+|---|---|---|
+| `RECS` | 1,111,908 → 467,679 | **v1 record, unchanged:** `nRecords` × 28 B (`i32 lat_e6, i32 lon_e6, u32 str_off, u32 extra_off, u16 modes(pCls), u16 weight, u16 gemeinde, u8 state, u8 kind, u8 flags, u8 class, u16 0`). Stops first, sorted by weight desc. **Stop record index = position in RECS.** It is the key of every per-stop section. |
+| `STRS` | 1,645,572 → 539,371 | v1 string pool (`id \x1f name [\x1f alias]*`, legacy ids, main-stop ids) plus the enrichment strings (line refs, line names). Offset 0 = "". |
+| `GEMS` | 16,880 → 7,732 | v1 (`u32 GKZ, u32 str_off`) × nGemeinden |
+| `EXTR` | 14,922 → 7,434 | v1 extras **without tag 5** (the old 120-character „lines“ string, 32,085 entries + 253 KB of strings, is replaced by `LSTP`). Tags 1 EVA, 2 HAFAS extId, 3 legacy id, 6 UIC, 7 main stop id: unchanged. |
+| `LCAT` | 68,184 → 10,270 | **Line catalogue.** nOfficialLines × 24 B, line index = position (u16): |
+| | | `0 u32 ref_off` · `4 u32 name_off (0 none)` · `8 u16 operator (META.operators, 0xFFFF none)` · `10 u8 mode (LineMode)` · `11 u8 network (META.nets index, 0 none)` · `12 u16 flags (LineFlags bits, META.lineFlags order)` · `14 u16 states (bit = state code index 0 X … 9 W)` · `16 u8 sources (bit0 GTFS timetable, bit1 ÖV-GK, bit2 Stmk, bit3 OSM; never set in places.bin)` · `17 u8 terminiKind (0 none, 1 LNAM names, 2 stop record indices)` · `18 u16 successor (line index, 0xFFFF none)` · `20 u16 termFrom` · `22 u16 termTo` |
+| `LNAM` | 2,220 → 1,031 | Display-name table (headsigns/termini not resolvable to a stop): `u32 STRS offset` per entry, index u16. |
+| `LSTP` | 308,659 → 124,170 | **Stop → lines.** `u8 count[nStopRecords]`, then the entries of all stops in record order. Each entry: `u16 line` · `u8 bits` (0–1 confidence: 1 OSM-only, 2 timetable, 3 reserved live; 2–3 nTo ≤ 3; 4–5 nNext ≤ 3; 6–7 reserved) · `nTo × u16 LNAM` (headsigns at this stop) · `nNext × u16 stop record index` (next stops). Readers compute the per-stop byte offsets once at load (prefix scan). |
+| `RPRD` | 8,820 stored | **Rail categories** for the 1,470 rail stations: entries `u16 stop index, u32 mask` (bit = `META.railCats` index: RJX, RJ, ICE, ECE, EC, IC, IR, D, EN, NJ, WB, CJX, REX, R, S, LEX, RB, RE, RX, ER, SP, OS, CAT, ATB, RR, Regionalzug). This is how St. Anton gets RJX/RJ/ICE/EC/IC/EN/NJ/D without OSM. |
+| `GTAG` | 12,614 → 2,006 | **Gemeinde tag defaults**, in GEMS order: `u8 count`, then count × 4 B tag entries (region/landscape sets that hold for every stop of the Gemeinde). 1,952 of 2,097 Gemeinden are uniform; 1,242 stops override the default [MEASURED]. |
+| `TAGS` | 88,475 → 16,655 | **Stop → official tags.** `u8 count[nStopRecords]` (bit 7 = **override**: GTAG defaults do *not* apply; the stop lists its own region/landscape set), entries `u8 key (bit 7 = aux follows)` · `u8 confidence (60–100)` · `u16 value (META.vals)` · `[u16 aux = distance in m]`. |
+| `META` | 27,006 → 8,618 | UTF-8 JSON (§1.4.1) |
+| `BASE` | 32 stored | SHA-256 of `"\n".join(stop ids in RECS order)`. It ties `stops_osm.bin` to this file. |
+
+### 1.4.1 `META` JSON of `places.bin`
+
+```json
+{ "v": 1,
+  "build": {"date": "2026-…", "timetableDays": ["2025-10-22", "2025-10-29"], "gtfsValidity": {"oebb": "…", "wl": "…"},
+            "inputs": {"<file>": "<sha256>"}, "zlib": "1.3.1"},
+  "keys": ["type","service","region","wheelchair","landscape","klimaticket","railTransfer","lift","ski","skiAlliance",
+           "nationalPark","glacierSki","glacier","hut"],
+  "vals": ["trainStation", "arlberg", "yes|tirol,city-klimaticket-st-anton,+vbg-maximo", "…"],
+  "modes": ["other","rail","sbahn","subway","tram","bus","trolleybus","sev","ship","cable","ondemand"],
+  "nets": ["", "VOR","VVSt","VKL","OÖVV","SVV","VVT","VVV","ÖBB","INT"],
+  "netNames": {"VVV": "Verkehrsverbund Vorarlberg", "…": "…"},
+  "lineFlags": ["ski","winter","summer","night","schooldays","schooldays?","school_or_seasonal","seasonal","ondemand",
+                "sev","superseded","ski_candidate","trolley","school"],
+  "railCats": ["RJX","RJ","…"],
+  "operators": [{"name": "Österreichische Postbus AG", "display": "Postbus"}, "…"],
+  "regions": {"arlberg": {"name": "Arlberg", "kind": "tourism"}, "…": "…"},
+  "skiAreas": {"ski-arlberg": {"name": "Ski Arlberg", "short": "Arlberg", "kind": "area", "parent": null,
+               "resorts": ["St. Anton", "…"], "states": ["T","V"], "bbox": [47.0955,10.0401,47.269,10.2861],
+               "glyph": "peaks3", "hue": "enzian", "mono": "ARL", "lifts": 104, "stops": 152,
+               "alliances": [], "verified": true}},
+  "skiAlliances": {"ski-amade": {"name": "Ski amadé", "verified": false}},
+  "bezirke": {"802": "Bregenz"}, "wienBezirke": {"10": "Favoriten"},
+  "klimaticket": {"defaultRegional": {"V": ["vbg-maximo"], "T": ["tirol"], "…": []},
+                  "products": {"vbg-maximo": "KlimaTicket VMOBIL MAXIMO", "…": "…"}},
+  "nOfficialLines": 2841 }
+```
+
+- **Readers resolve tag keys by name** (`META.keys`), never by number, so keys can be added without a version bump.
+- `skiAreas` holds only the **curated** areas (146 + 7 sectors): names, resorts and styling are own work. The **56 OSM-only areas** are in `stops_osm.bin` META.
+- `hue` is the `SummitHue` raw value, mapped at build time following [DESIGN] §2.3:
+  - Curated overrides: Arlberg = `enzian`, Schladming-Dachstein = `zirbe`, Ski amadé = `gletscher`, Hochkar = `fels`.
+  - Every other area takes the nearest hue angle of `style.color`; saturation below 0.15 → `fels`.
+  - The brand-like source colours (`#B1182F` …) are **never** shipped.
+
+### 1.4.2 Tag values
+
+| Key | Value string | aux |
+|---|---|---|
+| `type` | `trainStation`, `mainStation`, `longDistance`, `nightTrain`, `sBahn`, `uBahn`, `tram`, `privateRail`, `railReplacement`, `busStation`, `ship`, `cableCar`, `onDemand`, `hospital` (by name), and in the OSM layer `airport`, `parkAndRide`, `bikeAndRide`, `university`, `mall` | distance m for P+R/B+R/airport |
+| `service` | `nightBus`, `onDemand`, `seasonal`, `airportLink` (official), `skiBus`, `hikingBus` (OSM) | – |
+| `region` / `landscape` | region id (`arlberg`, `bregenzerwald`, `v-weinviertel` …) | – |
+| `klimaticket` | `yes\|<ids>` (`+id` = Übergangsbereich), `check\|<reason>`, `no\|<reason>`, `border`. **Absent = default**: KlimaTicket Ö + `META.klimaticket.defaultRegional[state]` (Warth → VMOBIL MAXIMO) | – |
+| `railTransfer` | target stop id (`at:47:62501`) | distance m |
+| `ski` | ski-area id | distance m |
+| `skiAlliance` | alliance id | – |
+| `lift` | `#lift<k>` → `stops_osm META.lifts[k] = [name, role, liftType]` | distance m |
+| `wheelchair` | `yes`, `limited`, `no` | – |
+| `nationalPark`, `glacier`, `hut` | name | distance m |
+| `glacierSki` | ski-area id | – |
+| `state` | **not stored**: it is the record's state | – |
+
+- Confidence below 60 is not shipped. Those tags are evidence only.
+- Badges show from confidence 70 ([DATA] `display.minConf`).
+- Region chips show from confidence 80 ([DESIGN] §2.4).
+
+## 1.5 Sections of `stops_osm.bin` (ODbL layer)
+
+| fourcc | Raw → stored | Layout |
+|---|---|---|
+| `STRS` | 128,318 → 45,250 | own string pool |
+| `LCAT` | 17,328 → 6,962 | OSM-only lines, same 24-byte layout. **Merged line index = nOfficialLines + position.** |
+| `LNAM` | 13,128 → 5,380 | own display-name table |
+| `LPAT` | 32,816 → 17,478 | **Patches for official lines**, 16 B each: `u16 officialLine` · `u8 mask` (1 operator, 2 name, 4 termini, 8 flags) · `u8 terminiKind` · `u16 operator` · `u32 name_off` · `u16 termFrom` · `u16 termTo` · `u16 addFlags`. A field is only filled where the official layer lacks it. |
+| `LSTP` | 145,856 → 71,058 | Same layout as places.bin `LSTP`. Holds only **pairs the official layer lacks** (skipped when the stop already has an official line with the same mode and ref). Line indices are in the merged space. |
+| `TAGS` | 113,275 → 37,025 | Same layout; OSM-derived tags only |
+| `META` | 85,829 → 21,338 | `{v, keys, vals, lifts: [[name, role, liftType]], skiAreas: {osm-only areas, same schema, "source":"osm"}, operatorsExtra: [...] (operator index space = official list ++ extra), nOfficialLines, nExtraLines, attribution: "© OpenStreetMap-Mitwirkende, ODbL 1.0"}` |
+| `BASE` | 32 | must equal places.bin `BASE` |
+
+## 1.6 Runtime merge rules (KlimaCore, `PlaceEnrichment`) [DECISION]
+
+| Rule | |
+|---|---|
+| **M1** | Load `places.bin`, then `stops_osm.bin` if it exists, decodes and its `BASE` equals places.bin's; otherwise official only (`PlaceIndex.dataInfo.hasOSMLayer = false`). `localities.bin` is independent (v1 or v2). |
+| **M2** | Apply `LPAT` to the official catalogue: fill operator/name/termini when missing, OR the flags. |
+| **M3** | **Per stop:** official `LSTP` entries, then OSM entries. Dedupe by **(LineKind family, normalised plate text)** (§2.5). The first one wins (timetable before OSM before live) and directions are united. |
+| **M4** | A line flagged `superseded` (113 old ÖV-GK numbers) is **replaced by its successor** at that stop. Deduped by M3 if the successor is already there. Never s

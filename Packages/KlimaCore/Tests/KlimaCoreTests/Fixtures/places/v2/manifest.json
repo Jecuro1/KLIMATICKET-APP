@@ -1,0 +1,385 @@
+{
+ "generator": "scripts/places_v2_fixtures.py (encode_v2.py prototype layout)",
+ "seeds": [
+  "at:48:344",
+  "at:47:1222",
+  "at:49:334",
+  "at:47:1187",
+  "at:48:187",
+  "at:43:30742"
+ ],
+ "stops": [
+  "at:49:334",
+  "at:45:50002",
+  "at:49:1705",
+  "at:47:1187",
+  "at:47:61559",
+  "at:47:61589",
+  "at:47:64003",
+  "at:49:176",
+  "at:49:551",
+  "at:49:50",
+  "at:47:66413",
+  "at:49:1248",
+  "at:47:1186",
+  "at:49:1668",
+  "at:47:64081",
+  "at:49:1186",
+  "at:49:848",
+  "at:47:1189",
+  "at:49:943",
+  "at:49:1308",
+  "at:49:995",
+  "at:47:1170",
+  "at:47:62501",
+  "at:48:130",
+  "at:47:211",
+  "at:47:64233",
+  "at:43:3963",
+  "at:47:61321",
+  "at:47:1179",
+  "at:47:1212",
+  "at:47:1184",
+  "at:47:62306",
+  "at:47:66407",
+  "at:49:591",
+  "at:47:1204",
+  "at:47:61986",
+  "at:47:66425",
+  "at:45:52197",
+  "at:47:61573",
+  "at:47:2263",
+  "at:48:326",
+  "it:22021:1389",
+  "at:47:1222",
+  "at:48:187",
+  "at:47:64339",
+  "at:48:1303",
+  "at:47:2231",
+  "at:48:344",
+  "at:43:31140",
+  "at:47:64937",
+  "at:43:30742",
+  "at:48:345",
+  "at:48:1121",
+  "at:48:842",
+  "at:47:64938",
+  "at:48:342",
+  "at:48:1575",
+  "at:49:1170",
+  "at:47:65208",
+  "at:47:65209",
+  "at:43:30767",
+  "at:48:912",
+  "at:47:66256",
+  "at:47:62504",
+  "at:48:1114",
+  "at:48:2083",
+  "at:47:68382",
+  "at:47:68560",
+  "at:48:2390",
+  "at:43:31120",
+  "at:47:61413",
+  "at:47:61402",
+  "at:47:68172",
+  "at:47:68374",
+  "at:47:68171",
+  "at:47:61399",
+  "at:47:68346",
+  "at:47:61396",
+  "at:48:1614",
+  "at:48:7008",
+  "at:48:2015",
+  "at:48:811",
+  "at:43:30766"
+ ],
+ "localities": [
+  "osm:n26902436",
+  "osm:n27270107",
+  "osm:n34840064",
+  "osm:n45310131",
+  "osm:n73089810",
+  "osm:n75680891",
+  "osm:n79977566",
+  "osm:n240024258",
+  "osm:n240044982",
+  "osm:n240048336",
+  "osm:n240052834",
+  "osm:n240070101",
+  "osm:n240075736",
+  "osm:n240092745",
+  "osm:n240103067",
+  "osm:n240110420",
+  "osm:n240114544",
+  "osm:n240114844",
+  "osm:n240127065",
+  "osm:n240127467",
+  "osm:n240129652",
+  "osm:n671016410",
+  "osm:n671016428",
+  "osm:n671050060",
+  "osm:n1209333701",
+  "osm:n1560595161",
+  "osm:n2015063027",
+  "osm:n3504765378",
+  "osm:n4448953930",
+  "osm:n6286749980",
+  "osm:n8075001744"
+ ],
+ "counts": {
+  "stops": 83,
+  "localities": 31,
+  "linesFull": 325,
+  "linesOfficial": 234
+ },
+ "files": {
+  "corrupt/places_bad_crc.bin": {
+   "bytes": 11804,
+   "sha256": "8a7738ef882f0db673d998cd21623338775cf390f2658fd328aa947c57cf0549"
+  },
+  "corrupt/places_bad_deflate.bin": {
+   "bytes": 11804,
+   "sha256": "65b2f322911d6148fac42936ddafa92fb2b005a1601afb3c239564439eafbbdf"
+  },
+  "inflate/dynamic.deflate": {
+   "bytes": 10776,
+   "sha256": "7cf20cc96bfd3708e73e6b2a21f2aa88ceab62c92873fbb31c013781791cdb3e"
+  },
+  "inflate/empty.deflate": {
+   "bytes": 2,
+   "sha256": "9b4fb24edd6d1d8830e272398263cdbf026b97392cc35387b991dc0248a628f9"
+  },
+  "inflate/fixed.deflate": {
+   "bytes": 3435,
+   "sha256": "1a1e47f3679bfb88acbfc73841238e85aca4cbb314c9304d14d5ab7ff9c0e344"
+  },
+  "inflate/huffman_only.deflate": {
+   "bytes": 5927,
+   "sha256": "c2e6da86d2a0246d6308d78f8f0017d22c47d2aa16cb258699460773a5793e6b"
+  },
+  "inflate/match258_dist32768.deflate": {
+   "bytes": 32778,
+   "sha256": "b4934ae177b18eb9a50dd8084f897c021c64a1b2453451542ffcc70bfb4b6f5f"
+  },
+  "inflate/repetitive_1mib.deflate": {
+   "bytes": 3132,
+   "sha256": "8913cc9b263b962c5c7e59614a7ce63947f7d0671c588b28c5d134620aa9e67b"
+  },
+  "inflate/rle.deflate": {
+   "bytes": 12005,
+   "sha256": "a3a7848b3770c9c3117e3b5d52fa97b82ed09d524bd1b656fe45397088ef9c19"
+  },
+  "inflate/stored.deflate": {
+   "bytes": 66010,
+   "sha256": "c2b1b70e92f9a5110b696c5d543b4b28e8cf7f0849b631f310bcc70c0500f0c4"
+  },
+  "inflate/text.txt": {
+   "bytes": 24000,
+   "sha256": "62d6a0546544f07f67851a0bcb5f2cff28c4eb8ce67e085b0126ca32bfa96ee1"
+  },
+  "inflate/vectors.json": {
+   "bytes": 2301,
+   "sha256": "f237a9578847355b744b0e5cf37971a60ccd9c496cef580f8f0208cb20f3bc36"
+  },
+  "localities.bin": {
+   "bytes": 1564,
+   "sha256": "6cfd9c41390149f62a4c1c36a8922a9b1d092361af4adb4787f708edff8121ab"
+  },
+  "places.bin": {
+   "bytes": 11804,
+   "sha256": "b47eeb59735cb54c2eec8aa84a2b4e49c0fab976072943e24008d91deacd590e"
+  },
+  "stops_osm.bin": {
+   "bytes": 10808,
+   "sha256": "184e9351637ba451712fbf3ad65d16b7bf581dd236df4132fb1c94963c056a56"
+  },
+  "stops_osm_other_base.bin": {
+   "bytes": 10808,
+   "sha256": "1851c92944fd98c3fb85e4a0407be29f94aa711ca695436eff7e13cd03898f45"
+  },
+  "v1/localities.bin": {
+   "bytes": 2559,
+   "sha256": "195be10d30790350494f328a451a3269fd5ecfb857a8032f5368b6c226bdb587"
+  },
+  "v1/places.bin": {
+   "bytes": 9156,
+   "sha256": "7a69917d64133d80ecf7d78b0bc28e5267ba4258f58983e3e91b2e73b2dea7f7"
+  }
+ },
+ "sections": {
+  "places.bin": {
+   "RECS": {
+    "codec": 1,
+    "stored": 1265,
+    "raw": 2324,
+    "count": 83,
+    "crc32": 1661976538
+   },
+   "STRS": {
+    "codec": 1,
+    "stored": 3474,
+    "raw": 9086,
+    "count": 0,
+    "crc32": 1165716944
+   },
+   "GEMS": {
+    "codec": 1,
+    "stored": 149,
+    "raw": 216,
+    "count": 27,
+    "crc32": 1586624703
+   },
+   "EXTR": {
+    "codec": 1,
+    "stored": 173,
+    "raw": 282,
+    "count": 0,
+    "crc32": 441342883
+   },
+   "LCAT": {
+    "codec": 1,
+    "stored": 1146,
+    "raw": 5616,
+    "count": 234,
+    "crc32": 2338986323
+   },
+   "LNAM": {
+    "codec": 1,
+    "stored": 277,
+    "raw": 540,
+    "count": 135,
+    "crc32": 4159611268
+   },
+   "LSTP": {
+    "codec": 1,
+    "stored": 1633,
+    "raw": 2912,
+    "count": 525,
+    "crc32": 225651798
+   },
+   "RPRD": {
+    "codec": 0,
+    "stored": 174,
+    "raw": 174,
+    "count": 29,
+    "crc32": 3038901914
+   },
+   "GTAG": {
+    "codec": 1,
+    "stored": 82,
+    "raw": 155,
+    "count": 27,
+    "crc32": 2221194598
+   },
+   "TAGS": {
+    "codec": 1,
+    "stored": 245,
+    "raw": 807,
+    "count": 0,
+    "crc32": 867689455
+   },
+   "META": {
+    "codec": 1,
+    "stored": 2728,
+    "raw": 6777,
+    "count": 0,
+    "crc32": 1927239288
+   },
+   "BASE": {
+    "codec": 0,
+    "stored": 32,
+    "raw": 32,
+    "count": 0,
+    "crc32": 3443227927
+   }
+  },
+  "stops_osm.bin": {
+   "STRS": {
+    "codec": 1,
+    "stored": 4871,
+    "raw": 13207,
+    "count": 0,
+    "crc32": 2149615501
+   },
+   "LCAT": {
+    "codec": 1,
+    "stored": 1016,
+    "raw": 2472,
+    "count": 103,
+    "crc32": 3735437941
+   },
+   "LNAM": {
+    "codec": 1,
+    "stored": 583,
+    "raw": 1228,
+    "count": 307,
+    "crc32": 1112856383
+   },
+   "LPAT": {
+    "codec": 1,
+    "stored": 1254,
+    "raw": 2496,
+    "count": 156,
+    "crc32": 1815137249
+   },
+   "LSTP": {
+    "codec": 1,
+    "stored": 1110,
+    "raw": 1932,
+    "count": 277,
+    "crc32": 3948383441
+   },
+   "TAGS": {
+    "codec": 1,
+    "stored": 335,
+    "raw": 667,
+    "count": 0,
+    "crc32": 624680647
+   },
+   "META": {
+    "codec": 1,
+    "stored": 1312,
+    "raw": 3056,
+    "count": 0,
+    "crc32": 2811345889
+   },
+   "BASE": {
+    "codec": 0,
+    "stored": 32,
+    "raw": 32,
+    "count": 0,
+    "crc32": 3443227927
+   }
+  },
+  "localities.bin": {
+   "RECS": {
+    "codec": 1,
+    "stored": 565,
+    "raw": 868,
+    "count": 31,
+    "crc32": 3679578572
+   },
+   "STRS": {
+    "codec": 1,
+    "stored": 613,
+    "raw": 1273,
+    "count": 0,
+    "crc32": 1287695668
+   },
+   "GEMS": {
+    "codec": 1,
+    "stored": 121,
+    "raw": 168,
+    "count": 21,
+    "crc32": 2283729671
+   },
+   "EXTR": {
+    "codec": 1,
+    "stored": 80,
+    "raw": 186,
+    "count": 0,
+    "crc32": 3027557840
+   }
+  }
+ }
+}
