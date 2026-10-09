@@ -145,6 +145,7 @@ struct AdvFigure: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.55)
                 .contentTransition(.numericText())
+                .motionAnimation(Motion.number, value: value)
             Text(caption)
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
@@ -329,27 +330,10 @@ struct AdvPanel<Content: View>: View {
 
 // MARK: - Entrance
 
-/// Short staggered fade/rise (instant with Reduce Motion and in screenshot mode).
-struct AdvEntrance: ViewModifier {
-    var index: Int
-    @State private var shown = LaunchMode.isScreenshot
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(shown ? 1 : 0)
-            .offset(y: shown || reduceMotion ? 0 : 16)
-            .onAppear {
-                guard !shown else { return }
-                if reduceMotion {
-                    withAnimation(.easeOut(duration: 0.25)) { shown = true }
-                } else {
-                    withAnimation(.spring(duration: 0.6, bounce: 0.14).delay(0.06 * Double(min(index, 5)))) { shown = true }
-                }
-            }
-    }
-}
-
+/// The Ratgeber's sections rise in once in reading order (the motion system's `reveal`, within the screen's
+/// `revealScope`) and settle in as they scroll up from the bottom edge.
 extension View {
-    func advEntrance(_ index: Int) -> some View { modifier(AdvEntrance(index: index)) }
+    func advEntrance(_ index: Int) -> some View {
+        reveal(order: index).scrollCardTransition()
+    }
 }

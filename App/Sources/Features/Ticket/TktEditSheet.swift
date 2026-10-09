@@ -259,7 +259,7 @@ struct TktEditSheet: View {
                        validFrom: draft.start, validUntil: draft.end,
                        ticketNumber: draft.number.trimmingCharacters(in: .whitespaces),
                        theme: draft.theme, roll: 0.25, pitch: 0.08)
-                .animation(.smooth(duration: 0.35), value: draft.themeRaw)
+                .motionAnimation(Motion.smooth, value: draft.themeRaw)
                 .padding(.vertical, Theme.Spacing.s)
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -433,14 +433,14 @@ private struct TktThemePicker: View {
             .padding(.vertical, Theme.Spacing.xxs)
         }
         .scrollIndicators(.hidden)
-        .sensoryFeedback(.selection, trigger: selection) { _, _ in hapticsEnabled }
+        .haptic(.selection, trigger: selection)
     }
 
     private func swatch(_ theme: TicketTheme) -> some View {
         let isSelected = TicketTheme.from(selection) == theme
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous)
         return Button {
-            withAnimation(.snappy(duration: 0.25)) { selection = theme.rawValue }
+            withMotion(Motion.bouncy) { selection = theme.rawValue }
         } label: {
             VStack(spacing: Theme.Spacing.xs - 2) {
                 shape
@@ -471,7 +471,7 @@ private struct TktThemePicker: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable)
         .accessibilityLabel("Design \(theme.title)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

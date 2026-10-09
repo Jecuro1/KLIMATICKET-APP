@@ -27,12 +27,13 @@ struct AdvisorView: View {
                     header(advice)
                         .padding(.horizontal, Theme.Spacing.screen)
                         .padding(.top, Theme.Spacing.xxs)
+                        .reveal(order: 0)
                     AdvGlanceCard(glances: advice.advGlances) { section in
                         jump(to: section, proxy: proxy)
                     }
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                     .padding(.top, Theme.Spacing.m)
-                    .advEntrance(0)
+                    .reveal(order: 1)
                     sections(advice)
                     footer
                         .padding(.horizontal, Theme.Spacing.screen)
@@ -40,6 +41,7 @@ struct AdvisorView: View {
                 }
                 .padding(.bottom, Theme.Spacing.xxl)
             }
+            .revealScope()
             .scrollEdgeEffectStyle(.soft, for: .all)
             .tktInlineTitleTracking(titleChrome)
             .task {
@@ -62,7 +64,7 @@ struct AdvisorView: View {
             // Opens on the renewal / employer-contribution fields the Ratgeber asks for.
             TktEditSheet(ticket: request.ticket, initial: request.draft, scrollTarget: AdvEditAnchor.renewal)
         }
-        .sensoryFeedback(.selection, trigger: jumpCount) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.selection, trigger: jumpCount)
     }
 
     // MARK: Header
@@ -93,7 +95,7 @@ struct AdvisorView: View {
     @ViewBuilder
     private func sections(_ advice: TicketAdvice) -> some View {
         let hasContribution = advice.jobticket.hasContribution
-        section(.renewal, index: 1) {
+        section(.renewal, index: 2) {
             AdvRenewalCard(renewal: advice.renewal, summary: advice.summary, hasEmployerContribution: hasContribution)
             if !advice.renewal.isExpired {
                 AdvRenewalReminderCard(ticketID: ticket.id, ticketName: ticket.name, renewal: advice.renewal,
@@ -103,7 +105,7 @@ struct AdvisorView: View {
             }
         }
         if advice.cancellation.verdict != .expired {
-            section(.cancellation, index: 2) {
+            section(.cancellation, index: 3) {
                 AdvCancellationCard(advice: advice.cancellation, hasEmployerContribution: hasContribution)
                 if advice.cancellation.extraordinary != nil {
                     AdvExtraordinaryCard(advice: advice.cancellation)
@@ -111,16 +113,16 @@ struct AdvisorView: View {
             }
         }
         if let firstClass = advice.firstClass {
-            section(.firstClass, index: 3) {
+            section(.firstClass, index: 4) {
                 AdvFirstClassCard(advice: firstClass, isExpired: advice.renewal.isExpired)
             }
         }
         if let family = advice.family {
-            section(.family, index: 4) {
+            section(.family, index: 5) {
                 AdvFamilyCard(advice: family, isExpired: advice.renewal.isExpired, isKlimaTicketOe: ticket.family == .oe)
             }
         }
-        section(.jobticket, index: 5) {
+        section(.jobticket, index: 6) {
             if hasContribution {
                 AdvJobticketCard(advice: advice.jobticket, isExpired: advice.renewal.isExpired)
             } else {
@@ -148,7 +150,7 @@ struct AdvisorView: View {
 
     private func jump(to section: AdvSection, proxy: ScrollViewProxy) {
         jumpCount += 1
-        withAnimation(.smooth(duration: 0.5)) {
+        withMotion(Motion.smooth) {
             proxy.scrollTo(AdvAnchor.section(section), anchor: .top)
         }
     }
@@ -230,11 +232,11 @@ struct AdvGlanceCard: View {
     }
 }
 
-/// Row highlight while pressed (list-style rows inside frosted cards).
+/// Row highlight while pressed (list-style rows inside frosted cards), with the motion system's press timing.
 struct AdvRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(configuration.isPressed ? Theme.surfaceSecondary : Color.clear)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+            .motionAnimation(configuration.isPressed ? Motion.press : Motion.release, value: configuration.isPressed)
     }
 }

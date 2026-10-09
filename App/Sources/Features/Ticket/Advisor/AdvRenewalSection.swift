@@ -308,7 +308,6 @@ struct AdvRenewalReminderCard: View {
     @State private var isDenied = false
     /// The switch stays on while the permission prompt / scheduling is in flight.
     @State private var isScheduling = false
-    @State private var successCount = 0
 
     init(ticketID: UUID, ticketName: String, renewal: RenewalAdvice, family: TicketFamily, isMonthlyPayment: Bool,
          onEdit: @escaping () -> Void) {
@@ -332,9 +331,8 @@ struct AdvRenewalReminderCard: View {
                 }
             }
         }
-        .animation(.smooth(duration: 0.3), value: scheduled)
-        .animation(.smooth(duration: 0.3), value: isDenied)
-        .sensoryFeedback(.success, trigger: successCount) { _, _ in app.settings.hapticsEnabled }
+        .motionAnimation(Motion.smooth, value: scheduled)
+        .motionAnimation(Motion.smooth, value: isDenied)
         .task(id: renewal.reminderDate) { await refresh() }
     }
 
@@ -534,7 +532,7 @@ struct AdvRenewalReminderCard: View {
                 isScheduling = false
                 apply(outcome)
                 if case .scheduled(let date) = outcome {
-                    successCount += 1
+                    // One haptic: the toast's success.
                     app.showToast("bell.badge.fill", "Erinnerung geplant", "am \(Format.date(date, .long)) um 9:00 Uhr")
                 }
             }

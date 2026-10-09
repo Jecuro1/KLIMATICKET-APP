@@ -159,10 +159,13 @@ struct DashQuickLogSection: View {
         flashCheck(on: favorite.id)
         let undo = DashQuickLogUndo(app: app, context: context)
         let tripID = trip.id, favoriteID = favorite.id
+        let haptic = toastHaptic(adding: trip.totalValue)
         app.showToast("checkmark.circle.fill", "Fahrt erfasst", toastSubtitle(adding: trip.totalValue),
-                      actionTitle: "Rückgängig", haptic: toastHaptic(adding: trip.totalValue)) {
+                      actionTitle: "Rückgängig", haptic: haptic ?? .success) {
             undo.undo(tripID: tripID, favoriteID: favoriteID)
         }
+        // `showToast` maps nil to the default haptic: silence this toast here, the break-even celebration plays its own.
+        if haptic == nil, app.toast?.title == "Fahrt erfasst" { app.toast?.haptic = nil }
     }
 
     /// The "+" turns into a check for 1.4 s; a second tap meanwhile logs again (and keeps the check).

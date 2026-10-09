@@ -144,14 +144,15 @@ struct AdvEditAddOnsSection: View {
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(isOn ? Theme.accent : Theme.textTertiary)
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
+                    .symbolBounce(on: isOn)
                     .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
-        .sensoryFeedback(.selection, trigger: isOn) { _, _ in hapticsEnabled }
+        .haptic(.selection, trigger: isOn)
     }
 
     private func color(_ addOn: TicketAddOn) -> Color {
@@ -182,7 +183,7 @@ struct AdvEditAddOnsSection: View {
             next.insert(addOn)
             if addOn == .business { next.insert(.firstClass) }
         }
-        withAnimation(.snappy(duration: 0.25)) {
+        withMotion(Motion.snappy) {
             addOns = TicketAddOn.allCases.filter { next.contains($0) }.map(\.rawValue)
             if followsList || next.isEmpty {
                 priceText = AdvisorEuro.editString(TicketAddOn.listTotal(next, productID: productID, variant: variant))
