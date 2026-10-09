@@ -371,6 +371,23 @@ public struct PlaceDataset: Sendable {
             while end < strs.count && strs[end] != 0 { end += 1 }
             return String(decoding: UnsafeRawBufferPointer(rebasing: strs[o..<end]), as: UTF8.self)
         }
+        /// `string(o).split(separator: "\u{1F}", omittingEmptySubsequences: false)` on the bytes: the same parts (0x1F is a
+        /// control character, so it is always a grapheme boundary and never inside a UTF-8 sequence), without the
+        /// Character-by-Character walk that made up a third of the record decoding.
+        func recordParts(_ o: Int) -> [String] {
+            guard o < strs.count else { return [""] }
+            var out: [String] = []
+            var start = o, end = o
+            while end < strs.count && strs[end] != 0 {
+                if strs[end] == 0x1F {
+                    out.append(String(decoding: UnsafeRawBufferPointer(rebasing: strs[start..<end]), as: UTF8.self))
+                    start = end + 1
+                }
+                end += 1
+            }
+            out.append(String(decoding: UnsafeRawBufferPointer(rebasing: strs[start..<end]), as: UTF8.self))
+            return out
+        }
         var gemeinden: [String] = []
         gemeinden.reserveCapacity(nGem)
         for g in 0..<nGem { gemeinden.append(string(Int(u32(gems, 8 * g + 4)))) }
@@ -381,7 +398,7 @@ public struct PlaceDataset: Sendable {
         for i in 0..<n {
             let o = 28 * i
             let lat = Double(i32(recs, o)) / 1e6, lon = Double(i32(recs, o + 4)) / 1e6
-            let parts = string(Int(u32(recs, o + 8))).split(separator: "\u{1F}", omittingEmptySubsequences: false).map(String.init)
+            let parts = recordParts(Int(u32(recs, o + 8)))
             let extraOff = u32(recs, o + 12)
             let modes = Int(u16(recs, o + 16)), weight = Int(u16(recs, o + 18)), gem = Int(u16(recs, o + 20))
             let stateCode = Int(recs[o + 22]), kindCode = recs[o + 23], flags = recs[o + 24], pclass = Int(recs[o + 25])

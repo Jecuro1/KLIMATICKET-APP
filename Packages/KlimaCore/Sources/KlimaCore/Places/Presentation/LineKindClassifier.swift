@@ -18,7 +18,7 @@ extension LineKind {
     /// own: a stop tagged `hikingBus` turns a named line such as „Bus“ into a Wanderbus, never „852“ (the service
     /// tag says *a* hiking bus stops there, not which line it is).
     public static func classify(_ line: LineRef, services: [PlaceService] = []) -> LineKind {
-        let ref = line.ref.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ref = LinePlateText.trimmed(line.ref)         // Foundation trimming only when an end is not printable ASCII
         switch line.mode {
         case .rail:
             return railKind(ref: ref, flags: line.flags)

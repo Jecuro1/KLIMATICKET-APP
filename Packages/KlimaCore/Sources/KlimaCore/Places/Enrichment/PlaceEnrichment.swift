@@ -53,13 +53,15 @@ final class PlaceEnrichment: @unchecked Sendable {
         var ids = [String](repeating: "", count: n), names = [String](repeating: "", count: n)
         var states = [UInt8](repeating: 0xFF, count: n)
         var gkz = [UInt32](repeating: 0, count: n), gem = [UInt16](repeating: 0xFFFF, count: n)
-        for r in stops where r.stopIndex >= 0 && Int(r.stopIndex) < n {
-            let i = Int(r.stopIndex)
-            ids[i] = r.id
-            names[i] = r.name
-            states[i] = PlaceDataset.stateCodes.firstIndex(of: r.state).map(UInt8.init) ?? 0xFF
-            gkz[i] = r.gkz
-            gem[i] = r.gemIndex
+        let stateCode = Dictionary(uniqueKeysWithValues: PlaceDataset.stateCodes.enumerated().map { ($1, UInt8($0)) })
+        for k in stops.indices {                    // field reads, no copy of each 160-byte record
+            let si = Int(stops[k].stopIndex)
+            guard si >= 0 && si < n else { continue }
+            ids[si] = stops[k].id
+            names[si] = stops[k].name
+            states[si] = stateCode[stops[k].state] ?? 0xFF
+            gkz[si] = stops[k].gkz
+            gem[si] = stops[k].gemIndex
         }
         stopCount = n
         stopIDs = ids
@@ -123,14 +125,14 @@ final class PlaceEnrichment: @unchecked Sendable {
         var withLines = 0
         let gemTags = gemeindeTags, offTags = officialTags, xTags = osmTags
         let railSet = Set(rs.map(\.0))
-        /// Per layer: value index → entity id per key kind (0 ski, 1 region, 2 landscape), -2 = not resolved yet.
-        func cache(_ count: Int) -> [[Int32]] { [[Int32]](repeating: [Int32](repeating: -2, count: count), count: 3) }
+        /// Per layer: value index × key kind (0 ski, 1 region, 2 landscape) → entity id, -2 = not resolved yet.
+        func cache(_ count: Int) -> [Int32] { [Int32](repeating: -2, count: 3 * count) }      // [3 * value + kind]
         var offCache = cache(offTags?.vals.count ?? 0), gemCache = cache(gemTags?.vals.count ?? 0)
         var xCache = cache(xTags?.vals.count ?? 0)
         var mine: [Int32] = []
         for i in 0..<n {
             mine.removeAll(keepingCapacity: true)
-            func visit(_ key: TagKey, _ v: Int, _ conf: Int, _ vals: [String], _ cache: inout [[Int32]]) {
+            func visit(_ key: TagKey, _ v: Int, _ conf: Int, _ vals: [String], _ cache: inout [Int32]) {
                 let kind: Int, prefix: String
                 switch key {
                 case .ski where conf >= PlaceTags.badgeMinConfidence: (kind, prefix) = (0, "ski:")
@@ -138,7 +140,7 @@ final class PlaceEnrichment: @unchecked Sendable {
                 case .landscape where conf >= PlaceTags.regionMinConfidence: (kind, prefix) = (2, "landscape:")
                 default: return
                 }
-                var e = cache[kind][v]
+                var e = cache[3 * v + kind]
                 if e == -2 {
                     let name = prefix + vals[v]
                     if let x = entityIndex[name] { e = x } else {
@@ -148,7 +150,7 @@ final class PlaceEnrichment: @unchecked Sendable {
                         entityStops.append([])
                         entityConf.append([])
                     }
-                    cache[kind][v] = e
+                    cache[3 * v + kind] = e
                 }
                 let c = UInt8(clamping: conf)
                 if entityStops[Int(e)].last == Int32(i) {
