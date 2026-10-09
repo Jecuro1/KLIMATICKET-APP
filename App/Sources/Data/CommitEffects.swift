@@ -132,7 +132,13 @@ enum CommitEffects {
         }
         if syncTarget != nil {
             syncTask?.cancel()
-            syncTask = Task { @MainActor in await runSync() }
+            // The app is on its way to the background: ask iOS for the time to finish this pass (a just-saved trip
+            // would otherwise wait for the next launch to reach the cloud).
+            let assertion = BackgroundAssertion(name: "KlimaBilanz.sync")
+            syncTask = Task { @MainActor in
+                await runSync()
+                assertion.end()
+            }
         }
     }
 
@@ -143,5 +149,23 @@ enum CommitEffects {
         ) { _ in
             MainActor.assumeIsolated { flush() }
         }
+    }
+}
+
+/// A UIKit background-task assertion that ends once – when the work is done or when iOS's time runs out.
+@MainActor
+private final class BackgroundAssertion {
+    private var id: UIBackgroundTaskIdentifier = .invalid
+
+    init(name: String) {
+        id = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
+            MainActor.assumeIsolated { self?.end() }
+        }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }
