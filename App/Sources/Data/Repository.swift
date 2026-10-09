@@ -316,10 +316,15 @@ struct Repository {
         for fav in liveFavorites() {
             for id in [fav.fromStationID, fav.toStationID].compactMap({ $0 }) { counts[id, default: 0] += 1000 }
         }
-        for trip in liveTrips().prefix(400) {
+        // The newest 400 trips only – fetched as such, not every trip of every year to keep 400 of them.
+        var recent = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil },
+                                                 sortBy: [SortDescriptor(\.date, order: .reverse)])
+        recent.fetchLimit = 400
+        for trip in (try? context.fetch(recent)) ?? [] {
             for id in [trip.fromStationID, trip.toStationID].compactMap({ $0 }) { counts[id, default: 0] += 1 }
         }
-        return counts.sorted { $0.value > $1.value }.prefix(limit).map(\.key)
+        // Ties by id: the same stations every time (dictionary order is not), so the monitored regions stay put.
+        return counts.sorted { ($0.value, $1.key) > ($1.value, $0.key) }.prefix(limit).map(\.key)
     }
 
     func configureTripDetection() {

@@ -176,3 +176,20 @@ final class StabilityTests: XCTestCase {
         XCTAssertEqual(Calendar.vienna.firstWeekday, 2)
     }
 }
+
+extension StabilityTests {
+    func testFreeTicketIsPaidOffAtHundredPercent() {
+        let start = date(2026, 1, 1, 0)
+        let period = TicketPeriod(productID: "oe-klassik", name: "Job", price: 0, start: start,
+                                  end: TicketPeriod.standardEnd(for: start, calendar: cal))
+        let trips = [TripRecord(date: date(2026, 2, 3), fromName: "A", toName: "B", mode: .train, distanceKm: 50, fareEUR: 45)]
+        let s = SavingsCalculator.summary(ticket: period, trips: trips, now: date(2026, 3, 1), calendar: cal)
+        XCTAssertEqual(s.amortizedFraction, 1)
+        XCTAssertTrue(s.isPaidOff)
+        let empty = SavingsCalculator.summary(ticket: period, trips: [], now: date(2026, 3, 1), calendar: cal)
+        XCTAssertEqual(empty.amortizedFraction, 1)
+        XCTAssertTrue(empty.isPaidOff)
+        let achievements = AchievementEngine.evaluate(summary: s, trips: trips, records: StatsAggregator.records(trips, calendar: cal))
+        XCTAssertTrue(achievements.allSatisfy { $0.progress.isFinite })
+    }
+}

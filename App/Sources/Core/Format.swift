@@ -15,7 +15,16 @@ enum Format {
 
     static func euro(_ value: Double, decimals: Int? = nil) -> String {
         let digits = decimals ?? (abs(value) >= 1000 || value == value.rounded() ? 0 : 2)
+        if euroStyles.indices.contains(digits) { return value.formatted(euroStyles[digits]) }
         return value.formatted(.currency(code: "EUR").locale(locale).precision(.fractionLength(digits)))
+    }
+
+    // Built once for 0…2 decimals: count-ins format on every frame, lists on every row.
+    private static let euroStyles: [FloatingPointFormatStyle<Double>.Currency] = (0...2).map { digits in
+        .currency(code: "EUR").locale(locale).precision(.fractionLength(digits))
+    }
+    private static let numberStyles: [FloatingPointFormatStyle<Double>] = (0...2).map { digits in
+        .number.locale(locale).precision(.fractionLength(digits))
     }
 
     /// Always two decimals ("€ 23,40").
@@ -23,7 +32,8 @@ enum Format {
 
     /// Number without currency, grouped ("1.300").
     static func number(_ value: Double, decimals: Int = 0) -> String {
-        value.formatted(.number.locale(locale).precision(.fractionLength(decimals)))
+        if numberStyles.indices.contains(decimals) { return value.formatted(numberStyles[decimals]) }
+        return value.formatted(.number.locale(locale).precision(.fractionLength(decimals)))
     }
 
     static func km(_ value: Double) -> String { "\(number(value, decimals: value < 10 ? 1 : 0)) km" }

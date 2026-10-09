@@ -95,7 +95,7 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
             tripCount += 1
             distanceKm += favorite.distanceKm
             co2SavedKg += max(0, (166 - 8) * favorite.distanceKm / 1000)
-            amortizedFraction = ticketPrice > 0 ? totalValue / ticketPrice : 0
+            amortizedFraction = ticketPrice > 0 ? totalValue / ticketPrice : 1   // € 0 own share: paid off (as in the app)
             isPaidOff = isPaidOff || totalValue >= ticketPrice
             sparkline.append(totalValue)
         }

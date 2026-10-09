@@ -19,8 +19,9 @@ public struct Achievement: Hashable, Sendable, Identifiable {
 public enum AchievementEngine {
     public static func evaluate(summary: SavingsSummary, trips: [TripRecord], records: TravelRecords) -> [Achievement] {
         func make(_ id: String, _ title: String, _ detail: String, _ symbol: String, _ tier: Achievement.Tier,
-                  current: Double, target: Double, unit: String) -> Achievement {
-            Achievement(id: id, title: title, detail: detail, symbolName: symbol, tier: tier,
+                  current raw: Double, target: Double, unit: String) -> Achievement {
+            let current = raw.isFinite ? max(0, raw) : 0   // a broken figure must not trap in Int(_:) below
+            return Achievement(id: id, title: title, detail: detail, symbolName: symbol, tier: tier,
                         progress: target > 0 ? min(1, current / target) : 0,
                         progressLabel: "\(group(Int(min(current, target).rounded()))) / \(group(Int(target))) \(unit)".trimmingCharacters(in: .whitespaces))
         }

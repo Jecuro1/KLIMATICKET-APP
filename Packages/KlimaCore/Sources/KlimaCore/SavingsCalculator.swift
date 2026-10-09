@@ -70,8 +70,9 @@ public enum SavingsCalculator {
         let daysElapsed = min(daysTotal, max(1, (calendar.dateComponents([.day], from: startDay, to: today).day ?? 0) + 1))
         let daysRemaining = now > ticket.end ? 0 : max(0, daysTotal - daysElapsed)
 
-        let price = max(ticket.price, 0.01)
-        let fraction = value / price
+        // An own share of € 0 (the employer pays the whole ticket) is paid off from the first day: 100 %, not
+        // value / 1 cent (which read "4.500.000 %").
+        let fraction = ticket.price > 0 ? value / ticket.price : 1
 
         var paidOff: Date?
         var running = 0.0
