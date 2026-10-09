@@ -9,6 +9,8 @@ struct KlimaBilanzApp: App {
     @State private var launch: AppLaunch
 
     init() {
+        LaunchTrace.mark("app.init")
+        LaunchTrace.shared.startStallMonitor()
         // MARK: Diagnostics – launch timing starts here (Einstellungen › Diagnose & Stabilität).
         DiagnosticsService.shared.markLaunchStart()
         let launch: AppLaunch
@@ -28,6 +30,7 @@ struct KlimaBilanzApp: App {
         } else {
             launch = AppLaunch(store: StoreLoader()) { AppState() }
         }
+        LaunchTrace.mark("app.ready")
         _launch = State(initialValue: launch)
         AppDelegate.launch = launch
         DiagnosticsService.shared.start(mode: LaunchMode.isScreenshot ? .screenshot : (LaunchMode.isPerf ? .perf : .standard))

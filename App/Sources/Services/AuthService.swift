@@ -64,6 +64,9 @@ struct UserProfile: Codable, Equatable, Sendable {
 /// Session handling lives in `SessionCoordinator`: refresh tokens are single use and rotate, so there is one in-flight
 /// refresh shared by all callers. The session lives in the Keychain "after first unlock, this device only", so
 /// background sync works and tokens never travel to another device via backups. Sign-out ends only this device's session.
+///
+/// The stored session and profile are read off the main thread at launch (`SecItem…` calls block on IPC with securityd)
+/// and published on the main actor a moment later (`isLoaded`); every async entry point waits for that read first.
 @Observable
 @MainActor
 final class AuthService {
@@ -86,6 +89,9 @@ final class AuthService {
     private(set) var session: CloudSession?
     /// The server's `/v1/config` (providers, minimum app version); cached across launches. nil = not known yet.
     private(set) var serverConfig: CloudConfig?
+    /// The stored session and profile have been read from the Keychain (shortly after launch). Until then the service
+    /// looks signed out; views that decide something once from the sign-in state wait for this.
+    private(set) var isLoaded = false
 
     private let client: CloudAPIClient?
     private let coordinator: SessionCoordinator?
@@ -97,12 +103,16 @@ final class AuthService {
     @ObservationIgnored private var protectedDataObserver: NSObjectProtocol?
     @ObservationIgnored private var configFetchedAt: Date?
     @ObservationIgnored private var configTask: Task<Void, Never>?
+    /// The running Keychain read (launch, or again once protected data became available).
+    @ObservationIgnored private var loadTask: Task<Void, Never>?
+    /// Set by every local account change; a Keychain read that finishes afterwards must not overwrite it.
+    @ObservationIgnored private var accountChangedDuringLoad = false
 
-    private static let profileKey = "auth.profile"
+    private nonisolated static let profileKey = "auth.profile"
     /// Cloudflare-era session (`CloudSession`), device-only.
-    private static let sessionKey = "auth.session.cf1"
+    private nonisolated static let sessionKey = "auth.session.cf1"
     /// The Supabase-era session: unusable with the new backend, deleted at launch.
-    private static let legacySessionKey = "auth.session"
+    private nonisolated static let legacySessionKey = "auth.session"
     private static let configCacheKey = "cloud.config"
 
     init(config: AppConfig) {
@@ -116,8 +126,8 @@ final class AuthService {
         serverConfig = Self.cachedConfig()
         coordinator?.onChange = { [weak self] session in self?.session = session }
         coordinator?.onRejected = { [weak self] _, _ in self?.sessionWasRejected() }
-        legacySessionNeedsDeleting = !keychain.delete(Self.legacySessionKey)
-        loadFromKeychain()
+        legacySessionNeedsDeleting = true
+        loadStoredAccount(readAccount: true)
         protectedDataObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.protectedDataDidBecomeAvailableNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -185,6 +195,7 @@ final class AuthService {
 
     /// Completion handler of a `SignInWithAppleButton`.
     func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) async {
+        await waitUntilLoaded()
         let nonce = currentNonce
         currentNonce = nil
         switch result {
@@ -225,6 +236,7 @@ final class AuthService {
 
     func signIn(with provider: AuthProvider, using webSession: WebAuthenticationSession) async {
         guard provider == .google || provider == .microsoft || provider == .apple else { return }
+        await waitUntilLoaded()
         guard let client else {
             lastError = "Die Anmeldung mit \(provider.displayName) braucht ein Cloud-Konto. Richte das Cloudflare-Backend ein (siehe Einstellungen › Konto › Cloud-Sync einrichten) oder nutze „Mit Apple anmelden“ bzw. „Ohne Konto fortfahren“."
             return
@@ -281,6 +293,7 @@ final class AuthService {
     /// Signs out on this device only (`/v1/auth/logout` revokes this session); other devices of the account stay
     /// signed in. Local data stays on the device and remains linked to the account (see `SyncService.pendingAccountSwitch`).
     func signOut() async {
+        await waitUntilLoaded()
         await coordinator?.waitForPendingRefresh()   // never race a token rotation
         let current = session
         clearLocalAccount()
@@ -316,13 +329,20 @@ final class AuthService {
     /// Returns a valid session (refreshing if needed) or nil when not signed in to the cloud.
     /// Concurrent callers share one refresh – refresh tokens are single use.
     func validSession(forceRefresh: Bool = false) async -> CloudSession? {
-        await coordinator?.validSession(forceRefresh: forceRefresh)
+        await waitUntilLoaded()
+        return await coordinator?.validSession(forceRefresh: forceRefresh)
     }
 
     /// After the server answered 401 for `rejected`: the newer session if another caller already refreshed,
     /// otherwise a forced refresh.
     func refreshedSession(after rejected: CloudSession) async -> CloudSession? {
-        await coordinator?.refreshedSession(after: rejected)
+        await waitUntilLoaded()
+        return await coordinator?.refreshedSession(after: rejected)
+    }
+
+    /// Returns once the stored session and profile have been read (immediately after the launch read).
+    func waitUntilLoaded() async {
+        if let loadTask { await loadTask.value }
     }
 
     /// Session supplier for `CloudAPIClient.withSession` that refuses to switch accounts mid-operation.
@@ -367,6 +387,7 @@ final class AuthService {
     }
 
     private func clearLocalAccount() {
+        accountChangedDuringLoad = true
         coordinator?.replace(with: nil)
         profile = nil
         currentNonce = nil
@@ -380,6 +401,7 @@ final class AuthService {
     }
 
     private func store(profile p: UserProfile) {
+        accountChangedDuringLoad = true
         profile = p
         if let data = try? JSONEncoder().encode(p) {
             keychain.write(data, key: Self.profileKey, thisDeviceOnly: false)
@@ -390,10 +412,56 @@ final class AuthService {
 
     // MARK: Keychain
 
-    private func loadFromKeychain() {
+    /// What the Keychain holds for this app (read off the main thread).
+    private struct StoredAccount: Sendable {
+        /// nil when there is no cloud (no session is read then).
+        var session: SecureReadResult?
+        /// nil when only the legacy session was deleted (no account read).
+        var profile: SecureReadResult?
+        var legacySessionDeleted: Bool?
+    }
+
+    /// Reads (and, where pending, deletes the Supabase-era session) on a background thread, then applies the result
+    /// on the main actor. `readAccount: false` only retries the legacy delete.
+    private func loadStoredAccount(readAccount: Bool) {
+        let includeSession = coordinator != nil
+        let deleteLegacy = legacySessionNeedsDeleting
+        guard readAccount || deleteLegacy else { return }
+        let previous = loadTask
+        loadTask = Task { @MainActor in
+            await previous?.value
+            if readAccount { self.accountChangedDuringLoad = false }
+            let stored = await Task.detached(priority: .userInitiated) {
+                Self.readStoredAccount(includeSession: includeSession, readAccount: readAccount, deleteLegacy: deleteLegacy)
+            }.value
+            self.apply(stored)
+        }
+    }
+
+    private nonisolated static func readStoredAccount(includeSession: Bool, readAccount: Bool, deleteLegacy: Bool) -> StoredAccount {
+        let keychain = KeychainStore()
+        var stored = StoredAccount()
+        if deleteLegacy { stored.legacySessionDeleted = keychain.delete(legacySessionKey) }
+        if readAccount {
+            if includeSession { stored.session = keychain.read(sessionKey) }
+            stored.profile = keychain.read(profileKey)
+        }
+        return stored
+    }
+
+    private func apply(_ stored: StoredAccount) {
+        LaunchTrace.mark("auth.loaded")
+        if let deleted = stored.legacySessionDeleted { legacySessionNeedsDeleting = !deleted }
+        guard let profileRead = stored.profile else { return }
+        defer { isLoaded = true }
+        // Signed in, out or renamed while the Keychain was being read: that newer state wins (and is already stored).
+        guard !accountChangedDuringLoad else {
+            keychainWasLocked = false
+            return
+        }
         var locked = false
-        if case .locked = coordinator?.load() { locked = true }
-        switch keychain.read(Self.profileKey) {
+        if let sessionRead = stored.session, case .locked = coordinator?.load(from: sessionRead) { locked = true }
+        switch profileRead {
         case .found(let data):
             if let p = try? JSONDecoder().decode(UserProfile.self, from: data) {
                 profile = p
@@ -429,11 +497,12 @@ final class AuthService {
     }
 
     private func protectedDataDidBecomeAvailable() {
-        if legacySessionNeedsDeleting { legacySessionNeedsDeleting = !keychain.delete(Self.legacySessionKey) }
+        var reload = false
         if keychainWasLocked {
             keychainWasLocked = false
-            if session == nil && profile == nil { loadFromKeychain() }
+            reload = session == nil && profile == nil
         }
+        loadStoredAccount(readAccount: reload)   // also retries a pending legacy delete
         coordinator?.saveIfNeeded()
     }
 }

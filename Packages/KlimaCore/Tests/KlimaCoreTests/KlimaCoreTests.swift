@@ -129,6 +129,48 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertEqual(t.count, 1)
     }
 
+    /// Unsorted input and repeated relations (the bundled table is sorted, but the format does not require it):
+    /// same answers as a dictionary that keeps the last value per relation, in either direction.
+    func testRelationTableUnsortedAndDuplicateRows() {
+        func pack(_ rows: [(UInt16, UInt16, UInt16)]) -> Data {
+            var data = Data()
+            for (a, b, v) in rows {
+                for x in [a, b, v] { data.append(UInt8(x & 0xFF)); data.append(UInt8(x >> 8)) }
+            }
+            return data
+        }
+        var generator = SystemRandomNumberGenerator()
+        let ids = (0..<40).map { "p\($0)" }
+        var rows: [(UInt16, UInt16, UInt16)] = []
+        var reference: [String: Int] = [:]
+        for _ in 0..<600 {
+            let a = UInt16.random(in: 0..<40, using: &generator), b = UInt16.random(in: 0..<40, using: &generator)
+            guard a != b else { continue }
+            let v = UInt16.random(in: 1...9_999, using: &generator)
+            rows.append((a, b, v))
+            reference["\(min(a, b))-\(max(a, b))"] = Int(v) * 10
+        }
+        rows.append((3, 99, 50))   // point index out of range: ignored
+        let table = RelationPriceTable(validFrom: "", source: "", pointIDs: ids, triples: pack(rows))
+        XCTAssertEqual(table.count, reference.count)
+        for i in 0..<40 {
+            for j in 0..<40 where i != j {
+                let expected = reference["\(min(i, j))-\(max(i, j))"].map { Double($0) / 100 }
+                XCTAssertEqual(table.price(from: ids[i], to: ids[j]), expected)
+            }
+        }
+        XCTAssertNil(table.price(from: "p1", to: "p1"))
+        XCTAssertNil(table.price(from: "p1", to: "unknown"))
+
+        let sorted = RelationPriceTable(validFrom: "", source: "", pointIDs: ["a", "b", "c"],
+                                        triples: pack([(0, 1, 100), (0, 2, 200), (1, 2, 300)]))
+        XCTAssertEqual(sorted.count, 3)
+        XCTAssertEqual(sorted.price(from: "c", to: "a"), 20)
+        XCTAssertEqual(sorted.price(from: "b", to: "c"), 30)
+        XCTAssertEqual(RelationPriceTable.empty.count, 0)
+        XCTAssertNil(RelationPriceTable.empty.price(from: "a", to: "b"))
+    }
+
     func testEuroFormatting() {
         XCTAssertEqual(FareEstimator.euro(3.2), "€ 3,20")
         XCTAssertEqual(FareEstimator.euro(1300), "€ 1300,00")

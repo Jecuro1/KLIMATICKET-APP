@@ -31,4 +31,9 @@ for APPEARANCE in light dark; do
   done
 done
 xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+# LaunchTrace (App/Sources/Core/LaunchTrace.swift): launch timestamps + main-thread stalls of every screenshot launch.
+DATA=$(xcrun simctl get_app_container "$UDID" "$BUNDLE_ID" data 2>/dev/null || true)
+if [ -n "$DATA" ] && [ -f "$DATA/Documents/launch-trace.txt" ]; then
+  cp "$DATA/Documents/launch-trace.txt" "$OUT/launch-trace.txt" || true
+fi
 ls -la "$OUT"

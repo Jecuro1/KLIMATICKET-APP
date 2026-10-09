@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import UIKit
 import UserNotifications
 import KlimaCore
 
@@ -19,7 +20,10 @@ struct TripSuggestion: Codable, Identifiable, Hashable, Sendable {
 
 /// Opt-in automatic trip detection via region monitoring around the user's most used stations (max. 20).
 /// Leaving station A and entering station B within 4 hours produces a suggestion + local notification.
-/// Battery-friendly (no continuous GPS); works in the background and relaunches the app when needed.
+/// Battery-friendly (no continuous GPS); works in the background and relaunches the app when needed – the relaunch has
+/// no UI, so stations and prices are resolved on demand (`stationResolver`, `estimatorProvider`) when `configure`
+/// has not run in this process. A short stop at a monitored station on the way (a train passing through) extends the
+/// trip: A → B → C becomes one suggestion A → C instead of two.
 @Observable
 @MainActor
 final class TripDetectionService: NSObject, CLLocationManagerDelegate {
@@ -32,9 +36,16 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    /// Station by id (= region identifier) when `configure` has not run in this process (set by AppState).
+    @ObservationIgnored var stationResolver: @MainActor (String) async -> Station? = { _ in nil }
+    /// Fare estimator for the same case (set by AppState).
+    @ObservationIgnored var estimatorProvider: @MainActor () -> FareEstimator? = { nil }
+
     @ObservationIgnored private let manager = CLLocationManager()
     @ObservationIgnored private var stationsByID: [String: Station] = [:]
     @ObservationIgnored private var estimator: FareEstimator?
+    /// Region events are handled one after another in arrival order (an arrival may wait for station data).
+    @ObservationIgnored private var eventQueue: Task<Void, Never>?
 
     static let notificationCategory = "TRIP_SUGGESTION"
     static let confirmAction = "TRIP_SUGGESTION_CONFIRM"
@@ -43,12 +54,33 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         static let enabled = "detection.enabled"
         static let suggestions = "detection.suggestions"
         static let lastExit = "detection.lastExit"
+        static let lastArrival = "detection.lastArrival"
     }
 
+    /// The last exit from a monitored station. When it ends a short stop at the station a suggestion was just made
+    /// for, the `origin…`/`chainedSuggestionID` fields carry that trip on, so the next arrival can extend it.
     private struct ExitEvent: Codable {
         var stationID: String
         var date: Date
+        var originID: String? = nil
+        var originDate: Date? = nil
+        var chainedSuggestionID: UUID? = nil
     }
+
+    /// The last arrival that produced a suggestion (to recognise a stop that is only passed through).
+    private struct ArrivalEvent: Codable {
+        var stationID: String
+        var date: Date
+        var suggestionID: UUID
+        var originID: String
+        var originDate: Date
+    }
+
+    private static let maxTripDuration: TimeInterval = 4 * 3600
+    /// Leaving a station this soon after arriving counts as passing through (a train stops 1–3 min) …
+    private static let passThroughDwell: TimeInterval = 5 * 60
+    /// … and the next arrival has to follow within this time to extend the trip.
+    private static let chainWindow: TimeInterval = 90 * 60
 
     override init() {
         isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled)
@@ -121,25 +153,76 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     }
 
     private func didExit(stationID: String, at date: Date) {
-        let event = ExitEvent(stationID: stationID, date: date)
-        if let data = try? JSONEncoder().encode(event) { UserDefaults.standard.set(data, forKey: Keys.lastExit) }
+        var event = ExitEvent(stationID: stationID, date: date)
+        if let arrival = load(ArrivalEvent.self, forKey: Keys.lastArrival), arrival.stationID == stationID,
+           date.timeIntervalSince(arrival.date) < Self.passThroughDwell {
+            // Possibly only passing through: the next arrival may extend that trip (decided there).
+            event.originID = arrival.originID
+            event.originDate = arrival.originDate
+            event.chainedSuggestionID = arrival.suggestionID
+        }
+        UserDefaults.standard.removeObject(forKey: Keys.lastArrival)
+        store(event, forKey: Keys.lastExit)
     }
 
-    private func didEnter(stationID: String, at date: Date) {
-        guard let data = UserDefaults.standard.data(forKey: Keys.lastExit),
-              let exit = try? JSONDecoder().decode(ExitEvent.self, from: data),
-              exit.stationID != stationID,
-              date.timeIntervalSince(exit.date) < 4 * 3600,
-              let from = stationsByID[exit.stationID], let to = stationsByID[stationID] else { return }
+    private func didEnter(stationID: String, at date: Date) async {
+        guard let exit = load(ExitEvent.self, forKey: Keys.lastExit) else { return }
+        guard exit.stationID != stationID else {
+            // Back at the station just left: no trip, and no pass-through either.
+            if exit.chainedSuggestionID != nil { store(ExitEvent(stationID: exit.stationID, date: exit.date), forKey: Keys.lastExit) }
+            return
+        }
+        guard date.timeIntervalSince(exit.date) < Self.maxTripDuration, let to = await station(stationID) else { return }
+        // A short stop at the previous station after a trip that is still waiting for confirmation: extend it.
+        var origin: (station: Station, departedAt: Date, replaces: UUID)?
+        if let chained = exit.chainedSuggestionID, let originID = exit.originID, originID != stationID,
+           date.timeIntervalSince(exit.date) < Self.chainWindow, let first = await station(originID) {
+            origin = (first, exit.originDate ?? exit.date, chained)
+        }
+        let previous = await station(exit.stationID)
+        // The user may have confirmed or dismissed the first leg meanwhile – then it stays a trip of its own.
+        if let o = origin, !suggestions.contains(where: { $0.id == o.replaces }) { origin = nil }
+        guard let from = origin?.station ?? previous else { return }
         UserDefaults.standard.removeObject(forKey: Keys.lastExit)
-        let estimate = estimator?.estimate(from: from, to: to, mode: .train)
+        let estimate = (estimator ?? estimatorProvider())?.estimate(from: from, to: to, mode: .train)
         guard let estimate, estimate.distanceKm >= 2 else { return }
+        let departedAt = origin?.departedAt ?? exit.date
         let suggestion = TripSuggestion(fromStationID: from.id, toStationID: to.id, fromName: from.name, toName: to.name,
-                                        departedAt: exit.date, arrivedAt: date, fareEUR: estimate.fareEUR,
+                                        departedAt: departedAt, arrivedAt: date, fareEUR: estimate.fareEUR,
                                         distanceKm: estimate.distanceKm, states: Array(Set([from.state, to.state])).sorted())
+        if let replaced = origin?.replaces { remove(replaced) }   // A → B becomes A → C
         suggestions.insert(suggestion, at: 0)
         persist()
         notify(suggestion)
+        store(ArrivalEvent(stationID: stationID, date: date, suggestionID: suggestion.id, originID: from.id, originDate: departedAt),
+              forKey: Keys.lastArrival)
+    }
+
+    /// Configured stations first, then the resolver (background relaunch without `configure`).
+    private func station(_ id: String) async -> Station? {
+        if let station = stationsByID[id] { return station }
+        return await stationResolver(id)
+    }
+
+    /// Runs region events strictly one after another, each with extra background time: a relaunch for a region event
+    /// only gets a few seconds, and resolving a stop may first have to build the place index.
+    private func enqueue(_ work: @escaping @MainActor () async -> Void) {
+        let previous = eventQueue
+        eventQueue = Task { @MainActor in
+            await previous?.value
+            let time = BackgroundTime(name: "TripDetection")
+            await work()
+            time.end()
+        }
+    }
+
+    private func load<T: Decodable>(_ type: T.Type, forKey key: String) -> T? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(type, from: data)
+    }
+
+    private func store<T: Encodable>(_ value: T, forKey key: String) {
+        if let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: key) }
     }
 
     private func remove(_ id: UUID) {
@@ -181,14 +264,30 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        let id = region.identifier
-        Task { @MainActor in self.didExit(stationID: id, at: Date()) }
+        let id = region.identifier, date = Date()
+        Task { @MainActor in self.enqueue { self.didExit(stationID: id, at: date) } }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        let id = region.identifier
-        Task { @MainActor in self.didEnter(stationID: id, at: Date()) }
+        let id = region.identifier, date = Date()
+        Task { @MainActor in self.enqueue { await self.didEnter(stationID: id, at: date) } }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {}
+}
+
+/// A UIKit background-task assertion: keeps a process that iOS woke for a region event alive until the work is done.
+@MainActor
+private final class BackgroundTime {
+    private var id: UIBackgroundTaskIdentifier = .invalid
+
+    init(name: String) {
+        id = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in self?.end() }
+    }
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
+    }
 }
