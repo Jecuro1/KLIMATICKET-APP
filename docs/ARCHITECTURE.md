@@ -61,7 +61,7 @@ scripts/                    CI-Hilfsskripte, Tarif-Katalog-Generator, build_plac
 
 `-KBScreenshot <screen> -KBDemo YES` startet mit In-Memory-Store und Demo-Daten.
 Screens: `onboarding dashboard trips addTrip tripDetail stats ticket achievements settings update widgets`.
-CI legt die PNGs (hell/dunkel) im Branch `screenshots` ab.
+CI lädt die PNGs (hell/dunkel) als Artefakt `screenshots-<build>` des Laufs hoch (README.md darin nennt Version und Commit); einen Screenshots-Branch gibt es nicht mehr.
 
 ## Updates
 
@@ -76,7 +76,7 @@ CI legt die PNGs (hell/dunkel) im Branch `screenshots` ab.
 Eigenes Backend im Cloudflare-Konto des Betreibers (Vertrag: [CLOUDFLARE_BACKEND.md](CLOUDFLARE_BACKEND.md),
 Einrichtung: [SETUP.md §3](SETUP.md)): ein Worker `klimabilanz-api` (TypeScript, ohne Laufzeit-Abhängigkeiten,
 nur WebCrypto) und die D1-Datenbank `klimabilanz` mit **EU-Jurisdiktion**. `backend.yml` testet jeden Push und stellt
-von `main`/`claude/klimabilanz-ios-app` bzw. per *Run workflow* bereit (D1 anlegen, migrieren, Secrets, Deploy);
+von `main` bzw. per *Run workflow* bereit (D1 anlegen, migrieren, Secrets, Deploy);
 ohne Cloudflare-Secrets wird nichts bereitgestellt. Der iOS-Build trägt die Worker-Adresse als `apiBaseURL` in
 `AppConfig.json` ein – ohne Adresse funktioniert die App vollständig lokal (Apple-Login lokal möglich).
 

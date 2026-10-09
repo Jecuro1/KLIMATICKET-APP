@@ -1,7 +1,7 @@
 # KlimaBilanz Cloud Backend on Cloudflare: binding contract
 
 > Status: **binding** for work packages WP-S (server), WP-D (deploy/docs) and WP-C (Swift client).
-> Branch: `wip/cloudflare` (from `claude/klimabilanz-ios-app`). Copy: `docs/CLOUDFLARE_BACKEND.md`.
+> Branch: `main` (trunk-based; developed on `wip/cloudflare`, merged). Copy: `docs/CLOUDFLARE_BACKEND.md`.
 > Decision (user, 2026-10-09): *"dann nehme ich Cloudflare, da ich sowieso bereits bei Cloudflare bin"*, so
 > Supabase is **removed completely**. The git history still has the Supabase backend (`supabase/`,
 > `SupabaseClient.swift`, commits up to `0cb2acd`).
@@ -30,7 +30,7 @@
 | Swift | New local package `Packages/KlimaCloud` (Foundation only, Linux-testable): HTTP client, DTOs, merge rule, timestamps, PKCE. The app keeps `AuthService`/`SyncService` with source-compatible public APIs |
 
 Deliberate deviations from the task brief, with reasons:
-1. **Deploy branches.** Tests run on every branch. *Deploys* run only on `main`, `claude/klimabilanz-ios-app`, or a
+1. **Deploy branches.** Tests run on every branch. *Deploys* run only on `main` (the old integration branch `claude/klimabilanz-ios-app` is still accepted), or a
    manual `workflow_dispatch`, because a WIP branch must not replace the production Worker that installed apps use (§5.1).
 2. **snake_case everywhere.** The push response field is `server_rev`, not `serverRev`, to match every other field.
 3. **No sync overlap window.** D1 runs batches one at a time in a single transaction, so a revision cursor needs no
@@ -821,7 +821,7 @@ so keep the iOS-only glue thin and type-check by reading carefully; the orchestr
 ### Integration order and acceptance
 1. WP-S, WP-D and WP-C run in parallel against this contract.
 2. Integration on `wip/cloudflare`: `backend` tests, `KlimaCloud` tests, `python3 scripts/check_integration.py` (if
-   relevant), then a `[build]` commit for the iOS build. Merge into `claude/klimabilanz-ios-app` only when green; that
+   relevant), then a `[build]` commit for the iOS build. Merge into `main` only when green; that
    push triggers the first real deploy (it skips until the user adds the Cloudflare secrets).
 3. Done means: with no Cloudflare secrets, every workflow is green and the app runs locally only, as today. With
    the secrets and at least one provider configured, a sign-in on the iPhone, sync between two devices, sign-out, and

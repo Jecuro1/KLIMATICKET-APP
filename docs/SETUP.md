@@ -113,9 +113,8 @@ kann). Es gibt kein Tracking.
 Abhaken von oben nach unten. Die Einzelheiten stehen in den Abschnitten 3.1–3.4; `<subdomain>` ist deine
 workers.dev-Subdomain aus Schritt 2.
 
-- [ ] **1. Workflows in `main` übernehmen** (einmalig): GitHub → **Pull requests › New pull request** → *base*
-      `main`, *compare* `claude/klimabilanz-ios-app` → **Create pull request** → **Merge pull request** →
-      **Confirm merge**. Erst dann zeigt GitHub unter *Actions* den Knopf **Run workflow**.
+- [ ] **1. Branch `main`:** Alles liegt direkt in `main` (Standard-Branch, keine Extra-Branches). Darum zeigt GitHub
+      unter *Actions* den Knopf **Run workflow** sofort – hier ist nichts zu tun.
 - [ ] **2. Cloudflare-Subdomain:** [dash.cloudflare.com](https://dash.cloudflare.com) → links **Workers & Pages**
       (bzw. *Compute (Workers)*) einmal öffnen. Fragt Cloudflare nach einer Subdomain: Namen wählen → bestätigen.
 - [ ] **3. Account ID kopieren:** auf derselben Seite rechts *Account details* → **Account ID** → Kopier-Symbol.
@@ -127,7 +126,7 @@ workers.dev-Subdomain aus Schritt 2.
 - [ ] **5. GitHub-Secrets:** Repo → **Settings › Secrets and variables › Actions** → Tab **Secrets** →
       **New repository secret**: `CLOUDFLARE_API_TOKEN` (Token aus 4) und `CLOUDFLARE_ACCOUNT_ID` (ID aus 3).
 - [ ] **6. Backend bereitstellen:** **Actions** → **Backend** → **Run workflow** → *Use workflow from*: Branch
-      `claude/klimabilanz-ios-app` (der aktuelle Stand; `main` geht auch) → **Run workflow**. Nach 1–2 Minuten grün;
+      `main` → **Run workflow**. Nach 1–2 Minuten grün;
       den Lauf öffnen → die **Zusammenfassung** zeigt Worker-Adresse und Rückruf-Adressen.
 - [ ] **7. Google (kostenlos):** [console.cloud.google.com](https://console.cloud.google.com) → Projekt `KlimaBilanz`
       anlegen → **Google Auth Platform** → *Get started* (App-Name, Support-E-Mail, Zielgruppe **Extern**) →
@@ -199,8 +198,7 @@ Die Rückruf-Adressen müssen **Zeichen für Zeichen** mit denen aus der Zusamme
 
    Repository-Secrets bleiben auch in einem **öffentlichen** Repo geheim: Nur GitHub Actions kann sie lesen, in
    Protokollen erscheinen sie als `***`. Schlüssel, Tokens oder `.p8`-Dateien gehören **nie** in eine Datei im Repo.
-5. **Backend starten.** **Actions** → links **Backend** → **Run workflow** → Branch `claude/klimabilanz-ios-app`
-   (bzw. `main`) → **Run workflow**. Nach 1–2 Minuten ist der Lauf grün. Der erste Lauf
+5. **Backend starten.** **Actions** → links **Backend** → **Run workflow** → Branch `main` → **Run workflow**. Nach 1–2 Minuten ist der Lauf grün. Der erste Lauf
    - legt die Datenbank `klimabilanz` in der EU an,
    - richtet sie ein (Tabellen),
    - erzeugt einmalig den geheimen Signaturschlüssel `SESSION_SIGNING_KEY` (bleibt nur im Worker gespeichert),
@@ -218,11 +216,9 @@ Die Rückruf-Adressen müssen **Zeichen für Zeichen** mit denen aus der Zusamme
 
    Die Adressen müssen **Zeichen für Zeichen** übereinstimmen (`https://`, kein `/` am Ende).
 
-   > Kein Knopf **Run workflow** zu sehen? GitHub zeigt ihn nur für Workflows, die im Standard-Branch (`main`)
-   > liegen. Dann einmal `claude/klimabilanz-ios-app` per Pull Request nach `main` übernehmen
-   > (*Pull requests › New pull request* → base `main`, compare `claude/klimabilanz-ios-app` → *Create* → *Merge*).
-   > Pushes nach `main` bzw. `claude/klimabilanz-ios-app`, die das Backend ändern, stellen es außerdem automatisch neu
-   > bereit. Andere Branches werden nur getestet, nie bereitgestellt.
+   > GitHub zeigt **Run workflow** nur für Workflows im Standard-Branch (`main`) – dort liegt alles.
+   > Pushes nach `main`, die das Backend ändern, stellen es außerdem automatisch neu bereit. Andere Branches werden
+   > nur getestet, nie bereitgestellt.
 
 ### 3.3 Anmeldeanbieter einrichten
 
@@ -379,7 +375,7 @@ bleiben dabei angemeldet. Der Backend-Workflow fasst beide Secrets nie an.
 | Meldung / Problem | Lösung |
 |---|---|
 | Backend-Lauf: „Backend nicht bereitgestellt – CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID fehlen“ | Schritt 4: beide Secrets eintragen (Namen exakt so), dann *Run workflow* |
-| „Backend nicht bereitgestellt – Bereitgestellt wird nur von main bzw. claude/klimabilanz-ios-app …“ | Normal für Test-Branches. *Run workflow* auf `claude/klimabilanz-ios-app` bzw. `main` starten |
+| „Backend nicht bereitgestellt – Bereitgestellt wird nur von main …“ | Normal für Test-Branches. *Run workflow* auf `main` starten |
 | „Keine workers.dev-Subdomain“ | Schritt 1: *Workers & Pages* einmal öffnen und eine Subdomain festlegen |
 | „Cloudflare-API-Token: Token ungültig oder ohne Berechtigung …“ / *Authentication error [code: 10000]* | Token neu erstellen (Schritt 3, alle vier Berechtigungen, richtiges Konto) und Secret ersetzen; `CLOUDFLARE_ACCOUNT_ID` prüfen |
 | „Die D1-Datenbank … konnte nicht gelesen oder angelegt werden“ | Dem Token fehlt **Account · D1 · Edit** |

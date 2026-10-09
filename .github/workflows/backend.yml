@@ -5,8 +5,9 @@ name: Backend
 #
 #   test    every push that touches backend/** (and manual runs): typecheck, Worker tests on local D1, deploy-helper
 #           self-tests, bundle dry run.
-#   gate    decides whether to deploy. Deploys happen only on main / claude/klimabilanz-ios-app or a manual run
-#           ("Run workflow"), so a work-in-progress branch can never replace the Worker that installed apps use, and
+#   gate    decides whether to deploy. Deploys happen only on main (trunk; the old integration branch
+#           claude/klimabilanz-ios-app is still accepted) or a manual run ("Run workflow"), so a work-in-progress
+#           branch can never replace the Worker that installed apps use, and
 #           only when the repository secrets CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID exist. Otherwise the run
 #           stays green and the summary says why nothing was deployed.
 #   deploy  workers.dev subdomain → find-or-create D1 (EU) → render wrangler.toml → migrate → secrets from GitHub
@@ -84,7 +85,7 @@ jobs:
             echo "$MSG. Die App funktioniert bis dahin lokal ohne Konto." >> "$GITHUB_STEP_SUMMARY"
             echo "deploy=false" >> "$GITHUB_OUTPUT"
           elif [ "$DEPLOY_BRANCH" != "true" ]; then
-            MSG="Bereitgestellt wird nur von main bzw. claude/klimabilanz-ios-app oder über Actions › Backend › Run workflow (Branch: ${GITHUB_REF_NAME})."
+            MSG="Bereitgestellt wird nur von main oder über Actions › Backend › Run workflow (Branch: ${GITHUB_REF_NAME})."
             echo "::notice title=Backend nicht bereitgestellt::$MSG"
             echo "### Backend nicht bereitgestellt" >> "$GITHUB_STEP_SUMMARY"
             echo "$MSG" >> "$GITHUB_STEP_SUMMARY"
