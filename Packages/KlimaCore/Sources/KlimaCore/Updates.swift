@@ -52,7 +52,7 @@ public struct UpdateManifest: Codable, Hashable, Sendable {
     public var minimumOSVersion: String?
     /// Direct .ipa download.
     public var downloadURL: String
-    /// AltStore / SideStore source for background auto-updates.
+    /// AltStore / SideStore source: the store detects new versions and updates with one tap.
     public var altstoreSourceURL: String?
     /// Optional itms-services manifest for signed ad-hoc builds.
     public var otaManifestURL: String?

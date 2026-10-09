@@ -93,16 +93,20 @@ struct TicketView: View {
                 .padding(.top, Theme.Spacing.xxs)
                 .tktEntrance(0, visible: appeared)
 
-            TktCardStack(ticket: ticket,
-                         face: face(for: ticket, summary: snapshot.summary),
-                         isImportingPhoto: isImportingPhoto,
-                         onAddPhoto: { showsPhotoPicker = true },
-                         onRemovePhoto: { removePhoto(from: ticket) })
-                .id(ticket.id)
-                .transition(.opacity.combined(with: .scale(scale: 0.97)))
-                .padding(.horizontal, Theme.Spacing.cardGutter)
-                .padding(.top, Theme.Spacing.m)
-                .tktEntrance(1, visible: appeared, lift: true)
+            // ZStack: while switching tickets the outgoing and incoming pass overlap instead of being stacked in the
+            // VStack for the length of the transition (which pushed everything below down by a whole card).
+            ZStack {
+                TktCardStack(ticket: ticket,
+                             face: face(for: ticket, summary: snapshot.summary),
+                             isImportingPhoto: isImportingPhoto,
+                             onAddPhoto: { showsPhotoPicker = true },
+                             onRemovePhoto: { removePhoto(from: ticket) })
+                    .id(ticket.id)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            }
+            .padding(.horizontal, Theme.Spacing.cardGutter)
+            .padding(.top, Theme.Spacing.m)
+            .tktEntrance(1, visible: appeared, lift: true)
 
             statusCards(ticket: ticket, summary: snapshot.summary, proxy: proxy)
                 .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -202,6 +206,9 @@ struct TicketView: View {
                 .opacity(showsInlineTitle ? 1 : 0)
                 .accessibilityHidden(!showsInlineTitle)
         }
+        // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an empty pill while the
+        // title is faded out (same as Übersicht and Statistik).
+        .sharedBackgroundVisibility(.hidden)
         ToolbarItem(placement: .topBarTrailing) {
             shareButton(ticket: ticket, snapshot: snapshot)
         }
@@ -343,7 +350,15 @@ struct TicketView: View {
 
     private func renew(_ ticket: TicketEntity) {
         let repo = Repository(context: context, app: app)
-        let next = withAnimation(.smooth(duration: 0.45)) { repo.renewTicket(ticket) }
+        let previousSelection = app.settings.selectedTicketID
+        let next = withAnimation(.smooth(duration: 0.45)) { () -> TicketEntity in
+            let created = repo.renewTicket(ticket)
+            // `addTicket` selects the follow-up app-wide; while this ticket still runs it stays on screen and the
+            // renewal card turns into "Folgeticket angelegt · Anzeigen".
+            TktSelection.keepRunningTicket(repo: repo, app: app, added: created,
+                                           previousSelection: previousSelection, running: ticket)
+            return created
+        }
         app.showToast("ticket.fill", "Folgeticket angelegt", "gültig ab \(Format.date(next.startDate, .long))")
     }
 

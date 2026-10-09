@@ -119,6 +119,14 @@ struct UpdateSheet: View {
 
     // MARK: Actions
 
+    private var isSideStore: Bool { app.updates.sideloadStore == .sideStore }
+
+    /// The source matching the store this copy was installed with (none for App Store / TestFlight builds).
+    private var sourceURL: URL? {
+        guard app.updates.showsSideloadOptions else { return nil }
+        return isSideStore ? app.updates.sideStoreSourceURL : app.updates.altStoreSourceURL
+    }
+
     private var actions: some View {
         VStack(spacing: Theme.Spacing.s) {
             if manifest != nil {
@@ -130,17 +138,17 @@ struct UpdateSheet: View {
                         app.updates.install()
                     }
                 } label: {
-                    Label("Jetzt aktualisieren", systemImage: "arrow.down.circle.fill")
+                    Label(app.updates.installActionTitle, systemImage: "arrow.down.circle.fill")
                 }
                 .buttonStyle(.primary)
 
-                if let source = app.updates.altStoreSourceURL {
+                if let source = sourceURL {
                     Button {
                         openURL(source) { accepted in
                             withAnimation(.snappy) { altStoreMissing = !accepted }
                         }
                     } label: {
-                        Label("AltStore-Quelle hinzufügen", systemImage: "plus.square.on.square")
+                        Label(isSideStore ? "SideStore-Quelle hinzufügen" : "AltStore-Quelle hinzufügen", systemImage: "plus.square.on.square")
                             .font(.headline)
                             .frame(maxWidth: .infinity, minHeight: 30)
                     }
@@ -148,7 +156,7 @@ struct UpdateSheet: View {
                     .controlSize(.large)
 
                     if altStoreMissing {
-                        Text("AltStore ist auf diesem iPhone nicht installiert. Mit SideStore fügst du die Quelle unter Einstellungen › Updates hinzu.")
+                        Text(isSideStore ? "SideStore ist auf diesem iPhone nicht installiert." : "AltStore ist auf diesem iPhone nicht installiert. Mit SideStore fügst du die Quelle unter Einstellungen › Updates hinzu.")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
@@ -261,15 +269,17 @@ private struct UpdHero: View {
             Text(manifest.version.description)
                 .fontWeight(.bold)
                 .foregroundStyle(Theme.textPrimary)
-            Text("· Build \(manifest.build)")
-                .foregroundStyle(Theme.textSecondary)
+            if manifest.build > 0 {
+                Text("· Build \(manifest.build)")
+                    .foregroundStyle(Theme.textSecondary)
+            }
         }
         .font(.subheadline.monospacedDigit())
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, Theme.Spacing.xs)
         .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Von Version \(AppConfig.appVersion) auf \(manifest.version.description), Build \(manifest.build)")
+        .accessibilityLabel("Von Version \(AppConfig.appVersion) auf \(manifest.version.description)" + (manifest.build > 0 ? ", Build \(manifest.build)" : ""))
     }
 }
 

@@ -146,7 +146,7 @@ struct StatsCarCO2Section: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.s) {
-            WorkCarStatsCard(snapshot: snapshot)
+            WorkCarStatsCard(snapshot: snapshot) // MARK: work – "Öffis vs. Auto" card (replaces carCard)
             co2Card
         }
     }

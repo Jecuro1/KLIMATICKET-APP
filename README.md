@@ -4,6 +4,13 @@
 die jede deiner Öffi-Fahrten mit dem regulären Ticketpreis bewertet und dir auf einen Blick zeigt, wie weit dein
 Ticket schon „amortisiert“ ist – inklusive Prognose, wann du den Break-even-Gipfel erreichst.
 
+![Design-Übersicht](docs/design/final/00-overview.jpg)
+
+**Design „Alpine Glass“** – Gewinner eines internen Design-Wettbewerbs (3 Richtungen, 3 Juroren): Deine Ersparnis
+klettert über ein Arlberg-Panorama zum Gipfel – der Gipfel ist der Ticketpreis, der Break-even der Tag, an dem du die
+Fahne hisst. Lebendiger Alpenhimmel (hell „Morgendämmerung“, dunkel „Blaue Stunde“ mit Sternen), Liquid Glass für die
+Bedienung, Frost-Karten für Inhalte.
+
 ## Funktionen
 
 - **Übersicht** – riesige Amortisations-Anzeige mit „Gipfel“-Grafik, Break-even-Prognose, Kennzahlen, Schnellerfassung
@@ -19,8 +26,9 @@ Ticket schon „amortisiert“ ist – inklusive Prognose, wann du den Break-eve
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
 - **Automatische Fahrterkennung** (optional) – erkennt Fahrten zwischen deinen Stamm-Bahnhöfen und schlägt sie vor
 - **Widgets, Sperrbildschirm, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung
-- **Konten** – Anmeldung mit Apple, Google oder Microsoft, Cloud-Sync zwischen Geräten (Supabase)
-- **Automatische Updates** – In-App-Update-Hinweis + AltStore/SideStore-Quelle; Ticketpreise aktualisieren sich selbst
+- **Konten** – Anmeldung mit Apple, Google oder Microsoft, Cloud-Sync zwischen Geräten über ein eigenes, kostenloses
+  Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
+- **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
 - **Datenschutz** – ohne Konto bleibt alles auf dem iPhone; kein Tracking, keine Werbung
 
 ## Installieren
@@ -33,7 +41,10 @@ Installation per AltStore, SideStore, Sideloadly oder TestFlight – Details in 
 - Architektur: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Design: [docs/DESIGN.md](docs/DESIGN.md) ·
   Design-System-API: [docs/DESIGN_SYSTEM_API.md](docs/DESIGN_SYSTEM_API.md)
 - Projekt erzeugen: `brew install xcodegen && xcodegen generate`
-- Kernlogik testen (macOS oder Linux): `swift test --package-path Packages/KlimaCore`
+- Kernlogik testen (macOS oder Linux): `swift test --package-path Packages/KlimaCore` und
+  `swift test --package-path Packages/KlimaCloud`
+- Cloud-Backend (Cloudflare Worker + D1): [docs/CLOUDFLARE_BACKEND.md](docs/CLOUDFLARE_BACKEND.md), Einrichtung in
+  [docs/SETUP.md §3](docs/SETUP.md), Tests: `cd backend && npm ci && npm test`
 - Tarifkatalog neu bauen: `python3 scripts/build_tariffs.py` · Preistabelle: `python3 scripts/build_relations.py`
 
 ## Datenquellen

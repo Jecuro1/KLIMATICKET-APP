@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import KlimaCore
 
 // MARK: - Draft
@@ -169,7 +170,8 @@ struct TktEditSheet: View {
     private var isValid: Bool {
         !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (parsedPrice ?? 0) > 0
     }
-    private var hasChanges: Bool { draft != initial || parsedPrice != initial.price }
+    /// An empty price field equals a price of 0 – a pristine custom draft must stay swipe-dismissable.
+    private var hasChanges: Bool { draft != initial || (parsedPrice ?? 0) != initial.price }
     private var catalogProduct: TicketProduct? { draft.isCustom ? nil : app.catalog.product(id: draft.productID) }
 
     private var productLabel: String {
@@ -335,9 +337,14 @@ struct TktEditSheet: View {
             repo.updateTicket(ticket)
             app.showToast("checkmark.circle.fill", "Ticket gespeichert", ticket.name)
         } else {
+            let previousSelection = app.settings.selectedTicketID
+            let running = Analytics.activeTicket(in: repo.liveTickets(), selectedID: previousSelection)
             let entity = result.makeEntity()
             repo.addTicket(entity)
-            app.showToast("ticket.fill", "Ticket angelegt", entity.name)
+            let keptRunning = TktSelection.keepRunningTicket(repo: repo, app: app, added: entity,
+                                                             previousSelection: previousSelection, running: running)
+            app.showToast("ticket.fill", "Ticket angelegt",
+                          keptRunning ? "\(entity.name) · ab \(Format.dayMonth(entity.startDate))" : entity.name)
         }
         dismiss()
     }
@@ -518,7 +525,7 @@ private struct TktProductPicker: View {
                     Text("Eigenes Ticket")
                         .font(.body)
                         .foregroundStyle(Theme.textPrimary)
-                    Text("Name, Preis und Gültigkeit selbst festlegen")
+                    Text("Name, Preis und Startdatum selbst festlegen")
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }

@@ -20,7 +20,7 @@ struct SettingsView: View {
         List {
             SetAccountSection()
             SetFareSection()
-            WorkSettingsSection()
+            WorkSettingsSection() // MARK: work – "Arbeit & Steuer", "Auto-Vergleich"
             SetDetectionSection()
             SetAppearanceSection()
             SetNotificationsSection()

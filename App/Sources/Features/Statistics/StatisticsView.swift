@@ -230,7 +230,9 @@ struct StatsScreen: View {
 
     private var shareKey: String {
         let summary = snapshot.summary
-        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(ticket.name)"
+        // Everything the card prints: ticket, trips/value, price (own share) and the day (date line + forecast).
+        let day = Int(Calendar.vienna.startOfDay(for: Date()).timeIntervalSince1970)
+        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(Int(summary.ticketPrice.rounded()))-\(day)-\(ticket.name)"
     }
 
     private func renderShareImage() {

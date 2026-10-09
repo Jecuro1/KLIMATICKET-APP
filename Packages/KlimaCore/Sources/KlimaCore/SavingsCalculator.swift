@@ -156,7 +156,10 @@ public enum BreakEvenForecaster {
         let elapsed = Double(max(1, (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1))
         let inPeriod = trips.filter { ticket.contains($0.date) && $0.date <= now }
         let total = inPeriod.reduce(0) { $0 + $1.totalValue }
-        let longRun = total / elapsed
+        // In the first weeks a handful of trips would extrapolate wildly (2 trips on day 3 → €6.000/year).
+        // Spread the value over at least three weeks so early forecasts stay conservative; converges once real data exists.
+        let periodDays = Double(max(1, (calendar.dateComponents([.day], from: start, to: calendar.startOfDay(for: ticket.end)).day ?? 0) + 1))
+        let longRun = total / max(elapsed, min(21, periodDays))
         guard elapsed > 14 else { return longRun }
         let window = min(42.0, elapsed)
         let windowStart = calendar.date(byAdding: .day, value: -Int(window) + 1, to: today) ?? start

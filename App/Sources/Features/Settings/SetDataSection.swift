@@ -174,8 +174,15 @@ struct SetDataSection: View {
         Task {
             for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) }
         }
-        Repository(context: context, app: app).deleteAllData()
-        app.isShowingSettings = false
-        app.showToast("trash.fill", "Alle Daten gelöscht", "Bereit für dein nächstes Ticket")
+        let repo = Repository(context: context, app: app)
+        Task {
+            let ok = await repo.deleteAllDataEverywhere()
+            app.isShowingSettings = false
+            if ok {
+                app.showToast("trash.fill", "Alle Daten gelöscht", "Bereit für dein nächstes Ticket")
+            } else {
+                app.showToast("icloud.slash", "Auf diesem iPhone gelöscht", "Die Cloud wird beim nächsten Sync bereinigt")
+            }
+        }
     }
 }

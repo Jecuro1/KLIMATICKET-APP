@@ -32,16 +32,18 @@ struct SetUpdatesSection: View {
                     SetRowLabel(title: "Automatisch prüfen", subtitle: "Beim Start und alle paar Stunden",
                                 symbol: "clock.arrow.circlepath", tint: Theme.pine)
                 }
-                sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
-                          tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
-                sourceRow(title: "SideStore-Quelle hinzufügen", symbol: "square.stack.3d.up.fill",
-                          tint: Theme.modeColor(.tram), url: app.updates.sideStoreSourceURL)
+                if app.updates.showsSideloadOptions {
+                    sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
+                              tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
+                    sourceRow(title: "SideStore-Quelle hinzufügen", symbol: "square.stack.3d.up.fill",
+                              tint: Theme.modeColor(.tram), url: app.updates.sideStoreSourceURL)
+                }
             }
             .listRowBackground(Theme.surface)
         } header: {
             SetSectionHeader(title: "Updates")
         } footer: {
-            SetFooter(text: "Einmal als Quelle in AltStore oder SideStore hinzufügen – danach aktualisiert sich KlimaBilanz automatisch im Hintergrund.")
+            SetFooter(text: app.updates.channelFooter)
         }
 
         Section {
@@ -161,7 +163,7 @@ struct SetUpdatesSection: View {
     }
 
     private func sourceSubtitle(available: Bool) -> String {
-        if available { return "Updates automatisch im Hintergrund" }
+        if available { return Copy.Updates.sourceRowSubtitle }
         return app.updates.state == .notConfigured ? "Update-Quelle nicht eingerichtet" : "Verfügbar nach der ersten Update-Prüfung"
     }
 
