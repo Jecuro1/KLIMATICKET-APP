@@ -15,6 +15,12 @@ So nothing here is hard-coded: everything is read from the .ipa itself.
 
 Usage:
   make_release_metadata.py <distdir> [--ipa FILE] [--entitlements PLIST ...] [--strict]
+                           [--ota-manifest FILE --ota-manifest-url URL]
+
+Direct install (ad-hoc OTA, docs/DIREKT_INSTALLIEREN.md): only when the signed ad-hoc build exists, CI passes its
+manifest.plist (scripts/make_ota_manifest.py) and the HTTPS URL it is published under. update.json then carries
+`otaManifestURL`, and the app offers „Jetzt installieren“ (itms-services). Without them nothing changes – the unsigned
+.ipa and the AltStore/SideStore source stay exactly as they are.
 
 Entitlements, in order of preference:
   1. --entitlements PLIST ...   plists extracted from the signed binaries (CI: `ldid -e`), merged
@@ -203,6 +209,38 @@ def validate_source(source, ipa_info, ipa_size, ipa_sha):
         fail("Invalid AltStore source:\n  " + "\n  ".join(errors))
 
 
+# ---------------------------------------------------------------- direct install (ad-hoc OTA)
+
+def ota_manifest_url(path, url):
+    """The otaManifestURL for update.json, or None. Both arguments or neither."""
+    if not path and not url:
+        return None
+    if not path or not url:
+        fail("--ota-manifest and --ota-manifest-url belong together")
+    url = url.strip()
+    if not re.fullmatch(r"https://[^\s\"'<>]+/manifest\.plist", url):
+        fail(f"--ota-manifest-url must be an https URL ending in /manifest.plist, got {url!r}")
+    if not os.path.isfile(path):
+        fail(f"{path} not found")
+    return url
+
+
+def check_ota_manifest(path, bundle_id, version):
+    """The ad-hoc build must be the same release as the sideload .ipa – otherwise the app would offer another version."""
+    with open(path, "rb") as f:
+        manifest = plistlib.load(f)
+    try:
+        item = manifest["items"][0]
+        meta = item["metadata"]
+        package = next(a["url"] for a in item["assets"] if a["kind"] == "software-package")
+    except (KeyError, IndexError, StopIteration, TypeError):
+        fail(f"{path} is not an itms-services manifest")
+    if meta.get("bundle-identifier") != bundle_id or str(meta.get("bundle-version")) != version:
+        fail(f"{path} describes {meta.get('bundle-identifier')} {meta.get('bundle-version')}, the release is {bundle_id} {version}")
+    if not str(package).startswith("https://"):
+        fail(f"{path}: the .ipa URL must be https")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -212,7 +250,10 @@ def main():
     parser.add_argument("--entitlements", nargs="+", action="extend", default=[], metavar="PLIST",
                         help="entitlement plists extracted from the signed binaries (ldid -e)")
     parser.add_argument("--strict", action="store_true", help="fail instead of falling back to the repo entitlements")
+    parser.add_argument("--ota-manifest", metavar="FILE", help="manifest.plist of the ad-hoc build (direct install)")
+    parser.add_argument("--ota-manifest-url", metavar="URL", help="HTTPS URL the manifest.plist is published under")
     args = parser.parse_args()
+    ota_url = ota_manifest_url(args.ota_manifest, args.ota_manifest_url)
 
     dist = args.dist
     base = os.environ.get("DOWNLOAD_BASE", "").strip().rstrip("/")
@@ -299,6 +340,9 @@ def main():
         "tariffsURL": f"{base}/tariffs.json",
         "tariffsSHA256": sha256_of(tariffs_src),
     }
+    if ota_url:
+        check_ota_manifest(args.ota_manifest, bundle_id, version)
+        update["otaManifestURL"] = ota_url
     minimum_supported = os.environ.get("MINIMUM_SUPPORTED_VERSION", "").strip()
     if minimum_supported:
         # KlimaCore.SemanticVersion only decodes "1", "1.2" or "1.2.3" – anything else would make EVERY installed
@@ -369,7 +413,9 @@ def main():
         f.write("\n")
     with open(os.path.join(dist, "RELEASE_NOTES.md"), "w", encoding="utf-8") as f:
         f.write(f"## KlimaBilanz {version} (Build {build})\n\n" + "\n".join(f"- {n}" for n in notes) + "\n\n"
-                f"SHA-256 (`{ipa_name}`): `{sha}`\n")
+                f"SHA-256 (`{ipa_name}`): `{sha}`\n"
+                + ("\nDirekt installieren (registrierte iPhones, ohne AltStore/SideStore): in der App unter "
+                   "Einstellungen › Updates oder über die Installationsseite – docs/DIREKT_INSTALLIEREN.md\n" if ota_url else ""))
 
     print(f"Bundles: {', '.join(b['name'] for b in bundles)} · entitlements from {origin}")
     print("appPermissions:", json.dumps(permissions, indent=2, ensure_ascii=False))
