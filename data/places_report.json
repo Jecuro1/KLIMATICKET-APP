@@ -1,0 +1,241 @@
+{
+ "generated": "2026-10-09T14:18:07+00:00",
+ "inputs": {
+  "oevgk_dbf": {
+   "path": "Haltestellenkategorien_20251022_revised.dbf",
+   "bytes": 51601359,
+   "sha256": "b74685261b253af1"
+  },
+  "oebb_gtfs_stops": {
+   "path": "stops.txt",
+   "bytes": 715282,
+   "sha256": "651b7e0b41bfa4b4"
+  },
+  "wl_stops": {
+   "path": "stops.txt",
+   "bytes": 307097,
+   "sha256": "e3b4ac49bece0bef"
+  },
+  "stmk_dbf": {
+   "path": "Haltestellen.dbf",
+   "bytes": 12570391,
+   "sha256": "4ff66cceb2a20bb4"
+  },
+  "osm_json": {
+   "path": "osm_pt_austria.json",
+   "bytes": 37533363,
+   "sha256": "149bfeb8678482b2"
+  },
+  "gemeinden_shp": {
+   "path": "STATISTIK_AUSTRIA_GEM_20260101.shp",
+   "bytes": 61223780,
+   "sha256": "a57b0ca2060b83d6"
+  },
+  "app_stations": {
+   "path": "stations.json",
+   "bytes": 221312,
+   "sha256": "0ded06cda27b73c1"
+  }
+ },
+ "oebb_gtfs": {
+  "joined_by_id": 1035,
+  "tariff_point_skipped": 11,
+  "foreign": 92
+ },
+ "wiener_linien": {
+  "joined": 1781,
+  "missing_in_base_added": 15
+ },
+ "steiermark": {
+  "joined": 7108,
+  "coord_diff_gt_500m": 12,
+  "missing_in_base_added": 61,
+  "missing_in_base_renumbered_skipped": 5,
+  "missing_in_base_unserved_skipped": 1047
+ },
+ "osm_join": {
+  "by_name_geo": 94780,
+  "unmatched": 12176,
+  "noname": 7804,
+  "by_ifopt": 8981,
+  "dead": 124
+ },
+ "osm_only_clusters": {
+  "tram": 44,
+  "bus": 3905,
+  "cable": 2414,
+  "rail": 164,
+  "ship": 110,
+  "other": 90,
+  "subway": 1
+ },
+ "osm_only_added": 0,
+ "pip": {
+  "in_austria": 39591,
+  "state_differs_from_ifopt_prefix": 26,
+  "outside_austria": 118
+ },
+ "legacy_mapping": {
+  "id": 1193,
+  "name+geo": 292,
+  "kept": 2
+ },
+ "scotty_fixture_extids": {},
+ "localities": {
+  "osm_place_nodes": 50896,
+  "kept": 21050,
+  "by_type": {
+   "village": 5826,
+   "hamlet": 13620,
+   "neighbourhood": 947,
+   "city": 6,
+   "town": 223,
+   "suburb": 366,
+   "quarter": 62
+  }
+ },
+ "modes_defaulted": {
+  "64": 6084,
+  "2048": 119,
+  "128": 63
+ },
+ "names": {
+  "arrow_markers_removed": 99
+ },
+ "counts": {
+  "stops_total": 39711,
+  "base_verbund_stops": 39541,
+  "added_not_in_verbund_list": 170,
+  "foreign": 118,
+  "with_eva": 1015,
+  "with_hafas_extid": 0,
+  "with_aliases": 3051,
+  "no_departures_weekday": 7617,
+  "by_state": {
+   "W": 1958,
+   "ST": 8996,
+   "S": 2712,
+   "OÖ": 5828,
+   "T": 3922,
+   "NÖ": 8984,
+   "K": 3419,
+   "X": 118,
+   "V": 2140,
+   "B": 1634
+  },
+  "by_mode": {
+   "rail": 1777,
+   "sev": 127,
+   "bus": 38176,
+   "ship": 96,
+   "subway": 99,
+   "tram": 634,
+   "cable/ondemand": 357,
+   "coach": 0,
+   "none": 0
+  },
+  "by_state_mode": {
+   "X": {
+    "rail": 93,
+    "bus": 27,
+    "subway": 1,
+    "total": 118,
+    "no_dep_weekday": 24
+   },
+   "B": {
+    "rail": 44,
+    "bus": 1613,
+    "total": 1634,
+    "no_dep_weekday": 228
+   },
+   "K": {
+    "rail": 196,
+    "sev": 9,
+    "bus": 3293,
+    "ship": 34,
+    "cable/ondemand": 38,
+    "total": 3419,
+    "no_dep_weekday": 706
+   },
+   "NÖ": {
+    "rail": 450,
+    "sev": 50,
+    "bus": 8671,
+    "ship": 12,
+    "tram": 1,
+    "cable/ondemand": 68,
+    "total": 8984,
+    "no_dep_weekday": 1544
+   },
+   "OÖ": {
+    "rail": 310,
+    "sev": 36,
+    "bus": 5599,
+    "ship": 27,
+    "tram": 63,
+    "cable/ondemand": 4,
+    "total": 5828,
+    "no_dep_weekday": 861
+   },
+   "S": {
+    "rail": 130,
+    "sev": 2,
+    "bus": 2587,
+    "ship": 4,
+    "cable/ondemand": 57,
+    "total": 2712,
+    "no_dep_weekday": 475
+   },
+   "ST": {
+    "rail": 230,
+    "sev": 14,
+    "bus": 8737,
+    "ship": 10,
+    "tram": 107,
+    "cable/ondemand": 96,
+    "total": 8996,
+    "no_dep_weekday": 2213
+   },
+   "T": {
+    "rail": 231,
+    "sev": 13,
+    "bus": 3791,
+    "ship": 8,
+    "tram": 57,
+    "cable/ondemand": 71,
+    "total": 3922,
+    "no_dep_weekday": 924
+   },
+   "V": {
+    "rail": 41,
+    "sev": 3,
+    "bus": 2127,
+    "ship": 1,
+    "cable/ondemand": 2,
+    "total": 2140,
+    "no_dep_weekday": 419
+   },
+   "W": {
+    "rail": 52,
+    "bus": 1731,
+    "subway": 98,
+    "tram": 406,
+    "cable/ondemand": 21,
+    "total": 1958,
+    "no_dep_weekday": 223
+   }
+  },
+  "localities": 21050
+ },
+ "size": {
+  "places.bin": {
+   "bytes": 3060746,
+   "gzip -9": 1193688
+  },
+  "localities.bin": {
+   "bytes": 1482788,
+   "gzip -9": 641587
+  }
+ },
+ "attribution": "Haltestellen/Orte (places.bin) – Datenquellen und Lizenzen\n• Haltestellenliste: Mobilitätsverbünde Österreich OG (Haltestellen-WFS, Stand 10/2025), bereitgestellt über\n  ÖV-Güteklassen 2025 (ÖROK / BMIMI / AustriaTech, https://www.mobilitydata.gv.at/daten/öv-güteklassen).\n  Bei Nutzung von data.mobilitaetsverbuende.at: „Datenquelle: Mobilitätsverbünde Österreich OG,\n  Datenlizenz Mobilitätsverbünde Österreich v1.1 (https://data.mobilitaetsverbuende.at); verändert\n  (zusammengeführt, gekürzt, Koordinaten umgerechnet).“\n• Bahnhöfe: ÖBB-Personenverkehr AG, Soll-Fahrplan GTFS 2026, CC BY 4.0 (https://data.oebb.at).\n• Wien: Stadt Wien – data.wien.gv.at (Wiener Linien GTFS), CC BY 4.0.\n• Steiermark: Land Steiermark – data.steiermark.gv.at (Haltestellen des Verkehrsverbundes Steiermark), CC BY 4.0.\n• Gemeinden/Bundesländer: Statistik Austria – data.statistik.gv.at (Gemeindegrenzen 01.01.2026), CC BY 4.0.\n• EVA-Nummern der Bahnhöfe: Datenquelle ÖBB-Infrastruktur AG (Verzeichnis der Verkehrsstationen), CC BY 3.0 AT.\n• Orte (localities.bin): © OpenStreetMap-Mitwirkende, ODbL 1.0 (https://www.openstreetmap.org/copyright);\n  localities.bin ist eine abgeleitete Datenbank unter ODbL 1.0. places.bin enthält keine OSM-Daten."
+}

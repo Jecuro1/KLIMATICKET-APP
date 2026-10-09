@@ -144,8 +144,12 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
     public var importance: Int
     /// Alternative spellings used in search ("Innsbruck Hbf", "St.Pölten Hbf", "Linz/Donau Hauptbahnhof").
     public var aliases: [String]?
+    /// HAFAS product bits (`PlaceProducts`) when the station comes from the place database (bus, tram, ship …).
+    /// nil for entries of the bundled stations.json.
+    public var products: Int?
 
-    public init(id: String, name: String, lat: Double, lon: Double, state: String, kind: Kind = .rail, importance: Int = 0, aliases: [String]? = nil) {
+    public init(id: String, name: String, lat: Double, lon: Double, state: String, kind: Kind = .rail, importance: Int = 0,
+                aliases: [String]? = nil, products: Int? = nil) {
         self.id = id
         self.name = name
         self.lat = lat
@@ -154,10 +158,21 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
         self.kind = kind
         self.importance = importance
         self.aliases = aliases
+        self.products = products
     }
 
     public var location: GeoPoint { GeoPoint(latitude: lat, longitude: lon) }
     public var federalState: FederalState? { FederalState(rawValue: state) }
+
+    /// Most likely mode for a trip from/to this station: from `products` when known, else from `kind`.
+    public var primaryMode: TransportMode {
+        if let products, products != 0 { return PlaceProducts(rawValue: products).primaryMode }
+        switch kind {
+        case .rail: return .train
+        case .metro: return .metro
+        case .tramHub: return .tram
+        }
+    }
 }
 
 // MARK: - Tickets
