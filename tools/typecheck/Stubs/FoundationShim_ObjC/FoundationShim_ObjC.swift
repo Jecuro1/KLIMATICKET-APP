@@ -147,6 +147,8 @@ open class NSSecureUnarchiveFromDataTransformer: ValueTransformer, @unchecked Se
 extension FileManager {
     /// NSFileManager.h: containerURLForSecurityApplicationGroupIdentifier:
     public func containerURL(forSecurityApplicationGroupIdentifier groupIdentifier: String) -> URL? { _kbUnimplemented() }
+    /// @property (nullable, readonly, copy) id<NSObject,NSCopying,NSCoding> ubiquityIdentityToken
+    public var ubiquityIdentityToken: (any NSCoding & NSCopying & NSObjectProtocol)? { _kbUnimplemented() }
 }
 
 extension ProcessInfo {
@@ -155,11 +157,106 @@ extension ProcessInfo {
     public var isiOSAppOnMac: Bool { _kbUnimplemented() }
     /// @property (readonly, getter=isLowPowerModeEnabled) BOOL lowPowerModeEnabled
     public var isLowPowerModeEnabled: Bool { _kbUnimplemented() }
+    /// typedef NS_ENUM(NSInteger, NSProcessInfoThermalState)
+    public enum ThermalState: Int, @unchecked Sendable {
+        case nominal = 0, fair, serious, critical
+    }
+    /// @property (readonly) NSProcessInfoThermalState thermalState
+    public var thermalState: ProcessInfo.ThermalState { _kbUnimplemented() }
+    /// NSProcessInfoThermalStateDidChangeNotification
+    public class var thermalStateDidChangeNotification: NSNotification.Name { _kbUnimplemented() }
 }
 
 extension Notification.Name {
     /// NSProcessInfoPowerStateDidChangeNotification
     public static var NSProcessInfoPowerStateDidChange: Notification.Name { _kbUnimplemented() }
+}
+
+// MARK: - NSUbiquitousKeyValueStore.h (Darwin only)
+
+open class NSUbiquitousKeyValueStore: NSObject {
+    /// @property (class, readonly, strong) NSUbiquitousKeyValueStore *defaultStore
+    open class var `default`: NSUbiquitousKeyValueStore { _kbUnimplemented() }
+    public override init() { super.init() }
+    open func object(forKey aKey: String) -> Any? { _kbUnimplemented() }
+    open func set(_ anObject: Any?, forKey aKey: String) { _kbUnimplemented() }
+    open func removeObject(forKey aKey: String) { _kbUnimplemented() }
+    open func string(forKey aKey: String) -> String? { _kbUnimplemented() }
+    open func array(forKey aKey: String) -> [Any]? { _kbUnimplemented() }
+    open func dictionary(forKey aKey: String) -> [String: Any]? { _kbUnimplemented() }
+    open func data(forKey aKey: String) -> Data? { _kbUnimplemented() }
+    open func longLong(forKey aKey: String) -> Int64 { _kbUnimplemented() }
+    open func double(forKey aKey: String) -> Double { _kbUnimplemented() }
+    open func bool(forKey aKey: String) -> Bool { _kbUnimplemented() }
+    open func set(_ aString: String?, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ aData: Data?, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ anArray: [Any]?, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ aDictionary: [String: Any]?, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ value: Int64, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ value: Double, forKey aKey: String) { _kbUnimplemented() }
+    open func set(_ value: Bool, forKey aKey: String) { _kbUnimplemented() }
+    open var dictionaryRepresentation: [String: Any] { _kbUnimplemented() }
+    /// - (BOOL)synchronize  (imported Objective-C methods are implicitly @discardableResult)
+    @discardableResult open func synchronize() -> Bool { _kbUnimplemented() }
+    /// NSUbiquitousKeyValueStoreDidChangeExternallyNotification
+    public class var didChangeExternallyNotification: NSNotification.Name { _kbUnimplemented() }
+}
+public let NSUbiquitousKeyValueStoreChangeReasonKey: String = "NSUbiquitousKeyValueStoreChangeReasonKey"
+public let NSUbiquitousKeyValueStoreChangedKeysKey: String = "NSUbiquitousKeyValueStoreChangedKeysKey"
+public var NSUbiquitousKeyValueStoreServerChange: Int { 0 }
+public var NSUbiquitousKeyValueStoreInitialSyncChange: Int { 1 }
+public var NSUbiquitousKeyValueStoreQuotaViolationChange: Int { 2 }
+public var NSUbiquitousKeyValueStoreAccountChange: Int { 3 }
+
+// MARK: - NSListFormatter.h (Darwin only)
+
+open class ListFormatter: Formatter, @unchecked Sendable {
+    public override init() { super.init() }
+    public required init?(coder: NSCoder) { _kbUnimplemented() }
+    /// @property (null_resettable, copy) NSLocale *locale
+    open var locale: Locale! = .current
+    open var itemFormatter: Formatter?
+    open class func localizedString(byJoining strings: [String]) -> String { _kbUnimplemented() }
+    open func string(from items: [Any]) -> String? { _kbUnimplemented() }
+}
+
+// MARK: - NSDateComponentsFormatter.h
+// swift-corelibs-foundation marks DateComponentsFormatter unavailable; this declaration shadows it.
+
+open class DateComponentsFormatter: Formatter, @unchecked Sendable {
+    /// NS_ENUM(NSInteger, NSDateComponentsFormatterUnitsStyle)
+    public enum UnitsStyle: Int, @unchecked Sendable {
+        case positional = 0, abbreviated, short, full, spellOut, brief
+    }
+    /// NS_OPTIONS(NSUInteger, NSDateComponentsFormatterZeroFormattingBehavior)
+    public struct ZeroFormattingBehavior: OptionSet, @unchecked Sendable {
+        public let rawValue: UInt
+        public init(rawValue: UInt) { self.rawValue = rawValue }
+        public static var `default`: ZeroFormattingBehavior { .init(rawValue: 1 << 0) }
+        public static var dropLeading: ZeroFormattingBehavior { .init(rawValue: 1 << 1) }
+        public static var dropMiddle: ZeroFormattingBehavior { .init(rawValue: 1 << 2) }
+        public static var dropTrailing: ZeroFormattingBehavior { .init(rawValue: 1 << 3) }
+        public static var dropAll: ZeroFormattingBehavior { .init(rawValue: 14) }
+        public static var pad: ZeroFormattingBehavior { .init(rawValue: 1 << 16) }
+    }
+    public override init() { super.init() }
+    public required init?(coder: NSCoder) { _kbUnimplemented() }
+    open func string(from components: DateComponents) -> String? { _kbUnimplemented() }
+    open func string(from startDate: Date, to endDate: Date) -> String? { _kbUnimplemented() }
+    open func string(from ti: TimeInterval) -> String? { _kbUnimplemented() }
+    open class func localizedString(from components: DateComponents, unitsStyle: DateComponentsFormatter.UnitsStyle) -> String? { _kbUnimplemented() }
+    open var unitsStyle: DateComponentsFormatter.UnitsStyle = .positional
+    /// @property NSCalendarUnit allowedUnits
+    open var allowedUnits: NSCalendar.Unit = []
+    open var zeroFormattingBehavior: DateComponentsFormatter.ZeroFormattingBehavior = .default
+    open var calendar: Calendar?
+    open var referenceDate: Date?
+    open var allowsFractionalUnits: Bool = false
+    open var maximumUnitCount: Int = 0
+    open var collapsesLargestUnit: Bool = false
+    open var includesApproximationPhrase: Bool = false
+    open var includesTimeRemainingPhrase: Bool = false
+    open var formattingContext: Formatter.Context = .unknown
 }
 
 // MARK: - NSRelativeDateTimeFormatter.h (Darwin only)

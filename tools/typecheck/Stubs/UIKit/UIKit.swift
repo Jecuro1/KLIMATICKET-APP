@@ -14,6 +14,8 @@
 @_exported import Foundation
 @_exported import FoundationShim
 @_exported import CoreGraphics
+// UIView.h imports <QuartzCore/QuartzCore.h> (view.layer)
+@_exported import QuartzCore
 // UIKit.swiftinterface: @_exported import Accessibility (so `import SwiftUI`/`import UIKit`
 // sees AXCustomContent, AXChartDescriptor, ...)
 @_exported import Accessibility
@@ -379,6 +381,9 @@ open class UIImage: NSObject, NSSecureCoding, @unchecked Sendable {
     public typealias SymbolScale = SymbolConfiguration.Scale
     public typealias SymbolWeight = SymbolConfiguration.Weight
 
+    /// The Clang importer maps the factory method `+systemImageNamed:` to `init?(systemName:)`; calling it
+    /// as a class method is an error in Swift.
+    @available(*, unavailable, renamed: "init(systemName:)", message: "use object construction 'UIImage(systemName:)'")
     open class func systemImageNamed(_ name: String) -> UIImage? { _uiStub() }
     open class var add: UIImage { _uiStub() }
     open class var remove: UIImage { _uiStub() }
@@ -534,6 +539,9 @@ open class UIView: UIResponder, UITraitEnvironment {
     open var layoutMargins: UIEdgeInsets = .zero
     open var intrinsicContentSize: CGSize { _uiStub() }
     open var translatesAutoresizingMaskIntoConstraints: Bool = true
+    /// @property(class, nonatomic, readonly) Class layerClass  (overridden by subclasses)
+    open class var layerClass: AnyClass { CALayer.self }
+    open var layer: CALayer { _uiStub() }
     open func addSubview(_ view: UIView) { _uiStub() }
     open func removeFromSuperview() { _uiStub() }
     open func layoutSubviews() { _uiStub() }

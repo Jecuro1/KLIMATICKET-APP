@@ -19,3 +19,7 @@ _FormatSpecifiable
 Selector
 PersonNameComponentsFormatter
 RelativeDateTimeFormatter
+MeasurementFormatUnitUsage
+AsyncLineSequence
+AsyncCharacterSequence
+AsyncUnicodeScalarSequence

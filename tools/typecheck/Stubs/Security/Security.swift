@@ -3,6 +3,7 @@
 //   CFDictionaryRef -> CFDictionary, CFTypeRef * -> UnsafeMutablePointer<CFTypeRef?>?,
 //   OSStatus constants in CF_ENUM(OSStatus) -> `var errSecX: OSStatus { get }`,
 //   `extern const CFStringRef kSecX` -> `let kSecX: CFString`.
+// Imported C functions are implicitly @discardableResult (no "result unused" warning in Xcode).
 
 @_exported import Foundation
 @_exported import FoundationShim
@@ -14,12 +15,17 @@
 public typealias SecRandomRef = OpaquePointer
 public let kSecRandomDefault: SecRandomRef = OpaquePointer(bitPattern: 1)!
 /// int SecRandomCopyBytes(SecRandomRef __nullable rnd, size_t count, void *bytes)
+@discardableResult
 public func SecRandomCopyBytes(_ rnd: SecRandomRef?, _ count: Int, _ bytes: UnsafeMutableRawPointer) -> Int32 { _secStub() }
 
 // MARK: SecItem.h
+@discardableResult
 public func SecItemCopyMatching(_ query: CFDictionary, _ result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus { _secStub() }
+@discardableResult
 public func SecItemAdd(_ attributes: CFDictionary, _ result: UnsafeMutablePointer<CFTypeRef?>?) -> OSStatus { _secStub() }
+@discardableResult
 public func SecItemUpdate(_ query: CFDictionary, _ attributesToUpdate: CFDictionary) -> OSStatus { _secStub() }
+@discardableResult
 public func SecItemDelete(_ query: CFDictionary) -> OSStatus { _secStub() }
 
 public let kSecClass: CFString = "class"
@@ -68,6 +74,7 @@ public var errSecMissingEntitlement: OSStatus { -34018 }
 public var errSecUserCanceled: OSStatus { -128 }
 
 /// CFStringRef SecCopyErrorMessageString(OSStatus status, void * __nullable reserved)
+@discardableResult
 public func SecCopyErrorMessageString(_ status: OSStatus, _ reserved: UnsafeMutableRawPointer?) -> CFString? { _secStub() }
 
 // MARK: SecAccessControl.h (only the type, CryptoKit mentions it)

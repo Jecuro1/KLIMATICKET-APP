@@ -83,7 +83,38 @@ def parse_diags(output, path_map):
                 diags[-1][5].append(d)
             continue
         diags.append(list(d) + [[]])
+    for d in diags:
+        _attach_macro_expansion(d)
     return diags
+
+
+MACRO_NOTE_RX = re.compile(r"^in expansion of macro '([^']+)'")
+
+
+def _is_macro_buffer(path):
+    return os.path.basename(path).startswith("@__swiftmacro_")
+
+
+def _attach_macro_expansion(d):
+    """A diagnostic inside a macro expansion (e.g. @Query(filter: #Predicate<A>) on a [B] property,
+    @AppStorage inside an @Observable class) is reported in a generated buffer
+    (/tmp/swift-generated-sources/@__swiftmacro_...swift). Report it at the macro use in our source
+    instead (the "in expansion of macro" note, which is where Xcode shows it); the buffer position is
+    kept as a note."""
+    if not _is_macro_buffer(d[1]):
+        return
+    macros = [MACRO_NOTE_RX.match(n[4]).group(1) for n in d[5] if MACRO_NOTE_RX.match(n[4])]
+    # the expansion site in a real file; for a macro expanded inside another expansion (e.g.
+    # @ObservationTracked added by @Observable) the first note that points into a real file
+    real = [n for n in d[5] if MACRO_NOTE_RX.match(n[4]) and not _is_macro_buffer(n[1])] or \
+           [n for n in d[5] if not _is_macro_buffer(n[1])]
+    if not real:
+        return
+    n = real[0]
+    d[5].insert(0, ("note", d[1], d[2], d[3], "expanded code"))
+    d[1], d[2], d[3] = n[1], n[2], n[3]
+    if macros:
+        d[4] += " (in expansion of macro '%s')" % macros[0]
 
 
 def _call_args(text, start):
@@ -428,6 +459,10 @@ def main():
                 seen[k][6] += "," + d[6]
             continue
         seen[k] = d
+    # Warnings located in the stub sources are artefacts of the stand-ins (e.g. Objective-C @optional
+    # delegate methods modelled as protocol-extension defaults), never something to fix in the app.
+    for k in [k for k, d in seen.items() if d[0] == "warning" and d[1].startswith("tools/typecheck/Stubs/")]:
+        del seen[k]
     shown = [d for d in seen.values() if d[0] == "error" or (args.warnings and d[0] == "warning")]
     shown.sort(key=lambda d: (d[1], d[2], d[3]))
     for d in shown:
