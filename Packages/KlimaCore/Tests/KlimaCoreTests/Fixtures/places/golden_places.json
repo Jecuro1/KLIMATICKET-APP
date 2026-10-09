@@ -1,0 +1,5625 @@
+{
+ "schema": "klimabilanz.places.golden/2",
+ "engine": "scripts/places_reference.py == Packages/KlimaCore/Sources/KlimaCore/Places (weights v1)",
+ "dataset_sha256_16": {
+  "places.bin": "ba824851cc1ae301",
+  "localities.bin": "e9614337c81f5312"
+ },
+ "records": 60761,
+ "how_to_read": "offline_top5 = search_offline(limit 12); merged_top5 = merge(offline, live fixture) top 5; prefixes = public search(limit 20). 'S:' stop/station, 'Ort:' locality, 'A:' address, 'P:' POI.",
+ "cases": [
+  {
+   "input": "inns",
+   "mode": "planner",
+   "fixture": "lm_all_inns",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Technik",
+    "S:Innsbruck Bundesbahndirektion"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Innsbruck Hbf",
+    "Ort:Innsbruck",
+    "S:Innsbruck Westbahnhof",
+    "Ort:Wilten (Innsbruck)",
+    "S:Innsbruck Technik"
+   ]
+  },
+  {
+   "input": "innsbruck h",
+   "mode": "planner",
+   "fixture": "lm_all_innsbruck_h",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Hegnerstraße",
+    "S:Innsbruck Hötting Bahnhof",
+    "S:Innsbruck Hafen",
+    "S:Innsbruck Arthur-Haidl-Promenade"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Hochhaus Schützenstraße",
+    "S:Innsbruck Haydnplatz",
+    "S:Innsbruck Höttinger Auffahrt",
+    "S:Innsbruck Hegnerstraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Innsbruck Hbf",
+    "Ort:Innsbruck",
+    "S:Innsbruck Hochhaus Schützenstraße",
+    "S:Innsbruck Höttinger Auffahrt",
+    "S:Innsbruck Haydnplatz"
+   ]
+  },
+  {
+   "input": "wien w",
+   "mode": "planner",
+   "fixture": "lm_all_wien_w",
+   "offline_top5": [
+    "S:Wien Westbahnhof",
+    "S:Wien Weißenböckstraße",
+    "S:Wien Wallensteinplatz",
+    "S:Wien Wienerbergbrücke",
+    "S:Wien Wolf in der Au"
+   ],
+   "merged_top5": [
+    "S:Wien Westbahnhof",
+    "S:Wien Weißenböckstraße",
+    "S:Wien Wallensteinplatz",
+    "S:Wien Wienerbergbrücke",
+    "S:Wien Wolf in der Au"
+   ],
+   "live_rows": 7,
+   "live_top5": [
+    "S:Wien Hbf (U)",
+    "Ort:Wien",
+    "S:Wien Floridsdorf Bahnhof (U)",
+    "S:Wien Hütteldorf Bahnhof (U)",
+    "S:Wien Handelskai Bahnhst (U)"
+   ]
+  },
+  {
+   "input": "st anton",
+   "mode": "planner",
+   "fixture": "lm_all_st_anton",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese",
+    "S:St. Anton an der Jeßnitz Sportplatz"
+   ],
+   "merged_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "Ort:St.Anton am Arlberg",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St.Anton am Arlberg Terminal West",
+    "S:St. Anton am Arlberg Posteinfahrt"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:St.Anton am Arlberg",
+    "S:St.Anton am Arlberg Bahnhof",
+    "S:St.Anton am Arlberg Alt St.Anton",
+    "S:St.Anton im Montafon Bahnhst",
+    "S:St.Anton am Arlberg Terminal West"
+   ]
+  },
+  {
+   "input": "hall in",
+   "mode": "planner",
+   "fixture": "lm_all_hall_in",
+   "offline_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus"
+   ],
+   "merged_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall in Tirol-Thaur Bahnhst",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Burgfrieden",
+    "S:Hall in Tirol Kurhaus"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall in Tirol-Thaur Bahnhst",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "S:Hall in Tirol Alter Zoll"
+   ]
+  },
+  {
+   "input": "Hall i.T.",
+   "mode": "planner",
+   "fixture": "lm_all_hall_i_t",
+   "offline_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "Ort:Hall",
+    "S:Hall in Tirol Kurhaus"
+   ],
+   "merged_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol-Thaur Bahnhst",
+    "Ort:Hall",
+    "S:Hall in Tirol Kurhaus"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Hall i' th' Wood",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall in Tirol-Thaur Bahnhst",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Abzw Bahnhof"
+   ]
+  },
+  {
+   "input": "ibk",
+   "mode": "planner",
+   "fixture": "lm_all_ibk",
+   "offline_top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "merged_top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Technik"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:Innsbruck",
+    "P:Heilstättenschule am LKH. Ibk./Kinderklinik, Anichstrasse 35, 6020 Innsbruck",
+    "S:Innsbruck Hbf",
+    "Ort:Imst",
+    "S:Imst-Pitztal Bahnhof"
+   ]
+  },
+  {
+   "input": "flughafen",
+   "mode": "planner",
+   "fixture": "lm_all_flughafen",
+   "offline_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ],
+   "merged_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "Ort:Flughafen Wien",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:Flughafen Wien",
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz",
+    "S:Innsbruck Flughafen"
+   ]
+  },
+  {
+   "input": "Stephansplatz",
+   "mode": "planner",
+   "fixture": "lm_all_stephansplatz",
+   "offline_top5": [
+    "S:Wien Stephansplatz"
+   ],
+   "merged_top5": [
+    "S:Wien Stephansplatz",
+    "P:Stephansdom, Stephansplatz 3, 1010 Wien",
+    "P:Souvenir Jelesitz, Stephansplatz 11, 1010 Wien",
+    "P:Souvenir outlet, Stephansplatz 10, 1010 Wien",
+    "P:Alte Feldapotheke, Stephansplatz 8a, 1010 Wien"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "P:Stephansdom, Stephansplatz 3, 1010 Wien",
+    "S:Wien Stephansplatz (U)",
+    "P:Souvenir Jelesitz, Stephansplatz 11, 1010 Wien",
+    "P:Souvenir outlet, Stephansplatz 10, 1010 Wien",
+    "P:Alte Feldapotheke, Stephansplatz 8a, 1010 Wien"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsbruck",
+   "mode": "planner",
+   "fixture": "lm_all_maria_theresien_strasse_1_innsbruck",
+   "offline_top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ],
+   "merged_top5": [
+    "A:6020 Innsbruck, Maria-Theresien-Straße 1",
+    "S:Innsbruck Maria-Theresien-Straße",
+    "P:Manna, Maria-Theresien-Strasse 3, 6020 Innsbruck",
+    "P:MPREIS, Maria-Theresien-Strasse 31, 6020 Innsbruck",
+    "P:Müller, Maria-Theresien-Strasse 18, 6020 Innsbruck"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "A:6020 Innsbruck, Maria-Theresien-Straße 1",
+    "S:Innsbruck Maria-Theresien-Straße",
+    "P:Manna, Maria-Theresien-Strasse 3, 6020 Innsbruck",
+    "P:MPREIS, Maria-Theresien-Strasse 31, 6020 Innsbruck",
+    "P:Müller, Maria-Theresien-Strasse 18, 6020 Innsbruck"
+   ]
+  },
+  {
+   "input": "Hofburg",
+   "mode": "planner",
+   "fixture": "lm_all_hofburg",
+   "offline_top5": [
+    "S:Innsbruck Congress/Hofburg"
+   ],
+   "merged_top5": [
+    "P:Hofburg, Rennweg 1, 6020 Innsbruck",
+    "P:Hofburg, 1010 Wien",
+    "S:Innsbruck Congress/Hofburg",
+    "A:1010 Wien, Hofburg",
+    "P:Hofburgkapelle, 1010 Wien"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "P:Hofburg, Rennweg 1, 6020 Innsbruck",
+    "P:Hofburg, 1010 Wien",
+    "S:Innsbruck Congress/Hofburg",
+    "P:Hofburgkapelle, 1010 Wien",
+    "P:Sissi in der Hofburg, 6020"
+   ]
+  },
+  {
+   "input": "Lech Postamt",
+   "mode": "planner",
+   "fixture": "lm_all_lech_postamt",
+   "offline_top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Hermagor Postamt"
+   ],
+   "merged_top5": [
+    "S:Lech am Arlberg Dorfhus",
+    "Ort:Lech",
+    "S:Sölden Postamt",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Feuerwehrhaus"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Lech Dorfhus",
+    "S:Höchst/Rhein Postamt",
+    "S:Landeck Postamt",
+    "S:Sölden Postamt",
+    "S:Niederndorf in Tirol Postamt"
+   ]
+  },
+  {
+   "input": "wien",
+   "mode": "planner",
+   "fixture": "lm_all_wien",
+   "offline_top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ],
+   "merged_top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf",
+    "S:Wien Westbahnhof"
+   ],
+   "live_rows": 7,
+   "live_top5": [
+    "Ort:Wien",
+    "S:Wien Hbf (U)",
+    "S:Wien Floridsdorf Bahnhof (U)",
+    "S:Wien Hütteldorf Bahnhof (U)",
+    "S:Wien Handelskai Bahnhst (U)"
+   ]
+  },
+  {
+   "input": "Wien Hbf",
+   "mode": "planner",
+   "fixture": "lm_all_wien_hbf",
+   "offline_top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hauptbahnhof Süd",
+    "S:Wien Hauptbahnhof Ost",
+    "S:Wien Hauptbahnhof Autoreisezug",
+    "S:Wiener Neustadt Hauptbahnhof"
+   ],
+   "merged_top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wien Hauptbahnhof Ost",
+    "S:Wien Hauptbahnhof Autoreisezug",
+    "S:Wiener Neustadt Hbf./Busbahnhof"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Wien Hbf (U)",
+    "S:Wr.Neustadt Hbf",
+    "P:B&B Hotel Wien-Hbf, Bloch-Bauer-Promenade 5, 1100 Wien",
+    "Ort:Wien",
+    "S:Wien Floridsdorf Bahnhof (U)"
+   ]
+  },
+  {
+   "input": "Salzburg",
+   "mode": "planner",
+   "fixture": "lm_all_salzburg",
+   "offline_top5": [
+    "Ort:Salzburg",
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn"
+   ],
+   "merged_top5": [
+    "Ort:Salzburg",
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:Salzburg",
+    "S:Salzburg Hbf",
+    "S:Salzburg Süd Bahnhst [in Elsbethen]",
+    "S:Salzburg Süd Bahnhst",
+    "Ort:Itzling (Salzburg)"
+   ]
+  },
+  {
+   "input": "graz hbf",
+   "mode": "planner",
+   "fixture": "lm_all_graz_hbf",
+   "offline_top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Daungasse/Hauptbahnhof",
+    "S:Graz Hauptbahnhof Autoreisezug"
+   ],
+   "merged_top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Daungasse/Hauptbahnhof",
+    "S:Graz Hauptbahnhof Autoreisezug",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Don Bosco Bahnhst"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Graz Hbf",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Don Bosco Bahnhst",
+    "S:Graz Hilmteich/Botanischer Garten",
+    "S:Graz Hasnerplatz/Pädagogische Hochschule"
+   ]
+  },
+  {
+   "input": "linz",
+   "mode": "planner",
+   "fixture": "lm_all_linz",
+   "offline_top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Linz/Donau Untergaumberg",
+    "S:Linz/Donau Mühlkreisbahnhof",
+    "S:Linz/Donau Ebelsberg Bahnhof"
+   ],
+   "merged_top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Linz/Donau Untergaumberg",
+    "S:Linz/Donau Urfahr Bahnhof",
+    "S:Linz/Donau Ebelsberg Bahnhof"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Linz/Donau Hbf",
+    "Ort:Linz/Donau",
+    "S:Linz/Donau Untergaumberg Bahnhst",
+    "S:Linz/Donau Urfahr Bahnhof",
+    "S:Linz/Donau Ebelsberg Bahnhst"
+   ]
+  },
+  {
+   "input": "Karlsplatz",
+   "mode": "planner",
+   "fixture": "lm_all_karlsplatz",
+   "offline_top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ],
+   "merged_top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:München Karlsplatz",
+    "S:Wien Bösendorferstraße/Karlsplatz U",
+    "P:Karlskirche, Karlsplatz 10, 1040 Wien"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Wien Karlsplatz (U)",
+    "P:Karlskirche, Karlsplatz 10, 1040 Wien",
+    "P:Kunsthalle Wien Karlsplatz, Treitlstrasse 2, 1040 Wien",
+    "P:Künstlerhaus Wien, Karlsplatz 5, 1010 Wien",
+    "S:Karlstetten Schlossplatz"
+   ]
+  },
+  {
+   "input": "Zell am See",
+   "mode": "planner",
+   "fixture": "lm_all_zell_am_see",
+   "offline_top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am See Postplatz",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Seewirt"
+   ],
+   "merged_top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Badhaus",
+    "S:Zell am See Friedhof"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Zell am See Bahnhof",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Badhaus",
+    "S:Zell am See Friedhof",
+    "S:Zell am See Hallenbad"
+   ]
+  },
+  {
+   "input": "St. Johann",
+   "mode": "planner",
+   "fixture": "lm_all_st_johann",
+   "offline_top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "Ort:St. Johann",
+    "Ort:Sankt Johann",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof"
+   ],
+   "merged_top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "Ort:St. Johann",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:St.Johann im Pongau Bahnhof",
+    "S:Alt St. Johann, Dorf",
+    "P:St. Johann, Strassburg",
+    "P:St. Johann am Walde, St. Johann am Walde",
+    "P:St. Johann am Wimberg, St. Johann am Wimberg"
+   ]
+  },
+  {
+   "input": "Mariahilfer Straße",
+   "mode": "planner",
+   "fixture": "lm_all_mariahilfer_strasse",
+   "offline_top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ],
+   "merged_top5": [
+    "A:1010 Wien, Passage Mariahilfer Straße",
+    "A:1060 Wien, Mariahilfer Straße",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Str./Arnsteing."
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "P:Mariahilferbräu, Mariahilfer Strasse 152, 1150 Wien",
+    "S:Wien Neubaugasse (U)",
+    "S:Wien Kaiserstraße/Mariahilfer Straße",
+    "P:Mariahilf, Mariahilfer Strasse 49, 1060 Wien",
+    "A:1010 Wien, Passage Mariahilfer Straße"
+   ]
+  },
+  {
+   "input": "Schönbrunn",
+   "mode": "planner",
+   "fixture": "lm_all_schonbrunn",
+   "offline_top5": [
+    "S:Wien Schönbrunn",
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Wien Margaretenplatz/Schönbrunner Straße"
+   ],
+   "merged_top5": [
+    "S:Wien Schönbrunn",
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Wien Margaretenplatz/Schönbrunner Straße"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Schönbrunn b.Böheimkirchen Abzw Wiesen",
+    "P:Schönbrunn Brezel, 1130 Wien",
+    "P:Schönbrunn-Vorpark, Winckelmannstrasse 34, 1150 Wien",
+    "P:Schönbrunner Bad, 1130 Wien",
+    "P:Schönbrunner Panoramabahn, 1130 Wien"
+   ]
+  },
+  {
+   "input": "Nordkette",
+   "mode": "planner",
+   "fixture": "lm_all_nordkette",
+   "offline_top5": [
+    "S:Innsbruck Nordkette"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Nordkette",
+    "P:Nordkette Shop, Herzog-Friedrich-Strasse 22, 6020 Innsbruck",
+    "P:Nordketten Standle, 6020",
+    "P:Tiroler Berglerbund Nordkette, 6020",
+    "A:6020 Innsbruck, Nordkettenstraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "P:Nordkette Shop, Herzog-Friedrich-Strasse 22, 6020 Innsbruck",
+    "S:Innsbruck Nordkette",
+    "P:Nordketten Standle, 6020",
+    "P:Tiroler Berglerbund Nordkette, 6020",
+    "P:Haus Nordkettenblick, 6141 Gemeinde Schönberg im Stubaital"
+   ]
+  },
+  {
+   "input": "Gmunden",
+   "mode": "planner",
+   "fixture": "lm_all_gmunden",
+   "offline_top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmunden Abzw Bahnhof",
+    "S:Gmunden Rathausplatz",
+    "S:Gmunden Klosterplatz"
+   ],
+   "merged_top5": [
+    "Ort:Gmunden",
+    "S:Gmunden Bahnhof",
+    "S:Gmunden Bezirkshauptmannschaft",
+    "S:Gmunden Klosterplatz",
+    "S:Gmunden Keramik"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:Gmunden",
+    "S:Gmunden Bahnhof",
+    "S:Gmunden Bezirkshauptmannschaft",
+    "Ort:Engelhof (Gmunden)",
+    "S:Gmunden Franz-Josef-Platz"
+   ]
+  },
+  {
+   "input": "Bregenz Bf",
+   "mode": "planner",
+   "fixture": "lm_all_bregenz_bf",
+   "offline_top5": [
+    "S:Bregenz Bahnhof",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Wendeplatz Bhf.",
+    "S:Bregenz Hafen Bhf Ersatz"
+   ],
+   "merged_top5": [
+    "S:Bregenz Bahnhof",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Wendeplatz Bhf.",
+    "S:Bregenz Hafen Bhf Ersatz"
+   ],
+   "live_rows": 8,
+   "live_top5": [
+    "S:Bregenz Bahnhof",
+    "S:Bregenz Barbenweg",
+    "S:Bregenz Blumenegg",
+    "S:Bregenz Brachsenweg",
+    "S:Bregenz Brielgasse"
+   ]
+  },
+  {
+   "input": "Seefeld",
+   "mode": "planner",
+   "fixture": "lm_all_seefeld",
+   "offline_top5": [
+    "Ort:Seefeld",
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "S:Seefeld (NÖ) Ort"
+   ],
+   "merged_top5": [
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "S:Seefeld in Tirol Mittelschule",
+    "S:Seefeld in Tirol Birkenlift"
+   ],
+   "live_rows": 9,
+   "live_top5": [
+    "S:Seefeld in Tirol Bahnhof",
+    "S:Seefeld in Tirol Birkenlift Talstation",
+    "S:Seefeld in Tirol Leutascher Straße",
+    "S:Seefeld in Tirol Mittelschule",
+    "S:Seefeld in Tirol Münchner Straße/Kreisverkehr"
+   ]
+  },
+  {
+   "input": "Westbahnhof",
+   "mode": "planner",
+   "fixture": "lm_all_westbahnhof",
+   "offline_top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Villach Westbahnhof (CHS)",
+    "S:Wien Westbahnhof/Gerstnerstraße"
+   ],
+   "merged_top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Westbahnhof, Aachen",
+    "S:Westbahnhof, Tübingen"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Westbahnhof, Aachen",
+    "S:Westbahnhof, Landau in der Pfalz",
+    "S:Westbahnhof, Mülheim an der Ruhr",
+    "S:Westbahnhof, Tübingen",
+    "S:Westbahnhof, Bonn"
+   ]
+  },
+  {
+   "input": "schwaz",
+   "mode": "planner",
+   "fixture": "lm_all_schwaz",
+   "offline_top5": [
+    "S:Schwaz Bahnhof",
+    "Ort:Schwaz",
+    "S:Schwaz Steinbrücke",
+    "S:Schwaz Tyrolit",
+    "S:Schwaz Krankenhaus"
+   ],
+   "merged_top5": [
+    "S:Schwaz Bahnhof",
+    "Ort:Schwaz",
+    "S:Schwaz Schwimmbad",
+    "S:Schwaz Adlerwerk",
+    "S:Schwaz Tyrolit"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "Ort:Schwaz",
+    "S:Schwaz Bahnhof",
+    "S:Schwaz Schwimmbad",
+    "S:Schwaz Adlerwerk",
+    "S:Schwaz Arbeitsamt/Tyrolit"
+   ]
+  },
+  {
+   "input": "St. Pölten",
+   "mode": "planner",
+   "fixture": "lm_all_st_poelten_dot_umlaut",
+   "offline_top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ],
+   "merged_top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St.Pölten Alpenbahnhof-Kaiserwald",
+    "S:St.Pölten Leobersdorfer Bahnstraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:St.Pölten Hbf",
+    "Ort:St.Pölten",
+    "S:St.Pölten Alpenbahnhof-Kaiserwald",
+    "S:St.Pölten Leobersdorfer Bahnstraße",
+    "S:St.Pölten Porschestraße Bahnhst"
+   ]
+  },
+  {
+   "input": "st polten",
+   "mode": "planner",
+   "fixture": "lm_all_st_polten_plain",
+   "offline_top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ],
+   "merged_top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St.Pölten Alpenbahnhof-Kaiserwald",
+    "S:St.Pölten Leobersdorfer Bahnstraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:St.Pölten Ing.-Leopold-Figl-Straße",
+    "S:St.Pölten Hbf",
+    "Ort:St.Pölten",
+    "S:St.Pölten Alpenbahnhof-Kaiserwald",
+    "S:St.Pölten Leobersdorfer Bahnstraße"
+   ]
+  },
+  {
+   "input": "St Poelten Hbf",
+   "mode": "planner",
+   "fixture": "lm_all_st_poelten_hbf_oe",
+   "offline_top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ],
+   "merged_top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald",
+    "S:St. Pölten Porschestraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:St.Pölten Hbf",
+    "Ort:St.Pölten",
+    "S:St.Pölten Alpenbahnhof-Kaiserwald",
+    "S:St.Pölten Leobersdorfer Bahnstraße",
+    "S:St.Pölten Porschestraße Bahnhst"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbahnhof",
+   "mode": "planner",
+   "fixture": "lm_all_sankt_poelten_hauptbahnhof",
+   "offline_top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ],
+   "merged_top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:St.Pölten Hbf",
+    "Ort:St.Pölten",
+    "P:Schülerhilfe, Bahnhofplatz, 3100 Sankt Pölten",
+    "P:Skoda, Ratzersdorfer Hauptstrasse 140, 3100 Sankt Pölten",
+    "P:Seminarzentrum Schwaighof, Landsbergerstrasse 11, 3100 Sankt Pölten"
+   ]
+  },
+  {
+   "input": "kitzbuehel",
+   "mode": "planner",
+   "fixture": "lm_all_kitzbuehel_ue",
+   "offline_top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ],
+   "merged_top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Zentrum",
+    "S:Kitzbühel Schwarzsee Bahnhof"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Kitzbühel Bahnhof",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Zentrum",
+    "S:Kitzbühel Schwarzsee Bahnhst",
+    "Ort:Kitzbühel"
+   ]
+  },
+  {
+   "input": "Kitzbuhel",
+   "mode": "planner",
+   "fixture": "lm_all_kitzbuhel_plain",
+   "offline_top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ],
+   "merged_top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Zentrum",
+    "S:Kitzbühel Schwarzsee Bahnhof"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "P:Kitzbuheler Handarbeiten, 6370 Stadt Kitzbühel",
+    "S:Kitzbühel Bahnhof",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Zentrum",
+    "S:Kitzbühel Schwarzsee Bahnhst"
+   ]
+  },
+  {
+   "input": "insbruck",
+   "mode": "planner",
+   "fixture": "lm_all_insbruck",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "P:Institut Doringer, Innsbrucker Bundesstrasse 83a, 5020 Salzburg",
+    "P:Institut für Botanik, Sternwartestrasse 15, 6020 Innsbruck",
+    "P:Institut für Psychosoziale Intervention  und Kommunikationsforschung, Schöpfstrasse 3, 6020 Innsbruck",
+    "P:Institut für Theorie und Zukunft des Rechts, Innrain 15, 6020 Innsbruck",
+    "S:Innsbruck Chemieinstitut"
+   ]
+  },
+  {
+   "input": "innsbruk",
+   "mode": "planner",
+   "fixture": "lm_all_innsbruk",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Bundesbahndirektion",
+    "S:Innsbruck Fürstenweg"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Innsbruck Hbf",
+    "Ort:Innsbruck",
+    "S:Innsbruck Westbahnhof",
+    "Ort:Wilten (Innsbruck)",
+    "S:Innsbruck Technik"
+   ]
+  },
+  {
+   "input": "Woergl",
+   "mode": "planner",
+   "fixture": "lm_all_woergl_oe",
+   "offline_top5": [
+    "Ort:Wörgl",
+    "S:Wörgl Hauptbahnhof",
+    "S:Wörgl Süd-Bruckhäusl Bahnhof",
+    "S:Wörgl Seniorenheim",
+    "S:Kundl Bahnhof"
+   ],
+   "merged_top5": [
+    "Ort:Wörgl",
+    "S:Wörgl Hauptbahnhof",
+    "S:Wörgl Süd-Bruckhäusl Bahnhof",
+    "S:Wörgl Abzw Bodensiedlung",
+    "S:Wörgl Abzw Wildschönau"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Wörgl Hbf",
+    "Ort:Wörgl",
+    "S:Wörgl Süd-Bruckhäusl Bahnhst",
+    "S:Wörgl Abzw Bodensiedlung",
+    "S:Wörgl Abzw Wildschönau"
+   ]
+  },
+  {
+   "input": "inns",
+   "mode": "tripLog",
+   "fixture": "lm_all_inns",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Technik",
+    "S:Innsbruck Bundesbahndirektion",
+    "S:Innsbruck Fürstenweg"
+   ],
+   "live_rows": 10,
+   "live_top5": [
+    "S:Innsbruck Hbf",
+    "Ort:Innsbruck",
+    "S:Innsbruck Westbahnhof",
+    "Ort:Wilten (Innsbruck)",
+    "S:Innsbruck Technik"
+   ]
+  },
+  {
+   "input": "innsbruck",
+   "mode": "tripLog",
+   "fixture": null,
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ],
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ],
+   "live_rows": 0,
+   "live_top5": []
+  },
+  {
+   "input": "wien",
+   "mode": "tripLog",
+   "fixture": "lm_all_wien",
+   "offline_top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf"
+   ],
+   "merged_top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling"
+   ],
+   "live_rows": 7,
+   "live_top5": [
+    "Ort:Wien",
+    "S:Wien Hbf (U)",
+    "S:Wien Floridsdorf Bahnhof (U)",
+    "S:Wien Hütteldorf Bahnhof (U)",
+    "S:Wien Handelskai Bahnhst (U)"
+   ]
+  },
+  {
+   "input": "bahnhof",
+   "mode": "planner",
+   "context": "bahnhof near Innsbruck",
+   "merged_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Messe Bahnhof",
+    "S:Innsbruck Hötting Bahnhof",
+    "S:Innsbruck Allerheiligenhöfe Bahnhof",
+    "S:Rum (Tirol) Bahnhof"
+   ],
+   "near": [
+    47.2654,
+    11.3928
+   ]
+  },
+  {
+   "input": "bahnhof",
+   "mode": "planner",
+   "context": "bahnhof no location",
+   "merged_top5": [
+    "S:Graz Don Bosco Bahnhof",
+    "S:Dornbirn Bahnhof",
+    "S:Feldkirch Bahnhof",
+    "S:Bregenz Bahnhof",
+    "S:Graz Puntigam Bahnhof"
+   ]
+  },
+  {
+   "input": "hbf",
+   "mode": "planner",
+   "context": "hbf near Graz",
+   "merged_top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Daungasse/Hauptbahnhof",
+    "S:Graz Hauptbahnhof Autoreisezug",
+    "S:Wien Hauptbahnhof",
+    "S:Linz/Donau Hauptbahnhof"
+   ],
+   "near": [
+    47.0707,
+    15.4395
+   ]
+  },
+  {
+   "input": "wien",
+   "mode": "planner",
+   "context": "wien with favourite Meidling",
+   "merged_top5": [
+    "Ort:Wien",
+    "S:Wien Meidling",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Hütteldorf"
+   ],
+   "favourites": [
+    "at:49:1015"
+   ]
+  },
+  {
+   "input": "inns",
+   "mode": "planner",
+   "context": "inns with recent Westbahnhof",
+   "merged_top5": [
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Radetzkystraße"
+   ],
+   "recents": {
+    "at:47:1189": {
+     "ageDays": 2,
+     "uses": 3
+    }
+   }
+  },
+  {
+   "input": "vie",
+   "mode": "planner",
+   "context": "vie (IATA alias)",
+   "merged_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Viehofen Bahnhof",
+    "Ort:Viehofen",
+    "S:Viechtwang Bahnhst"
+   ]
+  },
+  {
+   "input": "wr neustadt",
+   "mode": "planner",
+   "context": "wr neustadt",
+   "merged_top5": [
+    "Ort:Wiener Neustadt",
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wiener Neustadt Nord",
+    "S:Wiener Neustadt Anemonensee",
+    "S:Wiener Neustadt Babenbergerring"
+   ]
+  },
+  {
+   "input": "bruck mur",
+   "mode": "planner",
+   "context": "bruck mur",
+   "merged_top5": [
+    "S:Bruck an der Mur Bahnhof",
+    "Ort:Bruck an der Mur",
+    "S:Bruck an der Mur Mürzbrücke",
+    "S:Bruck an der Mur Papierfabrik",
+    "S:Bruck an der Mur Schulzentrum"
+   ]
+  },
+  {
+   "input": "mariahilferstrasse",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "mariahilferstr",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "mariahilferst",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "innsbruckhbf",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Adamgasse/Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "bahnhofstrasse",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Bahnhofstraße",
+    "S:Völs Bahnhof/Bahnhofstraße",
+    "S:Frastanz Bahnhofstraße",
+    "S:Straßwalchen Bahnhofstraße",
+    "S:Ehrwald Bahnhofstraße"
+   ]
+  },
+  {
+   "input": "westbahnhofstr",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Westbahnhof/Gerstnerstraße"
+   ]
+  },
+  {
+   "input": "west bahnhof",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Westendorf (Tirol) Bahnhof",
+    "S:Gleisdorf West Bahnhof",
+    "S:Piberbach-West Bahnhof",
+    "S:Murau West Bahnhof",
+    "S:Krummnußbaum an der Westbahn Bahnhof"
+   ]
+  },
+  {
+   "input": "hall thaur",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Hall-Thaur Bahnhof",
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Thaur",
+    "S:Hallein Bahnhof",
+    "Ort:Hallein"
+   ]
+  },
+  {
+   "input": "hallthaur",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Hall-Thaur Bahnhof"
+   ]
+  },
+  {
+   "input": "6020",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": []
+  },
+  {
+   "input": "innsbruck hbf",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Adamgasse/Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "ibk hbf",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Adamgasse/Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "wien mitte",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Mitte-Landstraße",
+    "S:Wien 1. Haidequerstraße Mitte",
+    "S:Wien Birostraße Mitte",
+    "S:Wien Finsterbuschstraße Mitte",
+    "S:Wien Neue Donau Mitte"
+   ]
+  },
+  {
+   "input": "praterstern",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Praterstern"
+   ]
+  },
+  {
+   "input": "wien praterstern",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Praterstern",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ]
+  },
+  {
+   "input": "u6 floridsdorf",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Floridsdorf",
+    "S:Wien Floridsdorf",
+    "S:Wien Floridsdorfer Markt",
+    "S:Wien Floridsdorfer Brücke",
+    "S:Wien Betriebshof Floridsdorf"
+   ]
+  },
+  {
+   "input": "landeck zams",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Landeck-Zams Bahnhof",
+    "Ort:Landeck",
+    "S:Landeck (Tirol) Bruggen",
+    "S:Landeck (Tirol) Perjener Brücke",
+    "S:Landeck (Tirol) Stampfle"
+   ]
+  },
+  {
+   "input": "zams",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Zams",
+    "S:Zams Buntweg",
+    "S:Zams Zentrum",
+    "S:Zams Grüner",
+    "S:Zams Siedlung"
+   ]
+  },
+  {
+   "input": "ehrwald",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Ehrwald",
+    "S:Ehrwald Zugspitzbahn Bahnhof",
+    "S:Ehrwald Kirchplatz",
+    "S:Ehrwald Unterdorf",
+    "S:Ehrwald Hofkapelle"
+   ]
+  },
+  {
+   "input": "lienz",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Lienz (Tirol) Bahnhof",
+    "Ort:Lienz",
+    "S:Lienz (Tirol) Dolomitenkreuzung",
+    "S:Lienz-Peggetz Bahnhof",
+    "S:Lienz (Tirol) Gymnasium"
+   ]
+  },
+  {
+   "input": "obergurgl",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Obergurgl",
+    "S:Obergurgl Hochgurglbahn",
+    "S:Obergurgl Festkoglbahn",
+    "S:Obergurgl Zentrum",
+    "S:Obergurgl Hotel Jagdhof"
+   ]
+  },
+  {
+   "input": "sölden",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Sölden",
+    "S:Sölden (Tirol) Giggijochbahn",
+    "S:Sölden (Tirol) Postamt",
+    "S:Sölden (Tirol) Gaislachkoglbahn",
+    "S:Sölden (Tirol) Mühlau"
+   ]
+  },
+  {
+   "input": "ischgl",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Ischgl",
+    "S:Ischgl Ebene",
+    "S:Ischgl Therme",
+    "S:Ischgl Waldhof",
+    "S:Ischgl Abzw Versahl"
+   ]
+  },
+  {
+   "input": "mayrhofen",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Mayrhofen",
+    "S:Mayrhofen (Tirol) Bahnhof",
+    "S:Mayrhofen (Tirol) Stillupklamm",
+    "S:Mayrhofen (Tirol) Postamt",
+    "S:Mayrhofen (Tirol) Penkenbahn"
+   ]
+  },
+  {
+   "input": "zillertal",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Strass im Zillertal Bahnhof",
+    "S:Aschau im Zillertal Bahnhof",
+    "S:Ramsau im Zillertal Bahnhof",
+    "S:Ried im Zillertal Bahnhaltestelle",
+    "S:Mayrhofen (Tirol) Bahnhof"
+   ]
+  },
+  {
+   "input": "bad ischl",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Bad Ischl Bahnhof",
+    "Ort:Bad Ischl",
+    "S:Bad Ischl Götzstraße",
+    "S:Bad Ischl Schröpferplatz",
+    "S:Bad Ischl Krankenhaus"
+   ]
+  },
+  {
+   "input": "hallstatt",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Hallstatt Bahnhst",
+    "Ort:Hallstatt",
+    "S:Hallstatt Gosaumühle",
+    "S:Hallstatt Nord",
+    "S:Hallstatt Lahn (Busterminal)"
+   ]
+  },
+  {
+   "input": "st wolfgang",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:St. Wolfgang",
+    "Ort:Sankt Wolfgang",
+    "S:St. Wolfgang im Salzkammergut Au",
+    "S:St. Wolfgang im Salzkammergut Appesbach",
+    "S:St. Wolfgang im Salzkammergut Schwarzenbach"
+   ]
+  },
+  {
+   "input": "graz jakomini",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Graz Jakominiplatz",
+    "S:Graz Jakominigürtel/tim",
+    "S:Graz Jakoministraße"
+   ]
+  },
+  {
+   "input": "jakominiplatz",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Graz Jakominiplatz"
+   ]
+  },
+  {
+   "input": "linz taubenmarkt",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Linz/Donau Taubenmarkt",
+    "S:Linz/Donau Hauptbahnhof",
+    "Ort:Linz",
+    "S:Linz/Donau Untergaumberg",
+    "S:Linz/Donau Mühlkreisbahnhof"
+   ]
+  },
+  {
+   "input": "klagenfurt",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Klagenfurt",
+    "S:Klagenfurt Hauptbahnhof",
+    "S:Klagenfurt Annabichl Bahnhst",
+    "S:Klagenfurt Ostbahnhof",
+    "S:Klagenfurt Heiligengeistplatz"
+   ]
+  },
+  {
+   "input": "villach",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Villach",
+    "S:Villach Hauptbahnhof",
+    "S:Villach Warmbad Bahnhst",
+    "S:Villach Westbahnhof",
+    "S:Villach Ringmauergasse"
+   ]
+  },
+  {
+   "input": "kufstein",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Kufstein Bahnhof",
+    "Ort:Kufstein",
+    "S:Kufstein Kinkstraße",
+    "S:Kufstein Inntalcenter",
+    "S:Kufstein Krankenhaus"
+   ]
+  },
+  {
+   "input": "wels",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Wels",
+    "S:Wels (OÖ) Hauptbahnhof",
+    "S:Wels (OÖ) Hbf (Busterminal)",
+    "S:Wels (OÖ) Hbf (Neustadt)",
+    "S:Wels (OÖ) Lokalbahn Bahnhof"
+   ]
+  },
+  {
+   "input": "steyr",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Steyr Bahnhof",
+    "Ort:Steyr",
+    "S:Steyr Pachergasse",
+    "S:Steyr Bahnhof (Busbahnhof/Stadtbus)",
+    "S:Steyr Blümelhuberberg"
+   ]
+  },
+  {
+   "input": "krems",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Krems an der Donau Bahnhof",
+    "Ort:Krems",
+    "S:Krems in Steiermark Bahnhof",
+    "S:Krems an der Donau Eyblparkstraße",
+    "Ort:Krems an der Donau"
+   ]
+  },
+  {
+   "input": "tulln",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Tulln Bahnhof",
+    "S:Tulln Stadt Bahnhof",
+    "S:Tulln Feuerwehr",
+    "S:Tulln Schubertpark",
+    "S:Tulln Messegelände"
+   ]
+  },
+  {
+   "input": "baden",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Baden bei Wien Bahnhof",
+    "Ort:Baden",
+    "S:Baden bei Wien Josefsplatz",
+    "S:Baden bei Wien Landesklinikum",
+    "S:Baden bei Wien Leesdorf"
+   ]
+  },
+  {
+   "input": "mödling",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Mödling Bahnhof",
+    "Ort:Mödling",
+    "S:Mödling Lerchengasse",
+    "S:Mödling Fürstenstraße",
+    "S:Mödling Badstraße"
+   ]
+  },
+  {
+   "input": "eisenstadt",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Eisenstadt Bahnhof",
+    "Ort:Eisenstadt",
+    "S:Eisenstadt Schule",
+    "S:Eisenstadt Domplatz",
+    "S:Eisenstadt Oberberg"
+   ]
+  },
+  {
+   "input": "bregenz",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "dornbirn",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Dornbirn Bahnhof",
+    "Ort:Dornbirn",
+    "S:Dornbirn Hatlerdorf Bahnhof",
+    "S:Dornbirn Schoren Bahnhof",
+    "S:Dornbirn Haselstauden Bahnhof"
+   ]
+  },
+  {
+   "input": "feldkirch",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Feldkirch Bahnhof",
+    "Ort:Feldkirch",
+    "S:Feldkirch Amberg Bahnhof",
+    "Ort:Feldkirchen",
+    "S:Feldkirch Katzenturm"
+   ]
+  },
+  {
+   "input": "bludenz",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Bludenz Bahnhof",
+    "Ort:Bludenz",
+    "S:Bludenz Moos Bahnhof",
+    "S:Bludenz Brunnenfeld Bahnhof",
+    "S:Bludenz Kasernplatz"
+   ]
+  },
+  {
+   "input": "Wien Hbf",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hauptbahnhof Süd",
+    "S:Wien Hauptbahnhof Ost",
+    "S:Wien Hauptbahnhof Autoreisezug",
+    "S:Wiener Neustadt Hauptbahnhof"
+   ]
+  },
+  {
+   "input": "Ibk",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "St. Anton",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese",
+    "S:St. Anton an der Jeßnitz Sportplatz"
+   ]
+  },
+  {
+   "input": "St.Anton a.A.",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton an der Jeßnitz Am Schober",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese"
+   ]
+  },
+  {
+   "input": "Hall i.T.",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Abzw Bahnhof",
+    "Ort:Hall",
+    "S:Hall in Tirol Kurhaus"
+   ]
+  },
+  {
+   "input": "Wr. Neustadt",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Wiener Neustadt",
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wiener Neustadt Nord",
+    "S:Wiener Neustadt Anemonensee",
+    "S:Wiener Neustadt Babenbergerring"
+   ]
+  },
+  {
+   "input": "Lauterach in Vlbg Hasenfeldgasse",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Lauterach (Vorarlberg) Hasenfeldgasse",
+    "S:Lauterach (Vorarlberg) Bahnhof",
+    "S:Lauterach (Vorarlberg) Inselstraße",
+    "S:Lauterach (Vorarlberg) Industriegebiet",
+    "S:Lauterach (Vorarlberg) Unterfeld Bahnhof"
+   ]
+  },
+  {
+   "input": "Steinbrunn im Bgld Bethausweg",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Steinbrunn Bethausweg",
+    "S:Steinbrunn Süd",
+    "S:Steinbrunn Steinfeldweg",
+    "S:Steinbrunn b.Schardenberg",
+    "S:Steinbrunn Untere Hauptstraße"
+   ]
+  },
+  {
+   "input": "Nußdorf b.Lienz Volksschule",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Nußdorf (Nußdorf-Debant) Volksschule",
+    "S:Lienz (Tirol) Peggetz Abzw Nußdorf",
+    "S:Lienz (Tirol) Nußdorfer Straße"
+   ]
+  },
+  {
+   "input": "Kleinmariazell NÖ Abzw Ort",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Klein-Mariazell Abzw. Stift",
+    "S:Klein-Mariazell Nr. 87",
+    "Ort:Klein-Mariazell",
+    "S:Klein-Mariazell Stift",
+    "S:Klein-Mariazell Nr. 77"
+   ]
+  },
+  {
+   "input": "Schwechat Flughafen",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Schwechat Bahnhof",
+    "Ort:Schwechat",
+    "S:Schwechat Möhringgasse",
+    "S:Schwechat Brauerei"
+   ]
+  },
+  {
+   "input": "Zwettl/Rodl",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Zwettl an der Rodl",
+    "S:Zwettl/Rodl Sturmmühle",
+    "S:Zwettl/Rodl Hintermühle",
+    "S:Zwettl/Rodl Abzw Geng",
+    "S:Zwettl/Rodl Glashütten"
+   ]
+  },
+  {
+   "input": "Mayrhofen Bahnhof",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Mayrhofen (Tirol) Bahnhof",
+    "Ort:Mayrhofen",
+    "S:Mayrhofen (Tirol) Stillupklamm",
+    "S:Mayrhofen (Tirol) Postamt",
+    "S:Mayrhofen (Tirol) Penkenbahn"
+   ]
+  },
+  {
+   "input": "Obertauern",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "Ort:Obertauern",
+    "S:Obertauern (Tweng) Plattenkar",
+    "S:Obertauern (Tweng) Petersbühel",
+    "S:Obertauern (Untertauern) Passhöhe",
+    "S:Obertauern (Untertauern) Wisenegg"
+   ]
+  },
+  {
+   "input": "Hintertux Gletscher",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Hintertux Gletscherbahn",
+    "Ort:Hintertux",
+    "S:Hintertux Feuerwehr",
+    "S:Neustift im Stubaital Stubaier Gletscher",
+    "S:Innsbruck Gletscherblick"
+   ]
+  },
+  {
+   "input": "Wolfgangsee",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Ried am Wolfgangsee Bernau",
+    "S:Ried am Wolfgangsee Raudaschl",
+    "S:Ried am Wolfgangsee Leopoldhof",
+    "S:Ried am Wolfgangsee HLW",
+    "S:Ried am Wolfgangsee Falkenstein"
+   ]
+  },
+  {
+   "input": "Achensee Schiff",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Maurach (Eben am Achensee) Buchau Schiffshaltestelle",
+    "S:Maurach (Eben am Achensee) Seespitz Schiffshaltestelle",
+    "Ort:Achensee",
+    "S:Jenbach (Tirol) Bahnhof",
+    "S:Achenkirch Abzw Achensee"
+   ]
+  },
+  {
+   "input": "Feuerkogel",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Ebensee (am Traunsee) Feuerkogelbahn"
+   ]
+  },
+  {
+   "input": "Bad Gastein",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Bad Gastein Bahnhof",
+    "Ort:Bad Gastein",
+    "S:Bad Gastein Mozartplatz",
+    "S:Bad Gastein Gemeindesiedlung",
+    "S:Bad Gastein Feuerwehr"
+   ]
+  },
+  {
+   "input": "Gmünd NÖ",
+   "mode": "planner",
+   "context": "extra",
+   "offline_top5": [
+    "S:Gmünd (NÖ) Bahnhof",
+    "Ort:Gmünd",
+    "S:Gmünd (NÖ) Bahnhofstraße",
+    "S:Gmünd (NÖ) Bezirkshauptmannschaft",
+    "S:Gmünd (NÖ) Schulzentrum"
+   ]
+  }
+ ],
+ "prefixes": [
+  {
+   "input": "i",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Imst-Pitztal Bahnhof",
+    "S:Linz/Donau JKU I Universität",
+    "S:Irnfritz Bahnhof"
+   ]
+  },
+  {
+   "input": "in",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:In der Loiben Ort",
+    "S:In der Leiten Sagbauer",
+    "S:Hall in Tirol Bahnhof"
+   ]
+  },
+  {
+   "input": "inn",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Flughafen",
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "Ort:Inn",
+    "S:Braunau/Inn Bahnhof"
+   ]
+  },
+  {
+   "input": "inns",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsb",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbr",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbru",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbruc",
+   "mode": "planner",
+   "top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbruck",
+   "mode": "planner",
+   "top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbruck ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbruck h",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Hegnerstraße",
+    "S:Innsbruck Hötting Bahnhof",
+    "S:Innsbruck Hafen",
+    "S:Innsbruck Arthur-Haidl-Promenade"
+   ]
+  },
+  {
+   "input": "w",
+   "mode": "planner",
+   "top5": [
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wien Hauptbahnhof",
+    "Ort:Wiener Neustadt",
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wiener Vorstadt"
+   ]
+  },
+  {
+   "input": "wi",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "Ort:Wien"
+   ]
+  },
+  {
+   "input": "wie",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "Ort:Wien"
+   ]
+  },
+  {
+   "input": "wien",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ]
+  },
+  {
+   "input": "wien ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ]
+  },
+  {
+   "input": "wien w",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Wien Weißenböckstraße",
+    "S:Wien Wallensteinplatz",
+    "S:Wien Wienerbergbrücke",
+    "S:Wien Wolf in der Au"
+   ]
+  },
+  {
+   "input": "s",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg-Süd S-Bahn",
+    "S:Kuchl (Hallein) S-Bahn",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn",
+    "S:Salzburg Aigen S-Bahn"
+   ]
+  },
+  {
+   "input": "st",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "st ",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "st a",
+   "mode": "planner",
+   "top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Veit an der Glan Bahnhof",
+    "S:St. Jodok am Brenner Bahnhof"
+   ]
+  },
+  {
+   "input": "st an",
+   "mode": "planner",
+   "top5": [
+    "S:St. Veit an der Glan Bahnhof",
+    "S:St.Ruprecht an der Raab Bahnhof",
+    "S:St. Georgen an der Gusen Ort",
+    "S:St. Georgen an der Gusen Bahnhof",
+    "S:St. Pölten Hauptbahnhof"
+   ]
+  },
+  {
+   "input": "st ant",
+   "mode": "planner",
+   "top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese",
+    "S:St. Anton an der Jeßnitz Sportplatz"
+   ]
+  },
+  {
+   "input": "st anto",
+   "mode": "planner",
+   "top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese",
+    "S:St. Anton an der Jeßnitz Sportplatz"
+   ]
+  },
+  {
+   "input": "st anton",
+   "mode": "planner",
+   "top5": [
+    "S:St. Anton am Arlberg Bahnhof",
+    "S:St. Anton im Montafon Bahnhof",
+    "S:St. Anton am Arlberg Posteinfahrt",
+    "S:St. Anton an der Jeßnitz Sonnwiese",
+    "S:St. Anton an der Jeßnitz Sportplatz"
+   ]
+  },
+  {
+   "input": "h",
+   "mode": "planner",
+   "top5": [
+    "S:Hallein Bahnhof",
+    "S:Hohenems Bahnhof",
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hallein",
+    "Ort:Hohenems"
+   ]
+  },
+  {
+   "input": "ha",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hallein Bahnhof",
+    "Ort:Hallein",
+    "S:Hard (Vorarlberg) Bahnhof",
+    "S:Haus (Ennstal) Bahnhof"
+   ]
+  },
+  {
+   "input": "hal",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hallein Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hallein",
+    "S:Hall in Tirol Kurhaus"
+   ]
+  },
+  {
+   "input": "hall",
+   "mode": "planner",
+   "top5": [
+    "Ort:Hall",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hallein Bahnhof"
+   ]
+  },
+  {
+   "input": "hall ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Hall",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hallein Bahnhof"
+   ]
+  },
+  {
+   "input": "hall i",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus",
+    "Ort:Hall in Tirol"
+   ]
+  },
+  {
+   "input": "hall in",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus",
+    "S:Hall in Tirol Stadtgraben"
+   ]
+  },
+  {
+   "input": "H",
+   "mode": "planner",
+   "top5": [
+    "S:Hallein Bahnhof",
+    "S:Hohenems Bahnhof",
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hallein",
+    "Ort:Hohenems"
+   ]
+  },
+  {
+   "input": "Ha",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hallein Bahnhof",
+    "Ort:Hallein",
+    "S:Hard (Vorarlberg) Bahnhof",
+    "S:Haus (Ennstal) Bahnhof"
+   ]
+  },
+  {
+   "input": "Hal",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hallein Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hallein",
+    "S:Hall in Tirol Kurhaus"
+   ]
+  },
+  {
+   "input": "Hall",
+   "mode": "planner",
+   "top5": [
+    "Ort:Hall",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hallein Bahnhof"
+   ]
+  },
+  {
+   "input": "Hall ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Hall",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hallein Bahnhof"
+   ]
+  },
+  {
+   "input": "Hall i",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus",
+    "Ort:Hall in Tirol"
+   ]
+  },
+  {
+   "input": "Hall i.",
+   "mode": "planner",
+   "top5": [
+    "Ort:Hall",
+    "S:Hall in Tirol Bahnhof",
+    "S:Hall-Thaur Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Kurhaus"
+   ]
+  },
+  {
+   "input": "Hall i.T",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus",
+    "S:Hall in Tirol Stadtgraben"
+   ]
+  },
+  {
+   "input": "Hall i.T.",
+   "mode": "planner",
+   "top5": [
+    "S:Hall in Tirol Bahnhof",
+    "Ort:Hall in Tirol",
+    "Ort:Hall",
+    "S:Hall in Tirol Kurhaus",
+    "S:Hall in Tirol Krankenhaus"
+   ]
+  },
+  {
+   "input": "ib",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "ibk",
+   "mode": "planner",
+   "top5": [
+    "Ort:Innsbruck",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "f",
+   "mode": "planner",
+   "top5": [
+    "S:Feldkirch Bahnhof",
+    "Ort:Feldkirch",
+    "S:Fürnitz Bahnhof",
+    "S:Frohnleiten Bahnhof",
+    "S:Freistadt Bahnhof"
+   ]
+  },
+  {
+   "input": "fl",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flaurling Bahnhof",
+    "Ort:Fluh",
+    "S:Fluh Grünau",
+    "S:Fluh Trübenbach"
+   ]
+  },
+  {
+   "input": "flu",
+   "mode": "planner",
+   "top5": [
+    "Ort:Fluh",
+    "S:Fluh Grünau",
+    "S:Fluh Trübenbach",
+    "S:Flughafen Wien Bahnhof",
+    "S:Fluh Stelen"
+   ]
+  },
+  {
+   "input": "flug",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "flugh",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "flugha",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "flughaf",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "flughafe",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "flughafen",
+   "mode": "planner",
+   "top5": [
+    "S:Flughafen Wien Bahnhof",
+    "S:Flughafen Wien Busterminal",
+    "S:Flughafen Graz-Feldkirchen Bahnhof",
+    "S:Flughafen Linz (Hörsching) Terminal",
+    "S:Flughafen Linz (Hörsching) Cargo"
+   ]
+  },
+  {
+   "input": "S",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg-Süd S-Bahn",
+    "S:Kuchl (Hallein) S-Bahn",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn",
+    "S:Salzburg Aigen S-Bahn"
+   ]
+  },
+  {
+   "input": "St",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "Ste",
+   "mode": "planner",
+   "top5": [
+    "S:Steeg-Gosau Bahnhof",
+    "S:Steyr Bahnhof",
+    "S:Stein an der Enns Bahnhof",
+    "Ort:Steyr",
+    "S:Steinach am Brenner Bahnhof"
+   ]
+  },
+  {
+   "input": "Step",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz",
+    "Ort:Stephanshart",
+    "S:Stephanshart Weg",
+    "S:Stephanshart Haselhof",
+    "S:Stephanshart Dorfplatz"
+   ]
+  },
+  {
+   "input": "Steph",
+   "mode": "planner",
+   "top5": [
+    "Ort:Stephanshart",
+    "S:Wien Stephansplatz",
+    "S:Stephanshart Weg",
+    "S:Stephanshart Haselhof",
+    "S:Stephanshart Dorfplatz"
+   ]
+  },
+  {
+   "input": "Stepha",
+   "mode": "planner",
+   "top5": [
+    "S:Wels (OÖ) St.Stephan",
+    "Ort:Stephanshart",
+    "S:Wien Stephansplatz",
+    "S:Stephanshart Weg",
+    "S:Stephanshart Haselhof"
+   ]
+  },
+  {
+   "input": "Stephan",
+   "mode": "planner",
+   "top5": [
+    "S:Wels (OÖ) St.Stephan",
+    "Ort:Stephanshart",
+    "S:Wiener Neustadt Stephan-Koren-Straße Süd",
+    "S:Stephanshart Weg",
+    "S:Stephanshart Haselhof"
+   ]
+  },
+  {
+   "input": "Stephans",
+   "mode": "planner",
+   "top5": [
+    "Ort:Stephanshart",
+    "S:Stephanshart Weg",
+    "S:Stephanshart Haselhof",
+    "S:Stephanshart Dorfplatz",
+    "S:Stephanshart Empfing"
+   ]
+  },
+  {
+   "input": "Stephansp",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz"
+   ]
+  },
+  {
+   "input": "Stephanspl",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz"
+   ]
+  },
+  {
+   "input": "Stephanspla",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz"
+   ]
+  },
+  {
+   "input": "Stephansplat",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz"
+   ]
+  },
+  {
+   "input": "Stephansplatz",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Stephansplatz"
+   ]
+  },
+  {
+   "input": "M",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg M.Plain-Plainbrücke S-Bahn",
+    "S:Melk Bahnhof",
+    "S:Mürzzuschlag Bahnhof",
+    "S:Mötz Bahnhof",
+    "S:Mödling Bahnhof"
+   ]
+  },
+  {
+   "input": "Ma",
+   "mode": "planner",
+   "top5": [
+    "Ort:Mauer",
+    "S:Maria Saal Bahnhof",
+    "S:Marz-Rohrbach Bahnhof",
+    "Ort:Maishofen",
+    "S:Mauer-Öhling Bahnhof"
+   ]
+  },
+  {
+   "input": "Mar",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Saal Bahnhof",
+    "S:Marz-Rohrbach Bahnhof",
+    "Ort:Maria Saal",
+    "Ort:Marz",
+    "S:Maria Enzersdorf Südstadt Bahnhof"
+   ]
+  },
+  {
+   "input": "Mari",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Saal Bahnhof",
+    "Ort:Maria Saal",
+    "Ort:Mari",
+    "S:Maria Enzersdorf Südstadt Bahnhof",
+    "S:Maria Ellend Bahnhof"
+   ]
+  },
+  {
+   "input": "Maria",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Saal Bahnhof",
+    "Ort:Maria Saal",
+    "S:Maria Ellend Bahnhof",
+    "S:Maria Anzbach Bahnhof",
+    "S:Maria Enzersdorf Südstadt Bahnhof"
+   ]
+  },
+  {
+   "input": "Maria-",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Saal Bahnhof",
+    "Ort:Maria Saal",
+    "S:Maria Ellend Bahnhof",
+    "S:Maria Anzbach Bahnhof",
+    "S:Maria Enzersdorf Südstadt Bahnhof"
+   ]
+  },
+  {
+   "input": "Maria-T",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Luggau Tiefenbach",
+    "S:Maria Taferl Ortsmitte",
+    "S:Maria Taferl Oberthalheim",
+    "S:Maria Taferl Unterthalheim",
+    "Ort:Maria Taferl"
+   ]
+  },
+  {
+   "input": "Maria-Th",
+   "mode": "planner",
+   "top5": [
+    "S:Maria Alm am Steinernen Meer Thoraubrücke",
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse"
+   ]
+  },
+  {
+   "input": "Maria-The",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse",
+    "S:Siedlung Maria Theresia Gartengasse"
+   ]
+  },
+  {
+   "input": "Maria-Ther",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse",
+    "S:Siedlung Maria Theresia Gartengasse"
+   ]
+  },
+  {
+   "input": "Maria-There",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse",
+    "S:Siedlung Maria Theresia Gartengasse"
+   ]
+  },
+  {
+   "input": "Maria-Theres",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse",
+    "S:Siedlung Maria Theresia Gartengasse",
+    "S:Siedlung Maria Theresia Schedlerstraße"
+   ]
+  },
+  {
+   "input": "Maria-Theresi",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Siedlung Maria Theresia Fasangasse",
+    "S:Siedlung Maria Theresia Buchengasse",
+    "S:Siedlung Maria Theresia Gartengasse",
+    "S:Siedlung Maria Theresia Schedlerstraße"
+   ]
+  },
+  {
+   "input": "Maria-Theresie",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-S",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Saal Bahnhof",
+    "Ort:Maria Saal",
+    "S:Maria Enzersdorf Südstadt Bahnhof"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-St",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Mariahof-St.Lambrecht Bahnhof",
+    "S:Wiener Neustadt Maria-Theresien-Ring",
+    "S:Maria Elend (St. Jakob im Rosental) Ort"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Str",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str.",
+    "S:Maria Gugging Hintersdorfer Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Stra",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str.",
+    "S:Maria Enzersdorf Steinfeldstraße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straß",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str.",
+    "S:Maria Gugging Hintersdorfer Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str.",
+    "S:Maria Gugging Hintersdorfer Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße ",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str.",
+    "S:Maria Gugging Hintersdorfer Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Rain (Klagenfurt-Land) 10. Oktober Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str."
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 ",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Rain (Klagenfurt-Land) 10. Oktober Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str."
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 I",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Rain (Klagenfurt-Land) 10. Oktober Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str."
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 In",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße",
+    "S:Maria Rain (Klagenfurt-Land) 10. Oktober Straße",
+    "S:Maria Enzersdorf Franz-Josef-Straße",
+    "S:Maria Lanzendorf Hauptstr./Wiener Str."
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Inn",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Inns",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsb",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsbr",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsbru",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsbruc",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Maria-Theresien-Straße 1 Innsbruck",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Maria-Theresien-Straße",
+    "S:Altmünster/Traunsee Maria-Theresien-Straße"
+   ]
+  },
+  {
+   "input": "Ho",
+   "mode": "planner",
+   "top5": [
+    "S:Hohenems Bahnhof",
+    "Ort:Hohenems",
+    "Ort:Horn",
+    "S:Horn (NÖ) Bahnhof",
+    "S:Hochfilzen Bahnhof"
+   ]
+  },
+  {
+   "input": "Hof",
+   "mode": "planner",
+   "top5": [
+    "S:Hof bei Salzburg Eggerwirt",
+    "S:Hof bei Salzburg Sportplatzstraße",
+    "S:Hof b.Eberschwang",
+    "S:Hof bei Salzburg Ortsmitte",
+    "S:Hof bei Salzburg Elsenwang"
+   ]
+  },
+  {
+   "input": "Hofb",
+   "mode": "planner",
+   "top5": [
+    "S:Hofberg (OÖ) Loidlmühle",
+    "S:Hofberg (OÖ) Abzw Walleiten",
+    "S:Hofberg (OÖ) Walleiten (Klausgraben)",
+    "Ort:Hofberg",
+    "S:Innsbruck Congress/Hofburg"
+   ]
+  },
+  {
+   "input": "Hofbu",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Congress/Hofburg",
+    "S:Alberschwende Hof-Bühel"
+   ]
+  },
+  {
+   "input": "Hofbur",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Congress/Hofburg"
+   ]
+  },
+  {
+   "input": "Hofburg",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Congress/Hofburg"
+   ]
+  },
+  {
+   "input": "L",
+   "mode": "planner",
+   "top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Leoben Hauptbahnhof",
+    "S:Lustenau Bahnhof",
+    "Ort:Leoben"
+   ]
+  },
+  {
+   "input": "Le",
+   "mode": "planner",
+   "top5": [
+    "S:Leoben Hauptbahnhof",
+    "S:Lend (Salzach) Bahnhof",
+    "Ort:Lend",
+    "Ort:Leoben",
+    "S:Leogang Bahnhof"
+   ]
+  },
+  {
+   "input": "Lec",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte"
+   ]
+  },
+  {
+   "input": "Lech",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte"
+   ]
+  },
+  {
+   "input": "Lech ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte"
+   ]
+  },
+  {
+   "input": "Lech P",
+   "mode": "planner",
+   "top5": [
+    "S:Lech am Arlberg Platte",
+    "S:Lech am Arlberg Postbus Garage",
+    "S:Lech am Arlberg Pension Bürstegg",
+    "S:Lech am Arlberg sport.park.lech",
+    "S:Pichlwang (Stmk) Lechen"
+   ]
+  },
+  {
+   "input": "Lech Po",
+   "mode": "planner",
+   "top5": [
+    "S:Lech am Arlberg Postbus Garage",
+    "S:Hinteregg (Pöllau) Lechner",
+    "S:Gerersdorf (St. Pölten-Land) Lechnerstraße"
+   ]
+  },
+  {
+   "input": "Lech Pos",
+   "mode": "planner",
+   "top5": [
+    "S:Lech am Arlberg Postbus Garage",
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus"
+   ]
+  },
+  {
+   "input": "Lech Post",
+   "mode": "planner",
+   "top5": [
+    "S:Lech am Arlberg Postbus Garage",
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus"
+   ]
+  },
+  {
+   "input": "Lech Posta",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte"
+   ]
+  },
+  {
+   "input": "Lech Postam",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Lech am Arlberg Platte"
+   ]
+  },
+  {
+   "input": "Lech Postamt",
+   "mode": "planner",
+   "top5": [
+    "Ort:Lech",
+    "S:Lech am Arlberg Rüfiplatz",
+    "S:Lech am Arlberg Dorfhus",
+    "S:Lech am Arlberg Feuerwehrhaus",
+    "S:Hermagor Postamt"
+   ]
+  },
+  {
+   "input": "W",
+   "mode": "planner",
+   "top5": [
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wien Hauptbahnhof",
+    "Ort:Wiener Neustadt",
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wiener Vorstadt"
+   ]
+  },
+  {
+   "input": "Wi",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "Ort:Wien"
+   ]
+  },
+  {
+   "input": "Wie",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "Ort:Wien"
+   ]
+  },
+  {
+   "input": "Wien",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ]
+  },
+  {
+   "input": "Wien ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wien",
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf"
+   ]
+  },
+  {
+   "input": "Wien H",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hütteldorf",
+    "S:Wien Handelskai",
+    "S:Wien Heiligenstadt",
+    "S:Wien Hernals"
+   ]
+  },
+  {
+   "input": "Wien Hb",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hauptbahnhof Ost",
+    "S:Wien Hauptbahnhof Autoreisezug",
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wiener Neustadt Hbf./Busbahnhof"
+   ]
+  },
+  {
+   "input": "Wien Hbf",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Hauptbahnhof Ost",
+    "S:Wien Hauptbahnhof Autoreisezug",
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wiener Neustadt Hbf./Busbahnhof"
+   ]
+  },
+  {
+   "input": "Sa",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg Hauptbahnhof",
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "Sal",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn"
+   ]
+  },
+  {
+   "input": "Salz",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn"
+   ]
+  },
+  {
+   "input": "Salzb",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn"
+   ]
+  },
+  {
+   "input": "Salzbu",
+   "mode": "planner",
+   "top5": [
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn",
+    "S:Salzburg Gnigl S-Bahn"
+   ]
+  },
+  {
+   "input": "Salzbur",
+   "mode": "planner",
+   "top5": [
+    "Ort:Salzburg",
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn"
+   ]
+  },
+  {
+   "input": "Salzburg",
+   "mode": "planner",
+   "top5": [
+    "Ort:Salzburg",
+    "S:Salzburg Hauptbahnhof",
+    "S:Salzburg-Süd S-Bahn",
+    "Ort:Salzburg-Süd",
+    "S:Salzburg Aiglhof S-Bahn"
+   ]
+  },
+  {
+   "input": "g",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Götzis Bahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Gleisdorf Bahnhof",
+    "Ort:Götzis"
+   ]
+  },
+  {
+   "input": "gr",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Don Bosco Bahnhof",
+    "S:Graz Ostbahnhof",
+    "S:Graz Liebenau Murpark"
+   ]
+  },
+  {
+   "input": "gra",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Don Bosco Bahnhof",
+    "S:Graz Ostbahnhof",
+    "S:Graz Liebenau Murpark"
+   ]
+  },
+  {
+   "input": "graz",
+   "mode": "planner",
+   "top5": [
+    "Ort:Graz",
+    "S:Graz Hauptbahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Ostbahnhof",
+    "S:Graz Don Bosco Bahnhof"
+   ]
+  },
+  {
+   "input": "graz ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Graz",
+    "S:Graz Hauptbahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Graz Ostbahnhof",
+    "S:Graz Don Bosco Bahnhof"
+   ]
+  },
+  {
+   "input": "graz h",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Hauptplatz/Congress",
+    "S:Graz Handelstraße",
+    "S:Graz Hasenheide",
+    "S:Graz Haidegg"
+   ]
+  },
+  {
+   "input": "graz hb",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Daungasse/Hauptbahnhof",
+    "S:Graz Hauptbahnhof Autoreisezug"
+   ]
+  },
+  {
+   "input": "graz hbf",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Graz Daungasse/Hauptbahnhof",
+    "S:Graz Hauptbahnhof Autoreisezug"
+   ]
+  },
+  {
+   "input": "l",
+   "mode": "planner",
+   "top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Leoben Hauptbahnhof",
+    "S:Lustenau Bahnhof",
+    "Ort:Leoben"
+   ]
+  },
+  {
+   "input": "li",
+   "mode": "planner",
+   "top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "Ort:Lienz",
+    "S:Lienz (Tirol) Bahnhof",
+    "S:Liezen Bahnhof"
+   ]
+  },
+  {
+   "input": "lin",
+   "mode": "planner",
+   "top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Linz/Donau Untergaumberg",
+    "S:Linz/Donau Mühlkreisbahnhof",
+    "S:Linz/Donau Ebelsberg Bahnhof"
+   ]
+  },
+  {
+   "input": "linz",
+   "mode": "planner",
+   "top5": [
+    "Ort:Linz",
+    "S:Linz/Donau Hauptbahnhof",
+    "S:Linz/Donau Untergaumberg",
+    "S:Linz/Donau Mühlkreisbahnhof",
+    "S:Linz/Donau Ebelsberg Bahnhof"
+   ]
+  },
+  {
+   "input": "K",
+   "mode": "planner",
+   "top5": [
+    "S:Klagenfurt Hauptbahnhof",
+    "S:Kufstein Bahnhof",
+    "S:Kitzbühel Bahnhof",
+    "S:Knittelfeld Bahnhof",
+    "S:Kindberg Bahnhof"
+   ]
+  },
+  {
+   "input": "Ka",
+   "mode": "planner",
+   "top5": [
+    "S:Kapfenberg Bahnhof",
+    "S:Kainisch Bahnhof",
+    "S:Kaindorf (Sulm) Bahnhof",
+    "Ort:Kapfenberg",
+    "S:Kappel am Krappfeld Bahnhst"
+   ]
+  },
+  {
+   "input": "Kar",
+   "mode": "planner",
+   "top5": [
+    "S:Neuhub (Gmunden) Karl z'Neuhub Lokalbahn",
+    "Ort:Karl",
+    "S:Karl (Bgld) Hauptplatz",
+    "Ort:Karres",
+    "S:Karla Dornbach"
+   ]
+  },
+  {
+   "input": "Karl",
+   "mode": "planner",
+   "top5": [
+    "Ort:Karl",
+    "S:Neuhub (Gmunden) Karl z'Neuhub Lokalbahn",
+    "S:Karl (Bgld) Hauptplatz",
+    "S:Wien Erzherzog-Karl-Straße",
+    "S:Karla Dornbach"
+   ]
+  },
+  {
+   "input": "Karls",
+   "mode": "planner",
+   "top5": [
+    "Ort:Karlsbach",
+    "Ort:Karlsdorf",
+    "S:Karlsbach (Melk) Schlossstraße",
+    "S:Karlsdorf (Bruck an der Leitha) Mittergasse",
+    "S:Karlstein/Thaya HTBLA"
+   ]
+  },
+  {
+   "input": "Karlsp",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ]
+  },
+  {
+   "input": "Karlspl",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ]
+  },
+  {
+   "input": "Karlspla",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ]
+  },
+  {
+   "input": "Karlsplat",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ]
+  },
+  {
+   "input": "Karlsplatz",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Karlsplatz",
+    "S:Wien Oper/Karlsplatz U",
+    "S:Wien Bösendorferstraße/Karlsplatz U"
+   ]
+  },
+  {
+   "input": "Z",
+   "mode": "planner",
+   "top5": [
+    "S:Fügen-Hart i. Z. Bahnhof",
+    "S:Zell am See Bahnhof",
+    "S:Zeltweg Bahnhof",
+    "S:Neuhub (Gmunden) Karl z'Neuhub Lokalbahn",
+    "S:Zirl Bahnhof"
+   ]
+  },
+  {
+   "input": "Ze",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zeltweg Bahnhof",
+    "Ort:Zeltweg",
+    "S:Zell am Ziller Bahnhof"
+   ]
+  },
+  {
+   "input": "Zel",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zeltweg Bahnhof",
+    "Ort:Zell",
+    "S:Zell am Ziller Bahnhof"
+   ]
+  },
+  {
+   "input": "Zell",
+   "mode": "planner",
+   "top5": [
+    "Ort:Zell",
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am Ziller Bahnhof",
+    "S:Zell/Pram Bahnhof"
+   ]
+  },
+  {
+   "input": "Zell ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Zell",
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am Ziller Bahnhof",
+    "S:Zell/Pram Bahnhof"
+   ]
+  },
+  {
+   "input": "Zell a",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am Ziller Bahnhof",
+    "Ort:Zell am Ziller",
+    "S:Zell am Ziller Regionalmuseum Zillertal"
+   ]
+  },
+  {
+   "input": "Zell am",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am Ziller Bahnhof",
+    "Ort:Zell am Ziller",
+    "S:Zell am Ziller Regionalmuseum Zillertal"
+   ]
+  },
+  {
+   "input": "Zell am ",
+   "mode": "planner",
+   "top5": [
+    "Ort:Zell",
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am Ziller Bahnhof",
+    "S:Zell am Ziller Regionalmuseum Zillertal"
+   ]
+  },
+  {
+   "input": "Zell am S",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am See Postplatz",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Seewirt"
+   ]
+  },
+  {
+   "input": "Zell am Se",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am See Postplatz",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Seewirt"
+   ]
+  },
+  {
+   "input": "Zell am See",
+   "mode": "planner",
+   "top5": [
+    "S:Zell am See Bahnhof",
+    "Ort:Zell am See",
+    "S:Zell am See Postplatz",
+    "S:Zell am See Seespitz",
+    "S:Zell am See Seewirt"
+   ]
+  },
+  {
+   "input": "St.",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "St. ",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "St. J",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St.Georgen ob Judenburg Bahnhof",
+    "S:St. Jodok am Brenner Bahnhof",
+    "S:St. Jakob im Rosental Hauptplatz"
+   ]
+  },
+  {
+   "input": "St. Jo",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Jodok am Brenner Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "Ort:Sankt Job"
+   ]
+  },
+  {
+   "input": "St. Joh",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof",
+    "S:St. Johann in Tirol Grieswirt Bahnhof"
+   ]
+  },
+  {
+   "input": "St. Joha",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof",
+    "S:St. Johann in Tirol Grieswirt Bahnhof"
+   ]
+  },
+  {
+   "input": "St. Johan",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "Ort:St. Johann",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof"
+   ]
+  },
+  {
+   "input": "St. Johann",
+   "mode": "planner",
+   "top5": [
+    "S:St. Johann im Pongau Bahnhof",
+    "Ort:St. Johann",
+    "S:St. Johann in Tirol Bahnhof",
+    "S:St. Johann-Weistrach Bahnhof",
+    "S:St.Johann in der Haide Bahnhof"
+   ]
+  },
+  {
+   "input": "Mariah",
+   "mode": "planner",
+   "top5": [
+    "S:Mariahof-St.Lambrecht Bahnhof",
+    "Ort:Mariahilf",
+    "S:Mariahof (Stmk) Abzw Schachen",
+    "S:Mariahof (Stmk) Forst",
+    "S:Mariahof (Stmk) Rußdorf"
+   ]
+  },
+  {
+   "input": "Mariahi",
+   "mode": "planner",
+   "top5": [
+    "Ort:Mariahilf",
+    "S:Wien Mariahilfer Gürtel",
+    "S:Bregenz Mariahilf",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "Ort:Mariahilfbergl"
+   ]
+  },
+  {
+   "input": "Mariahil",
+   "mode": "planner",
+   "top5": [
+    "Ort:Mariahilf",
+    "S:Bregenz Mariahilf",
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "Ort:Mariahilfbergl"
+   ]
+  },
+  {
+   "input": "Mariahilf",
+   "mode": "planner",
+   "top5": [
+    "Ort:Mariahilf",
+    "S:Bregenz Mariahilf",
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "Ort:Mariahilfbergl"
+   ]
+  },
+  {
+   "input": "Mariahilfe",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer ",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Gürtel",
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer S",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer St",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer Str",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer Stra",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer Straß",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Mariahilfer Straße",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Mariahilfer Straße/Geibelgasse",
+    "S:Wien Mariahilfer Straße/Kaiserstraße",
+    "S:Wien Mariahilfer Str./Arnsteing.",
+    "S:Wien Mariahilfer Straße/Stiftgasse"
+   ]
+  },
+  {
+   "input": "Sc",
+   "mode": "planner",
+   "top5": [
+    "S:Schärding Bahnhof",
+    "S:Schwaz Bahnhof",
+    "S:Schladming Bahnhof",
+    "Ort:Schärding",
+    "S:Schruns Bahnhof"
+   ]
+  },
+  {
+   "input": "Sch",
+   "mode": "planner",
+   "top5": [
+    "S:Schwaz Bahnhof",
+    "S:Schärding Bahnhof",
+    "Ort:Schwaz",
+    "S:Schladming Bahnhof",
+    "S:Schruns Bahnhof"
+   ]
+  },
+  {
+   "input": "Schö",
+   "mode": "planner",
+   "top5": [
+    "Ort:Schön",
+    "S:Schön b. Micheldorf Taverne",
+    "Ort:Schoren",
+    "S:Schönwies (Tirol) Bahnhof",
+    "S:Schöckl (St.Radegund) Seilbahn Bergstation"
+   ]
+  },
+  {
+   "input": "Schön",
+   "mode": "planner",
+   "top5": [
+    "Ort:Schön",
+    "S:Schön b. Micheldorf Taverne",
+    "S:Schönwies (Tirol) Bahnhof",
+    "S:Schönfeld-Lassee Bahnhof",
+    "Ort:Schönwies"
+   ]
+  },
+  {
+   "input": "Schönb",
+   "mode": "planner",
+   "top5": [
+    "S:Schönberg am Kamp Bahnhof",
+    "S:Schönborn-Mallebarn Bahnhof",
+    "Ort:Schönberg am Kamp",
+    "S:Schönberg im Stubaital Dorfmitte",
+    "S:Schönberg im Stubaital Stubai Center"
+   ]
+  },
+  {
+   "input": "Schönbr",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Schönbrunn",
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Graz Schönbrunngasse"
+   ]
+  },
+  {
+   "input": "Schönbru",
+   "mode": "planner",
+   "top5": [
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schönbrunn",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Graz Schönbrunngasse"
+   ]
+  },
+  {
+   "input": "Schönbrun",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Schönbrunn",
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Wien Margaretenplatz/Schönbrunner Straße"
+   ]
+  },
+  {
+   "input": "Schönbrunn",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Schönbrunn",
+    "S:Schönbrunn/Böheimkirchen Abzw. Wiesen",
+    "S:Wien Schloss Schönbrunn",
+    "S:Wien Schönbrunner Allee",
+    "S:Wien Margaretenplatz/Schönbrunner Straße"
+   ]
+  },
+  {
+   "input": "N",
+   "mode": "planner",
+   "top5": [
+    "S:Neunkirchen (NÖ) Bahnhof",
+    "S:Gmünd (NÖ) Bahnhof",
+    "S:Neumarkt am Wallersee Bahnhof",
+    "S:Breitensee/Marchegg Bahnhof",
+    "S:Nenzing Bahnhof"
+   ]
+  },
+  {
+   "input": "No",
+   "mode": "planner",
+   "top5": [
+    "S:Neunkirchen (NÖ) Bahnhof",
+    "S:Gmünd (NÖ) Bahnhof",
+    "S:Wittmannsdorf (NÖ) Bahnhof",
+    "S:Breitensee/Marchegg Bahnhof",
+    "S:St. Pölten Sportzentrum NÖ"
+   ]
+  },
+  {
+   "input": "Nor",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Aspern Nord",
+    "S:Mattersburg Nord Bahnhof",
+    "S:Wiener Neustadt Nord",
+    "S:Weiz Nord Bahnhof",
+    "S:St. Pölten Traisenpark/P+R Nord"
+   ]
+  },
+  {
+   "input": "Nord",
+   "mode": "planner",
+   "top5": [
+    "Ort:Nord",
+    "S:Wien Aspern Nord",
+    "S:Mattersburg Nord Bahnhof",
+    "S:Weiz Nord Bahnhof",
+    "S:Wiener Neustadt Nord"
+   ]
+  },
+  {
+   "input": "Nordk",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Nordkette",
+    "S:Unterweißenbach (OÖ) Nordkammstraße"
+   ]
+  },
+  {
+   "input": "Nordke",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Nordkette"
+   ]
+  },
+  {
+   "input": "Nordket",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Nordkette"
+   ]
+  },
+  {
+   "input": "Nordkett",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Nordkette"
+   ]
+  },
+  {
+   "input": "Nordkette",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Nordkette"
+   ]
+  },
+  {
+   "input": "G",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Hauptbahnhof",
+    "S:Götzis Bahnhof",
+    "S:Graz Puntigam Bahnhof",
+    "S:Gleisdorf Bahnhof",
+    "Ort:Götzis"
+   ]
+  },
+  {
+   "input": "Gm",
+   "mode": "planner",
+   "top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmünd",
+    "S:Gmünd (NÖ) Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmunden Rathausplatz"
+   ]
+  },
+  {
+   "input": "Gmu",
+   "mode": "planner",
+   "top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmünd",
+    "S:Gmünd (NÖ) Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmunden Rathausplatz"
+   ]
+  },
+  {
+   "input": "Gmun",
+   "mode": "planner",
+   "top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmünd",
+    "S:Gmünd (NÖ) Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmünd (NÖ) Bahnhofstraße"
+   ]
+  },
+  {
+   "input": "Gmund",
+   "mode": "planner",
+   "top5": [
+    "S:Gmünd (NÖ) Bahnhof",
+    "Ort:Gmünd",
+    "S:Gmunden Bahnhof",
+    "S:Gmünd (NÖ) Bahnhofstraße",
+    "S:Gmünd (NÖ) Bezirkshauptmannschaft"
+   ]
+  },
+  {
+   "input": "Gmunde",
+   "mode": "planner",
+   "top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmunden Rathausplatz",
+    "S:Gmunden Klosterplatz",
+    "S:Gmunden Seebahnhof"
+   ]
+  },
+  {
+   "input": "Gmunden",
+   "mode": "planner",
+   "top5": [
+    "S:Gmunden Bahnhof",
+    "Ort:Gmunden",
+    "S:Gmunden Rathausplatz",
+    "S:Gmunden Klosterplatz",
+    "S:Gmunden Seebahnhof"
+   ]
+  },
+  {
+   "input": "B",
+   "mode": "planner",
+   "top5": [
+    "Ort:Bregenz",
+    "S:Bregenz Bahnhof",
+    "Ort:Bludenz",
+    "S:Bludenz Bahnhof",
+    "S:Bad Ischl Bahnhof"
+   ]
+  },
+  {
+   "input": "Br",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "S:Steinach am Brenner Bahnhof",
+    "S:Hopfgarten im Brixental Bahnhof",
+    "Ort:Bregenz",
+    "S:Bruck an der Mur Bahnhof"
+   ]
+  },
+  {
+   "input": "Bre",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Breg",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Brege",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Bregen",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Bregenz",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Bregenz ",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Montfortstraße"
+   ]
+  },
+  {
+   "input": "Bregenz B",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "S:Bregenz Riedenburg Bahnhof",
+    "Ort:Bregenz",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Barbenweg"
+   ]
+  },
+  {
+   "input": "Bregenz Bf",
+   "mode": "planner",
+   "top5": [
+    "S:Bregenz Bahnhof",
+    "S:Bregenz Riedenburg Bahnhof",
+    "S:Bregenz Hafen Bahnhof",
+    "S:Bregenz Wendeplatz Bhf.",
+    "S:Bregenz Hafen Bhf Ersatz"
+   ]
+  },
+  {
+   "input": "Se",
+   "mode": "planner",
+   "top5": [
+    "S:Selzthal Bahnhof",
+    "Ort:See",
+    "Ort:Selzthal",
+    "S:Seyring Bahnhof",
+    "S:See (Tirol) Elis"
+   ]
+  },
+  {
+   "input": "See",
+   "mode": "planner",
+   "top5": [
+    "Ort:See",
+    "S:See/Mondsee",
+    "S:Zell am See Bahnhof",
+    "S:See (Tirol) Elis",
+    "S:See (Tirol) Habigen"
+   ]
+  },
+  {
+   "input": "Seef",
+   "mode": "planner",
+   "top5": [
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Birkenlift",
+    "S:Seefeld in Tirol Olympiastraße"
+   ]
+  },
+  {
+   "input": "Seefe",
+   "mode": "planner",
+   "top5": [
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Birkenlift",
+    "S:Seefeld in Tirol Olympiastraße"
+   ]
+  },
+  {
+   "input": "Seefel",
+   "mode": "planner",
+   "top5": [
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "S:Seefeld (NÖ) Ort",
+    "S:Seefeld in Tirol Birkenlift"
+   ]
+  },
+  {
+   "input": "Seefeld",
+   "mode": "planner",
+   "top5": [
+    "Ort:Seefeld",
+    "S:Seefeld in Tirol Bahnhof",
+    "Ort:Seefeld in Tirol",
+    "S:Seefeld (NÖ) Ort",
+    "S:Seefeld in Tirol Birkenlift"
+   ]
+  },
+  {
+   "input": "We",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wels",
+    "S:Wels (OÖ) Hauptbahnhof",
+    "S:Weiz Bahnhof",
+    "Ort:Weiz",
+    "S:Weyer/Enns Bahnhof"
+   ]
+  },
+  {
+   "input": "Wes",
+   "mode": "planner",
+   "top5": [
+    "S:Westendorf (Tirol) Bahnhof",
+    "S:Wien Westbahnhof",
+    "Ort:Westendorf",
+    "S:Klagenfurt West Bahnhst",
+    "S:Puchenau West Bahnhst"
+   ]
+  },
+  {
+   "input": "West",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Klagenfurt West Bahnhst",
+    "S:Puchenau West Bahnhst",
+    "S:Westendorf (Tirol) Bahnhof",
+    "S:Straßwalchen West"
+   ]
+  },
+  {
+   "input": "Westb",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Krummnußbaum an der Westbahn Bahnhof",
+    "S:Leonding Westbahn Bahnhof",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "Westba",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Krummnußbaum an der Westbahn Bahnhof",
+    "S:Leonding Westbahn Bahnhof",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "Westbah",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Krummnußbaum an der Westbahn Bahnhof",
+    "S:Leonding Westbahn Bahnhof",
+    "S:Villach Westbahnhof",
+    "S:St. Pölten Mühlweg/Westbahn"
+   ]
+  },
+  {
+   "input": "Westbahn",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Krummnußbaum an der Westbahn Bahnhof",
+    "S:Leonding Westbahn Bahnhof",
+    "S:Villach Westbahnhof",
+    "S:St. Pölten Mühlweg/Westbahn"
+   ]
+  },
+  {
+   "input": "Westbahnh",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Wien Westbahnhof/Gerstnerstraße",
+    "S:St. Veit an der Glan Westbahnhof"
+   ]
+  },
+  {
+   "input": "Westbahnho",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Wien Westbahnhof/Gerstnerstraße",
+    "S:St. Veit an der Glan Westbahnhof"
+   ]
+  },
+  {
+   "input": "Westbahnhof",
+   "mode": "planner",
+   "top5": [
+    "S:Wien Westbahnhof",
+    "S:Villach Westbahnhof",
+    "S:Innsbruck Westbahnhof",
+    "S:Wien Westbahnhof/Gerstnerstraße",
+    "S:St. Veit an der Glan Westbahnhof"
+   ]
+  },
+  {
+   "input": "sc",
+   "mode": "planner",
+   "top5": [
+    "S:Schärding Bahnhof",
+    "S:Schwaz Bahnhof",
+    "S:Schladming Bahnhof",
+    "Ort:Schärding",
+    "S:Schruns Bahnhof"
+   ]
+  },
+  {
+   "input": "sch",
+   "mode": "planner",
+   "top5": [
+    "S:Schwaz Bahnhof",
+    "S:Schärding Bahnhof",
+    "Ort:Schwaz",
+    "S:Schladming Bahnhof",
+    "S:Schruns Bahnhof"
+   ]
+  },
+  {
+   "input": "schw",
+   "mode": "planner",
+   "top5": [
+    "S:Schwaz Bahnhof",
+    "Ort:Schwaz",
+    "S:Schwechat Bahnhof",
+    "Ort:Schwöll",
+    "S:Schwarzach - Sankt Veit Bahnhof"
+   ]
+  },
+  {
+   "input": "schwa",
+   "mode": "planner",
+   "top5": [
+    "S:Schwaz Bahnhof",
+    "Ort:Schwaz",
+    "S:Schwaz Steinbrücke",
+    "S:Schwaz Tyrolit",
+    "S:Schwaz Krankenhaus"
+   ]
+  },
+  {
+   "input": "schwaz",
+   "mode": "planner",
+   "top5": [
+    "S:Schwaz Bahnhof",
+    "Ort:Schwaz",
+    "S:Schwaz Steinbrücke",
+    "S:Schwaz Tyrolit",
+    "S:Schwaz Krankenhaus"
+   ]
+  },
+  {
+   "input": "St. P",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Traisenpark/P+R Nord",
+    "Ort:St. Pölten",
+    "S:St.Paul im Lavanttal Bahnhof",
+    "S:St. Johann im Pongau Bahnhof"
+   ]
+  },
+  {
+   "input": "St. Pö",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "St. Pöl",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "St. Pölt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "St. Pölte",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "St. Pölten",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "st p",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Traisenpark/P+R Nord",
+    "Ort:St. Pölten",
+    "S:St.Paul im Lavanttal Bahnhof",
+    "S:St. Johann im Pongau Bahnhof"
+   ]
+  },
+  {
+   "input": "st po",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "st pol",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "st polt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "st polte",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "st polten",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "St ",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "St P",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Traisenpark/P+R Nord",
+    "Ort:St. Pölten",
+    "S:St.Paul im Lavanttal Bahnhof",
+    "S:St. Johann im Pongau Bahnhof"
+   ]
+  },
+  {
+   "input": "St Po",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "St Poe",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "St Poel",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "St Poelt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "St Poelte",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "St Poelten",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "St Poelten ",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "St Poelten H",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Waldstraße/HTL",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "S:St. Pölten Hübnergasse",
+    "S:St. Pölten Hubertusstraße"
+   ]
+  },
+  {
+   "input": "St Poelten Hb",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "St Poelten Hbf",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "San",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof",
+    "S:St. Valentin bei Amstetten Bahnhof"
+   ]
+  },
+  {
+   "input": "Sank",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof",
+    "S:St. Valentin bei Amstetten Bahnhof"
+   ]
+  },
+  {
+   "input": "Sankt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "Sankt ",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "Ort:St. Valentin",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Veit an der Glan Bahnhof"
+   ]
+  },
+  {
+   "input": "Sankt P",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Traisenpark/P+R Nord",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St.Paul im Lavanttal Bahnhof"
+   ]
+  },
+  {
+   "input": "Sankt Pö",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Johann im Pongau Bahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pöl",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "Sankt Pölt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Alpenbahnhof-Kaiserwald"
+   ]
+  },
+  {
+   "input": "Sankt Pölte",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "Sankt Pölten",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "Sankt Pölten ",
+   "mode": "planner",
+   "top5": [
+    "Ort:St. Pölten",
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße",
+    "S:St. Pölten Stadtpark"
+   ]
+  },
+  {
+   "input": "Sankt Pölten H",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Waldstraße/HTL",
+    "S:St. Pölten Hübnergasse",
+    "S:St. Pölten Heimstättenstraße",
+    "S:St. Pölten Hubertusstraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Ha",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hafinger Weg",
+    "S:St. Pölten Hans-Czettel-Straße",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "S:St. Pölten Aquilin-Hacker-Straße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hau",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "S:St. Pölten Stattersdorfer Hauptstraße",
+    "S:St. Pölten ÖBB-Hauptwerkstätte",
+    "S:Laaben (St. Pölten) Hauptplatz"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Haup",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "S:St. Pölten Stattersdorfer Hauptstraße",
+    "S:St. Pölten ÖBB-Hauptwerkstätte",
+    "S:Laaben (St. Pölten) Hauptplatz"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Haupt",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "S:St. Pölten Stattersdorfer Hauptstraße",
+    "S:St. Pölten ÖBB-Hauptwerkstätte",
+    "S:Laaben (St. Pölten) Hauptplatz"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptb",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptba",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbah",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbahn",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbahnh",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbahnho",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "Sankt Pölten Hauptbahnhof",
+   "mode": "planner",
+   "top5": [
+    "S:St. Pölten Hauptbahnhof",
+    "S:St. Pölten Hbf./Kremser Landstr.",
+    "Ort:St. Pölten",
+    "S:St. Pölten Bildungscampus Bahnhof",
+    "S:St. Pölten Porschestraße"
+   ]
+  },
+  {
+   "input": "k",
+   "mode": "planner",
+   "top5": [
+    "S:Klagenfurt Hauptbahnhof",
+    "S:Kufstein Bahnhof",
+    "S:Kitzbühel Bahnhof",
+    "S:Knittelfeld Bahnhof",
+    "S:Kindberg Bahnhof"
+   ]
+  },
+  {
+   "input": "ki",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "S:Kindberg Bahnhof",
+    "Ort:Kitzbühel",
+    "Ort:Kindberg",
+    "S:Kirchdorf an der Krems Bahnhof"
+   ]
+  },
+  {
+   "input": "kit",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kittsee Bahnhof",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "Ort:Kittsee"
+   ]
+  },
+  {
+   "input": "kitz",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzb",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzbu",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzbue",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzbueh",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzbuehe",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "kitzbuehel",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Ki",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "S:Kindberg Bahnhof",
+    "Ort:Kitzbühel",
+    "Ort:Kindberg",
+    "S:Kirchdorf an der Krems Bahnhof"
+   ]
+  },
+  {
+   "input": "Kit",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kittsee Bahnhof",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "Ort:Kittsee"
+   ]
+  },
+  {
+   "input": "Kitz",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Kitzb",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Kitzbu",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Kitzbuh",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Kitzbuhe",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "Kitzbuhel",
+   "mode": "planner",
+   "top5": [
+    "S:Kitzbühel Bahnhof",
+    "Ort:Kitzbühel",
+    "S:Kitzbühel Hahnenkamm Bahnhof",
+    "S:Kitzbühel Schwarzsee Bahnhof",
+    "S:Kitzbühel Im Gries"
+   ]
+  },
+  {
+   "input": "ins",
+   "mode": "planner",
+   "top5": [
+    "S:Graz Odilien-Institut/Klinikum Süd",
+    "S:Krautgarten Insel Radmerstation",
+    "Ort:Insberg",
+    "S:Wolfurt Inselstraße",
+    "S:Gallspach Institut Zeileis"
+   ]
+  },
+  {
+   "input": "insb",
+   "mode": "planner",
+   "top5": [
+    "Ort:Insberg"
+   ]
+  },
+  {
+   "input": "insbr",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "insbru",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "insbruc",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "insbruck",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "innsbruk",
+   "mode": "planner",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "Ort:Innsbruck",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße"
+   ]
+  },
+  {
+   "input": "Wo",
+   "mode": "planner",
+   "top5": [
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wörgl",
+    "S:Wolfurt Bahnhof",
+    "S:Wolkersdorf Bahnhof",
+    "S:Wopfing Bahnhof"
+   ]
+  },
+  {
+   "input": "Woe",
+   "mode": "planner",
+   "top5": [
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wörgl",
+    "S:Wolfurt Bahnhof",
+    "S:Wolkersdorf Bahnhof",
+    "S:Wopfing Bahnhof"
+   ]
+  },
+  {
+   "input": "Woer",
+   "mode": "planner",
+   "top5": [
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wörgl",
+    "S:Wörgl Süd-Bruckhäusl Bahnhof",
+    "S:Kundl Bahnhof",
+    "S:Wörgl Seniorenheim"
+   ]
+  },
+  {
+   "input": "Woerg",
+   "mode": "planner",
+   "top5": [
+    "S:Wörgl Hauptbahnhof",
+    "Ort:Wörgl",
+    "S:Wörgl Süd-Bruckhäusl Bahnhof",
+    "S:Kundl Bahnhof",
+    "S:Wörgl Seniorenheim"
+   ]
+  },
+  {
+   "input": "Woergl",
+   "mode": "planner",
+   "top5": [
+    "Ort:Wörgl",
+    "S:Wörgl Hauptbahnhof",
+    "S:Wörgl Süd-Bruckhäusl Bahnhof",
+    "S:Wörgl Seniorenheim",
+    "S:Kundl Bahnhof"
+   ]
+  },
+  {
+   "input": "i",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Imst-Pitztal Bahnhof",
+    "S:Linz/Donau JKU I Universität",
+    "S:Irnfritz Bahnhof",
+    "S:Innsbruck Fürstenweg"
+   ]
+  },
+  {
+   "input": "in",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:In der Loiben Ort",
+    "S:In der Leiten Sagbauer",
+    "S:Hall in Tirol Bahnhof",
+    "S:Feldkirchen in Ktn Bahnhof"
+   ]
+  },
+  {
+   "input": "inn",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Flughafen",
+    "S:Innsbruck Hauptbahnhof",
+    "S:Braunau/Inn Bahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof"
+   ]
+  },
+  {
+   "input": "inns",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "innsb",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "innsbr",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "innsbru",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "innsbruc",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "innsbruck",
+   "mode": "tripLog",
+   "top5": [
+    "S:Innsbruck Hauptbahnhof",
+    "S:Innsbruck Fürstenweg",
+    "S:Innsbruck Westbahnhof",
+    "S:Innsbruck Radetzkystraße",
+    "S:Innsbruck Mitterhoferstraße"
+   ]
+  },
+  {
+   "input": "w",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wiener Neustadt Hauptbahnhof",
+    "S:Wien Hauptbahnhof",
+    "S:Wörgl Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling"
+   ]
+  },
+  {
+   "input": "wi",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf"
+   ]
+  },
+  {
+   "input": "wie",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf"
+   ]
+  },
+  {
+   "input": "wien",
+   "mode": "tripLog",
+   "top5": [
+    "S:Wien Hauptbahnhof",
+    "S:Wien Westbahnhof",
+    "S:Wien Meidling",
+    "S:Wien Hütteldorf",
+    "S:Wien Floridsdorf"
+   ]
+  }
+ ],
+ "nearest": [
+  {
+   "label": "Maria-Theresien-Straße 1, Innsbruck",
+   "lat": 47.266873,
+   "lon": 11.39389,
+   "names": [
+    "Innsbruck Maria-Theresien-Straße",
+    "Innsbruck Museumstraße",
+    "Innsbruck Anichstraße/Rathausgalerien",
+    "Innsbruck Marktplatz",
+    "Innsbruck Treffpunkt Museum"
+   ],
+   "meters": [
+    69.9,
+    120.9,
+    199.4,
+    227.1,
+    246.3
+   ]
+  },
+  {
+   "label": "Hofburg, Wien",
+   "lat": 48.206281,
+   "lon": 16.365905,
+   "names": [
+    "Wien Habsburgergasse",
+    "Wien Albertinaplatz",
+    "Wien Michaelerplatz",
+    "Wien Plankengasse",
+    "Wien Burgring"
+   ],
+   "meters": [
+    222.6,
+    244.0,
+    246.0,
+    300.6,
+    308.0
+   ]
+  },
+  {
+   "label": "Lech Dorf",
+   "lat": 47.210699,
+   "lon": 10.142574,
+   "names": [
+    "Lech am Arlberg Dorfhus",
+    "Lech am Arlberg Schlosskopf",
+    "Lech am Arlberg Landbrugg",
+    "Lech am Arlberg Rüfiplatz",
+    "Lech am Arlberg Tannberg Kapelle"
+   ],
+   "meters": [
+    10.1,
+    238.1,
+    246.5,
+    340.7,
+    372.8
+   ]
+  },
+  {
+   "label": "Wien Stephansplatz",
+   "lat": 48.20835,
+   "lon": 16.37251,
+   "names": [
+    "Wien Stephansplatz",
+    "Wien Brandstätte",
+    "Wien Graben/Petersplatz",
+    "Wien Rotenturmstraße",
+    "Wien Plankengasse"
+   ],
+   "meters": [
+    73.1,
+    232.7,
+    240.1,
+    263.6,
+    284.5
+   ]
+  },
+  {
+   "label": "Bergdorf (Obergurgl)",
+   "lat": 46.869,
+   "lon": 11.027,
+   "names": [
+    "Obergurgl Meeting Point Jenewein",
+    "Obergurgl Hohe Mut Bahn",
+    "Obergurgl Hotel Wiesental",
+    "Obergurgl Zentrum",
+    "Obergurgl Mahdstuhllift"
+   ],
+   "meters": [
+    90.7,
+    95.2,
+    151.2,
+    154.6,
+    176.4
+   ]
+  }
+ ],
+ "resolve": [
+  {
+   "label": "address Maria-Theresien-Straße 1",
+   "fixture": "gp_nearby_maria_theresien_strasse_1_innsbruck",
+   "lat": 47.266873,
+   "lon": 11.39389,
+   "offline": [
+    "Innsbruck Maria-Theresien-Straße",
+    "Innsbruck Museumstraße",
+    "Innsbruck Anichstraße/Rathausgalerien"
+   ],
+   "with_live": [
+    "Innsbruck Maria-Theresien-Straße",
+    "Innsbruck Museumstraße",
+    "Innsbruck Anichstraße/Rathausgalerien"
+   ]
+  },
+  {
+   "label": "POI Hofburg Wien",
+   "fixture": "gp_nearby_hofburg_wien",
+   "lat": 48.206281,
+   "lon": 16.365905,
+   "offline": [
+    "Wien Habsburgergasse",
+    "Wien Michaelerplatz",
+    "Wien Albertinaplatz"
+   ],
+   "with_live": [
+    "Wien Habsburgergasse",
+    "Wien Michaelerplatz",
+    "Wien Albertinaplatz"
+   ]
+  },
+  {
+   "label": "Lech Dorf",
+   "fixture": "gp_nearby_lech_dorf",
+   "lat": 47.210699,
+   "lon": 10.142574,
+   "offline": [
+    "Lech am Arlberg Dorfhus",
+    "Lech am Arlberg Schlosskopf",
+    "Lech am Arlberg Landbrugg"
+   ],
+   "with_live": [
+    "Lech am Arlberg Dorfhus",
+    "Lech am Arlberg Schlosskopf",
+    "Lech am Arlberg Landbrugg"
+   ]
+  }
+ ]
+}

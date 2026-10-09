@@ -1,6 +1,10 @@
 import Foundation
 
 /// Fast, diacritic-insensitive station search over the bundled station list.
+///
+/// Façade over the full place database: once a `PlaceIndex` is attached (`attach(places:)`, e.g. from
+/// `PlaceIndexLoader.whenReady`), id lookups, text search and `nearest` cover every Austrian stop (bus, tram,
+/// U-Bahn, ship, cable car) while ids of the bundled stations.json keep resolving to the same entries.
 public final class StationIndex: @unchecked Sendable {
     public let stations: [Station]
     private let byID: [String: Station]
@@ -8,6 +12,8 @@ public final class StationIndex: @unchecked Sendable {
     /// All searchable keys per station: normalized name first, then aliases.
     private let allKeys: [[String]]
     private let allTokens: [[[String]]]
+    private let placeLock = NSLock()
+    private var attachedPlaces: PlaceIndex?
 
     public init(stations: [Station]) {
         self.stations = stations
@@ -32,19 +38,42 @@ public final class StationIndex: @unchecked Sendable {
         self.init(stations: stations)
     }
 
-    public func station(id: String) -> Station? { byID[id] }
+    /// The attached full place index (nil until `attach(places:)`).
+    public var places: PlaceIndex? {
+        placeLock.lock()
+        defer { placeLock.unlock() }
+        return attachedPlaces
+    }
+
+    /// Routes lookups, search and `nearest` through the full place database from now on (nil detaches).
+    public func attach(places: PlaceIndex?) {
+        placeLock.lock()
+        attachedPlaces = places
+        placeLock.unlock()
+    }
+
+    /// Station by id: bundled stations.json first, then every stop of the attached place database
+    /// (`at:47:1187`, `at:46:…` bus stops, …).
+    public func station(id: String) -> Station? { byID[id] ?? places?.station(id: id) }
 
     /// Exact (normalized) name or alias lookup.
     public func station(named name: String) -> Station? {
         let key = StationIndex.normalize(name)
         if let i = keys.firstIndex(of: key) { return stations[i] }
-        guard let i = allKeys.firstIndex(where: { $0.contains(key) }) else { return nil }
-        return stations[i]
+        if let i = allKeys.firstIndex(where: { $0.contains(key) }) { return stations[i] }
+        guard let places else { return nil }
+        let want = PlaceNormalizer.key(name)
+        return places.search(name, context: .tripLog, limit: 5)
+            .first { p in ([p.name] + p.aliases).contains { PlaceNormalizer.key($0) == want } }?.station
     }
 
     /// Ranked search. Empty query returns the most important stations (optionally nearest to `near`).
+    /// With an attached place index, non-empty queries search every stop (Scotty-like ranking, „Fahrt erfassen“ mode).
     public func search(_ query: String, limit: Int = 30, near: GeoPoint? = nil) -> [Station] {
         let q = StationIndex.normalize(query)
+        if !q.isEmpty, let places {
+            return places.search(query, context: PlaceSearchContext(mode: .tripLog, near: near), limit: limit).map(\.station)
+        }
         if q.isEmpty {
             let ranked = stations.enumerated().sorted { lhs, rhs in
                 rankEmpty(lhs.element, near: near) > rankEmpty(rhs.element, near: near)
@@ -67,9 +96,13 @@ public final class StationIndex: @unchecked Sendable {
         return scored.prefix(limit).map { stations[$0.0] }
     }
 
-    /// Nearest stations to a coordinate.
+    /// Nearest stations to a coordinate (every stop when a place index is attached).
     public func nearest(to point: GeoPoint, limit: Int = 5, maxKm: Double = 25) -> [(station: Station, distanceKm: Double)] {
-        stations
+        if let places {
+            return places.nearest(to: point, limit: limit, maxMeters: maxKm * 1000)
+                .map { (station: $0.place.station, distanceKm: $0.distanceMeters / 1000) }
+        }
+        return stations
             .map { ($0, point.distanceKm(to: $0.location)) }
             .filter { $0.1 <= maxKm }
             .sorted { $0.1 < $1.1 }
