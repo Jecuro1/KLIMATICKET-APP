@@ -125,6 +125,21 @@ struct Repository {
         Task { await app.notifications.cancelRenewalReminders(ticketID: id) }
     }
 
+    /// Creates the follow-up ticket (starts the day after `ticket` ends) with the catalog price for that start date.
+    @discardableResult
+    func renewTicket(_ ticket: TicketEntity) -> TicketEntity {
+        let cal = Calendar.vienna
+        let start = cal.startOfDay(for: cal.date(byAdding: .day, value: 1, to: ticket.endDate) ?? ticket.endDate)
+        let price = app.catalog.product(id: ticket.productID)?.price(forStart: start) ?? ticket.price
+        let next = TicketEntity(productID: ticket.productID, name: ticket.name, variant: ticket.variant, family: ticket.family,
+                                states: ticket.states, price: price, startDate: start, holderName: ticket.holderName,
+                                ticketNumber: "")
+        next.themeRaw = ticket.themeRaw
+        next.remindersRaw = ticket.remindersRaw
+        addTicket(next)
+        return next
+    }
+
     func scheduleReminders(for ticket: TicketEntity) {
         guard app.settings.renewalRemindersEnabled else { return }
         let id = ticket.id, name = ticket.name, end = ticket.endDate, offsets = ticket.reminderOffsets
