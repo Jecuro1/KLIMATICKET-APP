@@ -194,6 +194,7 @@ struct AdvCancellationCard: View {
                 legend
             }
             .padding(.top, Theme.Spacing.xxs)
+            .id(AdvAnchor.cancellationChart)
         }
     }
 

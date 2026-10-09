@@ -64,6 +64,13 @@ enum AdvSection: String, CaseIterable, Hashable, Identifiable {
     }
 }
 
+/// Scroll targets inside the Ratgeber: a whole section or a block within it (glance jumps, screenshot routes).
+enum AdvAnchor: Hashable {
+    case section(AdvSection)
+    case renewalReminder
+    case cancellationChart
+}
+
 /// Meaning of a verdict – drives colour and symbol (colour is never the only carrier: text + symbol always).
 enum AdvTone: Hashable {
     case positive, caution, neutral

@@ -211,8 +211,8 @@ struct AdvRenewalChart: View {
         let left = column.x - Self.barHalfWidth
         let right = column.x + Self.barHalfWidth
         if column.actual > 0 {
-            BarMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
-                    yStart: .value("Wert", 0.0), yEnd: .value("Wert", column.actual))
+            RectangleMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
+                          yStart: .value("Wert", 0.0), yEnd: .value("Wert", column.actual))
                 .cornerRadius(8)
                 .foregroundStyle(Self.actualGradient)
                 .annotation(position: .top, spacing: 4) {
@@ -220,8 +220,8 @@ struct AdvRenewalChart: View {
                 }
         }
         if column.forecast > 0 {
-            BarMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
-                    yStart: .value("Wert", column.actual), yEnd: .value("Wert", column.total))
+            RectangleMark(xStart: .value("Jahr", left), xEnd: .value("Jahr", right),
+                          yStart: .value("Wert", column.actual), yEnd: .value("Wert", column.total))
                 .cornerRadius(8)
                 .foregroundStyle((column.isNext ? Theme.dusk : Theme.glacier).opacity(column.isNext ? 0.30 : 0.22))
                 .annotation(position: .top, spacing: 4) {
@@ -304,6 +304,8 @@ struct AdvRenewalReminderCard: View {
     @Environment(\.openURL) private var openURL
     @State private var scheduled: Date?
     @State private var isDenied = false
+    /// The switch stays on while the permission prompt / scheduling is in flight.
+    @State private var isScheduling = false
     @State private var successCount = 0
 
     init(ticketID: UUID, ticketName: String, renewal: RenewalAdvice, family: TicketFamily, isMonthlyPayment: Bool,
@@ -355,12 +357,30 @@ struct AdvRenewalReminderCard: View {
                     .transition(.opacity)
             }
         } else {
-            Label("Der Brief sollte schon da sein – prüf die Frist darin.", systemImage: "envelope.open.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Theme.summitText)
-                .padding(.horizontal, TktStyle.rowPaddingH)
-                .padding(.vertical, TktStyle.rowPaddingV)
+            Label {
+                Text(lateNotice)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: renewal.cancellationDeadline == nil ? "envelope.open.fill" : "calendar.badge.exclamationmark")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.summitText)
+            .padding(.horizontal, TktStyle.rowPaddingH)
+            .padding(.vertical, TktStyle.rowPaddingV)
         }
+    }
+
+    /// Less than 9 weeks before expiry: what to do now instead of a reminder.
+    private var lateNotice: String {
+        let today = Calendar.vienna.startOfDay(for: Date())
+        if let deadline = renewal.cancellationDeadline {
+            if deadline >= today { return "Die Frist läuft: Kündige bis \(Format.date(deadline, .long)), wenn du nicht verlängern willst." }
+            return "Die Kündigungsfrist ist vorbei – dein Ticket verlängert sich am \(Format.date(renewal.renewalStart, .long))."
+        }
+        if let letter = renewal.letterDate, letter > today {
+            return "Dein Verlängerungsbrief kommt um den \(Format.date(letter, .long)) – prüf dann die Frist darin."
+        }
+        return "Der Brief sollte schon da sein – prüf die Frist darin."
     }
 
     private var automaticExplanation: String {
@@ -374,7 +394,7 @@ struct AdvRenewalReminderCard: View {
     }
 
     private var reminderToggle: some View {
-        Toggle(isOn: Binding(get: { scheduled != nil }, set: { setReminder($0) })) {
+        Toggle(isOn: Binding(get: { scheduled != nil || isScheduling }, set: { setReminder($0) })) {
             HStack(spacing: Theme.Spacing.s) {
                 TktIconTile(symbol: "bell.badge.fill", color: Theme.glacier)
                 VStack(alignment: .leading, spacing: 2) {
@@ -505,8 +525,11 @@ struct AdvRenewalReminderCard: View {
 
     private func setReminder(_ isOn: Bool) {
         if isOn {
+            guard !isScheduling else { return }
+            isScheduling = true
             Task {
                 let outcome = await AdvReminder.schedule(ticketID: ticketID, ticketName: ticketName, renewal: renewal)
+                isScheduling = false
                 apply(outcome)
                 if case .scheduled(let date) = outcome {
                     successCount += 1

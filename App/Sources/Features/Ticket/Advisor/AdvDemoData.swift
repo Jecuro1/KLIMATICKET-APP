@@ -13,20 +13,23 @@ enum AdvDemoData {
         ticket.addOns = addOns.map(\.rawValue)
         ticket.addOnPrice = TicketAddOn.listTotal(Set(addOns), productID: ticket.productID, variant: ticket.variant)
 
+        // Purposes only where the demo data has none (the shared demo data may categorise trips itself).
         let trips = (try? context.fetch(FetchDescriptor<TripEntity>())) ?? []
         for trip in trips {
+            let purpose: TripCategory
             switch trip.toName {
             case "Innsbruck Hauptbahnhof", "Landeck-Zams":
-                trip.category = .commute
+                purpose = .commute
             case "Wien Hauptbahnhof", "Klagenfurt Hauptbahnhof", "Salzburg Hauptbahnhof":
-                trip.category = .business
+                purpose = .business
             case "Bludenz", "Hungerburg", "Innsbruck Marktplatz":
                 // Weekend outings with the two kids (8 and 11).
-                trip.category = .leisure
+                purpose = .leisure
                 trip.companions = 2
             default:
-                trip.category = .leisure
+                purpose = .leisure
             }
+            if trip.category == nil { trip.category = purpose }
         }
         try? context.save()
     }

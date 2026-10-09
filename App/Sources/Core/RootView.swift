@@ -234,7 +234,9 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "hero":
             DesignSystemPreview()
-        case "advisor", "advisorCancel", "advisorExtras", "advisorJob", "ticketEdit":
+        // MARK: advisor
+        case "advisor", "advisorRenewal", "advisorCancel", "advisorCancelChart", "advisorExtras", "advisorFamily",
+             "advisorJob", "ticketEdit", "ticketAdvisor":
             AdvScreenshotHost(screen: screen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }

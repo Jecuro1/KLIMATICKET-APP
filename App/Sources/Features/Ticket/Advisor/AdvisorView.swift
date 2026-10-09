@@ -6,8 +6,8 @@ import KlimaCore
 /// Verlängern oder kündigen? · Kündigungsrechner · 1.-Klasse-Upgrade · Familien-Bilanz · Jobticket.
 struct AdvisorView: View {
     let ticket: TicketEntity
-    /// Scrolls to a section on appear (screenshot routes).
-    var initialSection: AdvSection? = nil
+    /// Scrolls to a section or block on appear (screenshot routes).
+    var initialAnchor: AdvAnchor? = nil
 
     @Environment(AppState.self) private var app
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date)
@@ -46,10 +46,10 @@ struct AdvisorView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isPastHeader }
             })
             .task {
-                guard let initialSection, !didInitialScroll else { return }
+                guard let initialAnchor, !didInitialScroll else { return }
                 didInitialScroll = true
                 try? await Task.sleep(for: .milliseconds(350))
-                proxy.scrollTo(initialSection, anchor: .top)
+                proxy.scrollTo(initialAnchor, anchor: .top)
             }
         }
         .ambientBackground(.standard, glow: 0.45 + 0.5 * advice.summary.progressClamped)
@@ -105,6 +105,7 @@ struct AdvisorView: View {
                 AdvRenewalReminderCard(ticketID: ticket.id, ticketName: ticket.name, renewal: advice.renewal,
                                        family: ticket.family, isMonthlyPayment: ticket.isMonthlyPayment,
                                        onEdit: { edit() })
+                    .id(AdvAnchor.renewalReminder)
             }
         }
         if advice.cancellation.verdict != .expired {
@@ -140,7 +141,7 @@ struct AdvisorView: View {
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, AdvStyle.sectionSpacing)
-        .id(id)
+        .id(AdvAnchor.section(id))
         .advEntrance(index)
     }
 
@@ -154,7 +155,7 @@ struct AdvisorView: View {
     private func jump(to section: AdvSection, proxy: ScrollViewProxy) {
         jumpCount += 1
         withAnimation(.smooth(duration: 0.5)) {
-            proxy.scrollTo(section, anchor: .top)
+            proxy.scrollTo(AdvAnchor.section(section), anchor: .top)
         }
     }
 

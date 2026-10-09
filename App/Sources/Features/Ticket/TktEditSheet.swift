@@ -19,6 +19,7 @@ struct TktDraft: Equatable {
     /// Validity of an existing ticket – kept as long as its first day is unchanged.
     var originalStart: Date? = nil
     var originalEnd: Date? = nil
+    // MARK: advisor
     /// Renews automatically per SEPA unless the holder objects (Ticket-Ratgeber).
     var autoRenews: Bool = false
     /// Jobticket / Zuschuss – the payoff is measured against the own share.
@@ -175,6 +176,7 @@ struct TktEditSheet: View {
                     ticketSection
                     validitySection
                     priceSection
+                    // MARK: advisor
                     AdvEditRenewalSection(autoRenews: $draft.autoRenews, employerText: $employerText, family: draft.family,
                                           fullPrice: parsedPrice.map { $0 + (showsAddOns ? (parsedAddOnPrice ?? 0) : 0) },
                                           hapticsEnabled: app.settings.hapticsEnabled)
@@ -207,6 +209,7 @@ struct TktEditSheet: View {
 
     private var isNew: Bool { ticket == nil }
     private var parsedPrice: Double? { TktDraft.parsePrice(priceText) }
+    // MARK: advisor
     /// Empty amount fields mean 0; anything else must parse ("800", "1.234,50").
     private var parsedEmployer: Double? { Self.amount(employerText) }
     private var parsedAddOnPrice: Double? { Self.amount(addOnPriceText) }
@@ -384,6 +387,7 @@ struct TktEditSheet: View {
         guard isValid, let price = parsedPrice else { return }
         var result = draft
         result.price = price
+        // MARK: advisor
         result.employerContribution = parsedEmployer ?? 0
         if showsAddOns && !result.addOns.isEmpty {
             result.addOnPrice = parsedAddOnPrice ?? 0

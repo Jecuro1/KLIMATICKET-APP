@@ -5,8 +5,12 @@ import KlimaCore
 struct AdvEntryLink: View {
     let ticket: TicketEntity
     let trips: [TripEntity]
+    /// The Ticket tab's scroll proxy – only used by the `ticketAdvisor` screenshot route to bring the entry into view.
+    var scrollProxy: ScrollViewProxy? = nil
 
     @Environment(AppState.self) private var app
+
+    private static let scrollID = "adv.entry"
 
     var body: some View {
         let advice = AdvAdvisor.advice(for: ticket, trips: trips, app: app)
@@ -17,6 +21,12 @@ struct AdvEntryLink: View {
         }
         .buttonStyle(AdvCardButtonStyle())
         .accessibilityHint("Öffnet den Ticket-Ratgeber")
+        .id(Self.scrollID)
+        .task {
+            guard LaunchMode.screenshotScreen == "ticketAdvisor", let scrollProxy else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            scrollProxy.scrollTo(Self.scrollID, anchor: .center)
+        }
     }
 }
 

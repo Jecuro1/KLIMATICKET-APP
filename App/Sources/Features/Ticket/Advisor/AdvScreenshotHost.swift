@@ -3,9 +3,16 @@ import SwiftData
 import KlimaCore
 
 /// CI screenshot routes of the Ratgeber (`-KBScreenshot <screen> -KBDemo YES`):
-/// `advisor` (top), `advisorCancel` (Kündigungsrechner), `advisorExtras` (1. Klasse + Familie), `advisorJob`
-/// (Jobticket with employer contribution) and `ticketEdit` (edit sheet, new fields).
+/// `advisor` (top), `advisorRenewal` (Verlängern + Erinnerung), `advisorCancel` (Kündigungsrechner),
+/// `advisorCancelChart` (Erstattung je Monat + außerordentlich), `advisorExtras` (1. Klasse), `advisorFamily`
+/// (Familien-Bilanz), `advisorJob` (Jobticket with employer contribution), `ticketEdit` (edit sheet, new fields) and
+/// `ticketAdvisor` (Ticket tab scrolled to the Ratgeber entry).
 struct AdvScreenshotHost: View {
+    static let screens: Set<String> = [
+        "advisor", "advisorRenewal", "advisorCancel", "advisorCancelChart", "advisorExtras", "advisorFamily",
+        "advisorJob", "ticketEdit", "ticketAdvisor",
+    ]
+
     let screen: String
 
     @Environment(AppState.self) private var app
@@ -17,14 +24,17 @@ struct AdvScreenshotHost: View {
     var body: some View {
         Group {
             if isReady, let ticket = tickets.first {
-                if screen == "ticketEdit" {
+                switch screen {
+                case "ticketEdit":
                     MainTabView()
                         .sheet(isPresented: $showsEditor) {
                             TktEditSheet(ticket: ticket, initial: TktDraft(ticket: ticket), scrollTarget: AdvEditAnchor.renewal)
                         }
-                } else {
+                case "ticketAdvisor":
+                    MainTabView()
+                default:
                     NavigationStack {
-                        AdvisorView(ticket: ticket, initialSection: initialSection)
+                        AdvisorView(ticket: ticket, initialAnchor: initialAnchor)
                     }
                 }
             } else {
@@ -39,6 +49,9 @@ struct AdvScreenshotHost: View {
             case "ticketEdit":
                 AdvDemoData.enrich(context: context, employerContribution: 400, addOns: [.vorteilsabo])
                 app.selectedTab = .ticket
+            case "ticketAdvisor":
+                AdvDemoData.enrich(context: context)
+                app.selectedTab = .ticket
             default:
                 AdvDemoData.enrich(context: context)
             }
@@ -46,11 +59,14 @@ struct AdvScreenshotHost: View {
         }
     }
 
-    private var initialSection: AdvSection? {
+    private var initialAnchor: AdvAnchor? {
         switch screen {
-        case "advisorCancel": .cancellation
-        case "advisorExtras": .firstClass
-        case "advisorJob": .jobticket
+        case "advisorRenewal": .section(.renewal)
+        case "advisorCancel": .section(.cancellation)
+        case "advisorCancelChart": .cancellationChart
+        case "advisorExtras": .section(.firstClass)
+        case "advisorFamily": .section(.family)
+        case "advisorJob": .section(.jobticket)
         default: nil
         }
     }
