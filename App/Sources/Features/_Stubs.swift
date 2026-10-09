@@ -1,14 +1,17 @@
-// TEMPORARY placeholders so the foundation compiles. Each feature module replaces its stub (delete the line here).
+// TEMPORARY placeholders for modules still being implemented (integration preview build).
 import SwiftUI
 import KlimaCore
 
-struct TripsView: View { var body: some View { NavigationStack { Text("Fahrten").navigationTitle("Fahrten") } } }
-struct StatisticsView: View { var body: some View { NavigationStack { Text("Statistik").navigationTitle("Statistik") } } }
 struct TicketView: View { var body: some View { NavigationStack { Text("Ticket").navigationTitle("Ticket") } } }
 struct OnboardingFlow: View { var body: some View { Text("Willkommen") } }
 struct TripEditorView: View { let draft: TripDraft; var body: some View { Text("Fahrt") } }
-struct TripDetailView: View { let trip: TripEntity; var body: some View { Text(trip.fromName) } }
-struct AchievementsView: View { var body: some View { Text("Erfolge") } }
-struct SettingsView: View { var body: some View { Text("Einstellungen") } }
-struct UpdateSheet: View { var body: some View { Text("Update") } }
+struct StationPickerView: View {
+    let title: String
+    let selection: (Station) -> Void
+    var customName: ((String) -> Void)? = nil
+    init(title: String, selection: @escaping (Station) -> Void, customName: ((String) -> Void)? = nil) {
+        self.title = title; self.selection = selection; self.customName = customName
+    }
+    var body: some View { Text(title) }
+}
 struct WidgetGalleryView: View { var body: some View { Text("Widgets") } }
