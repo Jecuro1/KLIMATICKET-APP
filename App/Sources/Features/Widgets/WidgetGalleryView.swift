@@ -3,8 +3,9 @@ import SwiftData
 import WidgetKit
 import KlimaCore
 
-/// "Widgets" (CI screenshots `widgets`, `widgets2`, `widgets3`): every widget design at real size on a home-screen
-/// wallpaper, the lock-screen set on a dark stage, the two controls, Siri & Kurzbefehle and how to add them.
+/// "Widgets" (CI screenshots `widgets` … `widgets4`, `widgetsTryOut`, `widgetsControls`, `widgetsSiriLog`): every
+/// widget design at real size on a home-screen wallpaper, the lock-screen set on a dark stage, StandBy, the two
+/// controls, Siri & Kurzbefehle and how to add them.
 /// Uses the live ticket data (same builder the app uses for the real widgets), else the stored snapshot, else `.sample`.
 /// The previews' favourite buttons are live for show: a tap logs the favourite *in the preview* (figures roll, "+"
 /// turns into a checkmark) – nothing is saved.
@@ -28,6 +29,8 @@ struct WidgetGalleryView: View {
     var screenshotSection: WidGallerySection? = nil
     /// CI screenshot "widgetsTryOut": the first favourite is tapped in the previews right away.
     var screenshotTriesFavorite = false
+    /// CI screenshot "widgetsSiriLog": the Siri section opens on this phrase's answer.
+    var screenshotSiriPhrase: WidSiriPhrase? = nil
 
     var body: some View {
         let shown = preview ?? snapshot ?? .sample
@@ -47,7 +50,8 @@ struct WidgetGalleryView: View {
                     WidControlCenterSection(favorite: shown.favorites.first) { openAddTrip() }
                         .reveal(order: 8)
                         .scrollCardTransition()
-                    WidSiriSection(snapshot: shown)
+                        .id(WidGallerySection.controls)
+                    WidSiriSection(snapshot: shown, initialPhrase: screenshotSiriPhrase ?? .balance)
                         .reveal(order: 8)
                         .scrollCardTransition()
                         .id(WidGallerySection.siri)
@@ -211,8 +215,10 @@ private struct WidGalleryTitle: View {
 enum WidGallerySection: Hashable {
     /// The large Amortisation widget and the medium Schnellerfassung below it.
     case large
-    /// Lock screen, Control Center and the how-to guide.
+    /// Lock screen and StandBy.
     case lock
+    /// Kontrollzentrum & Aktionstaste (both controls), then Siri.
+    case controls
     /// Siri & Kurzbefehle and the how-to guide.
     case siri
 }

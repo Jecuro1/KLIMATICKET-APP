@@ -8,8 +8,13 @@ import KlimaCore
 struct WidSiriSection: View {
     let snapshot: WidgetSnapshot
 
-    @State private var phrase: WidSiriPhrase = .balance
+    @State private var phrase: WidSiriPhrase
     @Namespace private var selection
+
+    init(snapshot: WidgetSnapshot, initialPhrase: WidSiriPhrase = .balance) {
+        self.snapshot = snapshot
+        _phrase = State(initialValue: initialPhrase)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
