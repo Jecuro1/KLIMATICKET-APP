@@ -6,7 +6,7 @@ import KlimaCore
 /// Fahrt-Detail: big value on the sky, route hero, stat tiles, map, fare explanation, note and actions.
 ///
 /// Motion (docs/MOTION.md): zooms out of its list row; the value counts in once and rolls after an edit; the cards rise
-/// in one short stagger; scrolling, the numeral condenses behind the cards and the bar shows "Route · € value".
+/// in one short stagger; scrolling, the numeral condenses behind the cards and the bar title becomes the route.
 struct TripDetailView: View {
     let trip: TripEntity
 
@@ -30,8 +30,10 @@ struct TripDetailView: View {
     @State private var favoriteBurst = 0
     @State private var repeatTurns = 0
     @State private var routeCache = TripListDetailRouteCache()
-    /// Scroll progress of the hero (0 at rest … 1 condensed) – read only by the hero and the compact bar title.
+    /// Scroll progress of the hero (0 at rest … 1 condensed) – read only by the hero's modifier.
     @State private var condense = ScrollCondense()
+    /// The hero has scrolled away: the bar says which trip this is ("St. Anton → Lech"). Flips at a threshold only.
+    @State private var showsRouteTitle = false
 
     var body: some View {
         let info = makeInfo()
@@ -66,17 +68,17 @@ struct TripDetailView: View {
         }
         .scrollIndicators(.hidden)
         .tracksScrollCondense(condense, distance: 200)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > 230
+        } action: { _, isPast in
+            if showsRouteTitle != isPast { showsRouteTitle = isPast }
+        }
         .scrollEdgeEffectStyle(.soft, for: .top)
         .revealScope()
         .ambientBackground()
-        .navigationTitle("Fahrt")
+        .navigationTitle(showsRouteTitle ? TripListFormat.routeTitle(trip.fromName, trip.toName, roundTrip: trip.isRoundTrip) : "Fahrt")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                TripListDetailBarTitle(condense: condense,
-                                       route: TripListFormat.routeTitle(trip.fromName, trip.toName, roundTrip: trip.isRoundTrip),
-                                       value: trip.totalValue)
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Bearbeiten") { actions.edit(trip) }
             }
@@ -515,43 +517,6 @@ struct TripDetailView: View {
             co2Kg: app.catalog.emissions.savedKg(km: trip.totalDistanceKm, mode: trip.mode),
             isFavorite: actions.existingFavorite(for: trip, in: favorites) != nil
         )
-    }
-}
-
-// MARK: - Bar title
-
-/// The bar's title: "Fahrt" at rest; once the hero numeral has condensed under the cards, "St. Anton → Lech" with the
-/// value – so the context stays in view. Only this view reads the scroll progress (no re-render of the screen).
-private struct TripListDetailBarTitle: View {
-    let condense: ScrollCondense
-    let route: String
-    let value: Double
-
-    var body: some View {
-        let p = Double(condense.value)
-        let detail = max(0, p - 0.55) / 0.45
-        ZStack {
-            Text("Fahrt")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-                .opacity(1 - detail)
-            VStack(spacing: 0) {
-                Text(route)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                Text(Format.euroPrecise(value))
-                    .font(.caption.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.accentText)
-                    .numericValue(value)
-            }
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-            .opacity(detail)
-            .offset(y: 6 * (1 - detail))
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Fahrt")
-        .accessibilityAddTraits(.isHeader)
     }
 }
 
