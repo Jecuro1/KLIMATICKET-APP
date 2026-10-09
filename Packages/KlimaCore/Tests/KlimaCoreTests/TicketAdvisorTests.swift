@@ -373,6 +373,19 @@ final class TicketAdvisorTests: XCTestCase {
         XCTAssertNil(AdvisorTrip.make(unknown, travelClass: .second, estimator: estimator, stations: stations).firstClassSurcharge)
     }
 
+    func testCityTicketTripsHaveNoFirstClassSurcharge() {
+        let a = Station(id: "w1", name: "Wien Hauptbahnhof", lat: 48.1852, lon: 16.3761, state: "W")
+        let b = Station(id: "w2", name: "Wien Praterstern", lat: 48.2185, lon: 16.3925, state: "W")
+        var c = catalog(fareIndex: nil)
+        c.cityFares = [CityFare(id: "wien", name: "Wien", singleTicketEUR: 3.2, latitude: 48.2082, longitude: 16.3738, radiusKm: 12)]
+        let estimator = FareEstimator(catalog: c)
+        let record = TripRecord(date: date(2026, 4, 1, 8), fromName: a.name, toName: b.name, fromStationID: "w1", toStationID: "w2",
+                                mode: .train, distanceKm: 4, fareEUR: 3.2)
+        let made = AdvisorTrip.make(record, travelClass: .second, estimator: estimator, stations: StationIndex(stations: [a, b]))
+        XCTAssertEqual(made.firstClassSurcharge, 0)
+        XCTAssertEqual(TicketAdvisor.surcharge(of: made, factor: FareModel.fallback.firstClassFactor), 0)
+    }
+
     // MARK: Family
 
     func testFamilyBalanceValuesChildrenAtHalfFare() {

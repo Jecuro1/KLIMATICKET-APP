@@ -47,7 +47,7 @@ struct AdvCancellationCard: View {
             statusPanel(symbol: "checkmark.seal.fill", tone: .positive,
                         text: "Kündbar seit \(Format.date(advice.possibleFrom, .long)) · du bist im \(advice.currentMonth). Gültigkeitsmonat")
             AdvFigure(value: AdvText.cents(max(0, advice.isMonthlyPayment ? end.saving : end.refund)),
-                      caption: figureCaption(end), color: end.isWorthwhile ? Theme.positive : Theme.textPrimary)
+                      caption: figureCaption(end), color: advice.verdict == .consider ? Theme.positive : Theme.textPrimary)
             if end.isWorthwhile {
                 comparison(end)
             }

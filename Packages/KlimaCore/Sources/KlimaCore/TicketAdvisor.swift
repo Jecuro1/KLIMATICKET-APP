@@ -283,9 +283,9 @@ public struct AdvisorTrip: Hashable, Sendable {
         }
         let first = estimator.estimate(from: a, to: b, mode: .train, travelClass: .first, discount: .none, date: record.date)
         let second = estimator.estimate(from: a, to: b, mode: .train, travelClass: .second, discount: .none, date: record.date)
-        guard second.method != .cityTicket, first.fareEUR > second.fareEUR else {
-            return AdvisorTrip(record: record, travelClass: travelClass)
-        }
+        // City single tickets have no 1st class – nothing to upgrade.
+        guard second.method != .cityTicket else { return AdvisorTrip(record: record, travelClass: travelClass, firstClassSurcharge: 0) }
+        guard first.fareEUR > second.fareEUR else { return AdvisorTrip(record: record, travelClass: travelClass) }
         return AdvisorTrip(record: record, travelClass: travelClass, firstClassSurcharge: first.fareEUR - second.fareEUR)
     }
 }
