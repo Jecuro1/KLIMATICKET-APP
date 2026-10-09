@@ -28,20 +28,20 @@ struct TktReminderCard: View {
                     TktHairline()
                         .padding(.leading, TktStyle.rowPaddingH)
                     offsetsRow
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .motionTransition(.rise)
                     if authStatus == .denied {
                         deniedNotice
-                            .transition(.opacity)
+                            .motionTransition(.opacity)
                     } else if authStatus == .notDetermined && !LaunchMode.isScreenshot {
                         askNotice
-                            .transition(.opacity)
+                            .motionTransition(.opacity)
                     }
                 }
             }
             .clipShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
         }
-        .animation(.smooth(duration: 0.3), value: isOn)
-        .animation(.smooth(duration: 0.3), value: authStatus)
+        .motionAnimation(Motion.smooth, value: isOn)
+        .motionAnimation(Motion.smooth, value: authStatus)
         .task { await refreshStatus() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await refreshStatus() } }
@@ -206,7 +206,7 @@ struct TktReminderCard: View {
         var offsets = Set(ticket.reminderOffsets)
         let isAdding = !offsets.contains(offset)
         if isAdding { offsets.insert(offset) } else { offsets.remove(offset) }
-        withAnimation(.snappy(duration: 0.25)) {
+        withMotion(Motion.snappy) {
             ticket.reminderOffsets = offsets.sorted(by: >)
         }
         Repository(context: context, app: app).updateTicket(ticket)
@@ -226,13 +226,13 @@ struct TktReminderCard: View {
                 app.showToast("bell.slash.fill", "Ohne Mitteilungen keine Erinnerung", "Du kannst sie in den iOS-Einstellungen erlauben.")
             }
         }
-        withAnimation(.smooth(duration: 0.3)) { authStatus = status }
+        withMotion(Motion.smooth) { authStatus = status }
     }
 
     private func refreshStatus() async {
         let previous = authStatus
         let status = await app.notifications.authorizationStatus()
-        withAnimation(.smooth(duration: 0.3)) { authStatus = status }
+        withMotion(Motion.smooth) { authStatus = status }
         // Allowed again in the iOS Settings app: schedule what was skipped while notifications were off.
         if previous == .denied, Self.isAllowed(status), isOn { scheduleAllReminders() }
     }
@@ -267,11 +267,11 @@ struct TktPaymentCard: View {
                     TktHairline()
                         .padding(.leading, TktStyle.rowPaddingH)
                     instalments
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .motionTransition(.rise)
                 }
             }
         }
-        .animation(.smooth(duration: 0.3), value: ticket.isMonthlyPayment)
+        .motionAnimation(Motion.smooth, value: ticket.isMonthlyPayment)
     }
 
     private var rate: Double { ticket.price / 12 }
@@ -315,7 +315,7 @@ struct TktPaymentCard: View {
                     Text(Format.euroPrecise(paid))
                         .font(Theme.Typography.numberMedium)
                         .foregroundStyle(Theme.textPrimary)
-                        .contentTransition(.numericText(value: paid))
+                        .numericValue(paid)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -323,9 +323,13 @@ struct TktPaymentCard: View {
                 Text("\(count) von 12 Raten")
                     .font(.subheadline.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.textSecondary)
+                    .numericValue(Double(count))
             }
             .accessibilityElement(children: .combine)
-            TktInstalmentBar(paid: count)
+            // The paid segments fill one after another when the card first scrolls into view.
+            DrawInReader { isDrawn in
+                TktInstalmentBar(paid: isDrawn ? count : 0)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Label {
                     Text(status)
@@ -359,7 +363,17 @@ private struct TktInstalmentBar: View {
             segments { _ in Theme.surfaceSecondary }
             Rectangle()
                 .fill(Theme.routeGradient)
-                .mask { segments { index in index < paid ? Color.black : Color.clear } }
+                .mask {
+                    segments { index in index < paid ? Color.black : Color.clear }
+                        .animation(nil, value: paid)
+                }
+                .mask(alignment: .leading) {
+                    // Sweeps left → right over the paid segments (a transform, no layout per frame).
+                    GeometryReader { proxy in
+                        Rectangle()
+                            .offset(x: -proxy.size.width * (1 - Double(paid) / 12))
+                    }
+                }
         }
         .frame(height: 6)
         .accessibilityElement(children: .ignore)

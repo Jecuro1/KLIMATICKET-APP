@@ -17,40 +17,6 @@ enum TktStyle {
     static let headerInset: CGFloat = Theme.Spacing.screen - Theme.Spacing.cardGutter
 }
 
-// MARK: - Entrance
-
-/// Staggered entrance (fade + rise, the pass additionally tips in from a slight 3D tilt).
-/// Settles within ~1.1 s; immediate in screenshot mode (the caller starts with `visible == true`), fade only with Reduce Motion.
-struct TktEntrance: ViewModifier {
-    var index: Int
-    var visible: Bool
-    var lift: Bool = false
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        let hidden = !visible
-        let moves = hidden && !reduceMotion
-        content
-            .opacity(hidden ? 0 : 1)
-            .offset(y: moves ? (lift ? 28 : 16) : 0)
-            .rotation3DEffect(.degrees(moves && lift ? 12 : 0), axis: (x: 1, y: 0, z: 0), perspective: 0.6)
-            .animation(animation, value: visible)
-    }
-
-    private var animation: Animation {
-        if reduceMotion { return .easeOut(duration: 0.25) }
-        let delay = 0.07 * Double(min(index, 6))
-        return lift ? .spring(duration: 0.85, bounce: 0.22).delay(delay) : .spring(duration: 0.6, bounce: 0.14).delay(delay)
-    }
-}
-
-extension View {
-    func tktEntrance(_ index: Int, visible: Bool, lift: Bool = false) -> some View {
-        modifier(TktEntrance(index: index, visible: visible, lift: lift))
-    }
-}
-
 // MARK: - Small building blocks
 
 /// Rounded gradient tile with a white glyph (row icons: bell, card, renewal …).
@@ -253,12 +219,17 @@ struct TktInlineTitle: View {
     let title: String
     let chrome: TktTitleChrome
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
+        let shown = chrome.showsInlineTitle
         Text(title)
             .font(.headline)
             .foregroundStyle(Theme.textPrimary)
-            .opacity(chrome.showsInlineTitle ? 1 : 0)
-            .accessibilityHidden(!chrome.showsInlineTitle)
+            .opacity(shown ? 1 : 0)
+            // Rises into the bar as the large title leaves it.
+            .offset(y: shown || reduceMotion ? 0 : 8)
+            .accessibilityHidden(!shown)
     }
 }
 
@@ -269,7 +240,7 @@ extension View {
             geometry.contentOffset.y + geometry.contentInsets.top > threshold
         }, action: { _, isPastHeader in
             guard chrome.showsInlineTitle != isPastHeader else { return }
-            withAnimation(.easeInOut(duration: 0.2)) { chrome.showsInlineTitle = isPastHeader }
+            withMotion(Motion.snappy) { chrome.showsInlineTitle = isPastHeader }
         })
     }
 }

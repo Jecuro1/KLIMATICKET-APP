@@ -189,12 +189,14 @@ private struct TicketCardFace: View, Equatable {
             if let fraction = amortizedFraction {
                 MiniSummit(progress: fraction)
                     .frame(width: 56, height: 40)
+                    .motionAnimation(Motion.gentle, value: fraction)   // the climber walks to the new value
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(Format.percent(fraction))
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .fixedSize()
+                            .numericValue(fraction)
                         Text(fraction >= 1 ? "rentiert" : "amortisiert")
                             .font(.system(size: 13, weight: .semibold))
                             .lineLimit(1)
@@ -346,10 +348,15 @@ private struct TicketShadow: View {
     private static let shadowColor = Color(red: 16 / 255, green: 36 / 255, blue: 80 / 255)
 }
 
-/// Tiny summit route used on the ticket stub.
-struct MiniSummit: View {
+/// Tiny summit route used on the ticket stub. Animatable: the climber walks when `progress` changes in an animation.
+struct MiniSummit: View, Animatable {
     /// 0…1+
     var progress: Double
+
+    nonisolated var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
 
     var body: some View {
         GeometryReader { geo in

@@ -339,7 +339,7 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { app.selectedTab = .trips }
         case "stats", "statsCategories", "statsHonest": // MARK: tripmeta – statsCategories, statsHonest
             MainTabView().onAppear { app.selectedTab = .stats }
-        case "ticket", "ticketBottom": // MARK: dashboardTicket – ticketBottom (scrolled to the end)
+        case "ticket", "ticketBottom", "ticketBack": // MARK: dashboardTicket – ticketBottom (scrolled to the end), ticketBack (pass turned over)
             MainTabView().onAppear { app.selectedTab = .ticket }
         case "tripEdit": // MARK: trips
             MainTabView().onAppear { app.selectedTab = .trips }

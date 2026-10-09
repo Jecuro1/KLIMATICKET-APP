@@ -161,15 +161,17 @@ private struct TktLongTextRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             if isLong {
                 Button {
-                    withAnimation(.smooth(duration: 0.3)) { isExpanded.toggle() }
+                    withMotion(Motion.smooth) { isExpanded.toggle() }
                 } label: {
                     Text(isExpanded ? "Weniger anzeigen" : "Mehr anzeigen")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.accentText)
+                        .contentTransition(.opacity)
                         .padding(.vertical, Theme.Spacing.xxs)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
+                .haptic(.tap, trigger: isExpanded)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -219,7 +221,7 @@ struct TktActionsCard: View {
             .padding(.vertical, TktStyle.rowPaddingV + 2)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
     }
 }
 
@@ -277,7 +279,7 @@ struct TktHistorySection: View {
             .padding(.vertical, TktStyle.rowPaddingV)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
     }
 }
 
@@ -315,7 +317,8 @@ private struct TktHistoryRow: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
                     .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
-                    .contentTransition(.symbolEffect(.replace))
+                    .symbolReplaceTransition()
+                    .symbolBounce(on: isSelected)
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, TktStyle.rowPaddingH)
@@ -323,7 +326,7 @@ private struct TktHistoryRow: View {
             .background(isSelected ? Theme.accent.opacity(0.06) : Color.clear)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressableCard)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityHint(isSelected ? "Wird gerade angezeigt" : "Zeigt dieses Ticket in der ganzen App")

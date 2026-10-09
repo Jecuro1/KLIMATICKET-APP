@@ -8,6 +8,10 @@ import KlimaCore
 /// Top → bottom: eyebrow „AKTIV · TICKETJAHR 2026/27“ + large title (share + ellipsis in the toolbar), the signature pass
 /// (tilt foil, tap flips to the photo of the real ticket), „Gültigkeit“ with the break-even flag, renewal card (≤ 45 days),
 /// reminders, monthly payment, details, edit/delete and the ticket history (tap = show that ticket app-wide).
+///
+/// Motion (docs/MOTION.md): the sections rise in once in reading order, the pass is dealt onto the screen and can be
+/// swivelled / turned like a card (`TktCardStack`), the days left count in, the timeline draws and its flag waves, cards
+/// further down settle in as they scroll up, and the Ratgeber zooms out of its card.
 struct TicketView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -17,8 +21,6 @@ struct TicketView: View {
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse)
     private var trips: [TripEntity]
 
-    /// Drives the staggered entrance; already true in screenshot mode (end state immediately).
-    @State private var appeared = LaunchMode.isScreenshot
     /// Inline-title flag, read only by the toolbar title (scrolling past the header never re-runs this body).
     @State private var titleChrome = TktTitleChrome()
     @State private var editRequest: TktEditRequest?
@@ -27,6 +29,7 @@ struct TicketView: View {
     @State private var showsPhotoPicker = false
     @State private var photoItem: PhotosPickerItem?
     @State private var isImportingPhoto = false
+    /// Deleting the last ticket shows no toast – then this plays the warning haptic (otherwise the toast does).
     @State private var deleteCount = 0
 
     private static let topID = "tkt-top"
@@ -49,6 +52,7 @@ struct TicketView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent(ticket: ticket, snapshot: snapshot) }
         }
+        .zoomTransitionScope()   // the Ratgeber zooms out of its card
         .sheet(item: $editRequest) { request in
             TktEditSheet(ticket: request.ticket, initial: request.draft)
         }
@@ -64,11 +68,8 @@ struct TicketView: View {
         } message: { doomed in
             Text(deleteMessage(for: doomed))
         }
-        .sensoryFeedback(.warning, trigger: deleteCount) { _, _ in app.settings.hapticsEnabled }
-        .sensoryFeedback(.selection, trigger: app.settings.selectedTicketID) { _, _ in app.settings.hapticsEnabled }
-        .onAppear {
-            if !appeared { appeared = true }
-        }
+        .haptic(.warning, trigger: deleteCount)
+        .haptic(.selection, trigger: app.settings.selectedTicketID)
     }
 
     // MARK: Wallet
@@ -79,6 +80,7 @@ struct TicketView: View {
                 walletSections(ticket: ticket, snapshot: snapshot, proxy: proxy)
             }
             .accessibilityIdentifier("perf.scroll.ticket") // MARK: perf – KlimaBilanzPerfTests
+            .revealScope()
             .scrollEdgeEffectStyle(.soft, for: .all)
             .tktInlineTitleTracking(titleChrome)
             .defaultScrollAnchor(Self.screenshotAnchor)
@@ -92,7 +94,7 @@ struct TicketView: View {
                 .id(Self.topID)
                 .padding(.horizontal, Theme.Spacing.screen)
                 .padding(.top, Theme.Spacing.xxs)
-                .tktEntrance(0, visible: appeared)
+                .reveal(order: 0)
 
             // ZStack: while switching tickets the outgoing and incoming pass overlap instead of being stacked in the
             // VStack for the length of the transition (which pushed everything below down by a whole card).
@@ -104,11 +106,11 @@ struct TicketView: View {
                              onAddPhoto: { showsPhotoPicker = true },
                              onRemovePhoto: { removePhoto(from: ticket) })
                     .id(ticket.id)
-                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+                    .motionTransition(.opacity.combined(with: .scale(scale: 0.97)))
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
             .padding(.top, Theme.Spacing.m)
-            .tktEntrance(1, visible: appeared, lift: true)
+            .reveal(order: 1)
 
             statusCards(ticket: ticket, summary: snapshot.summary, proxy: proxy)
                 .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -135,25 +137,30 @@ struct TicketView: View {
     private func statusCards(ticket: TicketEntity, summary: SavingsSummary, proxy: ScrollViewProxy) -> some View {
         VStack(spacing: TktStyle.cardSpacing) {
             TktValidityCard(start: ticket.startDate, end: ticket.endDate, summary: summary)
-                .tktEntrance(2, visible: appeared)
+                .reveal(order: 2)
             if needsRenewal(ticket, summary: summary) {
                 TktRenewalCard(ticket: ticket, followUp: followUp(of: ticket), daysRemaining: summary.daysRemaining,
                                onRenew: { renew(ticket) },
                                onShow: { next in select(next, proxy: proxy) })
-                    .tktEntrance(3, visible: appeared)
+                    .reveal(order: 3)
+                    .scrollCardTransition()
             }
             if !ticket.isExpired {
                 TktReminderCard(ticket: ticket)
-                    .tktEntrance(3, visible: appeared)
+                    .reveal(order: 3)
+                    .scrollCardTransition()
             }
             TktPaymentCard(ticket: ticket, totalValue: summary.totalValue)
-                .tktEntrance(4, visible: appeared)
+                .reveal(order: 4)
+                .scrollCardTransition()
             // MARK: benefits
             PerkSummaryCard()
-                .tktEntrance(4, visible: appeared)
+                .reveal(order: 5)
+                .scrollCardTransition()
             // MARK: advisor
             AdvEntryLink(ticket: ticket, trips: trips, scrollProxy: proxy)
-                .tktEntrance(4, visible: appeared)
+                .reveal(order: 6)
+                .scrollCardTransition()
         }
     }
 
@@ -164,15 +171,18 @@ struct TicketView: View {
                     .padding(.horizontal, TktStyle.headerInset)
                 TktDetailsCard(ticket: ticket, summary: snapshot.summary, records: snapshot.trips,
                                product: app.catalog.product(id: ticket.productID))
+                    .scrollCardTransition()
             }
             TktActionsCard(onEdit: { edit(ticket) }, onDelete: { requestDelete(ticket) })
+                .scrollCardTransition()
             TktHistorySection(items: historyItems(active: ticket, summary: snapshot.summary),
                               selectedID: ticket.id,
                               onSelect: { selected in select(selected, proxy: proxy) },
                               onAdd: { newTicket(basedOn: ticket) })
                 .padding(.top, TktStyle.sectionSpacing - TktStyle.cardSpacing)
+                .scrollCardTransition()
         }
-        .tktEntrance(5, visible: appeared)
+        .reveal(order: 7)
     }
 
     // MARK: Empty state
@@ -274,7 +284,7 @@ struct TicketView: View {
         Binding(
             get: { Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)?.id },
             set: { newID in
-                withAnimation(.smooth(duration: 0.45)) { app.settings.selectedTicketID = newID }
+                withMotion(Motion.smooth) { app.settings.selectedTicketID = newID }
                 Repository(context: context, app: app).refreshWidgets()
             }
         )
@@ -345,7 +355,7 @@ struct TicketView: View {
     // MARK: Actions
 
     private func select(_ ticket: TicketEntity, proxy: ScrollViewProxy) {
-        withAnimation(.smooth(duration: 0.45)) {
+        withMotion(Motion.smooth) {
             app.settings.selectedTicketID = ticket.id
             proxy.scrollTo(Self.topID, anchor: .top)
         }
@@ -363,7 +373,7 @@ struct TicketView: View {
     private func renew(_ ticket: TicketEntity) {
         let repo = Repository(context: context, app: app)
         let previousSelection = app.settings.selectedTicketID
-        let next = withAnimation(.smooth(duration: 0.45)) { () -> TicketEntity in
+        let next = withMotion(Motion.smooth) { () -> TicketEntity in
             let created = repo.renewTicket(ticket)
             // `addTicket` selects the follow-up app-wide; while this ticket still runs it stays on screen and the
             // renewal card turns into "Folgeticket angelegt · Anzeigen".
@@ -382,12 +392,12 @@ struct TicketView: View {
     private func delete(_ ticket: TicketEntity) {
         let name = ticket.name
         let isLast = tickets.count <= 1
-        withAnimation(.smooth(duration: 0.4)) {
+        withMotion(Motion.smooth) {
             Repository(context: context, app: app).deleteTicket(ticket)
         }
-        deleteCount += 1
         pendingDeletion = nil
-        if !isLast { app.showToast("trash.fill", "Ticket gelöscht", name) }
+        // One haptic: the toast's warning – or, without a toast (last ticket), this one.
+        if isLast { deleteCount += 1 } else { app.showToast("trash.fill", "Ticket gelöscht", name) }
     }
 
     private func removePhoto(from ticket: TicketEntity) {
@@ -399,9 +409,9 @@ struct TicketView: View {
     /// Loads the picked image, downsizes it off the main actor and stores it on the active ticket.
     private func importPhoto(_ item: PhotosPickerItem) async {
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else { return }
-        withAnimation(.smooth(duration: 0.25)) { isImportingPhoto = true }
+        withMotion(Motion.smooth) { isImportingPhoto = true }
         defer {
-            withAnimation(.smooth(duration: 0.25)) { isImportingPhoto = false }
+            withMotion(Motion.smooth) { isImportingPhoto = false }
             photoItem = nil
         }
         guard let raw = try? await item.loadTransferable(type: Data.self) else {

@@ -33,8 +33,12 @@ extension TktCardFace {
     }
 }
 
-/// The signature pass (DS `TicketCard`) with tilt-driven foil, tap-to-flip (3D) to the back side with the photo of the
-/// real ticket (or the "Foto deines Tickets hinzufügen" placeholder) and the legal note "Begleitkarte · kein Fahrschein".
+/// The signature pass (DS `TicketCard`) with tilt-driven foil and a back side with the photo of the real ticket (or the
+/// "Foto deines Tickets hinzufügen" placeholder) and the legal note "Begleitkarte · kein Fahrschein".
+///
+/// Handled like a real card: it is dealt onto the screen once (tips in from a slight tilt), swivels under a sideways drag
+/// – the holographic foil sliding with it – and turns over when let go past the edge or flicked; a tap turns it too.
+/// Vertical drags keep scrolling the page. One light haptic per turn. Reduce Motion: no swivel, the faces cross-fade.
 struct TktCardStack: View {
     let ticket: TicketEntity
     let face: TktCardFace
@@ -44,26 +48,37 @@ struct TktCardStack: View {
     var onAddPhoto: () -> Void
     var onRemovePhoto: () -> Void
 
-    @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isFlipped = false
+    /// Resting angle in degrees (multiples of 180; odd multiples show the back). CI route `ticketBack` opens turned.
+    @State private var turns: Double = LaunchMode.screenshotScreen == "ticketBack" ? 180 : 0
+    /// Live swivel of a sideways drag, added to `turns`.
+    @State private var dragAngle: Double = 0
+    @State private var cardWidth: CGFloat = 360
     @State private var photo: UIImage?
     @State private var flipCount = 0
     @State private var confirmsRemoval = false
+    /// The pass is dealt onto the screen once (also when another ticket year takes its place).
+    @State private var isDealt = MotionPolicy.isStatic
+
+    private var isFlipped: Bool { Int((abs(turns) / 180).rounded()) % 2 == 1 }
 
     var body: some View {
         let hasPhoto = ticket.photoData != nil
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             flipCard(hasPhoto: hasPhoto)
                 .overlay { importOverlay }
+                .rotation3DEffect(.degrees(isDealt || reduceMotion ? 0 : 16), axis: (x: 1, y: 0, z: 0),
+                                  anchor: .bottom, perspective: 0.6)
+                .popoverTip(KBTips.TicketFlip(), arrowEdge: .top)
             footnote
         }
         .task(id: photoToken) { await loadPhoto() }
+        .onAppear(perform: deal)
         .onChange(of: hasPhoto) { wasPresent, isPresent in
             // A freshly imported photo turns the pass around so you see it right away.
             if isPresent && !wasPresent && !isFlipped { flip() }
         }
-        .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: flipCount) { _, _ in app.settings.hapticsEnabled }
+        .haptic(.tap, trigger: flipCount)
         .confirmationDialog("Foto entfernen?", isPresented: $confirmsRemoval, titleVisibility: .visible) {
             Button("Foto entfernen", role: .destructive) { onRemovePhoto() }
             Button("Abbrechen", role: .cancel) {}
@@ -76,7 +91,11 @@ struct TktCardStack: View {
 
     @ViewBuilder
     private func flipCard(hasPhoto: Bool) -> some View {
-        let front = TktTiltFront(face: face, hasPhoto: hasPhoto, tiltActive: !isFlipped && !isCovered, onOriginal: {
+        let angle = turns + dragAngle
+        // The foil slides with the swivel while the front faces you (−1 … 1, like tilting the phone).
+        let swivel = isFlipped ? 0 : max(-1, min(1, sin(dragAngle * .pi / 180) * 1.6))
+        let front = TktTiltFront(face: face, hasPhoto: hasPhoto, tiltActive: !isFlipped && !isCovered, swivel: swivel,
+                                 onOriginal: {
             if hasPhoto { flip() } else { onAddPhoto() }
         })
         .accessibilityAddTraits(.isButton)
@@ -89,9 +108,13 @@ struct TktCardStack: View {
         let back = TktCardBack(theme: face.theme, photo: photo, onAdd: onAddPhoto,
                                onRemove: { confirmsRemoval = true }, onFlipBack: { flip() })
 
-        TktFlipContainer(angle: isFlipped ? 180 : 0, reduceMotion: reduceMotion, front: front, back: back)
+        TktFlipContainer(angle: angle, reduceMotion: reduceMotion, front: front, back: back)
             .contentShape(TicketShape(notchY: TktStyle.passNotchY))
             .onTapGesture { flip() }
+            .gesture(TktSwivelGesture(isEnabled: !reduceMotion, onChange: swivel(by:), onEnd: release(at:velocity:)))
+            .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.size.width }, action: { width in
+                cardWidth = max(width, 1)
+            })
             .accessibilityIgnoresInvertColors()
     }
 
@@ -102,7 +125,7 @@ struct TktCardStack: View {
                 .controlSize(.large)
                 .padding(Theme.Spacing.l)
                 .glassEffect(.regular, in: .circle)
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .motionTransition(.pop)
                 .accessibilityLabel("Foto wird geladen")
         }
     }
@@ -115,12 +138,17 @@ struct TktCardStack: View {
                 .minimumScaleFactor(0.85)
             Spacer(minLength: Theme.Spacing.xs)
             Button { flip() } label: {
-                Label(isFlipped ? "Vorderseite" : "Umdrehen", systemImage: isFlipped ? "arrow.uturn.backward" : "hand.tap")
-                    .contentTransition(.opacity)
-                    .padding(.vertical, Theme.Spacing.xxs)
-                    .contentShape(Rectangle())
+                Label {
+                    Text(isFlipped ? "Vorderseite" : "Umdrehen")
+                        .contentTransition(.opacity)
+                } icon: {
+                    Image(systemName: isFlipped ? "arrow.uturn.backward" : "hand.tap")
+                        .symbolReplaceTransition()
+                }
+                .padding(.vertical, Theme.Spacing.xxs)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
             .accessibilityLabel(isFlipped ? "Vorderseite der Karte zeigen" : "Karte umdrehen")
         }
         .font(.footnote.weight(.medium))
@@ -134,10 +162,42 @@ struct TktCardStack: View {
         "\(ticket.id.uuidString)-\(ticket.photoData?.count ?? -1)"
     }
 
+    private func deal() {
+        guard !isDealt else { return }
+        if reduceMotion {
+            isDealt = true
+        } else {
+            withAnimation(Motion.reveal.delay(Motion.Stagger.delay(1))) { isDealt = true }
+        }
+    }
+
+    /// Tap / button / accessibility: turns the card over (back the way it came).
     private func flip() {
+        turn(by: isFlipped ? -180 : 180)
+    }
+
+    private func turn(by delta: Double) {
         flipCount += 1
-        let animation: Animation = reduceMotion ? .easeInOut(duration: 0.25) : .spring(duration: 0.75, bounce: 0.2)
-        withAnimation(animation) { isFlipped.toggle() }
+        KBTips.used(KBTips.TicketFlip())
+        withMotion(Motion.bouncy) {
+            turns += delta
+            dragAngle = 0
+        }
+    }
+
+    /// The card follows the finger: half its width swivels it edge-on (90°).
+    private func swivel(by translation: CGFloat) {
+        dragAngle = Double(translation / cardWidth) * 180
+    }
+
+    /// Let go past the edge – or flicked – it turns over in that direction; otherwise it springs back.
+    private func release(at translation: CGFloat, velocity: CGFloat) {
+        let projected = Double((translation + velocity * 0.18) / cardWidth) * 180
+        if abs(projected) > 75 {
+            turn(by: projected > 0 ? 180 : -180)
+        } else {
+            withMotion(Motion.release) { dragAngle = 0 }
+        }
     }
 
     private func loadPhoto() async {
@@ -150,10 +210,55 @@ struct TktCardStack: View {
     }
 }
 
+// MARK: - Swivel gesture
+
+/// Sideways pan on the pass (UIKit, so it only begins when the finger moves more sideways than up/down – a vertical
+/// drag keeps scrolling the page). Reports the horizontal translation and, on release, the velocity (points, global).
+private struct TktSwivelGesture: UIGestureRecognizerRepresentable {
+    var isEnabled: Bool
+    var onChange: (CGFloat) -> Void
+    var onEnd: (CGFloat, CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.maximumNumberOfTouches = 1
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let translation = context.converter.translation(in: .global)?.x ?? 0
+        switch recognizer.state {
+        case .began, .changed:
+            onChange(translation)
+        case .ended:
+            onEnd(translation, context.converter.velocity(in: .global)?.x ?? 0)
+        default:
+            onEnd(0, 0)
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        /// Only a clearly sideways drag starts the swivel.
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y) * 1.3
+        }
+    }
+}
+
 // MARK: - Flip container
 
-/// Animatable 3D flip: the front is visible up to 90°, the (counter-rotated) back from 90° on.
-/// With Reduce Motion the faces simply crossfade.
+/// Animatable 3D flip at any angle: the front shows while it faces you (−90° … 90° mod 360), the counter-rotated back
+/// otherwise. The card shrinks a little while edge-on. With Reduce Motion the faces cross-fade instead.
 private struct TktFlipContainer<Front: View, Back: View>: View, Animatable {
     var angle: Double
     var reduceMotion: Bool
@@ -166,30 +271,23 @@ private struct TktFlipContainer<Front: View, Back: View>: View, Animatable {
     }
 
     var body: some View {
-        let showsBack = angle >= 90
+        let normalized = angle.truncatingRemainder(dividingBy: 360) + (angle < 0 ? 360 : 0)
+        let showsBack = normalized > 90 && normalized < 270
         let lift = abs(sin(angle * .pi / 180))
+        // Reduce Motion: 1 when the front faces you, 0 when the back does.
+        let frontShare = (1 + cos(angle * .pi / 180)) / 2
         front
-            .opacity(frontOpacity)
+            .opacity(reduceMotion ? frontShare : (showsBack ? 0 : 1))
             .accessibilityHidden(showsBack)
             .overlay {
                 back
                     .rotation3DEffect(.degrees(reduceMotion ? 0 : 180), axis: (x: 0, y: 1, z: 0))
-                    .opacity(backOpacity)
+                    .opacity(reduceMotion ? 1 - frontShare : (showsBack ? 1 : 0))
                     .allowsHitTesting(showsBack)
                     .accessibilityHidden(!showsBack)
             }
             .rotation3DEffect(.degrees(reduceMotion ? 0 : angle), axis: (x: 0, y: 1, z: 0), perspective: 0.45)
             .scaleEffect(reduceMotion ? 1 : 1 - 0.06 * lift)
-    }
-
-    private var frontOpacity: Double {
-        if reduceMotion { return min(max(1 - angle / 180, 0), 1) }
-        return angle < 90 ? 1 : 0
-    }
-
-    private var backOpacity: Double {
-        if reduceMotion { return min(max(angle / 180, 0), 1) }
-        return angle >= 90 ? 1 : 0
     }
 }
 
@@ -202,6 +300,8 @@ private struct TktTiltFront: View {
     var face: TktCardFace
     var hasPhoto: Bool
     var tiltActive: Bool
+    /// Sideways swivel of a drag (−1 … 1): the foil and seal follow it like a tilt.
+    var swivel: Double = 0
     var onOriginal: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -231,7 +331,7 @@ private struct TktTiltFront: View {
     /// Screenshot mode shows a fixed, flattering foil position.
     private var roll: Double {
         if LaunchMode.isScreenshot { return 0.35 }
-        return reduceMotion ? 0 : tilt.roll
+        return reduceMotion ? 0 : max(-1, min(1, tilt.roll + swivel))
     }
 
     private var pitch: Double {

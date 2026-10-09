@@ -3,13 +3,12 @@ import KlimaCore
 
 /// „Gültigkeit“ (DESIGN.md §5.5, synthesis §8.16): big days-left numeral, "Tag 223 von 365" pill, timeline
 /// start → heute → ende with the break-even flag, and a footer "€ 52 vor Plan · Break-even 48 Tage vor Ablauf".
+/// The days count in once (the Ticket tab's hero value), the route fills up to "Heute" and the pennant waves when it
+/// is reached; later changes roll.
 struct TktValidityCard: View {
     var start: Date
     var end: Date
     var summary: SavingsSummary
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shownDays: Double = 0
 
     /// Read when the body runs – a stored `now = Date()` would differ on every parent update and defeat SwiftUI's diffing.
     private var now: Date { Date() }
@@ -30,8 +29,6 @@ struct TktValidityCard: View {
                 footer
             }
         }
-        .onAppear { reveal(animated: !(reduceMotion || LaunchMode.isScreenshot)) }
-        .onChange(of: numeral) { _, _ in reveal(animated: !reduceMotion) }
     }
 
     // MARK: Header
@@ -45,6 +42,7 @@ struct TktValidityCard: View {
             Spacer(minLength: Theme.Spacing.xs)
             Text(pillText)
                 .font(.footnote.weight(.semibold).monospacedDigit())
+                .numericValue(Double(summary.daysElapsed))
                 .foregroundStyle(Theme.textSecondary)
                 .padding(.horizontal, Theme.Spacing.xs + 2)
                 .padding(.vertical, Theme.Spacing.xxs)
@@ -55,10 +53,9 @@ struct TktValidityCard: View {
 
     private var numeralRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
-            Text(Format.number(shownDays))
+            CountUpText(value: Double(numeral), delay: Motion.Stagger.delay(2)) { Format.number($0) }
                 .font(Theme.Typography.priceNumeral)
                 .foregroundStyle(Theme.textPrimary)
-                .contentTransition(.numericText(value: shownDays))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(unit)
@@ -213,15 +210,6 @@ struct TktValidityCard: View {
         return parts.joined(separator: ", ")
     }
 
-    private func reveal(animated: Bool) {
-        let target = Double(numeral)
-        if animated {
-            withAnimation(.spring(duration: 0.9, bounce: 0.12)) { shownDays = target }
-        } else {
-            shownDays = target
-        }
-    }
-
     private static func fraction(of date: Date, start: Date, end: Date) -> Double {
         let total = end.timeIntervalSince(start)
         guard total > 0 else { return 0 }
@@ -254,7 +242,9 @@ private struct TktValidityRail: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var width: CGFloat = 0
-    @State private var reveal: Double = LaunchMode.isScreenshot ? 1 : 0
+    @State private var reveal: Double = MotionPolicy.isStatic ? 1 : 0
+    /// Bumped when the route has filled up to "Heute": the pennant waves once.
+    @State private var waveTick = 0
 
     private let trackHeight: CGFloat = 8
     private let knobSize: CGFloat = 18
@@ -269,13 +259,19 @@ private struct TktValidityRail: View {
             width = newWidth
         })
         .onAppear {
+            // The route draws once, on the hero's count-in curve, right after the card has risen in.
             guard reveal < 1 else { return }
             if reduceMotion {
                 reveal = 1
             } else {
-                withAnimation(.spring(duration: 1.1, bounce: 0.1).delay(0.25)) { reveal = 1 }
+                withAnimation(Motion.countIn.delay(Motion.Stagger.delay(3))) {
+                    reveal = 1
+                } completion: {
+                    waveTick += 1
+                }
             }
         }
+        .motionAnimation(Motion.gentle, value: progress)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Zeitleiste")
         .accessibilityValue(accessibilityText)
@@ -291,11 +287,14 @@ private struct TktValidityRail: View {
             Capsule()
                 .fill(Theme.surfaceSecondary)
                 .frame(height: trackHeight)
+            // The fill is revealed by a full-width mask sliding in from the left (a transform – no layout per frame).
             Capsule()
                 .fill(Theme.routeGradient)
                 .frame(height: trackHeight)
                 .mask(alignment: .leading) {
-                    Capsule().frame(width: max(trackHeight, x))
+                    Capsule()
+                        .frame(width: w)
+                        .offset(x: max(trackHeight, x) - w)
                 }
                 .opacity(p > 0 ? 1 : 0)
             if let flag {
@@ -314,6 +313,15 @@ private struct TktValidityRail: View {
         FlagShape()
             .fill(flag.reached ? Theme.positive : Theme.summit)
             .frame(width: 14, height: 22)
+            // Flaps once at the pole when the route has drawn in (Reduce Motion: still).
+            .keyframeAnimator(initialValue: 1.0, trigger: waveTick) { [reduceMotion] view, stretch in
+                view.scaleEffect(x: reduceMotion ? 1 : stretch, y: 1, anchor: .leading)
+            } keyframes: { _ in
+                CubicKeyframe(0.6, duration: 0.16)
+                CubicKeyframe(1.1, duration: 0.18)
+                CubicKeyframe(0.85, duration: 0.16)
+                SpringKeyframe(1, duration: 0.4, spring: Motion.Springs.bouncy)
+            }
             .opacity(reveal)
     }
 

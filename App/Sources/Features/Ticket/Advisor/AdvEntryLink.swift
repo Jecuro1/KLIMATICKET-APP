@@ -16,10 +16,12 @@ struct AdvEntryLink: View {
         let advice = AdvAdvisor.advice(for: ticket, trips: trips, app: app)
         NavigationLink {
             AdvisorView(ticket: ticket)
+                .zoomDestination(id: Self.scrollID)   // the Ratgeber grows out of its card
         } label: {
             AdvEntryCard(advice: advice)
         }
-        .buttonStyle(AdvCardButtonStyle())
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: Self.scrollID, cornerRadius: Theme.Radius.card)
         .accessibilityHint("Öffnet den Ticket-Ratgeber")
         .id(Self.scrollID)
         .task {
@@ -61,14 +63,5 @@ private struct AdvEntryCard: View {
         let r = advice.renewal
         guard r.verdict != .tooEarly else { return "Verlängern, kündigen, 1. Klasse – aus deinen Fahrten berechnet" }
         return "\(AdvText.renewalTitle(r)) · \(AdvText.signed(r.projectedNextYearNet)) im Ticketjahr \(r.nextYearLabel)"
-    }
-}
-
-/// Subtle press feedback for whole-card links.
-struct AdvCardButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(duration: 0.25), value: configuration.isPressed)
     }
 }
