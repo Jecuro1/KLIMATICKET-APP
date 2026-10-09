@@ -4,12 +4,11 @@ import UIKit
 import UserNotifications
 import KlimaCore
 
-// MARK: - Fahrten bewerten
+// MARK: - Preisberechnung
 
-/// Defaults used to value new trips: discount card, class, home station, fare explanation, favourites.
+/// Defaults used to value new trips: discount card, class and how the normal fare is estimated.
 struct SetFareSection: View {
     @Environment(AppState.self) private var app
-    @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
 
     var body: some View {
         @Bindable var settings = app.settings
@@ -29,7 +28,6 @@ struct SetFareSection: View {
                 } label: {
                     SetRowLabel(title: "Klasse", symbol: "sofa.fill", tint: Theme.modeColor(.train))
                 }
-                homeStationRow
                 NavigationLink {
                     SetInfoPage(title: "Preisschätzung", kicker: "So rechnet KlimaBilanz", symbol: "eurosign.circle.fill",
                                 tint: Theme.glacier, text: Copy.fareExplanation,
@@ -37,25 +35,78 @@ struct SetFareSection: View {
                 } label: {
                     SetRowLabel(title: "Wie wird der Preis geschätzt?", symbol: "eurosign.circle.fill", tint: Theme.glacier)
                 }
-                NavigationLink {
-                    FavoritesManagerView()
-                } label: {
-                    HStack(spacing: Theme.Spacing.s) {
-                        SetRowLabel(title: "Favoriten verwalten", symbol: "star.fill", tint: Theme.gold)
-                        Spacer(minLength: Theme.Spacing.xs)
-                        if !favorites.isEmpty {
-                            Text(Format.number(Double(favorites.count)))
-                                .font(.subheadline.monospacedDigit())
-                                .foregroundStyle(Theme.textSecondary)
-                        }
+            }
+            .listRowBackground(Theme.surface)
+        } header: {
+            SetSectionHeader(title: "Preisberechnung")
+        } footer: {
+            SetFooter(text: "Bestimmt den Normalpreis, mit dem jede neue Fahrt bewertet wird. Beim Erfassen kannst du jeden Preis antippen und anpassen.")
+        }
+    }
+
+    static func title(for discount: FareDiscount) -> String {
+        switch discount {
+        case .none: "Keine"
+        case .vorteilscard: "Vorteilscard"
+        }
+    }
+}
+
+// MARK: - Fahrten erfassen
+
+/// How trips get into the app: home station (pre-filled start), favourites (one-tap capture) and
+/// automatic detection via geofences at the favourite stations.
+struct SetCaptureSection: View {
+    @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var context
+    @Environment(\.openURL) private var openURL
+    @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
+
+    var body: some View {
+        @Bindable var detection = app.detection
+        Section {
+            Group {
+                homeStationRow
+                favoritesRow
+                Toggle(isOn: $detection.isEnabled) {
+                    SetRowLabel(title: "Fahrten automatisch erkennen",
+                                subtitle: detection.isAvailable ? "Vorschläge an deinen Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
+                                symbol: "location.fill", tint: Theme.glacier)
+                }
+                .disabled(!detection.isAvailable)
+                .onChange(of: detection.isEnabled) { _, enabled in
+                    if enabled { Repository(context: context, app: app).configureTripDetection() }
+                }
+                if detection.isEnabled {
+                    if detection.isAuthorizedAlways {
+                        activeRow
+                    } else {
+                        permissionRow
                     }
                 }
             }
             .listRowBackground(Theme.surface)
         } header: {
-            SetSectionHeader(title: "Fahrten bewerten")
+            SetSectionHeader(title: "Fahrten erfassen")
         } footer: {
-            SetFooter(text: "Gilt für neue Fahrten. Beim Erfassen kannst du jeden Preis antippen und anpassen.")
+            SetFooter(text: "Die automatische Erkennung bemerkt per Geofencing, wenn du an deinen häufigsten Bahnhöfen abfährst und ankommst, und schlägt dir die Fahrt zum Erfassen vor – akkuschonend, ohne Dauer-GPS. Dein Standort verlässt dein iPhone nie.")
+        }
+    }
+
+    private var favoritesRow: some View {
+        NavigationLink {
+            FavoritesManagerView()
+        } label: {
+            HStack(spacing: Theme.Spacing.s) {
+                SetRowLabel(title: "Favoriten verwalten", subtitle: "Lieblingsstrecken mit einem Tipp erfassen",
+                            symbol: "star.fill", tint: Theme.gold)
+                Spacer(minLength: Theme.Spacing.xs)
+                if !favorites.isEmpty {
+                    Text(Format.number(Double(favorites.count)))
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(Theme.textSecondary)
+                }
+            }
         }
     }
 
@@ -82,50 +133,6 @@ struct SetFareSection: View {
         }
         if let state = station.federalState?.displayName { return "\(station.name) · \(state)" }
         return station.name
-    }
-
-    static func title(for discount: FareDiscount) -> String {
-        switch discount {
-        case .none: "Ohne"
-        case .vorteilscard: "Vorteilscard"
-        }
-    }
-}
-
-// MARK: - Automatische Fahrterkennung
-
-struct SetDetectionSection: View {
-    @Environment(AppState.self) private var app
-    @Environment(\.modelContext) private var context
-    @Environment(\.openURL) private var openURL
-
-    var body: some View {
-        @Bindable var detection = app.detection
-        Section {
-            Group {
-                Toggle(isOn: $detection.isEnabled) {
-                    SetRowLabel(title: "Fahrten automatisch erkennen",
-                                subtitle: detection.isAvailable ? "Vorschläge an deinen Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
-                                symbol: "location.fill", tint: Theme.pine)
-                }
-                .disabled(!detection.isAvailable)
-                .onChange(of: detection.isEnabled) { _, enabled in
-                    if enabled { Repository(context: context, app: app).configureTripDetection() }
-                }
-                if detection.isEnabled {
-                    if detection.isAuthorizedAlways {
-                        activeRow
-                    } else {
-                        permissionRow
-                    }
-                }
-            }
-            .listRowBackground(Theme.surface)
-        } header: {
-            SetSectionHeader(title: "Automatische Fahrterkennung")
-        } footer: {
-            SetFooter(text: "KlimaBilanz bemerkt per Geofencing, wenn du an deinen häufigsten Bahnhöfen abfährst und ankommst, und schlägt dir die Fahrt zum Erfassen vor – akkuschonend, ohne Dauer-GPS. Dein Standort verlässt dein iPhone nie.")
-        }
     }
 
     private var activeRow: some View {

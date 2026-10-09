@@ -56,6 +56,34 @@ struct SetRowLabel: View {
     }
 }
 
+/// The screen's own header as a borderless first list section: eyebrow over the rounded large title,
+/// aligned to the 20 pt text margin like Übersicht, Statistik, Ticket and Widgets (cards stay at 16 pt).
+struct SetScreenHeader: View {
+    var kicker: String
+    var title: String
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 2) {
+                Kicker(text: kicker)
+                    .lineLimit(1)
+                Text(title)
+                    .font(Theme.Typography.heroTitle)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
+                                      bottom: 0, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+        .listSectionSpacing(Theme.Spacing.s)
+    }
+}
+
 /// Uppercase eyebrow used as section header ("KONTO", "UPDATES").
 struct SetSectionHeader: View {
     var title: String
