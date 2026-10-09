@@ -1,8 +1,10 @@
 import SwiftUI
 import KlimaCore
 
-/// "Bilanz-Karte" (DESIGN.md §5.1 · 4): one card that answers the question – what is left to the summit and when
-/// you will get there – plus the four key figures (Fahrten · km · CO₂ · Auto), the pace pill and the car comparison.
+/// "Bilanz-Karte" (DESIGN.md §5.1 · 4, spec §8.3) – complements the hero instead of repeating its verdict:
+/// Row A: when the summit is reached (forecast) and the buffer before the ticket expires,
+/// Row B: three key figures (Fahrten · km · CO₂),
+/// Row C: the car comparison, once (tap → how the Kilometergeld comparison is calculated).
 struct DashBalanceCard: View {
     var snapshot: AnalyticsSnapshot
     /// Amtliches Kilometergeld (EUR/km) – same basis as `summary.carCostEquivalent`.
@@ -10,40 +12,72 @@ struct DashBalanceCard: View {
     var now: Date = Date()
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var showsCarInfo = false
 
     private var summary: SavingsSummary { snapshot.summary }
     private var isExpired: Bool { now > snapshot.ticket.end }
+    private var showsCarRow: Bool { summary.carCostEquivalent > 0 }
 
     var body: some View {
-        GlassCard(padding: Theme.Spacing.l, tint: summary.isPaidOff ? Theme.positive : nil) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                verdict
+        VStack(alignment: .leading, spacing: 0) {
+            forecastRow
+                .padding(.top, 14)
+                .padding(.bottom, 12)
+            hairline
+            DashMiniStatsRow(items: statItems)
+                .padding(.vertical, 10)
+            if showsCarRow {
                 hairline
-                DashMiniStatsRow(items: statItems)
-                footer
+                    .padding(.horizontal, -Theme.Spacing.m)
+                carRow
             }
+        }
+        .padding(.horizontal, Theme.Spacing.m)
+        .padding(.bottom, showsCarRow ? 0 : 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frostedCard(cornerRadius: Theme.Radius.card, tint: summary.isPaidOff ? Theme.positive : nil)
+        .sheet(isPresented: $showsCarInfo) {
+            DashCarInfoSheet(distanceKm: summary.distanceKm, rate: kilometergeld, carCost: summary.carCostEquivalent,
+                             ticketPrice: summary.ticketPrice, cheaperSince: carCheaperSince)
         }
     }
 
-    // MARK: Verdict
+    // MARK: Row A – forecast and buffer
+
+    private enum Phase {
+        case paidOff
+        case onTrack(Date)
+        case behind
+        case expired
+    }
+
+    private var phase: Phase {
+        if summary.isPaidOff { return .paidOff }
+        if isExpired { return .expired }
+        if let date = summary.forecastBreakEvenDate, summary.forecastReachesBreakEven { return .onTrack(date) }
+        return .behind
+    }
 
     @ViewBuilder
-    private var verdict: some View {
+    private var forecastRow: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                leadingColumn
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                primaryColumn
                 hairline
-                trailingColumn
+                secondaryColumn
             }
         } else {
-            HStack(alignment: .top, spacing: Theme.Spacing.m) {
-                leadingColumn
+            HStack(alignment: .top, spacing: 0) {
+                primaryColumn
                     .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 128, alignment: .leading)
+                    .padding(.trailing, 14)
                 Rectangle()
                     .fill(Theme.separator)
                     .frame(width: 1)
-                    .frame(maxHeight: .infinity)
-                trailingColumn
+                    .accessibilityHidden(true)
+                secondaryColumn
+                    .padding(.leading, 14)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .fixedSize(horizontal: false, vertical: true)
@@ -51,76 +85,107 @@ struct DashBalanceCard: View {
     }
 
     @ViewBuilder
-    private var leadingColumn: some View {
-        if summary.isPaidOff {
-            column(kicker: "Rentiert seit") {
-                bigText(summary.paidOffDate.map { Format.dayMonth($0) } ?? "Heute")
-            } detail: {
-                detailText("nach \(DashStyle.trips(tripsUntilPaidOff))")
+    private var primaryColumn: some View {
+        switch phase {
+        case .paidOff:
+            column(label: "Gewinn bisher", detail: freeTripsText) {
+                DashEuroNumeral(amount: summary.shownProfitEuro, sign: "+", color: Theme.positiveText)
             }
-        } else {
-            // An expired ticket can't be paid off any more – no "≈ n Fahrten" still to go.
-            column(kicker: isExpired ? "Fehlte zum Gipfel" : "Bis zum Gipfel") {
-                DashEuroNumeral(amount: summary.remainingToBreakEven)
-            } detail: {
-                if !isExpired, let n = snapshot.tripsToBreakEven, n > 0 {
-                    detailText("≈ \(DashStyle.trips(n))")
-                }
+        case .onTrack(let date):
+            column(label: "Break-even · Prognose",
+                   detail: "\(weekday(date)) · \(DashStyle.inDays(DashStyle.dayCount(from: now, to: date)))") {
+                bigText(Format.dayMonth(date))
+            }
+        case .behind:
+            column(label: "Noch bis zum Gipfel", detail: tripsToGoText) {
+                DashEuroNumeral(amount: summary.shownRemainingEuro)
+            }
+        case .expired:
+            column(label: "Fehlte zum Gipfel", detail: "Ticket abgelaufen") {
+                DashEuroNumeral(amount: summary.shownRemainingEuro)
             }
         }
     }
 
     @ViewBuilder
-    private var trailingColumn: some View {
-        if summary.isPaidOff {
-            column(kicker: "Gewinn") {
-                DashEuroNumeral(amount: summary.net, sign: "+", color: Theme.positive, symbolColor: Theme.positive)
-            } detail: {
-                if summary.daysRemaining > 0, summary.forecastEndValue > summary.totalValue + 1 {
-                    detailText("Prognose bis Ablauf \(DashStyle.signedEuro(summary.forecastEndValue - summary.ticketPrice))")
-                } else {
-                    detailText("Jede Fahrt ist jetzt Gewinn")
+    private var secondaryColumn: some View {
+        let end = snapshot.ticket.end
+        switch phase {
+        case .paidOff:
+            if summary.daysRemaining > 0, summary.forecastEndValue > summary.totalValue + 1 {
+                column(label: "Prognose Ticketende",
+                       detail: "\(Format.dayMonth(end)) · \(DashStyle.inDays(summary.daysRemaining))") {
+                    DashEuroNumeral(amount: max(0, (summary.forecastEndValue - summary.ticketPrice).rounded()),
+                                    sign: "+", color: Theme.positiveText)
+                }
+            } else {
+                column(label: "Rentiert seit", detail: "nach \(DashStyle.trips(tripsUntilPaidOff))") {
+                    bigText(summary.paidOffDate.map { Format.dayMonth($0) } ?? "Heute")
                 }
             }
-        } else if let date = summary.forecastBreakEvenDate, summary.forecastReachesBreakEven {
-            column(kicker: "Break-even") {
-                bigText(Format.dayMonth(date))
-            } detail: {
-                detailText("Prognose · \(DashStyle.inDays(DashStyle.dayCount(from: now, to: date)))")
-                let lead = DashStyle.dayCount(from: date, to: snapshot.ticket.end)
-                if lead > 0 {
-                    Label("\(Format.days(lead)) vor Ablauf", systemImage: "checkmark")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.positiveText)
-                }
+        case .onTrack(let date):
+            let lead = DashStyle.dayCount(from: date, to: end)
+            column(label: "Vor Ablauf am \(Format.dayMonth(end))",
+                   detail: lead > 0 ? "rentiert sich rechtzeitig" : "wird knapp",
+                   tone: lead > 0 ? .positive : .warning) {
+                daysValue(max(0, lead))
             }
-        } else if summary.daysRemaining > 0 {
-            column(kicker: "Prognose bis Ablauf") {
-                DashEuroNumeral(amount: summary.forecastEndValue)
-            } detail: {
-                detailText("bei deinem Tempo")
-                Label(extraTripsText, systemImage: "exclamationmark.circle")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.summitText)
+        case .behind:
+            column(label: "Fehlt bei Ablauf", detail: extraTripsText, tone: .warning) {
+                DashEuroNumeral(amount: max(0, (summary.ticketPrice - summary.forecastEndValue).rounded()), sign: "≈")
             }
-        } else {
-            column(kicker: "Endstand") {
-                DashEuroNumeral(amount: summary.totalValue)
-            } detail: {
-                detailText("Ticket abgelaufen")
+        case .expired:
+            column(label: "Endstand", detail: "von \(SummitFigures.euro(summary.ticketPrice))") {
+                DashEuroNumeral(amount: summary.shownTotalEuro)
             }
         }
     }
 
-    private func column<Value: View, Detail: View>(kicker: String,
-                                                   @ViewBuilder value: () -> Value,
-                                                   @ViewBuilder detail: () -> Detail) -> some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-            Kicker(text: kicker)
+    private enum Tone { case plain, positive, warning }
+
+    private func column<Value: View>(label: String, detail: String?, tone: Tone = .plain,
+                                     @ViewBuilder value: () -> Value) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
             value()
-            detail()
+            if let detail {
+                detailLine(detail, tone: tone)
+            }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func detailLine(_ text: String, tone: Tone) -> some View {
+        switch tone {
+        case .plain:
+            Text(text)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        case .positive:
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Image(systemName: "checkmark")
+                    .font(.caption2.weight(.bold))
+                Text(text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.positiveText)
+        case .warning:
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2.weight(.bold))
+                Text(text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(Theme.summitText)
+        }
     }
 
     private func bigText(_ text: String) -> some View {
@@ -128,14 +193,22 @@ struct DashBalanceCard: View {
             .font(DashStyle.bigNumber)
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(1)
-            .minimumScaleFactor(0.6)
+            .minimumScaleFactor(0.7)
     }
 
-    private func detailText(_ text: String) -> some View {
-        Text(text)
-            .font(.subheadline)
-            .foregroundStyle(Theme.textSecondary)
-            .fixedSize(horizontal: false, vertical: true)
+    /// "69 Tage" – the figure in `statL`, the unit in `statUnit` at 70 %.
+    private func daysValue(_ days: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(Format.number(Double(days)))
+                .font(DashStyle.bigNumber)
+                .foregroundStyle(Theme.textPrimary)
+                .contentTransition(.numericText(value: Double(days)))
+            Text(days == 1 ? "Tag" : "Tage")
+                .font(DashStyle.unitNumber)
+                .foregroundStyle(Theme.textPrimary.opacity(0.7))
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 
     private var hairline: some View {
@@ -145,75 +218,12 @@ struct DashBalanceCard: View {
             .accessibilityHidden(true)
     }
 
-    // MARK: Footer (pace + car)
-
-    @ViewBuilder
-    private var footer: some View {
-        let pills = footerPills
-        if !pills.isEmpty {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Spacing.xs) {
-                    ForEach(pills) { pill($0) }
-                }
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    ForEach(pills) { pill($0) }
-                }
-            }
-        }
-    }
-
-    private func pill(_ model: PillModel) -> some View {
-        DashPill(symbol: model.symbol, text: model.text, foreground: model.foreground, tint: model.tint)
-    }
-
-    private struct PillModel: Identifiable {
-        let id: String
-        let symbol: String
-        let text: String
-        let foreground: Color
-        let tint: Color
-    }
-
-    private var footerPills: [PillModel] {
-        var pills: [PillModel] = []
-        if let delta = paceDelta {
-            if delta >= 0, summary.forecastReachesBreakEven {
-                pills.append(PillModel(id: "pace", symbol: "hare.fill",
-                                       text: "Schneller als nötig · \(DashStyle.signedEuro(delta)) vor Plan",
-                                       foreground: Theme.positiveText, tint: Theme.positive))
-            } else if delta >= 0 {
-                // Still ahead of the linear plan, but the recent pace no longer reaches the summit in time –
-                // "Schneller als nötig" would contradict the card's warning above.
-                pills.append(PillModel(id: "pace", symbol: "arrow.down.right",
-                                       text: "Noch vor Plan · \(DashStyle.signedEuro(delta)) · Tempo sinkt",
-                                       foreground: Theme.summitText, tint: Theme.summit))
-            } else if summary.forecastReachesBreakEven {
-                // Behind the linear plan, but the recent pace already gets you to the summit in time.
-                pills.append(PillModel(id: "pace", symbol: "arrow.up.right",
-                                       text: "Du holst auf · \(DashStyle.signedEuro(delta)) zum Plan",
-                                       foreground: Theme.accentText, tint: Theme.accent))
-            } else {
-                pills.append(PillModel(id: "pace", symbol: "tortoise.fill",
-                                       text: "Etwas hinter Plan · \(DashStyle.signedEuro(delta))",
-                                       foreground: Theme.summitText, tint: Theme.summit))
-            }
-        }
-        if let since = carCheaperSince {
-            pills.append(PillModel(id: "car", symbol: "car.fill",
-                                   text: "Günstiger als Auto seit \(Format.dayMonth(since))",
-                                   foreground: Theme.positiveText, tint: Theme.positive))
-        }
-        return pills
-    }
-
-    // MARK: Mini stats
+    // MARK: Row B – mini stats
 
     private var statItems: [DashMiniStat] {
         let co2 = summary.co2SavedKg
         let co2InTonnes = co2 >= 1000
         let co2Value = co2InTonnes ? Format.number(co2 / 1000, decimals: 1) : Format.number(co2)
-        let co2Unit = co2InTonnes ? "t" : "kg"
-        let car = Format.euro(summary.carCostEquivalent, decimals: 0)
         return [
             DashMiniStat(id: "trips", value: Format.number(Double(summary.tripCount)), unit: nil, label: "Fahrten",
                          symbol: TransportMode.train.symbolName, color: Theme.accent,
@@ -221,16 +231,81 @@ struct DashBalanceCard: View {
             DashMiniStat(id: "km", value: Format.number(summary.distanceKm), unit: "km", label: "Kilometer",
                          symbol: "point.topleft.down.to.point.bottomright.curvepath", color: Theme.dusk,
                          accessibilityText: Format.km(summary.distanceKm)),
-            DashMiniStat(id: "co2", value: co2Value, unit: co2Unit, label: "CO₂ gespart",
+            DashMiniStat(id: "co2", value: co2Value, unit: co2InTonnes ? "t" : "kg", label: "CO₂ gespart",
                          symbol: "leaf.fill", color: Theme.eco,
                          accessibilityText: "\(Format.kg(co2)) CO₂ gespart"),
-            DashMiniStat(id: "car", value: car, unit: nil, label: "per Auto",
-                         symbol: "car.fill", color: Theme.dawn,
-                         accessibilityText: "Mit dem Auto hätten die Strecken \(car) gekostet"),
         ]
     }
 
+    // MARK: Row C – car comparison
+
+    private var carRow: some View {
+        Button {
+            showsCarInfo = true
+        } label: {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    carLead
+                    Spacer(minLength: Theme.Spacing.xs)
+                    carVerdict
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    carLead
+                    carVerdict
+                }
+            }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(DashPressableStyle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Erklärt, wie der Vergleich mit dem Auto berechnet wird")
+    }
+
+    private var carLead: some View {
+        HStack(spacing: Theme.Spacing.xs) {
+            Image(systemName: "car.fill")
+                .font(.subheadline)
+                .foregroundStyle(Theme.summitText)
+                .accessibilityHidden(true)
+            Text("Mit dem Auto")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+            Text(SummitFigures.euro(summary.carCostEquivalent))
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .lineLimit(1)
+    }
+
+    @ViewBuilder
+    private var carVerdict: some View {
+        if let since = carCheaperSince {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Image(systemName: "checkmark")
+                    .font(.caption2.weight(.bold))
+                Text("Günstiger seit \(Format.dayMonth(since))")
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.positiveText)
+            .lineLimit(1)
+        } else if summary.carCostEquivalent < summary.ticketPrice {
+            Text("noch \(SummitFigures.euro(summary.ticketPrice - summary.carCostEquivalent)) bis gleichauf")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(1)
+        }
+    }
+
     // MARK: Derived values
+
+    /// "Mo" for the forecast day.
+    private func weekday(_ date: Date) -> String {
+        let weekday = Calendar.vienna.component(.weekday, from: date)   // 1 = Sunday
+        return DashStyle.weekdays[(weekday + 5) % 7]
+    }
 
     /// Trips up to and including the one that crossed the ticket price.
     private var tripsUntilPaidOff: Int {
@@ -238,12 +313,17 @@ struct DashBalanceCard: View {
         return snapshot.trips.filter { $0.date <= date }.count
     }
 
-    /// Value ahead (+) or behind (–) a linear plan (ticket price spread evenly over the validity).
-    private var paceDelta: Double? {
-        guard !summary.isPaidOff, summary.daysRemaining > 0, summary.tripCount > 0, summary.daysTotal > 0 else { return nil }
-        let expected = summary.ticketPrice * Double(summary.daysElapsed) / Double(summary.daysTotal)
-        let delta = summary.totalValue - expected
-        return abs(delta) < 1 ? nil : delta
+    /// "≈ 6 Gratisfahrten" – the profit expressed in average trips.
+    private var freeTripsText: String {
+        guard summary.averageValuePerTrip > 0 else { return "Ab jetzt fährst du gratis" }
+        let n = Int((summary.net / summary.averageValuePerTrip).rounded(.down))
+        if n < 1 { return "Ab jetzt fährst du gratis" }
+        return n == 1 ? "≈ 1 Gratisfahrt" : "≈ \(Format.number(Double(n))) Gratisfahrten"
+    }
+
+    private var tripsToGoText: String? {
+        guard let n = snapshot.tripsToBreakEven, n > 0 else { return nil }
+        return "≈ \(DashStyle.trips(n))"
     }
 
     /// Day from which the same km by car (Kilometergeld) would have cost more than the ticket.
@@ -277,48 +357,26 @@ struct DashMiniStat: Identifiable {
     let accessibilityText: String
 }
 
-/// Four figures in one row (uneven widths like the mockup; figures scale down slightly on narrow phones);
-/// a 2×2 grid from xxLarge Dynamic Type on (DESIGN.md §5.1 · 4).
+/// Three figures in equal columns (spec §8.3 Row B); a vertical "label …… value" list at accessibility sizes.
 struct DashMiniStatsRow: View {
     var items: [DashMiniStat]
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        if dynamicTypeSize >= .xxLarge {
-            grid
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                ForEach(items) { item in
+                    DashMiniStatListRow(item: item)
+                }
+            }
         } else {
-            row
-        }
-    }
-
-    private var row: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(items) { item in
-                if item.id != items.first?.id {
-                    Spacer(minLength: Theme.Spacing.xs)
-                }
-                DashMiniStatView(item: item)
-            }
-        }
-    }
-
-    private var grid: some View {
-        Grid(alignment: .leading, horizontalSpacing: Theme.Spacing.m, verticalSpacing: Theme.Spacing.s) {
-            ForEach(rows.indices, id: \.self) { index in
-                GridRow {
-                    ForEach(rows[index]) { item in
-                        DashMiniStatView(item: item)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+            HStack(alignment: .top, spacing: Theme.Spacing.s) {
+                ForEach(items) { item in
+                    DashMiniStatView(item: item)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-        }
-    }
-
-    private var rows: [[DashMiniStat]] {
-        stride(from: 0, to: items.count, by: 2).map { start in
-            Array(items[start..<min(start + 2, items.count)])
         }
     }
 }
@@ -327,7 +385,7 @@ private struct DashMiniStatView: View {
     let item: DashMiniStat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 1) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(item.value)
                     .font(DashStyle.statNumber)
@@ -335,24 +393,128 @@ private struct DashMiniStatView: View {
                     .contentTransition(.numericText())
                 if let unit = item.unit {
                     Text(unit)
-                        .font(.footnote.weight(.medium))
+                        .font(.footnote.weight(.bold))
                         .foregroundStyle(Theme.textSecondary)
                 }
             }
             .lineLimit(1)
-            .minimumScaleFactor(0.75)
             HStack(spacing: 4) {
                 Image(systemName: item.symbol)
-                    .font(.caption2.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(item.color)
                 Text(item.label)
-                    .font(.caption)
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.accessibilityText)
+    }
+}
+
+private struct DashMiniStatListRow: View {
+    let item: DashMiniStat
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+            Image(systemName: item.symbol)
+                .foregroundStyle(item.color)
+            Text(item.label)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: Theme.Spacing.xs)
+            Text(item.unit.map { item.value + " " + $0 } ?? item.value)
+                .font(DashStyle.statNumber)
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .font(.subheadline)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(item.accessibilityText)
+    }
+}
+
+// MARK: - Car comparison explanation
+
+/// How "Mit dem Auto € 2.070" is calculated: km × amtliches Kilometergeld, compared with the ticket price.
+private struct DashCarInfoSheet: View {
+    var distanceKm: Double
+    var rate: Double
+    var carCost: Double
+    var ticketPrice: Double
+    var cheaperSince: Date?
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                    VStack(spacing: 0) {
+                        row("Deine Strecken", Format.km(distanceKm), symbol: "point.topleft.down.to.point.bottomright.curvepath")
+                        divider
+                        row("× Kilometergeld", "\(Format.euroPrecise(rate)) pro km", symbol: "car.fill")
+                        divider
+                        row("= Mit dem Auto", SummitFigures.euro(carCost), symbol: "equal", emphasized: true)
+                        divider
+                        row("Dein Ticket", SummitFigures.euro(ticketPrice), symbol: "ticket.fill")
+                    }
+                    .padding(.horizontal, Theme.Spacing.m)
+                    .background(Theme.surface, in: .rect(cornerRadius: Theme.Radius.formGroup, style: .continuous))
+
+                    Text(explanation)
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(Theme.Spacing.l)
+            }
+            .background(Theme.sheetBackground)
+            .navigationTitle("Vergleich mit dem Auto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Theme.separator)
+            .frame(height: 1)
+            .padding(.leading, 36)
+            .accessibilityHidden(true)
+    }
+
+    private func row(_ title: String, _ value: String, symbol: String, emphasized: Bool = false) -> some View {
+        HStack(spacing: Theme.Spacing.s) {
+            Image(systemName: symbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(width: 24)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(emphasized ? .body.weight(.semibold) : .body)
+                .foregroundStyle(Theme.textPrimary)
+            Spacer(minLength: Theme.Spacing.xs)
+            Text(value)
+                .font(.system(.body, design: .rounded, weight: emphasized ? .bold : .semibold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
+        }
+        .padding(.vertical, 13)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var explanation: String {
+        let basis = "Gerechnet wird mit dem amtlichen Kilometergeld von \(Format.euroPrecise(rate)) pro Kilometer. "
+            + "Es deckt alle Kosten eines Pkw ab – Treibstoff, Service, Versicherung und Wertverlust."
+        if let cheaperSince {
+            return basis + " Seit \(Format.dayMonth(cheaperSince)) hätten dich deine Fahrten mit dem Auto mehr gekostet als dein Ticket."
+        }
+        return basis + " Sobald deine Fahrten mit dem Auto mehr gekostet hätten als dein Ticket, siehst du hier das Datum."
     }
 }

@@ -4,15 +4,16 @@ import KlimaCore
 
 // MARK: - Typography, layout & copy helpers
 
-/// Dashboard-local numerals and layout constants. The numerals mirror the Theme number tokens
-/// (34 / 22 / 20 / 15 pt Bold Rounded, monospaced digits) but are built on text styles so they follow Dynamic Type.
+/// Dashboard-local numerals and layout constants (spec §4.1 roles), built on text styles so they follow Dynamic Type.
 enum DashStyle {
-    /// ≈ `Theme.Typography.numberLarge` (34 pt) – card headline figures.
-    static let bigNumber = Font.system(.largeTitle, design: .rounded, weight: .bold).monospacedDigit()
-    /// ≈ 22 pt – currency sign next to a big figure.
-    static let mediumNumber = Font.system(.title2, design: .rounded, weight: .semibold).monospacedDigit()
-    /// ≈ 20 pt – mini stats.
-    static let statNumber = Font.system(.title3, design: .rounded, weight: .bold).monospacedDigit()
+    /// Spec `statL` (27 Bold Rounded) – Bilanz card values ("21. Dez.", "69"). `.title` = 28 pt.
+    static let bigNumber = Font.system(.title, design: .rounded, weight: .bold).monospacedDigit()
+    /// Spec `statUnit` (17 Bold Rounded, shown at 70 %) – "Tage" after a big value.
+    static let unitNumber = Font.system(.headline, design: .rounded, weight: .bold)
+    /// "€" in front of a big value – ≈ 0.63× the figure (spec §4.2).
+    static let currencySign = Font.system(.headline, design: .rounded, weight: .semibold)
+    /// Spec `statS` (18 Bold Rounded) – mini stats.
+    static let statNumber = Font.system(.headline, design: .rounded, weight: .bold).monospacedDigit()
     /// ≈ 15 pt – prices in chips.
     static let smallNumber = Font.system(.subheadline, design: .rounded, weight: .bold).monospacedDigit()
 
@@ -130,50 +131,24 @@ struct DashModeBadge: View {
     }
 }
 
-/// Tinted status capsule inside cards ("Schneller als nötig · + € 370 vor Plan").
-struct DashPill: View {
-    var symbol: String
-    var text: String
-    /// Text-safe colour for the label (positiveText / summitText / accentText).
-    var foreground: Color
-    /// Accent used as a faint fill.
-    var tint: Color
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.bold))
-            Text(text)
-                .font(.footnote.weight(.semibold))
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .foregroundStyle(foreground)
-        .padding(.horizontal, Theme.Spacing.s)
-        .padding(.vertical, 6)
-        .background(tint.opacity(0.14), in: .capsule)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// Big figure with a smaller currency sign ("€ 354", "+ € 412").
+/// Big figure with a smaller, softer currency sign ("€ 356", "+ € 156", "≈ € 120") – spacing like `Format.euro`.
 struct DashEuroNumeral: View {
     var amount: Double
     var sign: String? = nil
     var color: Color = Theme.textPrimary
-    var symbolColor: Color = Theme.textSecondary
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 3) {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
             Text(symbolText)
-                .font(DashStyle.mediumNumber)
-                .foregroundStyle(symbolColor)
+                .font(DashStyle.currencySign)
+                .foregroundStyle(color.opacity(0.7))
             Text(Format.number(amount))
                 .font(DashStyle.bigNumber)
                 .foregroundStyle(color)
                 .contentTransition(.numericText(value: amount))
         }
         .lineLimit(1)
-        .minimumScaleFactor(0.6)
+        .minimumScaleFactor(0.7)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }
@@ -184,8 +159,12 @@ struct DashEuroNumeral: View {
     }
 
     private var accessibilityText: String {
-        if let sign { return sign + " " + Format.euro(amount, decimals: 0) }
-        return Format.euro(amount, decimals: 0)
+        let euro = Format.euro(amount, decimals: 0)
+        switch sign {
+        case "≈"?: return "ungefähr " + euro
+        case let sign?: return sign + " " + euro
+        case nil: return euro
+        }
     }
 }
 
