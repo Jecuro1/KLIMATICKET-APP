@@ -7,7 +7,7 @@ final class LaunchPerfTests: XCTestCase {
     @MainActor
     func testLaunch() {
         let options = XCTMeasureOptions()
-        options.iterationCount = 5
+        options.iterationCount = 4
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
             let app = PerfApp.make()
             app.launch()

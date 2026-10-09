@@ -26,6 +26,9 @@ final class PerfFrameMonitor: NSObject {
     static let transitionWindow: TimeInterval = 1.5
     static let launchWindow: TimeInterval = 4
 
+    // All times are `CACurrentMediaTime()` – the clock of `CADisplayLink.timestamp` (ProcessInfo.systemUptime may
+    // count sleep and would never line up with the frames).
+
     private struct Key: Hashable {
         var screen: String
         var source: String
@@ -172,7 +175,7 @@ final class PerfFrameMonitor: NSObject {
     func start() {
         guard !isRunning else { return }
         isRunning = true
-        origin = ProcessInfo.processInfo.systemUptime
+        origin = CACurrentMediaTime()
         startedAt = Date()
         transition = (TransitionRecord(from: "–", to: "Start", at: 0), origin, nil, nil)
         startLink()
@@ -220,12 +223,18 @@ final class PerfFrameMonitor: NSObject {
             }
             current.last = now
             transition = current
-            if let end = current.end, now >= end { finishTransition() }
+            // The window ends after its frames – or at the latest 12 s after the selection (never a display link that
+            // keeps running: XCUITest waits for an idle app after every gesture).
+            if let end = current.end, now >= end {
+                finishTransition()
+            } else if now - current.start > 12 {
+                finishTransition()
+            }
         }
 
         if segment != nil, let previous {
             segment!.pending.append((now - previous, expected))
-            if ProcessInfo.processInfo.systemUptime - lastActivity > Self.idleEnd { endSegment() }
+            if CACurrentMediaTime() - lastActivity > Self.idleEnd { endSegment() }
         }
         stopLinkIfIdle()
     }
@@ -234,7 +243,7 @@ final class PerfFrameMonitor: NSObject {
 
     private func offsetChanged(_ view: UIScrollView, dy: CGFloat) {
         guard abs(dy) >= 0.5, isRunning else { return }
-        lastActivity = ProcessInfo.processInfo.systemUptime
+        lastActivity = CACurrentMediaTime()
         if segment == nil {
             segment = Segment(screen: screenName)
             startLink()
@@ -314,7 +323,7 @@ final class PerfFrameMonitor: NSObject {
         } onChange: {
             // willSet, on the main thread (AppState is main-actor isolated): the clock starts before SwiftUI builds
             // the new screen. The new value is read on the next turn.
-            let start = ProcessInfo.processInfo.systemUptime
+            let start = CACurrentMediaTime()
             MainActor.assumeIsolated { PerfFrameMonitor.shared.beginTransition(at: start) }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {

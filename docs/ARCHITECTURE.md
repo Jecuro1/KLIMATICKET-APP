@@ -78,10 +78,16 @@ CI lädt die PNGs (hell/dunkel) als Artefakt `screenshots-<build>` des Laufs hoc
   -l 0x100000000 <0x100000000 + offset>` für „KlimaBilanz +0x…“-Frames.
 - **Performance-Tests in CI:** `[perf]` in der Commit-Nachricht (oder *Run workflow* mit `perf`) startet den Job
   `perf`: XCUITest-Target `KlimaBilanzPerfTests` (Schema `KlimaBilanzPerf`, Release) im Simulator mit
-  `-KBPerf YES -KBDemo YES` (normale Tabs, Demo-Jahr im Speicher, `-KBPerfTrips 1500` für viele Daten). Gemessen:
-  App-Start, Hitch Time Ratio beim Scrollen je Bildschirm (Übersicht, Fahrten, Statistik, Ticket, Gipfelbuch), Tab-Runde
-  (Zeit, CPU, Speicher) plus die Hänger/Timings, die die App selbst erfasst hat → `$GITHUB_STEP_SUMMARY` und Artefakt
-  `perf-<run>` (`scripts/perf_summary.py`).
+  `-KBPerf YES -KBDemo YES` (normale Tabs, Demo-Jahr im Speicher, keine „Rentiert!“-Feier, `-KBPerfTrips 1500` für
+  viele Daten). Die Tests finden die Scrollbereiche über Accessibility-IDs (`perf.scroll.overview|trips|stats|ticket|
+  gipfelbuch`, `// MARK: perf` in den Screens) und wischen auf festen Koordinaten. Weil der Simulator XCTest keine
+  Hitch-Metriken liefert, misst die App im Perf-Modus selbst (`PerfFrameMonitor`): Hitch Time Ratio je Bildschirm
+  beim Scrollen (KVO auf `contentOffset` + `CADisplayLink`), Bildschirmwechsel (Auswahl → erstes Bild), Start
+  (App.init → erstes Bild, dann 4 s Frames), Speicher (phys_footprint) → `Diagnostics/perf-*.json`; dazu
+  LaunchTrace-Marken und der Hänger-Watchdog. Danach nimmt `scripts/perf_profile.sh` je Bildschirm eine Time-Profiler-
+  Aufnahme der app-eigenen Tour auf (`-KBPerfTour <screen>`: öffnen, mit 2 400 pt/s scrollen, beenden; Phasen als
+  Signposts) und `scripts/perf_profile.py` nennt die Hauptthread-Hotspots. Alles → `$GITHUB_STEP_SUMMARY` und Artefakt
+  `perf-<run>` (`perf-summary.md/.json` = Baseline, `scripts/perf_summary.py`).
 
 ## Updates
 

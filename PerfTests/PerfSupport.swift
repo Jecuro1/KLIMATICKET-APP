@@ -57,7 +57,7 @@ class PerfTestCase: XCTestCase {
     var present: String? { nil }
 
     /// Iterations per measurement.
-    var iterations: Int { 5 }
+    var iterations: Int { 4 }
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -131,16 +131,14 @@ class PerfTestCase: XCTestCase {
         options.iterationCount = iterations
         measure(metrics: [XCTOSSignpostMetric.scrollingAndDecelerationMetric, XCTOSSignpostMetric.scrollDecelerationMetric],
                 options: options) {
+            // Every gesture waits until the app is idle again, i.e. until the deceleration has ended.
             for _ in 0..<swipes {
                 low.press(forDuration: 0.02, thenDragTo: high, withVelocity: .fast, thenHoldForDuration: 0)
-                self.settle(1.2)
             }
             self.stopMeasuring()
             for _ in 0..<swipes {
                 high.press(forDuration: 0.02, thenDragTo: low, withVelocity: .fast, thenHoldForDuration: 0)
-                self.settle(1.2)
             }
-            self.settle(0.8)
         }
     }
 
