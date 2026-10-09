@@ -21,9 +21,13 @@ public enum AchievementEngine {
         func make(_ id: String, _ title: String, _ detail: String, _ symbol: String, _ tier: Achievement.Tier,
                   current raw: Double, target: Double, unit: String) -> Achievement {
             let current = raw.isFinite ? max(0, raw) : 0   // a broken figure must not trap in Int(_:) below
+            // MARK: dashboardTicket – the label never shows the target before it is reached (99,6 % read
+            // "100 / 100 %" next to a "Rentiert!" that is still open – same rule as the hero's percent, spec §4.3).
+            let reached = target > 0 && current >= target
+            let shown = reached ? target : min(current.rounded(), max(0, target.rounded() - 1))
             return Achievement(id: id, title: title, detail: detail, symbolName: symbol, tier: tier,
                         progress: target > 0 ? min(1, current / target) : 0,
-                        progressLabel: "\(group(Int(min(current, target).rounded()))) / \(group(Int(target))) \(unit)".trimmingCharacters(in: .whitespaces))
+                        progressLabel: "\(group(Int(shown))) / \(group(Int(target))) \(unit)".trimmingCharacters(in: .whitespaces))
         }
         let km = summary.distanceKm
         let tripCount = JourneySummary.tripCount(trips)   // a journey is one "Fahrt" (docs/JOURNEYS.md)

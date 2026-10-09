@@ -193,3 +193,23 @@ extension StabilityTests {
         XCTAssertTrue(achievements.allSatisfy { $0.progress.isFinite })
     }
 }
+
+// MARK: dashboardTicket
+extension StabilityTests {
+    /// 99,6 % amortised: "Rentiert!" is still open, so its label must not read "100 / 100 %".
+    func testOpenAchievementNeverShowsItsTarget() {
+        let start = date(2026, 1, 1, 0)
+        let period = TicketPeriod(productID: "oe-klassik", name: "Klassik", price: 1_000, start: start,
+                                  end: TicketPeriod.standardEnd(for: start, calendar: cal))
+        let trips = [TripRecord(date: date(2026, 2, 3), fromName: "A", toName: "B", mode: .train, distanceKm: 50, fareEUR: 996)]
+        let s = SavingsCalculator.summary(ticket: period, trips: trips, now: date(2026, 3, 1), calendar: cal)
+        let achievements = AchievementEngine.evaluate(summary: s, trips: trips, records: StatsAggregator.records(trips, calendar: cal))
+        guard let breakEven = achievements.first(where: { $0.id == "break-even" }) else { return XCTFail("no break-even") }
+        XCTAssertFalse(breakEven.isUnlocked)
+        XCTAssertNotEqual(breakEven.progressLabel, "100 / 100 %")
+        if s.amortizedFraction >= 0.995 { XCTAssertEqual(breakEven.progressLabel, "99 / 100 %") }
+        let first = achievements.first { $0.id == "first-trip" }
+        XCTAssertEqual(first?.isUnlocked, true)
+        XCTAssertEqual(first?.progressLabel.hasPrefix("1 / 1"), true)
+    }
+}
