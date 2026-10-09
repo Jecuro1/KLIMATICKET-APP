@@ -47,9 +47,11 @@ public struct FareModel: Codable, Hashable, Sendable {
     /// Full 2nd-class fare for a given rail distance.
     public func fullFare(railKm: Double) -> Double {
         guard railKm > 0 else { return 0 }
-        if let knots, knots.count >= 2 {
-            let pts = knots.filter { $0.count >= 2 }.sorted { $0[0] < $1[0] }
-            var value = pts.last![1]
+        // Only well-formed points count ([km, EUR], finite); fewer than two fall back to the band model – the catalog
+        // can come from the update server, and a malformed curve must never trap on every price estimate.
+        let pts = (knots ?? []).filter { $0.count >= 2 && $0[0].isFinite && $0[1].isFinite }.sorted { $0[0] < $1[0] }
+        if pts.count >= 2 {
+            var value = pts[pts.count - 1][1]
             if railKm <= pts[0][0] {
                 value = pts[0][1]
             } else if railKm >= pts[pts.count - 1][0] {
@@ -228,4 +230,15 @@ public struct TariffCatalog: Codable, Hashable, Sendable {
     }
 
     public func product(id: String) -> TicketProduct? { products.first { $0.id == id } }
+
+    /// Sanity check for a catalog from the update server before it replaces the bundled one: products with real prices
+    /// and a fare model that prices short, medium and long trips. A file that decodes but fails this is ignored.
+    public var isUsable: Bool {
+        guard !products.isEmpty, products.allSatisfy({ $0.priceEUR.isFinite && $0.priceEUR > 0 }) else { return false }
+        guard kilometergeldEUR.isFinite, kilometergeldEUR >= 0 else { return false }
+        return [10.0, 100, 500].allSatisfy { km in
+            let fare = fareModel.fullFare(railKm: km)
+            return fare.isFinite && fare > 0
+        }
+    }
 }

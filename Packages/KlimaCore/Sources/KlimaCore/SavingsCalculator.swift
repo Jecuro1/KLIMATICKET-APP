@@ -60,7 +60,8 @@ public enum SavingsCalculator {
         let km = trips.reduce(0) { $0 + $1.totalDistanceKm }
         let co2 = trips.reduce(0) { $0 + emissions.savedKg(km: $1.totalDistanceKm, mode: $1.mode) }
         let legs = trips.reduce(0) { $0 + $1.legs }
-        let days = Set(trips.map { calendar.startOfDay(for: $0.date) }).count
+        var memo = DayMemo(calendar)
+        let days = Set(trips.map { memo.startOfDay($0.date) }).count
 
         let startDay = calendar.startOfDay(for: ticket.start)
         let endDay = calendar.startOfDay(for: ticket.end)
@@ -113,7 +114,8 @@ public enum SavingsCalculator {
                                         calendar: Calendar = .vienna) -> [CumulativePoint] {
         let relevant = trips.filter { ticket.contains($0.date) }
         var perDay: [Date: Double] = [:]
-        for t in relevant { perDay[calendar.startOfDay(for: t.date), default: 0] += t.totalValue }
+        var memo = DayMemo(calendar)
+        for t in relevant { perDay[memo.startOfDay(t.date), default: 0] += t.totalValue }
         let start = calendar.startOfDay(for: ticket.start)
         let last = calendar.startOfDay(for: min(now, ticket.end))
         var points = [CumulativePoint(date: start, value: 0)]

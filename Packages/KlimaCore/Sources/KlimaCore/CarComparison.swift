@@ -174,6 +174,7 @@ public enum CarComparison {
 
         var railKm = 0.0, roadKm = 0.0, legs = 0, co2Car = 0.0, co2Transit = 0.0, hours = 0.0
         var perDay: [Date: Double] = [:]
+        var memo = DayMemo(calendar)
         for trip in trips {
             let road = profile.roadKm(railKm: trip.totalDistanceKm)
             railKm += trip.totalDistanceKm
@@ -182,7 +183,7 @@ public enum CarComparison {
             co2Car += emissions.car * road / 1000
             co2Transit += emissions.grams(for: trip.mode) * trip.totalDistanceKm / 1000
             hours += Double(trip.legs) * drivingHours(roadKmPerLeg: profile.roadKm(railKm: trip.distanceKm))
-            perDay[calendar.startOfDay(for: trip.date), default: 0] += road * costPerKm
+            perDay[memo.startOfDay(trip.date), default: 0] += road * costPerKm
         }
 
         let startDay = calendar.startOfDay(for: ticket.start)

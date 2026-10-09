@@ -26,8 +26,13 @@ public enum AchievementEngine {
         }
         let km = summary.distanceKm
         let modes = Set(trips.map(\.mode))
-        let nightOwl = trips.contains { Calendar.vienna.component(.hour, from: $0.date) >= 22 || Calendar.vienna.component(.hour, from: $0.date) < 5 }
-        let earlyBird = trips.contains { (5..<7).contains(Calendar.vienna.component(.hour, from: $0.date)) }
+        let calendar = Calendar.vienna
+        var nightOwl = false, earlyBird = false
+        for trip in trips where !(nightOwl && earlyBird) {
+            let hour = calendar.component(.hour, from: trip.date)
+            if hour >= 22 || hour < 5 { nightOwl = true }
+            if (5..<7).contains(hour) { earlyBird = true }
+        }
 
         return [
             make("first-trip", "Eingestiegen", "Deine erste Fahrt erfasst", "figure.walk.departure", .bronze,

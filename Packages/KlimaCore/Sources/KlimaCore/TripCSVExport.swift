@@ -70,8 +70,9 @@ public enum ReportPagination {
         guard !sorted.isEmpty else { return [] }
         // Group by calendar month.
         var groups: [(start: Date, trips: [TripRecord])] = []
+        var memo = DayMemo(calendar)
         for t in sorted {
-            let start = calendar.date(from: calendar.dateComponents([.year, .month], from: t.date)) ?? t.date
+            let start = memo.startOfMonth(t.date) ?? t.date
             if let last = groups.last, last.start == start {
                 groups[groups.count - 1].trips.append(t)
             } else {

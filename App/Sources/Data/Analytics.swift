@@ -127,7 +127,7 @@ enum AnalyticsMemo {
         var trips: [TripStamp]
     }
 
-    /// `Calendar.vienna` builds a new calendar on every access – one instance for the memo keys.
+    /// The Vienna calendar of the memo keys (day boundaries).
     static let calendar = Calendar.vienna
     /// Distinct inputs alive at once: the active ticket, older ticket years (Ticket tab), the editor's before/after.
     static let capacity = 8

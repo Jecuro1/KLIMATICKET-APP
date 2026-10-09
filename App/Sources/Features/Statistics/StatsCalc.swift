@@ -244,7 +244,9 @@ enum StatsCalc {
         let total = Double(max(snapshot.summary.daysTotal, 1))
         let factor = elapsed / total < 0.25 ? total / elapsed : 1
         let all = TicketComparator.compare(trips: snapshot.trips, products: products, variant: variant,
-                                           currentProductID: snapshot.ticket.productID, annualizationFactor: factor)
+                                           currentProductID: snapshot.ticket.productID,
+                                           periodStart: snapshot.ticket.start,   // MARK: global – prices of that start date
+                                           annualizationFactor: factor)
         var shown = Array(all.prefix(4))
         if let current = all.first(where: { $0.isCurrent }), !shown.contains(where: { $0.id == current.id }) {
             shown.append(current)

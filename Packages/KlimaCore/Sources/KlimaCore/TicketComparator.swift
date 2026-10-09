@@ -15,9 +15,12 @@ public struct TicketOption: Hashable, Sendable, Identifiable {
 public enum TicketComparator {
     /// - Parameters:
     ///   - variant: compare only products of this variant (e.g. `.klassik`), single tickets are always included.
+    ///   - periodStart: start of the compared ticket period – every option is priced for that start date
+    ///     (`TicketProduct.price(forStart:)`, KlimaTicket prices change by start date); nil = today's catalog price.
     ///   - annualize: scale the trips to a full year when the period has just started.
     public static func compare(trips: [TripRecord], products: [TicketProduct], variant: TicketVariant,
-                               currentProductID: String?, annualizationFactor: Double = 1) -> [TicketOption] {
+                               currentProductID: String?, periodStart: Date? = nil,
+                               annualizationFactor: Double = 1) -> [TicketOption] {
         let factor = max(annualizationFactor, 1)
         let singleTotal = trips.reduce(0) { $0 + $1.totalValue } * factor
         var options = [TicketOption(id: "single", name: "Einzeltickets", ticketPrice: 0, uncoveredCost: singleTotal,
@@ -33,7 +36,8 @@ public enum TicketComparator {
                     uncovered += t.totalValue
                 }
             }
-            options.append(TicketOption(id: p.id, name: p.name, ticketPrice: p.priceEUR, uncoveredCost: uncovered * factor,
+            let price = periodStart.map { p.price(forStart: $0) } ?? p.priceEUR
+            options.append(TicketOption(id: p.id, name: p.name, ticketPrice: price, uncoveredCost: uncovered * factor,
                                         coveredTrips: covered, isCurrent: p.id == currentProductID))
         }
         return options.sorted { $0.totalCost < $1.totalCost }

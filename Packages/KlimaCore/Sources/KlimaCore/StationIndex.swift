@@ -8,28 +8,54 @@ import Foundation
 public final class StationIndex: @unchecked Sendable {
     public let stations: [Station]
     private let byID: [String: Station]
-    private let keys: [String]
-    /// All searchable keys per station: normalized name first, then aliases.
-    private let allKeys: [[String]]
-    private let allTokens: [[[String]]]
+    /// `normalize`d official name → first station with it; aliases separately (names win, as before).
+    private let nameIndex: [String: Int]
+    private let aliasIndex: [String: Int]
+    /// Search keys per station: official name first, then aliases (see `SearchKey`).
+    private let searchKeys: [[SearchKey]]
     private let placeLock = NSLock()
     private var attachedPlaces: PlaceIndex?
+
+    /// One searchable name in its long form ("linz hauptbahnhof"), so a half-typed word still prefix-matches
+    /// ("Linz Haupt", "Wien Westbahn", "Sankt"); `shortWords` keeps the abbreviations ("hbf", "westbf", "st") per word,
+    /// so typing those finds the long names too.
+    private struct SearchKey {
+        let text: String
+        let words: [String]
+        let shortWords: [String]
+
+        init(_ name: String) {
+            words = StationIndex.foldedWords(name).map(StationIndex.expanded)
+            shortWords = words.map(StationIndex.abbreviated)
+            text = words.joined(separator: " ")
+        }
+    }
 
     public init(stations: [Station]) {
         self.stations = stations
         var map: [String: Station] = [:]
-        for s in stations { map[s.id] = s }
-        byID = map
-        keys = stations.map { StationIndex.normalize($0.name) }
-        allKeys = stations.map { s in
-            var k = [StationIndex.normalize(s.name)]
-            for a in s.aliases ?? [] {
-                let n = StationIndex.normalize(a)
-                if !n.isEmpty && !k.contains(n) { k.append(n) }
+        var names: [String: Int] = [:]
+        var aliases: [String: Int] = [:]
+        var keys: [[SearchKey]] = []
+        keys.reserveCapacity(stations.count)
+        for (i, s) in stations.enumerated() {
+            map[s.id] = s
+            let name = StationIndex.normalize(s.name)
+            if names[name] == nil { names[name] = i }
+            var seen: Set<String> = [name]
+            var stationKeys = [SearchKey(s.name)]
+            for alias in s.aliases ?? [] {
+                let n = StationIndex.normalize(alias)
+                guard !n.isEmpty, seen.insert(n).inserted else { continue }
+                if aliases[n] == nil { aliases[n] = i }
+                stationKeys.append(SearchKey(alias))
             }
-            return k
+            keys.append(stationKeys)
         }
-        allTokens = allKeys.map { list in list.map { $0.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "/" }).map(String.init) } }
+        byID = map
+        nameIndex = names
+        aliasIndex = aliases
+        searchKeys = keys
     }
 
     /// Decodes the bundled `stations.json` array.
@@ -59,8 +85,7 @@ public final class StationIndex: @unchecked Sendable {
     /// Exact (normalized) name or alias lookup.
     public func station(named name: String) -> Station? {
         let key = StationIndex.normalize(name)
-        if let i = keys.firstIndex(of: key) { return stations[i] }
-        if let i = allKeys.firstIndex(where: { $0.contains(key) }) { return stations[i] }
+        if let i = nameIndex[key] ?? aliasIndex[key] { return stations[i] }
         guard let places else { return nil }
         let want = PlaceNormalizer.key(name)
         return places.search(name, context: .tripLog, limit: 5)
@@ -70,21 +95,21 @@ public final class StationIndex: @unchecked Sendable {
     /// Ranked search. Empty query returns the most important stations (optionally nearest to `near`).
     /// With an attached place index, non-empty queries search every stop (Scotty-like ranking, „Fahrt erfassen“ mode).
     public func search(_ query: String, limit: Int = 30, near: GeoPoint? = nil) -> [Station] {
-        let q = StationIndex.normalize(query)
-        if !q.isEmpty, let places {
+        let rawWords = StationIndex.foldedWords(query)
+        if !rawWords.isEmpty, let places {
             return places.search(query, context: PlaceSearchContext(mode: .tripLog, near: near), limit: limit).map(\.station)
         }
-        if q.isEmpty {
-            let ranked = stations.enumerated().sorted { lhs, rhs in
-                rankEmpty(lhs.element, near: near) > rankEmpty(rhs.element, near: near)
-            }
-            return ranked.prefix(limit).map(\.element)
+        if rawWords.isEmpty {
+            // Rank once per station, not twice per comparison (a distance each time when `near` is set).
+            let ranks = stations.map { rankEmpty($0, near: near) }
+            return stations.indices.sorted { ranks[$0] > ranks[$1] }.prefix(limit).map { stations[$0] }
         }
-        let qTokens = q.split(separator: " ").map(String.init)
+        let words = rawWords.map(StationIndex.expanded)
+        let q = words.joined(separator: " ")
         var scored: [(Int, Double)] = []
         scored.reserveCapacity(64)
         for i in stations.indices {
-            guard let base = score(index: i, query: q, queryTokens: qTokens) else { continue }
+            guard let base = score(index: i, query: q, words: words, rawWords: rawWords) else { continue }
             var s = base + Double(stations[i].importance) * 0.15
             if let near {
                 let d = near.distanceKm(to: stations[i].location)
@@ -123,10 +148,10 @@ public final class StationIndex: @unchecked Sendable {
         return r
     }
 
-    private func score(index i: Int, query q: String, queryTokens: [String]) -> Double? {
+    private func score(index i: Int, query q: String, words: [String], rawWords: [String]) -> Double? {
         var best: Double?
-        for (n, key) in allKeys[i].enumerated() {
-            if let s = score(key: key, words: allTokens[i][n], query: q, queryTokens: queryTokens) {
+        for (n, key) in searchKeys[i].enumerated() {
+            if let s = score(key: key, query: q, words: words, rawWords: rawWords) {
                 let adjusted = n == 0 ? s : s - 2   // prefer the official name slightly
                 best = max(best ?? adjusted, adjusted)
             }
@@ -134,14 +159,19 @@ public final class StationIndex: @unchecked Sendable {
         return best
     }
 
-    private func score(key: String, words: [String], query q: String, queryTokens: [String]) -> Double? {
-        if key == q { return 120 }
-        if key.hasPrefix(q) { return 100 - Double(key.count - q.count) * 0.2 }
-        // Every query token must prefix-match some word.
+    /// `words`: the query's words in long form; `rawWords`: as typed (folded), so "St" also finds "Stephansplatz".
+    private func score(key: SearchKey, query q: String, words: [String], rawWords: [String]) -> Double? {
+        if key.text == q { return 120 }
+        if key.text.hasPrefix(q) { return 100 - Double(key.text.count - q.count) * 0.2 }
+        // Every query word must prefix-match some word of the name (long or short form).
         var allMatch = true
         var firstWordBonus = 0.0
-        for (n, t) in queryTokens.enumerated() {
-            if let idx = words.firstIndex(where: { $0.hasPrefix(t) }) {
+        for (n, word) in words.enumerated() {
+            let raw = rawWords[n]
+            let idx = key.words.indices.first { k in
+                key.words[k].hasPrefix(word) || key.words[k].hasPrefix(raw) || key.shortWords[k].hasPrefix(raw)
+            }
+            if let idx {
                 if n == 0 && idx == 0 { firstWordBonus = 10 }
             } else {
                 allMatch = false
@@ -149,10 +179,10 @@ public final class StationIndex: @unchecked Sendable {
             }
         }
         if allMatch { return 70 + firstWordBonus }
-        if key.contains(q) { return 50 }
+        if key.text.contains(q) { return 50 }
         // Typo tolerance for longer queries.
         if q.count >= 4 {
-            for w in words where abs(w.count - q.count) <= 2 {
+            for w in key.words where abs(w.count - q.count) <= 2 {
                 if StationIndex.levenshtein(String(w.prefix(q.count + 1)), q, limit: q.count >= 7 ? 2 : 1) != nil {
                     return 30
                 }
@@ -161,21 +191,55 @@ public final class StationIndex: @unchecked Sendable {
         return nil
     }
 
-    /// Lowercases, strips diacritics, expands common abbreviations ("hbf" ↔ "hauptbahnhof", "st." → "st").
+    /// Comparison key of a name: lowercases, strips diacritics, abbreviates ("hauptbahnhof" → "hbf", "st." → "st").
+    /// Equal keys mean the same name; for search as you type see `foldedWords` / `expanded`.
     public static func normalize(_ s: String) -> String {
         // Umlauts fold to the plain vowel on both sides ("Pölten", "Poelten", "Polten" → "polten").
-        var out = s.lowercased().replacingOccurrences(of: "ß", with: "ss")
-        out = out.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "de_AT"))
-        out = out.replacingOccurrences(of: "ae", with: "a")
-            .replacingOccurrences(of: "oe", with: "o")
-            .replacingOccurrences(of: "ue", with: "u")
+        var out = fold(s)
         out = out.replacingOccurrences(of: "hauptbahnhof", with: "hbf")
             .replacingOccurrences(of: "bahnhof", with: "bf")
             .replacingOccurrences(of: "sankt ", with: "st ")
             .replacingOccurrences(of: "st.", with: "st ")
-        let allowed = out.unicodeScalars.map { CharacterSet.alphanumerics.contains($0) ? Character($0) : " " }
+        let allowed = out.unicodeScalars.map { alphanumerics.contains($0) ? Character($0) : " " }
         return String(allowed).split(separator: " ").joined(separator: " ")
     }
+
+    /// The words of a name as typed, folded (case, "ß", diacritics, ae/oe/ue) – no abbreviation handling; every other
+    /// character separates words ("St.Pölten" → ["st", "polten"]).
+    static func foldedWords(_ s: String) -> [String] {
+        let chars = fold(s).unicodeScalars.map { alphanumerics.contains($0) ? Character($0) : " " }
+        return String(chars).split(separator: " ").map(String.init)
+    }
+
+    /// Long form of a word, so partial typing prefix-matches it: "hbf" → "hauptbahnhof", "westbf" → "westbahnhof",
+    /// "st" → "sankt".
+    static func expanded(_ word: String) -> String {
+        switch word {
+        case "hbf": return "hauptbahnhof"
+        case "bf", "bhf": return "bahnhof"
+        case "st": return "sankt"
+        default: return word.count > 3 && word.hasSuffix("bf") ? String(word.dropLast(2)) + "bahnhof" : word
+        }
+    }
+
+    /// Short form of a long word ("hauptbahnhof" → "hbf", "westbahnhof" → "westbf", "sankt" → "st").
+    static func abbreviated(_ word: String) -> String {
+        if word == "hauptbahnhof" { return "hbf" }
+        if word == "sankt" { return "st" }
+        if word.count > 7, word.hasSuffix("bahnhof") { return String(word.dropLast(7)) + "bf" }
+        return word
+    }
+
+    private static func fold(_ s: String) -> String {
+        var out = s.lowercased().replacingOccurrences(of: "ß", with: "ss")
+        out = out.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: deAT)
+        return out.replacingOccurrences(of: "ae", with: "a")
+            .replacingOccurrences(of: "oe", with: "o")
+            .replacingOccurrences(of: "ue", with: "u")
+    }
+
+    private static let deAT = Locale(identifier: "de_AT")
+    private static let alphanumerics = CharacterSet.alphanumerics
 
     /// Bounded Levenshtein distance; returns nil when it exceeds `limit`.
     static func levenshtein(_ a: String, _ b: String, limit: Int) -> Int? {

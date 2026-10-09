@@ -433,12 +433,15 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
 
 public extension Calendar {
     /// Gregorian calendar in Europe/Vienna, Monday-first – used for all date math.
-    static var vienna: Calendar {
+    /// Built once (a lazy, thread-safe global): it is read per date in formatting, lists and the analytics loops, and
+    /// building a calendar resolves a time zone and a locale every time. `Calendar` is a value type – a caller that
+    /// changes its copy (`var c = Calendar.vienna; c.timeZone = …`) changes only that copy.
+    static let vienna: Calendar = {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "Europe/Vienna") ?? .current
         cal.locale = Locale(identifier: "de_AT")
         cal.firstWeekday = 2
         cal.minimumDaysInFirstWeek = 4
         return cal
-    }
+    }()
 }

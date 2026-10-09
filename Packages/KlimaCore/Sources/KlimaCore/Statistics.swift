@@ -59,9 +59,9 @@ public struct TravelRecords: Hashable, Sendable {
 public enum StatsAggregator {
     public static func months(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [MonthBucket] {
         var map: [Date: MonthBucket] = [:]
+        var memo = DayMemo(calendar)
         for t in trips {
-            let comps = calendar.dateComponents([.year, .month], from: t.date)
-            guard let m = calendar.date(from: comps) else { continue }
+            guard let m = memo.startOfMonth(t.date) else { continue }
             var b = map[m] ?? MonthBucket(month: m, value: 0, trips: 0, distanceKm: 0)
             b.value += t.totalValue
             b.trips += 1
@@ -98,9 +98,10 @@ public enum StatsAggregator {
 
     public static func weekdays(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [WeekdayBucket] {
         var buckets = (1...7).map { WeekdayBucket(weekday: $0, trips: 0, value: 0) }
+        var memo = DayMemo(calendar)
         for t in trips {
             // Calendar weekday: 1 = Sunday … 7 = Saturday → convert to Monday-first.
-            let wd = calendar.component(.weekday, from: t.date)
+            let wd = memo.weekday(t.date)
             let idx = (wd + 5) % 7
             buckets[idx].trips += 1
             buckets[idx].value += t.totalValue
@@ -110,8 +111,9 @@ public enum StatsAggregator {
 
     public static func days(_ trips: [TripRecord], calendar: Calendar = .vienna) -> [DayActivity] {
         var map: [Date: DayActivity] = [:]
+        var memo = DayMemo(calendar)
         for t in trips {
-            let d = calendar.startOfDay(for: t.date)
+            let d = memo.startOfDay(t.date)
             var a = map[d] ?? DayActivity(day: d, trips: 0, value: 0)
             a.trips += 1
             a.value += t.totalValue
@@ -135,7 +137,8 @@ public enum StatsAggregator {
     }
 
     public static func records(_ trips: [TripRecord], now: Date = Date(), calendar: Calendar = .vienna) -> TravelRecords {
-        let dayList = Set(trips.map { calendar.startOfDay(for: $0.date) }).sorted()
+        var memo = DayMemo(calendar)
+        let dayList = Set(trips.map { memo.startOfDay($0.date) }).sorted()
         var longest = 0, run = 0
         var previous: Date?
         for d in dayList {

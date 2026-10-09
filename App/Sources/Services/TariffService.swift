@@ -19,20 +19,28 @@ final class TariffService {
 
     var lastRefresh: Date? { defaults.object(forKey: "tariffs.lastRefresh") as? Date }
 
+    /// A cached remote catalog wins only when it is newer and usable (`TariffCatalog.isUsable`) – a malformed download
+    /// that is already on disk is ignored instead of breaking every price estimate.
     func currentCatalog() -> TariffCatalog {
         let bundled = bundledCatalog()
         if let data = try? Data(contentsOf: cacheURL), let remote = try? TariffCatalog.decode(from: data),
-           remote.version > (bundled?.version ?? 0) {
+           remote.version > (bundled?.version ?? 0), remote.isUsable {
             return remote
         }
         return bundled ?? TariffService.fallbackCatalog
     }
 
+    /// The bundled tariffs.json (decoded once; it never changes while the app runs).
     func bundledCatalog() -> TariffCatalog? {
+        if let cached = bundledCache { return cached }
         guard let url = Bundle.main.url(forResource: "tariffs", withExtension: "json"),
-              let data = try? Data(contentsOf: url) else { return nil }
-        return try? TariffCatalog.decode(from: data)
+              let data = try? Data(contentsOf: url),
+              let catalog = try? TariffCatalog.decode(from: data) else { return nil }
+        bundledCache = catalog
+        return catalog
     }
+
+    private var bundledCache: TariffCatalog?
 
     /// Downloads a newer catalog at most every 12 h. Returns true when a newer catalog was installed.
     @discardableResult
@@ -48,7 +56,7 @@ final class TariffService {
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { return false }
             let remote = try TariffCatalog.decode(from: data)
             defaults.set(Date(), forKey: "tariffs.lastRefresh")
-            guard remote.version > currentCatalog().version else { return false }
+            guard remote.isUsable, remote.version > currentCatalog().version else { return false }
             try data.write(to: cacheURL, options: .atomic)
             return true
         } catch {
