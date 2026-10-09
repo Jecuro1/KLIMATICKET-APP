@@ -22,7 +22,7 @@ enum AchUnlockMemory {
 }
 
 /// A band of light sweeps once across a medal's face whenever `trigger` changes (a medal just earned, the detail
-/// opening on an earned medal). Additive light clipped to the coin, ~0,7 s; transparent while idle.
+/// opening on an earned medal). Additive light clipped to the coin, ~0,7 s; no band (and no blend layer) while idle.
 /// Reduce Motion / screenshots: nothing.
 struct AchShineSweep: View {
     let trigger: Int
@@ -31,26 +31,31 @@ struct AchShineSweep: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // Always in place (transparent at rest): a keyframe animator only plays on a *change* of its trigger, so it
-        // must exist before the first one.
+        // The animator sits on a clear base (a keyframe animator only plays on a *change* of its trigger, so it must
+        // exist before the first one); the band and its blend layer exist only while it sweeps – nothing composites
+        // over the 6–17 medals of the grid while they scroll.
         if !reduceMotion && !MotionPolicy.isStatic {
-            LinearGradient(stops: [.init(color: .white.opacity(0), location: 0),
-                                   .init(color: .white.opacity(0.75), location: 0.5),
-                                   .init(color: .white.opacity(0), location: 1)],
-                           startPoint: .leading, endPoint: .trailing)
-                .frame(width: size * 0.34, height: size * 1.5)
-                .rotationEffect(.degrees(22))
-                .keyframeAnimator(initialValue: -1.0, trigger: trigger) { band, x in
-                    band
-                        .offset(x: x * size * 0.85)
-                        .opacity(x > -0.98 && x < 0.98 ? 1 : 0)
+            let size = size
+            Color.clear
+                .keyframeAnimator(initialValue: -1.0, trigger: trigger) { base, x in
+                    base.overlay {
+                        if x > -0.98 && x < 0.98 {
+                            LinearGradient(stops: [.init(color: .white.opacity(0), location: 0),
+                                                   .init(color: .white.opacity(0.75), location: 0.5),
+                                                   .init(color: .white.opacity(0), location: 1)],
+                                           startPoint: .leading, endPoint: .trailing)
+                                .frame(width: size * 0.34, height: size * 1.5)
+                                .rotationEffect(.degrees(22))
+                                .offset(x: x * size * 0.85)
+                                .blendMode(.plusLighter)
+                        }
+                    }
                 } keyframes: { _ in
                     LinearKeyframe(-1.0, duration: 0.01)
                     CubicKeyframe(1.0, duration: 0.7)
                 }
                 .frame(width: size, height: size)
                 .clipShape(Circle())
-                .blendMode(.plusLighter)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
