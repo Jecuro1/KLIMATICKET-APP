@@ -326,10 +326,15 @@ private struct UpdNotesCard: View {
 private struct UpdNoteRow: View {
     var text: String
 
+    /// Half the cap height of `.body`: centres the tile on the first line instead of on the symbol's own baseline,
+    /// which differs per glyph (the magnifying glass sits lower than the euro sign) and would make the tiles step.
+    @ScaledMetric(relativeTo: .body) private var capHalf: CGFloat = 6
+
     var body: some View {
         let feature = UpdFeature(note: text)
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
             SetIconTile(symbol: feature.symbol, tint: feature.tint, size: 30)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + capHalf }
             Text(text)
                 .font(.body)
                 .foregroundStyle(Theme.textPrimary)
