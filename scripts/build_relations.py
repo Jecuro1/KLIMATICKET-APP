@@ -32,6 +32,27 @@ def main():
     for s in rail:
         by_name.setdefault(norm(s["name"]), s)
     coords = src.get("station_coords_osm", {})
+    meta_path = os.path.join(ROOT, "data", "stations_meta.json")
+    rail_ids = {s["id"]: s for s in rail}
+    if os.path.exists(meta_path):
+        meta = json.load(open(meta_path, encoding="utf-8")).get("stations", {})
+        for sid, m in meta.items():
+            if sid in rail_ids:
+                for alias in m.get("aliases") or []:
+                    by_name.setdefault(norm(alias), rail_ids[sid])
+
+    def tokens(n):
+        return [t for t in re.split(r"[ /\-]+", norm(n).replace("/", " ")) if t]
+
+    def token_match(name):
+        q = [t.rstrip(".") for t in tokens(name) if len(t.rstrip(".")) >= 3]
+        if not q: return None
+        cands = []
+        for k, st in by_name.items():
+            words = k.split()
+            if all(any(w.startswith(t) for w in words) for t in q) and words and words[0].startswith(q[0]):
+                cands.append(st)
+        return max(cands, key=lambda s: s.get("importance", 0)) if cands else None
 
     def resolve(name):
         key = norm(name)
@@ -45,7 +66,8 @@ def main():
                 return best
         if key in by_name: return by_name[key]
         cands = [s for k, s in by_name.items() if k.startswith(key + " ") or key.startswith(k + " ")]
-        return max(cands, key=lambda s: s.get("importance", 0)) if cands else None
+        if cands: return max(cands, key=lambda s: s.get("importance", 0))
+        return token_match(name)
 
     points, index, prices, unresolved = [], {}, {}, set()
     def idx(name):

@@ -13,5 +13,3 @@ struct AchievementsView: View { var body: some View { Text("Erfolge") } }
 struct SettingsView: View { var body: some View { Text("Einstellungen") } }
 struct UpdateSheet: View { var body: some View { Text("Update") } }
 struct WidgetGalleryView: View { var body: some View { Text("Widgets") } }
-struct ToastOverlay: View { var body: some View { EmptyView() } }
-enum Theme { static let accent = Color.accentColor }

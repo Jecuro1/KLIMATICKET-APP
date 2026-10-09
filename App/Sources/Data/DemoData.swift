@@ -11,17 +11,17 @@ enum DemoData {
     }
 
     static let routes: [Route] = [
-        Route(from: "St. Anton am Arlberg", to: "Innsbruck Hbf", fromID: nil, toID: nil, mode: .train, km: 101, fare: 23.4, states: ["T"]),
-        Route(from: "St. Anton am Arlberg", to: "Landeck-Zams", fromID: nil, toID: nil, mode: .train, km: 28, fare: 7.4, states: ["T"]),
-        Route(from: "St. Anton am Arlberg", to: "Bludenz", fromID: nil, toID: nil, mode: .train, km: 41, fare: 9.6, states: ["T", "V"]),
-        Route(from: "Langen am Arlberg", to: "Bregenz", fromID: nil, toID: nil, mode: .train, km: 88, fare: 17.8, states: ["V"]),
-        Route(from: "Innsbruck Hbf", to: "Wien Hauptbahnhof", fromID: nil, toID: nil, mode: .train, km: 476, fare: 79.9, states: ["T", "S", "OÖ", "NÖ", "W"]),
-        Route(from: "Innsbruck Hbf", to: "Salzburg Hbf", fromID: nil, toID: nil, mode: .train, km: 189, fare: 41.2, states: ["T", "S"]),
-        Route(from: "Wien Hauptbahnhof", to: "Praterstern", fromID: nil, toID: nil, mode: .metro, km: 4.5, fare: 3.2, states: ["W"]),
-        Route(from: "Innsbruck Hbf", to: "Hungerburg", fromID: nil, toID: nil, mode: .cableCar, km: 3, fare: 3.0, states: ["T"]),
-        Route(from: "Innsbruck Hbf", to: "Innsbruck Marktplatz", fromID: nil, toID: nil, mode: .tram, km: 1.6, fare: 3.0, states: ["T"]),
-        Route(from: "St. Anton am Arlberg", to: "Lech", fromID: nil, toID: nil, mode: .bus, km: 19, fare: 5.8, states: ["T", "V"]),
-        Route(from: "Graz Hbf", to: "Klagenfurt Hbf", fromID: nil, toID: nil, mode: .train, km: 128, fare: 27.9, states: ["ST", "K"]),
+        Route(from: "St. Anton am Arlberg", to: "Innsbruck Hauptbahnhof", fromID: "at:47:1222", toID: "at:47:1187", mode: .train, km: 101, fare: 23.5, states: ["T"]),
+        Route(from: "St. Anton am Arlberg", to: "Landeck-Zams", fromID: "at:47:1222", toID: "at:47:1212", mode: .train, km: 28, fare: 6.7, states: ["T"]),
+        Route(from: "St. Anton am Arlberg", to: "Bludenz", fromID: "at:47:1222", toID: "at:48:130", mode: .train, km: 41, fare: 8.6, states: ["T", "V"]),
+        Route(from: "Langen am Arlberg", to: "Bregenz", fromID: "at:48:1226", toID: "at:48:452", mode: .train, km: 88, fare: 18.8, states: ["V"]),
+        Route(from: "Innsbruck Hauptbahnhof", to: "Wien Hauptbahnhof", fromID: "at:47:1187", toID: "at:49:1349", mode: .train, km: 476, fare: 92.8, states: ["NÖ", "OÖ", "S", "T", "W"]),
+        Route(from: "Innsbruck Hauptbahnhof", to: "Salzburg Hauptbahnhof", fromID: "at:47:1187", toID: "at:45:50002", mode: .train, km: 189, fare: 55.2, states: ["S", "T"]),
+        Route(from: "Wien Hauptbahnhof", to: "Wien Praterstern", fromID: "wl:60201349", toID: "wl:60201040", mode: .metro, km: 4.5, fare: 3.2, states: ["W"]),
+        Route(from: "Innsbruck Congress", to: "Hungerburg", fromID: nil, toID: nil, mode: .cableCar, km: 1.8, fare: 6.5, states: ["T"]),
+        Route(from: "Innsbruck Hauptbahnhof", to: "Innsbruck Marktplatz", fromID: "at:47:1187", toID: nil, mode: .tram, km: 1.6, fare: 3.2, states: ["T"]),
+        Route(from: "St. Anton am Arlberg", to: "Lech", fromID: "at:47:1222", toID: nil, mode: .bus, km: 19, fare: 5.8, states: ["T", "V"]),
+        Route(from: "Graz Hauptbahnhof", to: "Klagenfurt Hauptbahnhof", fromID: "at:46:3040", toID: "at:42:3642", mode: .train, km: 128, fare: 32.0, states: ["K", "ST"]),
     ]
 
     /// Fills the context with a ticket started ~222 days ago and ~90 trips.
@@ -42,7 +42,7 @@ enum DemoData {
             var plans: [(Route, Int, Bool)] = []
             // Tuned so the demo year sits at roughly 70–80 % amortisation (shows progress + forecast).
             if (2...6).contains(weekday) {
-                if roll < 0.045 { plans.append((routes[0], 7, true)) }
+                if roll < 0.04 { plans.append((routes[0], 7, true)) }
                 else if roll < 0.115 { plans.append((routes[1], 8, true)) }
                 else if roll < 0.165 { plans.append((routes[9], 17, false)) }
             } else {
@@ -66,13 +66,13 @@ enum DemoData {
         }
 
         let favorites = [
-            FavoriteRouteEntity(title: "Arbeit", fromName: routes[0].from, toName: routes[0].to, mode: .train, distanceKm: routes[0].km,
+            FavoriteRouteEntity(title: "Arbeit", fromName: routes[0].from, toName: routes[0].to, fromStationID: routes[0].fromID, toStationID: routes[0].toID, mode: .train, distanceKm: routes[0].km,
                                 fareEUR: routes[0].fare, isRoundTrip: true, states: routes[0].states, sortIndex: 0),
-            FavoriteRouteEntity(title: "Landeck", fromName: routes[1].from, toName: routes[1].to, mode: .train, distanceKm: routes[1].km,
+            FavoriteRouteEntity(title: "Landeck", fromName: routes[1].from, toName: routes[1].to, fromStationID: routes[1].fromID, toStationID: routes[1].toID, mode: .train, distanceKm: routes[1].km,
                                 fareEUR: routes[1].fare, isRoundTrip: true, states: routes[1].states, sortIndex: 1),
-            FavoriteRouteEntity(title: "Bludenz", fromName: routes[2].from, toName: routes[2].to, mode: .train, distanceKm: routes[2].km,
+            FavoriteRouteEntity(title: "Bludenz", fromName: routes[2].from, toName: routes[2].to, fromStationID: routes[2].fromID, toStationID: routes[2].toID, mode: .train, distanceKm: routes[2].km,
                                 fareEUR: routes[2].fare, isRoundTrip: true, states: routes[2].states, sortIndex: 2),
-            FavoriteRouteEntity(title: "Lech", fromName: routes[9].from, toName: routes[9].to, mode: .bus, distanceKm: routes[9].km,
+            FavoriteRouteEntity(title: "Lech", fromName: routes[9].from, toName: routes[9].to, fromStationID: routes[9].fromID, toStationID: routes[9].toID, mode: .bus, distanceKm: routes[9].km,
                                 fareEUR: routes[9].fare, states: routes[9].states, sortIndex: 3),
         ]
         favorites.forEach { context.insert($0) }
