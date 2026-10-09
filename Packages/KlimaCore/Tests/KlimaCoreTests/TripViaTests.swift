@@ -95,7 +95,7 @@ final class TripViaTests: XCTestCase {
         XCTAssertEqual(e.method, .officialTable)
         XCTAssertEqual(e.fareEUR, 43.3, accuracy: 0.001, "not 36,00 + 8,90 = 44,90")
         XCTAssertEqual(e.distanceKm, 202.8, accuracy: 0.001, "route distance = sum of the legs")
-        XCTAssertEqual(e.explanation, "über Feldkirch · am Weg · ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025")
+        XCTAssertEqual(e.explanation, "über Feldkirch (am Weg) · ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025")
 
         let bludenzRoute = est.estimate(from: innsbruck, via: [bludenz], to: bregenz, mode: .train)
         XCTAssertEqual(bludenzRoute.method, .officialTable)

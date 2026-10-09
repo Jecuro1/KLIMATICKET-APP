@@ -28,7 +28,7 @@ them in reverse (shown in the detail as „Zurück über …").
    straight line × detour factor.
 3. **Official table:** the A → B relation price applies only when every via lies on the default path – all legs have
    official tariff km and they add up to the direct relation's (+ 6 % + 3 km tolerance for the table's rounding).
-   Explanation „über Feldkirch · am Weg · ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025".
+   Explanation „über Feldkirch (am Weg) · ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025".
 4. Otherwise the estimate (`.distanceTariff`), „über Villach Hbf · geschätzt nach Tarif-km · 2. Kl.", never below the
    direct ticket. Class, Vorteilscard and the fare index apply as for direct trips.
 5. **Distance** (CO₂, km statistics): sum of the legs' rail-km estimates, never below the direct estimate.

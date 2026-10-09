@@ -272,7 +272,8 @@ final class E2ETests: XCTestCase {
             TripDTO(id: UUID(), user_id: uid, date: micro(base.addingTimeInterval(Double(i) * 60)), from_name: "Feldkirch",
                     to_name: "Bludenz", mode: "train", distance_km: 21.3, fare_eur: 5.1, is_fare_manual: false,
                     is_round_trip: i % 3 == 0, travel_class: "second", companions: i % 4, states: "V", note: "#\(i)",
-                    category: "", is_induced: false, created_at: base, updated_at: micro(base.addingTimeInterval(Double(i))))
+                    category: "", is_induced: false, via: i % 5 == 0 ? "at:48:817\tFeldkirch" : "",   // a current app always sends via
+                    created_at: base, updated_at: micro(base.addingTimeInterval(Double(i))))
         }
         let pushed = try await client.push(table: TripDTO.table, rows: many, session: provider)
         XCTAssertEqual(pushed.requests, 3)

@@ -432,6 +432,7 @@ final class SimDevice {
                                distance_km: 683.4, fare_eur: 104.6, is_fare_manual: i % 5 == 0, is_round_trip: i % 2 == 0,
                                travel_class: i % 7 == 0 ? "first" : "second", companions: i % 3, states: "V,T,S,W",
                                note: "#\(i)", category: i % 4 == 0 ? "work" : "", is_induced: i % 9 == 0,
+                               via: i % 6 == 0 ? "at:47:1187\tInnsbruck Hauptbahnhof\n\tLech Postamt" : "",
                                created_at: at, updated_at: at)
             trips[trip.id] = trip
             return trip.id

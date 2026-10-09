@@ -97,6 +97,11 @@ struct TripEdViaRows: View {
     var onPick: (TripEdPick) -> Void
     /// Centre of the route line relative to the text column (TripEdRouteCard: glyph at x 1…16, text at x 26).
     var lineOffset: CGFloat = -17.5
+    /// Leading padding of the route card's stop column (where the route line runs).
+    var leadingInset: CGFloat = 26
+
+    /// Width of a column centred on the route line, starting at the card's inset edge.
+    private var markColumn: CGFloat { 2 * (leadingInset + lineOffset) }
 
     @Environment(AppState.self) private var app
     @State private var removedTick = 0
@@ -128,28 +133,30 @@ struct TripEdViaRows: View {
         removedTick += 1
     }
 
+    /// "⊕ Zwischenhalt hinzufügen": the ⊕ sits on the route line (a stop waiting to be placed), the label in the text
+    /// column. The button reaches into the card's leading padding so the ⊕ is part of the tap target.
     private var addButton: some View {
         Button {
             onPick(.viaNew)
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "plus")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Theme.accentText)
-                    .frame(width: 18, height: 18)
-                    .background(Theme.accent.opacity(0.12), in: .circle)
+            HStack(spacing: 0) {
+                // Column of the route line: centred on it, the rest of the card's leading inset as the gap.
+                TripEdViaAddMark()
+                    .frame(width: markColumn)
+                Spacer().frame(width: leadingInset - markColumn)
                 Text(model.vias.isEmpty ? "Zwischenhalt hinzufügen" : "Weiteren Zwischenhalt hinzufügen")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.accentText)
+                    .foregroundStyle(Theme.textSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(.pressable)
-        .padding(.top, 4)
+        .padding(.leading, -leadingInset)
+        .padding(.top, 2)
         .accessibilityLabel(model.vias.isEmpty ? "Zwischenhalt hinzufügen" : "Weiteren Zwischenhalt hinzufügen")
         .accessibilityHint("Öffnet die Suche für einen Bahnhof, über den du fährst. Höchstens \(TripVia.maxCount) Zwischenhalte.")
     }
@@ -164,7 +171,7 @@ private struct TripEdViaRow: View {
     var onTap: () -> Void
     var onRemove: () -> Void
 
-    @ScaledMetric(relativeTo: .body) private var dotSize: CGFloat = 7
+    @ScaledMetric(relativeTo: .body) private var dotSize: CGFloat = 9
     @State private var dragX: CGFloat = 0
 
     var body: some View {
@@ -223,8 +230,9 @@ private struct TripEdViaRow: View {
         return Circle()
             .fill(Theme.accent.mix(with: Theme.summit, by: 0.25 + t * 0.5))
             .frame(width: dotSize, height: dotSize)
-            .overlay(Circle().stroke(Theme.surface, lineWidth: 1.5))
-            .offset(x: lineOffset - dotSize / 2)
+            .padding(2.5)
+            .background(TripEdViaAddMark.cardColor, in: .circle)   // cuts the dashed line around the dot
+            .offset(x: lineOffset - dotSize / 2 - 2.5)
             .accessibilityHidden(true)
     }
 
@@ -251,5 +259,24 @@ private struct TripEdViaRow: View {
                     withMotion(Motion.snappy) { dragX = 0 }
                 }
             }
+    }
+}
+
+/// The ⊕ of "Zwischenhalt hinzufügen", sitting on the route line: a small ring in the card colour (it cuts the dashed
+/// line), accent plus.
+private struct TripEdViaAddMark: View {
+    /// Opaque stand-in for the card surface over the sheet (Theme.surface is translucent) – only for tiny knock-outs.
+    static let cardColor = Color(light: "#FCFDFE", dark: "#1D273C")
+
+    @ScaledMetric(relativeTo: .footnote) private var size: CGFloat = 17
+
+    var body: some View {
+        Image(systemName: "plus")
+            .font(.system(size: size * 0.55, weight: .bold))
+            .foregroundStyle(Theme.accentText)
+            .frame(width: size, height: size)
+            .background(Self.cardColor, in: .circle)
+            .overlay(Circle().strokeBorder(Theme.accent.opacity(0.55), lineWidth: 1.25))
+            .accessibilityHidden(true)
     }
 }

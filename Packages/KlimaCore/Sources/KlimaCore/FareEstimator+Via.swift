@@ -87,7 +87,7 @@ public extension FareEstimator {
            tariffKm <= directKm * (1 + Self.viaOnPathTolerance.relative) + Self.viaOnPathTolerance.absoluteKm {
             return FareEstimate(fareEUR: direct.fareEUR, distanceKm: distance, straightLineKm: direct.straightLineKm,
                                 method: .officialTable,
-                                explanation: "\(label) · am Weg · ÖBB-Standardticket \(classText) · Tarif ab "
+                                explanation: "\(label) (am Weg) · ÖBB-Standardticket \(classText) · Tarif ab "
                                     + "\(FareEstimator.shortDate(relations.validFrom))\(discountText)")
         }
 
