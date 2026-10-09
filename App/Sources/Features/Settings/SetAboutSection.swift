@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 import KlimaCore
 
-/// Über KlimaBilanz: FAQ, data sources, privacy, disclaimer, feedback – closed by a centred brand footer.
+/// Über KlimaBilanz: FAQ, data sources, privacy, disclaimer, feedback.
+/// The centred brand footer (`SetBrandFooterSection`) closes the list after the sign-out section.
 struct SetAboutSection: View {
     var body: some View {
         Section {
@@ -40,12 +41,6 @@ struct SetAboutSection: View {
         } header: {
             SetSectionHeader(title: "Über KlimaBilanz")
         }
-
-        Section {
-            SetBrandFooter()
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-        }
     }
 
     /// Recipient for feedback mails (empty = the user picks one in Mail). See report › shared_requests.
@@ -65,6 +60,18 @@ struct SetAboutSection: View {
     }
 }
 
+/// Borderless last section of the settings list with the brand footer.
+struct SetBrandFooterSection: View {
+    var body: some View {
+        Section {
+            SetBrandFooter()
+                .id(SetScrollAnchor.end)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+        }
+    }
+}
+
 /// Centred app icon, name, version and tagline at the end of the settings list.
 private struct SetBrandFooter: View {
     var body: some View {
@@ -77,9 +84,10 @@ private struct SetBrandFooter: View {
             Text("Version \(AppConfig.appVersion) (Build \(AppConfig.buildNumber))")
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
+            // textSecondary: the tertiary grey stays below 4.5 : 1 for footnote text on the pale sky.
             Text(Copy.tagline)
                 .font(.footnote)
-                .foregroundStyle(Theme.textTertiary)
+                .foregroundStyle(Theme.textSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 2)
         }

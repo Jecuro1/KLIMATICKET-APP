@@ -34,6 +34,7 @@ struct SetDataSection: View {
                     .onAppear { prepareExports() }
                     .onChange(of: exportKey) { _, _ in prepareExports() }
                 backupRow
+                    .id(SetScrollAnchor.data)
                 importRow
                 demoRow
                 deleteRow
@@ -109,7 +110,9 @@ struct SetDataSection: View {
             isConfirmingDelete = true
         } label: {
             Label {
+                // Text-safe red like "Abmelden" (the system red is below 4.5 : 1 on the light row surface).
                 Text("Alle Daten löschen")
+                    .foregroundStyle(Theme.negativeText)
             } icon: {
                 SetIconTile(symbol: "trash.fill", tint: Theme.negative)
             }
