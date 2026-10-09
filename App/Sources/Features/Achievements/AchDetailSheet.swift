@@ -234,6 +234,10 @@ struct AchDetailSheet: View {
                 if !isUnlocked, let hint {
                     messageRow(symbol: "lightbulb.fill", color: Theme.gold, text: hint)
                 }
+                // MARK: map
+                if achievement.id.hasPrefix("states-") {
+                    AtlasAchievementLink()
+                }
             }
         }
     }

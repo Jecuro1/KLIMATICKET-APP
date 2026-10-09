@@ -254,6 +254,9 @@ struct ScreenshotRouter: View {
         // MARK: reports
         case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
             RepScreenshotHost(screen: reportScreen)
+        // MARK: map
+        case _ where screen.hasPrefix("map"):
+            AtlasScreenshotScene(screen: screen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
