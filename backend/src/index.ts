@@ -1,27 +1,21 @@
-// KlimaBilanz API – Cloudflare Worker entry point.
-// SKELETON (architect): only GET /v1/health is implemented. WP-S implements docs/CLOUDFLARE_BACKEND.md §3.
+// KlimaBilanz API – Cloudflare Worker entry point. Contract: docs/CLOUDFLARE_BACKEND.md.
 import type { Env } from "./env";
+import { handle } from "./app";
+import { runCleanup } from "./cron";
+import { defaultDeps } from "./deps";
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "no-referrer",
-      "X-KB-API": "1",
-    },
-  });
-}
+const deps = defaultDeps();
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/v1/health") {
-      const row = await env.DB.prepare("SELECT server_rev FROM sync_state WHERE id = 1").first<{ server_rev: number }>();
-      return json({ ok: row !== null });
-    }
-    return json({ error: "not_implemented", error_description: "Not implemented yet." }, 501);
+  fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return handle(request, env, ctx, deps);
+  },
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      runCleanup(env, deps).then(
+        () => undefined,
+        (err: unknown) => deps.log({ event: "cron_failed", error: err instanceof Error ? err.name : "unknown" }),
+      ),
+    );
   },
 } satisfies ExportedHandler<Env>;
