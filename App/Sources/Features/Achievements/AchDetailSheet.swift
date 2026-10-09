@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import CoreTransferable
+import UniformTypeIdentifiers
 import KlimaCore
 
 /// Detail of one Gipfelbuch entry: large medallion with a tilt-driven shine (device motion + drag, tap to spin),
@@ -11,15 +13,9 @@ struct AchDetailSheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.displayScale) private var displayScale
 
-    @State private var tilt = MotionTilt()
-    @State private var drag: CGSize = .zero
-    @State private var spin: Double = 0
-    @State private var spinTick = 0
     @State private var bounceTick = 0
     @State private var appeared = LaunchMode.isScreenshot
-    @State private var shareImage: Image?
 
     private let medalSize: CGFloat = 172
 
@@ -32,10 +28,6 @@ struct AchDetailSheet: View {
     /// ProgressRail's own `.animation(_:value:)` would still sweep 0 → p when `appeared` flips in `onAppear`.
     /// `appeared` itself stays the haptic trigger.
     private var revealed: Bool { appeared || !animatesMotion }
-
-    /// Device tilt plus finger drag, −1.5…1.5.
-    private var roll: Double { clamp(tilt.roll + Double(drag.width) / 110) }
-    private var pitch: Double { clamp(tilt.pitch - Double(drag.height) / 110) }
 
     var body: some View {
         NavigationStack {
@@ -68,101 +60,29 @@ struct AchDetailSheet: View {
         .sensoryFeedback(.impact(flexibility: .soft), trigger: appeared) { _, newValue in
             newValue && isUnlocked && app.settings.hapticsEnabled
         }
-        .sensoryFeedback(.impact(weight: .light), trigger: spinTick) { _, _ in
-            app.settings.hapticsEnabled
-        }
         .onAppear {
             if animatesMotion {
-                tilt.start()
                 withAnimation(.spring(duration: 0.7, bounce: 0.35).delay(0.08)) { appeared = true }
             } else {
                 appeared = true
             }
         }
-        .onDisappear {
-            // Unconditional: Reduce Motion may have changed since onAppear; stop() is a no-op when not started.
-            tilt.stop()
-        }
         .task {
-            // Let the zoom transition settle, then render the share card and bounce the symbol once.
-            if !LaunchMode.isScreenshot { try? await Task.sleep(for: .milliseconds(380)) }
-            renderShareImage()
-            if animatesMotion { bounceTick += 1 }
+            // Let the zoom transition settle, then bounce the symbol once.
+            guard animatesMotion else { return }
+            try? await Task.sleep(for: .milliseconds(380))
+            bounceTick += 1
         }
     }
 
     // MARK: Stage
 
+    /// The tilting medallion lives in its own view: it re-renders with every motion update (30 Hz), the rest of the
+    /// sheet (texts, info card, share button) does not.
     private var stage: some View {
-        ZStack {
-            if isUnlocked { rays }
-            Ellipse()
-                .fill(Color.black.opacity(0.16))
-                .frame(width: medalSize * 0.62, height: medalSize * 0.09)
-                .blur(radius: 7)
-                .offset(x: roll * 10, y: medalSize * 0.6)
-                .accessibilityHidden(true)
-            AchMedallion(achievement: achievement,
-                         size: medalSize,
-                         ringProgress: revealed ? progress : 0,
-                         roll: roll,
-                         pitch: pitch,
-                         bounceTick: bounceTick,
-                         showsPercentBadge: false)
-                .rotation3DEffect(.degrees(roll * 18 + spin), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
-                .rotation3DEffect(.degrees(-pitch * 14), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
-                .scaleEffect(revealed ? 1 : 0.6)
-                .opacity(revealed ? 1 : 0)
-                .contentShape(.circle)
-                .gesture(dragGesture)
-                .onTapGesture(perform: spinMedal)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Medaille \(achievement.title)")
-                .accessibilityValue(medalVoiceOverValue)
-                .accessibilityAddTraits(.isImage)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: medalSize + 80)
-        .padding(.top, Theme.Spacing.xs)
+        AchDetailStage(achievement: achievement, revealed: revealed, bounceTick: bounceTick,
+                       animatesMotion: animatesMotion, medalSize: medalSize)
     }
-
-    private var medalVoiceOverValue: String {
-        isUnlocked ? "\(tierName), erreicht" : "\(tierName), \(AchFormat.percent(progress)) geschafft"
-    }
-
-    /// Soft sunburst behind an unlocked medallion (static; parallax with tilt only).
-    private var rays: some View {
-        Circle()
-            .fill(Theme.tierGradient(tier))
-            .mask {
-                AngularGradient(colors: Self.rayColors, center: .center, angle: .degrees(roll * 10))
-            }
-            .mask {
-                RadialGradient(colors: [Color.black, Color.black.opacity(0)], center: .center,
-                               startRadius: medalSize * 0.3, endRadius: medalSize * 0.92)
-            }
-            .frame(width: medalSize * 1.85, height: medalSize * 1.85)
-            .opacity(revealed ? 0.5 : 0)
-            .accessibilityHidden(true)
-    }
-
-    private static let rayColors: [Color] = (0..<28).map { $0 % 2 == 0 ? Color.black : Color.black.opacity(0) }
-
-    private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 4)
-            .onChanged { value in drag = value.translation }
-            .onEnded { _ in
-                withAnimation(.spring(duration: 0.6, bounce: 0.45)) { drag = .zero }
-            }
-    }
-
-    private func spinMedal() {
-        guard !reduceMotion else { return }
-        withAnimation(.spring(duration: 1.1, bounce: 0.22)) { spin += 360 }
-        spinTick += 1
-    }
-
-    private func clamp(_ value: Double) -> Double { min(max(value, -1.5), 1.5) }
 
     // MARK: Text
 
@@ -311,45 +231,172 @@ struct AchDetailSheet: View {
             : "Auf dem Weg zu „\(achievement.title)“: \(AchFormat.percent(progress)) geschafft – mit KlimaBilanz."
     }
 
-    @ViewBuilder
+    /// The card is rendered when the share sheet exports it – not while the sheet's zoom and medal springs run.
     private var shareButton: some View {
-        if let shareImage {
-            ShareLink(item: shareImage,
-                      message: Text(shareText),
-                      preview: SharePreview(achievement.title, image: shareImage)) {
-                shareLabel
-            }
-            .buttonStyle(.primary)
-        } else {
-            Button {} label: { shareLabel }
-                .buttonStyle(.primary)
-                .disabled(true)
+        let payload = AchSharePayload(achievement: achievement, ticketYear: ticketYear)
+        return ShareLink(item: payload,
+                         message: Text(shareText),
+                         preview: SharePreview(achievement.title, image: payload)) {
+            shareLabel
         }
-    }
-
-    private func renderShareImage() {
-        guard shareImage == nil else { return }
-        let renderer = ImageRenderer(content: AchShareCard(achievement: achievement, ticketYear: ticketYear))
-        renderer.scale = max(displayScale, 3)
-        if let uiImage = renderer.uiImage {
-            shareImage = Image(uiImage: uiImage)
-        }
+        .buttonStyle(.primary)
     }
 
     // MARK: Backdrop
 
+    /// Tier glow behind the stage. A radial mask gives the soft edge of the former 90 pt blur without re-blurring a
+    /// 560 pt layer under the medal that redraws at 30 Hz.
     private var backdrop: some View {
         ZStack(alignment: .top) {
             Theme.sheetBackground
             Circle()
                 .fill(Theme.tierGradient(tier))
-                .frame(width: 380, height: 380)
-                .blur(radius: 90)
+                .mask {
+                    // ≈ the old 380 pt disc blurred by 90 pt: half strength at its former rim (r 190).
+                    RadialGradient(stops: [.init(color: .black, location: 0),
+                                           .init(color: .black.opacity(0.85), location: 0.4),
+                                           .init(color: .black.opacity(0.5), location: 0.68),
+                                           .init(color: .black.opacity(0.18), location: 0.85),
+                                           .init(color: .black.opacity(0), location: 1)],
+                                   center: .center, startRadius: 0, endRadius: 280)
+                }
+                .frame(width: 560, height: 560)
                 .opacity(isUnlocked ? 0.42 : 0.14)
-                .offset(y: -30)
+                .offset(y: -120)
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Stage
+
+/// Large medallion with a tilt-driven shine (device motion + drag, tap to spin) and, once earned, a sunburst.
+private struct AchDetailStage: View {
+    let achievement: Achievement
+    let revealed: Bool
+    let bounceTick: Int
+    let animatesMotion: Bool
+    let medalSize: CGFloat
+
+    @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var tilt = MotionTilt()
+    @State private var drag: CGSize = .zero
+    @State private var spin: Double = 0
+    @State private var spinTick = 0
+
+    private var tier: Achievement.Tier { achievement.tier }
+    private var isUnlocked: Bool { achievement.isUnlocked }
+    private var progress: Double { min(max(achievement.progress, 0), 1) }
+    /// Device tilt plus finger drag, −1.5…1.5.
+    private var roll: Double { clamp(tilt.roll + Double(drag.width) / 110) }
+    private var pitch: Double { clamp(tilt.pitch - Double(drag.height) / 110) }
+
+    var body: some View {
+        ZStack {
+            if isUnlocked { rays }
+            Ellipse()
+                .fill(Color.black.opacity(0.16))
+                .frame(width: medalSize * 0.62, height: medalSize * 0.09)
+                .blur(radius: 7)
+                .offset(x: roll * 10, y: medalSize * 0.6)
+                .accessibilityHidden(true)
+            AchMedallion(achievement: achievement,
+                         size: medalSize,
+                         ringProgress: revealed ? progress : 0,
+                         roll: roll,
+                         pitch: pitch,
+                         bounceTick: bounceTick,
+                         showsPercentBadge: false)
+                .rotation3DEffect(.degrees(roll * 18 + spin), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                .rotation3DEffect(.degrees(-pitch * 14), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                .scaleEffect(revealed ? 1 : 0.6)
+                .opacity(revealed ? 1 : 0)
+                .contentShape(.circle)
+                .gesture(dragGesture)
+                .onTapGesture(perform: spinMedal)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Medaille \(achievement.title)")
+                .accessibilityValue(medalVoiceOverValue)
+                .accessibilityAddTraits(.isImage)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: medalSize + 80)
+        .padding(.top, Theme.Spacing.xs)
+        .sensoryFeedback(.impact(weight: .light), trigger: spinTick) { _, _ in
+            app.settings.hapticsEnabled
+        }
+        .onAppear {
+            if animatesMotion { tilt.start() }
+        }
+        .onDisappear {
+            // Unconditional: Reduce Motion may have changed since onAppear; stop() is a no-op when not started.
+            tilt.stop()
+        }
+    }
+
+    private var medalVoiceOverValue: String {
+        let tierName = AchTierStyle.name(tier)
+        return isUnlocked ? "\(tierName), erreicht" : "\(tierName), \(AchFormat.percent(progress)) geschafft"
+    }
+
+    /// Soft sunburst behind an unlocked medallion (static; parallax with tilt only).
+    private var rays: some View {
+        Circle()
+            .fill(Theme.tierGradient(tier))
+            .mask {
+                AngularGradient(colors: Self.rayColors, center: .center, angle: .degrees(roll * 10))
+            }
+            .mask {
+                RadialGradient(colors: [Color.black, Color.black.opacity(0)], center: .center,
+                               startRadius: medalSize * 0.3, endRadius: medalSize * 0.92)
+            }
+            .frame(width: medalSize * 1.85, height: medalSize * 1.85)
+            .opacity(revealed ? 0.5 : 0)
+            .accessibilityHidden(true)
+    }
+
+    private static let rayColors: [Color] = (0..<28).map { $0 % 2 == 0 ? Color.black : Color.black.opacity(0) }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in drag = value.translation }
+            .onEnded { _ in
+                withAnimation(.spring(duration: 0.6, bounce: 0.45)) { drag = .zero }
+            }
+    }
+
+    private func spinMedal() {
+        guard !reduceMotion else { return }
+        withAnimation(.spring(duration: 1.1, bounce: 0.22)) { spin += 360 }
+        spinTick += 1
+    }
+
+    private func clamp(_ value: Double) -> Double { min(max(value, -1.5), 1.5) }
+}
+
+// MARK: - Share payload
+
+/// The achievement card as PNG, rendered by the share sheet when it exports (and for its preview).
+struct AchSharePayload: Transferable {
+    let achievement: Achievement
+    let ticketYear: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { payload in
+            try await payload.renderPNG()
+        }
+        .suggestedFileName("KlimaBilanz-Gipfelbuch.png")
+    }
+
+    @MainActor
+    func renderPNG() throws -> Data {
+        let renderer = ImageRenderer(content: AchShareCard(achievement: achievement, ticketYear: ticketYear))
+        renderer.scale = 3
+        guard let data = renderer.uiImage?.pngData() else { throw TktShareError.renderFailed }
+        return data
     }
 }
 

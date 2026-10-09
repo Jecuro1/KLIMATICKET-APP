@@ -164,13 +164,24 @@ struct AchMedallion: View {
 
     // MARK: Layers
 
+    /// Soft tier halo. A radial mask instead of `.blur`: the same falloff without an offscreen blur pass per medal
+    /// (17 in the grid, redrawn while scrolling; at 30 Hz under the tilting medal in the detail sheet).
     private var glow: some View {
         Circle()
             .fill(Theme.tierGradient(tier))
-            .frame(width: size * 0.9, height: size * 0.9)
-            .blur(radius: size * 0.16)
+            .mask {
+                // ≈ the old 0.9 × size disc blurred by 0.16 × size: solid core, half strength at its rim, gone at 0.6 × size.
+                RadialGradient(stops: [.init(color: .black, location: 0),
+                                       .init(color: .black.opacity(0.9), location: 0.5),
+                                       .init(color: .black.opacity(0.5), location: 0.75),
+                                       .init(color: .black.opacity(0.14), location: 0.9),
+                                       .init(color: .black.opacity(0), location: 1)],
+                               center: .center, startRadius: 0, endRadius: size * 0.6)
+            }
+            .frame(width: size * 1.2, height: size * 1.2)
             .opacity(0.55)
             .offset(y: size * 0.07)
+            .allowsHitTesting(false)
     }
 
     private var ring: some View {

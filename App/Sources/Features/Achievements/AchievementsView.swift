@@ -5,14 +5,38 @@ import KlimaCore
 /// "Gipfelbuch" – the achievements screen (DESIGN §5.6). Header "6 von 17" with a segmented collection ring,
 /// tier tallies and the next summit; then the sections "Erreicht" and "Als Nächstes" (closest first).
 /// Works pushed, as a NavigationStack root (screenshots) or as a sheet; shows a close button only when presented.
+///
+/// Owns only the data: the body re-runs when the queries, the selected ticket or the catalog change. The entrance,
+/// the bounce and the detail selection live in `AchBookScreen`, so they no longer re-run the analytics pipeline
+/// (three passes in the first 600 ms, one more per opened or closed medallion).
 struct AchievementsView: View {
+    @Environment(AppState.self) private var app
+
+    @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
+    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
+
+    var body: some View {
+        let snap = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
+            .map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) }
+        AchBookScreen(book: snap.map { AchBook($0.achievements) },
+                      year: snap.map { AchFormat.ticketYear($0.ticket) } ?? "")
+            .equatable()
+    }
+}
+
+/// The Gipfelbuch itself (header, summary card, sections, detail sheet) for an already evaluated book.
+private struct AchBookScreen: View, Equatable {
+    let book: AchBook?
+    let year: String
+
+    nonisolated static func == (lhs: AchBookScreen, rhs: AchBookScreen) -> Bool {
+        lhs.year == rhs.year && lhs.book?.all == rhs.book?.all
+    }
+
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isPresented) private var isPresented
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
-    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
 
     @State private var selection: AchSelection?
     @State private var appeared = LaunchMode.isScreenshot
@@ -34,19 +58,12 @@ struct AchievementsView: View {
         [GridItem(.adaptive(minimum: min(scaledColumn, 160)), spacing: Theme.Spacing.xxs, alignment: .top)]
     }
 
-    private var snapshot: AnalyticsSnapshot? {
-        guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else { return nil }
-        return Analytics.make(ticket: ticket, trips: trips, catalog: app.catalog)
-    }
-
     var body: some View {
-        let snap = snapshot
-        let year = snap.map { AchFormat.ticketYear($0.ticket) } ?? ""
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 header(year: year)
-                if let snap {
-                    book(AchBook(snap.achievements), year: year)
+                if let book {
+                    self.book(book, year: year)
                 } else {
                     EmptyStateView(symbol: "book.closed",
                                    title: "Dein Gipfelbuch ist noch leer",
