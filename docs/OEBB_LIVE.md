@@ -1358,6 +1358,51 @@ At most 6. Order as in `vm_trips_innsbruck_lech.json[0].legs[0].attributes`.
 
 See §D2 (WP-C list).
 
+## C5. Implementation notes (WP-C)
+
+- **Plates follow BADGE_SPEC (ENRICH D7), not the §C3.2 table.** `LinePresentation.plate(line)` returns
+  `LinePlateText.text(for: <LineRef of the live line>, size: .s).text`: „RJX“, „750“, „S4“, „CJX5“, „REX51“, tram „5“,
+  „U6“. A glyph-only plate (Skibus at small sizes) has empty text; `plate(_:size:)` returns text and glyph,
+  `kind(_:)` the `LineKind` for styling. The live `Line` → `LineRef` step is an internal adapter
+  (`LiveLineRefAdapter`, ENRICH §4.3 mode/ref rules) until WP-L ships `LiveLineMatcher.lineRef(from:)`; then
+  `LinePresentation` should call that. Titles keep §C3.2 („RJX 19910“, „Bus 750“, „REX 51 (Zug-Nr. 1628)“, „S 4“,
+  „Tram 5“, „U6“). Tests compare the `FX/ux` reference plates in this form (spaces removed, „T “ dropped for trams).
+- **Coverage documentation keys:** besides `verification`, `note`, `plus`, `sources` and `_*`, the engine also ignores
+  `notes` and `westbahn` (`regionalScopes.stmk.include.westbahn` is prose like `wien.include.plus`; as an unknown
+  operator it would have put every KlimaTicket Steiermark leg out of scope). Unknown operators are listed once in
+  `CoverageEvaluator.unknownOperatorKeys` (the app logs them; KlimaCore does no I/O).
+- **Stop countries:** no bounding-box guess („AT?“ of the reference). A stop without `countryCodeL` and without a
+  station within 2 km counts as outside Austria. Attach the `PlaceIndex` to the `StationIndex` so that every Austrian
+  stop resolves to a state. The goldens are identical either way.
+- **Covered prefix:** a `partial` leg ends the prefix with its own last covered stop, also when that is its origin
+  (Salzburg Hbf for a DB bus Salzburg → München after a covered RJ). `lastCoveredStopName` is nil when every ride leg
+  is covered.
+- **Tags:** `fewestChanges` goes to the first eligible card with the minimum changes that is not the fastest, and
+  only when the change counts differ (reference `trips()`, `vm_trips_st_anton_innsbruck.json`). Past and cancelled
+  cards get no tags.
+- **Detail chips:** `JourneyPresentation.attributes(_:limit:)` picks at most 6 by the §C3.4 table order (WLAN first,
+  Businessabteil last) and lists them alphabetically like the golden; `limit: nil` returns all.
+- **Notices:** the priority ≤ 50 rule applies to HIM disruptions only (REM priorities are display orders).
+  Ids of non-HIM remarks are a stable FNV-1a hash of the text (dismissal keys survive launches).
+- **Transfers:** a change inside a station (`.transfer` leg, `chg.durS`) is a wait, not a walk; only footpaths
+  (`.walk`) reduce the buffer.
+- **Via stops (owner request 2026-10-09):** `JourneyPresentation.summaries(_:now:via:)` names the via stops a
+  connection passes (`Journey.passes`) in `viaNames` / `viaText` („über Feldkirch“, „über A und B“), appends
+  `viaText` to the meta line (a change station equal to a via stop is not repeated) and reads it in
+  `accessibilityLabel`. The two-argument `summaries(_:now:)` is unchanged.
+- **Additive API:** `ConnectionSummary.viaNames`, `.viaText`, `.changeStations`, `.lineSummary`, `Tag.title`;
+  `PlatformLabel.text` / `.spoken`; `JourneyPresentation.summary(_:now:via:)`, `.bar(_:)`, `.platformLabel(_:mode:)`,
+  `.attributes(_:limit:)`, `.topNotice(_:)`, `.durationText(minutes:)`, `.changesText(_:)`, `.viaText(_:)`;
+  `BoardPresentation.rows(_:)` / `row(_:)` → `BoardRow` (time, realtime, plate + glyph + kind, title, destination
+  display name, platform, notices); `RealtimePresentation.time(_:)` / `.spoken(_:realtime:)`;
+  `LinePresentation.lineSummary(_:)`; `DisplayNames.name(_:)`; `CoverageEvaluator.aggregate(_:)`, `.ruleSet`;
+  `CoverageInputMapper.inputs(for:stations:)` / `stop(_:stations:)`. `JourneyMetrics.distanceKm(_:model:)` takes the
+  fare model for the detour (default `.fallback`); `coveredSegment(_:coverage:)`.
+- **Live snapshot:** while riding a leg that is followed by a change, the next event is the connecting departure
+  („Umsteigen in Langen am Arlberg“, its time, platform and realtime) with `transfer` set; the last ride leg shows
+  „Ankunft <Ziel> HH:mm“. A cancelled ride leg gives „<Linie> fällt aus“. An access walk counts as before departure,
+  an egress walk as riding.
+
 ---
 
 # PART D: Step 0, fixtures, test plan
