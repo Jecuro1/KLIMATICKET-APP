@@ -194,6 +194,7 @@ struct WidProgressFooter: View {
     var snapshot: WidgetSnapshot
 
     @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.widNow) private var entryDate
 
     var body: some View {
         HStack(spacing: 7) {
@@ -211,7 +212,7 @@ struct WidProgressFooter: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisiert")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
     }
 }
 

@@ -37,6 +37,7 @@ struct WidHomeStage: View {
     var onReset: () -> Void = {}
 
     @State private var stageWidth: CGFloat = 382
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let columnWidth: CGFloat = 364
 
@@ -54,21 +55,30 @@ struct WidHomeStage: View {
         }
     }
 
+    /// Accessibility sizes: "Zurücksetzen" goes below the note (side by side the note would shrink to a sliver).
+    private var hintLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: Theme.Spacing.xs))
+    }
+
     /// "Probier's aus" – or, after a tap, the way back to the real figures.
     private var tryOutHint: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-            Image(systemName: isPreviewing ? "checkmark.circle.fill" : "hand.tap.fill")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(isPreviewing ? Theme.positive : Theme.accent)
-                .symbolReplaceTransition()
-                .accessibilityHidden(true)
-            Text(isPreviewing ? "Nur eine Vorschau – gespeichert wurde nichts."
-                              : "Probier’s aus: Tipp auf einen Favoriten und sieh, wie das Widget reagiert.")
-                .font(.footnote)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentTransition(.opacity)
+        hintLayout {
+            HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+                Image(systemName: isPreviewing ? "checkmark.circle.fill" : "hand.tap.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(isPreviewing ? Theme.positive : Theme.accent)
+                    .symbolReplaceTransition()
+                    .accessibilityHidden(true)
+                Text(isPreviewing ? "Nur eine Vorschau – gespeichert wurde nichts."
+                                  : "Probier’s aus: Tipp auf einen Favoriten und sieh, wie das Widget reagiert.")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentTransition(.opacity)
+            }
             if isPreviewing {
                 Button("Zurücksetzen", action: onReset)
                     .font(.footnote.weight(.semibold))

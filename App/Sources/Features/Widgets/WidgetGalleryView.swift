@@ -18,6 +18,8 @@ struct WidgetGalleryView: View {
     /// "Probier's aus": the snapshot with the favourites tapped in the previews applied (never saved).
     @State private var preview: WidgetSnapshot?
     @State private var previewLogs = 0
+    /// Pending rebuild after saves – a sync merge or an import saves many times in a row; one rebuild covers them.
+    @State private var reloadTask: Task<Void, Never>?
     @State private var condense = ScrollCondense()
     @State private var topic: WidGuideTopic = .home
     /// Captured on first appearance (see `backdrop`), so the background does not flip while Settings closes.
@@ -83,7 +85,7 @@ struct WidgetGalleryView: View {
             if snapshot == nil { reloadSnapshot() }
         }
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave).receive(on: RunLoop.main)) { _ in
-            reloadSnapshot()
+            scheduleReload()
         }
         .onChange(of: app.settings.selectedTicketID) { reloadSnapshot() }
     }
@@ -141,6 +143,17 @@ struct WidgetGalleryView: View {
     }
 
     // MARK: Data
+
+    /// Saves arrive in bursts (sync, import, a quick log plus its widget refresh): fetch + analytics run once, shortly
+    /// after the last one, instead of once per save on the main thread.
+    private func scheduleReload() {
+        reloadTask?.cancel()
+        reloadTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            reloadSnapshot()
+        }
+    }
 
     /// The ticket's period trips only (not every ticket year) – the same inputs `Repository.refreshWidgets()` uses.
     private func reloadSnapshot() {

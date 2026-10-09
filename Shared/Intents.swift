@@ -77,7 +77,8 @@ struct LogFavoriteTripIntent: AppIntent {
     static var title: LocalizedStringResource = "Lieblingsfahrt erfassen"
     static var description = IntentDescription("Erfasst eine deiner Lieblingsfahrten mit Datum und Uhrzeit von jetzt.")
 
-    @Parameter(title: "Lieblingsfahrt")
+    /// "Lieblingsfahrt in KlimaBilanz erfassen" names none – Siri then asks in our words, not a generic prompt.
+    @Parameter(title: "Lieblingsfahrt", requestValueDialog: "Welche Lieblingsfahrt möchtest du erfassen?")
     var favorite: FavoriteRouteAppEntity
 
     static var parameterSummary: some ParameterSummary {
@@ -182,7 +183,7 @@ enum IntentCopy {
             return "\(ticket(s)) hat sich rentiert – du bist \(euro(WidFigures.profit(s))) im Plus, "
                 + "bei \(WidFormat.trips(s.tripCount))."
         }
-        if WidInsight.daysRemaining(s, now: now) <= 0 {
+        if WidInsight.isExpired(s, now: now) {   // the last day (0 days left) is still valid
             return "\(ticket(s)) ist abgelaufen. Es hat sich zu \(percent) Prozent rentiert – "
                 + "\(euro(WidFigures.remaining(s))) haben bis zum Break-even gefehlt."
         }

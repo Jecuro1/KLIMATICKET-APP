@@ -116,9 +116,11 @@ private struct WidAmortizationLarge: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
+            // The ridges dissolve into mist above the stats line – their rims would otherwise run through
+            // "79 Fahrten" and behind the favourite buttons.
             WidSummitArt(model: WidSummitModel(snapshot: snapshot, now: now), top: 0.43, bottom: 0.755, scale: 1.08,
-                         todayLabel: "Heute", summitLabel: WidFormat.euroWhole(snapshot.ticketPrice),
-                         mistFrom: 0.66, mistOpacity: 0.12)
+                         todayLabel: "Heute", summitLabel: WidFormat.euroWhole(WidFigures.price(snapshot)),
+                         mistFrom: 0.64, mistTo: 0.8, mistOpacity: 0.1)
             VStack(alignment: .leading, spacing: 0) {
                 summaryBlock
                 Spacer(minLength: 6)
@@ -203,7 +205,7 @@ private struct WidAmortizationLarge: View {
         if isPaidOff {
             return "\(total) Wert · \(WidFormat.trips(snapshot.tripCount))"
         }
-        return "\(total) von \(WidFormat.euroWhole(snapshot.ticketPrice)) amortisiert"
+        return "\(total) von \(WidFormat.euroWhole(WidFigures.price(snapshot))) amortisiert"
     }
 
     private var statsLine: some View {
@@ -273,6 +275,8 @@ private struct WidAmortizationLarge: View {
 private struct WidAccessoryCircular: View {
     let snapshot: WidgetSnapshot
 
+    @Environment(\.widNow) private var entryDate
+
     var body: some View {
         let fraction = snapshot.amortizedFraction.isFinite ? snapshot.amortizedFraction : 0
         Gauge(value: min(max(fraction, 0), 1)) {
@@ -292,13 +296,15 @@ private struct WidAccessoryCircular: View {
         .widgetAccentable()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
     }
 }
 
 /// "73 % · noch € 354" with a slim progress bar.
 private struct WidAccessoryRectangular: View {
     let snapshot: WidgetSnapshot
+
+    @Environment(\.widNow) private var entryDate
 
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
@@ -329,13 +335,15 @@ private struct WidAccessoryRectangular: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
     }
 }
 
 /// "⛰ 73 % rentiert" above the clock.
 private struct WidAccessoryInline: View {
     let snapshot: WidgetSnapshot
+
+    @Environment(\.widNow) private var entryDate
 
     var body: some View {
         let text: String = WidInsight.isPaidOff(snapshot)
@@ -346,6 +354,6 @@ private struct WidAccessoryInline: View {
         } icon: {
             Image(systemName: "mountain.2.fill")
         }
-        .accessibilityLabel("Amortisation: \(WidInsight.spokenSummary(snapshot))")
+        .accessibilityLabel("Amortisation: \(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))")
     }
 }

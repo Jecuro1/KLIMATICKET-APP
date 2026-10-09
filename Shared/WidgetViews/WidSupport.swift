@@ -170,6 +170,10 @@ enum WidInsight {
 
     static func isPaidOff(_ s: WidgetSnapshot) -> Bool { s.isPaidOff || s.totalValue >= s.ticketPrice }
 
+    /// Past the ticket's end (`validUntil` is its last day at 23:59:59). Not `daysRemaining == 0`: that is the last
+    /// day, still valid – the app reads it as "letzter Tag" (KlimaCore counts the days *after* today).
+    static func isExpired(_ s: WidgetSnapshot, now: Date = Date()) -> Bool { now > s.validUntil }
+
     /// The break-even forecast while it still lies ahead and inside the validity (a date the app computed days ago
     /// may have passed without the trips that would have reached it).
     static func upcomingBreakEven(_ s: WidgetSnapshot, now: Date = Date()) -> Date? {
@@ -188,18 +192,19 @@ enum WidInsight {
             return WidForecastInfo(kicker: "Break-even", symbol: "flag.fill", value: WidFormat.dayMonth(date),
                                    caption: WidFormat.inDays(dayCount(from: now, to: date)), isPositive: false)
         }
-        if left <= 0 {
+        if isExpired(s, now: now) {
             return WidForecastInfo(kicker: "Abgelaufen", symbol: "calendar", value: WidFormat.dayMonth(s.validUntil),
                                    caption: "Folgeticket anlegen", isPositive: false)
         }
-        return WidForecastInfo(kicker: "Gültig noch", symbol: "calendar", value: WidFormat.days(left),
+        return WidForecastInfo(kicker: "Gültig noch", symbol: "calendar", value: left > 0 ? WidFormat.days(left) : "heute",
                                caption: "bis \(WidFormat.dayMonth(s.validUntil))", isPositive: false)
     }
 
-    /// "noch 143 Tage" · "abgelaufen"
+    /// "noch 143 Tage" · "letzter Tag" · "abgelaufen"
     static func validityText(_ s: WidgetSnapshot, now: Date = Date()) -> String {
         let left = daysRemaining(s, now: now)
-        return left > 0 ? "noch \(WidFormat.days(left))" : "abgelaufen"
+        if left > 0 { return "noch \(WidFormat.days(left))" }
+        return isExpired(s, now: now) ? "abgelaufen" : "letzter Tag"
     }
 
     /// VoiceOver summary for whole-widget elements.
@@ -231,6 +236,10 @@ enum WidFigures {
         guard !WidInsight.isPaidOff(s) else { return 0 }
         return max(0, s.ticketPrice.rounded() - total(s))
     }
+
+    /// The ticket price as the figures above count it ("von € 1.400", the summit label) – `rounded()`, like `total`
+    /// and `remaining`; the currency format alone would round x,50 to even and break "1.044 + 356".
+    static func price(_ s: WidgetSnapshot) -> Double { s.ticketPrice.rounded() }
 
     static func profit(_ s: WidgetSnapshot) -> Double {
         max(0, s.totalValue.rounded() - s.ticketPrice.rounded())

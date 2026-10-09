@@ -34,6 +34,15 @@ struct WidSiriSection: View {
 
     private var favoriteTitle: String { snapshot.favorites.first?.title ?? "Pendeln" }
 
+    /// Siri answers a quick log with the figures *after* it ("… ist jetzt zu 78 Prozent amortisiert") – so does the
+    /// preview: the widgets' own optimistic update on a copy (nothing is saved).
+    private var loggedSnapshot: WidgetSnapshot {
+        guard let favorite = snapshot.favorites.first else { return snapshot }
+        var after = snapshot
+        after.apply(favorite: favorite, date: Date())
+        return after
+    }
+
     private func phraseRow(_ item: WidSiriPhrase) -> some View {
         let isSelected = item == phrase
         return Button {
@@ -94,7 +103,7 @@ struct WidSiriSection: View {
             case .balance:
                 WidBalanceSnippet(snapshot: snapshot)
             case .favorite:
-                WidLoggedSnippet(title: favoriteTitle, favorite: snapshot.favorites.first, snapshot: snapshot)
+                WidLoggedSnippet(title: favoriteTitle, favorite: snapshot.favorites.first, snapshot: loggedSnapshot)
             case .addTrip:
                 openAppAnswer
             }
@@ -108,7 +117,7 @@ struct WidSiriSection: View {
     private var dialog: String {
         switch phrase {
         case .balance: IntentCopy.balance(snapshot)
-        case .favorite: IntentCopy.logged(favoriteTitle, snapshot: snapshot)
+        case .favorite: IntentCopy.logged(favoriteTitle, snapshot: loggedSnapshot)
         case .addTrip: "KlimaBilanz öffnet sich beim Erfassen einer neuen Fahrt."
         }
     }

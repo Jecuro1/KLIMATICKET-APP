@@ -15,8 +15,11 @@ enum WidIntentSync {
     nonisolated private static let log = Logger(subsystem: "com.knitelarlberg.klimabilanz", category: "WidIntentSync")
 
     static func favoritesDidChange(to favorites: [WidgetSnapshot.Favorite]) {
-        let signature = favorites.map { "\($0.id.uuidString)|\($0.title)|\($0.modeSymbol)|\($0.value)|\($0.fromName)|\($0.toName)" }
-            .joined(separator: "\n")
+        // Everything the entity shows (title, symbol, "St. Anton → Landeck → Innsbruck · € 22,80") – via stops too.
+        let signature = favorites.map {
+            "\($0.id.uuidString)|\($0.title)|\($0.modeSymbol)|\($0.value)|\($0.fromName)|\(($0.via ?? []).joined(separator: ">"))|\($0.toName)"
+        }
+        .joined(separator: "\n")
         let defaults = UserDefaults.standard
         guard defaults.string(forKey: signatureKey) != signature else { return }
         defaults.set(signature, forKey: signatureKey)
