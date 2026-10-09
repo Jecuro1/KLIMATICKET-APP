@@ -46,7 +46,7 @@ struct OnbWelcomeStep: View {
             Button("Beispieljahr laden") { loadDemo() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("KlimaBilanz wird mit einem realistischen Beispieljahr gefüllt. Du kannst die Daten später in den Einstellungen löschen.")
+            Text("KlimaBilanz wird mit einem realistischen Beispieljahr gefüllt. Unter Einstellungen › Daten entfernst du es jederzeit wieder.")
         }
     }
 

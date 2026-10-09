@@ -217,6 +217,45 @@ struct Repository {
         return ok
     }
 
+    // MARK: settings – "Demo-Daten entfernen"
+    /// Tombstones the rows "Demo ansehen" inserted (`DemoDataStore.ids`) in one save: soft deletes, so the removal
+    /// also reaches the cloud when the sample rows were synced. The user's own rows stay. Returns the removed count.
+    @discardableResult
+    func deleteDemoData(ids: Set<UUID>) -> Int {
+        guard !ids.isEmpty else { return 0 }
+        let now = Date()
+        var removed = 0
+        var ticketIDs: [UUID] = []
+        for trip in liveTrips() where ids.contains(trip.id) {
+            trip.deletedAt = now
+            trip.touch()
+            removed += 1
+        }
+        for favorite in liveFavorites() where ids.contains(favorite.id) {
+            favorite.deletedAt = now
+            favorite.touch()
+            removed += 1
+        }
+        let benefits = (try? context.fetch(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? []
+        for benefit in benefits where ids.contains(benefit.id) {
+            benefit.deletedAt = now
+            benefit.touch()
+            removed += 1
+        }
+        for ticket in liveTickets() where ids.contains(ticket.id) {
+            ticket.deletedAt = now
+            ticket.touch()
+            ticketIDs.append(ticket.id)
+            removed += 1
+        }
+        guard removed > 0 else { return 0 }
+        if let selected = app.settings.selectedTicketID, ticketIDs.contains(selected) { app.settings.selectedTicketID = nil }
+        commit()
+        let notifications = app.notifications
+        Task { for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) } }
+        return removed
+    }
+
     func liveTrips() -> [TripEntity] {
         (try? context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil },
                                                         sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []

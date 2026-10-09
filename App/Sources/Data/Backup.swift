@@ -68,7 +68,9 @@ private struct BackupBenefitRow: Decodable {
 
 @MainActor
 enum Backup {
-    static func export(context: ModelContext) throws -> Data {
+    // MARK: settings – export, temporaryFile and timestampedName are nonisolated: "Backup sichern" (BackupShareItem)
+    // builds the file from a background context when a share target asks for it.
+    nonisolated static func export(context: ModelContext) throws -> Data {
         let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { TicketDTO($0, userID: "") }
         let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { TripDTO($0, userID: "") }
         let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { FavoriteDTO($0, userID: "") }
@@ -140,7 +142,7 @@ enum Backup {
     }
 
     /// Writes export data to a temporary file suitable for ShareLink / fileExporter.
-    static func temporaryFile(named name: String, data: Data) throws -> URL {
+    nonisolated static func temporaryFile(named name: String, data: Data) throws -> URL {
         let url = FileManager.default.temporaryDirectory.appending(path: name)
         try data.write(to: url, options: .atomic)
         return url
@@ -154,10 +156,10 @@ enum Backup {
         return Data(TripCSVExport.trips(trips.map(\.record), notes: notes).utf8)
     }
 
-    static var timestampedName: String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return "KlimaBilanz-\(f.string(from: Date()))"
+    /// "KlimaBilanz-2026-10-09" (today in Vienna, like the CSV export) – from calendar components, no formatter per call.
+    nonisolated static var timestampedName: String {
+        let day = Calendar.vienna.dateComponents([.year, .month, .day], from: Date())
+        return String(format: "KlimaBilanz-%04d-%02d-%02d", day.year ?? 0, day.month ?? 0, day.day ?? 0)
     }
 }
 

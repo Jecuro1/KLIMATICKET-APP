@@ -307,9 +307,10 @@ final class OnboardingModel {
         app.settings.onboardingCompleted = true
     }
 
-    /// "Demo ansehen": fills a realistic sample year so the app can be explored immediately.
+    /// "Demo ansehen": fills a realistic sample year so the app can be explored immediately. The inserted rows are
+    /// remembered (DemoDataStore), so Einstellungen › Daten › "Demo-Daten entfernen" takes exactly them out again.
     func loadDemo(context: ModelContext) {
-        DemoData.seed(into: context)
+        DemoDataStore.seed(into: context)
         Repository(context: context, app: app).refreshWidgets()
         app.settings.onboardingCompleted = true
     }
