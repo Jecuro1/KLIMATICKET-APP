@@ -72,19 +72,24 @@ jobs:
           fi
       - name: Test CI scripts
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      # docs/ENRICH_SPEC.md §6.1: the shipped places data passes AT-D1…D9 (CRCs, BASE, budget, coverage, Warth, the 51
+      # tag spot checks, termini, licence layering, styling) – stdlib only, ~2 s.
+      - name: Places data acceptance (AT-D1…D9)
+        run: python3 -I scripts/check_places_v2.py check --res App/Resources --spot data/places_spot_checks.json > /tmp/places_check.log 2>&1 || { cat /tmp/places_check.log; exit 1; }
       # docs/LOGO_SPEC.md §1: ski-area and region logos come only from the Cloudflare logo pack, never from the repo.
       - name: Trademark guard (no brand logos in the repo)
         run: python3 -I tools/check_no_brand_logos.py . --hashes tools/brand_logo_hashes.txt
       # Optimised build: 100 typical place searches on the full dataset must take < 50 ms (docs/PLACES.md); context-word
-      # queries and the stop enrichment (parse, details(for:) < 1 ms) stay cheap (docs/ENRICH_SPEC.md AT-C8).
+      # queries and the stop enrichment (parse, details(for:) < 1 ms) stay cheap; the cold build of the whole index and its
+      # resident memory stay within docs/ENRICH_SPEC.md AT-C8.
       - name: Place search performance (release)
         shell: bash
         run: |
           set +e
           swift test -c release -Xswiftc -enable-testing --package-path Packages/KlimaCore \
-            --filter "PlaceSearchPerformanceTests|PlaceContextSearchPerformanceTests|PlaceEnrichmentPerformanceTests" > /tmp/perf.log 2>&1
+            --filter "PlaceSearchPerformanceTests|PlaceContextSearchPerformanceTests|PlaceEnrichmentPerformanceTests|PlaceFormatPerformanceTests|PlaceIndexBudgetTests" > /tmp/perf.log 2>&1
           rc=$?
-          tail -15 /tmp/perf.log
+          grep -E "^\[(places|format)\]" /tmp/perf.log; tail -15 /tmp/perf.log
           if [ $rc -ne 0 ]; then
             echo "::group::compiler / test diagnostics"
             grep -n -E -A30 "Stack dump|While (running|emitting|evaluating|silgen|type-checking)|Assertion|error:" /tmp/perf.log | grep -v "^[0-9]*-0x" | head -200
