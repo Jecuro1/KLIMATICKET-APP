@@ -197,7 +197,7 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView() }
         case "hero":
             DesignSystemPreview()
-        case "map", "mapRoute", "mapDetails", "mapPreview":
+        case _ where screen.hasPrefix("map"):
             AtlasScreenshotScene(screen: screen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }

@@ -10,8 +10,11 @@ struct AtlasRouteSheet: View {
     let trips: [TripEntity]
     let ticketPrice: Double?
     let routeCount: Int
+    /// Opens at full height (screenshots).
+    var startsExpanded = false
 
     @Environment(\.dismiss) private var dismiss
+    @State private var detent: PresentationDetent = .medium
 
     var body: some View {
         NavigationStack {
@@ -35,9 +38,13 @@ struct AtlasRouteSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $detent)
         .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+        .presentationBackground(Theme.sheetBackground)
         .presentationDragIndicator(.visible)
+        .task {
+            if startsExpanded { detent = .large }
+        }
     }
 }
 
@@ -245,6 +252,7 @@ struct AtlasDetailsSheet: View {
             }
         }
         .presentationDetents([.medium, .large], selection: $detent)
+        .presentationBackground(Theme.sheetBackground)
         .presentationDragIndicator(.visible)
     }
 

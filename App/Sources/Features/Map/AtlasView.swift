@@ -7,6 +7,8 @@ enum AtlasLaunchFocus {
     case none
     /// Selects the most travelled route (route sheet open).
     case topRoute
+    /// Same, with the sheet at full height (trip list).
+    case topRouteExpanded
     /// Opens the details sheet.
     case details
 }
@@ -44,7 +46,8 @@ struct AtlasView: View {
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse)
     private var trips: [TripEntity]
 
-    @AppStorage("atlas.mapLook") private var lookRaw = AtlasMapLook.standard.rawValue
+    static let lookKey = "atlas.mapLook"
+    @AppStorage(AtlasView.lookKey) private var lookRaw = AtlasMapLook.standard.rawValue
     @State private var pickedScope: AtlasScope?
     @State private var mode: TransportMode?
     @State private var summary: AtlasSummary = .empty
@@ -167,7 +170,7 @@ struct AtlasView: View {
             if let route = summary.route(id: id) {
                 AtlasRouteSheet(route: route, trips: trips(for: route.tripIDs),
                                 ticketPrice: AtlasData.ticket(for: scope, in: tickets)?.period.price,
-                                routeCount: summary.routes.count)
+                                routeCount: summary.routes.count, startsExpanded: launchFocus == .topRouteExpanded)
             }
         case .details:
             AtlasDetailsSheet(summary: summary, scopeLabel: scopeLabel, startsAtRoutes: launchFocus == .details,
@@ -241,7 +244,7 @@ struct AtlasView: View {
         guard launchFocus != .none else { return }
         try? await Task.sleep(for: .milliseconds(900))
         switch launchFocus {
-        case .topRoute:
+        case .topRoute, .topRouteExpanded:
             if let id = summary.topRoute?.id { select(id) }
         case .details:
             sheet = .details

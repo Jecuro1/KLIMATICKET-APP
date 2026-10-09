@@ -154,13 +154,13 @@ enum AtlasMapLook: String, CaseIterable, Identifiable {
 
 /// Line width / opacity by frequency – shared by the full map and the preview card.
 enum AtlasLineStyle {
-    static func width(_ route: AtlasRoute, scale: CGFloat = 1) -> CGFloat { (2.5 + 4.5 * CGFloat(route.weight)) * scale }
-    static func opacity(_ route: AtlasRoute) -> Double { 0.55 + 0.45 * route.weight }
+    static func width(_ route: AtlasRoute, scale: CGFloat = 1) -> CGFloat { (3 + 4.5 * CGFloat(route.weight)) * scale }
+    static func opacity(_ route: AtlasRoute) -> Double { 0.72 + 0.28 * route.weight }
 
     /// Thin halo under every line so routes read on both the muted map and satellite imagery.
     static func casing(look: AtlasMapLook, scheme: ColorScheme) -> Color {
         if look == .satellite { return Color.black.opacity(0.45) }
-        return scheme == .dark ? Color.black.opacity(0.42) : Color.white.opacity(0.9)
+        return scheme == .dark ? Color.black.opacity(0.32) : Color.white.opacity(0.9)
     }
 
     static func round(_ width: CGFloat) -> StrokeStyle {
