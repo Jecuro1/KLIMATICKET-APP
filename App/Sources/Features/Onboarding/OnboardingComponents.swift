@@ -244,7 +244,7 @@ struct OnbBrandMark: View {
     var size: CGFloat = 56
 
     var body: some View {
-        AppIconImage(choice: AppIconStore.shared.current, size: size)
+        AppIconImage(choice: AppIconStore.lastKnown, size: size)
             .shadow(color: Theme.dusk.opacity(0.45), radius: size * 0.28, y: size * 0.12)
             .accessibilityHidden(true)
     }

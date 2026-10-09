@@ -97,6 +97,12 @@ final class AppIconStore {
         }
     }
 
+    /// MARK: review-icons – the icon this store last saw, without creating it or asking LaunchServices: onboarding's
+    /// brand mark renders on the very first frame of a fresh install (primary icon), where the XPC must not run.
+    static var lastKnown: AppIconChoice {
+        UserDefaults.standard.string(forKey: cacheKey).flatMap(AppIconChoice.init(rawValue:)) ?? .alpin
+    }
+
     /// False on systems without alternate icons – the settings row is hidden then.
     var isSupported: Bool { UIApplication.shared.supportsAlternateIcons }
 
