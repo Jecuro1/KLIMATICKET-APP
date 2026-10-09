@@ -12,7 +12,8 @@ struct StatsSavingsCard: View {
     @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 46
-    @State private var selectedDate: Date?
+    /// Scrub position – read only by the overlay layer, so scrubbing never rebuilds this card or its chart.
+    @State private var scrub = StatsChartScrub()
 
     private var summary: SavingsSummary { snapshot.summary }
     private var price: Double { snapshot.ticket.price }
@@ -30,9 +31,6 @@ struct StatsSavingsCard: View {
                 legend
             }
         }
-        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in
-            new != nil && app.settings.hapticsEnabled
-        }
     }
 
     // MARK: Header
@@ -48,14 +46,16 @@ struct StatsSavingsCard: View {
                 Text("€")
                     .font(.system(size: numeralSize * 0.55, weight: .medium, design: .rounded))
                     .foregroundStyle(Theme.textSecondary)
-                Text(Format.number(summary.totalValue))
+                // Whole euros from the same rounding as the dashboard hero ("€ 1.044 von € 1.400", never
+                // "€ 1.400 von € 1.400" before the break-even).
+                Text(Format.number(summary.shownTotalEuro))
                     .font(.system(size: numeralSize, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: summary.totalValue))
+                    .contentTransition(.numericText(value: summary.shownTotalEuro))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text("von \(Format.euro(price))")
+                Text("von \(SummitFigures.euro(price))")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
@@ -64,7 +64,7 @@ struct StatsSavingsCard: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Kumulierter Wert")
-            .accessibilityValue("\(Format.euro(summary.totalValue)) von \(Format.euro(price))")
+            .accessibilityValue("\(SummitFigures.euro(summary.shownTotalEuro)) von \(SummitFigures.euro(price))")
             verdict
         }
     }
@@ -117,7 +117,7 @@ struct StatsSavingsCard: View {
         } else if summary.tripCount > 0, Date() > snapshot.ticket.end {
             // Expired without reaching the summit.
             Label {
-                Text("Ticketjahr beendet · \(Format.euro(summary.remainingToBreakEven, decimals: 0)) bis zum Break-even gefehlt")
+                Text("Ticketjahr beendet · \(SummitFigures.euro(summary.shownRemainingEuro)) bis zum Break-even gefehlt")
             } icon: {
                 Image(systemName: "flag.slash").foregroundStyle(Theme.summit)
             }
@@ -154,7 +154,7 @@ struct StatsSavingsCard: View {
     }
 
     private var paidOffText: String {
-        let profit = "+ \(Format.euro(summary.net, decimals: 0))"
+        let profit = "+ \(SummitFigures.euro(summary.shownProfitEuro))"
         if let date = summary.paidOffDate { return "Rentiert seit \(Format.dayMonth(date)) · \(profit)" }
         return "Rentiert · \(profit)"
     }
@@ -165,10 +165,6 @@ struct StatsSavingsCard: View {
         let seriesMax = snapshot.series.map(\.value).max() ?? 0
         let forecastMax = snapshot.forecast.map(\.value).max() ?? 0
         return max(price * 1.38, seriesMax * 1.15, forecastMax * 1.15, 10)
-    }
-
-    private var selectedDay: Date? {
-        selectedDate.map { Calendar.vienna.startOfDay(for: $0) }
     }
 
     /// The daily series with unique dates. A trip on the first ticket day repeats the start date
@@ -193,26 +189,33 @@ struct StatsSavingsCard: View {
     }
 
     private var chart: some View {
-        Chart {
-            areaMarks
-            valueLineMarks
+        // De-duplicated once per render (it was rebuilt for each of the three mark lists).
+        let series = chartSeries
+        return Chart {
+            areaMarks(series)
+            valueLineMarks(series)
             forecastMarks
             priceRule
             todayMarks
             breakEvenMarks
-            selectionMarks
         }
         .chartXScale(domain: periodStart...periodEnd)
         .chartYScale(domain: 0...maxY)
         .chartXAxis { xAxis }
         .chartYAxis { yAxis }
         .chartLegend(.hidden)
-        .chartXSelection(value: $selectedDate)
+        .chartXSelection(value: scrub.binding)
         .chartBackground { proxy in
             GeometryReader { geo in
                 if let anchor = proxy.plotFrame {
                     backgroundLayer(proxy: proxy, frame: geo[anchor])
                 }
+            }
+        }
+        .chartOverlay { proxy in
+            StatsScrubLayer(proxy: proxy, scrub: scrub, value: selectionMarkerValue, markerColor: Theme.dusk,
+                            hapticsEnabled: app.settings.hapticsEnabled) { date, _ in
+                callout(for: date)
             }
         }
         .environment(\.calendar, Calendar.vienna)
@@ -237,8 +240,8 @@ struct StatsSavingsCard: View {
     }
 
     @ChartContentBuilder
-    private var areaMarks: some ChartContent {
-        ForEach(chartSeries) { point in
+    private func areaMarks(_ series: [CumulativePoint]) -> some ChartContent {
+        ForEach(series) { point in
             AreaMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(areaGradient)
@@ -246,16 +249,16 @@ struct StatsSavingsCard: View {
     }
 
     @ChartContentBuilder
-    private var valueLineMarks: some ChartContent {
+    private func valueLineMarks(_ series: [CumulativePoint]) -> some ChartContent {
         // Soft glow under the route (like the summit chart on the dashboard).
-        ForEach(chartSeries) { point in
+        ForEach(series) { point in
             LineMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow), series: .value("Reihe", "Glanz"))
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
                 .foregroundStyle(glowGradient)
                 .accessibilityHidden(true)
         }
-        ForEach(chartSeries) { point in
+        ForEach(series) { point in
             LineMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow), series: .value("Reihe", "Wert"))
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
@@ -275,11 +278,12 @@ struct StatsSavingsCard: View {
                 .symbolSize(28)
                 .foregroundStyle(Theme.dusk)
                 .annotation(position: .topLeading, spacing: 2) {
-                    Text("Prognose \(Format.euro(last.value, decimals: 0))")
-                        .font(.caption2.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.textSecondary)
-                        .opacity(selectedDate == nil ? grow : 0)
+                    StatsScrubFade(scrub: scrub, opacity: grow) {
+                        Text("Prognose \(Format.euro(last.value, decimals: 0))")
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
         }
     }
@@ -312,11 +316,12 @@ struct StatsSavingsCard: View {
                         .background(Circle().fill(Theme.dusk.opacity(0.25)).frame(width: 26, height: 26))
                 }
                 .annotation(position: .bottomTrailing, spacing: 6) {
-                    Text("HEUTE")
-                        .font(.caption2.weight(.bold))
-                        .tracking(0.8)
-                        .foregroundStyle(Theme.textSecondary)
-                        .opacity(selectedDate == nil ? 1 : 0)
+                    StatsScrubFade(scrub: scrub) {
+                        Text("HEUTE")
+                            .font(.caption2.weight(.bold))
+                            .tracking(0.8)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
         }
     }
@@ -332,25 +337,10 @@ struct StatsSavingsCard: View {
                         .overlay(Circle().stroke(Theme.onAccent, lineWidth: 2))
                 }
                 .annotation(position: .top, spacing: 8) {
-                    flagPill(day)
-                        .opacity(selectedDate == nil ? grow : 0)
+                    StatsScrubFade(scrub: scrub, opacity: grow) {
+                        flagPill(day)
+                    }
                 }
-        }
-    }
-
-    @ChartContentBuilder
-    private var selectionMarks: some ChartContent {
-        if let selectedDate, let marker = selectionMarkerValue(selectedDate) {
-            RuleMark(x: .value("Auswahl", selectedDate))
-                .lineStyle(StrokeStyle(lineWidth: 1))
-                .foregroundStyle(Theme.textSecondary.opacity(0.6))
-                .annotation(position: .top, spacing: 0,
-                            overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                    callout(for: selectedDate)
-                }
-            PointMark(x: .value("Auswahl", selectedDate), y: .value("Wert", marker))
-                .symbolSize(70)
-                .foregroundStyle(Theme.dusk)
         }
     }
 
@@ -522,14 +512,14 @@ struct StatsSavingsCard: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .frostedCard(cornerRadius: 14)
+        .statsCalloutSurface()
         .accessibilityElement(children: .combine)
     }
 
     // MARK: Accessibility
 
     private var accessibilityText: String {
-        var parts = ["\(Format.euro(summary.totalValue)) von \(Format.euro(price)) amortisiert, \(Format.percent(summary.amortizedFraction))"]
+        var parts = ["\(SummitFigures.euro(summary.shownTotalEuro)) von \(SummitFigures.euro(price)) amortisiert, \(Format.percent(summary.amortizedFraction))"]
         if summary.isPaidOff {
             parts.append(paidOffText)
         } else if let date = summary.forecastBreakEvenDate, summary.forecastReachesBreakEven {

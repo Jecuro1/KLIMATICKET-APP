@@ -29,7 +29,6 @@ struct MetaPurposeCard: View {
     @ScaledMetric(relativeTo: .title) private var spotlightSize: CGFloat = 30
     @State private var metric: Metric = .value
     @State private var selectedID: String?
-    @State private var angleSelection: Double?
 
     var body: some View {
         let buckets = sorted(snapshot.metaCategoryBuckets)
@@ -56,10 +55,6 @@ struct MetaPurposeCard: View {
         .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: selectedID)
         .sensoryFeedback(.selection, trigger: selectedID) { _, new in new != nil && app.settings.hapticsEnabled }
         .sensoryFeedback(.selection, trigger: metric) { _, _ in app.settings.hapticsEnabled }
-        .onChange(of: angleSelection) { _, value in
-            guard let value else { return }
-            selectedID = bucket(atCumulative: value, in: buckets)?.id
-        }
         .metaScreenshotScrollTarget("statsCategories")
     }
 
@@ -116,7 +111,7 @@ struct MetaPurposeCard: View {
                 .accessibilityValue(spokenValue(bucket))
         }
         .chartLegend(.hidden)
-        .chartAngleSelection(value: $angleSelection)
+        .chartAngleSelection(value: angleBinding(buckets))
         .chartBackground { proxy in
             GeometryReader { geo in
                 if let anchor = proxy.plotFrame {
@@ -330,6 +325,16 @@ struct MetaPurposeCard: View {
         text += metric == .value ? " des Werts" : " der Fahrten"
         if bucket.inducedTrips > 0 { text += ", davon \(StatsNames.trips(bucket.inducedTrips)) ohne KlimaTicket nicht gefahren" }
         return text
+    }
+
+    /// Dragging around the donut reports a new angle every frame. Stored in `@State`, each frame re-ran this body and
+    /// rebuilt the chart; mapped straight to the slice instead, the state changes only when the finger enters another
+    /// slice (and stays on lift-off).
+    private func angleBinding(_ buckets: [CategoryBucket]) -> Binding<Double?> {
+        Binding(get: { nil }, set: { value in
+            guard let value, let id = bucket(atCumulative: value, in: buckets)?.id, id != selectedID else { return }
+            selectedID = id
+        })
     }
 
     /// `chartAngleSelection` reports the cumulative amount under the finger – walk the slices to find it.

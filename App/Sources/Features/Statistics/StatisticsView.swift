@@ -53,10 +53,9 @@ struct StatsScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Already in the end state in screenshot mode (no empty first frame).
     @State private var grow: Double = LaunchMode.isScreenshot ? 1 : 0
-    @State private var showsInlineTitle = false
-    @State private var shareImage: Image?
-    /// Key the current `shareImage` was rendered for – the tab re-runs `.task` on every re-appear.
-    @State private var shareImageKey: String?
+    /// Inline-title state in a reference: only the toolbar title reads it, so crossing the scroll threshold
+    /// doesn't re-run this body (and every card's) mid-scroll.
+    @State private var chrome = StatsChromeState()
     // MARK: reports
     @State private var isShowingReport = false
 
@@ -80,14 +79,13 @@ struct StatsScreen: View {
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > 64
         } action: { _, isScrolled in
-            withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
+            withAnimation(.easeInOut(duration: 0.2)) { chrome.showsInlineTitle = isScrolled }
         }
         .navigationTitle("Statistik")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
         .sensoryFeedback(.selection, trigger: ticket.id) { _, _ in app.settings.hapticsEnabled }
         .onAppear { startEntrance() }
-        .task(id: shareKey) { renderShareImage() }
         // MARK: reports
         .sheet(isPresented: $isShowingReport) { RepReportSheet(ticketID: ticket.id) }
     }
@@ -184,11 +182,7 @@ struct StatsScreen: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Text("Statistik")
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-                .opacity(showsInlineTitle ? 1 : 0)
-                .accessibilityHidden(!showsInlineTitle)
+            StatsInlineTitle(chrome: chrome)
         }
         // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an
         // empty pill while the title is faded out (same as the dashboard).
@@ -225,16 +219,11 @@ struct StatsScreen: View {
 
     // MARK: reports – share menu: image card + "Jahresbericht als PDF"
     private var shareButton: some View {
-        Menu {
-            if let shareImage {
-                ShareLink(item: shareImage, preview: SharePreview("Meine KlimaBilanz", image: shareImage)) {
-                    Label("Bilanz als Bild teilen", systemImage: "photo")
-                }
-            } else {
-                Button {} label: {
-                    Label("Bilanz als Bild teilen", systemImage: "photo")
-                }
-                .disabled(true)
+        // The card image is rendered by the share sheet when it exports (and for its preview) – not up front.
+        let payload = StatsSharePayload(snapshot: snapshot, ticketName: ticket.name)
+        return Menu {
+            ShareLink(item: payload, preview: SharePreview("Meine KlimaBilanz", image: payload)) {
+                Label("Bilanz als Bild teilen", systemImage: "photo")
             }
             RepReportMenuButton { isShowingReport = true }
         } label: {
@@ -243,21 +232,7 @@ struct StatsScreen: View {
         .accessibilityLabel("Teilen")
     }
 
-    // MARK: Share card & motion
-
-    private var shareKey: String {
-        let summary = snapshot.summary
-        // Everything the card prints: ticket, trips/value, price (own share) and the day (date line + forecast).
-        let day = Int(Calendar.vienna.startOfDay(for: Date()).timeIntervalSince1970)
-        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(Int(summary.ticketPrice.rounded()))-\(day)-\(ticket.name)"
-    }
-
-    private func renderShareImage() {
-        let key = shareKey
-        guard shareImage == nil || shareImageKey != key else { return }
-        shareImage = StatsShareCard.render(snapshot: snapshot, ticketName: ticket.name)
-        shareImageKey = key
-    }
+    // MARK: Motion
 
     private func startEntrance() {
         guard grow < 1 else { return }
@@ -266,5 +241,25 @@ struct StatsScreen: View {
         } else {
             withAnimation(.smooth(duration: 0.9).delay(0.12)) { grow = 1 }
         }
+    }
+}
+
+/// Scroll-driven chrome of the Statistik screen.
+@Observable
+@MainActor
+final class StatsChromeState {
+    var showsInlineTitle = false
+}
+
+/// The inline navigation title, faded in once the large header has scrolled away.
+private struct StatsInlineTitle: View {
+    let chrome: StatsChromeState
+
+    var body: some View {
+        Text("Statistik")
+            .font(.headline)
+            .foregroundStyle(Theme.textPrimary)
+            .opacity(chrome.showsInlineTitle ? 1 : 0)
+            .accessibilityHidden(!chrome.showsInlineTitle)
     }
 }

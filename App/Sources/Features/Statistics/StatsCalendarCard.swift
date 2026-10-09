@@ -9,11 +9,12 @@ struct StatsCalendarCard: View {
     @Environment(AppState.self) private var app
     @ScaledMetric(relativeTo: .caption2) private var cell: CGFloat = 15
     @State private var selectedDay: Date?
+    @State private var memo = StatsHeatmapMemo()
 
     private let gap: CGFloat = 3
 
     var body: some View {
-        let weeks = StatsCalc.heatmap(snapshot)
+        let weeks = memo.weeks(for: snapshot)
         GlassCard(padding: Theme.Spacing.m + 2) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 header(weeks)
@@ -195,5 +196,27 @@ struct StatsCalendarCard: View {
                     }
                 }
         }
+    }
+}
+
+/// Remembers the last heatmap: every tap on a day (selection state) re-runs the card's body, and the ~371 calendar
+/// days with their Vienna-calendar maths were rebuilt each time. A plain reference in `@State` – reading it never
+/// triggers a view update.
+final class StatsHeatmapMemo {
+    private var key: Int?
+    private var cached: [StatsHeatWeek] = []
+
+    @MainActor
+    func weeks(for snapshot: AnalyticsSnapshot, now: Date = Date()) -> [StatsHeatWeek] {
+        var hasher = Hasher()
+        hasher.combine(snapshot.ticket)
+        hasher.combine(snapshot.days)
+        hasher.combine(AnalyticsMemo.calendar.startOfDay(for: now))
+        let key = hasher.finalize()
+        if key != self.key {
+            cached = StatsCalc.heatmap(snapshot, now: now)
+            self.key = key
+        }
+        return cached
     }
 }

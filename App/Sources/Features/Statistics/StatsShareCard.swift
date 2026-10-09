@@ -1,6 +1,30 @@
 import SwiftUI
 import UIKit
+import CoreTransferable
+import UniformTypeIdentifiers
 import KlimaCore
+
+/// "Bilanz als Bild teilen": the share card, rendered only when the share sheet actually exports it (like the
+/// ticket's `TktSharePass`) – not on every appearance of the Statistik tab.
+struct StatsSharePayload: Transferable {
+    let snapshot: AnalyticsSnapshot
+    let ticketName: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { payload in
+            try await payload.renderPNG()
+        }
+        .suggestedFileName("KlimaBilanz-Bilanz.png")
+    }
+
+    @MainActor
+    func renderPNG() throws -> Data {
+        guard let data = StatsShareCard.render(snapshot: snapshot, ticketName: ticketName)?.pngData() else {
+            throw TktShareError.renderFailed
+        }
+        return data
+    }
+}
 
 /// "Bilanz teilen": a 4:5 social card (rendered at 3× → 1080 × 1350 px) with brand, % amortised,
 /// value, trips, km, CO₂ and a static summit mini chart. Always rendered in the dark "Blaue Stunde" look.
@@ -83,7 +107,8 @@ struct StatsShareCard: View {
 
     private var numeral: some View {
         HStack(alignment: .top, spacing: 2) {
-            Text(Format.number(summary.amortizedFraction * 100))
+            // Spec §4.3 like the hero: never "100" before the break-even.
+            Text(Format.number(SummitFigures.percent(summary.amortizedFraction)))
                 .font(.system(size: 84, weight: .thin, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
@@ -97,20 +122,20 @@ struct StatsShareCard: View {
     }
 
     private var valueLine: String {
-        "amortisiert · \(Format.euro(summary.totalValue, decimals: 0)) von \(Format.euro(summary.ticketPrice))"
+        "amortisiert · \(SummitFigures.euro(summary.shownTotalEuro)) von \(SummitFigures.euro(summary.ticketPrice))"
     }
 
     private var verdictLine: String {
         if summary.isPaidOff {
             if let date = summary.paidOffDate {
-                return "✓ Rentiert seit \(Format.dayMonth(date)) · + \(Format.euro(summary.net, decimals: 0))"
+                return "✓ Rentiert seit \(Format.dayMonth(date)) · + \(SummitFigures.euro(summary.shownProfitEuro))"
             }
-            return "✓ Rentiert · + \(Format.euro(summary.net, decimals: 0))"
+            return "✓ Rentiert · + \(SummitFigures.euro(summary.shownProfitEuro))"
         }
         if let date = summary.forecastBreakEvenDate, summary.forecastReachesBreakEven {
             return "⚑ Break-even voraussichtlich \(Format.dayMonth(date))"
         }
-        return "Noch \(Format.euro(summary.remainingToBreakEven, decimals: 0)) bis zum Gipfel"
+        return "Noch \(SummitFigures.euro(summary.shownRemainingEuro)) bis zum Gipfel"
     }
 
     private var statsRow: some View {
@@ -158,17 +183,16 @@ struct StatsShareCard: View {
 
     // MARK: Rendering
 
-    /// Renders the card at 3× into an `Image` for ShareLink.
+    /// Renders the card at 3× (1080 × 1350 px). Called on export only (`StatsSharePayload`).
     @MainActor
-    static func render(snapshot: AnalyticsSnapshot, ticketName: String) -> Image? {
+    static func render(snapshot: AnalyticsSnapshot, ticketName: String) -> UIImage? {
         let card = StatsShareCard(snapshot: snapshot, ticketName: ticketName)
             .environment(\.colorScheme, .dark)
         let renderer = ImageRenderer(content: card)
         renderer.scale = 3
         renderer.proposedSize = ProposedViewSize(width: size.width, height: size.height)
         renderer.isOpaque = true
-        guard let image = renderer.uiImage else { return nil }
-        return Image(uiImage: image)
+        return renderer.uiImage
     }
 }
 
