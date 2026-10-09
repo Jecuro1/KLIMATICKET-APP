@@ -21,6 +21,13 @@ Config/Secrets.xcconfig
 *.mobileprovision
 AuthKey_*.p8
 
+# Cloudflare backend (rendered wrangler.toml, local state, secret files: see backend/.gitignore)
+.wrangler/
+.dev.vars
+kb-secrets.json
+kb-stale.json
+
 # OS / tools
 .DS_Store
 node_modules/
+__pycache__/

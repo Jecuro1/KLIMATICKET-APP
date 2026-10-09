@@ -1,0 +1,21 @@
+# Top-level Darwin Foundation types that swift-corelibs-foundation lacks.
+# gen/transform.py rewrites `Foundation.<Name>` in SDK interfaces to
+# `FoundationShim.<Name>` for these names.
+LocalizedStringResource
+CustomLocalizedStringResourceConvertible
+NSItemProvider
+NSItemProviderReading
+NSItemProviderWriting
+NSItemProviderRepresentationVisibility
+NSItemProviderFileOptions
+NSUserActivity
+NSUserActivityDelegate
+NSUserActivityPersistentIdentifier
+UndoManager
+FileWrapper
+ValueTransformer
+NSSecureUnarchiveFromDataTransformer
+_FormatSpecifiable
+Selector
+PersonNameComponentsFormatter
+RelativeDateTimeFormatter

@@ -1,18 +1,20 @@
 import Foundation
 import SwiftData
 import KlimaCore
+import KlimaCloud
 
-/// Two-way cloud sync with Supabase/PostgREST (server contract: supabase/migrations/0002_sync_hardening.sql).
+/// Two-way cloud sync with the KlimaBilanz Cloudflare Worker + D1 (contract: docs/CLOUDFLARE_BACKEND.md §3.5–3.8).
 ///
 /// • Push: rows whose `updatedAt` is newer than the last successful push of this account (device clock compared with
-///   the same device clock only), as bulk upserts with uniform keys.
-/// • Pull: keyset pages on the server-assigned `server_rev`, cursor per table and account – never the device clock,
-///   never truncated by the server's "Max rows" limit.
+///   the same device clock only), in chunks of ≤ 500 rows and ≤ 1 MB (`POST /v1/sync/push`).
+/// • Pull: pages on the server-assigned `server_rev` (`GET /v1/sync/pull`, following `next`), cursor per table and
+///   account – never the device clock. D1 runs write batches one at a time, so the cursor needs no overlap window.
 /// • Conflicts: the server decides (last writer wins on `updated_at`, stale writes skipped, far-future clocks clamped).
 ///   Locally only edits that were not pushed yet are protected; everything else follows the server.
 /// • Deletes are soft (`deleted_at`).
 /// • Owner guard: local data is linked to the account it was synced with. When another account signs in, sync pauses
 ///   (`pendingAccountSwitch`) until the user decides between `discardLocalDataAndSync` and `mergeLocalDataIntoAccount`.
+///   Data synced with the retired Supabase backend is adopted by the first Cloudflare account without asking.
 @Observable
 @MainActor
 final class SyncService {
@@ -42,22 +44,20 @@ final class SyncService {
     private(set) var pendingAccountSwitch: AccountSwitch?
     /// True while sync waits for the account-switch decision.
     var isPaused: Bool { pendingAccountSwitch != nil }
+    /// The server rejected this app version (`426`); an app update is needed before sync works again.
+    private(set) var requiresAppUpdate = false
 
-    private let client: SupabaseClient?
+    private let client: CloudAPIClient?
     private let defaults = UserDefaults.standard
     private var isRunning = false
     private var rerunRequested = false
 
-    static let pageSize = 500
-    static let pushChunkSize = 500
-    /// Re-read window behind the pull cursor in µs (server_rev is server time in µs): covers transactions that
-    /// committed after rows with a higher revision were already read. Re-read rows merge as no-ops.
-    static let pullOverlap: Int64 = 120_000_000
-    static let onConflict = "user_id,id"
+    static let pageSize = CloudAPIClient.pullMaxLimit
+    static let maxPages = 4000
 
     init(config: AppConfig) {
-        if let url = config.supabase {
-            client = SupabaseClient(baseURL: url, anonKey: config.supabaseAnonKey)
+        if let client = config.cloudClient {
+            self.client = client
             state = .idle
         } else {
             client = nil
@@ -103,10 +103,10 @@ final class SyncService {
     }
 
     /// "Alles löschen" for a signed-in cloud account: a plain local delete would come back with the next full
-    /// download (cursor reset after sign-out, a new device, the overlap window). So every row first becomes a
-    /// tombstone (`deleted_at`), the tombstones are uploaded, and only then are the tombstones removed from this
-    /// device. Returns false when the upload failed – the rows then stay on the device as (hidden) tombstones and the
-    /// next sync uploads them. Signed out, paused for an account switch or without cloud: deletes locally only.
+    /// download (cursor reset after sign-out, a new device). So every row first becomes a tombstone (`deleted_at`),
+    /// the tombstones are uploaded, and only then are the tombstones removed from this device. Returns false when the
+    /// upload failed – the rows then stay on the device as (hidden) tombstones and the next sync uploads them.
+    /// Signed out, paused for an account switch or without cloud: deletes locally only.
     @discardableResult
     func deleteAllDataEverywhere(context: ModelContext, auth: AuthService) async -> Bool {
         do {
@@ -173,7 +173,7 @@ final class SyncService {
         guard let client else { state = .disabled; return }
         guard let session = await auth.validSession() else {
             pendingAccountSwitch = nil
-            state = auth.needsReauthentication ? .failed(SupabaseError.sessionExpired.localizedDescription) : .idle
+            state = auth.needsReauthentication ? .failed(CloudError.sessionExpired.message(providerName: nil)) : .idle
             return
         }
         let uid = session.user.id.lowercased()
@@ -201,8 +201,8 @@ final class SyncService {
         pendingAccountSwitch = nil
         state = .syncing
 
-        let provider: SupabaseClient.SessionProvider = { [auth] rejected in
-            let next: SupabaseSession?
+        let provider: SessionProvider = { [auth] rejected in
+            let next: CloudSession?
             if let rejected {
                 next = await auth.refreshedSession(after: rejected)
             } else {
@@ -229,14 +229,10 @@ final class SyncService {
                 let tripRows = trips.map { TripDTO($0, userID: uid) }
                 let favoriteRows = favorites.map { FavoriteDTO($0, userID: uid) }
                 let benefitRows = benefits.map { BenefitDTO($0, userID: uid) }
-                try await client.upsertAll(TicketDTO.table, rows: ticketRows, onConflict: Self.onConflict,
-                                           chunkSize: Self.pushChunkSize, session: provider)
-                try await client.upsertAll(TripDTO.table, rows: tripRows, onConflict: Self.onConflict,
-                                           chunkSize: Self.pushChunkSize, session: provider)
-                try await client.upsertAll(FavoriteDTO.table, rows: favoriteRows, onConflict: Self.onConflict,
-                                           chunkSize: Self.pushChunkSize, session: provider)
-                try await client.upsertAll(BenefitDTO.table, rows: benefitRows, onConflict: Self.onConflict,
-                                           chunkSize: Self.pushChunkSize, session: provider)
+                _ = try await client.push(table: TicketDTO.table, rows: ticketRows, session: provider)
+                _ = try await client.push(table: TripDTO.table, rows: tripRows, session: provider)
+                _ = try await client.push(table: FavoriteDTO.table, rows: favoriteRows, session: provider)
+                _ = try await client.push(table: BenefitDTO.table, rows: benefitRows, session: provider)
                 SyncOwnerStore.setLastPush(pushStarted, userID: uid, defaults)
                 pushWatermark = pushStarted
             }
@@ -246,17 +242,17 @@ final class SyncService {
                 mode == .replaceLocal ? 0 : SyncOwnerStore.cursor(table: table, userID: uid, defaults)
             }
             let tickets: (rows: [TicketDTO], maxRev: Int64) = try await client.pullAll(
-                TicketDTO.table, userID: uid, since: cursor(TicketDTO.table), overlap: Self.pullOverlap,
-                pageSize: Self.pageSize, session: provider)
+                table: TicketDTO.table, after: cursor(TicketDTO.table), pageSize: Self.pageSize, maxPages: Self.maxPages,
+                session: provider)
             let trips: (rows: [TripDTO], maxRev: Int64) = try await client.pullAll(
-                TripDTO.table, userID: uid, since: cursor(TripDTO.table), overlap: Self.pullOverlap,
-                pageSize: Self.pageSize, session: provider)
+                table: TripDTO.table, after: cursor(TripDTO.table), pageSize: Self.pageSize, maxPages: Self.maxPages,
+                session: provider)
             let favorites: (rows: [FavoriteDTO], maxRev: Int64) = try await client.pullAll(
-                FavoriteDTO.table, userID: uid, since: cursor(FavoriteDTO.table), overlap: Self.pullOverlap,
-                pageSize: Self.pageSize, session: provider)
+                table: FavoriteDTO.table, after: cursor(FavoriteDTO.table), pageSize: Self.pageSize, maxPages: Self.maxPages,
+                session: provider)
             let benefits: (rows: [BenefitDTO], maxRev: Int64) = try await client.pullAll(
-                BenefitDTO.table, userID: uid, since: cursor(BenefitDTO.table), overlap: Self.pullOverlap,
-                pageSize: Self.pageSize, session: provider)
+                table: BenefitDTO.table, after: cursor(BenefitDTO.table), pageSize: Self.pageSize, maxPages: Self.maxPages,
+                session: provider)
 
             // The account may have changed while waiting for the network.
             guard auth.session?.user.id.lowercased() == uid else { throw SyncAbort.accountChanged }
@@ -297,10 +293,12 @@ final class SyncService {
                 SyncOwnerStore.setLastPush(started, userID: uid, defaults)
             }
             defaults.set(Date(), forKey: "sync.lastSync")
+            requiresAppUpdate = false
             state = .synced(Date())
         } catch SyncAbort.accountChanged {
             state = .idle
         } catch {
+            if let cloud = error as? CloudError, case .upgradeRequired = cloud { requiresAppUpdate = true }
             state = .failed(Self.message(for: error))
         }
     }
@@ -314,8 +312,15 @@ final class SyncService {
             SyncOwnerStore.claim(userID: uid, email: email, defaults)
             return nil
         }
+        if owner.isLegacy && owner.userID != uid {
+            // The data was synced with the retired Supabase backend, whose account ids no longer exist: the first
+            // Cloudflare account adopts it silently and uploads everything (like "Daten dieses iPhones übernehmen").
+            SyncOwnerStore.claim(userID: uid, email: email, defaults)
+            SyncOwnerStore.setLastPush(nil, userID: uid, defaults)
+            return nil
+        }
         if owner.userID == uid {
-            if owner.email != email, email != nil { SyncOwnerStore.claim(userID: uid, email: email, defaults) }
+            if owner.isLegacy || (owner.email != email && email != nil) { SyncOwnerStore.claim(userID: uid, email: email, defaults) }
             return nil
         }
         let previousPush = SyncOwnerStore.lastPush(userID: owner.userID, defaults) ?? .distantPast
@@ -401,149 +406,20 @@ final class SyncService {
     }
 
     private static func message(for error: Error) -> String {
-        if let error = error as? SupabaseError {
-            // Foreign key to auth.users violated: the account was deleted on another device (this access token
-            // stays valid for up to an hour).
-            if error.code == "23503" { return "Dieses Konto wurde gelöscht. Melde dich ab oder mit einem anderen Konto an." }
-            return error.localizedDescription
-        }
-        if let error = error as? URLError {
-            switch error.code {
-            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed: return "Keine Internetverbindung."
-            case .timedOut, .cannotConnectToHost, .cannotFindHost: return "Der Server ist gerade nicht erreichbar."
-            default: return error.localizedDescription
-            }
-        }
-        if error is DecodingError { return "Unerwartete Daten vom Server." }
-        return error.localizedDescription
+        CloudError.userMessage(for: error)
     }
 }
 
-// MARK: - Sync owner & cursors (UserDefaults)
+// MARK: - DTO ↔ SwiftData entities (the DTOs live in KlimaCloud)
 
-/// Which account the local data belongs to, plus per-account push time and per-table pull cursors.
-enum SyncOwnerStore {
-    struct Owner: Equatable {
-        var userID: String
-        var email: String?
-    }
-
-    static let tables = ["tickets", "trips", "favorite_routes", "benefits"]
-    private static let ownerIDKey = "sync.owner.userID"
-    private static let ownerEmailKey = "sync.owner.email"
-
-    private static func lastPushKey(_ userID: String) -> String { "sync.user.\(userID.lowercased()).lastPush" }
-    private static func cursorKey(_ table: String, _ userID: String) -> String { "sync.user.\(userID.lowercased()).rev.\(table)" }
-
-    static func owner(_ defaults: UserDefaults = .standard) -> Owner? {
-        guard let id = defaults.string(forKey: ownerIDKey), !id.isEmpty else { return nil }
-        return Owner(userID: id, email: defaults.string(forKey: ownerEmailKey))
-    }
-
-    static func claim(userID: String, email: String?, _ defaults: UserDefaults = .standard) {
-        defaults.set(userID.lowercased(), forKey: ownerIDKey)
-        defaults.set(email, forKey: ownerEmailKey)
-    }
-
-    static func lastPush(userID: String, _ defaults: UserDefaults = .standard) -> Date? {
-        defaults.object(forKey: lastPushKey(userID)) as? Date
-    }
-
-    static func setLastPush(_ date: Date?, userID: String, _ defaults: UserDefaults = .standard) {
-        defaults.set(date, forKey: lastPushKey(userID))
-    }
-
-    static func cursor(table: String, userID: String, _ defaults: UserDefaults = .standard) -> Int64 {
-        (defaults.object(forKey: cursorKey(table, userID)) as? NSNumber)?.int64Value ?? 0
-    }
-
-    static func setCursor(_ rev: Int64, table: String, userID: String, _ defaults: UserDefaults = .standard) {
-        defaults.set(NSNumber(value: rev), forKey: cursorKey(table, userID))
-    }
-
-    static func resetPullCursors(userID: String, _ defaults: UserDefaults = .standard) {
-        for table in tables { defaults.removeObject(forKey: cursorKey(table, userID)) }
-    }
-
-    /// Forgets an account entirely (after account deletion): ownership, push time and cursors.
-    static func forget(userID: String, _ defaults: UserDefaults = .standard) {
-        if owner(defaults)?.userID == userID.lowercased() {
-            defaults.removeObject(forKey: ownerIDKey)
-            defaults.removeObject(forKey: ownerEmailKey)
-        }
-        defaults.removeObject(forKey: lastPushKey(userID))
-        resetPullCursors(userID: userID, defaults)
-    }
-}
-
-// MARK: - Merge rule
-
-enum SyncMergeRule {
-    enum Action: Equatable {
-        case insert, apply, keep
-    }
-
-    /// - localUpdatedAt: nil when the row does not exist on this device.
-    /// - localIsDirty: the local row changed after this sync's push started (and not "in the future"), i.e. the server
-    ///   has not seen it yet.
-    /// - sameContent: local and remote rows are identical (incl. updated_at / deleted_at).
-    static func action(localUpdatedAt: Date?, localIsDirty: Bool, remoteUpdatedAt: Date, remoteIsDeleted: Bool,
-                       sameContent: Bool) -> Action {
-        guard let localUpdatedAt else { return remoteIsDeleted ? .keep : .insert }   // unknown tombstone: nothing to do
-        if sameContent { return .keep }
-        // Unpushed local edit: last writer wins, exactly like the server will decide when it gets pushed.
-        if localIsDirty { return remoteUpdatedAt > localUpdatedAt ? .apply : .keep }
-        // Already pushed: the server's row is authoritative (it rejected stale writes and clamped skewed clocks).
-        return .apply
-    }
-}
-
-// MARK: - DTOs (snake_case = Postgres columns, see supabase/migrations)
-
-protocol SyncRow: Codable, Equatable, Sendable, ServerRevisioned {
-    static var table: String { get }
-    var id: UUID { get }
-    var user_id: String { get set }
-    var updated_at: Date { get }
-    var deleted_at: Date? { get }
-    var server_rev: Int64? { get set }
-}
-
-struct TicketDTO: SyncRow {
-    static let table = "tickets"
-
-    var id: UUID
-    var user_id: String
-    var product_id: String
-    var name: String
-    var variant: String
-    var family: String
-    var states: String
-    var price: Double
-    var start_date: Date
-    var end_date: Date
-    var holder_name: String
-    var ticket_number: String
-    var theme: String
-    var reminders: String
-    var is_monthly_payment: Bool?
-    var auto_renews: Bool?
-    var employer_contribution: Double?
-    var add_on_price: Double?
-    var add_ons: String?
-    var created_at: Date
-    var updated_at: Date
-    var deleted_at: Date?
-    /// Assigned by the server; never sent.
-    var server_rev: Int64? = nil
-
+extension TicketDTO {
     init(_ e: TicketEntity, userID: String) {
-        id = e.id; user_id = userID; product_id = e.productID; name = e.name; variant = e.variantRaw; family = e.familyRaw
-        states = e.statesRaw; price = e.price; start_date = e.startDate; end_date = e.endDate; holder_name = e.holderName
-        ticket_number = e.ticketNumber; theme = e.themeRaw; reminders = e.remindersRaw; is_monthly_payment = e.isMonthlyPayment
-        auto_renews = e.autoRenews; employer_contribution = e.employerContribution; add_on_price = e.addOnPrice; add_ons = e.addOnsRaw
-        created_at = e.createdAt
-        updated_at = e.updatedAt; deleted_at = e.deletedAt
+        self.init(id: e.id, user_id: userID, product_id: e.productID, name: e.name, variant: e.variantRaw, family: e.familyRaw,
+                  states: e.statesRaw, price: e.price, start_date: e.startDate, end_date: e.endDate, holder_name: e.holderName,
+                  ticket_number: e.ticketNumber, theme: e.themeRaw, reminders: e.remindersRaw,
+                  is_monthly_payment: e.isMonthlyPayment, auto_renews: e.autoRenews,
+                  employer_contribution: e.employerContribution, add_on_price: e.addOnPrice, add_ons: e.addOnsRaw,
+                  created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
     func apply(to e: TicketEntity) {
@@ -563,39 +439,14 @@ struct TicketDTO: SyncRow {
     }
 }
 
-struct TripDTO: SyncRow {
-    static let table = "trips"
-
-    var id: UUID
-    var user_id: String
-    var date: Date
-    var from_name: String
-    var to_name: String
-    var from_station_id: String?
-    var to_station_id: String?
-    var mode: String
-    var distance_km: Double
-    var fare_eur: Double
-    var is_fare_manual: Bool
-    var is_round_trip: Bool
-    var travel_class: String
-    var companions: Int
-    var states: String
-    var note: String
-    var category: String?
-    var is_induced: Bool?
-    var created_at: Date
-    var updated_at: Date
-    var deleted_at: Date?
-    /// Assigned by the server; never sent.
-    var server_rev: Int64? = nil
-
+extension TripDTO {
     init(_ e: TripEntity, userID: String) {
-        id = e.id; user_id = userID; date = e.date; from_name = e.fromName; to_name = e.toName
-        from_station_id = e.fromStationID; to_station_id = e.toStationID; mode = e.modeRaw; distance_km = e.distanceKm
-        fare_eur = e.fareEUR; is_fare_manual = e.isFareManual; is_round_trip = e.isRoundTrip; travel_class = e.travelClassRaw
-        companions = e.companions; states = e.statesRaw; note = e.note; category = e.categoryRaw; is_induced = e.isInduced
-        created_at = e.createdAt; updated_at = e.updatedAt; deleted_at = e.deletedAt
+        self.init(id: e.id, user_id: userID, date: e.date, from_name: e.fromName, to_name: e.toName,
+                  from_station_id: e.fromStationID, to_station_id: e.toStationID, mode: e.modeRaw, distance_km: e.distanceKm,
+                  fare_eur: e.fareEUR, is_fare_manual: e.isFareManual, is_round_trip: e.isRoundTrip,
+                  travel_class: e.travelClassRaw, companions: e.companions, states: e.statesRaw, note: e.note,
+                  category: e.categoryRaw, is_induced: e.isInduced,
+                  created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
     func apply(to e: TripEntity) {
@@ -614,35 +465,13 @@ struct TripDTO: SyncRow {
     }
 }
 
-struct FavoriteDTO: SyncRow {
-    static let table = "favorite_routes"
-
-    var id: UUID
-    var user_id: String
-    var title: String
-    var from_name: String
-    var to_name: String
-    var from_station_id: String?
-    var to_station_id: String?
-    var mode: String
-    var distance_km: Double
-    var fare_eur: Double
-    var is_round_trip: Bool
-    var states: String
-    var sort_index: Int
-    var usage_count: Int
-    var category: String?
-    var created_at: Date
-    var updated_at: Date
-    var deleted_at: Date?
-    /// Assigned by the server; never sent.
-    var server_rev: Int64? = nil
-
+extension FavoriteDTO {
     init(_ e: FavoriteRouteEntity, userID: String) {
-        id = e.id; user_id = userID; title = e.title; from_name = e.fromName; to_name = e.toName
-        from_station_id = e.fromStationID; to_station_id = e.toStationID; mode = e.modeRaw; distance_km = e.distanceKm
-        fare_eur = e.fareEUR; is_round_trip = e.isRoundTrip; states = e.statesRaw; sort_index = e.sortIndex
-        usage_count = e.usageCount; category = e.categoryRaw; created_at = e.createdAt; updated_at = e.updatedAt; deleted_at = e.deletedAt
+        self.init(id: e.id, user_id: userID, title: e.title, from_name: e.fromName, to_name: e.toName,
+                  from_station_id: e.fromStationID, to_station_id: e.toStationID, mode: e.modeRaw, distance_km: e.distanceKm,
+                  fare_eur: e.fareEUR, is_round_trip: e.isRoundTrip, states: e.statesRaw, sort_index: e.sortIndex,
+                  usage_count: e.usageCount, category: e.categoryRaw,
+                  created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
     func apply(to e: FavoriteRouteEntity) {
@@ -660,25 +489,10 @@ struct FavoriteDTO: SyncRow {
     }
 }
 
-struct BenefitDTO: SyncRow {
-    static let table = "benefits"
-
-    var id: UUID
-    var user_id: String
-    var date: Date
-    var partner_id: String
-    var title: String
-    var saved_eur: Double
-    var note: String
-    var created_at: Date
-    var updated_at: Date
-    var deleted_at: Date?
-    /// Assigned by the server; never sent.
-    var server_rev: Int64? = nil
-
+extension BenefitDTO {
     init(_ e: BenefitEntity, userID: String) {
-        id = e.id; user_id = userID; date = e.date; partner_id = e.partnerID; title = e.title; saved_eur = e.savedEUR
-        note = e.note; created_at = e.createdAt; updated_at = e.updatedAt; deleted_at = e.deletedAt
+        self.init(id: e.id, user_id: userID, date: e.date, partner_id: e.partnerID, title: e.title, saved_eur: e.savedEUR,
+                  note: e.note, created_at: e.createdAt, updated_at: e.updatedAt, deleted_at: e.deletedAt)
     }
 
     func apply(to e: BenefitEntity) {
