@@ -19,6 +19,10 @@ on:
         description: "Simulator-Screenshots aufnehmen"
         type: boolean
         default: true
+      release_tag:
+        description: "Release veröffentlichen, z. B. v1.0.1 (leer = kein Release). Legt Tag + GitHub Release mit .ipa, update.json und AltStore-Quelle an."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -83,8 +87,13 @@ jobs:
 
       - name: Version
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || '' }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+(\.[0-9]+){1,2}$ ]] || { echo "::error::release_tag must look like v1.2.3"; exit 1; }
+            VERSION="${RELEASE_TAG#v}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
             VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/.*"([0-9.]+)".*/\1/')
@@ -92,6 +101,8 @@ jobs:
           BUILD=$((GITHUB_RUN_NUMBER + 100))
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=${RELEASE_TAG:-${GITHUB_REF_NAME}}" >> "$GITHUB_OUTPUT"
+          if [[ -n "${RELEASE_TAG}" || "$GITHUB_REF" == refs/tags/v* ]]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
           echo "Version $VERSION ($BUILD)"
 
       - name: App configuration (from repository secrets/variables)
@@ -239,13 +250,13 @@ jobs:
           bash scripts/signed_build.sh
 
       - name: Release metadata (update.json + AltStore source)
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.version.outputs.release == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           BUILD: ${{ steps.version.outputs.build }}
-          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, github.ref_name) }}
+          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, steps.version.outputs.tag) }}
           # Immutable per-tag .ipa URL, so the sha256 in the source always matches the file behind it.
-          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, github.ref_name) || '' }}
+          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, steps.version.outputs.tag) || '' }}
           MINIMUM_SUPPORTED_VERSION: ${{ vars.MINIMUM_SUPPORTED_VERSION }}
         run: |
           set -euo pipefail
@@ -256,9 +267,13 @@ jobs:
           python3 -m json.tool dist/update.json > /dev/null
 
       - name: GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: KlimaBilanz ${{ steps.version.outputs.version }}
+          make_latest: true
           files: |
             dist/*.ipa
             dist/update.json
@@ -269,12 +284,12 @@ jobs:
           generate_release_notes: true
 
       - name: Publish to public releases repository (enables auto-updates)
-        if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLIC_RELEASES_REPO != ''
+        if: steps.version.outputs.release == 'true' && vars.PUBLIC_RELEASES_REPO != ''
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ vars.PUBLIC_RELEASES_REPO }}
           token: ${{ secrets.RELEASES_TOKEN }}
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
           name: KlimaBilanz ${{ steps.version.outputs.version }}
           make_latest: true
           files: |
