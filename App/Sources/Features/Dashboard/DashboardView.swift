@@ -145,7 +145,7 @@ struct DashboardView: View {
 
         // Spec §8.1: mountain canvas 134 pt, full width.
         AmortizationHero(snapshot: snapshot, chartHeight: 134)
-            .padding(.top, 10)
+            .padding(.top, Theme.Spacing.xxs)
             .dashEntrance(1, visible: appeared)
     }
 
