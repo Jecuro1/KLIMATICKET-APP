@@ -249,7 +249,11 @@ private struct IconHomeStage: View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         // Zoomed-in home screen: the row above is cut by the top edge, the switch sits where the search pill would.
         ZStack(alignment: .top) {
-            wallpaper
+            // MARK: review-icons – both skies (and both icon variants below) stay stacked, so the sun/moon switch
+            // cross-fades morning into blue hour (opacity only) instead of snapping.
+            wallpaper(dark: false)
+            wallpaper(dark: true)
+                .opacity(scheme == .dark ? 1 : 0)
             VStack(spacing: 22) {
                 HStack(spacing: columnSpacing) {
                     ForEach(0..<3, id: \.self) { _ in placeholder }
@@ -281,9 +285,8 @@ private struct IconHomeStage: View {
     }
 
     // Wallpaper: the Alpine sky – morning (light) or blue hour (dark), with two ridges.
-    private var wallpaper: some View {
-        let dark = scheme == .dark
-        return ZStack {
+    private func wallpaper(dark: Bool) -> some View {
+        ZStack {
             LinearGradient(colors: dark ? [Color(hex: "#081332"), Color(hex: "#1B2160"), Color(hex: "#3B2A6E")]
                                         : [Color(hex: "#3F7BD8"), Color(hex: "#7B74E0"), Color(hex: "#E59A92")],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -319,11 +322,17 @@ private struct IconHomeStage: View {
                 if !reduceMotion && !MotionPolicy.isStatic {
                     IconGlowPulse(color: choice.glow, size: iconSize, trigger: pulse)
                 }
-                AppIconImage(choice: choice, size: iconSize)
-                    .shadow(color: .black.opacity(0.28), radius: 10, y: 6)
-                    .id(choice)
-                    .motionTransition(.asymmetric(insertion: .scale(scale: 0.55).combined(with: .opacity),
-                                                  removal: .scale(scale: 1.18).combined(with: .opacity)))
+                ZStack {
+                    AppIconImage(choice: choice, size: iconSize)
+                        .environment(\.colorScheme, .light)
+                    AppIconImage(choice: choice, size: iconSize)
+                        .environment(\.colorScheme, .dark)
+                        .opacity(scheme == .dark ? 1 : 0)
+                }
+                .shadow(color: .black.opacity(0.28), radius: 10, y: 6)
+                .id(choice)
+                .motionTransition(.asymmetric(insertion: .scale(scale: 0.55).combined(with: .opacity),
+                                              removal: .scale(scale: 1.18).combined(with: .opacity)))
             }
             .frame(width: iconSize, height: iconSize)
             Text("KlimaBilanz")
