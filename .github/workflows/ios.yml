@@ -244,6 +244,11 @@ jobs:
           if grep -q "com.apple.developer.applesignin" build/entitlements/KlimaBilanz.plist; then
             echo "::error::Sideload-App darf keine Sign-in-with-Apple-Entitlements haben"; exit 1
           fi
+          # MARK: icons – actool must have registered every alternate app icon (Einstellungen › App-Symbol).
+          for ICON in AppIcon-Nacht AppIcon-Sonnenaufgang AppIcon-Gletscher AppIcon-Minimal; do
+            /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundleAlternateIcons:$ICON" "$APP/Info.plist" >/dev/null \
+              || { echo "::error::Alternatives App-Symbol $ICON fehlt in CFBundleAlternateIcons"; exit 1; }
+          done
           IPA="dist/KlimaBilanz-${VERSION}.ipa"
           (cd build/ipa && zip -qry -X "../../$IPA" Payload)
           unzip -Z1 "$IPA" > build/ipa-files.txt
