@@ -266,14 +266,16 @@ extension TicketAdvice {
 
     private var cancellationGlance: AdvGlance {
         let c = cancellation
-        var value: String?
+        let value: String? = nil
         var detail: String
         switch c.verdict {
         case .keep, .consider:
+            // No coloured value here: a green refund next to "Behalten lohnt sich" would read like a recommendation.
             let q = c.endOfMonth
-            value = q.map { AdvText.euro(c.isMonthlyPayment ? $0.saving : $0.refund) }
+            let money = q.map { AdvText.euro(max(0, c.isMonthlyPayment ? $0.saving : $0.refund)) } ?? "–"
             let lost = q.map { AdvText.euro($0.lostTripValue) } ?? "–"
-            detail = c.isMonthlyPayment ? "gespart, Fahrten bis Ablauf ≈ \(lost)" : "zurück, Fahrten bis Ablauf ≈ \(lost)"
+            detail = c.isMonthlyPayment ? "\(money) gespart vs. ≈ \(lost) an Fahrten bis Ablauf"
+                                        : "\(money) zurück vs. ≈ \(lost) an Fahrten bis Ablauf"
         case .notYet:
             detail = "7. Gültigkeitsmonat · \(AdvText.countdown(to: c.possibleFrom))"
             if c.policy == .kennenlern { detail = "Kennenlern-Aktion · \(AdvText.countdown(to: c.possibleFrom))" }
@@ -294,9 +296,14 @@ extension TicketAdvice {
         guard let f = firstClass else {
             return AdvGlance(section: .firstClass, verdict: "", detail: "", value: nil, tone: .neutral)
         }
-        let detail = f.verdict == .noTrainTrips
-            ? "Sobald du Zug fährst, rechnen wir es dir aus"
-            : "≈ \(AdvText.euro(f.projectedSurcharge)) Aufpreis vs. \(AdvText.euro(f.upgradePrice)) Upgrade"
+        let detail: String
+        if f.verdict == .noTrainTrips {
+            detail = "Sobald du Zug fährst, rechnen wir es dir aus"
+        } else if !f.hasUpgrade && f.cheapestOption == .vorteilsabo {
+            detail = "Tipp: Vorteilsabo ≈ \(AdvText.euro(f.vorteilsaboCost)) statt Upgrade \(AdvText.euro(f.upgradePrice))"
+        } else {
+            detail = "≈ \(AdvText.euro(f.projectedSurcharge)) Aufpreis vs. \(AdvText.euro(f.upgradePrice)) Upgrade"
+        }
         return AdvGlance(section: .firstClass, verdict: AdvText.firstClassTitle(f), detail: detail, value: nil,
                          tone: AdvText.firstClassTone(f))
     }
