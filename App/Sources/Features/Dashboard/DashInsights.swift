@@ -71,21 +71,23 @@ struct DashAchievementTeaser: View {
                             .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(Theme.textSecondary)
                     }
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(next?.title ?? "Alle Erfolge erreicht")
-                            .font(.headline)
-                            .foregroundStyle(Theme.textPrimary)
-                        Spacer(minLength: Theme.Spacing.xs)
-                        if let next, !next.progressLabel.isEmpty {
-                            Text(next.progressLabel)
-                                .font(.footnote.monospacedDigit())
-                                .foregroundStyle(Theme.textSecondary)
-                                .lineLimit(1)
-                        }
-                    }
+                    // The title gets the full width (a progress label beside it broke "Streckenkenner:in" mid-word).
+                    Text(next?.title ?? "Alle Erfolge erreicht")
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                     if let next {
-                        ProgressRail(progress: next.progress, height: 6)
-                            .padding(.top, 3)
+                        HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+                            ProgressRail(progress: next.progress, height: 6)
+                            if !next.progressLabel.isEmpty {
+                                Text(next.progressLabel)
+                                    .font(.caption.weight(.medium).monospacedDigit())
+                                    .foregroundStyle(Theme.textSecondary)
+                                    .lineLimit(1)
+                                    .fixedSize()
+                            }
+                        }
+                        .padding(.top, 3)
                     }
                 }
                 Image(systemName: "chevron.right")

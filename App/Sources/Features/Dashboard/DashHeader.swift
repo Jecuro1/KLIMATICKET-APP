@@ -142,17 +142,23 @@ struct DashUpdateCapsule: View {
     }
 }
 
-/// Soft frosted fade under the status bar once the header has scrolled away (there is no navigation bar on this screen).
+/// Soft frosted fade under the status bar once the header has scrolled away (there is no navigation bar on this screen):
+/// covers the status bar (`statusBarHeight`) and fades out 14 pt below it, so scrolled content never runs into the clock.
 struct DashTopScrim: View {
+    /// Height of the status bar area the scroll view reaches under (its top safe-area inset).
+    var statusBarHeight: CGFloat = 0
+
     var body: some View {
+        let height = statusBarHeight + 14
         Rectangle()
             .fill(.ultraThinMaterial)
             .mask {
-                LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.6),
+                LinearGradient(stops: [.init(color: .black, location: 0),
+                                       .init(color: .black, location: max(0.6, statusBarHeight / height)),
                                        .init(color: .clear, location: 1)],
                                startPoint: .top, endPoint: .bottom)
             }
-            .frame(height: 14)
+            .frame(height: height)
             .ignoresSafeArea(edges: .top)
             .allowsHitTesting(false)
             .accessibilityHidden(true)

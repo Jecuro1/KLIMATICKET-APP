@@ -277,6 +277,8 @@ private struct DashUpdateCapsuleHost: View {
 /// re-renders only the scrim – never the dashboard content.
 private struct DashScrollScrim: ViewModifier {
     @State private var isScrolled = false
+    /// The scroll view reaches under the status bar: its top safe-area inset is the status bar height.
+    @State private var statusBarHeight: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
@@ -285,8 +287,11 @@ private struct DashScrollScrim: ViewModifier {
             }, action: { _, scrolled in
                 withAnimation(.easeInOut(duration: 0.2)) { isScrolled = scrolled }
             })
+            .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.safeAreaInsets.top }, action: { inset in
+                statusBarHeight = inset
+            })
             .overlay(alignment: .top) {
-                DashTopScrim()
+                DashTopScrim(statusBarHeight: statusBarHeight)
                     .opacity(isScrolled ? 1 : 0)
             }
     }
