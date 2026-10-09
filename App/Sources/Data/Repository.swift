@@ -156,6 +156,22 @@ struct Repository {
                                                                  sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
     }
 
+    /// Most used stations (favourites first, then by trip frequency) – used for trip detection regions.
+    func frequentStationIDs(limit: Int = 20) -> [String] {
+        var counts: [String: Int] = [:]
+        for fav in liveFavorites() {
+            for id in [fav.fromStationID, fav.toStationID].compactMap({ $0 }) { counts[id, default: 0] += 1000 }
+        }
+        for trip in liveTrips().prefix(400) {
+            for id in [trip.fromStationID, trip.toStationID].compactMap({ $0 }) { counts[id, default: 0] += 1 }
+        }
+        return counts.sorted { $0.value > $1.value }.prefix(limit).map(\.key)
+    }
+
+    func configureTripDetection() {
+        app.detection.configure(stations: app.stations, frequentStationIDs: frequentStationIDs(), estimator: app.estimator)
+    }
+
     // MARK: Commit
 
     func commit(sync: Bool = true) {

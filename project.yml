@@ -53,6 +53,7 @@ targets:
             CFBundleURLSchemes:
               - klimabilanz
         NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor, wenn du eine Fahrt erfasst."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Für die automatische Fahrterkennung bemerkt KlimaBilanz, wenn du an deinen Lieblingsbahnhöfen ankommst oder abfährst – und schlägt dir die Fahrt zum Erfassen vor. Dein Standort verlässt dein iPhone nie."
         NSUserActivityTypes:
           - com.knitelarlberg.klimabilanz.addTrip
         LSApplicationQueriesSchemes:

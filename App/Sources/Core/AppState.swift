@@ -54,6 +54,7 @@ struct TripDraft: Identifiable, Equatable {
 final class AppState {
     let config = AppConfig.shared
     let stations: StationIndex
+    let relations: RelationPriceTable
     private(set) var catalog: TariffCatalog
     let settings: AppSettings
     let auth: AuthService
@@ -61,6 +62,7 @@ final class AppState {
     let updates: UpdateService
     let tariffs: TariffService
     let notifications: NotificationService
+    let detection: TripDetectionService
 
     // Navigation / presentation
     var selectedTab: AppTab = .overview
@@ -73,6 +75,7 @@ final class AppState {
     init(settings: AppSettings? = nil) {
         self.settings = settings ?? AppSettings()
         self.stations = AppState.loadStations()
+        self.relations = AppState.loadRelations()
         let tariffs = TariffService()
         self.tariffs = tariffs
         self.catalog = tariffs.currentCatalog()
@@ -80,9 +83,10 @@ final class AppState {
         self.sync = SyncService(config: AppConfig.shared)
         self.updates = UpdateService(config: AppConfig.shared)
         self.notifications = NotificationService()
+        self.detection = TripDetectionService()
     }
 
-    var estimator: FareEstimator { FareEstimator(catalog: catalog) }
+    var estimator: FareEstimator { FareEstimator(catalog: catalog, relations: relations) }
 
     func reloadCatalog() { catalog = tariffs.currentCatalog() }
 
@@ -102,6 +106,15 @@ final class AppState {
     }
 
     func presentAddTrip(_ draft: TripDraft = TripDraft()) { tripDraft = draft }
+
+    private static func loadRelations() -> RelationPriceTable {
+        guard let url = Bundle.main.url(forResource: "relations", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let table = try? RelationPriceTable(jsonData: data) else {
+            return .empty
+        }
+        return table
+    }
 
     private static func loadStations() -> StationIndex {
         guard let url = Bundle.main.url(forResource: "stations", withExtension: "json"),

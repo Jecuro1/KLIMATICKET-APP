@@ -45,7 +45,9 @@ struct RootView: View {
         .task {
             guard !LaunchMode.isScreenshot else { return }
             handleExternalRequests()
-            Repository(context: context, app: app).refreshWidgets()
+            let repo = Repository(context: context, app: app)
+            repo.refreshWidgets()
+            repo.configureTripDetection()
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
             await app.sync.sync(context: context, auth: app.auth)
         }
