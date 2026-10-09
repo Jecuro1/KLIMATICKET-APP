@@ -26,12 +26,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                if let trimsSectionTop = headerRowExperiment {
-                    SetScreenHeaderRowSection(header: screenHeader, trimsSectionTop: trimsSectionTop)
-                    SetAccountSection()
-                } else {
-                    SetAccountSection(screenHeader: screenHeader)
-                }
+                SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen"))
                 SetFareSection()
                 SetCaptureSection()
                 SetAppearanceSection()
@@ -45,7 +40,6 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .listSectionSpacing(Theme.Spacing.l)
             .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
-            .contentMargins(screenshotScreen == "settingsC" ? .top : [], 0, for: .scrollContent)
             .scrollContentBackground(.hidden)
             .background { SetBackdrop() }
             .tint(Theme.accent)
@@ -95,19 +89,6 @@ struct SettingsView: View {
                 Button("Fertig") { dismiss() }
                     .fontWeight(.semibold)
             }
-        }
-    }
-
-    private var screenHeader: SetScreenHeader {
-        SetScreenHeader(kicker: headerKicker, title: "Einstellungen")
-    }
-
-    /// EXPERIMENT (CI screenshots only): header as a row – settingsB trims the section top, settingsC the content margin.
-    private var headerRowExperiment: Bool? {
-        switch screenshotScreen {
-        case "settingsB": true
-        case "settingsC": false
-        default: nil
         }
     }
 

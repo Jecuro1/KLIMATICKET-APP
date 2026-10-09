@@ -64,12 +64,6 @@ struct SetScreenHeader: View {
     var title: String
 
     var body: some View {
-        content
-            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
-                                      bottom: Theme.Spacing.s, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
-    }
-
-    var content: some View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: kicker)
                 .lineLimit(1)
@@ -82,27 +76,8 @@ struct SetScreenHeader: View {
         }
         .textCase(nil)
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// EXPERIMENT (CI screenshots settingsB / settingsC only): the header as a borderless first row, padded clear of the
-/// rounded row mask. Removed again once the screenshots have decided between header and row.
-struct SetScreenHeaderRowSection: View {
-    var header: SetScreenHeader
-    var trimsSectionTop: Bool
-
-    var body: some View {
-        Section {
-            header.content
-                .padding(.top, 12)
-                .padding(.bottom, 4)
-                .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
-                                          bottom: 0, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-        }
-        .listSectionSpacing(Theme.Spacing.xs)
-        .listSectionMargins(trimsSectionTop ? .top : [], 0)
+        .listRowInsets(EdgeInsets(top: 0, leading: Theme.Spacing.screen - Theme.Spacing.cardGutter,
+                                  bottom: Theme.Spacing.s, trailing: Theme.Spacing.screen - Theme.Spacing.cardGutter))
     }
 }
 

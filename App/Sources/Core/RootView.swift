@@ -231,7 +231,7 @@ struct ScreenshotRouter: View {
         case "settings":
             NavigationStack { SettingsView() }
         // MARK: polish-settings – lower parts of the long settings list
-        case "settings2", "settings3", "settingsEnd", "settingsB", "settingsC":
+        case "settings2", "settings3", "settingsEnd":
             NavigationStack { SettingsView(screenshotScreen: screen) }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
