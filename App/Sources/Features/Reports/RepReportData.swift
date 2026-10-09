@@ -45,7 +45,6 @@ struct RepReportData {
     let inducedValue: Double
     let benefitsCount: Int
     let benefitsValue: Double
-    let notes: [UUID: String]
     let generatedAt: Date
 
     var summary: SavingsSummary { snapshot.summary }
@@ -101,8 +100,6 @@ struct RepReportData {
 
         let induced = records.filter(\.isInduced)
         let periodBenefits = benefits.filter { $0.deletedAt == nil && period.contains($0.date) }
-        var notes: [UUID: String] = [:]
-        for trip in trips where trip.deletedAt == nil && !trip.note.isEmpty { notes[trip.id] = trip.note }
 
         return RepReportData(
             ticketName: ticket.name,
@@ -121,7 +118,6 @@ struct RepReportData {
             inducedValue: induced.reduce(0) { $0 + $1.totalValue },
             benefitsCount: periodBenefits.count,
             benefitsValue: periodBenefits.reduce(0) { $0 + $1.savedEUR },
-            notes: notes,
             generatedAt: now)
     }
 

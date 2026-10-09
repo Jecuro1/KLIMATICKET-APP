@@ -45,6 +45,8 @@ struct RepImportSummary: Equatable {
     var before: Double?
     var after: Double?
     var ticketYear: String?
+    /// The payoff target (ticket price or own share) of that ticket year.
+    var ticketPrice: Double?
 }
 
 /// State + logic of the CSV import flow (Datei → Spalten → Vorschau → Fertig). UI-agnostic: `RepImportFlow` binds to it.
@@ -341,7 +343,7 @@ final class RepImportModel {
         guard !rows.isEmpty else { return }
         let repo = Repository(context: context, app: app)
         let ticket = Analytics.activeTicket(in: repo.liveTickets(), selectedID: app.settings.selectedTicketID)
-        let before = ticket.map { Analytics.make(ticket: $0, trips: repo.liveTrips(), catalog: app.catalog).summary.amortizedFraction }
+        let beforeSummary = ticket.map { Analytics.make(ticket: $0, trips: repo.liveTrips(), catalog: app.catalog).summary }
 
         let travelClass = app.settings.defaultTravelClass
         let trips: [TripEntity] = rows.compactMap { c in
@@ -365,8 +367,9 @@ final class RepImportModel {
             invalidSkipped: invalidCount,
             estimated: rows.filter(\.isFareEstimated).count,
             outsideTicket: outside,
-            before: before, after: after,
-            ticketYear: ticket.map { StatsCalc.ticketYearLabel($0.period) })
+            before: beforeSummary?.amortizedFraction, after: after,
+            ticketYear: ticket.map { StatsCalc.ticketYearLabel($0.period) },
+            ticketPrice: beforeSummary?.ticketPrice)
         isUndone = false
         importRevision += 1
         step = .result

@@ -1,8 +1,8 @@
 import SwiftUI
 import KlimaCore
 
-/// Step 3 – counts (bereit / Duplikate / Fehler), value to be imported, duplicate option and the row preview with
-/// every problem spelled out ("Zeile 7: Datum „31.02.2026“ nicht erkannt").
+/// Step 3 – one summary card (value to be imported, status pills that filter the list, duplicate option) and the row
+/// preview with every problem spelled out ("Zeile 7: Datum „31.02.2026“ nicht erkannt").
 struct RepImportPreviewStep: View {
     @Bindable var model: RepImportModel
 
@@ -10,11 +10,10 @@ struct RepImportPreviewStep: View {
 
     var body: some View {
         RepStepHeader(step: 3, total: 3, title: "Vorschau prüfen",
-                      message: "So übernehmen wir deine Fahrten. Zeilen mit Fehlern lassen wir aus – du kannst sie später von Hand erfassen.")
+                      message: "Zeilen mit Fehlern lassen wir aus – die kannst du später von Hand erfassen.")
             .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
 
-        counts
-        valueCard
+        summaryCard
 
         Picker("Anzeigen", selection: $model.filter) {
             ForEach(RepImportModel.PreviewFilter.allCases) { filter in
@@ -26,22 +25,14 @@ struct RepImportPreviewStep: View {
         rows
     }
 
-    // MARK: Counts & value
+    // MARK: Summary
 
-    private var counts: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            RepCountTile(value: model.readyCandidates.count, label: "bereit", symbol: "checkmark", tint: Theme.pine)
-            RepCountTile(value: model.duplicateCount, label: model.duplicateCount == 1 ? "Duplikat" : "Duplikate",
-                         symbol: "doc.on.doc.fill", tint: Theme.gold)
-            RepCountTile(value: model.invalidCount, label: "Fehler",
-                         symbol: "exclamationmark", tint: Theme.negative)
-        }
-    }
+    private var problemCount: Int { model.candidates.filter { $0.status != .ready || !$0.warnings.isEmpty }.count }
 
-    private var valueCard: some View {
+    private var summaryCard: some View {
         GlassCard(padding: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .top, spacing: Theme.Spacing.xs) {
                     VStack(alignment: .leading, spacing: 2) {
                         Kicker(text: "Fahrtenwert")
                         Text(Format.euroPrecise(model.importValue))
@@ -52,17 +43,29 @@ struct RepImportPreviewStep: View {
                             .minimumScaleFactor(0.6)
                     }
                     Spacer(minLength: Theme.Spacing.xs)
-                    VStack(alignment: .trailing, spacing: 4) {
+                    VStack(alignment: .trailing, spacing: 6) {
                         Text(RepText.trips(model.toImport.count))
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.textPrimary)
+                            .contentTransition(.numericText(value: Double(model.toImport.count)))
                         if model.estimatedCount > 0 {
                             RepBadge(text: model.estimatedCount == 1 ? "1 Preis geschätzt" : "\(model.estimatedCount) Preise geschätzt",
                                      symbol: "wand.and.stars", tint: Theme.accentText)
                         }
                     }
+                    .padding(.top, 2)
                 }
                 .animation(.smooth, value: model.importValue)
+
+                HStack(spacing: Theme.Spacing.xs) {
+                    RepStatusPill(value: model.readyCandidates.count, label: "bereit", symbol: "checkmark", tint: Theme.pine,
+                                  isSelected: model.filter == .ready) { toggleFilter(.ready) }
+                    RepStatusPill(value: model.duplicateCount, label: model.duplicateCount == 1 ? "Duplikat" : "Duplikate",
+                                  symbol: "doc.on.doc.fill", tint: Theme.gold, isSelected: model.filter == .problems) { toggleFilter(.problems) }
+                    RepStatusPill(value: model.invalidCount, label: "Fehler", symbol: "exclamationmark", tint: Theme.negative,
+                                  isSelected: model.filter == .problems) { toggleFilter(.problems) }
+                }
+
                 if model.duplicateCount > 0 {
                     Rectangle().fill(Theme.separator).frame(height: 0.5)
                     Toggle(isOn: $model.skipDuplicates) {
@@ -82,11 +85,17 @@ struct RepImportPreviewStep: View {
         .accessibilityElement(children: .contain)
     }
 
+    private func toggleFilter(_ filter: RepImportModel.PreviewFilter) {
+        withAnimation(.smooth(duration: 0.25)) {
+            model.filter = model.filter == filter ? .all : filter
+        }
+    }
+
     private func title(for filter: RepImportModel.PreviewFilter) -> String {
         switch filter {
         case .all: "Alle \(model.candidates.count)"
-        case .ready: "Bereit"
-        case .problems: "Probleme"
+        case .ready: "Bereit \(model.readyCandidates.count)"
+        case .problems: problemCount == 0 ? "Probleme" : "Probleme \(problemCount)"
         }
     }
 
@@ -101,6 +110,7 @@ struct RepImportPreviewStep: View {
                     Image(systemName: model.filter == .problems ? "checkmark.seal.fill" : "tray")
                         .font(.system(size: 34, weight: .light))
                         .foregroundStyle(model.filter == .problems ? Theme.positive : Theme.textTertiary)
+                        .accessibilityHidden(true)
                     Text(model.filter == .problems ? "Keine Probleme – alles sauber." : "Hier ist nichts.")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
@@ -126,38 +136,47 @@ struct RepImportPreviewStep: View {
     }
 }
 
-/// Small count tile (number + label) for the preview summary.
-struct RepCountTile: View {
+/// Count pill in the preview summary ("✓ 9 bereit"); tapping filters the list.
+struct RepStatusPill: View {
     var value: Int
     var label: String
     var symbol: String
     var tint: Color
+    var isSelected: Bool
+    var action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-            Image(systemName: symbol)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(width: 22, height: 22)
-                .background(tint.gradient, in: .circle)
-                .environment(\.colorScheme, .light)
-            Text("\(value)")
-                .font(Theme.Typography.numberMedium)
-                .foregroundStyle(value == 0 ? Theme.textTertiary : Theme.textPrimary)
-                .contentTransition(.numericText(value: Double(value)))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(label)
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: 18, height: 18)
+                    .background((value == 0 ? Theme.textTertiary : tint).gradient, in: .circle)
+                    .environment(\.colorScheme, .light)
+                Text("\(value)")
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(value == 0 ? Theme.textTertiary : Theme.textPrimary)
+                    .contentTransition(.numericText(value: Double(value)))
+                Text(label)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.leading, 6)
+            .padding(.trailing, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background((value == 0 ? Theme.textTertiary : tint).opacity(isSelected ? 0.22 : 0.10), in: .capsule)
+            .overlay(Capsule().strokeBorder(tint.opacity(isSelected ? 0.5 : 0), lineWidth: 1))
+            .contentShape(.capsule)
         }
-        .padding(Theme.Spacing.s)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frostedCard(cornerRadius: Theme.Radius.tile)
-        .accessibilityElement(children: .ignore)
+        .buttonStyle(.plain)
+        .disabled(value == 0)
         .accessibilityLabel("\(value) \(label)")
+        .accessibilityHint("Zeigt nur diese Zeilen")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

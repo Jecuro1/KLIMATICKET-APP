@@ -5,28 +5,29 @@ import KlimaCloud
 
 /// Full JSON backup (Einstellungen › Daten › Sichern/Wiederherstellen) – merge-import by id.
 ///
-/// Version 2 adds the phase-2 fields (trip category & "ohne Ticket nicht gefahren", favourite category, ticket auto-renewal,
-/// employer contribution, add-ons) and the benefits ("Vorteile"). Version-1 files still restore: every new key is optional
-/// and missing values leave the existing entity untouched (new entities keep their model defaults).
+/// Rows are the KlimaCloud sync DTOs (same column names as the server). Version 2 adds the benefits ("Vorteile") and
+/// relies on the DTOs' phase-2 columns (trip category & "ohne Ticket nicht gefahren", favourite category, ticket
+/// auto-renewal, employer contribution, add-ons). Version-1 files still restore: those columns are optional, and when a
+/// file lacks them the values of an existing entity stay untouched (new entities keep the model defaults).
 struct BackupFile: Codable {
     var format: String = "klimabilanz-backup"
     var version: Int = 2
     var exportedAt: Date = Date()
     var appVersion: String = AppConfig.appVersion
-    var tickets: [RepBackupTicket]
-    var trips: [RepBackupTrip]
-    var favorites: [RepBackupFavorite]
+    var tickets: [TicketDTO]
+    var trips: [TripDTO]
+    var favorites: [FavoriteDTO]
     /// Absent in version-1 backups.
-    var benefits: [RepBackupBenefit]?
+    var benefits: [BenefitDTO]?
 }
 
 @MainActor
 enum Backup {
     static func export(context: ModelContext) throws -> Data {
-        let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { RepBackupTicket($0) }
-        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { RepBackupTrip($0) }
-        let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { RepBackupFavorite($0) }
-        let benefits = try context.fetch(FetchDescriptor<BenefitEntity>()).map { RepBackupBenefit($0) }
+        let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { TicketDTO($0, userID: "") }
+        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { TripDTO($0, userID: "") }
+        let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { FavoriteDTO($0, userID: "") }
+        let benefits = try context.fetch(FetchDescriptor<BenefitEntity>()).map { BenefitDTO($0, userID: "") }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -51,41 +52,38 @@ enum Backup {
         decoder.dateDecodingStrategy = .iso8601
         let file = try decoder.decode(BackupFile.self, from: data)
         var result = ImportResult()
-        for row in file.tickets {
-            let dto = row.base
+        for dto in file.tickets {
             let id = dto.id
             if let e = try context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { row.apply(to: e); result.tickets += 1 }
+                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.tickets += 1 }
             } else {
                 let e = TicketEntity(productID: dto.product_id, name: dto.name, variant: .klassik, family: .oe, price: dto.price, startDate: dto.start_date)
                 e.id = dto.id
-                row.apply(to: e)
+                dto.apply(to: e)
                 context.insert(e)
                 result.tickets += 1
             }
         }
-        for row in file.trips {
-            let dto = row.base
+        for dto in file.trips {
             let id = dto.id
             if let e = try context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { row.apply(to: e); result.trips += 1 }
+                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.trips += 1 }
             } else {
                 let e = TripEntity(date: dto.date, fromName: dto.from_name, toName: dto.to_name, mode: .train, distanceKm: dto.distance_km, fareEUR: dto.fare_eur)
                 e.id = dto.id
-                row.apply(to: e)
+                dto.apply(to: e)
                 context.insert(e)
                 result.trips += 1
             }
         }
-        for row in file.favorites {
-            let dto = row.base
+        for dto in file.favorites {
             let id = dto.id
             if let e = try context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.id == id })).first {
-                if dto.updated_at > e.updatedAt { row.apply(to: e); result.favorites += 1 }
+                if dto.updated_at > e.updatedAt { dto.keepingLocalExtras(of: e).apply(to: e); result.favorites += 1 }
             } else {
                 let e = FavoriteRouteEntity(fromName: dto.from_name, toName: dto.to_name, mode: .train, distanceKm: dto.distance_km, fareEUR: dto.fare_eur)
                 e.id = dto.id
-                row.apply(to: e)
+                dto.apply(to: e)
                 context.insert(e)
                 result.favorites += 1
             }
@@ -128,137 +126,35 @@ enum Backup {
     }
 }
 
-// MARK: - Backup rows (sync DTO + phase-2 fields, flattened into one JSON object)
+// MARK: - Version-1 files: keep what the file does not know
 
-/// Ticket row: all `TicketDTO` columns plus auto-renewal, employer contribution and add-ons.
-struct RepBackupTicket: Codable {
-    var base: TicketDTO
-    var auto_renews: Bool?
-    var employer_contribution: Double?
-    var add_on_price: Double?
-    var add_ons: String?
-
-    private enum ExtraKeys: String, CodingKey { case auto_renews, employer_contribution, add_on_price, add_ons }
-
-    init(_ e: TicketEntity) {
-        base = TicketDTO(e, userID: "")
-        auto_renews = e.autoRenews
-        employer_contribution = e.employerContribution
-        add_on_price = e.addOnPrice
-        add_ons = e.addOnsRaw
-    }
-
-    init(from decoder: Decoder) throws {
-        base = try TicketDTO(from: decoder)
-        let c = try decoder.container(keyedBy: ExtraKeys.self)
-        auto_renews = try c.decodeIfPresent(Bool.self, forKey: .auto_renews)
-        employer_contribution = try c.decodeIfPresent(Double.self, forKey: .employer_contribution)
-        add_on_price = try c.decodeIfPresent(Double.self, forKey: .add_on_price)
-        add_ons = try c.decodeIfPresent(String.self, forKey: .add_ons)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try base.encode(to: encoder)
-        var c = encoder.container(keyedBy: ExtraKeys.self)
-        try c.encodeIfPresent(auto_renews, forKey: .auto_renews)
-        try c.encodeIfPresent(employer_contribution, forKey: .employer_contribution)
-        try c.encodeIfPresent(add_on_price, forKey: .add_on_price)
-        try c.encodeIfPresent(add_ons, forKey: .add_ons)
-    }
-
-    func apply(to e: TicketEntity) {
-        base.apply(to: e)
-        if let auto_renews { e.autoRenews = auto_renews }
-        if let employer_contribution { e.employerContribution = max(0, employer_contribution) }
-        if let add_on_price { e.addOnPrice = max(0, add_on_price) }
-        if let add_ons { e.addOnsRaw = add_ons }
+/// A version-1 backup has no phase-2 columns (nil after decoding). Restoring such a row over an existing entity must not
+/// reset category, "ohne Ticket nicht gefahren", auto-renewal, employer contribution or add-ons to their defaults.
+private extension TicketDTO {
+    func keepingLocalExtras(of e: TicketEntity) -> TicketDTO {
+        var dto = self
+        if dto.is_monthly_payment == nil { dto.is_monthly_payment = e.isMonthlyPayment }
+        if dto.auto_renews == nil { dto.auto_renews = e.autoRenews }
+        if dto.employer_contribution == nil { dto.employer_contribution = e.employerContribution }
+        if dto.add_on_price == nil { dto.add_on_price = e.addOnPrice }
+        if dto.add_ons == nil { dto.add_ons = e.addOnsRaw }
+        return dto
     }
 }
 
-/// Trip row: all `TripDTO` columns plus category and "ohne Ticket nicht gefahren".
-struct RepBackupTrip: Codable {
-    var base: TripDTO
-    var category: String?
-    var is_induced: Bool?
-
-    private enum ExtraKeys: String, CodingKey { case category, is_induced }
-
-    init(_ e: TripEntity) {
-        base = TripDTO(e, userID: "")
-        category = e.categoryRaw
-        is_induced = e.isInduced
-    }
-
-    init(from decoder: Decoder) throws {
-        base = try TripDTO(from: decoder)
-        let c = try decoder.container(keyedBy: ExtraKeys.self)
-        category = try c.decodeIfPresent(String.self, forKey: .category)
-        is_induced = try c.decodeIfPresent(Bool.self, forKey: .is_induced)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try base.encode(to: encoder)
-        var c = encoder.container(keyedBy: ExtraKeys.self)
-        try c.encodeIfPresent(category, forKey: .category)
-        try c.encodeIfPresent(is_induced, forKey: .is_induced)
-    }
-
-    func apply(to e: TripEntity) {
-        base.apply(to: e)
-        if let category { e.categoryRaw = TripCategory(rawValue: category) == nil ? "" : category }
-        if let is_induced { e.isInduced = is_induced }
+private extension TripDTO {
+    func keepingLocalExtras(of e: TripEntity) -> TripDTO {
+        var dto = self
+        if dto.category == nil { dto.category = e.categoryRaw }
+        if dto.is_induced == nil { dto.is_induced = e.isInduced }
+        return dto
     }
 }
 
-/// Favourite row: all `FavoriteDTO` columns plus the category applied to trips logged from it.
-struct RepBackupFavorite: Codable {
-    var base: FavoriteDTO
-    var category: String?
-
-    private enum ExtraKeys: String, CodingKey { case category }
-
-    init(_ e: FavoriteRouteEntity) {
-        base = FavoriteDTO(e, userID: "")
-        category = e.categoryRaw
-    }
-
-    init(from decoder: Decoder) throws {
-        base = try FavoriteDTO(from: decoder)
-        let c = try decoder.container(keyedBy: ExtraKeys.self)
-        category = try c.decodeIfPresent(String.self, forKey: .category)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        try base.encode(to: encoder)
-        var c = encoder.container(keyedBy: ExtraKeys.self)
-        try c.encodeIfPresent(category, forKey: .category)
-    }
-
-    func apply(to e: FavoriteRouteEntity) {
-        base.apply(to: e)
-        if let category { e.categoryRaw = TripCategory(rawValue: category) == nil ? "" : category }
-    }
-}
-
-/// A used KlimaTicket benefit ("Vorteilswelt"), new in backup version 2.
-struct RepBackupBenefit: Codable {
-    var id: UUID
-    var date: Date
-    var partner_id: String
-    var title: String
-    var saved_eur: Double
-    var note: String?
-    var created_at: Date
-    var updated_at: Date
-    var deleted_at: Date?
-
-    init(_ e: BenefitEntity) {
-        id = e.id; date = e.date; partner_id = e.partnerID; title = e.title; saved_eur = e.savedEUR; note = e.note
-        created_at = e.createdAt; updated_at = e.updatedAt; deleted_at = e.deletedAt
-    }
-
-    func apply(to e: BenefitEntity) {
-        e.date = date; e.partnerID = partner_id; e.title = title; e.savedEUR = max(0, saved_eur); e.note = note ?? ""
-        e.createdAt = created_at; e.updatedAt = updated_at; e.deletedAt = deleted_at
+private extension FavoriteDTO {
+    func keepingLocalExtras(of e: FavoriteRouteEntity) -> FavoriteDTO {
+        var dto = self
+        if dto.category == nil { dto.category = e.categoryRaw }
+        return dto
     }
 }

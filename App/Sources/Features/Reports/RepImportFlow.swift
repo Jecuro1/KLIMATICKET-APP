@@ -80,8 +80,9 @@ struct RepImportSteps: View {
                                  : AnyTransition.identity)
         }
         .scrollIndicators(.hidden)
+        .scrollEdgeEffectStyle(.soft, for: .bottom)
         .background { SetBackdrop(skyOpacity: 0.5, fadeEnd: 0.42) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
+        .safeAreaBar(edge: .bottom) { bottomBar }
         .navigationTitle("Fahrten importieren")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
@@ -105,7 +106,7 @@ struct RepImportSteps: View {
     private var stepContent: some View {
         switch model.step {
         case .pick:
-            RepImportPickStep(model: model)
+            RepImportPickStep(model: model, templateURL: templateURL)
         case .mapping:
             RepImportMappingStep(model: model)
         case .preview:
@@ -137,7 +138,7 @@ struct RepImportSteps: View {
 
     @ViewBuilder
     private var bottomBar: some View {
-        RepBottomBar {
+        RepBottomBar(fades: false) {
             switch model.step {
             case .pick:
                 Button {
@@ -146,14 +147,6 @@ struct RepImportSteps: View {
                     Label("CSV-Datei auswählen", systemImage: "doc.badge.plus")
                 }
                 .buttonStyle(.primary)
-                if let templateURL {
-                    ShareLink(item: templateURL, preview: SharePreview("KlimaBilanz-Vorlage.csv")) {
-                        Label("Vorlage für Excel & Numbers", systemImage: "tablecells")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.glass)
-                }
             case .mapping:
                 Button {
                     go { model.buildPreview(existing: trips) }
@@ -173,28 +166,52 @@ struct RepImportSteps: View {
                 Button {
                     go { model.performImport(context: context) }
                 } label: {
-                    Text(count == 0 ? "Keine Fahrten zum Importieren" : "\(RepText.trips(count)) importieren · \(Format.euroPrecise(model.importValue))")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                    importLabel(count: count)
                 }
                 .buttonStyle(.primary)
                 .disabled(count == 0)
+                .accessibilityLabel(count == 0 ? "Keine Fahrten zum Importieren" : "\(RepText.trips(count)) importieren")
+                .accessibilityValue(count == 0 ? "" : Format.euroPrecise(model.importValue))
             case .result:
-                Button("Fertig") { onClose() }
-                    .buttonStyle(.primary)
-                if !model.isUndone, !model.importedTrips.isEmpty {
-                    Button(role: .destructive) {
-                        go { model.undo(context: context) }
-                    } label: {
-                        Label("Import rückgängig machen", systemImage: "arrow.uturn.backward")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                HStack(spacing: Theme.Spacing.xs) {
+                    if !model.isUndone, !model.importedTrips.isEmpty {
+                        RepGlassCapsuleButton(title: "Rückgängig", symbol: "arrow.uturn.backward", tint: Theme.negative,
+                                              role: .destructive) {
+                            go { model.undo(context: context) }
+                        }
+                        .accessibilityHint("Entfernt alle eben importierten Fahrten wieder")
+                        .transition(.move(edge: .leading).combined(with: .opacity))
                     }
-                    .buttonStyle(.glass)
-                    .tint(Theme.negative)
+                    Button {
+                        onClose()
+                    } label: {
+                        Label("Fertig", systemImage: "checkmark")
+                    }
+                    .buttonStyle(.primary)
                 }
             }
         }
+    }
+
+    private func importLabel(count: Int) -> some View {
+        HStack(spacing: Theme.Spacing.s) {
+            if count == 0 {
+                Text("Keine Fahrten zum Importieren")
+            } else {
+                Image(systemName: "square.and.arrow.down")
+                    .font(.headline.weight(.bold))
+                Text("\(RepText.trips(count)) importieren")
+                Capsule()
+                    .fill(Theme.onAccent.opacity(0.4))
+                    .frame(width: 1, height: 22)
+                Text(Format.euroPrecise(model.importValue))
+                    .monospacedDigit()
+                    .contentTransition(.numericText(value: model.importValue))
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
+        .padding(.horizontal, Theme.Spacing.m)
     }
 
     private var missingHint: String {
@@ -225,6 +242,8 @@ struct RepImportSteps: View {
 
 struct RepImportPickStep: View {
     let model: RepImportModel
+    /// Ready-to-fill CSV template (shared via the share sheet: Dateien, Mail, AirDrop …).
+    var templateURL: URL?
 
     var body: some View {
         RepStepHeader(step: 1, total: 3, title: "Fahrten importieren",
@@ -261,6 +280,26 @@ struct RepImportPickStep: View {
                 RepFeatureRow(symbol: "doc.on.doc.fill", tint: Theme.gold, title: "Nichts doppelt",
                               message: "Fahrten, die du schon hast (gleicher Tag, Strecke und Preis), erkennen wir vorab.")
             }
+        }
+
+        if let templateURL {
+            VStack(spacing: Theme.Spacing.xs) {
+                Text("Noch keine Tabelle?")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+                ShareLink(item: templateURL, preview: SharePreview("KlimaBilanz-Vorlage.csv")) {
+                    Label("Vorlage für Excel & Numbers", systemImage: "tablecells")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                        .padding(.horizontal, Theme.Spacing.m)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .accessibilityHint("Teilt eine CSV-Vorlage mit Beispielzeilen")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.top, Theme.Spacing.xxs)
         }
     }
 }

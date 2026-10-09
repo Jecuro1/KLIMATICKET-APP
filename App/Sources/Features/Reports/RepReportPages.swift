@@ -614,8 +614,15 @@ struct RepAnalysisPage: View {
                 }
                 HStack(alignment: .top, spacing: 12) {
                     RepPrintPanel(title: "Verkehrsmittel") {
-                        RepModeBars(data: data)
-                            .frame(maxHeight: .infinity, alignment: .top)
+                        VStack(alignment: .leading, spacing: 10) {
+                            RepModeBars(data: data)
+                            Spacer(minLength: 0)
+                            // With up to four modes the panel has room under the bars (the records panel sets the height).
+                            if (1...4).contains(data.modes.count) {
+                                RepModeDonutRow(data: data)
+                            }
+                        }
+                        .frame(maxHeight: .infinity, alignment: .top)
                     }
                     .frame(maxHeight: .infinity)
                     RepPrintPanel(title: "Rekorde") {
@@ -813,6 +820,49 @@ struct RepModeBars: View {
     }
 }
 
+/// Mode split at a glance: a small donut (share of the trip value) with the trip count inside, plus a one-line summary.
+struct RepModeDonutRow: View {
+    let data: RepReportData
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Chart(data.modes) { line in
+                SectorMark(angle: .value("Wert", line.value), innerRadius: .ratio(0.64), angularInset: 1.2)
+                    .cornerRadius(2)
+                    .foregroundStyle(Theme.modeColor(line.mode))
+            }
+            .chartLegend(.hidden)
+            .frame(width: 50, height: 50)
+            .overlay {
+                VStack(spacing: -1) {
+                    Text("\(data.summary.tripCount)")
+                        .font(RepPrint.font(12, .bold, rounded: true))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("Fahrten")
+                        .font(RepPrint.font(5.5, .semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(width: 30)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                if let top = data.modes.first {
+                    Text("\(top.mode.displayName) bringt \(Format.percent(top.share)) des Werts")
+                        .font(RepPrint.font(8.5, .semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                Text(data.modes.count == 1 ? "1 Verkehrsmittel genutzt" : "\(data.modes.count) Verkehrsmittel genutzt")
+                    .font(RepPrint.font(7.5))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
 struct RepRecordsList: View {
     let data: RepReportData
 
@@ -930,6 +980,8 @@ struct RepTablePage: View {
     static let columnHeaderHeight: Double = 20
     static let firstHeaderHeight: Double = 64
     static let totalHeight: Double = 30
+    static let kmColumn: CGFloat = 36
+    static let valueColumn: CGFloat = 60
 
     /// Usable table height (below the column header) on the first and the following table pages.
     static var firstCapacity: Double { bodyHeight - firstHeaderHeight - columnHeaderHeight }
@@ -969,8 +1021,8 @@ struct RepTablePage: View {
             Text("Datum").frame(width: 38, alignment: .leading)
             Text("Strecke").frame(maxWidth: .infinity, alignment: .leading)
             Text("Verkehrsmittel").frame(width: 78, alignment: .leading)
-            Text("km").frame(width: 34, alignment: .trailing)
-            Text("Wert").frame(width: 56, alignment: .trailing)
+            Text("km").frame(width: Self.kmColumn, alignment: .trailing)
+            Text("Wert").frame(width: Self.valueColumn, alignment: .trailing)
         }
         .font(RepPrint.font(6.5, .semibold))
         .tracking(0.4)
@@ -1038,12 +1090,12 @@ struct RepTablePage: View {
             Text(trip.totalDistanceKm > 0 ? Format.number(trip.totalDistanceKm, decimals: trip.totalDistanceKm < 10 ? 1 : 0) : "–")
                 .monospacedDigit()
                 .foregroundStyle(Theme.textSecondary)
-                .frame(width: 34, alignment: .trailing)
+                .frame(width: Self.kmColumn, alignment: .trailing)
             Text(Format.euroPrecise(trip.totalValue))
                 .monospacedDigit()
                 .fontWeight(.semibold)
                 .foregroundStyle(Theme.textPrimary)
-                .frame(width: 56, alignment: .trailing)
+                .frame(width: Self.valueColumn, alignment: .trailing)
         }
         .font(RepPrint.font(8))
         .padding(.horizontal, 8)
@@ -1055,12 +1107,15 @@ struct RepTablePage: View {
         HStack(spacing: 8) {
             Text("Summe · \(RepText.trips(summary.tripCount))")
                 .frame(maxWidth: .infinity, alignment: .leading)
+            // Same column widths as the trip rows, so km and value line up with the columns above.
             Text(Format.number(summary.distanceKm))
-                .frame(width: 60, alignment: .trailing)
+                .frame(width: Self.kmColumn, alignment: .trailing)
             Text(Format.euroPrecise(summary.totalValue))
-                .frame(width: 70, alignment: .trailing)
+                .frame(width: Self.valueColumn, alignment: .trailing)
         }
         .font(RepPrint.font(9, .bold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
         .monospacedDigit()
         .foregroundStyle(Theme.textPrimary)
         .padding(.horizontal, 8)

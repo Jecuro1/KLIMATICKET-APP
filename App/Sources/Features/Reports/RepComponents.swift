@@ -97,23 +97,55 @@ struct RepBadge: View {
 }
 
 /// Bottom action area above the home indicator (primary CTA + optional secondary action).
+/// Over a SwiftUI scroll view it sits in `.safeAreaBar` (the system scroll-edge blur does the separation, `fades: false`);
+/// over UIKit content (the PDF preview) it brings its own fade into the sheet background.
 struct RepBottomBar<Content: View>: View {
+    var fades: Bool = true
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(spacing: Theme.Spacing.xs) {
             content
         }
-        .padding(.horizontal, Theme.Spacing.screen)
-        .padding(.top, Theme.Spacing.s)
-        .padding(.bottom, Theme.Spacing.xs)
+        .padding(.horizontal, Theme.Spacing.cardGutter)
+        .padding(.top, Theme.Spacing.xs)
+        .padding(.bottom, Theme.Spacing.xxs)
         .frame(maxWidth: .infinity)
         .background {
-            LinearGradient(colors: [Theme.sheetBackground.opacity(0), Theme.sheetBackground.opacity(0.92), Theme.sheetBackground],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            if fades {
+                LinearGradient(stops: [.init(color: Theme.sheetBackground.opacity(0), location: 0),
+                                       .init(color: Theme.sheetBackground.opacity(0.94), location: 0.32),
+                                       .init(color: Theme.sheetBackground, location: 1)],
+                               startPoint: .top, endPoint: .bottom)
+                    .padding(.top, -Theme.Spacing.l)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+            }
         }
+    }
+}
+
+/// Secondary action next to the primary CTA: a Liquid Glass capsule of the same height ("Rückgängig").
+struct RepGlassCapsuleButton: View {
+    var title: String
+    var symbol: String
+    var tint: Color = Theme.accentText
+    var role: ButtonRole? = nil
+    var action: () -> Void
+
+    var body: some View {
+        Button(role: role, action: action) {
+            Label(title, systemImage: symbol)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .padding(.horizontal, Theme.Spacing.l)
+                .frame(minHeight: 56)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
 

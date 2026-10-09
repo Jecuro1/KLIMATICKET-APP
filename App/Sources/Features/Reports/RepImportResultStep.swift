@@ -20,7 +20,7 @@ struct RepImportResultStep: View {
             undoneCard
         } else if let summary {
             if let before = summary.before, let after = summary.after, after > before + 0.0001 {
-                impactCard(before: before, after: after, year: summary.ticketYear)
+                impactCard(before: before, after: after, year: summary.ticketYear, price: summary.ticketPrice)
             }
             detailsCard(summary)
         }
@@ -87,7 +87,7 @@ struct RepImportResultStep: View {
 
     // MARK: Cards
 
-    private func impactCard(before: Double, after: Double, year: String?) -> some View {
+    private func impactCard(before: Double, after: Double, year: String?, price: Double?) -> some View {
         GlassCard(padding: Theme.Spacing.l) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Kicker(text: year.map { "Ticketjahr \($0)" } ?? "Dein Ticket")
@@ -111,7 +111,9 @@ struct RepImportResultStep: View {
                 RepImpactRail(before: before, after: after)
                     .frame(height: 10)
                 HStack {
-                    Text("vorher \(Format.percent(before))")
+                    if let price, price > 0 {
+                        Text("Gipfel \(Format.euro(price, decimals: 0))")
+                    }
                     Spacer()
                     Label(after >= 1 ? "Gipfel erreicht" : "+ \(Format.number((after - before) * 100, decimals: 1)) Prozentpunkte",
                           systemImage: after >= 1 ? "flag.fill" : "arrow.up.right")

@@ -11,7 +11,7 @@ struct RepImportSettingsRow: View {
         Button {
             isPresented = true
         } label: {
-            SetRowLabel(title: "Fahrten importieren (CSV)", subtitle: "Aus Excel, Numbers oder dem KlimaTicket Tracker",
+            SetRowLabel(title: "Fahrten importieren (CSV)", subtitle: "Aus Excel, Numbers oder anderen Apps",
                         symbol: "square.and.arrow.down.on.square.fill", tint: Theme.modeColor(.sBahn))
         }
         .sheet(isPresented: $isPresented) {
