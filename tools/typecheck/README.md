@@ -98,7 +98,15 @@ CoreMotion, PDFKit, CoreSpotlight, the Objective-C parts of StoreKit / PhotosUI 
 `NS_SWIFT_NONISOLATED` → `nonisolated`, completion-handler methods also get their synthesised `async`
 variant, `NS_ENUM` → `Int` enum, `NS_OPTIONS` → `OptionSet`, `NS_TYPED_ENUM` → `RawRepresentable` struct,
 `NS_ERROR_ENUM` → error struct with `Code`. `@optional` delegate methods are protocol requirements with
-default implementations. They only cover what the app and the generated SwiftUI stubs use.
+default implementations. They cover what the app and the generated SwiftUI stubs use, plus the UIKit API
+SwiftUI code commonly reaches for (`Stubs/UIKit/UIKitInterop.swift`: `UILabel`, `UITextField`, `UIScrollView`,
+`UIControl`, Auto Layout anchors/`NSLayoutConstraint`/`UILayoutPriority`, `UIView.layer` (`Stubs/QuartzCore`:
+`CALayer`, `CAGradientLayer`, `CAShapeLayer`), appearance proxies and `UINavigationBarAppearance`,
+`NSAttributedString.Key.font`/`.foregroundColor`/..., `NSParagraphStyle`, gesture recognizers,
+`sheetPresentationController` detents, `UIImagePickerController`, `UIActivity.ActivityType` constants).
+Imported C functions and the Objective-C factory rules are mirrored too: C functions are `@discardableResult`
+(`SecItemAdd(...)` without using the status is no warning), and factory class methods that the importer turns
+into initializers are unavailable (`UIImage.systemImageNamed(_:)` is an error, `UIImage(systemName:)` is the API).
 
 ### 3. Foundation: Linux vs. Darwin
 
@@ -109,10 +117,13 @@ imported into every file (`-import-module FoundationShim`), so `import Foundatio
   (`LocalizedStringResource`, `String(localized:)`, `String.LocalizationValue`, the `_FormatSpecifiable`
   interpolations, `URL.applicationSupportDirectory`, `URL.startAccessingSecurityScopedResource()`,
   `localizedStandardContains` for `#Predicate`, Combine publishers of `NotificationCenter`/`Timer`/`URLSession`,
-  `JSONDecoder: TopLevelDecoder`, ...);
+  `JSONDecoder: TopLevelDecoder`, `NotificationCenter.notifications(named:)`, `URLSession.bytes(from:)`/`.lines`,
+  `AttributedString(markdown:)`, `Measurement`/`PersonNameComponents` `.formatted(...)`, ...). Members Linux
+  Foundation already has are *not* copied (`URL.temporaryDirectory`/`homeDirectory` would become ambiguous);
 * `Stubs/FoundationShim_ObjC` hand-writes Objective-C Foundation API (`NSItemProvider`, `NSUserActivity`,
   `UndoManager`, `RelativeDateTimeFormatter`, `PersonNameComponentsFormatter`, `FileManager.containerURL(...)`,
-  `ProcessInfo.isLowPowerModeEnabled`, `NSData.decompressed(using:)`, `Selector`) and the CoreFoundation
+  `ProcessInfo.isLowPowerModeEnabled`/`thermalState`, `NSUbiquitousKeyValueStore`, `ListFormatter`,
+  `DateComponentsFormatter` (shadows Linux' unavailable one), `NSData.decompressed(using:)`, `Selector`) and the CoreFoundation
   type names (`CFString`, `CFData`, `CFDictionary`, ... as aliases of the NS classes, so `x as CFData` works);
 * `FoundationShim` re-exports `FoundationNetworking` (on Linux `URLSession` lives there).
 
@@ -150,6 +161,11 @@ built against the toolchain's own swift-syntax (`usr/lib/swift/host`) and loaded
 
 `@Observable` / `@ObservationIgnored` and `#Predicate` use the toolchain's real `ObservationMacros` and
 `FoundationMacros` plugins.
+
+An error inside a macro expansion (e.g. `@Query(filter: #Predicate<TicketEntity> ...)` on a `[TripEntity]`
+property, `@AppStorage` inside an `@Observable` class, a wrong `@Entry` default) is reported at the macro use in
+the source file - where Xcode shows it - with `(in expansion of macro 'X')` appended; the position in the
+generated buffer is kept as a note (`--notes`).
 
 ### 6. Compilation
 
@@ -202,22 +218,75 @@ Further checks:
   `@available(iOS 26.1, *)` declarations), `UIApplication.shared` in `Shared/` (widget only), missing `return`,
   use before initialization, exclusivity violations.
 
+## Mutation testing
+
+`mutation/run_mutations.py` applies realistic mistakes of the kind agents make, one at a time, to a pristine
+copy of `26aec96` and checks that the harness reports an error in the mutated file (`summary.py` prints the
+table). 226 mutations in three catalogues (edits of existing files; new files as good/bad pairs whose good
+variants are compiled together as a control run that must stay at 0 errors; about 40 min with 4 jobs, every
+run is a full compile):
+
+| mistakes | n |
+|---|---|
+| wrong / missing argument labels and signatures (SwiftUI modifiers, Charts marks, MapKit content, memberwise inits) | 30 |
+| non-existent API (`glassEffect(_:in:isEnabled:)`, `Glass.thick`, `.navigationTitleDisplayMode`), wrong enum cases, misspelled `Theme` tokens | 15 |
+| iOS 26.1+/26.4 API without `#available` (also inside `#available(iOS 26.0, *)` / `@available(iOS 26.1, *)`), watchOS-only `.accessoryCorner`, app-only API in `Shared/` | 8 |
+| type mismatches, optionals (`Text(String?)`), `Binding<Station?>` for `(Station) -> Void`, `Bool` for `Binding<Bool>`, `$app` without `@Bindable`, non-`ShapeStyle` | 26 |
+| missing `try` / `await`, async call in a sync closure, main-actor isolation, implicit `self` in escaping closures, mutating a View | 15 |
+| non-exhaustive `switch`, result-builder misuse (`if let` on non-optional, `guard`, `print` in a `ViewBuilder`, missing `@ViewBuilder`), missing `return` | 7 |
+| missing imports, duplicate types / initializers, access control, synthesized conformances, closure arity | 15 |
+| SwiftData (`#Predicate` on unknown properties / unsupported functions / optionals, `@Query` type mismatch, `FetchDescriptor`, `@Attribute`, `@Relationship`), `@Observable` misuse | 17 |
+| macros (`#Preview(trait:)`, errors in `#Preview` bodies, `@Entry` misuse) | 5 |
+| WidgetKit (`TimelineProvider` / `AppIntentTimelineProvider` signatures, `Timeline`, configurations, `containerBackground`) | 11 |
+| App Intents (`perform()` result types, `title: String`, `@Parameter` types/labels, `AppEnum`, `AppShortcut`) | 9 |
+| other SwiftUI modifiers (`spring(duration:damping:)`, `symbolEffect(trigger:)`, `onDelete` on `List`, `sheet(item:)` with `String?`, ...) | 17 |
+| hand-written Objective-C stubs (UIKit, CoreLocation, UserNotifications, AuthenticationServices, CoreMotion, ImageIO, Security, CryptoKit, QuartzCore, Auto Layout) | 42 |
+| Foundation (Darwin-only API, `URLSession`, formatting) | 9 |
+
+Result (round 1): **226 / 226 caught, both control runs clean**, plus one check that valid-but-warning code
+(`UIDevice.current` from a nonisolated function, `@preconcurrency` in Swift 5 mode) is *not* an error.
+Before the fixes of this round the harness caught 196 of the 201 mutations that existed then (97.5 %) and the
+wave-3 control run had one false positive:
+
+* missed - `UIImage.systemImageNamed(_:)` was accepted (stub declared the Objective-C factory method; the
+  importer only exposes `init?(systemName:)`) → now `unavailable`, as in Xcode;
+* missed (reported in the wrong file) - errors inside macro expansions (`@Query(filter: #Predicate<TicketEntity>)`
+  on `[TripEntity]`, `@AppStorage` in an `@Observable` class, `@Entry` with a wrong default / outside
+  `EnvironmentValues` / without a default) were printed with the generated buffer `@__swiftmacro_...` as
+  path → `run.py` maps them to the macro's line in the source file;
+* false positive - `NotificationCenter.notifications(named:)` → added to the Foundation shim.
+
+A probe of common valid Darwin Foundation and UIKit-interop code found further false positives (all fixed, see
+2. and 3.): `URL.temporaryDirectory`/`homeDirectory` ambiguous, `URLSession.bytes(from:)`/`.lines`,
+`AttributedString(markdown:)`, `Measurement`/`PersonNameComponents` `.formatted`, `ProcessInfo.thermalState`,
+`NSUbiquitousKeyValueStore`, `ListFormatter`, `DateComponentsFormatter`, `UILabel`, Auto Layout, `view.layer`,
+appearance proxies, sheet detents, `UIImagePickerController`. The third catalogue checks that this new API is
+not looser than the SDK (`layer.borderColor = UIColor`, `[.medium]` detents, a picker delegate without
+`UINavigationControllerDelegate`, ...).
+
+Three planned mutations turned out to be valid code and are excluded: `Task.detached { app.selectedTab = ... }`
+inside a `View` (the view's isolation comes from the `@preconcurrency` `View` protocol, so Swift 5 mode only
+warns), dropping `MainActor.run` in the `AppDelegate` (the class is inferred `@MainActor` from
+`UIApplicationDelegate`), and `@AppStorage` of `Date` (supported since iOS 18).
+
 ## Limitations
 
 * Not a build: no linking, asset catalogs, Info.plist / entitlements, code signing, App Intents metadata
   extraction (e.g. the "every App Shortcut phrase must contain `\(.applicationName)`" check), Metal, or
   optimizer-only diagnostics (os_log argument constant-folding).
 * `#if targetEnvironment(simulator)` is evaluated as false (device branch only); `#if DEBUG` is not defined.
-* Hand-written stubs cover only what is used today. Using new UIKit / CoreLocation / UserNotifications /
-  Security / MapKit / ... API produces `has no member` / `cannot find` errors that are stub gaps, not code
-  bugs - check the real header and add the declaration (see below). Objective-C `@optional` requirements
+* Hand-written stubs cover what is used today plus the common SwiftUI-interop UIKit API (see 2.). Using other
+  UIKit / CoreLocation / UserNotifications / Security / MapKit / ... API produces `has no member` /
+  `cannot find` errors that are stub gaps, not code bugs - check the real header and add the declaration
+  (see below). Frameworks without any stub (AVFoundation, Network, Photos, CoreData, ...) fail at `import`. Objective-C `@optional` requirements
   are modelled with default implementations, so a delegate method with a misspelled selector is not flagged
   (Xcode only warns about near-misses, too).
 * Generated stubs come from the 26.4 SDK; 26.5-only API is missing. Pruned declarations (`PRUNED.txt`) are
   missing as well - e.g. CoreData `@FetchRequest`, `photosPicker(..., photoLibrary:)`, SiriKit
   `IntentConfiguration`.
 * Darwin-only Foundation behaviour beyond the shimmed API: anything swift-corelibs-foundation declares
-  differently from Darwin can differ (rare). `URLSession` & co. are Linux FoundationNetworking.
+  differently from Darwin can differ (rare). `URLSession` & co. are Linux FoundationNetworking, e.g.
+  `URLSessionConfiguration.waitsForConnectivity` is get-only there (settable on iOS).
 * The macro stand-ins approximate the type-level effect only: `@Model` does not convert stored properties
   into computed ones, `@Query`'s storage access level is not Apple's (internal here), `@Animatable` does not
   synthesise `animatableData`.
@@ -241,6 +310,8 @@ Further checks:
   (a whole replacement class shadows Linux Foundation's, see `PersonNameComponentsFormatter`).
 * **Missing SwiftUI/Charts/... API**: these are generated; look in `Stubs/<M>/PRUNED.txt` why it was dropped
   (usually a type from an unstubbed framework) and stub that type, or adjust `gen/transform.py`.
+* **After changing a stub**, run `mutation/run_mutations.py` (catches stubs that became looser than the SDK)
+  and the calibration commits (catches new false positives).
 * **A new framework**: hand-written → create `Stubs/<Name>/<Name>.swift` and add `(<Name>, [deps])` to
   `MODULES` in `build_stubs.py`; generated from the SDK → also add it to `MODULES` in `gen/transform.py`
   (with `objc=` naming the hand-written module that stands in for its Clang part) and to
@@ -261,3 +332,4 @@ Further checks:
 | `Stubs/<M>/<M>.swiftinterface`, `PRUNED.txt` | generated stubs (git-ignored) |
 | `Stubs/KBAvailability/` | Clang module declaring the availability domains |
 | `Macros/<Plugin>/` | macro plugin sources |
+| `mutation/` | mutation tests: catalogues of realistic mistakes + runner (`run_mutations.py`, `summary.py`) |

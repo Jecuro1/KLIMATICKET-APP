@@ -11,7 +11,8 @@ type AttributedString.LocalizationOptions
 type PredicateExpressions.StringLocalizedStandardContains
 member String init\(localized
 member AttributedString init\(localized
-member URL static var (documentsDirectory|applicationSupportDirectory|cachesDirectory|temporaryDirectory|libraryDirectory|homeDirectory|applicationDirectory|userDirectory|downloadsDirectory|desktopDirectory|moviesDirectory|musicDirectory|picturesDirectory|sharedPublicDirectory|trashDirectory|currentDirectory)\b
+# (temporaryDirectory, homeDirectory and currentDirectory() exist in Linux Foundation already)
+member URL static var (documentsDirectory|applicationSupportDirectory|cachesDirectory|libraryDirectory|applicationDirectory|userDirectory|downloadsDirectory|desktopDirectory|moviesDirectory|musicDirectory|picturesDirectory|sharedPublicDirectory|trashDirectory|currentDirectory)\b
 member PredicateExpressions build_localizedStandardContains
 type AttributedString.FormattingOptions
 type AttributedString.InterpolationOptions
@@ -23,6 +24,9 @@ conform TopLevelDecoder
 conform Scheduler
 type NotificationCenter.Publisher
 member NotificationCenter func publisher\(for
+# AsyncSequence of notifications (iOS 15): for await n in NotificationCenter.default.notifications(named:)
+type NotificationCenter.Notifications
+member NotificationCenter func notifications\(named
 type Timer.TimerPublisher
 member Timer static func publish\(
 type URLSession.DataTaskPublisher
@@ -32,3 +36,26 @@ type RunLoop.SchedulerOptions
 type OperationQueue.SchedulerTimeType
 type OperationQueue.SchedulerOptions
 member URL func (startAccessingSecurityScopedResource|stopAccessingSecurityScopedResource)\b
+# async URLSession byte streams (iOS 15): for try await line in URLSession.shared.bytes(from:).lines
+type URLSession.AsyncBytes
+member URLSession func bytes\(
+# AttributedString(markdown:) (iOS 15)
+type AttributedString.MarkdownParsingOptions
+member AttributedString init(<[^>]*>)?\(markdown
+# Measurement / PersonNameComponents .formatted(...) (iOS 15)
+type Measurement.FormatStyle
+type MeasurementFormatUnitUsage
+member Measurement func formatted
+member FormatStyle static func measurement
+type PersonNameComponents.FormatStyle
+member PersonNameComponents func formatted
+member FormatStyle static func name\(style
+# async byte sequences -> lines / characters / unicodeScalars (iOS 15)
+type AsyncLineSequence
+type AsyncCharacterSequence
+type AsyncUnicodeScalarSequence
+member AsyncSequence var (lines|characters|unicodeScalars):
+type URL.AsyncBytes
+member URL var (lines|resourceBytes):
+type FileHandle.AsyncBytes
+member FileHandle var bytes:

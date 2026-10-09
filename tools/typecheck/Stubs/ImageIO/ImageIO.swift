@@ -1,5 +1,6 @@
 // Hand-written stand-in for ImageIO (C API, ImageIO.framework/Headers), names as
 // imported into Swift for the iOS 26 SDK. CF types are aliases (see FoundationShim_ObjC).
+// Imported C functions are implicitly @discardableResult.
 
 @_exported import Foundation
 @_exported import FoundationShim
@@ -12,12 +13,19 @@ open class CGImageDestination: @unchecked Sendable {}
 open class CGImageMetadata: @unchecked Sendable {}
 
 // CGImageSource.h
+@discardableResult
 public func CGImageSourceCreateWithData(_ data: CFData, _ options: CFDictionary?) -> CGImageSource? { _ioStub() }
+@discardableResult
 public func CGImageSourceCreateWithURL(_ url: CFURL, _ options: CFDictionary?) -> CGImageSource? { _ioStub() }
+@discardableResult
 public func CGImageSourceGetCount(_ isrc: CGImageSource) -> Int { _ioStub() }
+@discardableResult
 public func CGImageSourceGetType(_ isrc: CGImageSource) -> CFString? { _ioStub() }
+@discardableResult
 public func CGImageSourceCreateImageAtIndex(_ isrc: CGImageSource, _ index: Int, _ options: CFDictionary?) -> CGImage? { _ioStub() }
+@discardableResult
 public func CGImageSourceCreateThumbnailAtIndex(_ isrc: CGImageSource, _ index: Int, _ options: CFDictionary?) -> CGImage? { _ioStub() }
+@discardableResult
 public func CGImageSourceCopyPropertiesAtIndex(_ isrc: CGImageSource, _ index: Int, _ options: CFDictionary?) -> CFDictionary? { _ioStub() }
 
 public let kCGImageSourceCreateThumbnailFromImageIfAbsent: CFString = "kCGImageSourceCreateThumbnailFromImageIfAbsent"
@@ -32,11 +40,14 @@ public let kCGImagePropertyPixelWidth: CFString = "PixelWidth"
 public let kCGImagePropertyPixelHeight: CFString = "PixelHeight"
 
 // CGImageDestination.h
+@discardableResult
 public func CGImageDestinationCreateWithData(_ data: CFMutableData, _ type: CFString, _ count: Int, _ options: CFDictionary?) -> CGImageDestination? { _ioStub() }
+@discardableResult
 public func CGImageDestinationCreateWithURL(_ url: CFURL, _ type: CFString, _ count: Int, _ options: CFDictionary?) -> CGImageDestination? { _ioStub() }
 public func CGImageDestinationAddImage(_ idst: CGImageDestination, _ image: CGImage, _ properties: CFDictionary?) { _ioStub() }
 public func CGImageDestinationAddImageFromSource(_ idst: CGImageDestination, _ isrc: CGImageSource, _ index: Int, _ properties: CFDictionary?) { _ioStub() }
 public func CGImageDestinationSetProperties(_ idst: CGImageDestination, _ properties: CFDictionary?) { _ioStub() }
+@discardableResult
 public func CGImageDestinationFinalize(_ idst: CGImageDestination) -> Bool { _ioStub() }
 
 public let kCGImageDestinationLossyCompressionQuality: CFString = "kCGImageDestinationLossyCompressionQuality"
