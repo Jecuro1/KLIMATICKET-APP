@@ -26,6 +26,8 @@ struct DashHeader: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             DashAvatarButton(initials: avatarInitials, isSignedIn: isSignedIn, hasUpdate: hasUpdate, action: onAvatar)
+                // Einstellungen grows out of the avatar (docs/MOTION.md §9).
+                .zoomSource(id: DashZoomID.settings, cornerRadius: 22)
         }
     }
 
@@ -44,7 +46,7 @@ struct DashHeader: View {
                 .padding(.vertical, 10)
                 .contentShape(.rect)
             }
-            .buttonStyle(DashPressableStyle())
+            .buttonStyle(.pressable)
             .padding(.vertical, -10)
             .accessibilityLabel(eyebrow)
             .accessibilityHint("Öffnet dein Ticket")
@@ -110,9 +112,11 @@ struct DashAvatarButton: View {
                     .frame(width: 12, height: 12)
                     .overlay { Circle().stroke(Theme.background, lineWidth: 2) }
                     .offset(x: 2, y: -2)
+                    .motionTransition(.pop)
                     .accessibilityHidden(true)
             }
         }
+        .motionAnimation(Motion.bouncy, value: hasUpdate)
         .accessibilityLabel("Einstellungen")
         .accessibilityValue(hasUpdate ? "Neue Version verfügbar" : "")
         .accessibilityHint(isSignedIn ? "Angemeldet – Konto, Bewertung und Daten" : "Konto, Bewertung und Daten")
@@ -133,8 +137,13 @@ struct DashUpdateCapsule: View {
 
     var body: some View {
         Button(action: action) {
-            Label("Neue Version \(version) verfügbar", systemImage: "arrow.down.circle.fill")
-                .font(.footnote.weight(.semibold))
+            Label {
+                Text("Neue Version \(version) verfügbar")
+            } icon: {
+                // The one symbol on this screen that asks for attention: it breathes while visible (docs/MOTION.md §12).
+                Image(systemName: "arrow.down.circle.fill").breathing()
+            }
+            .font(.footnote.weight(.semibold))
         }
         .buttonStyle(.glass)
         .controlSize(.small)

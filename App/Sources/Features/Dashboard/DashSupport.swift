@@ -55,54 +55,6 @@ enum DashStyle {
     }
 }
 
-// MARK: - Entrance motion
-
-/// Staggered rise-in for dashboard sections. Settles within ~1.1 s; opacity only with Reduce Motion;
-/// already in its end state in screenshot mode (the caller starts with `visible == true`).
-struct DashEntrance: ViewModifier {
-    var index: Int
-    var visible: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func body(content: Content) -> some View {
-        content
-            .opacity(visible ? 1 : 0)
-            .offset(y: visible || reduceMotion ? 0 : 18)
-            .animation(entranceAnimation, value: visible)
-    }
-
-    private var entranceAnimation: Animation {
-        if reduceMotion { return .easeOut(duration: 0.25) }
-        return .spring(duration: 0.6, bounce: 0.12).delay(Double(index) * 0.06)
-    }
-}
-
-extension View {
-    func dashEntrance(_ index: Int, visible: Bool) -> some View {
-        modifier(DashEntrance(index: index, visible: visible))
-    }
-}
-
-// MARK: - Button styles
-
-/// Gentle press-down scale for card-like buttons.
-struct DashPressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
-    }
-}
-
-/// Row highlight for list-like rows inside a card.
-struct DashRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(Theme.surfaceSecondary.opacity(configuration.isPressed ? 1 : 0))
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Small components
 
 /// Neutral outline capsule with the line category ("S", "U", "Bus", "Bim") – only when it is known
@@ -145,7 +97,7 @@ struct DashEuroNumeral: View {
             Text(Format.number(amount))
                 .font(DashStyle.bigNumber)
                 .foregroundStyle(color)
-                .contentTransition(.numericText(value: amount))
+                .numericValue(amount)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.7)

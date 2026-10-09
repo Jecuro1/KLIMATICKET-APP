@@ -3,7 +3,8 @@ import SwiftData
 import KlimaCore
 
 /// "Vorschläge" from automatic trip detection – one card per detected trip with "Erfassen" / "Verwerfen".
-/// The caller hides the section when there are no suggestions.
+/// The caller hides the section when there are no suggestions. Cards rise in and out; "Erfassen" confirms through the
+/// toast (its success haptic), "Verwerfen" with a light tap.
 struct DashSuggestionsSection: View {
     var suggestions: [TripSuggestion]
 
@@ -12,7 +13,6 @@ struct DashSuggestionsSection: View {
     @State private var dismissTick = 0
 
     var body: some View {
-        let hapticsEnabled = app.settings.hapticsEnabled
         VStack(alignment: .leading, spacing: DashStyle.cardSpacing) {
             SectionHeader(title: "Vorschläge")
                 .padding(.horizontal, DashStyle.headerInset)
@@ -20,21 +20,21 @@ struct DashSuggestionsSection: View {
                 DashSuggestionCard(suggestion: suggestion,
                                    onConfirm: { confirm(suggestion) },
                                    onDismiss: { discard(suggestion) })
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .motionTransition(.rise)
             }
         }
-        .sensoryFeedback(.impact(flexibility: .soft), trigger: dismissTick) { _, _ in hapticsEnabled }
+        .haptic(.tap, trigger: dismissTick)
     }
 
     private func confirm(_ suggestion: TripSuggestion) {
         let repository = Repository(context: context, app: app)
-        withAnimation(.smooth) { app.detection.confirm(suggestion, repository: repository) }
+        withMotion(Motion.smooth) { app.detection.confirm(suggestion, repository: repository) }
         let route = "\(TripRow.short(suggestion.fromName)) → \(TripRow.short(suggestion.toName))"
         app.showToast("checkmark.circle.fill", "Fahrt erfasst", route + " · + " + Format.euroPrecise(suggestion.fareEUR))
     }
 
     private func discard(_ suggestion: TripSuggestion) {
-        withAnimation(.smooth) { app.detection.dismiss(suggestion) }
+        withMotion(Motion.smooth) { app.detection.dismiss(suggestion) }
         dismissTick += 1
     }
 }

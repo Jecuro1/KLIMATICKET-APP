@@ -7,15 +7,17 @@ import KlimaCore
 struct AmortizationHero: View {
     var snapshot: AnalyticsSnapshot
     var chartHeight: CGFloat = 250
+    /// Delay of the count-in (and of the climber's ascent, which runs on the same curve): the entrance order of the hero.
+    var countInDelay: Double = 0
 
-    @State private var shownPercent: Double = 0
     /// Spec `heroNumeral`: rounded thin, scales with Dynamic Type (clamped below).
     @ScaledMetric(relativeTo: .largeTitle) private var numeralMetric: CGFloat = 104
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.legibilityWeight) private var legibilityWeight
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Bumped when the amortisation crosses 25 / 50 / 75 % (or the summit) on the same ticket – the numeral pops once.
+    @State private var milestoneTick = 0
 
     private var summary: SavingsSummary { snapshot.summary }
     /// Read when the body runs – a stored `now = Date()` would differ on every parent update and defeat SwiftUI's diffing.
@@ -32,53 +34,56 @@ struct AmortizationHero: View {
     var body: some View {
         VStack(spacing: 0) {
             numeral
+                .celebrate(trigger: milestoneTick, haptic: nil)   // the action that crossed it plays the one haptic
             verdict
                 .padding(.top, 6)
                 .padding(.horizontal, Theme.Spacing.screen)
             SummitChart(series: snapshot.series, forecast: snapshot.forecast, start: snapshot.ticket.start,
                         end: snapshot.ticket.end, price: snapshot.ticket.price,
                         breakEvenDate: summary.forecastBreakEvenDate, isPaidOff: summary.isPaidOff,
-                        showsLabels: dynamicTypeSize < .accessibility3)
+                        showsLabels: dynamicTypeSize < .accessibility3, climbDelay: countInDelay)
                 .frame(height: chartHeight)
                 // The mountain tucks a few points under the sub line (spec §5.1 heroStack).
                 .padding(.top, -4)
         }
-        .onAppear {
-            guard shownPercent != percent else { return }
-            if reduceMotion || LaunchMode.isScreenshot {
-                shownPercent = percent
-            } else {
-                withAnimation(.spring(duration: 1.2, bounce: 0.1)) { shownPercent = percent }
-            }
+        .onChange(of: milestone) { old, new in
+            // Only a step up on the same ticket year – switching tickets or deleting a trip is no milestone.
+            if old.start == new.start, new.step > old.step { milestoneTick += 1 }
         }
-        .onChange(of: percent) { _, new in
-            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(duration: 0.6, bounce: 0.15)) { shownPercent = new }
-        }
+    }
+
+    /// 0 below 25 % … 3 from 75 %, 4 once paid off – plus the ticket year it belongs to.
+    private var milestone: HeroMilestone {
+        let step = summary.isPaidOff ? 4 : min(3, Int(percent / 25))
+        return HeroMilestone(start: snapshot.ticket.start, step: step)
     }
 
     // MARK: Numeral
 
-    /// "75" + raised "%" in one Text (shared baseline, no layout gaps). The frame is trimmed to the digits' cap height –
-    /// a 104 pt line box otherwise adds ~50 pt of empty ascender/descender space to the first screen.
+    /// "75" + raised "%". The digits count up once on the first appearance (`CountUpText`, `Motion.countIn`) together
+    /// with the climber on the summit chart, and roll on every later change. The frame is trimmed to the digits' cap
+    /// height – a 104 pt line box otherwise adds ~50 pt of empty ascender/descender space to the first screen.
     private var numeral: some View {
         let size = numeralSize
-        let digits = Text(Format.number(shownPercent))
-            .font(.system(size: size, weight: numeralWeight, design: .rounded))
-            .foregroundStyle(Theme.textPrimary)
-        let sign = Text("%")
-            .font(.system(size: size * 0.385, weight: numeralWeight == .regular ? .regular : .light, design: .rounded))
-            .foregroundStyle(Theme.textPrimary.opacity(0.85))
-            .baselineOffset(size * 0.31)
-        return Text("\(digits)\(sign)")
-            .monospacedDigit()
-            .contentTransition(.numericText(value: shownPercent))
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
-            .padding(.top, -size * 0.16)
-            .padding(.bottom, -size * 0.18)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Amortisiert")
-            .accessibilityValue(Format.percent(summary.amortizedFraction))
+        let signSize = size * 0.385
+        return HStack(alignment: .firstTextBaseline, spacing: 0) {
+            CountUpText(value: percent, delay: countInDelay) { Format.number($0) }
+                .font(.system(size: size, weight: numeralWeight, design: .rounded))
+                .foregroundStyle(Theme.textPrimary)
+            Text("%")
+                .font(.system(size: signSize, weight: numeralWeight == .regular ? .regular : .light, design: .rounded))
+                .foregroundStyle(Theme.textPrimary.opacity(0.85))
+                // Raised like a superscript: its baseline sits 0.31 × the numeral above the digits' baseline.
+                .alignmentGuide(.firstTextBaseline) { d in d[.firstTextBaseline] + size * 0.31 }
+        }
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .padding(.top, -size * 0.16)
+        .padding(.bottom, -size * 0.18)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Amortisiert")
+        .accessibilityValue(Format.percent(summary.amortizedFraction))
     }
 
     // MARK: Verdict
@@ -98,9 +103,12 @@ struct AmortizationHero: View {
             verdictLine
                 .font(.headline)
                 .foregroundStyle(Theme.textPrimary)
+                .numericValue(summary.isPaidOff ? summary.shownProfitEuro : summary.shownRemainingEuro,
+                              countsDown: !summary.isPaidOff)
             Text(subline)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Self.skyText)
+                .numericValue(summary.shownTotalEuro)
         }
         .multilineTextAlignment(.center)
         .fixedSize(horizontal: false, vertical: true)
@@ -160,6 +168,12 @@ struct AmortizationHero: View {
         startPoint: .leading, endPoint: .trailing)
     /// Secondary copy right on the sky / sun glow: stronger than ink2 so it keeps ≥ 4.5 : 1 over the dawn glow.
     private static let skyText = Color(light: "#0C1A2BBF", dark: "#E8F1FCD6")
+}
+
+/// The milestone the hero last showed (see `AmortizationHero.milestone`).
+private struct HeroMilestone: Equatable {
+    var start: Date
+    var step: Int
 }
 
 // MARK: - Whole-euro summary figures

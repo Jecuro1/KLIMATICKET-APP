@@ -4,12 +4,14 @@ import KlimaCore
 
 // MARK: - Recent trips
 
-/// "Letzte Fahrten" (5) in one card; rows zoom into the trip detail, "Alle" switches to the Fahrten tab.
+/// "Letzte Fahrten" (5) in one card; rows dip under the finger and zoom into the trip detail (motion system, Reduce
+/// Motion: push), a long press shows the trip's preview card with Bearbeiten · Heute nochmal fahren · Löschen (with
+/// "Rückgängig"). "Alle" switches to the Fahrten tab.
 struct DashRecentTripsSection: View {
     var trips: [TripEntity]
-    var namespace: Namespace.ID
 
     @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         VStack(alignment: .leading, spacing: DashStyle.cardSpacing) {
@@ -39,71 +41,108 @@ struct DashRecentTripsSection: View {
     private func row(_ trip: TripEntity) -> some View {
         NavigationLink {
             TripDetailView(trip: trip)
-                .navigationTransition(.zoom(sourceID: trip.id, in: namespace))
+                .zoomDestination(id: trip.id)
         } label: {
             TripRow(trip: trip)
                 .padding(.horizontal, Theme.Spacing.m)
                 .padding(.vertical, Theme.Spacing.xxs)
+                .contentShape(.rect)
         }
-        .buttonStyle(DashRowButtonStyle())
-        .matchedTransitionSource(id: trip.id, in: namespace)
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: trip.id, cornerRadius: Theme.Radius.chip)
+        .contextMenu {
+            menu(for: trip)
+        } preview: {
+            TripListPreviewCard(trip: trip)
+        }
+        .transition(.opacity)
+    }
+
+    @ViewBuilder
+    private func menu(for trip: TripEntity) -> some View {
+        let actions = TripListActions(app: app, context: context)
+        Button { actions.edit(trip) } label: { Label("Bearbeiten", systemImage: "pencil") }
+        Button { withMotion(Motion.smooth) { actions.repeatToday(trip) } } label: {
+            Label("Heute nochmal fahren", systemImage: "arrow.clockwise")
+        }
+        Divider()
+        Button(role: .destructive) { withMotion(Motion.smooth) { actions.delete(trip) } } label: {
+            Label("Löschen", systemImage: "trash")
+        }
     }
 }
 
 // MARK: - Next achievement
 
-/// Compact "Nächster Erfolg" row – opens the Gipfelbuch.
+/// Compact "Nächster Erfolg" row – opens the Gipfelbuch (which zooms out of it). The ring and the rail fill when the card
+/// first scrolls into view; a newly unlocked achievement makes the medal pop with a gold ring.
 struct DashAchievementTeaser: View {
     var next: Achievement?
     var unlockedCount: Int
     var totalCount: Int
     var action: () -> Void
 
+    /// Bumped when `unlockedCount` goes up (not on the first appearance, not when trips are deleted).
+    @State private var unlockTick = 0
+
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Theme.Spacing.m) {
-                medal
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Kicker(text: next == nil ? "Gipfelbuch" : "Nächster Erfolg")
-                        Spacer(minLength: Theme.Spacing.xs)
-                        Text("\(unlockedCount) von \(totalCount)")
-                            .font(.caption.weight(.semibold).monospacedDigit())
-                            .foregroundStyle(Theme.textSecondary)
-                    }
-                    // The title gets the full width (a progress label beside it broke "Streckenkenner:in" mid-word).
-                    Text(next?.title ?? "Alle Erfolge erreicht")
-                        .font(.headline)
-                        .foregroundStyle(Theme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let next {
-                        HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-                            ProgressRail(progress: next.progress, height: 6)
-                            if !next.progressLabel.isEmpty {
-                                Text(next.progressLabel)
-                                    .font(.caption.weight(.medium).monospacedDigit())
-                                    .foregroundStyle(Theme.textSecondary)
-                                    .lineLimit(1)
-                                    .fixedSize()
-                            }
-                        }
-                        .padding(.top, 3)
-                    }
-                }
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.textTertiary)
-                    .accessibilityHidden(true)
+            DrawInReader { isDrawn in
+                content(isDrawn: isDrawn)
             }
-            .padding(Theme.Spacing.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frostedCard(cornerRadius: Theme.Radius.card)
-            .contentShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
         }
-        .buttonStyle(DashPressableStyle())
+        .buttonStyle(.pressableCard)
         .accessibilityLabel(accessibilityTitle)
         .accessibilityValue(accessibilityDetail)
         .accessibilityHint("Öffnet das Gipfelbuch")
+        .onChange(of: unlockedCount) { old, new in
+            if new > old { unlockTick += 1 }
+        }
+    }
+
+    private func content(isDrawn: Bool) -> some View {
+        HStack(spacing: Theme.Spacing.m) {
+            medal(isDrawn: isDrawn)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Kicker(text: next == nil ? "Gipfelbuch" : "Nächster Erfolg")
+                    Spacer(minLength: Theme.Spacing.xs)
+                    Text("\(unlockedCount) von \(totalCount)")
+                        .font(.caption.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(Theme.textSecondary)
+                        .numericValue(Double(unlockedCount))
+                }
+                // The title gets the full width (a progress label beside it broke "Streckenkenner:in" mid-word).
+                Text(next?.title ?? "Alle Erfolge erreicht")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.opacity)
+                if let next {
+                    HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+                        ProgressRail(progress: isDrawn ? next.progress : 0, height: 6)
+                        if !next.progressLabel.isEmpty {
+                            Text(next.progressLabel)
+                                .font(.caption.weight(.medium).monospacedDigit())
+                                .foregroundStyle(Theme.textSecondary)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .numericValue(next.progress)
+                        }
+                    }
+                    .padding(.top, 3)
+                }
+            }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textTertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(Theme.Spacing.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frostedCard(cornerRadius: Theme.Radius.card)
+        .contentShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
+        .motionAnimation(Motion.smooth, value: next?.id)
     }
 
     private var progress: Double { next?.progress ?? 1 }
@@ -119,12 +158,12 @@ struct DashAchievementTeaser: View {
         return next.progressLabel + ", " + count
     }
 
-    private var medal: some View {
+    private func medal(isDrawn: Bool) -> some View {
         ZStack {
             Circle()
                 .stroke(Theme.textTertiary.opacity(0.35), lineWidth: 3)
             Circle()
-                .trim(from: 0, to: progress)
+                .trim(from: 0, to: isDrawn ? progress : 0)
                 .stroke(Theme.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Circle()
@@ -135,8 +174,11 @@ struct DashAchievementTeaser: View {
                 .font(.body.weight(.semibold))
                 .foregroundStyle(Theme.onAccent)
                 .shadow(color: .black.opacity(0.18), radius: 2, y: 1)
+                .symbolReplaceTransition()
         }
         .frame(width: 48, height: 48)
+        .celebrate(trigger: unlockTick, haptic: nil)   // the action that unlocked it plays the one haptic
+        .celebrationRing(trigger: unlockTick)
         .accessibilityHidden(true)
     }
 }
@@ -160,9 +202,13 @@ struct DashWeekInsightCard: View {
                     Text(DashStyle.trips(stats.trips))
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
+                        .numericValue(Double(stats.trips))
                 }
-                bars
-                    .padding(.top, Theme.Spacing.xxs)
+                // The bars grow from the baseline when the card first scrolls into view.
+                DrawInReader { isDrawn in
+                    bars(isDrawn: isDrawn)
+                }
+                .padding(.top, Theme.Spacing.xxs)
                 legend
             }
         }
@@ -186,19 +232,25 @@ struct DashWeekInsightCard: View {
                   systemImage: stats.delta > 0 ? "arrow.up.right" : "arrow.down.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(stats.delta > 0 ? Theme.positiveText : Theme.textSecondary)
+                .symbolReplaceTransition()
+                .numericValue(stats.delta)
         }
     }
 
-    private var bars: some View {
+    private func bars(isDrawn: Bool) -> some View {
         let maxValue = max(stats.dayValues.max() ?? 0, stats.previousDayValues.max() ?? 0, 1)
         return VStack(spacing: 6) {
             HStack(alignment: .bottom, spacing: Theme.Spacing.xs) {
                 ForEach(0..<7, id: \.self) { day in
                     DashDayBars(current: stats.dayValues[day], previous: stats.previousDayValues[day], maxValue: maxValue,
                                 isToday: day == stats.todayIndex, isFuture: day > stats.todayIndex)
+                        // Grow from the baseline, Monday first (a transform – the layout never changes).
+                        .scaleEffect(x: 1, y: isDrawn ? 1 : 0.04, anchor: .bottom)
+                        .animation(isDrawn ? Motion.gentle.delay(Motion.Stagger.delay(day)) : nil, value: isDrawn)
                 }
             }
             .frame(height: 56)
+            .motionAnimation(Motion.gentle, value: stats)
             HStack(spacing: Theme.Spacing.xs) {
                 ForEach(0..<7, id: \.self) { day in
                     Text(DashStyle.weekdays[day])
@@ -236,6 +288,7 @@ struct DashWeekInsightCard: View {
         HStack(spacing: 5) {
             Capsule().fill(Theme.textTertiary.opacity(0.45)).frame(width: 10, height: 6)
             Text("Vorwoche · \(Format.euro(stats.previousValue, decimals: 0)) · \(DashStyle.trips(stats.previousTrips))")
+                .numericValue(stats.previousValue)
         }
     }
 

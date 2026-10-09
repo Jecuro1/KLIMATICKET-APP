@@ -3,12 +3,16 @@ import SwiftData
 import KlimaCore
 
 /// "Schnell erfassen": the "Neue Fahrt" call to action followed by horizontally scrolling favourite chips.
-/// One tap on a chip logs the trip right away (toast with value + new amortisation). Long press offers
-/// "Bearbeiten & erfassen", "Letzte Fahrt löschen" (undo of the last quick log) and "Entfernen".
+/// One tap on a chip logs the trip right away: its "+" turns into a green check, the glass tints for a moment and the
+/// toast confirms with value + new amortisation and offers "Rückgängig" (one haptic – the toast's; a milestone plays
+/// `.milestone`, the break-even leaves it to the celebration). Long press offers "Bearbeiten & erfassen",
+/// "Letzte Fahrt löschen" and "Entfernen" (also with "Rückgängig"); the QuickLog tip explains both once.
 struct DashQuickLogSection: View {
     var favorites: [FavoriteRouteEntity]
-    /// Current summary, used for the toast ("jetzt 76 % amortisiert").
+    /// Current summary, used for the toast ("jetzt 76 % amortisiert") and the milestone haptic.
     var summary: SavingsSummary?
+    /// The shown ticket – the break-even celebration plays once per ticket.
+    var ticketID: UUID? = nil
     /// Whether a trip logged right now falls into the shown ticket period.
     var ticketIsCurrent: Bool
     var showsNewTripButton: Bool = true
@@ -17,10 +21,10 @@ struct DashQuickLogSection: View {
     @Environment(\.modelContext) private var context
     /// Favourite id → id of the trip most recently quick-logged from it (for "Letzte Fahrt löschen").
     @State private var lastLoggedTripIDs: [UUID: UUID] = [:]
-    @State private var removalTick = 0
+    /// Favourites whose "+" shows the check right now.
+    @State private var justLogged: Set<UUID> = []
 
     var body: some View {
-        let hapticsEnabled = app.settings.hapticsEnabled
         ScrollView(.horizontal) {
             HStack(spacing: 10) {
                 if showsNewTripButton {
@@ -30,20 +34,17 @@ struct DashQuickLogSection: View {
                     favoriteHint
                 } else {
                     ForEach(favorites) { favorite in
-                        favoriteButton(favorite)
+                        favoriteButton(favorite, isFirst: favorite.id == favorites.first?.id)
+                            .carouselItem()
                     }
                 }
             }
             .scrollTargetLayout()
             .padding(.vertical, Theme.Spacing.xs)
         }
-        .scrollIndicators(.hidden)
-        .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
-        .scrollTargetBehavior(.viewAligned)
-        .scrollClipDisabled()
+        .carouselScrolling()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Schnell erfassen")
-        .sensoryFeedback(.warning, trigger: removalTick) { _, _ in hapticsEnabled }
     }
 
     // MARK: Items
@@ -69,31 +70,41 @@ struct DashQuickLogSection: View {
             .shadow(color: Theme.accent.opacity(0.3), radius: 12, y: 6)
             .contentShape(.capsule)
         }
-        .buttonStyle(DashPressableStyle())
+        .buttonStyle(.pressable)
         .accessibilityHint("Öffnet das Formular zum Erfassen einer Fahrt")
     }
 
-    private func favoriteButton(_ favorite: FavoriteRouteEntity) -> some View {
-        Button {
+    @ViewBuilder
+    private func favoriteButton(_ favorite: FavoriteRouteEntity, isFirst: Bool) -> some View {
+        let isLogged = justLogged.contains(favorite.id)
+        let chip = Button {
             logFavorite(favorite)
         } label: {
-            DashFavoriteChipLabel(favorite: favorite)
+            DashFavoriteChipLabel(favorite: favorite, isLogged: isLogged)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        // The glass itself confirms: a green tint for a moment (system glass reacts to the touch on its own).
+        .glassEffect(isLogged ? .regular.tint(Theme.positive.opacity(0.24)).interactive() : .regular.interactive(),
+                     in: .capsule)
         .contextMenu { menu(for: favorite) }
         .accessibilityLabel("\(favorite.displayTitle) erfassen")
-        .accessibilityValue(voiceOverValue(for: favorite))
+        .accessibilityValue(isLogged ? "Erfasst" : voiceOverValue(for: favorite))
         .accessibilityHint("Erfasst die Fahrt sofort")
         .accessibilityAction(named: "Bearbeiten und erfassen") {
             app.presentAddTrip(draft(for: favorite))
         }
-        .transition(.scale(scale: 0.9).combined(with: .opacity))
+        .motionTransition(.pop)
+        if isFirst {
+            chip.popoverTip(KBTips.QuickLog(), arrowEdge: .top)
+        } else {
+            chip
+        }
     }
 
     @ViewBuilder
     private func menu(for favorite: FavoriteRouteEntity) -> some View {
         Button("Bearbeiten & erfassen", systemImage: "square.and.pencil") {
+            KBTips.used(KBTips.QuickLog())
             app.presentAddTrip(draft(for: favorite))
         }
         if lastLoggedTripIDs[favorite.id] != nil {
@@ -142,24 +153,41 @@ struct DashQuickLogSection: View {
 
     private func logFavorite(_ favorite: FavoriteRouteEntity) {
         let repository = Repository(context: context, app: app)
-        let trip = withAnimation(.smooth) { repository.logFavorite(favorite) }
+        let trip = withMotion(Motion.smooth) { repository.logFavorite(favorite) }
         lastLoggedTripIDs[favorite.id] = trip.id
-        app.showToast("checkmark.circle.fill", "Fahrt erfasst", toastSubtitle(adding: trip.totalValue))
+        KBTips.used(KBTips.QuickLog())
+        flashCheck(on: favorite.id)
+        let undo = DashQuickLogUndo(app: app, context: context)
+        let tripID = trip.id, favoriteID = favorite.id
+        app.showToast("checkmark.circle.fill", "Fahrt erfasst", toastSubtitle(adding: trip.totalValue),
+                      actionTitle: "Rückgängig", haptic: toastHaptic(adding: trip.totalValue)) {
+            undo.undo(tripID: tripID, favoriteID: favoriteID)
+        }
+    }
+
+    /// The "+" turns into a check for 1.4 s; a second tap meanwhile logs again (and keeps the check).
+    private func flashCheck(on id: UUID) {
+        withMotion(Motion.bouncy) { _ = justLogged.insert(id) }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.4))
+            withMotion(Motion.smooth) { _ = justLogged.remove(id) }
+        }
     }
 
     private func undoLastLog(of favorite: FavoriteRouteEntity) {
         guard let tripID = lastLoggedTripIDs[favorite.id] else { return }
         lastLoggedTripIDs[favorite.id] = nil
-        let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate<TripEntity> { $0.id == tripID && $0.deletedAt == nil })
-        guard let trip = (try? context.fetch(descriptor))?.first else { return }
-        withAnimation(.smooth) { Repository(context: context, app: app).deleteTrip(trip) }
-        app.showToast("arrow.uturn.backward.circle.fill", "Fahrt gelöscht", favorite.displayTitle)
+        DashQuickLogUndo(app: app, context: context).undo(tripID: tripID, favoriteID: favorite.id)
     }
 
+    /// "Favorit entfernt · Rückgängig" (the toast plays the warning haptic).
     private func remove(_ favorite: FavoriteRouteEntity) {
         lastLoggedTripIDs[favorite.id] = nil
-        withAnimation(.smooth) { Repository(context: context, app: app).deleteFavorite(favorite) }
-        removalTick += 1
+        let repository = Repository(context: context, app: app)
+        withMotion(Motion.smooth) { repository.deleteFavorite(favorite) }
+        app.showToast("trash.fill", "Favorit entfernt", favorite.displayTitle, actionTitle: "Rückgängig") {
+            withMotion(Motion.smooth) { repository.restoreFavorites([favorite]) }
+        }
     }
 
     /// The editor applies the favourite like its own favourites row (`TripEditorModel.apply(favorite:)`): stations, mode,
@@ -186,6 +214,20 @@ struct DashQuickLogSection: View {
         return amount + " · jetzt " + Format.percent(fraction) + " amortisiert"
     }
 
+    /// One haptic per action: `.success`; `.milestone` when the trip crosses 25 / 50 / 75 % (the hero pops); none when
+    /// it reaches the summit for the first time – the break-even celebration plays its own.
+    private func toastHaptic(adding value: Double) -> Haptic? {
+        guard ticketIsCurrent, let summary, summary.ticketPrice > 0, !summary.isPaidOff else { return .success }
+        let before = summary.totalValue / summary.ticketPrice
+        let after = (summary.totalValue + value) / summary.ticketPrice
+        if after >= 1 {
+            let celebrated = ticketID.map { app.settings.celebratedBreakEvenTicketIDs.contains($0.uuidString) } ?? true
+            return celebrated ? .milestone : nil
+        }
+        let step = { (fraction: Double) in min(3, Int(SummitFigures.percent(fraction) / 25)) }
+        return step(after) > step(before) ? .milestone : .success
+    }
+
     private func voiceOverValue(for favorite: FavoriteRouteEntity) -> String {
         let legs: Double = favorite.isRoundTrip ? 2 : 1
         var parts = [ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName), favorite.mode.displayName]   // MARK: via
@@ -195,9 +237,29 @@ struct DashQuickLogSection: View {
     }
 }
 
+/// "Rückgängig" of a quick log: looks the trip up again (it may already be gone – deleted elsewhere, "Alle Daten
+/// löschen") and removes it through the Repository, giving the favourite its use back.
+@MainActor
+private struct DashQuickLogUndo {
+    let app: AppState
+    let context: ModelContext
+
+    func undo(tripID: UUID, favoriteID: UUID) {
+        let tripQuery = FetchDescriptor<TripEntity>(predicate: #Predicate<TripEntity> { $0.id == tripID && $0.deletedAt == nil })
+        guard let trip = (try? context.fetch(tripQuery))?.first else { return }
+        let favoriteQuery = FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate<FavoriteRouteEntity> { $0.id == favoriteID })
+        let favorite = (try? context.fetch(favoriteQuery))?.first
+        let route = "\(TripRow.short(trip.fromName)) → \(TripRow.short(trip.toName))"
+        withMotion(Motion.smooth) { Repository(context: context, app: app).undoLogFavorite(trip, favorite: favorite) }
+        app.showToast("arrow.uturn.backward.circle.fill", "Erfassung zurückgenommen", route, haptic: .warning)
+    }
+}
+
 /// Chip content: mode icon · "St. Anton → Innsbruck Hbf" · badge + meta · price · round "+" knob.
 struct DashFavoriteChipLabel: View {
     let favorite: FavoriteRouteEntity
+    /// Just logged: the "+" knob turns into a green check.
+    var isLogged: Bool = false
 
     private var legs: Double { favorite.isRoundTrip ? 2 : 1 }
     private var badge: String? { DashModeBadge.label(for: favorite.mode) }
@@ -213,11 +275,14 @@ struct DashFavoriteChipLabel: View {
                 .font(DashStyle.smallNumber)
                 .foregroundStyle(Theme.textPrimary)
                 .padding(.leading, 2)
-            Image(systemName: "plus")
+            Image(systemName: isLogged ? "checkmark" : "plus")
                 .font(.footnote.weight(.bold))
                 .foregroundStyle(Theme.onAccent)
+                .symbolReplaceTransition()
+                .symbolBounce(on: isLogged)
                 .frame(width: 30, height: 30)
-                .background(Theme.ctaGradient, in: .circle)
+                .background(isLogged ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(Theme.ctaGradient), in: .circle)
+                .accessibilityHidden(true)
         }
         .lineLimit(1)
         .padding(.vertical, 6)

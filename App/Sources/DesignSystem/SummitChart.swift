@@ -17,6 +17,9 @@ struct SummitChart: View {
     var breakEvenDate: Date?
     var isPaidOff: Bool
     var showsLabels: Bool = true
+    /// The ascent waits this long on the first appearance – the hero passes its count-in delay, so the climber and the
+    /// numeral arrive together (both run on `Motion.countIn`).
+    var climbDelay: Double = 0
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
@@ -24,6 +27,8 @@ struct SummitChart: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     /// Animated amortisation the climber is drawn at (0 → progress on first appearance).
     @State private var climbed: Double = 0
+    /// Counts the climber's arrivals (end of the ascent, end of a move after a new trip) – one ring pulses out each time.
+    @State private var arrivals = 0
     @State private var tagSize: CGSize = .zero
 
     private var value: Double { series.last?.value ?? 0 }
@@ -53,7 +58,7 @@ struct SummitChart: View {
             let geometry = SummitGeometry(size: proxy.size, profit: isPaidOff, pEnd: pEnd)
             ZStack(alignment: .topLeading) {
                 SummitRidges(geometry: geometry, palette: palette, reduceTransparency: reduceTransparency)
-                SummitClimb(progress: climbed, target: progress, geometry: geometry, palette: palette,
+                SummitClimb(progress: climbed, target: progress, arrivals: arrivals, geometry: geometry, palette: palette,
                             showsPill: showsLabels, pillText: pillText)
                 if showsLabels {
                     summitTag(geometry)
@@ -61,18 +66,27 @@ struct SummitChart: View {
             }
         }
         .onAppear {
+            // The route draws once: the climber walks up from the valley on the hero's count-in curve.
             guard climbed != progress else { return }
-            if reduceMotion || LaunchMode.isScreenshot {
+            if reduceMotion || MotionPolicy.isStatic {
                 climbed = progress
             } else {
-                withAnimation(.smooth(duration: 1.4).delay(0.15)) { climbed = progress }
+                withAnimation(Motion.countIn.delay(climbDelay)) {
+                    climbed = progress
+                } completion: {
+                    arrivals += 1
+                }
             }
         }
         .onChange(of: progress) { _, newValue in
             if reduceMotion {
                 climbed = newValue
             } else {
-                withAnimation(.spring(duration: 0.6, bounce: 0.15)) { climbed = newValue }
+                withMotion(Motion.gentle) {
+                    climbed = newValue
+                } completion: {
+                    if !MotionPolicy.isStatic { arrivals += 1 }
+                }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -458,6 +472,8 @@ private struct SummitClimb: View, Animatable {
     var progress: Double
     /// Final amortisation (milestone dots too close to it are hidden, spec §8.1.9).
     let target: Double
+    /// Arrival counter of the chart: the climber's ring pulses once per arrival.
+    let arrivals: Int
     let geometry: SummitGeometry
     let palette: SummitPalette
     let showsPill: Bool
@@ -502,11 +518,13 @@ private struct SummitClimb: View, Animatable {
                         }
                         .frame(width: 6.8, height: 6.8)
                         .opacity(passed ? 0.95 : 1)
+                        // The hut lights up with a small pop as the climber walks past it.
+                        .modifier(SummitHutPop(passed: passed))
                         .position(x: mx, y: g.y(at: mx))
                 }
             }
 
-            // Climber: halo, disc with ring, core.
+            // Climber: halo, disc with ring, core. One ring pulses out when it arrives (count-in done, new trip).
             Circle()
                 .fill(RadialGradient(colors: [palette.halo.opacity(0.55), palette.halo.opacity(0)],
                                      center: .center, startRadius: 0, endRadius: 20))
@@ -516,6 +534,7 @@ private struct SummitClimb: View, Animatable {
                 .fill(palette.climberFill)
                 .overlay { Circle().stroke(palette.climberRing, lineWidth: 3) }
                 .frame(width: 15, height: 15)
+                .celebrationRing(trigger: arrivals, color: palette.halo)
                 .position(climber)
             Circle()
                 .fill(palette.climberRing)
@@ -542,6 +561,10 @@ private struct SummitClimb: View, Animatable {
                 path.closeSubpath()
             }
             .fill(palette.flag)
+            // The pennant waves once when the climber reaches the summit (break-even), anchored at the pole.
+            .modifier(SummitFlagWave(reached: p >= 1,
+                                     anchor: UnitPoint(x: (summit.x + 0.8) / max(g.size.width, 1),
+                                                       y: (summit.y - 22) / max(g.size.height, 1))))
 
             if showsPill {
                 pill(at: climber)
@@ -579,6 +602,42 @@ private struct SummitClimb: View, Animatable {
         .position(x: x, y: y)
         .opacity(pillSize == .zero ? 0 : 1)
         .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Arrival motion
+
+/// A milestone hut pops (scale 1 → 1.7 → 1) when the climber passes it. Nothing moves with Reduce Motion or in
+/// screenshots (the climber is then placed at once, so `passed` never flips while visible anyway).
+private struct SummitHutPop: ViewModifier {
+    let passed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(initialValue: 1.0, trigger: passed) { [reduceMotion] view, scale in
+            view.scaleEffect(reduceMotion ? 1 : scale)
+        } keyframes: { _ in
+            SpringKeyframe(1.7, duration: 0.14, spring: Motion.Springs.snappy)
+            SpringKeyframe(1, duration: 0.45, spring: Motion.Springs.bouncy)
+        }
+    }
+}
+
+/// The summit pennant flaps once (squeezes towards the pole and back) when the climber reaches the summit.
+private struct SummitFlagWave: ViewModifier {
+    let reached: Bool
+    let anchor: UnitPoint
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.keyframeAnimator(initialValue: 1.0, trigger: reached) { [reduceMotion, anchor] view, stretch in
+            view.scaleEffect(x: reduceMotion ? 1 : stretch, y: 1, anchor: anchor)
+        } keyframes: { _ in
+            CubicKeyframe(0.55, duration: 0.16)
+            CubicKeyframe(1.12, duration: 0.18)
+            CubicKeyframe(0.8, duration: 0.16)
+            SpringKeyframe(1, duration: 0.4, spring: Motion.Springs.bouncy)
+        }
     }
 }
 

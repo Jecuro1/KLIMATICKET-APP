@@ -50,6 +50,17 @@ struct Repository {
         return trip
     }
 
+    // MARK: dashboardTicket – "Rückgängig" on the quick-log toast: removes the trip and gives back the favourite's use.
+    func undoLogFavorite(_ trip: TripEntity, favorite: FavoriteRouteEntity?) {
+        trip.deletedAt = Date()
+        trip.touch()
+        if let favorite, favorite.usageCount > 0 {
+            favorite.usageCount -= 1
+            favorite.touch()
+        }
+        commit()
+    }
+
     /// Duplicates a past trip for today ("Nochmal fahren"). `note` lets "Duplizieren" keep it in the same commit.  // MARK: trips
     @discardableResult
     func repeatTrip(_ trip: TripEntity, on date: Date = Date(), note: String = "") -> TripEntity {

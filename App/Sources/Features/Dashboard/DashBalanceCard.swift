@@ -4,7 +4,8 @@ import KlimaCore
 /// "Bilanz-Karte" (DESIGN.md §5.1 · 4, spec §8.3) – complements the hero instead of repeating its verdict:
 /// Row A: when the summit is reached (forecast) and the buffer before the ticket expires,
 /// Row B: three key figures (Fahrten · km · CO₂),
-/// Row C: the car comparison, once (tap → "Öffis vs. Auto", which explains and configures it).
+/// Row C: the car comparison, once (tap → "Öffis vs. Auto", which zooms out of the row and explains and configures it).
+/// Every figure rolls when it changes; the card turns pine with a soft spring once the ticket has paid off.
 struct DashBalanceCard: View {
     var snapshot: AnalyticsSnapshot
     /// For the car comparison – the same one as Statistik › "Öffis vs. Auto" (`WorkCarCalc`: road km, the chosen car-cost
@@ -39,6 +40,7 @@ struct DashBalanceCard: View {
         .padding(.bottom, showsCarRow ? 0 : 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frostedCard(cornerRadius: Theme.Radius.card, tint: summary.isPaidOff ? Theme.positive : nil)
+        .motionAnimation(Motion.smooth, value: summary.isPaidOff)
     }
 
     // MARK: Row A – forecast and buffer
@@ -93,7 +95,7 @@ struct DashBalanceCard: View {
         case .onTrack(let date):
             column(label: "Break-even · Prognose",
                    detail: "\(weekday(date)) · \(DashStyle.inDays(DashStyle.dayCount(from: now, to: date)))") {
-                bigText(Format.dayMonth(date))
+                bigText(Format.dayMonth(date), rolling: date.timeIntervalSinceReferenceDate)
             }
         case .behind:
             column(label: "Noch bis zum Gipfel", detail: tripsToGoText) {
@@ -187,12 +189,14 @@ struct DashBalanceCard: View {
         }
     }
 
-    private func bigText(_ text: String) -> some View {
+    /// `rolling`: the value the digits roll with (a date's time stamp: "19. Dez." → "21. Dez." rolls forward).
+    private func bigText(_ text: String, rolling: Double = 0) -> some View {
         Text(text)
             .font(DashStyle.bigNumber)
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
+            .numericValue(rolling)
     }
 
     /// "69 Tage" – the figure in `statL`, the unit in `statUnit` at 70 %.
@@ -201,7 +205,7 @@ struct DashBalanceCard: View {
             Text(Format.number(Double(days)))
                 .font(DashStyle.bigNumber)
                 .foregroundStyle(Theme.textPrimary)
-                .contentTransition(.numericText(value: Double(days)))
+                .numericValue(Double(days))
             Text(days == 1 ? "Tag" : "Tage")
                 .font(DashStyle.unitNumber)
                 .foregroundStyle(Theme.textPrimary.opacity(0.7))
@@ -224,13 +228,15 @@ struct DashBalanceCard: View {
         let co2InTonnes = co2 >= 1000
         let co2Value = co2InTonnes ? Format.number(co2 / 1000, decimals: 1) : Format.number(co2)
         return [
-            DashMiniStat(id: "trips", value: Format.number(Double(summary.tripCount)), unit: nil, label: "Fahrten",
+            DashMiniStat(id: "trips", value: Format.number(Double(summary.tripCount)), number: Double(summary.tripCount),
+                         unit: nil, label: "Fahrten",
                          symbol: TransportMode.train.symbolName, color: Theme.accent,
                          accessibilityText: DashStyle.trips(summary.tripCount)),
-            DashMiniStat(id: "km", value: Format.number(summary.distanceKm), unit: "km", label: "Kilometer",
+            DashMiniStat(id: "km", value: Format.number(summary.distanceKm), number: summary.distanceKm.rounded(),
+                         unit: "km", label: "Kilometer",
                          symbol: "point.topleft.down.to.point.bottomright.curvepath", color: Theme.dusk,
                          accessibilityText: Format.km(summary.distanceKm)),
-            DashMiniStat(id: "co2", value: co2Value, unit: co2InTonnes ? "t" : "kg", label: "CO₂ gespart",
+            DashMiniStat(id: "co2", value: co2Value, number: co2.rounded(), unit: co2InTonnes ? "t" : "kg", label: "CO₂ gespart",
                          symbol: "leaf.fill", color: Theme.eco,
                          accessibilityText: "\(Format.kg(co2)) CO₂ gespart"),
         ]
@@ -241,6 +247,7 @@ struct DashBalanceCard: View {
     private func carRow(_ car: CarComparisonResult) -> some View {
         NavigationLink {
             WorkCarView(period: snapshot.ticket)
+                .zoomDestination(id: DashZoomID.car)
         } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.xs) {
@@ -257,7 +264,8 @@ struct DashBalanceCard: View {
             .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
             .contentShape(.rect)
         }
-        .buttonStyle(DashPressableStyle())
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: DashZoomID.car, cornerRadius: Theme.Radius.chip)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Öffnet den ausführlichen Auto-Vergleich")
     }
@@ -275,6 +283,7 @@ struct DashBalanceCard: View {
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
+                .numericValue(car.carCost.rounded())
         }
         .lineLimit(1)
     }
@@ -338,6 +347,8 @@ struct DashBalanceCard: View {
 struct DashMiniStat: Identifiable {
     let id: String
     let value: String
+    /// The figure behind `value` – its digits roll when it changes.
+    var number: Double = 0
     let unit: String?
     let label: String
     let symbol: String
@@ -378,7 +389,7 @@ private struct DashMiniStatView: View {
                 Text(item.value)
                     .font(DashStyle.statNumber)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText())
+                    .numericValue(item.number)
                 if let unit = item.unit {
                     Text(unit)
                         .font(.footnote.weight(.bold))

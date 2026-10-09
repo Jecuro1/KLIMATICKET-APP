@@ -12,6 +12,11 @@ import KlimaCore
 /// changes while the data does not – the scroll position (`DashScrollScrim`), account and update state
 /// (`DashAccountHeader`, `DashUpdateCapsuleHost`), the selected tab and the open sheets (`DashPresentation`) – is read
 /// by small child views and modifiers, so a tab switch, a sheet or scrolling past the header never re-runs this body.
+///
+/// Motion (docs/MOTION.md): the sections rise in once in reading order (`reveal`), the 75 % counts up together with the
+/// climber on the summit chart, every figure rolls when it changes, the hero condenses while scrolling and a glass pill
+/// with the percentage takes its place under the status bar (tap → back to the top). Trips zoom into their detail,
+/// the Gipfelbuch and Einstellungen zoom out of the card / avatar that opened them.
 struct DashboardView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -22,9 +27,8 @@ struct DashboardView: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var favorites: [FavoriteRouteEntity]
 
-    /// Drives the staggered entrance; already true in screenshot mode (end state immediately).
-    @State private var appeared = LaunchMode.isScreenshot
-    @Namespace private var tripZoom
+    /// Scroll progress of the hero (0 at rest … 1 condensed). Only `heroCondense` and `DashCondensedSummit` read it.
+    @State private var condense = ScrollCondense()
 
     /// CI screenshot "dashboardBottom" opens scrolled to the end (Gipfelbuch, „Diese Woche“, Vorteile).
     private static let screenshotAnchor: UnitPoint? = LaunchMode.screenshotScreen == "dashboardBottom" ? .bottom : nil
@@ -49,9 +53,8 @@ struct DashboardView: View {
                                    isPaidOff: snapshot?.summary.isPaidOff ?? false,
                                    hasTrips: (snapshot?.summary.tripCount ?? 0) > 0,
                                    profit: snapshot?.summary.net ?? 0))
-        .onAppear {
-            if !appeared { appeared = true }
-        }
+        // One namespace for the pushed trip details and the two sheets (Gipfelbuch, Einstellungen).
+        .zoomTransitionScope()
     }
 
     // MARK: Content
@@ -60,69 +63,85 @@ struct DashboardView: View {
         let summary = snapshot.summary
         let hasTrips = summary.tripCount > 0
         let suggestions = app.detection.suggestions
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                topSection(ticket: ticket, snapshot: snapshot)
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    topSection(ticket: ticket, snapshot: snapshot)
 
-                if hasTrips {
-                    // Overlaps the faded valley of the summit chart by a few points (spec §8.1); the route starts above it.
-                    DashBalanceCard(snapshot: snapshot, catalog: app.catalog)
+                    if hasTrips {
+                        // Overlaps the faded valley of the summit chart by a few points (spec §8.1); the route starts above it.
+                        DashBalanceCard(snapshot: snapshot, catalog: app.catalog)
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, -Theme.Spacing.xs)
+                            .reveal(order: 2)
+                    } else {
+                        DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, Theme.Spacing.xs)
+                            .reveal(order: 2)
+                    }
+
+                    if hasTrips || !favorites.isEmpty {
+                        // No second "Neue Fahrt" button – the "+" tab does that (DESIGN.md §5.1 · 5).
+                        DashQuickLogSection(favorites: favorites, summary: summary, ticketID: ticket.id,
+                                            ticketIsCurrent: ticket.isActive, showsNewTripButton: false)
+                            // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the card.
+                            .padding(.top, 2)
+                            .padding(.bottom, -Theme.Spacing.xs)
+                            .reveal(order: 3)
+                    }
+
+                    if !suggestions.isEmpty {
+                        DashSuggestionsSection(suggestions: suggestions)
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, DashStyle.sectionSpacing)
+                            .reveal(order: 4)
+                            .motionTransition(.rise)
+                    }
+
+                    if !trips.isEmpty {
+                        DashRecentTripsSection(trips: Array(trips.prefix(5)))
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, suggestions.isEmpty ? Theme.Spacing.m : DashStyle.sectionSpacing)
+                            .reveal(order: 5)
+                            .scrollCardTransition()
+                    }
+
+                    if hasTrips {
+                        insights(snapshot: snapshot)
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, DashStyle.sectionSpacing)
+                    }
+
+                    // MARK: benefits
+                    PerkSummaryCard()
                         .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, -Theme.Spacing.xs)
-                        .dashEntrance(2, visible: appeared)
-                } else {
-                    DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
-                        .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, Theme.Spacing.xs)
-                        .dashEntrance(2, visible: appeared)
+                        .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)
+                        .reveal(order: 8)
+                        .scrollCardTransition()
                 }
-
-                if hasTrips || !favorites.isEmpty {
-                    // No second "Neue Fahrt" button – the "+" tab does that (DESIGN.md §5.1 · 5).
-                    DashQuickLogSection(favorites: favorites, summary: summary, ticketIsCurrent: ticket.isActive,
-                                        showsNewTripButton: false)
-                        // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the card.
-                        .padding(.top, 2)
-                        .padding(.bottom, -Theme.Spacing.xs)
-                        .dashEntrance(3, visible: appeared)
-                }
-
-                if !suggestions.isEmpty {
-                    DashSuggestionsSection(suggestions: suggestions)
-                        .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, DashStyle.sectionSpacing)
-                        .dashEntrance(4, visible: appeared)
-                }
-
-                if !trips.isEmpty {
-                    DashRecentTripsSection(trips: Array(trips.prefix(5)), namespace: tripZoom)
-                        .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, suggestions.isEmpty ? Theme.Spacing.m : DashStyle.sectionSpacing)
-                        .dashEntrance(5, visible: appeared)
-                }
-
-                if hasTrips {
-                    insights(snapshot: snapshot)
-                        .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, DashStyle.sectionSpacing)
-                }
-
-                // MARK: benefits
-                PerkSummaryCard()
-                    .padding(.horizontal, Theme.Spacing.cardGutter)
-                    .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)
-                    .dashEntrance(8, visible: appeared)
+                .padding(.bottom, Theme.Spacing.xl)
+                .motionAnimation(Motion.smooth, value: suggestions.count)
             }
-            .padding(.bottom, Theme.Spacing.xl)
-            .animation(.smooth, value: suggestions.count)
+            .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
+            .revealScope()
+            .tracksScrollCondense(condense, distance: Self.condenseDistance)
+            .modifier(DashScrollScrim())
+            .overlay(alignment: .top) {
+                DashCondensedSummit(condense: condense, summary: summary) {
+                    withMotion(Motion.smooth) { proxy.scrollTo(Self.topID, anchor: .top) }
+                }
+            }
+            .defaultScrollAnchor(Self.screenshotAnchor)
+            // The sun glow brightens towards the summit, capped so the verdict lines above it keep their contrast.
+            .ambientBackground(.standard, glow: 0.4 + 0.4 * summary.progressClamped)
+            .refreshable { await refresh() }
         }
-        .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
-        .modifier(DashScrollScrim())
-        .defaultScrollAnchor(Self.screenshotAnchor)
-        // The sun glow brightens towards the summit, capped so the verdict lines above it keep their contrast.
-        .ambientBackground(.standard, glow: 0.4 + 0.4 * summary.progressClamped)
-        .refreshable { await refresh() }
     }
+
+    private static let topID = "dash.top"
+    /// The hero's numeral and verdict have scrolled away (under the status bar) at about this offset.
+    private static let condenseDistance: CGFloat = 250
 
     @ViewBuilder
     private func topSection(ticket: TicketEntity, snapshot: AnalyticsSnapshot) -> some View {
@@ -130,7 +149,8 @@ struct DashboardView: View {
         DashAccountHeader(eyebrow: eyebrow.full, compactEyebrow: eyebrow.compact, holderName: ticket.holderName) {
             app.selectedTab = .ticket
         }
-        .dashEntrance(0, visible: appeared)
+        .id(Self.topID)
+        .reveal(order: 0)
 
         // Status capsules between the title and the hero: a running ride first (it is happening right now), then a
         // pending update. Both render nothing when idle, so the hero keeps its place on a normal day.
@@ -139,15 +159,17 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.top, Theme.Spacing.xs)
-            .dashEntrance(0, visible: appeared)
+            .reveal(order: 0)
 
         DashUpdateCapsuleHost()
-            .dashEntrance(0, visible: appeared)
+            .reveal(order: 0)
 
-        // Spec §8.1: mountain canvas 134 pt, full width.
-        AmortizationHero(snapshot: snapshot, chartHeight: 134)
+        // Spec §8.1: mountain canvas 134 pt, full width. Fades in (its numeral counts and its climber walks – that is
+        // the movement), then condenses and falls behind the Bilanz card while scrolling.
+        AmortizationHero(snapshot: snapshot, chartHeight: 134, countInDelay: Motion.Stagger.delay(1))
             .padding(.top, Theme.Spacing.xxs)
-            .dashEntrance(1, visible: appeared)
+            .reveal(.fade, order: 1)
+            .heroCondense(condense, minScale: 0.9, fadeTo: 0.15)
     }
 
     @ViewBuilder
@@ -158,10 +180,13 @@ struct DashboardView: View {
                                   totalCount: snapshot.achievements.count) {
                 app.isShowingAchievements = true
             }
-            .dashEntrance(6, visible: appeared)
+            .zoomSource(id: DashZoomID.gipfelbuch, cornerRadius: Theme.Radius.card)
+            .reveal(order: 6)
+            .scrollCardTransition()
 
             DashWeekInsightCard(stats: DashWeekStats.make(fromNewestFirst: trips))
-                .dashEntrance(7, visible: appeared)
+                .reveal(order: 7)
+                .scrollCardTransition()
         }
     }
 
@@ -266,7 +291,7 @@ private struct DashUpdateCapsuleHost: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, Theme.Spacing.screen)
             .padding(.top, Theme.Spacing.xs)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            .motionTransition(.rise)
         }
     }
 }
@@ -285,7 +310,7 @@ private struct DashScrollScrim: ViewModifier {
             .onScrollGeometryChange(for: Bool.self, of: { geometry in
                 geometry.contentOffset.y + geometry.contentInsets.top > 6
             }, action: { _, scrolled in
-                withAnimation(.easeInOut(duration: 0.2)) { isScrolled = scrolled }
+                withMotion(Motion.snappy) { isScrolled = scrolled }
             })
             .onGeometryChange(for: CGFloat.self, of: { proxy in proxy.safeAreaInsets.top }, action: { inset in
                 statusBarHeight = inset
@@ -316,9 +341,11 @@ private struct DashPresentation: ViewModifier {
         content
             .sheet(isPresented: settingsBinding) {
                 SettingsSheet() // MARK: settings – own NavigationStack + toast above every settings page
+                    .zoomDestination(id: DashZoomID.settings)   // grows out of the avatar
             }
             .sheet(isPresented: achievementsBinding) {
                 NavigationStack { AchievementsView() }
+                    .zoomDestination(id: DashZoomID.gipfelbuch)   // grows out of the "Nächster Erfolg" card
             }
             .overlay { celebrationOverlay }
             .onChange(of: celebrationKey, initial: true) { _, _ in
@@ -341,7 +368,7 @@ private struct DashPresentation: ViewModifier {
     private var celebrationOverlay: some View {
         if let info = celebration {
             BreakEvenCelebration(ticketName: info.ticketName, profit: info.profit) {
-                withAnimation(.smooth(duration: 0.35)) { celebration = nil }
+                withMotion(Motion.smooth) { celebration = nil }
             }
             .transition(.opacity)
             .zIndex(1)
@@ -369,6 +396,87 @@ private struct DashPresentation: ViewModifier {
         guard !app.settings.celebratedBreakEvenTicketIDs.contains(id) else { return }
         app.settings.celebratedBreakEvenTicketIDs.append(id)
         let info = DashCelebrationInfo(ticketName: ticketName, profit: profit)
-        withAnimation(.smooth(duration: 0.4)) { celebration = info }
+        withMotion(Motion.smooth) { celebration = info }
+    }
+}
+
+// MARK: - Zoom sources
+
+/// Ids of the zoom transitions that start on the Übersicht (docs/MOTION.md §9).
+enum DashZoomID {
+    static let settings = "dash.settings"
+    static let gipfelbuch = "dash.gipfelbuch"
+    static let car = "dash.car"
+}
+
+// MARK: - Condensed hero
+
+/// Once the hero has scrolled under the status bar, its essence stays in reach: a glass pill "◔ 75 % · noch € 350"
+/// drops in below the status bar (tap → back to the top). Reads the scroll progress itself – the only view besides the
+/// hero's transform that updates while scrolling.
+private struct DashCondensedSummit: View {
+    let condense: ScrollCondense
+    let summary: SavingsSummary
+    var onTap: () -> Void
+
+    var body: some View {
+        ZStack {
+            if condense.isCondensed {
+                Button(action: onTap) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        DashProgressDot(progress: summary.progressClamped, isPaidOff: summary.isPaidOff)
+                        Text(Format.number(SummitFigures.percent(summary.amortizedFraction)) + " %")
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textPrimary)
+                            .numericValue(summary.amortizedFraction)
+                        Text(detail)
+                            .font(.footnote.weight(.medium))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
+                            .numericValue(summary.isPaidOff ? summary.shownProfitEuro : summary.shownRemainingEuro)
+                    }
+                    .lineLimit(1)
+                    .padding(.leading, 8)
+                    .padding(.trailing, 14)
+                    .frame(minHeight: 38)
+                    .contentShape(.capsule)
+                }
+                .buttonStyle(.pressable)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .padding(.top, Theme.Spacing.xxs)
+                .motionTransition(.drop)
+                .accessibilityLabel("\(Format.percent(summary.amortizedFraction)) amortisiert, \(detail)")
+                .accessibilityHint("Scrollt nach oben zur Übersicht")
+            }
+        }
+        .motionAnimation(Motion.snappy, value: condense.isCondensed)
+    }
+
+    /// "noch € 350" · "+ € 156"
+    private var detail: String {
+        summary.isPaidOff ? "+ " + SummitFigures.euro(summary.shownProfitEuro)
+                          : "noch " + SummitFigures.euro(summary.shownRemainingEuro)
+    }
+}
+
+/// 18 pt progress ring in the route gradient (pine once paid off).
+private struct DashProgressDot: View {
+    var progress: Double
+    var isPaidOff: Bool
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Theme.textTertiary.opacity(0.3), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: max(0.02, min(progress, 1)))
+                .stroke(isPaidOff ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(Theme.routeGradient),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 18, height: 18)
+        .accessibilityHidden(true)
     }
 }
