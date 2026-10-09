@@ -101,8 +101,7 @@ struct TripEdModePicker: View {
     private func select(_ mode: TransportMode) {
         guard model.mode != mode else { return }
         withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .snappy(duration: 0.3, extraBounce: 0.08)) {
-            model.mode = mode
-            model.recompute()
+            model.setMode(mode)
         }
     }
 }

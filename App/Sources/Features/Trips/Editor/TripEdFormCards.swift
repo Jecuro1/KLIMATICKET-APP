@@ -95,33 +95,43 @@ struct TripEdDateCard: View {
         TripEdRowLabel(symbol: "calendar", tint: Theme.alpenglow, title: "Datum", subtitle: dayHint)
     }
 
+    /// Austrian time like everything else (list, ticket period, Format.time) – also when the iPhone is set elsewhere.
+    /// Up to the end of today: a future trip would count towards the balance before it happened (an already saved later
+    /// date stays selectable).
     private var pickers: some View {
-        HStack(spacing: 6) {
-            DatePicker("Datum", selection: dateBinding, displayedComponents: .date)
-            DatePicker("Uhrzeit", selection: dateBinding, displayedComponents: .hourAndMinute)
+        let latest = max(Self.endOfToday(), model.date)
+        return HStack(spacing: 6) {
+            DatePicker("Datum", selection: dateBinding, in: ...latest, displayedComponents: .date)
+            DatePicker("Uhrzeit", selection: dateBinding, in: ...latest, displayedComponents: .hourAndMinute)
         }
         .labelsHidden()
         .datePickerStyle(.compact)
         .environment(\.locale, Format.locale)
+        .environment(\.timeZone, Format.timeZone)
+        .environment(\.calendar, TripListFormat.calendar)
         .tint(Theme.accent)
+    }
+
+    private static func endOfToday() -> Date {
+        TripListFormat.calendar.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
     }
 
     private var dateBinding: Binding<Date> {
         Binding(
             get: { model.date },
-            set: { newValue in
-                model.date = newValue
-                model.recompute()
-            }
+            set: { newValue in model.setDate(newValue) }
         )
     }
 
     /// "Heute", "Gestern" or the weekday ("Mittwoch").
     private var dayHint: String {
-        let calendar = Calendar.current
+        let calendar = TripListFormat.calendar
         if calendar.isDateInToday(model.date) { return "Heute" }
         if calendar.isDateInYesterday(model.date) { return "Gestern" }
-        return model.date.formatted(.dateTime.weekday(.wide).locale(Format.locale))
+        var style = Date.FormatStyle.dateTime.weekday(.wide).locale(Format.locale)
+        style.timeZone = Format.timeZone
+        style.calendar = calendar
+        return model.date.formatted(style)
     }
 }
 
@@ -236,10 +246,7 @@ struct TripEdDetailsCard: View {
         Binding(
             get: { model.travelClass },
             set: { newValue in
-                withAnimation(.snappy(duration: 0.3)) {
-                    model.travelClass = newValue
-                    model.recompute()
-                }
+                withAnimation(.snappy(duration: 0.3)) { model.setTravelClass(newValue) }
             }
         )
     }
@@ -248,10 +255,7 @@ struct TripEdDetailsCard: View {
         Binding(
             get: { model.discount == .vorteilscard },
             set: { isOn in
-                withAnimation(.snappy(duration: 0.3)) {
-                    model.discount = isOn ? .vorteilscard : .none
-                    model.recompute()
-                }
+                withAnimation(.snappy(duration: 0.3)) { model.setDiscount(isOn ? .vorteilscard : .none) }
             }
         )
     }

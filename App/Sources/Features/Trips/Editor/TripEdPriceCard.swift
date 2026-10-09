@@ -100,6 +100,7 @@ struct TripEdPriceCard: View {
 
     private var eyebrowText: String {
         if model.isFareManual { return "Eigener Preis" }
+        if model.showsStoredFare { return "Erfasster Normalpreis" }
         return model.estimate == nil ? "Normalpreis" : "Geschätzter Normalpreis"
     }
 
@@ -142,10 +143,15 @@ struct TripEdPriceCard: View {
                 // Losing focus finishes the edit; if the field never got focus, finish directly.
                 if focus.wrappedValue == .fare { focus.wrappedValue = nil } else { finishEditing() }
             }
-        } else if model.isFareManual && model.estimate != nil {
+        } else if model.canResetFare {
             // Only with an estimate to go back to – for a custom place "Zurücksetzen" would wipe the only price.
+            // A saved older price (editing) can be brought up to today's estimate ("Aktualisieren").
             HStack(spacing: 6) {
-                pill("Zurücksetzen", symbol: "arrow.uturn.backward") { resetFare() }
+                if model.isFareManual {
+                    pill("Zurücksetzen", symbol: "arrow.uturn.backward") { resetFare() }
+                } else {
+                    pill("Aktualisieren", symbol: "arrow.clockwise") { resetFare() }
+                }
                 Button {
                     beginEditing()
                 } label: {

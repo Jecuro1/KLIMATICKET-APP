@@ -304,6 +304,12 @@ struct ScreenshotRouter: View {
                 case "update":
                     try? await Task.sleep(for: .milliseconds(600))
                     app.updates.presentSample()
+                case "tripEdit": // MARK: trips – "Fahrt bearbeiten": a trip without tariff data keeps its saved price
+                    try? await Task.sleep(for: .milliseconds(600))
+                    let trips = Repository(context: context, app: app).liveTrips()
+                    if let trip = trips.first(where: { $0.fromStationID == nil || $0.toStationID == nil }) ?? trips.first {
+                        TripListActions(app: app, context: context).edit(trip)
+                    }
                 default:
                     break
                 }
@@ -324,6 +330,8 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { app.selectedTab = .stats }
         case "ticket":
             MainTabView().onAppear { app.selectedTab = .ticket }
+        case "tripEdit": // MARK: trips
+            MainTabView().onAppear { app.selectedTab = .trips }
         case "tripDetail":
             NavigationStack {
                 if let trip = Repository(context: context, app: app).liveTrips().first {

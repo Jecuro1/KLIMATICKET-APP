@@ -9,12 +9,9 @@ struct TripEdImpactCard: View {
     let model: TripEditorModel
 
     @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
-    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
-    /// Trips created after the sheet opened (i.e. the one this sheet just saved) are left out, so the preview
-    /// stays put while the sheet slides away.
-    @State private var openedAt = Date()
     @State private var revealed = false
 
     var body: some View {
@@ -43,14 +40,13 @@ struct TripEdImpactCard: View {
     }
 
     private var currentImpact: Impact? {
+        // The other trips are summed once per sheet (TripEditorModel.tripEdBaseline); the trip this sheet saves stays out.
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID),
-              ticket.price > 0 else { return nil }
-        let baseline = trips.filter { $0.createdAt < openedAt }
-        guard let fractions = model.tripEdImpact(ticket: ticket, trips: baseline, catalog: app.catalog) else { return nil }
+              let fractions = model.tripEdImpact(ticket: ticket, context: context) else { return nil }
         return Impact(before: fractions.before,
                       after: fractions.after,
                       added: model.totalValue,
-                      price: ticket.price,
+                      price: fractions.price,
                       inPeriod: fractions.inPeriod,
                       isEditing: model.isEditing)
     }

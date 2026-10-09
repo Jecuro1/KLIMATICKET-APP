@@ -185,10 +185,12 @@ struct FavoritesManagerView: View {
         successTick += 1
     }
 
+    /// The editor applies the favourite like its favourites row: stored fare when there is no estimate, category (F21).
     private func openInEditor(_ favorite: FavoriteRouteEntity) {
-        let draft = TripDraft(fromStationID: favorite.fromStationID, toStationID: favorite.toStationID,
+        var draft = TripDraft(fromStationID: favorite.fromStationID, toStationID: favorite.toStationID,
                               fromName: favorite.fromName, toName: favorite.toName, mode: favorite.mode,
                               isRoundTrip: favorite.isRoundTrip)
+        draft.favorite = favorite
         presentEditor(draft)
     }
 

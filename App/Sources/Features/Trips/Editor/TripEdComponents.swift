@@ -104,18 +104,17 @@ extension TripEditorModel {
         return !resolved.isEmpty && name == resolved
     }
 
-    /// Amortisation of `ticket` without and with the trip in this form. `before` leaves out the trip being edited (wherever
-    /// its old date lies), `after` adds the form's value only when the form's date is inside the ticket period.
-    /// Nil when the ticket has no price. (`impact(on:)` subtracts the edited trip even when it was outside the period.)
-    func tripEdImpact(ticket: TicketEntity, trips: [TripEntity], catalog: TariffCatalog)
-        -> (before: Double, after: Double, inPeriod: Bool)? {
-        let editingID = editingTrip?.id
-        let others = editingID == nil ? trips : trips.filter { $0.id != editingID }
-        let summary = Analytics.make(ticket: ticket, trips: others, catalog: catalog).summary
-        guard summary.ticketPrice > 0 else { return nil }
-        let inPeriod = ticket.period.contains(date)
+    /// Amortisation of `ticket` without and with the trip in this form, against the own share (`price`). `before` leaves
+    /// out the trip being edited (wherever its old date lies), `after` adds the form's value only when the form's date is
+    /// inside the ticket period. Nil when the own share is 0. The baseline is cached (`tripEdBaseline`).
+    func tripEdImpact(ticket: TicketEntity, context: ModelContext)
+        -> (before: Double, after: Double, price: Double, inPeriod: Bool)? {
+        let base = tripEdBaseline(ticket: ticket, context: context)
+        let price = base.period.price
+        guard price > 0 else { return nil }
+        let inPeriod = base.period.contains(date)
         let added = inPeriod ? totalValue : 0
-        return (summary.totalValue / summary.ticketPrice, (summary.totalValue + added) / summary.ticketPrice, inPeriod)
+        return (base.value / price, (base.value + added) / price, price, inPeriod)
     }
 }
 

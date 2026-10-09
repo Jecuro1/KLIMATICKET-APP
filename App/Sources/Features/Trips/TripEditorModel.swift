@@ -39,6 +39,18 @@ final class TripEditorModel {
     var manualFare: Double?
     var manualDistanceKm: Double?
     private(set) var estimate: FareEstimate?
+    /// Editing: fare and distance saved with the trip. They stay until something that sets the price changes – a new
+    /// note, time or purpose must not re-price an older trip with today's tariff or drop its Vorteilscard price.
+    @ObservationIgnored private var storedFare: Double?
+    @ObservationIgnored private var storedDistanceKm: Double?
+    /// Route, mode, class, Vorteilscard or a date in another tariff period changed: from then on the estimate counts.
+    private(set) var pricingChanged = false
+    /// Start or destination changed (a trip without tariff data then needs a new price).
+    private(set) var routeChanged = false
+
+    /// Amortisation preview: the ticket's other trips, summed once per ticket period (see `tripEdBaseline`).
+    @ObservationIgnored private let openedAt = Date()
+    @ObservationIgnored private var baseline: (ticketID: UUID, period: TicketPeriod, value: Double)?
 
     private(set) var editingTrip: TripEntity?
     let app: AppState
@@ -63,8 +75,9 @@ final class TripEditorModel {
             isInduced = trip.isInduced
             // Editing never re-categorises silently.
             categoryWasChosen = true
-            if trip.isFareManual { manualFare = trip.fareEUR }
-            if fromStation == nil || toStation == nil { manualDistanceKm = trip.distanceKm }
+            // An own price stays an own price; an estimated one is kept as saved (see `fare`).
+            if trip.isFareManual { manualFare = trip.fareEUR } else { storedFare = trip.fareEUR }
+            storedDistanceKm = trip.distanceKm
         } else {
             fromStation = draft.fromStationID.flatMap(app.stations.station(id:))
                 ?? (draft.fromName.isEmpty ? nil : app.stations.station(named: draft.fromName))
@@ -82,6 +95,18 @@ final class TripEditorModel {
             }
         }
         recompute()
+        if let trip { restoreDiscount(of: trip) }
+    }
+
+    /// The Vorteilscard switch is not saved per trip: show it on when only the reduced estimate explains the saved price.
+    private func restoreDiscount(of trip: TripEntity) {
+        guard !trip.isFareManual, let current = estimate, abs(current.fareEUR - trip.fareEUR) >= 0.005,
+              let a = fromStation, let b = toStation else { return }
+        let other: FareDiscount = discount == .none ? .vorteilscard : .none
+        let alternative = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: other, date: date)
+        guard abs(alternative.fareEUR - trip.fareEUR) < 0.005 else { return }
+        discount = other
+        estimate = alternative
     }
 
     var isEditing: Bool { editingTrip != nil }
@@ -90,11 +115,34 @@ final class TripEditorModel {
     var resolvedFromName: String { fromStation?.name ?? fromName.trimmingCharacters(in: .whitespaces) }
     var resolvedToName: String { toStation?.name ?? toName.trimmingCharacters(in: .whitespaces) }
 
-    /// Fare for one direction (manual override wins).
-    var fare: Double { manualFare ?? estimate?.fareEUR ?? 0 }
-    var distanceKm: Double { manualDistanceKm ?? estimate?.distanceKm ?? 0 }
+    /// Fare for one direction: own price → (editing) the saved price → the estimate.
+    var fare: Double {
+        if let manualFare { return manualFare }
+        if let storedFare, keepsStoredPrice { return storedFare }
+        return estimate?.fareEUR ?? 0
+    }
+
+    var distanceKm: Double {
+        if let manualDistanceKm { return manualDistanceKm }
+        if let storedDistanceKm, keepsStoredPrice { return storedDistanceKm }
+        return estimate?.distanceKm ?? 0
+    }
+
     var totalValue: Double { fare * (isRoundTrip ? 2 : 1) }
     var isFareManual: Bool { manualFare != nil }
+
+    /// Editing keeps the saved price until a pricing input changes – without tariff data for the route, until the route does.
+    private var keepsStoredPrice: Bool { !pricingChanged || (estimate == nil && !routeChanged) }
+
+    /// Editing: the saved price is shown and today's estimate differs from it (older tariff) or there is none ("Lech").
+    var showsStoredFare: Bool {
+        guard manualFare == nil, let storedFare, keepsStoredPrice else { return false }
+        guard let estimate else { return true }
+        return abs(estimate.fareEUR - storedFare) >= 0.005
+    }
+
+    /// "Zurücksetzen" / "Aktualisieren" back to today's estimate.
+    var canResetFare: Bool { (isFareManual || showsStoredFare) && estimate != nil }
 
     var canSave: Bool {
         !resolvedFromName.isEmpty && !resolvedToName.isEmpty && resolvedFromName != resolvedToName && fare > 0
@@ -110,11 +158,15 @@ final class TripEditorModel {
     /// Short explanation under the price ("ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025").
     var fareExplanation: String {
         if isFareManual { return "Eigener Preis" }
+        if showsStoredFare {
+            guard let e = estimate else { return "Beim Erfassen gespeichert" }
+            return "Beim Erfassen gespeichert · aktuell \(Format.euroPrecise(e.fareEUR))"
+        }
         if let e = estimate { return e.explanation }
         return "Preis wird nach Wahl von Start und Ziel geschätzt"
     }
 
-    var isOfficialPrice: Bool { !isFareManual && estimate?.method == .officialTable }
+    var isOfficialPrice: Bool { !isFareManual && !showsStoredFare && estimate?.method == .officialTable }
 
     /// Federal states touched (for regional ticket comparison).
     var states: [String] {
@@ -132,7 +184,16 @@ final class TripEditorModel {
             toStation = station
             toName = station.name
         }
-        if station.kind == .metro && (mode == .train || mode == .sBahn) { mode = .metro }
+        routeChanged = true
+        pricingChanged = true
+        if station.kind == .metro && (mode == .train || mode == .sBahn) {
+            mode = .metro
+        } else if mode == .metro, let a = fromStation, let b = toStation, a.kind != .metro || b.kind != .metro,
+                  a.location.distanceKm(to: b.location) > 15 {
+            // A long hop that began at a U-Bahn entry (Wien Hbf exists as rail and as U-Bahn station): as U-Bahn it
+            // would miss the official ÖBB price.
+            mode = .train
+        }
         // Stops from the complete place database: pick the mode both ends share (e.g. bus stop → bus).
         if station.kind == .stop {
             let other = endpoint == .from ? toStation : fromStation
@@ -151,7 +212,38 @@ final class TripEditorModel {
             toStation = nil
             toName = name
         }
+        routeChanged = true
+        pricingChanged = true
         recompute()
+    }
+
+    func setMode(_ newMode: TransportMode) {
+        guard newMode != mode else { return }
+        mode = newMode
+        pricingChanged = true
+        recompute()
+    }
+
+    func setTravelClass(_ newClass: TravelClass) {
+        guard newClass != travelClass else { return }
+        travelClass = newClass
+        pricingChanged = true
+        recompute()
+    }
+
+    func setDiscount(_ newDiscount: FareDiscount) {
+        guard newDiscount != discount else { return }
+        discount = newDiscount
+        pricingChanged = true
+        recompute()
+    }
+
+    /// A new time or day keeps a saved price; only a date in another tariff period (the estimate moves) re-prices.
+    func setDate(_ newDate: Date) {
+        let previous = estimate
+        date = newDate
+        recompute()
+        if let previous, let estimate, abs(previous.fareEUR - estimate.fareEUR) >= 0.005 { pricingChanged = true }
     }
 
     func swap() {
@@ -167,6 +259,8 @@ final class TripEditorModel {
         toName = favorite.toName
         mode = favorite.mode
         isRoundTrip = favorite.isRoundTrip
+        routeChanged = true
+        pricingChanged = true
         if let favoriteCategory = TripCategory(rawValue: favorite.categoryRaw) {
             // The favourite is a template: its purpose wins over an earlier pick.
             category = favoriteCategory
@@ -182,8 +276,10 @@ final class TripEditorModel {
         }
     }
 
+    /// Back to today's estimate (also replaces a saved price when editing).
     func resetManualFare() {
         manualFare = nil
+        pricingChanged = true
         recompute()
     }
 
@@ -196,11 +292,19 @@ final class TripEditorModel {
         estimate = app.estimator.estimate(from: a, to: b, mode: mode, travelClass: travelClass, discount: discount, date: date)
     }
 
-    /// Amortisation preview: fraction before and after saving this trip.
-    func impact(on summary: SavingsSummary?) -> (before: Double, after: Double)? {
-        guard let summary, summary.ticketPrice > 0 else { return nil }
-        let currentValue = isEditing ? (summary.totalValue - (editingTrip?.totalValue ?? 0)) : summary.totalValue
-        return (currentValue / summary.ticketPrice, (currentValue + totalValue) / summary.ticketPrice)
+    /// Value of `ticket`'s period without the trip being edited, from the trips saved before the sheet opened (the one this
+    /// sheet saves stays out, so the preview holds still while the sheet slides away). One fetch per ticket period – not a
+    /// pass over every trip on each keystroke in the price field or tick of the date wheel.
+    func tripEdBaseline(ticket: TicketEntity, context: ModelContext) -> (period: TicketPeriod, value: Double) {
+        let period = ticket.period
+        if let baseline, baseline.ticketID == ticket.id, baseline.period == period { return (period, baseline.value) }
+        let start = period.start, end = period.end, opened = openedAt
+        let predicate = #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start && $0.date <= end && $0.createdAt < opened }
+        let trips = (try? context.fetch(FetchDescriptor<TripEntity>(predicate: predicate))) ?? []
+        let editingID = editingTrip?.id
+        let value = trips.reduce(0) { $1.id == editingID ? $0 : $0 + $1.totalValue }
+        baseline = (ticket.id, period, value)
+        return (period, value)
     }
 
     /// Persists the trip (insert or update). Returns the saved entity.

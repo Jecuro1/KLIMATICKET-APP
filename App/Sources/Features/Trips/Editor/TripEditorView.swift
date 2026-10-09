@@ -37,7 +37,6 @@ private struct TripEdSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
-    @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var favorites: [FavoriteRouteEntity]
 
@@ -68,9 +67,9 @@ private struct TripEdSheet: View {
         .sensoryFeedback(.selection, trigger: model.mode) { _, _ in haptics }
         .sensoryFeedback(.selection, trigger: selectionTick) { _, _ in haptics }
         // MARK: tripmeta – suggest the purpose from the favourite / the route's last trip.
-        .onAppear { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+        .onAppear { model.metaApplySuggestion(favorites: favorites, context: context) }
         .onChange(of: model.metaSuggestionKey) { _, _ in
-            withAnimation(.snappy(duration: 0.3)) { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+            withAnimation(.snappy(duration: 0.3)) { model.metaApplySuggestion(favorites: favorites, context: context) }
         }
     }
 
@@ -185,7 +184,7 @@ private struct TripEdSheet: View {
     /// Amortisation of the active ticket before/after this save (nil when the trip is outside its validity).
     private func projectedOutcome() -> Outcome? {
         guard let ticket = activeTicket,
-              let impact = model.tripEdImpact(ticket: ticket, trips: trips, catalog: app.catalog),
+              let impact = model.tripEdImpact(ticket: ticket, context: context),
               impact.inPeriod else { return nil }
         return Outcome(before: impact.before, after: impact.after, ticketID: ticket.id)
     }

@@ -27,7 +27,8 @@ extension TripEditorModel {
 
     /// Preselects the purpose of a matching favourite, otherwise of the most recent trip on the same route
     /// (as a visible, deselectable suggestion). Never overrides a choice the user made.
-    func metaApplySuggestion(favorites: [FavoriteRouteEntity], trips: [TripEntity]) {
+    /// Reads only the categorised trips (one fetch per route change, not a query over every trip held by the sheet).
+    func metaApplySuggestion(favorites: [FavoriteRouteEntity], context: ModelContext) {
         guard !categoryWasChosen else { return }
         if let favorite = favorites.first(where: { tripEdMatches($0) }),
            let favoriteCategory = TripCategory(rawValue: favorite.categoryRaw) {
@@ -35,7 +36,8 @@ extension TripEditorModel {
             categorySource = .favorite
             return
         }
-        let records = trips.filter { !$0.categoryRaw.isEmpty && $0.deletedAt == nil }.map(\.record)
+        let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil && $0.categoryRaw != "" })
+        let records = ((try? context.fetch(descriptor)) ?? []).map(\.record)
         if let suggestion = CategoryStats.suggestedCategory(fromName: resolvedFromName, toName: resolvedToName,
                                                             in: records, excludingID: editingTrip?.id) {
             category = suggestion
