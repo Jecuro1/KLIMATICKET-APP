@@ -8,8 +8,12 @@ struct RootView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @State private var showsAccountSwitch = false
+    /// The scene was in the background since the last activation. A plain .inactive → .active (Control Center,
+    /// Notification Center, a system alert, the app switcher, the launch itself) is no return to the app.
+    @State private var returnedFromBackground = false
 
     var body: some View {
         @Bindable var app = app
@@ -19,13 +23,20 @@ struct RootView: View {
             if let screen = LaunchMode.screenshotScreen {
                 ScreenshotRouter(screen: screen)
             } else if !app.settings.onboardingCompleted || tickets.isEmpty {
-                OnboardingFlow()
-                    .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                if app.auth.isLoaded {
+                    OnboardingFlow()
+                        .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                } else {
+                    // The welcome step decides once whether you are signed in: wait the moment the Keychain read
+                    // takes (off the main thread, see AuthService) under the welcome sky.
+                    AmbientBackground(style: colorScheme == .dark ? .onboarding : .standard, glow: 0.95)
+                }
             } else {
                 MainTabView()
                     .transition(.opacity)
             }
         }
+        .environment(\.ambientSkyPaused, isCoveredByAppSheet)
         .animation(.smooth(duration: 0.5), value: app.settings.onboardingCompleted)
         .sheet(item: $app.tripDraft) { draft in
             TripEditorView(draft: draft)
@@ -57,8 +68,23 @@ struct RootView: View {
         } message: { change in
             Text(Self.accountSwitchMessage(change))
         }
-        .onChange(of: app.sync.pendingAccountSwitch, initial: true) { _, change in
-            showsAccountSwitch = change != nil && !LaunchMode.isScreenshot
+        .onChange(of: app.sync.pendingAccountSwitch, initial: true) { _, _ in
+            updateAccountSwitchAlert(afterDismissal: false)
+        }
+        .onChange(of: isCoveredByAppSheet) { _, covered in
+            if !covered { updateAccountSwitchAlert(afterDismissal: true) }
+        }
+        .onChange(of: tickets.isEmpty, initial: true) { _, isEmpty in
+            // Tickets came from the account (reinstall, new iPhone): the setup is done – onboarding would add a second
+            // ticket starting today. finish() sets the flag in the same turn as its ticket, so this skips it.
+            guard !isEmpty, !app.settings.onboardingCompleted, !LaunchMode.isScreenshot else { return }
+            app.settings.onboardingCompleted = true
+            app.showToast("checkmark.icloud.fill", "Willkommen zurück", "Deine Daten wurden geladen")
+        }
+        .onChange(of: app.auth.phase) { old, new in
+            // Signed in during onboarding (welcome step): fetch the account's data right away (see above).
+            guard case .signingIn = old, new == .signedIn, !app.settings.onboardingCompleted, !LaunchMode.isScreenshot else { return }
+            Task { await app.sync.sync(context: context, auth: app.auth) }
         }
         .preferredColorScheme(app.settings.appearance.colorScheme)
         .tint(Theme.accent)
@@ -67,27 +93,84 @@ struct RootView: View {
             handleExternalRequests()
         }
         .task {
+            LaunchTrace.mark("root.task")
             // All Austrian stops + localities (places.bin): built once off the main thread, then every station
             // search (StationIndex façade) covers all ~40.000 stops.
             PlaceIndexLoader.shared.preload()
-            PlaceIndexLoader.shared.whenReady { [stations = app.stations] index in stations.attach(places: index) }
+            let bundled = app.bundled
+            PlaceIndexLoader.shared.whenReady { index in bundled.stations.value.attach(places: index) }
             guard !LaunchMode.isScreenshot else { return }
             handleExternalRequests()
+            // Nothing below is visible right away: let the first frames and the entrance animations run first.
+            try? await Task.sleep(for: .milliseconds(700))
             let repo = Repository(context: context, app: app)
-            repo.refreshWidgets()
-            repo.configureTripDetection()
+            if widgetSnapshotIsStale() { repo.refreshWidgets() }   // date-dependent fields; data changes refresh on save
+            if app.detection.isEnabled { repo.configureTripDetection() }
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
             await app.sync.sync(context: context, auth: app.auth)
             repo.refreshWidgets()
         }
-        .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !LaunchMode.isScreenshot else { return }
-            handleExternalRequests()
-            Task {
-                if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
-                await app.sync.sync(context: context, auth: app.auth)
-                Repository(context: context, app: app).refreshWidgets()
+        .onChange(of: scenePhase, initial: true) { _, phase in
+            guard !LaunchMode.isScreenshot else { return }
+            switch phase {
+            case .background:
+                returnedFromBackground = true
+            case .active:
+                // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
+                handleExternalRequests()
+                guard returnedFromBackground else { return }
+                returnedFromBackground = false
+                Task { await refreshAfterReturn() }
+            default:
+                break
             }
+        }
+        .onAppear { LaunchTrace.mark("root.appear") }
+    }
+
+    /// One of the app-level sheets is up (RootView's own, or Einstellungen / Gipfelbuch, presented by a tab).
+    private var isCoveredByAppSheet: Bool {
+        app.tripDraft != nil || app.isShowingSettings || app.isShowingAchievements || app.updates.isPresentingSheet
+    }
+
+    /// Back from the background: remote content, sync, detection regions and – only if something changed – widgets.
+    private func refreshAfterReturn() async {
+        let catalogVersion = app.catalog.version
+        if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
+        await app.sync.sync(context: context, auth: app.auth)
+        let repo = Repository(context: context, app: app)
+        if app.detection.isEnabled { repo.configureTripDetection() }   // favourites and trips may have changed
+        if app.catalog.version != catalogVersion || widgetSnapshotIsStale() { repo.refreshWidgets() }
+    }
+
+    /// The widget snapshot follows every save already; it is out of date only on a new day or after a sync.
+    private func widgetSnapshotIsStale() -> Bool {
+        guard let snapshot = WidgetSnapshot.load() else { return true }
+        if !Calendar.vienna.isDateInToday(snapshot.generatedAt) { return true }
+        if let lastSync = app.sync.lastSync, lastSync > snapshot.generatedAt { return true }
+        return false
+    }
+
+    /// The account-switch decision is a RootView alert, which SwiftUI cannot show over a sheet. Signing in happens in
+    /// Einstellungen (a sheet), so that closes first; other sheets are waited for (`isCoveredByAppSheet`).
+    private func updateAccountSwitchAlert(afterDismissal: Bool) {
+        guard app.sync.pendingAccountSwitch != nil, !LaunchMode.isScreenshot else {
+            showsAccountSwitch = false
+            return
+        }
+        guard !showsAccountSwitch else { return }
+        if app.isShowingSettings {
+            app.isShowingSettings = false   // → onChange(of: isCoveredByAppSheet) comes back here
+            return
+        }
+        guard !isCoveredByAppSheet else { return }
+        guard afterDismissal else {
+            showsAccountSwitch = true
+            return
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))   // the sheet's dismissal animation
+            if app.sync.pendingAccountSwitch != nil, !isCoveredByAppSheet { showsAccountSwitch = true }
         }
     }
 
@@ -110,7 +193,7 @@ struct RootView: View {
         }
         if AppGroup.defaults.bool(forKey: OpenAddTripIntent.pendingKey) {
             AppGroup.defaults.removeObject(forKey: OpenAddTripIntent.pendingKey)
-            app.presentAddTrip()
+            app.presentAddTripFromOutside()
         }
     }
 
@@ -125,7 +208,7 @@ struct RootView: View {
             var draft = TripDraft()
             draft.fromStationID = value("from")
             draft.toStationID = value("to")
-            app.presentAddTrip(draft)
+            app.presentAddTripFromOutside(draft)
         case "log":
             guard let id = value("favorite").flatMap(UUID.init(uuidString:)) else { return }
             let repo = Repository(context: context, app: app)
@@ -193,6 +276,7 @@ struct ScreenshotRouter: View {
 
     var body: some View {
         content
+            .onAppear { LaunchTrace.mark("screen.appear") }
             .task {
                 switch screen {
                 case "addTrip":

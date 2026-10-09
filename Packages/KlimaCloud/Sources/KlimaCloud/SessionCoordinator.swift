@@ -89,7 +89,14 @@ public final class SessionCoordinator {
     /// Reads the persisted session (a value that does not decode counts as none).
     @discardableResult
     public func load() -> LoadResult {
-        switch store.read(key) {
+        load(from: store.read(key))
+    }
+
+    /// Applies what `store.read(key)` returned when the read ran elsewhere – e.g. on a background thread at launch,
+    /// because a Keychain read blocks on IPC. Same rules as `load()`.
+    @discardableResult
+    public func load(from result: SecureReadResult) -> LoadResult {
+        switch result {
         case .found(let data):
             session = try? JSONDecoder().decode(CloudSession.self, from: data)
             return .loaded(session)

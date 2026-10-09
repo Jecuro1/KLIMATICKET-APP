@@ -10,6 +10,8 @@ struct KlimaBilanzApp: App {
     private let container: ModelContainer
 
     init() {
+        LaunchTrace.mark("app.init")
+        LaunchTrace.shared.startStallMonitor()
         let state: AppState
         if LaunchMode.isScreenshot {
             // Deterministic, isolated state for CI screenshots.
@@ -26,6 +28,7 @@ struct KlimaBilanzApp: App {
             state = AppState()
             container = DataSchema.makeContainer()
         }
+        LaunchTrace.mark("app.ready")
         _app = State(initialValue: state)
         AppDelegate.appState = state
         AppDelegate.container = container

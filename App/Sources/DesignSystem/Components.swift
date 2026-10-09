@@ -36,17 +36,26 @@ struct FrostedCardModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let dark = colorScheme == .dark
         content
             .background {
                 ZStack {
-                    if reduceTransparency {
-                        shape.fill(Theme.sheetBackground)
-                    } else {
-                        shape.fill(.regularMaterial)
-                        shape.fill(colorScheme == .dark ? Color(red: 30 / 255, green: 46 / 255, blue: 78 / 255).opacity(0.30)
-                                                        : Color.white.opacity(0.44))
+                    // The single shadow caster is the card's base shape – not the composited card with its text,
+                    // symbols and charts (that forced an offscreen render of the whole card for every shadow). The
+                    // base is opaque within the shape, so the shadow looks the same.
+                    Group {
+                        if reduceTransparency {
+                            shape.fill(Theme.sheetBackground)
+                        } else {
+                            shape.fill(.regularMaterial)
+                        }
                     }
-                    if let tint { shape.fill(tint.opacity(colorScheme == .dark ? 0.14 : 0.10)) }
+                    .shadow(color: dark ? .black.opacity(0.45) : Color(red: 26 / 255, green: 52 / 255, blue: 96 / 255).opacity(0.14),
+                            radius: dark ? 20 : 15, y: dark ? 12 : 8)
+                    if !reduceTransparency {
+                        shape.fill(dark ? Color(red: 30 / 255, green: 46 / 255, blue: 78 / 255).opacity(0.30) : Color.white.opacity(0.44))
+                    }
+                    if let tint { shape.fill(tint.opacity(dark ? 0.14 : 0.10)) }
                 }
             }
             .overlay {
@@ -59,8 +68,6 @@ struct FrostedCardModifier: ViewModifier {
                                    startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1)
             }
-            .shadow(color: colorScheme == .dark ? .black.opacity(0.45) : Color(red: 26 / 255, green: 52 / 255, blue: 96 / 255).opacity(0.14),
-                    radius: colorScheme == .dark ? 20 : 15, y: colorScheme == .dark ? 12 : 8)
     }
 }
 
@@ -74,9 +81,13 @@ struct SurfaceCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface, in: .rect(cornerRadius: cornerRadius))
+            .background {
+                // Shadow from the surface shape only (see FrostedCardModifier).
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(Theme.surface)
+                    .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
+            }
             .overlay(RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Theme.separator, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
     }
 }
 
@@ -174,11 +185,17 @@ struct ModeIcon: View {
             .font(.system(size: size * 0.45, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(
-                LinearGradient(colors: [Theme.modeColor(mode), Theme.modeColor(mode).mix(with: .black, by: 0.22)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing),
-                in: .rect(cornerRadius: size * 0.31, style: .continuous))
+            .background(Self.gradients[mode] ?? Self.gradient(mode), in: .rect(cornerRadius: size * 0.31, style: .continuous))
             .accessibilityLabel(mode.displayName)
+    }
+
+    /// Built once per mode (stable values, so rows with the same mode diff as unchanged).
+    private static let gradients: [TransportMode: LinearGradient] =
+        Dictionary(uniqueKeysWithValues: TransportMode.allCases.map { ($0, gradient($0)) })
+
+    private static func gradient(_ mode: TransportMode) -> LinearGradient {
+        LinearGradient(colors: [Theme.modeColor(mode), Theme.modeColor(mode).mix(with: .black, by: 0.22)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
     }
 }
 

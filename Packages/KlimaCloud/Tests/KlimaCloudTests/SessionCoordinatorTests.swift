@@ -160,6 +160,30 @@ final class SessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(stored?.refreshToken, "refresh-Z")
     }
 
+    /// A read made off the main thread (app launch) is applied with the same rules as `load()`.
+    func testLoadFromPrefetchedRead() async {
+        let store = InMemorySecureStore()
+        let writer = SessionCoordinator(store: store, key: key) { $0 }
+        writer.replace(with: TestData.session("access-P", refresh: "refresh-P"))
+        let prefetched = store.read(key)
+
+        let coordinator = SessionCoordinator(store: InMemorySecureStore(), key: key) { $0 }
+        let changes = Counter()
+        coordinator.onChange = { _ in changes.increment() }
+        XCTAssertEqual(coordinator.load(from: .locked), .locked)
+        XCTAssertNil(coordinator.session)
+        XCTAssertEqual(coordinator.load(from: .notFound), .loaded(nil))
+        XCTAssertEqual(coordinator.load(from: prefetched), .loaded(writer.session))
+        XCTAssertEqual(coordinator.session?.refreshToken, "refresh-P")
+        XCTAssertEqual(changes.value, 1)
+        // Not found / failed keep what is loaded; an undecodable value counts as no session.
+        XCTAssertEqual(coordinator.load(from: .failed), .loaded(writer.session))
+        XCTAssertEqual(coordinator.load(from: .found(Data("garbage".utf8))), .loaded(nil))
+        XCTAssertNil(coordinator.session)
+        let valid = await coordinator.validSession()
+        XCTAssertNil(valid)
+    }
+
     func testSignOutClearsStore() async {
         let store = InMemorySecureStore()
         let coordinator = SessionCoordinator(store: store, key: key) { $0 }

@@ -53,8 +53,11 @@ struct TripDraft: Identifiable, Equatable {
 @MainActor
 final class AppState {
     let config = AppConfig.shared
-    let stations: StationIndex
-    let relations: RelationPriceTable
+    /// Bundled reference data (stations.json, the exact ÖBB price table). Built on a background thread that starts in
+    /// `init`, so nothing of it runs before the first frame; reading waits only for whatever is left of that build.
+    @ObservationIgnored let bundled: BundledData
+    var stations: StationIndex { bundled.stations.value }
+    var relations: RelationPriceTable { bundled.relations.value }
     private(set) var catalog: TariffCatalog
     let settings: AppSettings
     let auth: AuthService
@@ -72,10 +75,14 @@ final class AppState {
     var isShowingAchievements = false
     var celebrateBreakEven = false
 
+    @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
+    @ObservationIgnored private var pendingOutsideDraft: TripDraft?
+
     init(settings: AppSettings? = nil) {
+        let bundled = BundledData()
+        bundled.preload()
+        self.bundled = bundled
         self.settings = settings ?? AppSettings()
-        self.stations = AppState.loadStations()
-        self.relations = AppState.loadRelations()
         let tariffs = TariffService()
         self.tariffs = tariffs
         self.catalog = tariffs.currentCatalog()
@@ -84,16 +91,30 @@ final class AppState {
         self.updates = UpdateService(config: AppConfig.shared)
         self.notifications = NotificationService()
         self.detection = TripDetectionService()
+        LaunchTrace.mark("state.services")
+        // Region events relaunch the app in the background, without UI – so RootView never configures detection.
+        // Resolve the monitored stations (region id = station id) and prices lazily instead.
+        detection.stationResolver = { id in await bundled.station(id: id) }
+        detection.estimatorProvider = { [weak self] in self?.estimator }
     }
 
     var estimator: FareEstimator { FareEstimator(catalog: catalog, relations: relations) }
 
     func reloadCatalog() { catalog = tariffs.currentCatalog() }
 
-    /// Called once at launch and when returning to foreground.
+    /// Called once at launch and when returning to foreground. Concurrent calls share one pass (no duplicate downloads).
     func refreshRemoteContent() async {
-        if await tariffs.refreshIfNeeded(manifestHint: updates.manifest) { reloadCatalog() }
-        await updates.checkIfDue(force: false)
+        if let running = remoteRefresh {
+            await running.value
+            return
+        }
+        let task = Task { @MainActor in
+            defer { self.remoteRefresh = nil }
+            if await self.tariffs.refreshIfNeeded(manifestHint: self.updates.manifest) { self.reloadCatalog() }
+            await self.updates.checkIfDue(force: false)
+        }
+        remoteRefresh = task
+        await task.value
     }
 
     func showToast(_ symbol: String, _ title: String, _ subtitle: String? = nil) {
@@ -107,8 +128,53 @@ final class AppState {
 
     func presentAddTrip(_ draft: TripDraft = TripDraft()) { tripDraft = draft }
 
+    /// "Fahrt erfassen" from outside the current screen (Control Center, Action button, Siri, widget link): RootView
+    /// presents the editor, which SwiftUI cannot do while another sheet is up – so the app-level sheets (Einstellungen,
+    /// Gipfelbuch, an optional update) are closed first and the editor follows once they are gone. An editor that is
+    /// already open keeps its (unsaved) input, and a required update is never covered.
+    func presentAddTripFromOutside(_ draft: TripDraft = TripDraft()) {
+        guard tripDraft == nil, pendingOutsideDraft == nil else { return }
+        if updates.isPresentingSheet && updates.isRequired { return }
+        guard isShowingSettings || isShowingAchievements || updates.isPresentingSheet else {
+            tripDraft = draft
+            return
+        }
+        pendingOutsideDraft = draft
+        isShowingSettings = false
+        isShowingAchievements = false
+        updates.isPresentingSheet = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))   // the sheet's dismissal (same delay as FavoritesManagerView)
+            if self.tripDraft == nil, let pending = self.pendingOutsideDraft { self.tripDraft = pending }
+            self.pendingOutsideDraft = nil
+        }
+    }
+}
+
+/// Bundled reference data, built once on a background thread (JSON decode + search normalisation of ~1.500 stations,
+/// zlib inflate of the price table) instead of in `App.init` before the first frame.
+final class BundledData: Sendable {
+    let stations = Preloaded<StationIndex> { BundledData.loadStations() }
+    let relations = Preloaded<RelationPriceTable> { BundledData.loadRelations() }
+
+    /// Starts both builds in the background (called first thing at launch).
+    func preload() {
+        stations.preload()
+        relations.preload()
+    }
+
+    /// A station by id – also any stop of the full place index (bus stops, …). Without UI (a background launch for a
+    /// region event) nobody attached that index yet: then it is built and attached here. Never blocks the caller.
+    func station(id: String) async -> Station? {
+        let index = await stations.load()
+        if let station = index.station(id: id) { return station }
+        guard index.places == nil, let places = try? await PlaceIndexLoader.shared.load() else { return nil }
+        index.attach(places: places)
+        return index.station(id: id)
+    }
+
     /// Exact ÖBB prices: relations-points.json + raw-DEFLATE compressed relations.bin (UInt16 triples).
-    private static func loadRelations() -> RelationPriceTable {
+    static func loadRelations() -> RelationPriceTable {
         guard let pointsURL = Bundle.main.url(forResource: "relations-points", withExtension: "json"),
               let binURL = Bundle.main.url(forResource: "relations", withExtension: "bin"),
               let pointsData = try? Data(contentsOf: pointsURL),
@@ -117,17 +183,61 @@ final class AppState {
               let raw = try? (packed as NSData).decompressed(using: .zlib) as Data else {
             return .empty
         }
+        defer { LaunchTrace.mark("relations.built") }
         return RelationPriceTable(validFrom: meta.validFrom, source: meta.source,
                                   pointIDs: meta.points.map(\.stationID), triples: raw)
     }
 
-    private static func loadStations() -> StationIndex {
+    static func loadStations() -> StationIndex {
         guard let url = Bundle.main.url(forResource: "stations", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let index = try? StationIndex(jsonData: data) else {
             return StationIndex(stations: [])
         }
+        LaunchTrace.mark("stations.built")
         return index
+    }
+}
+
+/// A value built once, on a background thread when `preload()` ran first. `value` never builds twice: a reader that
+/// arrives during the build waits for it (the build keeps running at `userInitiated`), one that arrives first builds it.
+final class Preloaded<Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Value?
+    private var build: (@Sendable () -> Value)?
+
+    init(_ build: @escaping @Sendable () -> Value) {
+        self.build = build
+    }
+
+    /// Starts the build in the background (no-op when it is already built or running).
+    func preload(priority: TaskPriority = .userInitiated) {
+        Task.detached(priority: priority) { _ = self.value }
+    }
+
+    /// The value; waits for a running build.
+    var value: Value {
+        lock.lock()
+        defer { lock.unlock() }
+        if let stored { return stored }
+        guard let build else { preconditionFailure("Preloaded: neither a value nor a builder") }
+        let built = build()
+        stored = built
+        self.build = nil
+        return built
+    }
+
+    /// The value without blocking the calling thread (the wait happens in the background).
+    func load() async -> Value {
+        if let ready = peek { return ready }
+        return await Task.detached(priority: .userInitiated) { self.value }.value
+    }
+
+    /// The value if it is built (never waits).
+    var peek: Value? {
+        guard lock.try() else { return nil }
+        defer { lock.unlock() }
+        return stored
     }
 }
 

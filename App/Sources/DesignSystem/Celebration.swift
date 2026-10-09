@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// Lightweight confetti burst (Canvas + TimelineView), no assets. Disabled with Reduce Motion.
+/// Removes its timeline once the last piece has landed – a display-rate TimelineView would otherwise keep redrawing an
+/// empty full-screen canvas (and the material/glass above it) for as long as the view stays up.
 struct ConfettiView: View {
     var colors: [Color]
     var count: Int = 90
@@ -14,9 +16,13 @@ struct ConfettiView: View {
     }
 
     @State private var pieces: [Piece] = []
+    @State private var finished = false
+
+    /// Pieces start up to 0.5 s late (see `onAppear`).
+    private static let maxDelay = 0.5
 
     var body: some View {
-        if reduceMotion {
+        if reduceMotion || finished {
             Color.clear
         } else {
             TimelineView(.animation) { timeline in
@@ -40,11 +46,16 @@ struct ConfettiView: View {
                 }
             }
             .allowsHitTesting(false)
+            .task {
+                // Cancelled with the view (an overlay dismissed early); the margin covers the last frame.
+                try? await Task.sleep(for: .seconds(duration + Self.maxDelay + 0.1))
+                if !Task.isCancelled { finished = true }
+            }
             .onAppear {
                 start = Date()
                 var g = SystemRandomNumberGenerator()
                 pieces = (0..<count).map { _ in
-                    Piece(x: .random(in: 0...1, using: &g), delay: .random(in: 0...0.5, using: &g),
+                    Piece(x: .random(in: 0...1, using: &g), delay: .random(in: 0...Self.maxDelay, using: &g),
                           speed: .random(in: 0.7...1.25, using: &g), drift: .random(in: 0.3...1, using: &g),
                           spin: .random(in: -7...7, using: &g), size: .random(in: 6...11, using: &g),
                           color: .random(in: 0..<max(colors.count, 1), using: &g), shape: .random(in: 0...2, using: &g))
