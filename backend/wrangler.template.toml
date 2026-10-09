@@ -1,0 +1,36 @@
+# KlimaBilanz API – Cloudflare Worker + D1. Contract: docs/CLOUDFLARE_BACKEND.md
+#
+# This file is committed and used as-is for local development (`npm run dev`) and tests (vitest).
+# CI (.github/workflows/backend.yml) renders it to wrangler.toml (git-ignored) with
+# scripts/render-wrangler-config.mjs: every line ending in `# @render NAME` gets its quoted value replaced by the
+# environment variable NAME (when set). No secrets in here – secrets are Worker secrets (see §5.4).
+name = "klimabilanz-api"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = true
+# Workers Logs record request URLs: strip query strings, so provider codes and flow state (/callback) and PKCE values
+# (/start) never land in the logs (§2.10).
+redact_query_string = true
+
+[triggers]
+# Daily cleanup of expired auth state (§3.10).
+crons = ["23 3 * * *"]
+
+[vars]
+# Public origin used for provider redirect URIs (https://klimabilanz-api.<subdomain>.workers.dev or a custom
+# domain). Empty = derive from the request URL (local dev / tests).
+PUBLIC_BASE_URL = "" # @render PUBLIC_BASE_URL
+# Sync endpoints answer 426 to apps that send an older X-KB-App-Version.
+MIN_APP_VERSION = "1.0.0" # @render MIN_APP_VERSION
+# Exact redirect URIs the app may use (comma separated).
+APP_REDIRECT_URIS = "klimabilanz://auth-callback"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "klimabilanz"
+database_id = "00000000-0000-0000-0000-000000000000" # @render D1_DATABASE_ID
+migrations_dir = "migrations"

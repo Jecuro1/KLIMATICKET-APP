@@ -24,6 +24,8 @@ settings:
 packages:
   KlimaCore:
     path: Packages/KlimaCore
+  KlimaCloud:
+    path: Packages/KlimaCloud
 
 targets:
   KlimaBilanz:
@@ -83,6 +85,7 @@ targets:
         KB_NATIVE_APPLE_SIGNIN: "NO"
     dependencies:
       - package: KlimaCore
+      - package: KlimaCloud
       - target: KlimaBilanzWidgets
         embed: true
         codeSign: true
