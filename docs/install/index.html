@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-t7UHzJ+M2mAw7FEjVZyDPNe2ZI6PJ4Sg0SBLm9kY+t4='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-UVcNh/XQBOGAbxAl7IKaYKu/JmOYw6n67y6gkdhsyXY='; base-uri 'none'; form-action 'none'">
 <title>KlimaBilanz installieren</title>
 <!--
   Installation page for "Direkt installieren" (docs/DIREKT_INSTALLIEREN.md): one itms-services link to the
   manifest.plist of the latest release. GitHub Pages: Settings › Pages › Deploy from a branch › main › /docs
   → https://jecuro1.github.io/KLIMATICKET-APP/install/
-  No tracking, no external resources. ?manifest=https://…/manifest.plist overrides the manifest (OTA_BASE_URL hosting,
-  e.g. https://<worker>/v1/ota/latest/manifest.plist).
+  No tracking, no external resources. ?manifest=https://<worker>/v1/ota/latest/manifest.plist switches to the Worker (OTA_BASE_URL hosting);
+  other manifest URLs are ignored, and the page shows the host it installs from.
 -->
 <style>
   :root {
@@ -62,6 +62,7 @@
   </header>
 
   <a class="btn" id="install" href="itms-services://?action=download-manifest&amp;url=https://github.com/Jecuro1/KLIMATICKET-APP/releases/latest/download/manifest.plist">KlimaBilanz installieren</a>
+  <p class="small" id="host" hidden></p>
 
   <div class="card">
     <h2>So geht's</h2>
@@ -83,9 +84,14 @@
 </main>
 <script>
 (function () {
+  // Only the Worker's OTA route (OTA_BASE_URL, docs/DIREKT_INSTALLIEREN.md) – never an arbitrary manifest on this page.
   var m = new URLSearchParams(location.search).get("manifest");
-  if (m && /^https:\/\/[^\s"'<>]+\/manifest\.plist$/.test(m)) {
-    document.getElementById("install").href = "itms-services://?action=download-manifest&url=" + m.replace(/[&?#=+]/g, encodeURIComponent);
+  var ok = m && /^https:\/\/[A-Za-z0-9.-]+(?::\d{1,5})?\/v1\/ota\/(?:latest|v\d{1,4}(?:\.\d{1,4}){1,2})\/manifest\.plist$/.test(m);
+  if (ok) {
+    document.getElementById("install").href = "itms-services://?action=download-manifest&url=" + m;   // the pattern admits no & ? # = +
+    var host = document.getElementById("host");
+    host.textContent = "Quelle: " + new URL(m).host;
+    host.hidden = false;
   }
 })();
 </script>

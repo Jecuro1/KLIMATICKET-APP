@@ -393,11 +393,11 @@ final class UpdateService {
         return DirectInstall.link(manifestURL: manifest?.otaManifestURL)
     }
 
-    /// „Jetzt installieren“ hands the release straight to iOS: our ad-hoc copy, or a copy no sideloading store manages
-    /// (a store-managed copy would get the ad-hoc build as a second app, so AltStore/SideStore copies keep their store).
+    /// „Jetzt installieren“ hands the release straight to iOS – only for our own ad-hoc copy. The ad-hoc build installs
+    /// only on registered iPhones: a Sideloadly/Xcode copy (maybe on an unregistered iPhone), the simulator or an
+    /// AltStore/SideStore copy (second app) would end in „Installation nicht möglich“, so they keep their own route.
     func prefersDirectInstall(for manifest: UpdateManifest?) -> Bool {
-        guard directInstallURL(for: manifest) != nil else { return false }
-        return Self.isDirectInstallCopy || sideloadStore == .other
+        Self.isDirectInstallCopy && directInstallURL(for: manifest) != nil
     }
 
     var prefersDirectInstall: Bool { prefersDirectInstall(for: availableManifest) }
@@ -420,7 +420,8 @@ final class UpdateService {
             // No itms-services here: AltStore/SideStore rename the bundle id, the ad-hoc build would be a second app.
             case .altStore: urls = [altStoreInstallURL, altStoreViewAppURL, directDownloadURL]
             case .sideStore: urls = [sideStoreInstallURL, directDownloadURL]
-            case .other: urls = [otaInstallURL, directDownloadURL]
+            // MARK: ota – no itms-services: it only installs on registered iPhones (ad-hoc copies return above).
+            case .other: urls = [directDownloadURL]
             }
         }
         return urls.compactMap { $0 }

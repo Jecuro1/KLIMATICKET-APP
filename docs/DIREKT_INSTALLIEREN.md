@@ -123,6 +123,14 @@ installieren → UDID wird angezeigt) – dann sieht aber ein fremder Anbieter d
 UDID und Name erscheinen **nicht** im Log (das Repo und seine Logs sind öffentlich): Der Lauf verbirgt beide, bevor
 er irgendetwas ausgibt. Weitere iPhones: Schritte 4–5 wiederholen (Apple erlaubt 100 iPhones pro Mitgliedsjahr).
 
+> **Gut zu wissen (Datenschutz):** Jede Ad-hoc-App enthält technisch bedingt die Liste der UDIDs, für die sie signiert
+> ist, und den Namen auf deinem Verteilungszertifikat (z. B. „Apple Distribution: Vorname Nachname“). Weil die
+> Releases dieses Repos öffentlich sind, kann jeder die Ad-hoc-`.ipa` laden und diese Angaben auslesen – installieren
+> kann sie trotzdem nur ein registriertes iPhone. Eine UDID allein erlaubt keinen Zugriff auf dein iPhone oder deine
+> Daten; registriere aber nur iPhones, deren Besitzer damit einverstanden sind. Wer das nicht möchte, richtet
+> „Direkt installieren“ nicht ein (ohne registriertes iPhone baut CI keine Ad-hoc-`.ipa`) oder entfernt die Geräte
+> wieder (developer.apple.com › *Devices* → deaktivieren; ab dem nächsten Release sind sie nicht mehr enthalten).
+
 ## 6. Release bauen
 
 Ab jetzt baut **jedes Release** zusätzlich die Ad-hoc-Version für alle registrierten iPhones – wie bisher per
@@ -167,8 +175,9 @@ lädt das Update (Fortschritt am App-Symbol) → danach wieder öffnen. **Deine 
   AltStore, SideStore). Ad-hoc-Builds sind verteilungssigniert und starten ohne ihn. Meldet iOS beim Öffnen trotzdem
   „Entwicklermodus erforderlich“, war der Build kein Ad-hoc-Build (dann bietet CI ihn auch nicht an); notfalls
   *Einstellungen › Datenschutz & Sicherheit › Entwicklermodus* → ein → Neustart.
-- **Keine 7-Tage-Erneuerung** wie bei SideStore. Die Installation gilt, bis die Mitgliedschaft endet – jedes Release
-  bringt ein frisches Profil mit. Endet die Mitgliedschaft, startet die direkt installierte App nicht mehr:
+- **Keine 7-Tage-Erneuerung** wie bei SideStore. Ein Ad-hoc-Profil gilt bis zu einem Jahr; CI erneuert es bei jedem
+  Release, sobald es in weniger als 30 Tagen abläuft. Installiere also mindestens einmal im Monat ein Update (oder
+  starte bei Bedarf einen Release-Lauf), dann läuft die App durchgehend. Endet die Mitgliedschaft, startet die direkt installierte App nicht mehr:
   rechtzeitig verlängern oder zurück zu SideStore (vorher Backup).
 
 ## Fehlerbehebung
@@ -199,8 +208,8 @@ lädt das Update (Fortschritt am App-Symbol) → danach wieder öffnen. **Deine 
   (a) TestFlight-Upload (`app-store-connect`, abschaltbar mit `TESTFLIGHT=false`) und – nur bei Releases –
   (b) Ad-hoc-Export (`release-testing`) mit automatischer Cloud-Signierung
   (`-allowProvisioningUpdates -authenticationKeyPath/-ID/-IssuerID`) für App **und** Widget. Vorher löscht
-  `scripts/asc_api.py refresh-adhoc` Ad-hoc-Profile, denen ein registriertes iPhone fehlt (Profile lassen sich nicht
-  ändern) – der Export erstellt sie mit allen Geräten neu; `check-ipa` vergleicht danach die Geräteliste. Ein Fehler
+  `scripts/asc_api.py refresh-adhoc` Ad-hoc-Profile, denen ein registriertes iPhone fehlt oder die in weniger als
+  30 Tagen ablaufen (Profile lassen sich nicht ändern) – der Export erstellt sie mit allen Geräten neu; `check-ipa` vergleicht danach die Geräteliste. Ein Fehler
   ist eine Annotation und eine Zeile in der Zusammenfassung, **nie** ein abgebrochenes Release.
 - **Release metadata:** `scripts/make_ota_manifest.py` prüft, dass die `.ipa` wirklich ad hoc signiert ist (Geräteliste,
   kein `get-task-allow`), und schreibt `manifest.plist` (`software-package`, `display-image` 57 px,
@@ -216,7 +225,8 @@ lädt das Update (Fortschritt am App-Symbol) → danach wieder öffnen. **Deine 
 - **App:** erkennt am eingebetteten Profil (Geräteliste, kein `get-task-allow`) und an der unveränderten Bundle-ID,
   dass sie selbst ad hoc installiert ist (`KlimaCore.ProvisioningKind`, `DirectInstall`), und öffnet dann
   `itms-services://?action=download-manifest&url=<otaManifestURL>`.
-- **Datenschutz:** Die UDID landet nur in deinem Apple-Konto. Weder Worker noch Repo noch Logs speichern sie.
+- **Datenschutz:** Worker, Repo und Logs speichern die UDID nicht. Sie steht aber – wie in jeder Ad-hoc-App – im
+  Profil der öffentlich veröffentlichten Ad-hoc-`.ipa` (siehe Hinweis in [Schritt 5](#5-gerät-registrieren-starten)).
 
 **Getestet ohne Apple-Konto:** Schlüssel-Einlesen (zerstörte Zeilenumbrüche, Base64), ES256-Token mit Wegwerfschlüssel
 gegen `openssl` verifiziert, Geräte-Registrierung und Profil-Auffrischung gegen ein nachgebautes App Store Connect,

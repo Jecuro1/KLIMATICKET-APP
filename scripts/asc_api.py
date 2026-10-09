@@ -13,7 +13,9 @@ Commands:
       UDID and name come from the workflow_dispatch event payload (inputs.udid / inputs.name) or an environment
       variable – never from the command line, where a log could show them.
   refresh-adhoc --bundle-id ID [--bundle-id ID ...]
-      Deletes ad-hoc profiles of these bundle ids that miss an enabled iPhone (or are no longer valid), so the next
+      Deletes ad-hoc profiles of these bundle ids that miss an enabled iPhone, still list a disabled one, are no
+      longer valid or expire within
+      30 days (an installed ad-hoc app stops launching with its profile), so the next
       `xcodebuild -exportArchive -allowProvisioningUpdates` creates them again – with every registered device.
   devices
       Prints the number of enabled iPhones of the team (an ad-hoc export needs at least one).
@@ -24,6 +26,7 @@ Environment: ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_PATH (a .p8 written by `key`)
 """
 import argparse
 import base64
+import datetime
 import json
 import os
 import plistlib
@@ -316,8 +319,29 @@ def enabled_udids(client):
 
 # ---------------------------------------------------------------- ad-hoc profiles
 
-def refresh_adhoc(client, bundle_ids):
-    """Deletes stale IOS_APP_ADHOC profiles of the given bundle ids. Returns a list of (bundle id, action) lines."""
+# An installed ad-hoc app stops launching when its profile expires – each release renews profiles this close to it.
+RENEW_BEFORE = datetime.timedelta(days=30)
+
+
+def expires_soon(value, now=None):
+    """True when an ISO 8601 expirationDate lies within RENEW_BEFORE (unknown or unreadable dates: False)."""
+    if not isinstance(value, str) or not value:
+        return False
+    try:
+        # Apple writes "2027-10-09T12:34:56.000+0000"; older Pythons want "+00:00".
+        text = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", value.strip().replace("Z", "+00:00"))
+        expires = datetime.datetime.fromisoformat(text)
+    except ValueError:
+        return False
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=datetime.timezone.utc)
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    return expires - now < RENEW_BEFORE
+
+
+def refresh_adhoc(client, bundle_ids, now=None):
+    """Deletes stale IOS_APP_ADHOC profiles of the given bundle ids (a registered iPhone missing, a disabled one still
+    listed, not active, or expiring within 30 days). Returns a list of (bundle id, action) lines."""
     wanted = enabled_udids(client)
     report = []
     for identifier in bundle_ids:
@@ -336,13 +360,18 @@ def refresh_adhoc(client, bundle_ids):
                 devices = {str(d.get("attributes", {}).get("udid", "")).upper()
                            for d in client.get_all(f"/v1/profiles/{profile['id']}/devices", {"limit": "200"})}
                 missing = len(wanted - devices)
-                if attrs.get("profileState") == "ACTIVE" and missing == 0:
+                # A disabled (removed) iPhone must leave the published .ipa with the next release: its UDID is in it.
+                extra = len(devices - wanted)
+                expiring = expires_soon(attrs.get("expirationDate"), now)
+                if attrs.get("profileState") == "ACTIVE" and missing == 0 and extra == 0 and not expiring:
                     report.append((identifier, f"Ad-hoc-Profil aktuell ({len(devices)} Geräte)"))
                     continue
                 status, payload = client.request("DELETE", f"/v1/profiles/{profile['id']}")
                 if status not in (200, 204):
                     client.fail("Veraltetes Ad-hoc-Profil löschen", status, payload)
-                reason = f"{missing} Gerät(e) fehlten" if missing else "Profil ungültig"
+                reason = (f"{missing} Gerät(e) fehlten" if missing
+                          else f"{extra} deaktivierte(s) Gerät(e) enthalten" if extra
+                          else "Profil ungültig" if attrs.get("profileState") != "ACTIVE" else "Profil läuft bald ab")
                 report.append((identifier, f"veraltetes Ad-hoc-Profil gelöscht ({reason}) – der Export erstellt es neu"))
     return report
 

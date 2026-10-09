@@ -406,6 +406,34 @@ class ProfileTests(unittest.TestCase):
         self.assertIn("widgets: Ad-hoc-Profil aktuell (2 Geräte)", text)
         self.assertIn("Profil ungültig", text)
 
+    def test_profiles_close_to_expiry_are_renewed(self):
+        now = asc_api.datetime.datetime(2026, 10, 9, tzinfo=asc_api.datetime.timezone.utc)
+        self.profile("P-app-soon", "B1", [self.a, self.b])
+        self.fake.profiles["P-app-soon"]["attributes"]["expirationDate"] = "2026-10-30T12:00:00.000+0000"   # Apple's format
+        self.profile("P-widget-long", "B2", [self.a, self.b])
+        self.fake.profiles["P-widget-long"]["attributes"]["expirationDate"] = "2027-06-01T00:00:00Z"
+        report = dict(asc_api.refresh_adhoc(fake_client(self.fake),
+                                            ["com.knitelarlberg.klimabilanz", "com.knitelarlberg.klimabilanz.widgets"], now=now))
+        self.assertEqual(sorted(self.fake.profiles), ["P-widget-long"])
+        self.assertIn("Profil läuft bald ab", report["com.knitelarlberg.klimabilanz"])
+        self.assertIn("aktuell", report["com.knitelarlberg.klimabilanz.widgets"])
+
+    def test_profile_with_a_disabled_device_is_renewed(self):
+        self.profile("P-app-extra", "B1", [self.a, self.b, self.off])
+        report = dict(asc_api.refresh_adhoc(fake_client(self.fake), ["com.knitelarlberg.klimabilanz"]))
+        self.assertNotIn("P-app-extra", self.fake.profiles)
+        self.assertIn("1 deaktivierte(s) Gerät(e) enthalten", report["com.knitelarlberg.klimabilanz"])
+
+    def test_expiry_parsing(self):
+        now = asc_api.datetime.datetime(2026, 10, 9, tzinfo=asc_api.datetime.timezone.utc)
+        self.assertTrue(asc_api.expires_soon("2026-10-20T00:00:00Z", now))
+        self.assertTrue(asc_api.expires_soon("2026-10-20T00:00:00.000+0000", now))
+        self.assertFalse(asc_api.expires_soon("2027-10-20T00:00:00.000+0000", now))
+        self.assertTrue(asc_api.expires_soon("2026-01-01T00:00:00Z", now))   # already expired
+        self.assertFalse(asc_api.expires_soon("2027-10-01T00:00:00Z", now))
+        for unknown in (None, "", "morgen", 5):
+            self.assertFalse(asc_api.expires_soon(unknown, now))
+
     def test_unregistered_bundle_and_missing_profile(self):
         self.fake.bundles = self.fake.bundles[1:]   # the app id itself is not registered yet
         report = dict(asc_api.refresh_adhoc(fake_client(self.fake),
