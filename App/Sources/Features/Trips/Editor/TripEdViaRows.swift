@@ -224,11 +224,10 @@ private struct TripEdViaRow: View {
         }
     }
 
-    /// Smaller than the start / destination dots, on the route line; tint between the start and the summit colour.
+    /// Smaller than the start / destination dots, on the route line, in the start's colour.
     private var dot: some View {
-        let t = count > 1 ? Double(index) / Double(count - 1) : 0.5
-        return Circle()
-            .fill(Theme.accent.mix(with: Theme.summit, by: 0.25 + t * 0.5))
+        Circle()
+            .fill(Theme.accent)
             .frame(width: dotSize, height: dotSize)
             .padding(2.5)
             .background(TripEdViaAddMark.cardColor, in: .circle)   // cuts the dashed line around the dot

@@ -131,6 +131,8 @@ enum AtlasFormat {
 struct AtlasRouteName: View {
     let from: String
     let to: String
+    /// "über Feldkirch" under the names for a route with via stops (docs/VIA.md).  // MARK: via
+    var viaLine: String? = nil
 
     init(from: String, to: String) {
         self.from = TripRow.short(from)
@@ -139,20 +141,29 @@ struct AtlasRouteName: View {
 
     init(_ route: AtlasRoute) {
         self.init(from: route.from.name, to: route.to.name)
+        viaLine = ViaText.subtitle(names: route.via.map(\.name))   // MARK: via
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            Text("\(from) ⇄ \(to)")
-                .lineLimit(1)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(from)
-                Text("⇄ \(to)")
+        VStack(alignment: .leading, spacing: 1) {
+            ViewThatFits(in: .horizontal) {
+                Text("\(from) ⇄ \(to)")
+                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(from)
+                    Text("⇄ \(to)")
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
-            .fixedSize(horizontal: false, vertical: true)
+            if let viaLine {
+                Text(viaLine)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+            }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(from) – \(to)")
+        .accessibilityLabel("\(from) – \(to)\(viaLine.map { ", " + $0 } ?? "")")
     }
 }
 

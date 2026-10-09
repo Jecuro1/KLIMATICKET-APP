@@ -9,12 +9,14 @@ struct TripListViaDetailStops: View {
     let vias: [TripVia]
     /// Resolved stations in the same order (nil = name only, e.g. from a CSV import).
     let stations: [Station?]
+    /// Colour of the origin ring (the trip's mode) – the via dots match it.
+    var color: Color = Theme.accent
 
     var body: some View {
         ForEach(Array(vias.enumerated()), id: \.offset) { index, via in
             let station = index < stations.count ? stations[index] : nil
             TripListViaDetailStop(name: station?.name ?? via.name, subtitle: TripListFormat.stationSubtitle(station),
-                                  index: index, count: vias.count)
+                                  index: index, count: vias.count, color: color)
         }
     }
 }
@@ -24,6 +26,7 @@ private struct TripListViaDetailStop: View {
     let subtitle: String?
     let index: Int
     let count: Int
+    let color: Color
 
     /// Caption line + half the name line (body) − the dot radius: the dot sits on the name.
     @ScaledMetric(relativeTo: .body) private var dotTop: CGFloat = 29
@@ -34,8 +37,9 @@ private struct TripListViaDetailStop: View {
             VStack(spacing: 3) {
                 rail.frame(height: max(0, dotTop - 3))
                 Circle()
-                    .fill(Theme.accent.mix(with: Theme.summit, by: count > 1 ? 0.3 + 0.4 * Double(index) / Double(count - 1) : 0.5))
+                    .fill(color)
                     .frame(width: dotSize, height: dotSize)
+                    .overlay(Circle().stroke(color.opacity(0.22), lineWidth: 3))
                 rail.frame(maxHeight: .infinity)
             }
             .frame(width: 14)
@@ -81,7 +85,7 @@ private struct TripListViaRail: Shape {
 struct TripListViaMapDot: View {
     var body: some View {
         Circle()
-            .fill(Theme.accent.mix(with: Theme.summit, by: 0.5))
+            .fill(Theme.accent)
             .frame(width: 12, height: 12)
             .overlay(Circle().stroke(.white, lineWidth: 2.5))
             .shadow(color: .black.opacity(0.25), radius: 2, y: 1)

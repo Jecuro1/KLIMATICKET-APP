@@ -87,7 +87,8 @@ struct AtlasRouteDetail: View {
 
     private var modesLine: String {
         let modes = route.modes.map(\.displayName).joined(separator: " · ")
-        return "\(modes) · Luftlinie \(Format.km(route.straightKm))"
+        let via = ViaText.subtitle(names: route.via.map(\.name)).map { " · " + $0 } ?? ""   // MARK: via
+        return "\(modes)\(via) · Luftlinie \(Format.km(route.straightKm))"
     }
 
     private var valueBlock: some View {

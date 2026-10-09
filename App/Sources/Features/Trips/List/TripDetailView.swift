@@ -204,7 +204,7 @@ struct TripDetailView: View {
                     TripListDetailStop(caption: "Von", name: trip.fromName,
                                        subtitle: TripListFormat.stationSubtitle(info.fromStation),
                                        isOrigin: true, color: Theme.modeColor(trip.mode))
-                    TripListViaDetailStops(vias: trip.via, stations: info.viaStations)   // MARK: via
+                    TripListViaDetailStops(vias: trip.via, stations: info.viaStations, color: Theme.modeColor(trip.mode))   // MARK: via
                     TripListDetailStop(caption: "Nach", name: trip.toName,
                                        subtitle: TripListFormat.stationSubtitle(info.toStation),
                                        isOrigin: false, color: Theme.modeColor(trip.mode))
