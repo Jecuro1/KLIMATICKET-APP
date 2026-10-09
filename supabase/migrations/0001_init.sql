@@ -55,6 +55,7 @@ create table if not exists public.tickets (
   ticket_number text not null default '',
   theme text not null default 'aurora',
   reminders text not null default '30,7,1',
+  is_monthly_payment boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz

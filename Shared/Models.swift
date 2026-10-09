@@ -23,6 +23,8 @@ final class TicketEntity {
     var themeRaw: String = "aurora"
     /// Reminder offsets in days before expiry, comma separated ("30,7,1").
     var remindersRaw: String = "30,7,1"
+    /// Paid in 12 monthly instalments instead of once (KlimaTicket Ö option).
+    var isMonthlyPayment: Bool = false
     @Attribute(.externalStorage) var photoData: Data?
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
@@ -70,6 +72,14 @@ final class TicketEntity {
     }
 
     var isActive: Bool { period.contains(Date()) }
+
+    /// Amount paid so far (monthly instalments are due at the start of each validity month).
+    func paidSoFar(now: Date = Date()) -> Double {
+        guard isMonthlyPayment else { return price }
+        let cal = Calendar.vienna
+        let months = (cal.dateComponents([.month], from: cal.startOfDay(for: startDate), to: min(now, endDate)).month ?? 0) + 1
+        return price / 12 * Double(min(max(months, 1), 12))
+    }
     var isExpired: Bool { Date() > endDate }
     var isTrashed: Bool { deletedAt != nil }
 

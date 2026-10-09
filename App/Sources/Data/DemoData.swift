@@ -19,7 +19,7 @@ enum DemoData {
         Route(from: "Innsbruck Hauptbahnhof", to: "Salzburg Hauptbahnhof", fromID: "at:47:1187", toID: "at:45:50002", mode: .train, km: 189, fare: 55.2, states: ["S", "T"]),
         Route(from: "Wien Hauptbahnhof", to: "Wien Praterstern", fromID: "wl:60201349", toID: "wl:60201040", mode: .metro, km: 4.5, fare: 3.2, states: ["W"]),
         Route(from: "Innsbruck Congress", to: "Hungerburg", fromID: nil, toID: nil, mode: .cableCar, km: 1.8, fare: 6.5, states: ["T"]),
-        Route(from: "Innsbruck Hauptbahnhof", to: "Innsbruck Marktplatz", fromID: "at:47:1187", toID: nil, mode: .tram, km: 1.6, fare: 3.2, states: ["T"]),
+        Route(from: "Innsbruck Hauptbahnhof", to: "Innsbruck Marktplatz", fromID: "at:47:1187", toID: nil, mode: .tram, km: 1.6, fare: 3.3, states: ["T"]),
         Route(from: "St. Anton am Arlberg", to: "Lech", fromID: "at:47:1222", toID: nil, mode: .bus, km: 19, fare: 5.8, states: ["T", "V"]),
         Route(from: "Graz Hauptbahnhof", to: "Klagenfurt Hauptbahnhof", fromID: "at:46:3040", toID: "at:42:3642", mode: .train, km: 128, fare: 32.0, states: ["K", "ST"]),
     ]

@@ -121,6 +121,7 @@ struct TicketDTO: Codable {
     var ticket_number: String
     var theme: String
     var reminders: String
+    var is_monthly_payment: Bool?
     var created_at: Date
     var updated_at: Date
     var deleted_at: Date?
@@ -128,14 +129,16 @@ struct TicketDTO: Codable {
     init(_ e: TicketEntity, userID: String) {
         id = e.id; user_id = userID; product_id = e.productID; name = e.name; variant = e.variantRaw; family = e.familyRaw
         states = e.statesRaw; price = e.price; start_date = e.startDate; end_date = e.endDate; holder_name = e.holderName
-        ticket_number = e.ticketNumber; theme = e.themeRaw; reminders = e.remindersRaw; created_at = e.createdAt
+        ticket_number = e.ticketNumber; theme = e.themeRaw; reminders = e.remindersRaw; is_monthly_payment = e.isMonthlyPayment
+        created_at = e.createdAt
         updated_at = e.updatedAt; deleted_at = e.deletedAt
     }
 
     func apply(to e: TicketEntity) {
         e.productID = product_id; e.name = name; e.variantRaw = variant; e.familyRaw = family; e.statesRaw = states
         e.price = price; e.startDate = start_date; e.endDate = end_date; e.holderName = holder_name; e.ticketNumber = ticket_number
-        e.themeRaw = theme; e.remindersRaw = reminders; e.createdAt = created_at; e.updatedAt = updated_at; e.deletedAt = deleted_at
+        e.themeRaw = theme; e.remindersRaw = reminders; e.isMonthlyPayment = is_monthly_payment ?? false
+        e.createdAt = created_at; e.updatedAt = updated_at; e.deletedAt = deleted_at
     }
 }
 
