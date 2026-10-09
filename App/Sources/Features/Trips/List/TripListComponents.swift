@@ -170,7 +170,7 @@ struct TripListActions {
     func restore(tripID: UUID) {
         let descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.id == tripID && $0.deletedAt != nil })
         guard let trip = (try? context.fetch(descriptor))?.first else { return }
-        withAnimation(UIAccessibility.isReduceMotionEnabled ? nil : .snappy) { repository.restoreTrip(trip) }
+        withMotion(Motion.smooth) { repository.restoreTrip(trip) }
         app.showToast("arrow.uturn.backward.circle.fill", "Fahrt wiederhergestellt",
                       TripListFormat.routeTitle(trip.fromName, trip.toName))
     }
@@ -378,19 +378,86 @@ struct TripListPill: View {
 
 /// List-row card: a tinted, non-blurred surface over the sky (insetGrouped clips it into the rounded section card).
 /// No material per row – a dozen live backdrop blurs on screen made scrolling the history stutter; opaque with
-/// Reduce Transparency.
+/// Reduce Transparency. `isHighlighted`: a glacier wash for the trip that was just logged (fades out, opacity only).
 struct TripListCardBackground: View {
+    var isHighlighted = false
+
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        if reduceTransparency {
-            Theme.sheetBackground
-        } else {
-            ZStack {
+        ZStack {
+            if reduceTransparency {
+                Theme.sheetBackground
+            } else {
                 Theme.sheetBackground.opacity(colorScheme == .dark ? 0.62 : 0.5)
                 Theme.surface
             }
+            Theme.accent.opacity(colorScheme == .dark ? 0.22 : 0.14)
+                .opacity(isHighlighted ? 1 : 0)
         }
+    }
+}
+
+// MARK: - Long-press preview
+
+/// Context-menu preview of a trip (long press in Fahrten): date, value, route and mode at a glance – what the detail
+/// shows on top, without its map. Self-contained (no environment beyond colour scheme), opaque.
+struct TripListPreviewCard: View {
+    let trip: TripEntity
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                Kicker(text: TripListFormat.detailDateLine(trip.date))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Spacer(minLength: Theme.Spacing.xs)
+                ModeIcon(mode: trip.mode, size: 30)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("€")
+                    .font(.system(.title2, design: .rounded, weight: .light))
+                    .foregroundStyle(Theme.textSecondary)
+                Text(Format.number(trip.totalValue, decimals: 2))
+                    .font(Theme.Typography.priceNumeral)
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                if trip.isRoundTrip {
+                    Text("Hin & Retour")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                }
+            }
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                RouteGlyph(color: Theme.modeColor(trip.mode), endColor: Theme.summit, height: 52)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(trip.fromName)
+                    Text(trip.toName)
+                }
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            }
+            Text(meta)
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .lineLimit(2)
+        }
+        .padding(Theme.Spacing.l)
+        .frame(width: 320, alignment: .leading)
+        .background(Theme.sheetBackground)
+    }
+
+    /// "Zug · 106 km · 2. Klasse · Arbeitsweg"
+    private var meta: String {
+        var parts = [trip.mode.displayName]
+        if trip.distanceKm > 0 { parts.append(Format.km(trip.distanceKm)) }
+        if trip.mode == .train || trip.mode == .sBahn { parts.append(trip.travelClass.displayName) }
+        if let category = trip.category { parts.append(category.displayName) }
+        if trip.isInduced { parts.append(MetaCategoryStyle.inducedTitle) }
+        return parts.joined(separator: " · ")
     }
 }

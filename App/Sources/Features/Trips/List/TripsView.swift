@@ -1,13 +1,18 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import TipKit
 import KlimaCore
 
-/// Fahrten (Tab 2): ticket-year summary, search, mode chips and the trip history grouped by month.
+/// Fahrten (Tab 2): ticket-year summary, filter chips and the trip history grouped by month.
+///
+/// Motion (docs/MOTION.md): the summary value counts in once and every figure rolls; filter chips are glass that morphs;
+/// rows dip under the finger and zoom into the detail; inserts, deletes and filter results animate as one list diff;
+/// a trip that was just logged glows once in its row. Swipe left: Löschen (with "Rückgängig") · Bearbeiten; swipe right:
+/// Nochmal · Favorit (KBTips.TripSwipe explains it once); long press: preview card + all actions.
 struct TripsView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse)
     private var trips: [TripEntity]
@@ -24,10 +29,13 @@ struct TripsView: View {
     @State private var categoryFilter: MetaTripFilter = .all
     @State private var scopeSelection: TripListScope?
     @State private var contentCache = TripListContentCache()
-    @State private var successTick = 0
-    @State private var warningTick = 0
     @State private var selectionTick = 0
-    @Namespace private var zoomNamespace
+    /// Per mode: bumps when its chip gets selected (only that chip's symbol bounces).
+    @State private var modeBounces: [TransportMode: Int] = [:]
+    /// The trip that was just logged (sheet, "Nochmal", "Duplizieren"): its row glows once.
+    @State private var freshTripID: UUID?
+    /// KBTips.TripSwipe is eligible (TipKit decides; never in screenshot runs).
+    @State private var showsSwipeTip = false
 
     var body: some View {
         let content = makeContent()
@@ -41,9 +49,16 @@ struct TripsView: View {
                     destination(for: route)
                 }
         }
-        .sensoryFeedback(.success, trigger: successTick, condition: { _, _ in hapticsEnabled })
-        .sensoryFeedback(.warning, trigger: warningTick, condition: { _, _ in hapticsEnabled })
-        .sensoryFeedback(.selection, trigger: selectionTick, condition: { _, _ in hapticsEnabled })
+        .zoomTransitionScope()
+        .haptic(.selection, trigger: selectionTick)
+        .onChange(of: trips.count) { oldCount, newCount in
+            markFreshTrip(oldCount: oldCount, newCount: newCount)
+        }
+        .task {
+            for await shouldDisplay in KBTips.TripSwipe().shouldDisplayUpdates {
+                if shouldDisplay != showsSwipeTip { withMotion(Motion.smooth) { showsSwipeTip = shouldDisplay } }
+            }
+        }
     }
 
     // MARK: List
@@ -52,14 +67,8 @@ struct TripsView: View {
         List {
             if !trips.isEmpty {
                 headerSection(content)
-                if content.periodTrips.isEmpty {
-                    emptyPeriodSection(content)
-                } else if content.months.isEmpty {
-                    noResultsSection(content)
-                } else {
-                    ForEach(content.months) { month in
-                        monthSection(month)
-                    }
+                ForEach(content.months) { month in
+                    monthSection(month)
                 }
             }
         }
@@ -67,44 +76,83 @@ struct TripsView: View {
         .listStyle(.insetGrouped)
         .listSectionSpacing(Theme.Spacing.m)
         .scrollContentBackground(.hidden)
+        // A trip saved in the sheet, a sync or an undo: the rows slide into place instead of popping.
+        .motionAnimation(Motion.smooth, value: trips.count)
         .ambientBackground()
         .overlay {
             if trips.isEmpty { emptyState }
         }
     }
 
+    /// Summary, filters, tip and the "nothing here" states as the *header* of a section without rows: an inset-grouped
+    /// section draws its rounded card behind every row – also behind clear rows, which showed as a grey band around
+    /// the chips and the card's shadow. A header has no background, so the glass and the shadows sit on the sky.
     private func headerSection(_ content: TripListContent) -> some View {
         Section {
-            TripListSummaryCard(content: content, tickets: tickets, scope: scopeBinding)
-                .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xs, trailing: 0))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-            if content.modeOptions.count > 1 || modeFilter != nil || content.purposeCounts.hasPurposes || categoryFilter.isActive {
-                modeChips(content.modeOptions, counts: content.purposeCounts)
-                    .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xxs, trailing: 0))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+        } header: {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                TripListSummaryCard(content: content, tickets: tickets, scope: scopeBinding)
+                if showsFilterRow(content) {
+                    filterRow(content.modeOptions, counts: content.purposeCounts)
+                }
+                if showsSwipeTip && !content.months.isEmpty {
+                    TipView(KBTips.TripSwipe())
+                        .kbTipStyle()
+                        .motionTransition(.rise)
+                }
+                if content.periodTrips.isEmpty {
+                    emptyPeriodState(content)
+                        .motionTransition(.rise)
+                } else if content.months.isEmpty {
+                    noResultsState(content)
+                        .motionTransition(.rise)
+                }
             }
+            .textCase(nil)
+            .padding(.bottom, Theme.Spacing.xxs)
+            .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xs, trailing: 0))
         }
     }
 
-    private func modeChips(_ options: [TransportMode], counts: MetaTripFilterCounts) -> some View {
-        ScrollView(.horizontal) {
-            GlassEffectContainer(spacing: Theme.Spacing.xs) {
+    private func showsFilterRow(_ content: TripListContent) -> Bool {
+        content.modeOptions.count > 1 || modeFilter != nil || content.purposeCounts.hasPurposes || categoryFilter.isActive
+    }
+
+    /// "✕ · Kategorie ⌄ | Alle · Zug · Bus …" – glass capsules in one container: chips that come and go (the reset chip
+    /// while a filter is on, modes of another ticket year) melt in and out instead of popping.
+    private func filterRow(_ options: [TransportMode], counts: MetaTripFilterCounts) -> some View {
+        let isFiltered = modeFilter != nil || categoryFilter.isActive
+        return ScrollView(.horizontal) {
+            GlassMorphGroup(spacing: Theme.Spacing.xs) { glass in
                 HStack(spacing: Theme.Spacing.xs) {
+                    if isFiltered {
+                        Button {
+                            resetFilters()
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Theme.textPrimary)
+                                .frame(width: 38, height: 38)
+                                .contentShape(.circle)
+                        }
+                        .buttonStyle(.plain)
+                        .morphingGlass(in: .circle, id: "reset", namespace: glass)
+                        .accessibilityLabel("Filter zurücksetzen")
+                    }
                     if counts.hasPurposes || categoryFilter.isActive {
-                        MetaCategoryFilterMenu(selection: categoryFilterBinding, counts: counts)
+                        MetaCategoryFilterMenu(selection: categoryFilterBinding, counts: counts, glassNamespace: glass)
                         Capsule()
                             .fill(Theme.separator)
                             .frame(width: 1, height: 22)
                             .padding(.horizontal, 2)
                             .accessibilityHidden(true)
                     }
-                    Chip(title: "Alle", isSelected: modeFilter == nil, tint: Theme.accentText) {
+                    TripListFilterChip(title: "Alle", isSelected: modeFilter == nil, id: "all", namespace: glass) {
                         selectMode(nil)
                     }
                     ForEach(options) { mode in
-                        Chip(title: mode.displayName, symbol: mode.symbolName, isSelected: modeFilter == mode, tint: Theme.accentText) {
+                        TripListFilterChip(title: mode.displayName, symbol: mode.symbolName, isSelected: modeFilter == mode,
+                                           bounce: modeBounces[mode] ?? 0, id: mode.rawValue, namespace: glass) {
                             selectMode(modeFilter == mode ? nil : mode)
                         }
                     }
@@ -134,31 +182,45 @@ struct TripsView: View {
         } label: {
             TripListRow(trip: trip)
         }
-        .matchedTransitionSource(id: trip.id, in: zoomNamespace)
-        .listRowBackground(TripListCardBackground())
+        .buttonStyle(.pressableCard)
+        .zoomSource(id: trip.id, cornerRadius: Theme.Radius.chip)
+        .listRowBackground(TripListCardBackground(isHighlighted: trip.id == freshTripID))
         .listRowSeparatorTint(Theme.separator)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
-                delete(trip)
+                delete(trip, viaSwipe: true)
             } label: {
                 Label("Löschen", systemImage: "trash")
             }
+            Button {
+                swipeUsed()
+                actions.edit(trip)
+            } label: {
+                Label("Bearbeiten", systemImage: "pencil")
+            }
+            .tint(Theme.dusk)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
+                swipeUsed()
                 repeatToday(trip)
             } label: {
                 Label("Nochmal", systemImage: "arrow.clockwise")
             }
             .tint(Theme.accent)
             Button {
+                swipeUsed()
                 favorite(trip)
             } label: {
                 Label("Favorit", systemImage: "star.fill")
             }
             .tint(Theme.gold)
         }
-        .contextMenu { contextMenu(for: trip) }
+        .contextMenu {
+            contextMenu(for: trip)
+        } preview: {
+            TripListPreviewCard(trip: trip)
+        }
     }
 
     @ViewBuilder
@@ -171,43 +233,37 @@ struct TripsView: View {
             setPurpose(trip, category: category, isInduced: isInduced)
         }
         Divider()
-        Button(role: .destructive) { delete(trip) } label: { Label("Löschen", systemImage: "trash") }
+        Button(role: .destructive) { delete(trip, viaSwipe: false) } label: { Label("Löschen", systemImage: "trash") }
     }
 
-    private func noResultsSection(_ content: TripListContent) -> some View {
-        Section {
-            ContentUnavailableView {
-                Label("Keine Fahrten gefunden", systemImage: "magnifyingglass")
-                    .foregroundStyle(Theme.textPrimary)
-            } description: {
-                Text(noResultsMessage(content))
-                    .foregroundStyle(Theme.textSecondary)
-            } actions: {
-                Button("Filter zurücksetzen") { resetFilters() }
-                    .buttonStyle(.glass)
-            }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+    private func noResultsState(_ content: TripListContent) -> some View {
+        ContentUnavailableView {
+            Label("Keine Fahrten gefunden", systemImage: "magnifyingglass")
+                .foregroundStyle(Theme.textPrimary)
+        } description: {
+            Text(noResultsMessage(content))
+                .foregroundStyle(Theme.textSecondary)
+        } actions: {
+            Button("Filter zurücksetzen") { resetFilters() }
+                .buttonStyle(.glass)
         }
     }
 
     /// The selected ticket year has no trips yet (e.g. a fresh follow-up ticket) while older trips exist.
-    private func emptyPeriodSection(_ content: TripListContent) -> some View {
+    private func emptyPeriodState(_ content: TripListContent) -> some View {
         let lead: String = content.scopeTicket.map { "Im \(TripListFormat.periodLabel($0))" } ?? "In diesem Zeitraum"
         let message = "\(lead) hast du noch keine Fahrt erfasst. Deine \(TripListFormat.tripCount(trips.count)) findest du unter „Alle Fahrten“."
-        return Section {
-            ContentUnavailableView {
-                Label("Noch keine Fahrten", systemImage: "tram.fill")
-                    .foregroundStyle(Theme.textPrimary)
-            } description: {
-                Text(message)
-                    .foregroundStyle(Theme.textSecondary)
-            } actions: {
-                Button("Alle Fahrten anzeigen") { scopeBinding.wrappedValue = .all }
-                    .buttonStyle(.glass)
-            }
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
+        return ContentUnavailableView {
+            Label("Noch keine Fahrten", systemImage: "tram.fill")
+                .foregroundStyle(Theme.textPrimary)
+        } description: {
+            Text(message)
+                .foregroundStyle(Theme.textSecondary)
+        } actions: {
+            Button("Fahrt erfassen") { app.presentAddTrip() }
+                .buttonStyle(.glassProminent)
+            Button("Alle Fahrten anzeigen") { scopeBinding.wrappedValue = .all }
+                .buttonStyle(.glass)
         }
     }
 
@@ -255,7 +311,7 @@ struct TripsView: View {
         switch route {
         case .trip(let trip):
             TripDetailView(trip: trip)
-                .navigationTransition(.zoom(sourceID: trip.id, in: zoomNamespace))
+                .zoomDestination(id: trip.id)
         case .favorites:
             FavoritesManagerView()
         }
@@ -359,7 +415,7 @@ struct TripsView: View {
         Binding(
             get: { resolvedScope },
             set: { newValue in
-                withAnimation(listAnimation) { scopeSelection = newValue }
+                withMotion(Motion.smooth) { scopeSelection = newValue }
                 selectionTick += 1
             }
         )
@@ -376,18 +432,16 @@ struct TripsView: View {
     // MARK: Actions
 
     private var actions: TripListActions { TripListActions(app: app, context: context) }
-    private var hapticsEnabled: Bool { app.settings.hapticsEnabled }
-    /// Crossfade-free, instant list updates with Reduce Motion.
-    private var listAnimation: Animation? { reduceMotion ? nil : Animation.snappy }
 
     private func selectMode(_ mode: TransportMode?) {
         guard mode != modeFilter else { return }
-        withAnimation(listAnimation) { modeFilter = mode }
+        if let mode { modeBounces[mode, default: 0] += 1 }
+        withMotion(Motion.snappy) { modeFilter = mode }
         selectionTick += 1
     }
 
     private func resetFilters() {
-        withAnimation(listAnimation) {
+        withMotion(Motion.smooth) {
             query = ""
             modeFilter = nil
             categoryFilter = .all
@@ -401,37 +455,92 @@ struct TripsView: View {
             get: { categoryFilter },
             set: { newValue in
                 guard newValue != categoryFilter else { return }
-                withAnimation(listAnimation) { categoryFilter = newValue }
+                withMotion(Motion.snappy) { categoryFilter = newValue }
                 selectionTick += 1
             }
         )
     }
 
     private func setPurpose(_ trip: TripEntity, category: TripCategory?, isInduced: Bool) {
-        withAnimation(listAnimation) {
+        withMotion(Motion.snappy) {
             Repository(context: context, app: app).metaSetPurpose(trip, category: category, isInduced: isInduced)
         }
         selectionTick += 1
     }
 
-    private func delete(_ trip: TripEntity) {
-        withAnimation(listAnimation) { actions.delete(trip) }
-        warningTick += 1
+    // The toasts these actions show play their haptic (success, or warning for "gelöscht") – none here (MOTION.md §6).
+
+    private func delete(_ trip: TripEntity, viaSwipe: Bool) {
+        if viaSwipe { swipeUsed() }
+        withMotion(Motion.smooth) { actions.delete(trip) }
     }
 
     private func repeatToday(_ trip: TripEntity) {
-        withAnimation(listAnimation) { actions.repeatToday(trip) }
-        successTick += 1
+        withMotion(Motion.smooth) { actions.repeatToday(trip) }
     }
 
     private func duplicate(_ trip: TripEntity) {
-        withAnimation(listAnimation) { actions.duplicate(trip) }
-        successTick += 1
+        withMotion(Motion.smooth) { actions.duplicate(trip) }
     }
 
     private func favorite(_ trip: TripEntity) {
         actions.addFavorite(trip, favorites: favorites)
-        successTick += 1
+    }
+
+    /// A swipe action was used: the swipe tip has done its job.
+    private func swipeUsed() {
+        KBTips.used(KBTips.TripSwipe())
+    }
+
+    /// A new trip (count went up, created moments ago – not an undo or a sync of old trips) glows once in its row.
+    private func markFreshTrip(oldCount: Int, newCount: Int) {
+        guard newCount > oldCount, !MotionPolicy.isStatic,
+              let newest = trips.max(by: { $0.createdAt < $1.createdAt }),
+              Date().timeIntervalSince(newest.createdAt) < 8 else { return }
+        let id = newest.id
+        freshTripID = id
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.6))
+            guard freshTripID == id else { return }
+            withMotion(Motion.gentle) { freshTripID = nil }
+        }
+    }
+}
+
+// MARK: - Filter chip
+
+/// Mode chip of the filter row: interactive glass that morphs with its neighbours (GlassMorphGroup), tinted while
+/// selected; the symbol bounces when the chip is picked.
+private struct TripListFilterChip: View {
+    let title: String
+    var symbol: String? = nil
+    let isSelected: Bool
+    var bounce: Int = 0
+    let id: String
+    let namespace: Namespace.ID
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let symbol {
+                    Image(systemName: symbol)
+                        .font(.subheadline.weight(.semibold))
+                        .symbolBounce(on: bounce)
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .foregroundStyle(isSelected ? Theme.accentText : Theme.textPrimary)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .morphingGlass(isSelected ? .regular.tint(Theme.accentText.opacity(0.22)).interactive() : .regular.interactive(),
+                       in: .capsule, id: id, namespace: namespace)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -454,7 +563,8 @@ private struct TripListSearchField: ViewModifier {
                     try? await Task.sleep(for: .milliseconds(150))
                     if Task.isCancelled { return }
                 }
-                if query != trimmed { query = trimmed }
+                // The results slide into place (one list diff) instead of jumping.
+                if query != trimmed { withMotion(Motion.snappy) { query = trimmed } }
             }
             .onChange(of: resetToken) { _, _ in text = "" }
     }
@@ -620,13 +730,15 @@ private final class TripListContentCache {
 // MARK: - Summary card
 
 /// "TICKETJAHR 2026/27 ⌄" · big value numeral · route-gradient rail to the summit · Fahrten / km / Ø.
+/// The numeral counts in once (the screen's one hero value), the rail draws to its position once; after that every
+/// figure rolls to its new value (filters, scope, a new trip).
 private struct TripListSummaryCard: View {
     let content: TripListContent
     let tickets: [TicketEntity]
     @Binding var scope: TripListScope
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var reveal: Double = LaunchMode.isScreenshot ? 1 : 0
+    /// 0 → 1 once on first appearance: the rail grows from the start to today's progress.
+    @State private var railShown: Double = MotionPolicy.isStatic ? 1 : 0
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.l) {
@@ -644,12 +756,8 @@ private struct TripListSummaryCard: View {
             }
         }
         .onAppear {
-            guard reveal < 1 else { return }
-            if reduceMotion {
-                reveal = 1
-            } else {
-                withAnimation(.smooth(duration: 1.0).delay(0.1)) { reveal = 1 }
-            }
+            guard railShown < 1 else { return }
+            withMotion(Motion.gentle.delay(0.12)) { railShown = 1 }
         }
     }
 
@@ -700,8 +808,10 @@ private struct TripListSummaryCard: View {
         let fill: Color = summary.isPaidOff ? Theme.positive.opacity(0.16) : Theme.surfaceSecondary
         return HStack(spacing: 4) {
             Image(systemName: summary.isPaidOff ? "checkmark.seal.fill" : "mountain.2.fill")
+                .symbolReplaceTransition()
             Text(title)
                 .monospacedDigit()
+                .numericValue(summary.amortizedFraction)
         }
         .font(.footnote.weight(.semibold))
         .foregroundStyle(summary.isPaidOff ? Theme.positiveText : Theme.textPrimary)
@@ -719,10 +829,9 @@ private struct TripListSummaryCard: View {
                 Text("€")
                     .font(.system(.title2, design: .rounded, weight: .light))
                     .foregroundStyle(Theme.textSecondary)
-                Text(Format.number(shownValue))
+                CountUpText(value: shownValue) { Format.number($0) }
                     .font(Theme.Typography.priceNumeral)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: shownValue))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -730,15 +839,15 @@ private struct TripListSummaryCard: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .contentTransition(.opacity)
         }
-        .animation(.snappy, value: shownValue)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Wert der Fahrten")
         .accessibilityValue("\(Format.euro(stats.value)), \(subline)")
     }
 
     private func rail(_ summary: SavingsSummary) -> some View {
-        ProgressRail(progress: summary.progressClamped * reveal,
+        ProgressRail(progress: summary.progressClamped * railShown,
                      leadingLabel: summary.isPaidOff
                         ? "+ \(SummitFigures.euro(summary.shownProfitEuro)) im Plus"
                         : "Noch \(SummitFigures.euro(summary.shownRemainingEuro)) bis zum Gipfel",
@@ -766,27 +875,28 @@ private struct TripListSummaryCard: View {
     }
 
     private var countStat: some View {
-        miniStat(value: Format.number(Double(stats.count)), unit: nil,
+        miniStat(value: Format.number(Double(stats.count)), numeric: Double(stats.count), unit: nil,
                  label: stats.count == 1 ? "Fahrt" : "Fahrten", symbol: "train.side.front.car", color: Theme.accent)
     }
 
     private var distanceStat: some View {
-        miniStat(value: Format.number(stats.distanceKm), unit: "km",
+        miniStat(value: Format.number(stats.distanceKm), numeric: stats.distanceKm.rounded(), unit: "km",
                  label: "Strecke", symbol: "point.topleft.down.to.point.bottomright.curvepath", color: Theme.accentSecondary)
     }
 
     private var averageStat: some View {
-        miniStat(value: stats.count > 0 ? Format.euroPrecise(stats.value / Double(stats.count)) : "–", unit: nil,
+        let average = stats.count > 0 ? stats.value / Double(stats.count) : 0
+        return miniStat(value: stats.count > 0 ? Format.euroPrecise(average) : "–", numeric: average, unit: nil,
                  label: "Ø pro Fahrt", symbol: "eurosign", color: Theme.summit)
     }
 
-    private func miniStat(value: String, unit: String?, label: String, symbol: String, color: Color) -> some View {
+    private func miniStat(value: String, numeric: Double, unit: String?, label: String, symbol: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText())
+                    .numericValue(numeric)
                 if let unit {
                     Text(unit)
                         .font(.caption.weight(.medium))
@@ -855,11 +965,13 @@ private struct TripListMonthHeader: View {
                 .minimumScaleFactor(0.8)
             Spacer(minLength: Theme.Spacing.xs)
             Text(TripListFormat.tripCount(month.trips.count))
-                .font(.footnote)
+                .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
+                .numericValue(Double(month.trips.count))
             Text(Format.euro(month.value, decimals: 0))
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(Theme.textPrimary)
+                .numericValue(month.value.rounded())
         }
         .textCase(nil)
         .padding(.top, Theme.Spacing.xs)

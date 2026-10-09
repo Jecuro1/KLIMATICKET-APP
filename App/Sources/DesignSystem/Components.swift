@@ -350,7 +350,11 @@ struct ToastOverlay: View {
             )
             .onChange(of: toast.id) { _, _ in dragOffset = 0 }
             .motionTransition(.drop)
-            .sensoryFeedback(.success, trigger: toast.id, condition: { _, _ in playsHaptic && app.settings.hapticsEnabled })
+            // MARK: trips – the toast's own haptic (success / warning for "gelöscht" / error), silent in screenshots
+            .sensoryFeedback(trigger: toast.id) { _, _ in
+                guard playsHaptic, app.settings.hapticsEnabled, !MotionPolicy.isStatic else { return nil }
+                return toast.haptic?.feedback
+            }
             .onTapGesture { withMotion(Motion.smooth) { app.toast = nil } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.updatesFrequently)

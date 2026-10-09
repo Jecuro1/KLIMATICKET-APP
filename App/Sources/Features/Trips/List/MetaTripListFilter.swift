@@ -97,6 +97,8 @@ struct MetaTripFilterCounts {
 struct MetaCategoryFilterMenu: View {
     @Binding var selection: MetaTripFilter
     let counts: MetaTripFilterCounts
+    /// The filter row's GlassMorphGroup: the chip's glass morphs with its neighbours (MOTION.md §8).
+    var glassNamespace: Namespace.ID? = nil
 
     var body: some View {
         Menu {
@@ -127,6 +129,7 @@ struct MetaCategoryFilterMenu: View {
         .buttonStyle(.plain)
         .glassEffect(selection.isActive ? .regular.tint(selection.tint.opacity(0.22)).interactive() : .regular.interactive(),
                      in: .capsule)
+        .modifier(MetaGlassID(namespace: glassNamespace))
         .accessibilityLabel("Nach Kategorie filtern")
         .accessibilityValue(selection.isActive ? selection.title : "Alle Kategorien")
     }
@@ -148,10 +151,12 @@ struct MetaCategoryFilterMenu: View {
             Image(systemName: selection.symbol)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(selection.isActive ? selection.tint : Theme.textPrimary)
+                .symbolReplaceTransition()
             Text(selection.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
+                .contentTransition(.interpolate)
             Image(systemName: "chevron.down")
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Theme.textSecondary)
@@ -164,6 +169,19 @@ struct MetaCategoryFilterMenu: View {
             }
         }
         .contentShape(.capsule)
+    }
+}
+
+/// `glassEffectID` only inside a morph group.
+private struct MetaGlassID: ViewModifier {
+    let namespace: Namespace.ID?
+
+    func body(content: Content) -> some View {
+        if let namespace {
+            content.glassEffectID("category", in: namespace)
+        } else {
+            content
+        }
     }
 }
 

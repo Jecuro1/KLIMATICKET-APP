@@ -35,8 +35,17 @@ struct Toast: Identifiable, Equatable {
     // MARK: trips – optional action button ("Rückgängig"); toasts compare by id (closures are not Equatable).
     var actionTitle: String? = nil
     var action: (@MainActor () -> Void)? = nil
+    // MARK: trips – the one haptic of the action the toast confirms (docs/MOTION.md §6); nil = silent.
+    var haptic: Haptic? = .success
 
     static func == (lhs: Toast, rhs: Toast) -> Bool { lhs.id == rhs.id }
+
+    // MARK: trips – "… gelöscht" warns, a failure ("exclamationmark…") errs, everything else confirms.
+    static func defaultHaptic(for symbol: String) -> Haptic {
+        if symbol.hasPrefix("trash") { return .warning }
+        if symbol.hasPrefix("exclamationmark") || symbol.hasPrefix("xmark") { return .error }
+        return .success
+    }
 }
 
 /// Prefill for the add-trip sheet (from favourites, widgets, intents, deep links, or "nochmal fahren").
@@ -129,12 +138,14 @@ final class AppState {
     }
 
     /// `actionTitle`/`action` add a button (e.g. "Rückgängig"); such a toast stays 5 s instead of 2.6 s.  // MARK: trips
+    /// `haptic`: the action's one haptic, played by the toast (nil → by kind, see `Toast.defaultHaptic`).  // MARK: trips
     func showToast(_ symbol: String, _ title: String, _ subtitle: String? = nil,
-                   actionTitle: String? = nil, action: (@MainActor () -> Void)? = nil) {
+                   actionTitle: String? = nil, haptic: Haptic? = nil, action: (@MainActor () -> Void)? = nil) {
         // A failed save was just reported: the caller's "Fahrt gespeichert" right after the write must not replace it.
         if let failedAt = saveFailureReportedAt, Date().timeIntervalSince(failedAt) < 1.5 { return }
         withAnimation(.spring(duration: 0.45, bounce: 0.3)) {
-            toast = Toast(symbol: symbol, title: title, subtitle: subtitle, actionTitle: actionTitle, action: action)
+            toast = Toast(symbol: symbol, title: title, subtitle: subtitle, actionTitle: actionTitle, action: action,
+                          haptic: haptic ?? Toast.defaultHaptic(for: symbol))   // MARK: trips
         }
         let id = toast?.id
         let seconds: Double = action == nil ? 2.6 : 5
