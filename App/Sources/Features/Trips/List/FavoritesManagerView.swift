@@ -335,6 +335,8 @@ private struct TripListFavoriteRow: View {
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
+            let via = favorite.via   // MARK: via
+            if !via.isEmpty { ViaCaption(vias: via, font: .footnote) }
             metaLine
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
@@ -363,7 +365,7 @@ private struct TripListFavoriteRow: View {
     }
 
     private var accessibilityLabel: String {
-        let route = "\(favorite.fromName) nach \(favorite.toName), \(favorite.mode.displayName)\(favorite.isRoundTrip ? ", hin und retour" : "")"
+        let route = "\(ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName)), \(favorite.mode.displayName)\(favorite.isRoundTrip ? ", hin und retour" : "")"   // MARK: via
         return hasCustomTitle ? "\(favorite.title): \(route)" : route
     }
 }

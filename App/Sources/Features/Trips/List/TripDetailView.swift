@@ -204,9 +204,15 @@ struct TripDetailView: View {
                     TripListDetailStop(caption: "Von", name: trip.fromName,
                                        subtitle: TripListFormat.stationSubtitle(info.fromStation),
                                        isOrigin: true, color: Theme.modeColor(trip.mode))
+                    TripListViaDetailStops(vias: trip.via, stations: info.viaStations)   // MARK: via
                     TripListDetailStop(caption: "Nach", name: trip.toName,
                                        subtitle: TripListFormat.stationSubtitle(info.toStation),
                                        isOrigin: false, color: Theme.modeColor(trip.mode))
+                }
+                if trip.isRoundTrip, let back = ViaText.returnSubtitle(trip.via) {   // MARK: via – the return leg in reverse
+                    Label(back.prefix(1).uppercased() + back.dropFirst(), systemImage: "arrow.uturn.backward")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
                 }
             }
         }
@@ -502,6 +508,7 @@ struct TripDetailView: View {
         return TripListDetailInfo(
             fromStation: resolved.fromStation,
             toStation: resolved.toStation,
+            viaStations: resolved.viaStations,   // MARK: via
             estimate: resolved.estimate,
             route: resolved.route,
             ticket: ticket,
@@ -553,6 +560,8 @@ private struct TripListDetailBarTitle: View {
 private struct TripListDetailInfo {
     var fromStation: Station?
     var toStation: Station?
+    /// Resolved via stations in travel order (nil where a via has no known station).  // MARK: via
+    var viaStations: [Station?]
     var estimate: FareEstimate?
     var route: TripListDetailRoute?
     var ticket: TicketEntity?
@@ -568,8 +577,14 @@ private struct TripListDetailRoute {
     var fromLabel: String
     var toLabel: String
     var straightKm: Double
+    /// Via stops on the map, in travel order.  // MARK: via
+    var via: [(label: String, coordinate: CLLocationCoordinate2D)] = []
 
-    var identity: String { "\(from.latitude),\(from.longitude)|\(to.latitude),\(to.longitude)" }
+    var identity: String {
+        ([from] + via.map(\.coordinate) + [to]).map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+    }
+    /// Polyline through the vias.
+    var path: [CLLocationCoordinate2D] { [from] + via.map(\.coordinate) + [to] }
 }
 
 /// Stations, estimate and map route of the shown trip – resolved once per version of the trip (`updatedAt`), not on every
@@ -579,6 +594,7 @@ private final class TripListDetailRouteCache {
     struct Resolved {
         var fromStation: Station?
         var toStation: Station?
+        var viaStations: [Station?] = []   // MARK: via
         var estimate: FareEstimate?
         var route: TripListDetailRoute?
     }
@@ -592,8 +608,11 @@ private final class TripListDetailRouteCache {
         let fromStation = trip.fromStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.fromName)
         let toStation = trip.toStationID.flatMap { stations.station(id: $0) } ?? stations.station(named: trip.toName)
         var result = Resolved(fromStation: fromStation, toStation: toStation)
+        // MARK: via – resolved like the endpoints; the estimate and the map follow the via route.
+        result.viaStations = trip.via.map { via in via.stationID.flatMap { stations.station(id: $0) } ?? stations.station(named: via.name) }
+        let vias = result.viaStations.compactMap { $0 }
         if let fromStation, let toStation, fromStation.id != toStation.id {
-            result.estimate = Self.estimate(for: trip, from: fromStation, to: toStation, app: app)
+            result.estimate = Self.estimate(for: trip, from: fromStation, via: vias, to: toStation, app: app)
             result.route = TripListDetailRoute(
                 from: CLLocationCoordinate2D(latitude: fromStation.lat, longitude: fromStation.lon),
                 to: CLLocationCoordinate2D(latitude: toStation.lat, longitude: toStation.lon),
@@ -603,6 +622,7 @@ private final class TripListDetailRouteCache {
                 toLabel: TripRow.short(trip.toName),
                 straightKm: fromStation.location.distanceKm(to: toStation.location)
             )
+            result.route?.via = vias.map { (TripRow.short($0.name), CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon)) }
         }
         key = (trip.id, trip.updatedAt)
         resolved = result
@@ -611,14 +631,14 @@ private final class TripListDetailRouteCache {
 
     /// Re-runs the estimator to explain the price (and to compare with own prices). The Vorteilscard choice is not saved
     /// per trip: when only the other discount explains the saved price, that estimate is the explanation.
-    private static func estimate(for trip: TripEntity, from: Station, to: Station, app: AppState) -> FareEstimate {
+    private static func estimate(for trip: TripEntity, from: Station, via: [Station], to: Station, app: AppState) -> FareEstimate {
         let estimator = app.estimator
         let preferred = app.settings.defaultDiscount
-        let estimate = estimator.estimate(from: from, to: to, mode: trip.mode, travelClass: trip.travelClass,
+        let estimate = estimator.estimate(from: from, via: via, to: to, mode: trip.mode, travelClass: trip.travelClass,   // MARK: via
                                           discount: preferred, date: trip.date)
         guard !trip.isFareManual, abs(estimate.fareEUR - trip.fareEUR) >= 0.05 else { return estimate }
         let other: FareDiscount = preferred == .none ? .vorteilscard : .none
-        let alternative = estimator.estimate(from: from, to: to, mode: trip.mode, travelClass: trip.travelClass,
+        let alternative = estimator.estimate(from: from, via: via, to: to, mode: trip.mode, travelClass: trip.travelClass,
                                              discount: other, date: trip.date)
         return abs(alternative.fareEUR - trip.fareEUR) < 0.05 ? alternative : estimate
     }
@@ -704,8 +724,13 @@ private struct TripListDetailMap: View {
 
     var body: some View {
         Map(initialPosition: .region(region), interactionModes: []) {
-            MapPolyline(coordinates: [route.from, route.to])
+            MapPolyline(coordinates: route.path)   // MARK: via – through the vias
                 .stroke(Theme.routeGradient, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            ForEach(Array(route.via.enumerated()), id: \.offset) { _, stop in
+                Annotation(stop.label, coordinate: stop.coordinate, anchor: .center) {
+                    TripListViaMapDot()
+                }
+            }
             Marker(route.fromLabel, systemImage: mode.symbolName, coordinate: route.from)
                 .tint(Theme.modeColor(mode))
             Marker(route.toLabel, systemImage: "flag.fill", coordinate: route.to)
@@ -722,7 +747,7 @@ private struct TripListDetailMap: View {
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Karte der Strecke")
-        .accessibilityValue("\(route.fromName) nach \(route.toName), Luftlinie \(Format.km(route.straightKm))")
+        .accessibilityValue("\(route.fromName)\(route.via.isEmpty ? "" : " über " + FareEstimator.viaList(route.via.map(\.label))) nach \(route.toName), Luftlinie \(Format.km(route.straightKm))")
     }
 
     private var distanceChip: some View {
@@ -738,10 +763,14 @@ private struct TripListDetailMap: View {
 
     /// Frames both stations with room for the marker balloons above them.
     private var region: MKCoordinateRegion {
-        let latDelta = max(abs(route.from.latitude - route.to.latitude) * 1.8, 0.03)
-        let lonDelta = max(abs(route.from.longitude - route.to.longitude) * 1.45, 0.03)
-        let center = CLLocationCoordinate2D(latitude: (route.from.latitude + route.to.latitude) / 2 + latDelta * 0.08,
-                                            longitude: (route.from.longitude + route.to.longitude) / 2)
+        // MARK: via – the box holds every stop of the route.
+        let lats = route.path.map(\.latitude), lons = route.path.map(\.longitude)
+        let minLat = lats.min() ?? route.from.latitude, maxLat = lats.max() ?? route.to.latitude
+        let minLon = lons.min() ?? route.from.longitude, maxLon = lons.max() ?? route.to.longitude
+        let latDelta = max((maxLat - minLat) * 1.8, 0.03)
+        let lonDelta = max((maxLon - minLon) * 1.45, 0.03)
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2 + latDelta * 0.08,
+                                            longitude: (minLon + maxLon) / 2)
         return MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lonDelta))
     }
 }

@@ -33,6 +33,8 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
         var distanceKm: Double = 0
         var fromName: String = ""
         var toName: String = ""
+        /// Via station names in travel order (docs/VIA.md); optional so older snapshots still decode.  // MARK: via
+        var via: [String]? = nil
     }
 
     var generatedAt: Date

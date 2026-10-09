@@ -2,9 +2,10 @@ import Foundation
 
 /// CSV export v2 (Einstellungen › Daten): semicolon-separated for Austrian Excel, UTF-8 BOM, CRLF, de-AT decimals.
 /// Adds category, "ohne Ticket nicht gefahren" and notes to the v1 columns and labels the distance unambiguously,
-/// so `CSVImport` can read the file back without losing anything (round trip).
+/// so `CSVImport` can read the file back without losing anything (round trip). "Über" holds the via stations in travel
+/// order ("Feldkirch · Bludenz", docs/VIA.md); files without the column still import.
 public enum TripCSVExport {
-    public static let header = ["Datum", "Uhrzeit", "Von", "Nach", "Verkehrsmittel", "Hin & Retour", "Kategorie", "Ohne Ticket nicht gefahren",
+    public static let header = ["Datum", "Uhrzeit", "Von", "Nach", "Über", "Verkehrsmittel", "Hin & Retour", "Kategorie", "Ohne Ticket nicht gefahren",
                                 "Distanz gesamt (km)", "Normalpreis (€)", "Wert gesamt (€)", "Notiz"]
 
     /// - Parameter notes: optional note per trip id (TripRecord carries no note).
@@ -14,7 +15,8 @@ public enum TripCSVExport {
             let c = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: t.date)
             let date = String(format: "%02d.%02d.%04d", c.day ?? 0, c.month ?? 0, c.year ?? 0)
             let time = String(format: "%02d:%02d", c.hour ?? 0, c.minute ?? 0)
-            let row = [date, time, guardFormula(t.fromName), guardFormula(t.toName), t.mode.displayName, t.isRoundTrip ? "ja" : "nein",
+            let row = [date, time, guardFormula(t.fromName), guardFormula(t.toName), guardFormula(TripVia.joinedNames(t.via)),
+                       t.mode.displayName, t.isRoundTrip ? "ja" : "nein",
                        t.category?.displayName ?? "", t.isInduced ? "ja" : "nein",
                        decimal(t.totalDistanceKm, 1), decimal(t.fareEUR, 2), decimal(t.totalValue, 2), guardFormula(notes[t.id] ?? "")]
             lines.append(row.map(escape).joined(separator: ";"))
@@ -26,8 +28,9 @@ public enum TripCSVExport {
     public static func template() -> String {
         let rows = [
             header,
-            ["09.10.2026", "07:12", "St. Anton am Arlberg", "Innsbruck Hbf", "Zug", "ja", "Arbeitsweg", "nein", "", "", "", "Pendeln"],
-            ["11.10.2026", "10:30", "Wien Hbf", "Salzburg Hbf", "Zug", "nein", "Freizeit", "ja", "", "65,90", "", "Preis optional – sonst wird geschätzt"],
+            ["09.10.2026", "07:12", "St. Anton am Arlberg", "Innsbruck Hbf", "", "Zug", "ja", "Arbeitsweg", "nein", "", "", "", "Pendeln"],
+            ["11.10.2026", "10:30", "Wien Hbf", "Salzburg Hbf", "Linz Hbf", "Zug", "nein", "Freizeit", "ja", "", "65,90", "",
+             "Preis optional – sonst wird geschätzt; „Über“ optional (bis zu 2, z. B. „Linz Hbf · Wels Hbf“)"],
         ]
         return "\u{FEFF}" + rows.map { $0.map(escape).joined(separator: ";") }.joined(separator: "\r\n") + "\r\n"
     }

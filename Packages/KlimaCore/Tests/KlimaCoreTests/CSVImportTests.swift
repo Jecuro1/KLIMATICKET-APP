@@ -335,7 +335,8 @@ final class CSVImportTests: XCTestCase {
         let rows = CSVImport.parse(decoded.text, delimiter: delimiter)
         let guess = CSVImport.guessMapping(rows: rows)
         XCTAssertEqual(guess.format, .klimaBilanz)
-        XCTAssertEqual(guess.fields, [.date, .time, .from, .to, .mode, .roundTrip, .category, .induced, .totalDistance, .price, .totalValue, .note])
+        XCTAssertEqual(guess.fields, [.date, .time, .from, .to, .via, .mode, .roundTrip, .category, .induced, .totalDistance, .price,
+                                      .totalValue, .note])
         let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: guess.hasHeader)
         XCTAssertEqual(parsed.count, 2)
         let first = parsed[0], second = parsed[1]

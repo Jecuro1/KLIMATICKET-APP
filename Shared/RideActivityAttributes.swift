@@ -44,6 +44,11 @@ struct RideActivityAttributes: ActivityAttributes {
     var startedAt: Date
     /// Mini summit: the ticket's cumulative value as fractions of the price (≤ 16 points, the last one = before this ride).
     var climb: [Double]
+    /// Via station names in travel order (docs/VIA.md); nil for rides without vias and activities of older builds.  // MARK: via
+    var via: [String]? = nil
+
+    /// "über Feldkirch" – shown in the caption while riding without a live line.  // MARK: via
+    var viaTitle: String? { RideNames.via(via ?? []) }
 
     var mode: TransportMode { TransportMode(rawValue: modeRaw) ?? .train }
 
@@ -58,7 +63,7 @@ extension RideActivityAttributes {
     init(record: RideRecord, climb: [Double]) {
         self.init(rideID: record.id, fromName: record.trip.fromName, toName: record.trip.toName, modeRaw: record.trip.mode.rawValue,
                   isRoundTrip: record.trip.isRoundTrip, lineLabel: record.lineLabel, ticketName: record.ticketName,
-                  startedAt: record.startedAt, climb: climb)
+                  startedAt: record.startedAt, climb: climb, via: record.trip.via.isEmpty ? nil : record.trip.via.map(\.name))
     }
 }
 

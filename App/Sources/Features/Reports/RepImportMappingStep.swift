@@ -271,6 +271,7 @@ enum RepFieldStyle {
         case .date, .time: Theme.glacier
         case .from: Theme.glacier
         case .to, .route: Theme.dawn
+        case .via: Theme.glacier.mix(with: Theme.dawn, by: 0.5)   // MARK: via
         case .price, .totalValue: Theme.pine
         case .mode: Theme.modeColor(.train)
         case .roundTrip: Theme.dusk
@@ -297,6 +298,7 @@ enum RepFieldStyle {
         case .distance: "Distanz"
         case .totalDistance: "Distanz gesamt"
         case .induced: "Ohne Ticket"
+        case .via: "Über"   // MARK: via
         }
     }
 }

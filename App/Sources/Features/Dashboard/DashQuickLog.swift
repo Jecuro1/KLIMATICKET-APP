@@ -188,7 +188,7 @@ struct DashQuickLogSection: View {
 
     private func voiceOverValue(for favorite: FavoriteRouteEntity) -> String {
         let legs: Double = favorite.isRoundTrip ? 2 : 1
-        var parts = ["\(favorite.fromName) nach \(favorite.toName)", favorite.mode.displayName]
+        var parts = [ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName), favorite.mode.displayName]   // MARK: via
         if favorite.isRoundTrip { parts.append("hin und retour") }
         parts.append(Format.euroPrecise(favorite.fareEUR * legs))
         return parts.joined(separator: ", ")
@@ -233,6 +233,9 @@ struct DashFavoriteChipLabel: View {
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Theme.textTertiary)
             Text(TripRow.short(favorite.toName))
+            if !favorite.title.isEmpty, !favorite.viaRaw.isEmpty {   // MARK: via – the meta line holds the title: glyph only
+                ViaGlyph(color: Theme.textTertiary)
+            }
         }
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(Theme.textPrimary)
@@ -253,6 +256,8 @@ struct DashFavoriteChipLabel: View {
         var parts: [String] = []
         if !favorite.title.isEmpty {
             parts.append(favorite.title)
+        } else if let via = ViaText.subtitle(favorite.via) {   // MARK: via – "über Feldkirch" in place of the mode name
+            parts.append(via)
         } else if badge == nil {
             parts.append(favorite.mode.displayName)
         }

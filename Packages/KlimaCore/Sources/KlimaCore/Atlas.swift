@@ -40,7 +40,7 @@ public struct AtlasPlace: Hashable, Sendable, Identifiable {
 
 /// All trips between two places (both directions), ready to draw.
 public struct AtlasRoute: Hashable, Sendable, Identifiable {
-    /// "<placeA>|<placeB>" (sorted).
+    /// "<placeA>|<placeB>" (sorted); with vias "<placeA>|<via>…|<placeB>" in the smaller of both directions.
     public var id: String
     /// Western end of the route.
     public var from: AtlasPlace
@@ -71,8 +71,10 @@ public struct AtlasRoute: Hashable, Sendable, Identifiable {
     public var weight: Double
     /// 1 = most travelled.
     public var rank: Int
+    /// Via stops from `from` to `to` (docs/VIA.md); `path` runs through them.
+    public var via: [AtlasPlace] = []
 
-    public func touches(_ placeID: String) -> Bool { from.id == placeID || to.id == placeID }
+    public func touches(_ placeID: String) -> Bool { from.id == placeID || to.id == placeID || via.contains { $0.id == placeID } }
 }
 
 /// Trips that cannot be drawn because at least one end has no known coordinates.
@@ -393,12 +395,21 @@ public enum Atlas {
             let b = station(trip.toStationID, trip.toName)
             let keyA = a.map { register($0, legs: trip.legs, mode: trip.mode, value: trip.totalValue) }
             let keyB = b.map { register($0, legs: trip.legs, mode: trip.mode, value: trip.totalValue) }
+            // Via stops are places the trip passed; the route is drawn through them.
+            let viaKeys = trip.via.compactMap { station($0.stationID, $0.name) }
+                .map { register($0, legs: trip.legs, mode: trip.mode, value: trip.totalValue) }
 
             if let keyA, let keyB {
                 mapped += 1
                 guard keyA != keyB else { continue }   // same place: a visit, but nothing to draw
-                let id = keyA < keyB ? "\(keyA)|\(keyB)" : "\(keyB)|\(keyA)"
-                routeAcc[id, default: RouteAccumulator(a: min(keyA, keyB), b: max(keyA, keyB))].add(trip)
+                var stops = [keyA]
+                for key in viaKeys where key != stops.last && key != keyB { stops.append(key) }
+                stops.append(keyB)
+                let reversed = Array(stops.reversed())
+                let canonical = stops.joined(separator: "|") <= reversed.joined(separator: "|") ? stops : reversed
+                let id = canonical.joined(separator: "|")
+                routeAcc[id, default: RouteAccumulator(a: canonical[0], b: canonical[canonical.count - 1],
+                                                       via: Array(canonical.dropFirst().dropLast()))].add(trip)
             } else {
                 unmappedCount += 1
                 let known = a?.name ?? b?.name
@@ -420,14 +431,18 @@ public enum Atlas {
         // Routes: canonical west → east orientation, rank, weight, arcs with fan-out.
         var routes: [AtlasRoute] = routeAcc.compactMap { id, acc in
             guard var p = finalPlaces[acc.a], var q = finalPlaces[acc.b] else { return nil }
-            if (q.location.longitude, q.location.latitude) < (p.location.longitude, p.location.latitude) { swap(&p, &q) }
+            var via = acc.via.compactMap { finalPlaces[$0] }
+            if (q.location.longitude, q.location.latitude) < (p.location.longitude, p.location.latitude) {
+                swap(&p, &q)
+                via.reverse()
+            }
             let modes = acc.modeLegs.sorted { ($0.value, acc.modeValue[$0.key] ?? 0, $1.key.rawValue) > ($1.value, acc.modeValue[$1.key] ?? 0, $0.key.rawValue) }
                 .map(\.key)
             return AtlasRoute(id: id, from: p, to: q, legs: acc.legs, entries: acc.entries, value: acc.value,
                               distanceKm: acc.distanceKm, dominantMode: modes.first ?? .train, modes: modes,
                               tripIDs: acc.trips.sorted { $0.date > $1.date }.map(\.id),
                               firstDate: acc.firstDate, lastDate: acc.lastDate,
-                              straightKm: p.location.distanceKm(to: q.location), bend: 0, path: [], weight: 0, rank: 0)
+                              straightKm: p.location.distanceKm(to: q.location), bend: 0, path: [], weight: 0, rank: 0, via: via)
         }
         routes.sort { ($0.legs, $0.value, $1.id) > ($1.legs, $1.value, $0.id) }
         let maxLegs = routes.first?.legs ?? 1
@@ -437,8 +452,11 @@ public enum Atlas {
             let fan = routes[..<i].filter { nearParallel(routes[i], $0) }.count
             let magnitude = baseBend(chordKm: routes[i].straightKm) + fanStep(chordKm: routes[i].straightKm) * Double(fan / 2)
             routes[i].bend = fan % 2 == 1 ? -magnitude : magnitude
-            routes[i].path = arc(from: routes[i].from.location, to: routes[i].to.location, bend: routes[i].bend,
-                                 samples: sampleCount(chordKm: routes[i].straightKm))
+            routes[i].path = routes[i].via.isEmpty
+                ? arc(from: routes[i].from.location, to: routes[i].to.location, bend: routes[i].bend,
+                      samples: sampleCount(chordKm: routes[i].straightKm))
+                : path(through: [routes[i].from.location] + routes[i].via.map(\.location) + [routes[i].to.location],
+                       bendSign: routes[i].bend < 0 ? -1 : 1)
         }
 
         // Unmapped.
@@ -489,6 +507,19 @@ public enum Atlas {
 
     static func sampleCount(chordKm: Double) -> Int {
         min(max(Int(chordKm / 5), 16), 72)
+    }
+
+    /// A route with via stops: one gentle arc per leg (flatter than a direct route, so the line visibly passes the stops),
+    /// joined at the stops.
+    public static func path(through stops: [GeoPoint], bendSign: Double = 1) -> [GeoPoint] {
+        guard stops.count >= 2 else { return stops }
+        var points: [GeoPoint] = [stops[0]]
+        for (a, b) in zip(stops, stops.dropFirst()) {
+            let chord = a.distanceKm(to: b)
+            let leg = arc(from: a, to: b, bend: bendSign * baseBend(chordKm: chord) * 0.5, samples: max(sampleCount(chordKm: chord) / 2, 8))
+            points.append(contentsOf: leg.dropFirst())
+        }
+        return points
     }
 
     /// Quadratic Bézier arc between two points in a local equirectangular projection, sampled into `samples + 1` points.
@@ -625,6 +656,8 @@ public enum Atlas {
 private struct RouteAccumulator {
     let a: String
     let b: String
+    /// Via place keys from `a` to `b`.
+    var via: [String] = []
     var legs = 0
     var entries = 0
     var value = 0.0
@@ -635,9 +668,10 @@ private struct RouteAccumulator {
     var firstDate = Date.distantFuture
     var lastDate = Date.distantPast
 
-    init(a: String, b: String) {
+    init(a: String, b: String, via: [String] = []) {
         self.a = a
         self.b = b
+        self.via = via
     }
 
     mutating func add(_ t: TripRecord) {

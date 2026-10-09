@@ -8,14 +8,18 @@ import KlimaCore
 enum DemoData {
     struct Route {
         let from: String, to: String, fromID: String?, toID: String?, mode: TransportMode, km: Double, fare: Double, states: [String]
+        /// Via stops on the default path (official price unchanged, docs/VIA.md).  // MARK: via
+        var via: [TripVia] = []
     }
 
     static let routes: [Route] = [
         Route(from: "St. Anton am Arlberg", to: "Innsbruck Hauptbahnhof", fromID: "at:47:1222", toID: "at:47:1187", mode: .train, km: 101, fare: 23.5, states: ["T"]),
         Route(from: "St. Anton am Arlberg", to: "Landeck-Zams", fromID: "at:47:1222", toID: "at:47:1212", mode: .train, km: 28, fare: 6.7, states: ["T"]),
         Route(from: "St. Anton am Arlberg", to: "Bludenz", fromID: "at:47:1222", toID: "at:48:130", mode: .train, km: 41, fare: 8.6, states: ["T", "V"]),
-        Route(from: "Langen am Arlberg", to: "Bregenz", fromID: "at:48:1226", toID: "at:48:452", mode: .train, km: 88, fare: 18.8, states: ["V"]),
-        Route(from: "Innsbruck Hauptbahnhof", to: "Wien Hauptbahnhof", fromID: "at:47:1187", toID: "at:49:1349", mode: .train, km: 476, fare: 92.8, states: ["NÖ", "OÖ", "S", "T", "W"]),
+        Route(from: "Langen am Arlberg", to: "Bregenz", fromID: "at:48:1226", toID: "at:48:452", mode: .train, km: 88, fare: 18.8, states: ["V"],
+              via: [TripVia(name: "Bludenz", stationID: "at:48:130")]),
+        Route(from: "Innsbruck Hauptbahnhof", to: "Wien Hauptbahnhof", fromID: "at:47:1187", toID: "at:49:1349", mode: .train, km: 476, fare: 92.8, states: ["NÖ", "OÖ", "S", "T", "W"],
+              via: [TripVia(name: "Salzburg Hauptbahnhof", stationID: "at:45:50002"), TripVia(name: "Linz Hauptbahnhof", stationID: "at:44:41164")]),
         Route(from: "Innsbruck Hauptbahnhof", to: "Salzburg Hauptbahnhof", fromID: "at:47:1187", toID: "at:45:50002", mode: .train, km: 189, fare: 55.2, states: ["S", "T"]),
         Route(from: "Wien Hauptbahnhof", to: "Wien Praterstern", fromID: "wl:60201349", toID: "wl:60201040", mode: .metro, km: 4.5, fare: 3.2, states: ["W"]),
         Route(from: "Innsbruck Congress", to: "Hungerburg", fromID: nil, toID: nil, mode: .cableCar, km: 1.8, fare: 6.5, states: ["T"]),
@@ -61,6 +65,7 @@ enum DemoData {
                 let trip = TripEntity(date: date, fromName: route.from, toName: route.to, fromStationID: route.fromID,
                                       toStationID: route.toID, mode: route.mode, distanceKm: route.km, fareEUR: route.fare,
                                       isRoundTrip: round, states: route.states)
+                trip.via = route.via   // MARK: via
                 context.insert(trip)
                 seeded.append(trip)
                 count += 1

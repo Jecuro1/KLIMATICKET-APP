@@ -43,6 +43,7 @@ extension Repository {
                               companions: t.companions, states: t.states, note: t.note)
             trip.category = t.category
             trip.isInduced = t.isInduced
+            trip.via = t.via   // MARK: via
         }
         trip.id = record.id
         context.insert(trip)

@@ -279,6 +279,7 @@ struct RepPreviewRow: View {
 
     private var detailText: String {
         var parts = [candidate.mode.displayName]
+        if let via = ViaText.subtitle(candidate.via) { parts.append(via) }   // MARK: via
         if candidate.distanceKm > 0 { parts.append(Format.km(candidate.totalDistanceKm)) }
         if let category = candidate.category { parts.append(category.displayName) }
         return parts.joined(separator: " · ")
@@ -326,7 +327,7 @@ struct RepPreviewRow: View {
     private var accessibilityText: String {
         var parts = ["Zeile \(candidate.line)"]
         if let date = candidate.date { parts.append(Format.date(date, .long)) }
-        parts.append("\(candidate.fromName) nach \(candidate.toName)")
+        parts.append(ViaText.spoken(from: candidate.fromName, via: candidate.via, to: candidate.toName))   // MARK: via
         if candidate.status != .invalid {
             parts.append(candidate.mode.displayName)
             parts.append(Format.euroPrecise(candidate.totalValue) + (candidate.isFareEstimated ? ", geschätzt" : ""))

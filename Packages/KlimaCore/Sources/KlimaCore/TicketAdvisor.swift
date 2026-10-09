@@ -281,8 +281,10 @@ public struct AdvisorTrip: Hashable, Sendable {
               let b = record.toStationID.flatMap({ stations.station(id: $0) }), a.id != b.id else {
             return AdvisorTrip(record: record, travelClass: travelClass)
         }
-        let first = estimator.estimate(from: a, to: b, mode: .train, travelClass: .first, discount: .none, date: record.date)
-        let second = estimator.estimate(from: a, to: b, mode: .train, travelClass: .second, discount: .none, date: record.date)
+        // The via route, as the trip was priced (docs/VIA.md).
+        let via = record.via.compactMap { $0.stationID.flatMap { stations.station(id: $0) } }
+        let first = estimator.estimate(from: a, via: via, to: b, mode: .train, travelClass: .first, discount: .none, date: record.date)
+        let second = estimator.estimate(from: a, via: via, to: b, mode: .train, travelClass: .second, discount: .none, date: record.date)
         // City single tickets have no 1st class – nothing to upgrade.
         guard second.method != .cityTicket else { return AdvisorTrip(record: record, travelClass: travelClass, firstClassSurcharge: 0) }
         guard first.fareEUR > second.fareEUR else { return AdvisorTrip(record: record, travelClass: travelClass) }

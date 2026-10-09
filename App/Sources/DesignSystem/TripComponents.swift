@@ -40,20 +40,27 @@ struct TripRow: View {
     var value: Double
     var isRoundTrip: Bool = false
     var showsDate: Bool = true
+    /// Via stations ("über Feldkirch" under the names; docs/VIA.md).  // MARK: via
+    var via: [TripVia] = []
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
             ModeIcon(mode: mode, size: 40)
-            MiniRouteGlyph(isRoundTrip: isRoundTrip, color: Theme.modeColor(mode))
-                .frame(width: 10, height: 34)
             VStack(alignment: .leading, spacing: 3) {
-                Text(TripRow.short(fromName))
-                Text(TripRow.short(toName))
+                HStack(spacing: Theme.Spacing.s) {
+                    MiniRouteGlyph(isRoundTrip: isRoundTrip, color: Theme.modeColor(mode))
+                        .frame(width: 10, height: 34)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(TripRow.short(fromName))
+                        Text(TripRow.short(toName))
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                }
+                if !via.isEmpty { ViaCaption(vias: via).padding(.leading, 10 + Theme.Spacing.s) }
             }
-            .font(.system(size: 16, weight: .semibold))
-            .foregroundStyle(Theme.textPrimary)
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
             .layoutPriority(1)
             Spacer(minLength: Theme.Spacing.xs)
             VStack(alignment: .trailing, spacing: 3) {
@@ -69,7 +76,7 @@ struct TripRow: View {
         .padding(.vertical, Theme.Spacing.xs)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(fromName) nach \(toName), \(mode.displayName)\(isRoundTrip ? ", hin und retour" : "")")
+        .accessibilityLabel("\(ViaText.spoken(from: fromName, via: via, to: toName)), \(mode.displayName)\(isRoundTrip ? ", hin und retour" : "")")
         .accessibilityValue("\(Format.euroPrecise(value)), \(Format.relativeDay(date)) \(Format.time(date)), \(Format.km(distanceKm * (isRoundTrip ? 2 : 1)))")
     }
 
@@ -112,7 +119,8 @@ struct MiniRouteGlyph: View {
 extension TripRow {
     init(trip: TripEntity, showsDate: Bool = true) {
         self.init(fromName: trip.fromName, toName: trip.toName, date: trip.date, mode: trip.mode,
-                  distanceKm: trip.distanceKm, value: trip.totalValue, isRoundTrip: trip.isRoundTrip, showsDate: showsDate)
+                  distanceKm: trip.distanceKm, value: trip.totalValue, isRoundTrip: trip.isRoundTrip, showsDate: showsDate,
+                  via: trip.via)   // MARK: via
     }
 }
 

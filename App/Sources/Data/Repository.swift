@@ -403,7 +403,8 @@ enum WidgetSnapshotBuilder {
                 WidgetSnapshot.Favorite(id: fav.id, title: fav.displayTitle, modeSymbol: fav.mode.symbolName,
                                         value: fav.fareEUR * (fav.isRoundTrip ? 2 : 1),
                                         distanceKm: fav.distanceKm * (fav.isRoundTrip ? 2 : 1),
-                                        fromName: fav.fromName, toName: fav.toName)
+                                        fromName: fav.fromName, toName: fav.toName,
+                                        via: fav.viaRaw.isEmpty ? nil : fav.via.map(\.name))   // MARK: via
             },
             sparkline: sparkline
         )

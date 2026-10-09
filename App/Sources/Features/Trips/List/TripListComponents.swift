@@ -107,7 +107,7 @@ final class TripSearchIndex {
         let id = trip.id
         let stamp = trip.updatedAt
         if let entry = keys[id], entry.stamp == stamp { return entry.key }
-        var parts = [trip.fromName, trip.toName, trip.note, trip.mode.displayName]
+        var parts = [trip.fromName, trip.toName, trip.note, trip.mode.displayName] + trip.via.map(\.name)   // MARK: via
         if let category = trip.category { parts.append(category.displayName) }
         if trip.isInduced { parts.append(MetaCategoryStyle.inducedTitle) }
         let text = parts.joined(separator: " ")
@@ -248,7 +248,13 @@ struct TripListRow: View {
         layout {
             dateColumn
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                stations
+                // MARK: via – "über Feldkirch" under the stations (DesignSystem/ViaDisplay.swift)
+                VStack(alignment: .leading, spacing: 3) {
+                    stations
+                    let via = trip.via
+                    if !via.isEmpty { ViaCaption(vias: via).padding(.leading, 21) }
+                }
+                .alignmentGuide(.listRowSeparatorLeading) { dimensions in dimensions[.leading] }
                 Spacer(minLength: Theme.Spacing.xs)
                 trailing
             }
@@ -328,7 +334,7 @@ struct TripListRow: View {
     }
 
     private var accessibilityLabel: String {
-        "\(trip.fromName) nach \(trip.toName), \(trip.mode.displayName)\(trip.isRoundTrip ? ", hin und retour" : "")"
+        "\(ViaText.spoken(from: trip.fromName, via: trip.via, to: trip.toName)), \(trip.mode.displayName)\(trip.isRoundTrip ? ", hin und retour" : "")"   // MARK: via
     }
 
     private var accessibilityValue: String {

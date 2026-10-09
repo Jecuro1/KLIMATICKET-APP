@@ -48,6 +48,7 @@ enum RideCopy {
             if let status = state.status, !status.text.isEmpty { return status.text }
             var parts: [String] = []
             if let line = attributes.lineLabel, !line.isEmpty { parts.append(line) }
+            else if let via = attributes.viaTitle { parts.append(via) }   // MARK: via
             if let arrival = state.expectedArrival {
                 parts.append("an \(RideFormat.time(arrival))")
             } else {
@@ -59,7 +60,7 @@ enum RideCopy {
 
     /// VoiceOver summary of the whole activity.
     static func spokenSummary(_ attributes: RideActivityAttributes, _ state: RideActivityAttributes.ContentState, isStale: Bool) -> String {
-        var parts = ["\(attributes.mode.displayName) von \(RideNames.short(attributes.fromName)) nach \(RideNames.short(attributes.toName))"]
+        var parts = ["\(attributes.mode.displayName) von \(RideNames.short(attributes.fromName))\(attributes.viaTitle.map { " " + $0 } ?? "") nach \(RideNames.short(attributes.toName))"]   // MARK: via
         parts.append(caption(attributes, state, isStale: isStale))
         parts.append("Wert dieser Fahrt \(WidFormat.euroPrecise(state.valueEUR))")
         if let payoff = state.payoff {

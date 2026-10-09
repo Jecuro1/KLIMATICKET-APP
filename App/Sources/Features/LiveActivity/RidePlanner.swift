@@ -29,7 +29,8 @@ enum RidePlanner {
                             fromStationID: model.fromStation?.id, toStationID: model.toStation?.id,
                             mode: model.mode, distanceKm: model.distanceKm, fareEUR: model.fare,
                             isFareManual: model.isFareManual, isRoundTrip: model.isRoundTrip, travelClass: model.travelClass,
-                            companions: model.companions, states: model.states, note: model.note)
+                            companions: model.companions, states: model.states, note: model.note,
+                            via: model.viaRecords)   // MARK: via
         guard trip.isValid else { return nil }
         return make(trip: trip, startedAt: startDate(for: model.date, now: now), context: context, app: model.app)
     }
@@ -40,7 +41,8 @@ enum RidePlanner {
                             toStationID: favorite.toStationID, mode: favorite.mode, distanceKm: favorite.distanceKm,
                             fareEUR: favorite.fareEUR, isFareManual: false, isRoundTrip: favorite.isRoundTrip,
                             travelClass: app.settings.defaultTravelClass, states: favorite.states,
-                            category: TripCategory(rawValue: favorite.categoryRaw), favoriteID: favorite.id)
+                            category: TripCategory(rawValue: favorite.categoryRaw), favoriteID: favorite.id,
+                            via: favorite.via)   // MARK: via
         return make(trip: trip, startedAt: startedAt, context: context, app: app)
     }
 

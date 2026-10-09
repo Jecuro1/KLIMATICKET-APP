@@ -349,6 +349,12 @@ struct ScreenshotRouter: View {
                     TripDetailView(trip: trip)
                 }
             }
+        case "tripDetailVia": // MARK: via – the newest demo trip with via stops (Langen → Bregenz über Bludenz)
+            NavigationStack {
+                if let trip = Repository(context: context, app: app).liveTrips().first(where: { !$0.viaRaw.isEmpty }) {
+                    TripDetailView(trip: trip)
+                }
+            }
         case "favoriteEdit": // MARK: tripmeta
             NavigationStack { FavoritesManagerView() }
         case "achievements":

@@ -30,7 +30,7 @@ struct FavoriteRouteAppEntity: AppEntity, IndexedEntity, Identifiable {
         id = favorite.id
         title = favorite.title
         symbol = favorite.modeSymbol
-        let route = [favorite.fromName, favorite.toName].filter { !$0.isEmpty }.joined(separator: " → ")
+        let route = ([favorite.fromName] + (favorite.via ?? []) + [favorite.toName]).filter { !$0.isEmpty }.joined(separator: " → ")   // MARK: via
         subtitle = route.isEmpty ? WidFormat.euroPrecise(favorite.value) : "\(route) · \(WidFormat.euroPrecise(favorite.value))"
     }
 

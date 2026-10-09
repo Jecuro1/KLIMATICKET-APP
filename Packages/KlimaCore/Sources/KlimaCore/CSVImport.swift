@@ -562,6 +562,8 @@ public extension CSVImport {
     /// What a CSV column means.
     enum Field: String, CaseIterable, Sendable, Hashable, Identifiable {
         case date, time, from, to, route, price, totalValue, mode, roundTrip, category, note, distance, totalDistance, induced
+        /// Via stations ("Über", docs/VIA.md) – never guessed from content, only from a header.
+        case via
 
         public var id: String { rawValue }
 
@@ -582,6 +584,7 @@ public extension CSVImport {
             case .distance: "Distanz (pro Richtung)"
             case .totalDistance: "Distanz gesamt"
             case .induced: "Ohne Ticket nicht gefahren"
+            case .via: "Über (Zwischenhalte)"
             }
         }
 
@@ -601,6 +604,7 @@ public extension CSVImport {
             case .distance: "ruler"
             case .totalDistance: "ruler.fill"
             case .induced: "sparkles"
+            case .via: "point.3.filled.connected.trianglepath.dotted"
             }
         }
 
@@ -634,6 +638,8 @@ public extension CSVImport {
                                   "gesamtkilometer", "gesamtentfernung"]
             case .induced: ["ohneticketnichtgefahren", "induziert", "induced", "zusatzfahrt", "nurwegenticket", "wegenticket", "extrafahrt",
                             "ohneticket"]
+            case .via: ["uber", "via", "zwischenhalt", "zwischenhalte", "zwischenstopp", "zwischenstation", "zwischenstationen",
+                        "uberbahnhof", "stopover", "stopovers", "viastations", "viastops"]
             }
         }
     }
@@ -706,7 +712,7 @@ public extension CSVImport {
             // Our own export: "Distanz (km)" was the total distance (all legs) in v1 files.
             if format == .klimaBilanz, let i = keys.firstIndex(of: "distanzkm") { assign(.totalDistance, to: i) }
             // Pass 1: exact synonyms (more specific fields first).
-            let order: [Field] = [.totalValue, .totalDistance, .induced, .roundTrip, .date, .time, .from, .to, .price, .distance,
+            let order: [Field] = [.totalValue, .totalDistance, .induced, .roundTrip, .date, .time, .from, .to, .via, .price, .distance,
                                   .mode, .category, .note, .route]
             for field in order {
                 for (i, key) in keys.enumerated() where !key.isEmpty {
@@ -727,6 +733,7 @@ public extension CSVImport {
                 (.roundTrip, ["retour", "return", "zuruck"]),
                 (.category, ["kategorie", "category", "zweck"]),
                 (.note, ["notiz", "bemerk", "kommentar", "note", "comment"]),
+                (.via, ["zwischenhalt", "zwischenstop", "zwischenstation"]),
             ]
             for (field, needles) in containsRules {
                 for (i, key) in keys.enumerated() where !key.isEmpty && fields[i] == nil {
@@ -836,6 +843,8 @@ public extension CSVImport {
         public var note: String
         public var isInduced: Bool
         public var issues: [Issue]
+        /// Via station names in travel order (column "Über"; at most `TripVia.maxCount`).
+        public var via: [String] = []
 
         public var id: Int { line }
         public var errors: [Issue] { issues.filter(\.isError) }
@@ -934,6 +943,10 @@ public extension CSVImport {
                 if let c = category(raw) { row.category = c } else { issues.append(.unknownCategory(raw)) }
             }
             row.note = cell(.note) ?? ""
+            if let raw = cell(.via) {
+                let endpoints = [normalizeKey(row.fromName), normalizeKey(row.toName)]
+                row.via = Array(TripVia.parseNames(raw).filter { !endpoints.contains(normalizeKey($0)) }.prefix(TripVia.maxCount))
+            }
             row.issues = issues
             return row
         }
@@ -941,11 +954,15 @@ public extension CSVImport {
 
     // MARK: Duplicates
 
-    /// Duplicate key: same calendar day (Vienna), same direction-sensitive route (normalised names) and same fare in cents.
-    static func duplicateKey(date: Date, fromName: String, toName: String, fare: Double, calendar: Calendar = .vienna) -> String {
+    /// Duplicate key: same calendar day (Vienna), same direction-sensitive route (normalised names, vias in order) and same
+    /// fare in cents. Without vias the key is the one of files and trips from before via stops.
+    static func duplicateKey(date: Date, fromName: String, toName: String, fare: Double, via: [String] = [],
+                             calendar: Calendar = .vienna) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         let day = String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
         let cents = Int((fare * 100).rounded())
-        return "\(day)|\(StationIndex.normalize(fromName))|\(StationIndex.normalize(toName))|\(cents)"
+        let key = "\(day)|\(StationIndex.normalize(fromName))|\(StationIndex.normalize(toName))|\(cents)"
+        guard !via.isEmpty else { return key }
+        return key + "|über:" + via.map(StationIndex.normalize).joined(separator: ">")
     }
 }

@@ -165,6 +165,7 @@ struct RideEdStartCard: View {
                                fromStationID: model.fromStation?.id, toStationID: model.toStation?.id, mode: model.mode,
                                distanceKm: model.distanceKm, fareEUR: model.fare, isFareManual: model.isFareManual,
                                isRoundTrip: model.isRoundTrip, travelClass: model.travelClass, states: model.states)
+        route.via = model.viaRecords   // MARK: via
         Repository(context: context, app: app).addFavorite(from: route)
     }
 

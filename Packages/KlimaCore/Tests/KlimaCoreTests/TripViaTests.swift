@@ -155,6 +155,116 @@ final class TripViaTests: XCTestCase {
         XCTAssertGreaterThan(out.fareEUR, 90)
     }
 
+    // MARK: CSV
+
+    func testCSVExportImportWithVia() {
+        let cal = Calendar.vienna
+        let d = cal.date(from: DateComponents(year: 2026, month: 10, day: 9, hour: 7, minute: 12))!
+        let viaTrip = TripRecord(date: d, fromName: "Innsbruck Hauptbahnhof", toName: "Bregenz", fromStationID: innsbruck.id,
+                                 toStationID: bregenz.id, mode: .train, distanceKm: 202.8, fareEUR: 43.3,
+                                 via: [TripVia(name: "Landeck-Zams", stationID: "at:47:1212"), TripVia(feldkirch)])
+        let direct = TripRecord(date: d.addingTimeInterval(3600), fromName: "Bregenz", toName: "Feldkirch", mode: .train,
+                                distanceKm: 37.5, fareEUR: 8.9)
+        let csv = TripCSVExport.trips([viaTrip, direct])
+        let header = csv.dropFirst().split(separator: "\r\n").first.map(String.init)
+        XCTAssertEqual(header, "Datum;Uhrzeit;Von;Nach;Über;Verkehrsmittel;Hin & Retour;Kategorie;Ohne Ticket nicht gefahren;"
+                       + "Distanz gesamt (km);Normalpreis (€);Wert gesamt (€);Notiz")
+        XCTAssertTrue(csv.contains(";Innsbruck Hauptbahnhof;Bregenz;Landeck-Zams · Feldkirch;Zug;"))
+
+        let text = CSVImport.decode(Data(csv.utf8)).text
+        let rows = CSVImport.parse(text, delimiter: CSVImport.sniffDelimiter(text))
+        let guess = CSVImport.guessMapping(rows: rows)
+        XCTAssertEqual(guess.format, .klimaBilanz)
+        XCTAssertEqual(guess.fields, [.date, .time, .from, .to, .via, .mode, .roundTrip, .category, .induced, .totalDistance, .price,
+                                      .totalValue, .note])
+        let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: guess.hasHeader)
+        XCTAssertEqual(parsed.map(\.via), [["Landeck-Zams", "Feldkirch"], []])
+        XCTAssertEqual(parsed[0].fare, 43.3)
+        XCTAssertEqual(parsed[0].distanceKm, 202.8)
+        XCTAssertTrue(parsed.allSatisfy(\.isValid))
+        // Re-importing the export finds the via trip as a duplicate; another via is another trip.
+        XCTAssertEqual(CSVImport.duplicateKey(date: parsed[0].date!, fromName: parsed[0].fromName, toName: parsed[0].toName,
+                                              fare: parsed[0].fare!, via: parsed[0].via),
+                       CSVImport.duplicateKey(date: viaTrip.date, fromName: viaTrip.fromName, toName: viaTrip.toName,
+                                              fare: viaTrip.fareEUR, via: viaTrip.via.map(\.name)))
+        XCTAssertNotEqual(CSVImport.duplicateKey(date: d, fromName: "A", toName: "B", fare: 1, via: ["X"]),
+                          CSVImport.duplicateKey(date: d, fromName: "A", toName: "B", fare: 1))
+    }
+
+    func testCSVWithoutViaColumnStillImports() {
+        // A file from before via stops (v2 header without "Über").
+        let old = "\u{FEFF}Datum;Uhrzeit;Von;Nach;Verkehrsmittel;Hin & Retour;Kategorie;Ohne Ticket nicht gefahren;"
+            + "Distanz gesamt (km);Normalpreis (€);Wert gesamt (€);Notiz\r\n"
+            + "09.10.2026;07:12;St. Anton am Arlberg;Innsbruck Hbf;Zug;ja;Arbeitsweg;nein;202,0;23,50;47,00;\r\n"
+        let text = CSVImport.decode(Data(old.utf8)).text
+        let rows = CSVImport.parse(text, delimiter: .semicolon)
+        let guess = CSVImport.guessMapping(rows: rows)
+        XCTAssertFalse(guess.fields.contains(.via))
+        let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: guess.hasHeader)
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertTrue(parsed[0].isValid)
+        XCTAssertEqual(parsed[0].via, [])
+        XCTAssertEqual(parsed[0].fare, 23.5)
+    }
+
+    func testCSVViaHeaderSynonymsAndLimits() {
+        let csv = "Datum;Von;Nach;Zwischenhalte;Preis\n01.10.2026;Innsbruck Hbf;Bregenz;Landeck-Zams / Bludenz / Feldkirch;43,30\n"
+            + "02.10.2026;Innsbruck Hbf;Bregenz;Bregenz;43,30\n"
+        let rows = CSVImport.parse(csv, delimiter: .semicolon)
+        let guess = CSVImport.guessMapping(rows: rows)
+        XCTAssertEqual(guess.fields[3], .via)
+        let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: guess.hasHeader)
+        XCTAssertEqual(parsed[0].via, ["Landeck-Zams", "Bludenz"], "at most two")
+        XCTAssertEqual(parsed[1].via, [], "a via equal to the destination is dropped")
+    }
+
+    func testTemplateHasAViaExample() {
+        let text = CSVImport.decode(Data(TripCSVExport.template().utf8)).text
+        let rows = CSVImport.parse(text, delimiter: CSVImport.sniffDelimiter(text))
+        let guess = CSVImport.guessMapping(rows: rows)
+        let parsed = CSVImport.parseRows(rows, fields: guess.fields, hasHeader: guess.hasHeader)
+        XCTAssertEqual(parsed.map(\.via), [[], ["Linz Hbf"]])
+        XCTAssertTrue(parsed.allSatisfy(\.isValid))
+    }
+
+    // MARK: Atlas, rides
+
+    func testAtlasDrawsTheRouteThroughTheVias() {
+        let index = StationIndex(stations: [innsbruck, feldkirch, bregenz, bludenz])
+        let d = Date(timeIntervalSince1970: 1_790_000_000)
+        let viaTrip = TripRecord(date: d, fromName: innsbruck.name, toName: bregenz.name, fromStationID: innsbruck.id,
+                                 toStationID: bregenz.id, mode: .train, distanceKm: 202.8, fareEUR: 43.3, via: [TripVia(feldkirch)])
+        let back = TripRecord(date: d, fromName: bregenz.name, toName: innsbruck.name, fromStationID: bregenz.id,
+                              toStationID: innsbruck.id, mode: .train, distanceKm: 202.8, fareEUR: 43.3, via: [TripVia(feldkirch)])
+        let direct = TripRecord(date: d, fromName: innsbruck.name, toName: bregenz.name, fromStationID: innsbruck.id,
+                                toStationID: bregenz.id, mode: .train, distanceKm: 155.9, fareEUR: 43.3)
+        let summary = Atlas.summarize([viaTrip, back, direct], stations: index)
+        XCTAssertEqual(summary.routes.count, 2, "the via route (both directions) and the direct one")
+        let route = try? XCTUnwrap(summary.routes.first { !$0.via.isEmpty })
+        XCTAssertEqual(route?.legs, 2)
+        XCTAssertEqual(route?.from.name, "Bregenz", "west → east")
+        XCTAssertEqual(route?.to.name, "Innsbruck Hauptbahnhof")
+        XCTAssertEqual(route?.via.map(\.name), ["Feldkirch"])
+        XCTAssertTrue(route?.touches(Atlas.placeKey(feldkirch)) == true)
+        // The path passes Feldkirch.
+        let passes = route?.path.contains { $0.distanceKm(to: feldkirch.location) < 0.01 } ?? false
+        XCTAssertTrue(passes)
+        XCTAssertTrue(summary.places.contains { $0.name == "Feldkirch" })
+    }
+
+    func testRideTripKeepsViasAndOldRecordsDecode() throws {
+        let ride = RideTrip(fromName: "Innsbruck Hbf", toName: "Bregenz", mode: .train, distanceKm: 202.8, fareEUR: 43.3,
+                            via: [TripVia(feldkirch)])
+        let data = try JSONEncoder().encode(ride)
+        XCTAssertEqual(try JSONDecoder().decode(RideTrip.self, from: data).via, [TripVia(feldkirch)])
+        let old = #"{"fromName":"A","toName":"B","mode":"train","distanceKm":1,"fareEUR":2}"#
+        XCTAssertEqual(try JSONDecoder().decode(RideTrip.self, from: Data(old.utf8)).via, [])
+        XCTAssertFalse(String(decoding: try JSONEncoder().encode(RideTrip(fromName: "A", toName: "B", mode: .train,
+                                                                          distanceKm: 1, fareEUR: 2)), as: UTF8.self).contains("via"))
+        XCTAssertEqual(RideNames.via(["Landeck-Zams", "Innsbruck Hauptbahnhof"]), "über Landeck-Zams und Innsbruck Hbf")
+        XCTAssertNil(RideNames.via([]))
+    }
+
     func testStopNames() {
         let t = TripRecord(date: Date(), fromName: "Innsbruck Hbf", toName: "Bregenz", mode: .train, distanceKm: 202.8, fareEUR: 43.3,
                            via: [TripVia(feldkirch)])

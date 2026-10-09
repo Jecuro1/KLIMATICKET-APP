@@ -1066,6 +1066,13 @@ struct RepTablePage: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                if let via = ViaText.subtitle(trip.via) {   // MARK: via – "über Feldkirch" after the route, first to shrink
+                    Text(via)
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .layoutPriority(-1)
+                }
                 if trip.isRoundTrip {
                     Text("H+R")
                         .font(RepPrint.font(6, .bold))

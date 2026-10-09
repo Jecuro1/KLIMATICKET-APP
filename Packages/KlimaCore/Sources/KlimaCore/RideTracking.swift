@@ -27,11 +27,13 @@ public struct RideTrip: Codable, Hashable, Sendable {
     public var isInduced: Bool
     /// Started from a favourite: the app logs it like a quick log (current fare, category and usage count of the favourite).
     public var favoriteID: UUID?
+    /// Via stations in travel order (docs/VIA.md); `distanceKm` and `fareEUR` already follow them.
+    public var via: [TripVia]
 
     public init(fromName: String, toName: String, fromStationID: String? = nil, toStationID: String? = nil,
                 mode: TransportMode, distanceKm: Double, fareEUR: Double, isFareManual: Bool = false, isRoundTrip: Bool = false,
                 travelClass: TravelClass = .second, companions: Int = 0, states: [String] = [], note: String = "",
-                category: TripCategory? = nil, isInduced: Bool = false, favoriteID: UUID? = nil) {
+                category: TripCategory? = nil, isInduced: Bool = false, favoriteID: UUID? = nil, via: [TripVia] = []) {
         self.fromName = fromName
         self.toName = toName
         self.fromStationID = fromStationID
@@ -48,6 +50,7 @@ public struct RideTrip: Codable, Hashable, Sendable {
         self.category = category
         self.isInduced = isInduced
         self.favoriteID = favoriteID
+        self.via = via
     }
 
     /// Value of the whole ride (both directions for a round trip), EUR.
@@ -71,7 +74,7 @@ public struct RideTrip: Codable, Hashable, Sendable {
     // Tolerant decoding: records written by an older or newer build (App Group) must never be lost.
     private enum CodingKeys: String, CodingKey {
         case fromName, toName, fromStationID, toStationID, mode, distanceKm, fareEUR, isFareManual, isRoundTrip
-        case travelClass, companions, states, note, category, isInduced, favoriteID
+        case travelClass, companions, states, note, category, isInduced, favoriteID, via
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,6 +95,7 @@ public struct RideTrip: Codable, Hashable, Sendable {
         category = (try? c.decodeIfPresent(String.self, forKey: .category)).flatMap(TripCategory.init(rawValue:))
         isInduced = try c.decodeIfPresent(Bool.self, forKey: .isInduced) ?? false
         favoriteID = try c.decodeIfPresent(UUID.self, forKey: .favoriteID)
+        via = (try? c.decodeIfPresent([TripVia].self, forKey: .via)).flatMap { $0 } ?? []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -112,6 +116,7 @@ public struct RideTrip: Codable, Hashable, Sendable {
         try c.encodeIfPresent(category?.rawValue, forKey: .category)
         try c.encode(isInduced, forKey: .isInduced)
         try c.encodeIfPresent(favoriteID, forKey: .favoriteID)
+        if !via.isEmpty { try c.encode(via, forKey: .via) }
     }
 }
 
@@ -357,5 +362,12 @@ public enum RideNames {
     /// "St. Anton → Innsbruck Hbf" / "St. Anton ⇄ Innsbruck Hbf" (round trip).
     public static func route(from: String, to: String, roundTrip: Bool) -> String {
         "\(short(from)) \(roundTrip ? "⇄" : "→") \(short(to))"
+    }
+
+    /// "über Feldkirch", "über Landeck-Zams und Feldkirch" (short names); nil without vias (docs/VIA.md).
+    public static func via(_ names: [String]) -> String? {
+        let names = names.map(short).filter { !$0.isEmpty }
+        guard !names.isEmpty else { return nil }
+        return "über " + FareEstimator.viaList(names)
     }
 }

@@ -29,6 +29,11 @@ struct TripEdFavoritesRow: View {
         .accessibilityLabel("Favoriten")
     }
 
+    // MARK: via
+    private func spokenRoute(_ favorite: FavoriteRouteEntity) -> String {
+        ViaText.spoken(from: favorite.fromName, via: favorite.via, to: favorite.toName) + (favorite.isRoundTrip ? ", hin und retour" : "")
+    }
+
     private func chip(_ favorite: FavoriteRouteEntity) -> some View {
         let isSelected = model.tripEdMatches(favorite)
         let title = TripEdFormat.routeTitle(from: favorite.fromName, to: favorite.toName, roundTrip: favorite.isRoundTrip)
@@ -39,10 +44,8 @@ struct TripEdFavoritesRow: View {
                 Image(systemName: isSelected ? "star.fill" : "star")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.gold)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isSelected ? Theme.accentText : Theme.textPrimary)
-                    .lineLimit(1)
+                ViaRouteLabel(route: title, vias: favorite.via,   // MARK: via – "· über Feldkirch" when it fits, else ⦿
+                              color: isSelected ? Theme.accentText : Theme.textPrimary)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -55,7 +58,7 @@ struct TripEdFavoritesRow: View {
         }
         .buttonStyle(.plain)
         .glassEffect(isSelected ? .regular.tint(Theme.accent.opacity(0.2)).interactive() : .regular.interactive(), in: .capsule)
-        .accessibilityLabel(favorite.title.isEmpty ? title : "\(favorite.title), \(title)")
+        .accessibilityLabel(favorite.title.isEmpty ? spokenRoute(favorite) : "\(favorite.title), \(spokenRoute(favorite))")
         .accessibilityValue(favorite.mode.displayName)
         .accessibilityHint("Übernimmt Strecke und Verkehrsmittel")
         .accessibilityAddTraits(isSelected ? .isSelected : [])

@@ -23,6 +23,8 @@ struct RepImportCandidate: Identifiable, Hashable {
     var note: String
     var isInduced: Bool
     var states: [String]
+    /// Via stations in travel order (column "Über"; docs/VIA.md).  // MARK: via
+    var via: [TripVia] = []
     var errors: [String]
     var warnings: [String]
     var duplicateNote: String?
@@ -233,13 +235,15 @@ final class RepImportModel {
         let rows = CSVImport.parseRows(records, fields: fields, hasHeader: hasHeader)
         var existingKeys: [String: Date] = [:]
         for trip in existing where trip.deletedAt == nil {
-            existingKeys[CSVImport.duplicateKey(date: trip.date, fromName: trip.fromName, toName: trip.toName, fare: trip.fareEUR)] = trip.date
+            existingKeys[CSVImport.duplicateKey(date: trip.date, fromName: trip.fromName, toName: trip.toName, fare: trip.fareEUR,
+                                                via: trip.via.map(\.name))] = trip.date   // MARK: via
         }
         var seen: [String: Int] = [:]
         candidates = rows.map { row in
             var c = candidate(for: row)
             if c.errors.isEmpty, let date = c.date {
-                let key = CSVImport.duplicateKey(date: date, fromName: c.fromName, toName: c.toName, fare: c.fare)
+                let key = CSVImport.duplicateKey(date: date, fromName: c.fromName, toName: c.toName, fare: c.fare,
+                                                 via: c.via.map(\.name))   // MARK: via
                 if let when = existingKeys[key] {
                     c.duplicateNote = "Schon erfasst am \(Format.dayMonth(when))"
                     c.status = .duplicate
@@ -264,9 +268,18 @@ final class RepImportModel {
         var mode = row.mode ?? .train
         if row.mode == nil, from?.kind == .metro, to?.kind == .metro { mode = .metro }
 
+        // MARK: via – names resolved like start and destination; an unknown via keeps its name and is not priced.
+        let viaStations = row.via.map { name in (name: name, station: matchStation(name)) }
+        let via = TripViaCodec.sanitized(viaStations.map { TripVia(name: $0.station?.name ?? $0.name, stationID: $0.station?.id) })
+        let unknownVias = viaStations.filter { $0.station == nil }.map(\.name)
+        if !unknownVias.isEmpty {
+            warnings.append("Über „\(unknownVias.joined(separator: "“, „"))“ nicht gefunden – Preis ohne diesen Halt geschätzt")
+        }
+
         var estimate: FareEstimate?
         if let from, let to, from.id != to.id {
-            estimate = app.estimator.estimate(from: from, to: to, mode: mode, travelClass: app.settings.defaultTravelClass,
+            estimate = app.estimator.estimate(from: from, via: viaStations.compactMap(\.station), to: to, mode: mode,
+                                              travelClass: app.settings.defaultTravelClass,
                                               discount: app.settings.defaultDiscount, date: row.date ?? Date())
         }
         var fare = row.fare ?? 0
@@ -288,13 +301,13 @@ final class RepImportModel {
             warnings.append("\(Format.euroPrecise(given)) ist viel mehr als der Normalpreis (≈ \(Format.euroPrecise(estimate.fareEUR))) – Komma prüfen?")
         }
         let distance = row.distanceKm ?? estimate?.distanceKm ?? 0
-        let states = Array(Set([from?.state, to?.state].compactMap { $0 })).sorted()
+        let states = Array(Set(([from?.state, to?.state] + viaStations.map { $0.station?.state }).compactMap { $0 })).sorted()
         return RepImportCandidate(
             line: row.line, date: row.date,
             fromName: from?.name ?? row.fromName, toName: to?.name ?? row.toName,
             fromStationID: from?.id, toStationID: to?.id,
             mode: mode, isRoundTrip: row.isRoundTrip, fare: fare, distanceKm: distance, isFareEstimated: isEstimated,
-            category: row.category, note: row.note, isInduced: row.isInduced, states: states,
+            category: row.category, note: row.note, isInduced: row.isInduced, states: states, via: via,
             errors: errors, warnings: warnings, duplicateNote: nil, status: errors.isEmpty ? .ready : .invalid)
     }
 
@@ -354,6 +367,7 @@ final class RepImportModel {
                                   states: c.states, note: c.note)
             trip.category = c.category
             trip.isInduced = c.isInduced
+            trip.via = c.via   // MARK: via
             return trip
         }
         importedTrips = repo.importTrips(trips)
