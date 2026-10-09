@@ -76,6 +76,10 @@ final class TripEditorModel {
             mode = draft.mode
             date = draft.date
             isRoundTrip = draft.isRoundTrip
+            // MARK: dashboardTicket – „Bearbeiten & erfassen“ of a favourite: same as picking it in the favourites row.
+            if let favorite = draft.favorite, favorite.deletedAt == nil {
+                apply(favorite: favorite)
+            }
         }
         recompute()
     }

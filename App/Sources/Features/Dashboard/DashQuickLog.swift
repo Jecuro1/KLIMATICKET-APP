@@ -162,6 +162,9 @@ struct DashQuickLogSection: View {
         removalTick += 1
     }
 
+    /// The editor applies the favourite like its own favourites row (`TripEditorModel.apply(favorite:)`): stations, mode,
+    /// round trip, category – and the stored fare when there is no estimate (a custom place such as „Lech“ would
+    /// otherwise open with „–“ and „Gib einen Normalpreis ein.“ although the chip shows € 5,80).
     private func draft(for favorite: FavoriteRouteEntity) -> TripDraft {
         var draft = TripDraft()
         draft.fromStationID = favorite.fromStationID
@@ -170,6 +173,7 @@ struct DashQuickLogSection: View {
         draft.toName = favorite.toName
         draft.mode = favorite.mode
         draft.isRoundTrip = favorite.isRoundTrip
+        draft.favorite = favorite
         draft.date = Date()
         return draft
     }

@@ -46,6 +46,10 @@ struct TripDraft: Identifiable, Equatable {
     var isRoundTrip: Bool = false
     /// When editing an existing trip.
     var editingTripID: UUID?
+    // MARK: dashboardTicket
+    /// Template favourite („Bearbeiten & erfassen“): the editor applies it like its own favourites row – incl. the stored
+    /// fare as fallback when no estimate exists (custom places) and its category.
+    var favorite: FavoriteRouteEntity?
 }
 
 /// Global app state & services, injected via `.environment(appState)`.
