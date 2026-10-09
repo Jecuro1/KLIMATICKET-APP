@@ -20,7 +20,7 @@ public enum SpokenLabels {
 
     static func plate(_ line: LineRef, services: [PlaceService], onDemandHint: Bool) -> String {
         let kind = LineKind.classify(line, services: services)
-        let ref = line.ref.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ref = LinePlateText.trimmed(line.ref)
         let shown = ref.isEmpty ? (line.name ?? "") : ref
         switch kind {
         case .fern, .nacht:

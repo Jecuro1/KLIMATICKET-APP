@@ -9,17 +9,19 @@ Design and ranking rules: [PLACES_SUGGEST_SPEC.md](PLACES_SUGGEST_SPEC.md). Data
 
 | | |
 |---|---|
-| Data | `App/Resources/places.bin` – 39,711 stops of every Austrian operator (rail, S-Bahn, U-Bahn, tram, bus incl. Postbus and regional buses, ship, cable car/on-demand) + 118 border/foreign stations; `App/Resources/localities.bin` – 21,050 towns/villages/districts („Ort“) with their main stop |
+| Data | `App/Resources/places.bin` – 39,711 stops of every Austrian operator (rail, S-Bahn, U-Bahn, tram, bus incl. Postbus and regional buses, ship, cable car/on-demand) + 118 border/foreign stations, with every line and the official tags (KBPL v2, [ENRICH_SPEC.md](ENRICH_SPEC.md) §1); `App/Resources/stops_osm.bin` – the optional ODbL layer (OSM-only lines, ski areas, lifts, POI types); `App/Resources/localities.bin` – 21,050 towns/villages/districts („Ort“) with their main stop. 2,052,688 B together |
 | Offline search | prefix + token + typo (1 edit ≤ 6 letters, 2 above) matching, umlauts/ß folded both ways (Pölten = Poelten = Polten), abbreviations (Hbf/Hauptbahnhof, Bf/Bahnhof/Bhf, St./Sankt, Str./Straße, Wr., i.T., a.d., b., Ibk, Sbg, VIE …), region words that Scotty adds (NÖ, Vlbg, Bgld, Tirol, „Ort“) optional, compound split („mariahilferstr“), importance (weekday departures + modes), proximity, favourites/recents |
 | Live merge | ÖBB LocMatch rows (stops, town metas, addresses, POIs) are decoded (`LocMatchDecoder`), scored with the same formula, deduplicated against offline rows (rules D0–D4) and merged with diversity caps |
 | Nearby | exact k-nearest stops by grid (any radius, optional product filter); address/POI/location → best stop by walking time (`resolveStops`) |
 | Legacy | every id of the old `stations.json` (1,487) resolves to its new record; `Place.stationID` keeps the old id so trips, recents, geofences and ÖBB relation prices keep working |
 | Façade | `StationIndex.attach(places:)` routes the existing `StationIndex` API (search, `station(id:)`, `nearest`) through all stops |
 
-Measured (Swift 6.3.3, Linux x86-64, one core, full dataset, release): decode 0.24 s + index build 0.85 s; **100
-typical queries 18–23 ms in total**; per keystroke over 375 typed prefixes p50 0.14 ms, p99 0.6 ms, max 0.9 ms;
-nearest 9 µs. Memory: ~30 MB resident for the built index (peak ~110 MB during the one-time build). Debug builds are
-~11× slower (100 queries ≈ 230 ms) – the release gate runs in CI („Place search performance“ step).
+Measured (Swift 6.3.3, Linux x86-64, one core, full dataset, release): decode + inflate of the three v2 files 0.11 s,
+enrichment parse ~45 ms, index build ~0.8 s – **cold build 0.91–0.94 s** (ENRICH_SPEC AT-C8: 1.30 s); **100 typical
+queries 21–23 ms in total**; per keystroke over 375 typed prefixes p50 0.14 ms, p99 0.6 ms, max 0.9 ms; nearest 9 µs;
+`details(for:)` 0.33 ms. Memory: ~41 MB resident for the built v2 index (the v1 files measured the same way: ~36 MB;
+`PlaceIndexBudgetTests`). Debug builds are ~11× slower (100 queries ≈ 230 ms) – the release gates run in CI („Place
+search performance“ step).
 
 ## 2. API (KlimaCore)
 
@@ -56,7 +58,12 @@ index.isSamePlace(_:_:) -> Bool                                        // dedupe
 (HAFAS `pCls` bits; `.modes` = chips in display order, `.primaryMode: TransportMode` for icon/default mode),
 `importance`, `state`/`federalState`, `municipality`, `extId`, `lid` (live), `isMeta`, `liveRank`, `poiCategory`/
 `poiCategoryLabel`, `localityClass`, `mainStopID` (towns), `legacyStationIDs`, `stationID`, `station` (legacy `Station`),
-`departures`, `lines`, `score`, `source` (`.offline`/`.live`/`.both`). `Station` gained `products: Int?` and
+`departures`, `lines: [LineRef]` (offline stops: the compact M8 set, display-sorted; towns: their main stop; live rows
+`[]`), `tags: PlaceTags` (ski area, regions, types, services, lift, accessibility, KlimaTicket, Gemeinde/Bezirk),
+`linesText` (the former comma string), `score`, `source` (`.offline`/`.live`/`.both`). Lines, tags, ski areas, regions and
+the stop detail: `stopLines(for:)`, `compactLines(for:)`, `tags(for:)`, `details(for:)`, `skiArea(id:)`, `region(id:)`,
+`line(key:)`, `stops(inSkiArea:)`, `stops(inRegion:)`, `dataInfo` – ENRICH_SPEC §2.3. The `StationIndex` façade
+(`search`, `nearest`, `station(id:)`) returns `Station`s and skips lines and tags. `Station` gained `products: Int?` and
 `primaryMode` (additive, Codable-compatible).
 
 ## 3. Station picker / planner integration (for the UI agents)

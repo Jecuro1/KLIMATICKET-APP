@@ -1054,3 +1054,16 @@ Context sets are built at index time from the sorted table (`PlaceTable(records:
 425 terms on the shipped data. Release (Linux, one core): 100 typical queries 22 ms, 10 context-word queries 1.2 ms,
 enrichment parse 51 ms, `details(for:)` 0.33 ms.
 
+**Review (2026-10-09, after C1–C4, D1/D2 and the logo core landed):**
+- Robustness: `GeoBox.contains` no longer traps on an inverted/NaN box from META; `SpokenLabels.distance`/`departure`
+  clamp non-finite values; a stop abroad (state X) without its own KlimaTicket tag is `notIncluded` („Ausland“, the build
+  tags every one of them) instead of the Austrian default. `PresentationFuzzTests` drives random refs, names, queries
+  and tags through every presentation helper.
+- Speed: record strings are split on bytes (decode of the three files 191 → 113 ms), line classification and spoken
+  plates trim without Foundation; the `StationIndex` façade (search, nearest, `station(id:)`) skips lines and tags.
+  Cold build of the whole index 0.91–0.94 s (budget 1.30 s); enrichment parse ~45 ms (line item 40 ms).
+- Memory: `PlaceRecord` 176 → 160 B, per-stop state codes as bytes; the built v2 index is ~41 MB resident against ~36 MB
+  for the v1 files measured the same way (+5 MB, budget +8 MB).
+- CI: `scripts/check_places_v2.py check` (AT-D1…D9) runs in the Linux job; the release step adds
+  `PlaceFormatPerformanceTests` and `PlaceIndexBudgetTests` (cold build, resident memory).
+
