@@ -497,11 +497,11 @@ private struct DashCarInfoSheet: View {
                 .frame(width: 24)
                 .accessibilityHidden(true)
             Text(title)
-                .font(emphasized ? .body.weight(.semibold) : .body)
+                .font(.body.weight(emphasized ? Font.Weight.semibold : Font.Weight.regular))
                 .foregroundStyle(Theme.textPrimary)
             Spacer(minLength: Theme.Spacing.xs)
             Text(value)
-                .font(.system(.body, design: .rounded, weight: emphasized ? .bold : .semibold))
+                .font(.system(.body, design: .rounded, weight: emphasized ? Font.Weight.bold : Font.Weight.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)
         }
