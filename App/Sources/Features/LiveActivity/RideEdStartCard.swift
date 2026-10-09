@@ -16,6 +16,7 @@ struct RideEdStartCard: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var controller = RideActivityController.shared
     @State private var isStarting = false
@@ -26,20 +27,25 @@ struct RideEdStartCard: View {
     var body: some View {
         if !model.isEditing && RidePlanner.canStart(at: model.date) {
             SurfaceCard(padding: 0, cornerRadius: Theme.Radius.formGroup) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Spacing.s) {
-                        label
-                        Spacer(minLength: Theme.Spacing.xs)
-                        actionButton
-                    }
-                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        label
-                        actionButton
-                            .frame(maxWidth: .infinity, alignment: .trailing)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                            label
+                            actionButton
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                    } else {
+                        HStack(spacing: Theme.Spacing.s) {
+                            label
+                                .layoutPriority(1)
+                            Spacer(minLength: Theme.Spacing.xxs)
+                            actionButton
+                                .fixedSize()
+                        }
                     }
                 }
                 .padding(.horizontal, Theme.Spacing.m)
-                .padding(.vertical, 11)
+                .padding(.vertical, 10)
             }
             .sheet(isPresented: $showsPreview) {
                 NavigationStack {
@@ -92,9 +98,9 @@ struct RideEdStartCard: View {
         }
     }
 
+    /// Short on purpose – the ⓘ explains the rest (saved with one tap when you arrive, 8-hour limit).
     private var subtitle: String {
-        if !isEnabled { return "Live-Aktivitäten sind für KlimaBilanz ausgeschaltet." }
-        return "Live am Sperrbildschirm – gespeichert wird beim Ankommen."
+        isEnabled ? "Live am Sperrbildschirm" : "Live-Aktivitäten sind aus"
     }
 
     @ViewBuilder

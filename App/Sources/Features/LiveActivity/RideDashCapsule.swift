@@ -43,14 +43,10 @@ struct RideDashCapsule: View {
                     .foregroundStyle(Theme.summitText)
                     .symbolEffect(.variableColor.iterative.reversing, options: .repeating,
                                   isActive: !reduceMotion && !LaunchMode.isScreenshot)
-                Text("Unterwegs")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                Text(RideNames.route(from: ride.trip.fromName, to: ride.trip.toName, roundTrip: ride.trip.isRoundTrip))
+                destinationLine(ride)
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
-                    .truncationMode(.middle)
                 Text(timerInterval: ride.startedAt...RidePolicy.staleDate(for: ride.startedAt), countsDown: false)
                     .font(.subheadline.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
@@ -67,6 +63,14 @@ struct RideDashCapsule: View {
         .accessibilityValue("seit \(Format.time(ride.startedAt)), Wert \(Format.euroPrecise(ride.trip.totalValue))")
         .accessibilityHint("Fahrt speichern oder beenden")
         .transition(.scale(scale: 0.9).combined(with: .opacity))
+    }
+
+    /// "Unterwegs nach Innsbruck Hbf" – the destination says enough; the full route is in the dialog and VoiceOver.
+    private func destinationLine(_ ride: RideRecord) -> Text {
+        let destination = Text(RideNames.short(ride.trip.toName))
+            .fontWeight(.semibold)
+            .foregroundStyle(Theme.textPrimary)
+        return Text("Unterwegs nach \(destination)")
     }
 
     private var isAsking: Binding<Bool> {
