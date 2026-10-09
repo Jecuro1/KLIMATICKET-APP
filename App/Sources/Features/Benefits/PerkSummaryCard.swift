@@ -21,6 +21,7 @@ struct PerkSummaryCard: View {
         }
         .buttonStyle(PerkPressableStyle())
         .accessibilityHint("Öffnet die Vorteilswelt")
+        .modifier(PerkReminderReconciler(tickets: tickets))
     }
 
     private func content(summary: PerkSummary, period: PerkPeriod) -> some View {

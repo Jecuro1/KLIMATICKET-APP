@@ -169,9 +169,12 @@ struct PerkEditorView: View {
             Button {
                 UIPasteboard.general.string = code
                 copyTick += 1
+                let tick = copyTick
                 withAnimation(reduceMotion ? nil : .snappy) { copiedCode = true }
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(1.8))
+                    // Only the latest tap resets the label.
+                    guard tick == copyTick else { return }
                     withAnimation(reduceMotion ? nil : .snappy) { copiedCode = false }
                 }
             } label: {

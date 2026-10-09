@@ -52,7 +52,7 @@ enum PerkStyle {
     static let sectionSpacing: CGFloat = Theme.Spacing.l + Theme.Spacing.xxs
     static let cardSpacing: CGFloat = Theme.Spacing.s
 
-    /// Big light numeral (≈ 56 pt) for the hero totals, following Dynamic Type.
+    /// Big light numeral (56 pt) for the hero totals; the views shrink it with `minimumScaleFactor` when space is short.
     static let heroNumber = Font.system(size: 56, weight: .light, design: .rounded).monospacedDigit()
     static let heroSymbol = Font.system(size: 26, weight: .light, design: .rounded)
 }

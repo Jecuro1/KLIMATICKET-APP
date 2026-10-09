@@ -230,6 +230,7 @@ struct ScreenshotRouter: View {
             NavigationStack { AchievementsView() }
         case "settings":
             NavigationStack { SettingsView() }
+        // MARK: benefits
         case "benefits", "benefitCatalog", "benefitEditor":
             NavigationStack { PerkBenefitsView() }
                 .sheet(isPresented: .constant(screen != "benefits")) {
@@ -241,6 +242,8 @@ struct ScreenshotRouter: View {
                 }
         case "passengerRights":
             NavigationStack { PerkPassengerRightsView() }
+        case "benefitCard":
+            NavigationStack { PerkEntryPreview() }
         case "widgets":
             NavigationStack { WidgetGalleryView() }
         case "hero":

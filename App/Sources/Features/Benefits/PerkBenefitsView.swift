@@ -354,7 +354,9 @@ struct PerkHeroCard: View {
 
     private var subline: String {
         guard summary.count > 0 else { return "Noch kein Vorteil in diesem Zeitraum" }
-        return "durch \(PerkFormat.count(summary.count)) · \(Format.euroPrecise(summary.total)) gespart"
+        let base = "durch \(PerkFormat.count(summary.count))"
+        guard summary.count > 1, let top = summary.topPartnerID.flatMap(PerkCatalogStore.shared.partner(id:)) else { return base }
+        return "\(base) · am häufigsten \(top.shortName)"
     }
 }
 

@@ -253,7 +253,7 @@ struct PerkPassengerRightsView: View {
                                detail: "Im KlimaTicket-Kundenkonto unter „Meine Karten“ das Häkchen zur Datenweitergabe für die Fahrgastrechte setzen.",
                                linkTitle: "Kundenkonto öffnen", link: PerkRightsLinks.klimaTicketAccount),
                 PerkRightsStep(id: 1, title: "Bei den ÖBB anmelden",
-                               detail: "Ab dem Tag danach auf oebb.at/fahrgastrechte registrieren und das Konto für die Auszahlung angeben.",
+                               detail: "Danach auf oebb.at/fahrgastrechte registrieren und das Bankkonto für die Auszahlung angeben.",
                                linkTitle: "oebb.at/fahrgastrechte", link: PerkRightsLinks.oebb),
                 PerkRightsStep(id: 2, title: "Nach Ablauf Geld erhalten",
                                detail: "Die ÖBB überweisen die Summe einmalig nach Ablauf – ab \(payoutDay).",
@@ -302,8 +302,8 @@ struct PerkPassengerRightsView: View {
         let scheduled = await PerkReminderScheduler.isScheduled(ticketID: ticket.id)
         reminderOn = scheduled
         if scheduled {
-            _ = await PerkReminderScheduler.schedule(ticketID: ticket.id, ticketName: ticket.name, expiry: ticket.endDate,
-                                                     requestingPermission: false)
+            // Moves the reminder when the ticket's end date changed in the meantime (or drops it once it is too late).
+            reminderOn = await PerkReminderScheduler.schedule(ticket, requestingPermission: false) != .tooLate
         }
     }
 
@@ -317,17 +317,14 @@ struct PerkPassengerRightsView: View {
     }
 
     private func scheduleReminder(_ ticket: TicketEntity, requestingPermission: Bool) async {
-        let outcome = await PerkReminderScheduler.schedule(ticketID: ticket.id, ticketName: ticket.name, expiry: ticket.endDate,
-                                                           requestingPermission: requestingPermission)
+        let outcome = await PerkReminderScheduler.schedule(ticket, requestingPermission: requestingPermission)
         reminderStatus = PerkReminderStatus(await PerkReminderScheduler.authorizationStatus())
         switch outcome {
         case .scheduled(let date):
             reminderOn = true
             successTick += 1
             app.showToast("bell.badge.fill", "Erinnerung geplant", "\(Format.date(date, .long)) · \(Format.time(date)) Uhr")
-        case .denied:
-            reminderOn = false
-        case .tooLate:
+        case .denied, .tooLate, .notApplicable:
             reminderOn = false
         }
     }
@@ -489,7 +486,7 @@ struct PerkRightsEstimateCard: View {
             return "für \(monthsText) unter \(threshold) % – einmal im Jahr nach Ablauf"
         }
         if estimate.scheme == .klimaTicketOe {
-            return "je nach Pünktlichkeit der ÖBB in deinen \(estimate.months) Gültigkeitsmonaten. 2025 waren sie insgesamt rund 94 % pünktlich."
+            return "je nach Pünktlichkeit der ÖBB in deinen \(estimate.months) Gültigkeitsmonaten – ausbezahlt einmal nach Ablauf."
         }
         return "höchstens 10 % der Entschädigungsbasis – der Bahnanteil deines Ticketpreises."
     }
