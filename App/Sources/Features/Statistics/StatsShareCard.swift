@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import KlimaCore
 
 /// "Bilanz teilen": a 4:5 social card (rendered at 3× → 1080 × 1350 px) with brand, % amortised,

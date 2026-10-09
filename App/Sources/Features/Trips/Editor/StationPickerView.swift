@@ -264,19 +264,6 @@ struct StationPickerView: View {
     }
 }
 
-extension StationPickerView {
-    /// Binding-based convenience (e.g. Settings → Heimatbahnhof): writes the chosen station / custom name back.
-    init(title: String, selection: Binding<Station?>, customName: Binding<String>? = nil) {
-        let onCustomName: ((String) -> Void)?
-        if let customName {
-            onCustomName = { name in customName.wrappedValue = name }
-        } else {
-            onCustomName = nil
-        }
-        self.init(title: title, selection: { station in selection.wrappedValue = station }, customName: onCustomName)
-    }
-}
-
 // MARK: - Supporting types
 
 private enum TripEdNearby {

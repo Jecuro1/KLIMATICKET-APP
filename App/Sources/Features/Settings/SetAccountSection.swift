@@ -28,9 +28,13 @@ struct SetAccountSection: View {
 
     private var hasAccountRows: Bool { profile != nil || !app.auth.isCloudAvailable }
 
+    /// Without Supabase only native Sign in with Apple (signed builds) works – the web flows all need the cloud.
+    private var canSignIn: Bool { app.auth.isCloudAvailable || AppConfig.supportsNativeAppleSignIn }
+
     var body: some View {
         Section {
-            SetProfileCard(profile: profile, isCloudActive: isCloudActive, snapshot: snapshot, onSignedIn: didSignIn)
+            SetProfileCard(profile: profile, isCloudActive: isCloudActive, canSignIn: canSignIn, snapshot: snapshot,
+                           onSignedIn: didSignIn)
                 .listRowBackground(SetProfileCardBackground())
                 .listRowInsets(EdgeInsets(top: 18, leading: 18, bottom: 18, trailing: 18))
         }
@@ -56,7 +60,7 @@ struct SetAccountSection: View {
             if isCloudActive {
                 syncStatusRow
                 syncNowRow
-            } else if app.auth.isCloudAvailable || profile.provider == .local {
+            } else if app.auth.isCloudAvailable || (profile.provider == .local && AppConfig.supportsNativeAppleSignIn) {
                 connectRow
                 if showsConnect {
                     AuthButtonStack(onSignedIn: didSignIn)
@@ -134,7 +138,7 @@ struct SetAccountSection: View {
         } label: {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: "Mit Konto verbinden",
-                            subtitle: app.auth.isCloudAvailable ? "Für Sync zwischen deinen Geräten" : "Apple, Google oder Microsoft",
+                            subtitle: app.auth.isCloudAvailable ? "Für Sync zwischen deinen Geräten" : "Mit Apple – Daten bleiben auf diesem iPhone",
                             symbol: "person.crop.circle.badge.plus", tint: Theme.glacier)
                 Spacer(minLength: Theme.Spacing.xs)
                 Image(systemName: "chevron.down")
@@ -207,6 +211,7 @@ private struct SetProfileCardBackground: View {
 private struct SetProfileCard: View {
     var profile: UserProfile?
     var isCloudActive: Bool
+    var canSignIn: Bool
     var snapshot: AnalyticsSnapshot?
     var onSignedIn: () -> Void
 
@@ -214,8 +219,10 @@ private struct SetProfileCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             identity
             if profile == nil {
-                AuthButtonStack(onSignedIn: onSignedIn)
-                    .padding(.top, Theme.Spacing.xxs)
+                if canSignIn {
+                    AuthButtonStack(onSignedIn: onSignedIn)
+                        .padding(.top, Theme.Spacing.xxs)
+                }
             } else if let snapshot {
                 Rectangle()
                     .fill(Theme.separator)
@@ -247,7 +254,9 @@ private struct SetProfileCard: View {
     }
 
     private var detailLine: String {
-        guard let profile else { return "Melde dich an, um deine Fahrten zu sichern." }
+        guard let profile else {
+            return canSignIn ? "Melde dich an, um deine Fahrten zu sichern." : "Ohne Konto – alle Daten bleiben auf diesem iPhone."
+        }
         if let email = profile.email, !email.isEmpty { return email }
         return profile.provider == .local ? "Lokales Profil" : "Angemeldet mit \(profile.provider.displayName)"
     }
@@ -337,7 +346,7 @@ private struct SetProviderBadge: View {
     @ViewBuilder
     private var logo: some View {
         switch provider {
-        case .apple: Image(systemName: "apple.logo")
+        case .apple: Image(systemName: "applelogo")
         case .google: GoogleLogo(size: 12)
         case .microsoft: MicrosoftLogo(size: 11)
         case .local: Image(systemName: "iphone")
@@ -396,6 +405,8 @@ private struct SetProfileStats: View {
 private struct SetCloudSetupPage: View {
     @Environment(AppState.self) private var app
     @State private var copyTrigger = 0
+    /// Inline confirmation – the global toast is hidden behind the settings sheet while this page is pushed.
+    @State private var didCopy = false
 
     private struct Step: Identifiable {
         let id: Int
@@ -411,7 +422,7 @@ private struct SetCloudSetupPage: View {
         Step(id: 3, title: "Redirect-URL eintragen",
              detail: "Unter Authentication › URL Configuration › Redirect URLs: klimabilanz://auth-callback hinzufügen."),
         Step(id: 4, title: "Anbieter aktivieren",
-             detail: "Apple: Bundle-ID com.knitelarlberg.klimabilanz als Client ID (braucht das Apple Developer Program).\nGoogle: OAuth-Client vom Typ „Web application“ mit der Redirect-URI https://<projekt>.supabase.co/auth/v1/callback.\nMicrosoft: App-Registrierung in Entra (beliebige Organisationen und persönliche Konten), gleiche Redirect-URI, als URL https://login.microsoftonline.com/common."),
+             detail: "Apple: Für per AltStore/SideStore installierte Builds läuft die Anmeldung über den Web-Login – dafür im Apple-Developer-Portal eine Services ID (z. B. com.knitelarlberg.klimabilanz.web) mit der Return-URL https://<projekt>.supabase.co/auth/v1/callback und einen Sign-in-with-Apple-Key anlegen. Signierte TestFlight-Builds brauchen zusätzlich die Bundle-ID com.knitelarlberg.klimabilanz als Client ID.\nGoogle: OAuth-Client vom Typ „Web application“ mit der Redirect-URI https://<projekt>.supabase.co/auth/v1/callback, Client-ID und Secret in Supabase speichern.\nMicrosoft: App-Registrierung in Entra (beliebige Organisationen und persönliche Konten), gleiche Redirect-URI, Client-Secret erzeugen, in Supabase als URL https://login.microsoftonline.com/common eintragen."),
         Step(id: 5, title: "Schlüssel hinterlegen",
              detail: "In GitHub unter Settings › Secrets and variables › Actions › Variables: SUPABASE_URL und SUPABASE_ANON_KEY (der öffentliche anon-Key) setzen."),
         Step(id: 6, title: "Neu bauen",
@@ -444,16 +455,22 @@ private struct SetCloudSetupPage: View {
                     Button {
                         UIPasteboard.general.string = AppConfig.authCallback
                         copyTrigger += 1
-                        app.showToast("doc.on.doc.fill", "Redirect-URL kopiert", AppConfig.authCallback)
+                        didCopy = true
+                        let trigger = copyTrigger
+                        Task {
+                            try? await Task.sleep(for: .seconds(2))
+                            if copyTrigger == trigger { didCopy = false }
+                        }
                     } label: {
-                        SetRowLabel(title: "Redirect-URL kopieren", subtitle: AppConfig.authCallback,
-                                    symbol: "doc.on.doc.fill", tint: Theme.glacier)
+                        SetRowLabel(title: didCopy ? "Redirect-URL kopiert" : "Redirect-URL kopieren",
+                                    subtitle: AppConfig.authCallback,
+                                    symbol: didCopy ? "checkmark" : "doc.on.doc.fill", tint: Theme.glacier)
                     }
                     .settingsHaptic(.success, trigger: copyTrigger, enabled: app.settings.hapticsEnabled)
                 }
                 .listRowBackground(Theme.surface)
             } footer: {
-                SetFooter(text: "„Mit Apple anmelden“ funktioniert auch ohne Cloud – Name und E-Mail bleiben dann nur auf diesem iPhone. Die ausführliche Anleitung steht in docs/SETUP.md.")
+                SetFooter(text: footerText)
             }
         }
         .listStyle(.insetGrouped)
@@ -462,6 +479,13 @@ private struct SetCloudSetupPage: View {
         .background { SetBackdrop(skyOpacity: 0.4, fadeEnd: 0.4) }
         .navigationTitle("Cloud einrichten")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    private var footerText: String {
+        let local = AppConfig.supportsNativeAppleSignIn
+            ? "„Mit Apple anmelden“ funktioniert auch ohne Cloud – Name und E-Mail bleiben dann nur auf diesem iPhone."
+            : "Bis dahin funktioniert KlimaBilanz vollständig ohne Konto – alle Daten bleiben auf diesem iPhone."
+        return "\(local) Die ausführliche Anleitung steht in docs/SETUP.md."
     }
 
     private var intro: some View {

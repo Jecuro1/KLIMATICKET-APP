@@ -6,7 +6,9 @@ struct SetUpdatesSection: View {
     @Environment(AppState.self) private var app
     @Environment(\.openURL) private var openURL
 
-    @State private var showsUpdateSheet = false
+    /// Owned by SettingsView, which presents the sheet at list level.
+    @Binding var showsUpdateSheet: Bool
+
     @State private var isRefreshingTariffs = false
     @State private var checkTrigger = 0
     @State private var tariffTrigger = 0
@@ -22,9 +24,6 @@ struct SetUpdatesSection: View {
         Section {
             Group {
                 versionRow
-                    .sheet(isPresented: $showsUpdateSheet) {
-                        UpdateSheet()
-                    }
                 checkRow
                 if let manifest = app.updates.availableManifest {
                     availableRow(manifest)
@@ -150,16 +149,28 @@ struct SetUpdatesSection: View {
 
     private func sourceRow(title: String, symbol: String, tint: Color, url: URL?) -> some View {
         Button {
-            if let url { openURL(url) }
+            guard let url else { return }
+            openURL(url) { accepted in
+                // altstore:// / sidestore:// do nothing when the store isn't installed – say so instead of failing silently.
+                if !accepted { app.showToast("exclamationmark.triangle.fill", "App nicht gefunden", "Installiere zuerst AltStore oder SideStore") }
+            }
         } label: {
-            SetRowLabel(title: title,
-                        subtitle: url == nil ? "Verfügbar nach der ersten Update-Prüfung" : "Updates automatisch im Hintergrund",
-                        symbol: symbol, tint: tint)
+            SetRowLabel(title: title, subtitle: sourceSubtitle(available: url != nil), symbol: symbol, tint: tint)
         }
         .disabled(url == nil)
     }
 
+    private func sourceSubtitle(available: Bool) -> String {
+        if available { return "Updates automatisch im Hintergrund" }
+        return app.updates.state == .notConfigured ? "Update-Quelle nicht eingerichtet" : "Verfügbar nach der ersten Update-Prüfung"
+    }
+
     // MARK: Tariffs
+
+    /// Whether an online source for the tariff catalog is configured (update manifest hint or AppConfig).
+    private var hasTariffSource: Bool {
+        app.updates.manifest?.tariffsURL.flatMap(URL.init(string:)) != nil || app.config.remoteTariffs != nil
+    }
 
     private var tariffRow: some View {
         HStack(spacing: Theme.Spacing.s) {
@@ -190,14 +201,16 @@ struct SetUpdatesSection: View {
             Task { await refreshTariffs() }
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                SetRowLabel(title: "Tarife aktualisieren", symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier)
+                SetRowLabel(title: "Tarife aktualisieren",
+                            subtitle: hasTariffSource ? nil : "Keine Online-Quelle eingerichtet",
+                            symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier)
                 Spacer(minLength: Theme.Spacing.xs)
                 if isRefreshingTariffs {
                     ProgressView()
                 }
             }
         }
-        .disabled(isRefreshingTariffs)
+        .disabled(isRefreshingTariffs || !hasTariffSource)
         .settingsHaptic(.impact(weight: .light), trigger: tariffTrigger, enabled: app.settings.hapticsEnabled)
     }
 
@@ -217,13 +230,19 @@ struct SetUpdatesSection: View {
     private func refreshTariffs() async {
         isRefreshingTariffs = true
         let before = app.catalog.version
+        let refreshedBefore = app.tariffs.lastRefresh
         let updated = await app.tariffs.refreshIfNeeded(manifestHint: app.updates.manifest, force: true)
         app.reloadCatalog()
         isRefreshingTariffs = false
+        // `refreshIfNeeded` returns false both for "nothing newer" and for failures; only a successful download
+        // moves `lastRefresh`, which tells the two apart.
+        let reachedServer = app.tariffs.lastRefresh != refreshedBefore
         if updated || app.catalog.version > before {
             app.showToast("checkmark.circle.fill", "Tarife aktualisiert", "Tarif-Version \(app.catalog.version)")
-        } else {
+        } else if reachedServer {
             app.showToast("checkmark.circle.fill", "Tarife sind aktuell", "Tarif-Version \(app.catalog.version)")
+        } else {
+            app.showToast("exclamationmark.triangle.fill", "Tarife nicht erreichbar", "Bitte später noch einmal versuchen")
         }
     }
 }

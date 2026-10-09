@@ -144,6 +144,10 @@ struct StatsCalendarCard: View {
                 // Second pass once the horizontal content has been laid out.
                 DispatchQueue.main.async { proxy.scrollTo(target, anchor: .trailing) }
             }
+            // Another ticket year picked: open the new period on its current (or last) week as well.
+            .onChange(of: snapshot.ticket.start) { _, _ in
+                DispatchQueue.main.async { proxy.scrollTo(target, anchor: .trailing) }
+            }
         }
     }
 

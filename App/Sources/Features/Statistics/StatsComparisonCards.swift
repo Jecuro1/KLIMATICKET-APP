@@ -60,6 +60,10 @@ struct StatsTicketComparisonCard: View {
     private func row(_ option: TicketOption, result: StatsTicketComparison) -> some View {
         let isCheapest = option.id == result.cheapest?.id
         let color = isCheapest ? Theme.positive : (option.isCurrent ? Theme.glacier : Theme.textTertiary)
+        let detailText = detail(option, annualized: result.isAnnualized)
+        var label = option.name
+        if option.isCurrent { label += ", dein Ticket" }
+        if isCheapest { label += ", am günstigsten" }
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: Theme.Spacing.s) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -88,14 +92,14 @@ struct StatsTicketComparisonCard: View {
                     .lineLimit(1)
             }
             costBar(option, maxCost: result.maxCost, color: color)
-            Text(detail(option))
+            Text(detailText)
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(option.name + (option.isCurrent ? ", dein Ticket" : "") + (isCheapest ? ", am günstigsten" : ""))
-        .accessibilityValue("\(Format.euro(option.totalCost, decimals: 0)). \(detail(option))")
+        .accessibilityLabel(label)
+        .accessibilityValue("\(Format.euro(option.totalCost, decimals: 0)). \(detailText)")
     }
 
     private func costBar(_ option: TicketOption, maxCost: Double, color: Color) -> some View {
@@ -117,13 +121,15 @@ struct StatsTicketComparisonCard: View {
         .accessibilityHidden(true)
     }
 
-    private func detail(_ option: TicketOption) -> String {
+    /// Trip counts are the real ones, the € amounts are scaled by the annualisation factor – say so.
+    private func detail(_ option: TicketOption, annualized: Bool) -> String {
+        let suffix = annualized ? " (aufs Jahr hochgerechnet)" : ""
         if option.id == "single" {
-            return "Normalpreis aller \(StatsNames.trips(snapshot.summary.tripCount))"
+            return "Normalpreis aller \(StatsNames.trips(snapshot.summary.tripCount))\(suffix)"
         }
         let uncovered = max(0, snapshot.trips.count - option.coveredTrips)
         if uncovered == 0 { return "\(Format.euro(option.ticketPrice, decimals: 0)) Ticket · deckt alle Fahrten ab" }
-        return "\(Format.euro(option.ticketPrice, decimals: 0)) Ticket + \(Format.euro(option.uncoveredCost, decimals: 0)) für \(StatsNames.trips(uncovered)) außerhalb"
+        return "\(Format.euro(option.ticketPrice, decimals: 0)) Ticket + \(Format.euro(option.uncoveredCost, decimals: 0)) für \(StatsNames.trips(uncovered)) außerhalb\(suffix)"
     }
 }
 

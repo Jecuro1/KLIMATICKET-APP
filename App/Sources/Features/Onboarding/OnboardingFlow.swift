@@ -134,6 +134,7 @@ private struct OnbFlowHost: View {
             }
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
+            .disabled(isBusy)
             .accessibilityLabel("Zurück")
 
             OnbProgressTrail(progress: step.progress, accessibilityText: progressText)
@@ -227,7 +228,8 @@ private struct OnbFlowHost: View {
             Task {
                 await app.notifications.requestAuthorization()
                 isBusy = false
-                go(to: .done)
+                // The permission alert can stay up for a while – only advance if the user is still on this step.
+                if model.step == .notifications { go(to: .done) }
             }
         case .done:
             isBusy = true

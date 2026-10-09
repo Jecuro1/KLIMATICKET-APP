@@ -7,6 +7,7 @@ import KlimaCore
 final class LocationService: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocation?, Never>?
+    private var timeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -19,19 +20,32 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return s == .denied || s == .restricted
     }
 
-    /// Requests permission if needed and returns the current location (or nil after ~8 s).
+    /// Requests permission if needed and returns the current location (or nil after a timeout).
+    /// While the permission prompt is open no location is requested yet (that would fail immediately);
+    /// the request starts from the authorization callback.
     func currentLocation() async -> CLLocation? {
         if isDenied { return nil }
-        if manager.authorizationStatus == .notDetermined { manager.requestWhenInUseAuthorization() }
-        if let cached = manager.location, Date().timeIntervalSince(cached.timestamp) < 120 { return cached }
+        let needsPermission = manager.authorizationStatus == .notDetermined
+        if !needsPermission, let cached = manager.location, Date().timeIntervalSince(cached.timestamp) < 120 { return cached }
         return await withCheckedContinuation { cont in
-            continuation?.resume(returning: nil)
+            finish(nil)
             continuation = cont
-            manager.requestLocation()
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(8))
-                self.finish(nil)
+            if needsPermission {
+                manager.requestWhenInUseAuthorization()
+                armTimeout(seconds: 60)
+            } else {
+                manager.requestLocation()
+                armTimeout(seconds: 8)
             }
+        }
+    }
+
+    private func armTimeout(seconds: Double) {
+        timeoutTask?.cancel()
+        timeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard !Task.isCancelled else { return }
+            self?.finish(nil)
         }
     }
 
@@ -41,6 +55,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     private func finish(_ location: CLLocation?) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
         continuation?.resume(returning: location)
         continuation = nil
     }
@@ -58,7 +74,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         let status = manager.authorizationStatus
         Task { @MainActor in
             if status == .authorizedWhenInUse || status == .authorizedAlways {
-                if self.continuation != nil { self.manager.requestLocation() }
+                if self.continuation != nil {
+                    self.manager.requestLocation()
+                    self.armTimeout(seconds: 8)
+                }
             } else if status == .denied || status == .restricted {
                 self.finish(nil)
             }

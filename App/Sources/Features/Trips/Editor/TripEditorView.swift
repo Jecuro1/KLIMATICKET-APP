@@ -174,9 +174,9 @@ private struct TripEdSheet: View {
 
     /// Amortisation of the active ticket before/after this save (nil when the trip is outside its validity).
     private func projectedOutcome() -> Outcome? {
-        guard let ticket = activeTicket, ticket.period.contains(model.date) else { return nil }
-        let summary = Analytics.make(ticket: ticket, trips: trips, catalog: app.catalog).summary
-        guard let impact = model.impact(on: summary) else { return nil }
+        guard let ticket = activeTicket,
+              let impact = model.tripEdImpact(ticket: ticket, trips: trips, catalog: app.catalog),
+              impact.inPeriod else { return nil }
         return Outcome(before: impact.before, after: impact.after, ticketID: ticket.id)
     }
 

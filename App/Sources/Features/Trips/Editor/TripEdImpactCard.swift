@@ -46,14 +46,12 @@ struct TripEdImpactCard: View {
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID),
               ticket.price > 0 else { return nil }
         let baseline = trips.filter { $0.createdAt < openedAt }
-        let summary = Analytics.make(ticket: ticket, trips: baseline, catalog: app.catalog).summary
-        guard let fractions = model.impact(on: summary) else { return nil }
-        let inPeriod = ticket.period.contains(model.date)
+        guard let fractions = model.tripEdImpact(ticket: ticket, trips: baseline, catalog: app.catalog) else { return nil }
         return Impact(before: fractions.before,
-                      after: inPeriod ? fractions.after : fractions.before,
+                      after: fractions.after,
                       added: model.totalValue,
-                      price: summary.ticketPrice,
-                      inPeriod: inPeriod,
+                      price: ticket.price,
+                      inPeriod: fractions.inPeriod,
                       isEditing: model.isEditing)
     }
 
@@ -139,16 +137,21 @@ struct TripEdImpactCard: View {
         let target = min(max(impact.after, 0), 1)
         let shown = revealed ? target : before
         let height: CGFloat = 10
+        // Crossing the summit with this trip turns the new segment gold (DESIGN_FINAL_SYNTHESIS §8.14).
+        let segmentColor = impact.reachesSummit ? Theme.gold : Theme.dawn
         return GeometryReader { geo in
             let width = geo.size.width
+            // The segment always exists and only changes width, so it grows out of the current fill instead of
+            // fading in at full length; it starts under the fill's rounded end, so its glow stays on the new part.
+            let start = max(0, width * before - height)
+            let end = max(start + height, width * shown)
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Theme.textTertiary.opacity(0.18))
-                if shown > before + 0.0005 {
-                    newSegment
-                        .frame(width: max(height, width * shown))
-                        .transition(.opacity)
-                }
+                newSegment(color: segmentColor)
+                    .frame(width: end - start)
+                    .offset(x: start)
+                    .opacity(shown > before + 0.0005 ? 1 : 0)
                 Capsule()
                     .fill(impact.isPaidOffAlready ? AnyShapeStyle(Theme.positive) : AnyShapeStyle(progressFill))
                     .frame(width: max(height, width * before))
@@ -163,16 +166,16 @@ struct TripEdImpactCard: View {
         LinearGradient(colors: [Theme.glacier, Theme.dusk], startPoint: .leading, endPoint: .trailing)
     }
 
-    /// The value this trip adds: dawn, diagonally striped, softly glowing.
-    private var newSegment: some View {
+    /// The value this trip adds: dawn (gold at the summit), diagonally striped, softly glowing.
+    private func newSegment(color: Color) -> some View {
         Capsule()
-            .fill(Theme.dawn)
+            .fill(color)
             .overlay {
                 HatchShape(spacing: 5)
                     .stroke(Theme.onAccent.opacity(0.45), lineWidth: 1.5)
                     .clipShape(Capsule())
             }
-            .shadow(color: Theme.dawn.opacity(0.55), radius: 6)
+            .shadow(color: color.opacity(0.55), radius: 6)
     }
 
     private func reveal() {

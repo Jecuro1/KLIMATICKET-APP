@@ -18,6 +18,8 @@ struct WidgetGalleryView: View {
     @State private var appeared = LaunchMode.isScreenshot
     @State private var showsNavigationTitle = false
     @State private var topic: WidGuideTopic = .home
+    /// Captured on first appearance (see `backdrop`), so the background does not flip while Settings closes.
+    @State private var isInSettingsSheet: Bool?
 
     var body: some View {
         let snapshot = gallerySnapshot
@@ -28,7 +30,7 @@ struct WidgetGalleryView: View {
                 WidHomeStage(snapshot: snapshot, appeared: appeared)
                 WidLockStage(snapshot: snapshot)
                     .widAppear(6, appeared)
-                WidControlCenterSection { app.presentAddTrip() }
+                WidControlCenterSection { openAddTrip() }
                     .widAppear(7, appeared)
                 WidGuideSection(topic: $topic, snapshot: snapshot)
                     .widAppear(8, appeared)
@@ -37,7 +39,7 @@ struct WidgetGalleryView: View {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .scrollIndicators(.hidden)
-        .ambientBackground()
+        .background { backdrop }
         .navigationTitle("Widgets")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -53,7 +55,50 @@ struct WidgetGalleryView: View {
         } action: { _, isPastHeader in
             withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
         }
-        .onAppear { appeared = true }
+        .onAppear {
+            if isInSettingsSheet == nil { isInSettingsSheet = app.isShowingSettings }
+            appeared = true
+        }
+    }
+
+    // MARK: Background & actions
+
+    /// Inside the Settings sheet: the calm sheet surface with a pale sky (DESIGN.md §2 – no full sky mesh in sheets),
+    /// otherwise (e.g. the CI screenshot) the alpine sky like every other screen.
+    @ViewBuilder
+    private var backdrop: some View {
+        if isInSettingsSheet ?? app.isShowingSettings {
+            ZStack(alignment: .top) {
+                Theme.sheetBackground
+                AmbientBackground(style: .standard, glow: 0.6)
+                    .opacity(0.55)
+                    .mask {
+                        LinearGradient(stops: [.init(color: .black, location: 0),
+                                               .init(color: .black.opacity(0.65), location: 0.22),
+                                               .init(color: .clear, location: 0.5)],
+                                       startPoint: .top, endPoint: .bottom)
+                    }
+            }
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+        } else {
+            AmbientBackground()
+        }
+    }
+
+    /// The add-trip sheet is presented by RootView, which cannot show it while the Settings sheet (where this
+    /// screen is pushed) is up – SwiftUI presents one sheet at a time. Close Settings first, like FavoritesManagerView.
+    private func openAddTrip() {
+        guard app.isShowingSettings else {
+            app.presentAddTrip()
+            return
+        }
+        app.isShowingSettings = false
+        let appState = app
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            appState.presentAddTrip()
+        }
     }
 
     // MARK: Data

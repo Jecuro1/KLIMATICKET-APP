@@ -114,13 +114,22 @@ struct StatsSavingsCard: View {
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(Theme.summitText)
+        } else if summary.tripCount > 0, Date() > snapshot.ticket.end {
+            // Expired without reaching the summit.
+            Label {
+                Text("Ticketjahr beendet · \(Format.euro(summary.remainingToBreakEven, decimals: 0)) bis zum Break-even gefehlt")
+            } icon: {
+                Image(systemName: "flag.slash").foregroundStyle(Theme.summit)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.textSecondary)
         }
     }
 
     private var legend: some View {
         HStack(spacing: Theme.Spacing.s) {
             StatsLegendItem(label: "Wert", style: AnyShapeStyle(lineGradient))
-            if snapshot.forecast.count > 1 {
+            if !chartForecast.isEmpty {
                 StatsLegendItem(label: "Prognose", style: AnyShapeStyle(Theme.dusk), dashed: true)
             }
             StatsLegendItem(label: "Ticketpreis", style: AnyShapeStyle(Theme.summit), dashed: true)
@@ -162,6 +171,27 @@ struct StatsSavingsCard: View {
         selectedDate.map { Calendar.vienna.startOfDay(for: $0) }
     }
 
+    /// The daily series with unique dates. A trip on the first ticket day repeats the start date
+    /// ((start, 0) and (start, value)) – duplicate x values break `.monotone` interpolation and ForEach identity.
+    private var chartSeries: [CumulativePoint] {
+        var result: [CumulativePoint] = []
+        result.reserveCapacity(snapshot.series.count)
+        for point in snapshot.series {
+            if let last = result.last, last.date == point.date {
+                result[result.count - 1] = point
+            } else {
+                result.append(point)
+            }
+        }
+        return result
+    }
+
+    /// Forecast segment, empty on the last ticket day (start == end would give duplicate ids).
+    private var chartForecast: [CumulativePoint] {
+        guard let first = snapshot.forecast.first, let last = snapshot.forecast.last, first.date < last.date else { return [] }
+        return snapshot.forecast
+    }
+
     private var chart: some View {
         Chart {
             areaMarks
@@ -200,9 +230,15 @@ struct StatsSavingsCard: View {
         LinearGradient(colors: [Theme.glacier, Theme.dusk], startPoint: .leading, endPoint: .trailing)
     }
 
+    /// Same colours as `lineGradient` at 20 % – built from colours instead of `LinearGradient.opacity(_:)`,
+    /// which is overloaded on View and ShapeStyle.
+    private var glowGradient: LinearGradient {
+        LinearGradient(colors: [Theme.glacier.opacity(0.2), Theme.dusk.opacity(0.2)], startPoint: .leading, endPoint: .trailing)
+    }
+
     @ChartContentBuilder
     private var areaMarks: some ChartContent {
-        ForEach(snapshot.series) { point in
+        ForEach(chartSeries) { point in
             AreaMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow))
                 .interpolationMethod(.monotone)
                 .foregroundStyle(areaGradient)
@@ -212,14 +248,14 @@ struct StatsSavingsCard: View {
     @ChartContentBuilder
     private var valueLineMarks: some ChartContent {
         // Soft glow under the route (like the summit chart on the dashboard).
-        ForEach(snapshot.series) { point in
+        ForEach(chartSeries) { point in
             LineMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow), series: .value("Reihe", "Glanz"))
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
-                .foregroundStyle(lineGradient.opacity(0.2))
+                .foregroundStyle(glowGradient)
                 .accessibilityHidden(true)
         }
-        ForEach(snapshot.series) { point in
+        ForEach(chartSeries) { point in
             LineMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow), series: .value("Reihe", "Wert"))
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
@@ -229,12 +265,12 @@ struct StatsSavingsCard: View {
 
     @ChartContentBuilder
     private var forecastMarks: some ChartContent {
-        ForEach(snapshot.forecast) { point in
+        ForEach(chartForecast) { point in
             LineMark(x: .value("Datum", point.date), y: .value("Wert", point.value * grow), series: .value("Reihe", "Prognose"))
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
                 .foregroundStyle(Theme.dusk.opacity(0.9))
         }
-        if snapshot.forecast.count > 1, let last = snapshot.forecast.last {
+        if let last = chartForecast.last {
             PointMark(x: .value("Datum", last.date), y: .value("Wert", last.value * grow))
                 .symbolSize(28)
                 .foregroundStyle(Theme.dusk)

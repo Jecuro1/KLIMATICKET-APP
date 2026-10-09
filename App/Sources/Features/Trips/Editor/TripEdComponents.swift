@@ -112,6 +112,20 @@ extension TripEditorModel {
         if let id, let station { return id == station.id }
         return !resolved.isEmpty && name == resolved
     }
+
+    /// Amortisation of `ticket` without and with the trip in this form. `before` leaves out the trip being edited (wherever
+    /// its old date lies), `after` adds the form's value only when the form's date is inside the ticket period.
+    /// Nil when the ticket has no price. (`impact(on:)` subtracts the edited trip even when it was outside the period.)
+    func tripEdImpact(ticket: TicketEntity, trips: [TripEntity], catalog: TariffCatalog)
+        -> (before: Double, after: Double, inPeriod: Bool)? {
+        let editingID = editingTrip?.id
+        let others = editingID == nil ? trips : trips.filter { $0.id != editingID }
+        let summary = Analytics.make(ticket: ticket, trips: others, catalog: catalog).summary
+        guard summary.ticketPrice > 0 else { return nil }
+        let inPeriod = ticket.period.contains(date)
+        let added = inPeriod ? totalValue : 0
+        return (summary.totalValue / summary.ticketPrice, (summary.totalValue + added) / summary.ticketPrice, inPeriod)
+    }
 }
 
 // MARK: - Small views

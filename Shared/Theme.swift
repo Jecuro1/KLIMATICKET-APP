@@ -41,6 +41,8 @@ enum Theme {
     /// Remaining to break-even.
     static let remaining = dawn
     static let negative = Color(light: "#D64545", dark: "#FF7B7B")
+    /// Text-safe red (≥ 4.5:1 on cards in both appearances) for destructive links and error copy.
+    static let negativeText = Color(light: "#B42318", dark: "#FF9A9A")
     static let eco = pine
     static let summit = dawn
 

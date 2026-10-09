@@ -129,7 +129,8 @@ struct StatsLegendLine: Shape {
 struct StatsEntrance: ViewModifier {
     var index: Int
 
-    @State private var shown = false
+    /// End state from the first frame in screenshot mode.
+    @State private var shown = LaunchMode.isScreenshot
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {

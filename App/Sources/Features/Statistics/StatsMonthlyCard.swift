@@ -72,28 +72,7 @@ struct StatsMonthlyCard: View {
     private func chart(_ bars: [StatsMonthBar]) -> some View {
         Chart {
             ForEach(bars) { bar in
-                BarMark(x: .value("Monat", bar.id), y: .value("Wert", bar.actual * grow), width: .ratio(Self.barRatio))
-                    .cornerRadius(5)
-                    .foregroundStyle(style(for: bar))
-                    .annotation(position: .top, spacing: 3) {
-                        if bar.isBest {
-                            Text(Format.euro(bar.actual, decimals: 0))
-                                .font(.caption2.weight(.bold))
-                                .monospacedDigit()
-                                .foregroundStyle(Theme.summitText)
-                                .fixedSize()
-                                .opacity(grow)
-                        }
-                    }
-                    .accessibilityLabel(StatsNames.wideMonth(bar.month))
-                    .accessibilityValue(accessibilityValue(for: bar))
-                if bar.projected > 0 {
-                    BarMark(x: .value("Monat", bar.id), y: .value("Wert", bar.projected * grow), width: .ratio(Self.barRatio))
-                        .cornerRadius(5)
-                        .foregroundStyle(Theme.glacier.opacity(0.10))
-                        .accessibilityLabel("\(StatsNames.wideMonth(bar.month)), Prognose")
-                        .accessibilityValue(Format.euro(bar.projected, decimals: 0))
-                }
+                barMarks(bar)
             }
             referenceRules
         }
@@ -120,6 +99,38 @@ struct StatsMonthlyCard: View {
             .allowsHitTesting(false)
         }
         .accessibilityLabel("Monatsbilanz")
+    }
+
+    /// Actual value (stacked below) + forecast still to come (stacked on top) for one month.
+    /// Kept out of the `Chart { }` closure so the type checker sees small expressions.
+    @ChartContentBuilder
+    private func barMarks(_ bar: StatsMonthBar) -> some ChartContent {
+        BarMark(x: .value("Monat", bar.id), y: .value("Wert", bar.actual * grow), width: .ratio(Self.barRatio))
+            .cornerRadius(5)
+            .foregroundStyle(style(for: bar))
+            .annotation(position: .top, spacing: 3) {
+                if bar.isBest {
+                    bestLabel(bar)
+                }
+            }
+            .accessibilityLabel(StatsNames.wideMonth(bar.month))
+            .accessibilityValue(accessibilityValue(for: bar))
+        if bar.projected > 0 {
+            BarMark(x: .value("Monat", bar.id), y: .value("Wert", bar.projected * grow), width: .ratio(Self.barRatio))
+                .cornerRadius(5)
+                .foregroundStyle(Theme.glacier.opacity(0.10))
+                .accessibilityLabel("\(StatsNames.wideMonth(bar.month)), Prognose")
+                .accessibilityValue(Format.euro(bar.projected, decimals: 0))
+        }
+    }
+
+    private func bestLabel(_ bar: StatsMonthBar) -> some View {
+        Text(Format.euro(bar.actual, decimals: 0))
+            .font(.caption2.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(Theme.summitText)
+            .fixedSize()
+            .opacity(grow)
     }
 
     @ChartContentBuilder

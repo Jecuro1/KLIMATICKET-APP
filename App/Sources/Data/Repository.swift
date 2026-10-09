@@ -54,6 +54,8 @@ struct Repository {
                               toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm, fareEUR: trip.fareEUR,
                               isFareManual: trip.isFareManual, isRoundTrip: trip.isRoundTrip, travelClass: trip.travelClass,
                               companions: trip.companions, states: trip.states)
+        copy.categoryRaw = trip.categoryRaw
+        copy.isInduced = trip.isInduced
         context.insert(copy)
         commit()
         return copy

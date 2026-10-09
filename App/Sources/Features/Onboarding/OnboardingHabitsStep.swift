@@ -336,7 +336,6 @@ private struct OnbStationPicker: View {
             }
         }
         .presentationDetents([.large])
-        .presentationCornerRadius(Theme.Radius.sheet)
     }
 
     private var nearbySection: some View {
@@ -354,7 +353,7 @@ private struct OnbStationPicker: View {
                 }
             }
             .disabled(isLocating)
-            ForEach(nearby) { item in
+            ForEach(nearby.filter { $0.station.id != excludedID }) { item in
                 row(item.station, distanceKm: item.distanceKm)
             }
             if locationFailed {

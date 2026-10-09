@@ -12,9 +12,18 @@ struct UpdateSheet: View {
 
     @State private var appeared = false
     @State private var installTrigger = 0
+    /// The update shown when the sheet opened. A background re-check (scene becoming active) briefly sets the
+    /// service state to `.checking` – or `.failed` offline – which must not flip the open sheet to "Alles aktuell".
+    @State private var pinnedManifest: UpdateManifest? = nil
+    @State private var pinnedRequired = false
+    /// "AltStore-Quelle hinzufügen" was not handled (AltStore not installed). Shown inline – the global toast
+    /// is hidden behind this sheet.
+    @State private var altStoreMissing = false
 
-    private var manifest: UpdateManifest? { app.updates.availableManifest }
-    private var isRequired: Bool { app.updates.isRequired }
+    private var manifest: UpdateManifest? { app.updates.availableManifest ?? pinnedManifest }
+    private var isRequired: Bool {
+        app.updates.availableManifest == nil ? pinnedRequired : app.updates.isRequired
+    }
     private var animates: Bool { !(reduceMotion || LaunchMode.isScreenshot) }
 
     var body: some View {
@@ -42,13 +51,17 @@ struct UpdateSheet: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             actions
         }
-        .background { SetBackdrop(skyOpacity: 0.9, fadeEnd: 0.62) }
+        .background { SetBackdrop(skyOpacity: 0.6, fadeEnd: 0.6) }
         .tint(Theme.accent)
         .presentationDetents([.large])
         .presentationDragIndicator(isRequired ? .hidden : .visible)
         .interactiveDismissDisabled(isRequired)
         .settingsHaptic(.success, trigger: installTrigger, enabled: app.settings.hapticsEnabled)
         .onAppear {
+            if pinnedManifest == nil, let current = app.updates.availableManifest {
+                pinnedManifest = current
+                pinnedRequired = app.updates.isRequired
+            }
             guard !appeared else { return }
             if animates {
                 withAnimation(.spring(duration: 0.7, bounce: 0.28)) { appeared = true }
@@ -111,7 +124,11 @@ struct UpdateSheet: View {
             if manifest != nil {
                 Button {
                     installTrigger += 1
-                    app.updates.install()
+                    if app.updates.availableManifest == nil, let url = manifest.flatMap({ URL(string: $0.downloadURL) }) {
+                        openURL(url)   // service is mid re-check – fall back to the pinned release's download
+                    } else {
+                        app.updates.install()
+                    }
                 } label: {
                     Label("Jetzt aktualisieren", systemImage: "arrow.down.circle.fill")
                 }
@@ -119,7 +136,9 @@ struct UpdateSheet: View {
 
                 if let source = app.updates.altStoreSourceURL {
                     Button {
-                        openURL(source)
+                        openURL(source) { accepted in
+                            withAnimation(.snappy) { altStoreMissing = !accepted }
+                        }
                     } label: {
                         Label("AltStore-Quelle hinzufügen", systemImage: "plus.square.on.square")
                             .font(.headline)
@@ -127,6 +146,15 @@ struct UpdateSheet: View {
                     }
                     .buttonStyle(.glass)
                     .controlSize(.large)
+
+                    if altStoreMissing {
+                        Text("AltStore ist auf diesem iPhone nicht installiert. Mit SideStore fügst du die Quelle unter Einstellungen › Updates hinzu.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
+                    }
                 }
             }
             if !isRequired {
@@ -254,6 +282,13 @@ private struct UpdNotesCard: View {
 
     private var lines: [String] { notes.isEmpty ? ["Fehlerbehebungen und Verbesserungen"] : notes }
 
+    /// Staggered entrance (≤ ~1.1 s in total); nil = no animation (Reduce Motion, screenshots).
+    private func entrance(_ index: Int) -> Animation? {
+        guard animates else { return nil }
+        let delay: Double = 0.16 + Double(min(index, 6)) * 0.07
+        return Animation.spring(duration: 0.55, bounce: 0.2).delay(delay)
+    }
+
     var body: some View {
         SurfaceCard(padding: Theme.Spacing.l, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
@@ -262,8 +297,7 @@ private struct UpdNotesCard: View {
                     UpdNoteRow(text: note)
                         .opacity(appeared ? 1 : 0)
                         .offset(y: appeared ? 0 : 12)
-                        .animation(animates ? .spring(duration: 0.55, bounce: 0.2).delay(0.16 + Double(min(index, 6)) * 0.07) : nil,
-                                   value: appeared)
+                        .animation(entrance(index), value: appeared)
                 }
             }
         }

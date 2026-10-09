@@ -10,6 +10,8 @@ struct TripEdPriceCard: View {
 
     @State private var isEditingFare = false
     @State private var fareText = ""
+    /// The own price when "Anpassen" was tapped (restored when the field is emptied and there is no estimate).
+    @State private var manualFareBeforeEditing: Double? = nil
     @State private var showsInfo = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -20,7 +22,7 @@ struct TripEdPriceCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     header
                     amountRow
-                    Text(model.fareExplanation)
+                    Text(explanation)
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -41,10 +43,18 @@ struct TripEdPriceCard: View {
             if oldValue == .fare && newValue != .fare { finishEditing() }
         }
         .onChange(of: fareText) { _, text in
-            // Live update while typing (CTA + impact follow); ignore the prefill that equals the current fare.
-            guard isEditingFare, let value = TripEdFormat.parseEuro(text), abs(value - model.fare) > 0.001 else { return }
-            model.manualFare = value
+            // Live update while typing (CTA + impact follow).
+            guard isEditingFare else { return }
+            applyFareText(text)
         }
+    }
+
+    /// Under the price: the tariff basis – for an own price the estimate it replaces (the eyebrow already says "Eigener Preis").
+    private var explanation: String {
+        guard model.isFareManual else { return model.fareExplanation }
+        guard let estimate = model.estimate else { return "Von dir eingetragen" }
+        let basis = estimate.method == .officialTable ? "Offiziell" : "Schätzung"
+        return "\(basis) \(Format.euroPrecise(estimate.fareEUR)) · \(estimate.explanation)"
     }
 
     // MARK: Header
@@ -132,7 +142,8 @@ struct TripEdPriceCard: View {
                 // Losing focus finishes the edit; if the field never got focus, finish directly.
                 if focus.wrappedValue == .fare { focus.wrappedValue = nil } else { finishEditing() }
             }
-        } else if model.isFareManual {
+        } else if model.isFareManual && model.estimate != nil {
+            // Only with an estimate to go back to – for a custom place "Zurücksetzen" would wipe the only price.
             HStack(spacing: 6) {
                 pill("Zurücksetzen", symbol: "arrow.uturn.backward") { resetFare() }
                 Button {
@@ -283,17 +294,27 @@ struct TripEdPriceCard: View {
     // MARK: Manual fare
 
     private func beginEditing() {
+        manualFareBeforeEditing = model.manualFare
         fareText = TripEdFormat.editableEuro(model.fare)
         withAnimation(.snappy(duration: 0.25)) { isEditingFare = true }
     }
 
-    private func finishEditing() {
-        let trimmed = fareText.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Applies the field to the model (live and on finish). The prefill equals the current fare and changes nothing.
+    /// An empty field means "no own price": back to the estimate, or – without one – to the price from before this edit,
+    /// so deleting the digits never leaves a half-typed value (e.g. "2" of "23,50") behind in the CTA or the saved trip.
+    private func applyFareText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            if model.estimate != nil { model.resetManualFare() }
-        } else if let value = TripEdFormat.parseEuro(trimmed) {
+            let restored = model.estimate == nil ? manualFareBeforeEditing : nil
+            if model.manualFare != restored { model.manualFare = restored }
+        } else if let value = TripEdFormat.parseEuro(trimmed), abs(value - model.fare) > 0.001 {
             model.manualFare = value
         }
+    }
+
+    private func finishEditing() {
+        guard isEditingFare else { return }
+        applyFareText(fareText)
         // Typing the estimate again is the same as resetting (keeps the "Offizieller ÖBB-Preis" badge).
         if let manual = model.manualFare, let estimate = model.estimate, abs(manual - estimate.fareEUR) < 0.005 {
             model.resetManualFare()
