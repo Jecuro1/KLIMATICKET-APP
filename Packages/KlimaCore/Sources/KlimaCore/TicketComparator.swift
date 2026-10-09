@@ -22,7 +22,7 @@ public enum TicketComparator {
         let singleTotal = trips.reduce(0) { $0 + $1.totalValue } * factor
         var options = [TicketOption(id: "single", name: "Einzeltickets", ticketPrice: 0, uncoveredCost: singleTotal,
                                     coveredTrips: 0, isCurrent: currentProductID == nil)]
-        for p in products where p.variant == variant || p.id == currentProductID {
+        for p in products where (p.variant == variant && p.isLocal != true) || p.id == currentProductID {
             var uncovered = 0.0
             var covered = 0
             for t in trips {

@@ -55,6 +55,11 @@ targets:
         NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor, wenn du eine Fahrt erfasst."
         NSUserActivityTypes:
           - com.knitelarlberg.klimabilanz.addTrip
+        LSApplicationQueriesSchemes:
+          - altstore
+          - sidestore
+          - itms-beta
+          - itms-services
         KBAppGroup: group.com.knitelarlberg.klimabilanz
     entitlements:
       path: App/Supporting/KlimaBilanz.entitlements

@@ -187,6 +187,17 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertEqual(opts.last?.id, "single")
     }
 
+    func testPriceDependsOnStartDate() {
+        let p = TicketProduct(id: "oe-klassik", family: .oe, name: "KlimaTicket Ö Klassik", variant: .klassik, priceEUR: 1400, validFrom: "2026-01-01",
+                              priceHistory: [.init(validFrom: "2021-10-26", priceEUR: 1095), .init(validFrom: "2025-01-01", priceEUR: 1179.3),
+                                             .init(validFrom: "2025-08-01", priceEUR: 1300)])
+        XCTAssertEqual(p.price(forStart: date(2026, 3, 1)), 1400)
+        XCTAssertEqual(p.price(forStart: date(2025, 9, 1)), 1300)
+        XCTAssertEqual(p.price(forStart: date(2025, 7, 31)), 1179.3)
+        XCTAssertEqual(p.price(forStart: date(2023, 5, 1)), 1095)
+        XCTAssertEqual(p.price(forStart: date(2020, 5, 1)), 1095)
+    }
+
     // MARK: Achievements
 
     func testAchievements() {

@@ -1,0 +1,8 @@
+{
+  "fareModel": {"baseFee": 1.4, "bands": [{"upToKm": 20, "ratePerKm": 0.205}, {"upToKm": 50, "ratePerKm": 0.195}, {"upToKm": 100, "ratePerKm": 0.185}, {"upToKm": 200, "ratePerKm": 0.175}, {"upToKm": 400, "ratePerKm": 0.14}, {"upToKm": 2000, "ratePerKm": 0.07}], "minimumFare": 2.4, "maximumFare": 110, "roundingStep": 0.1, "firstClassFactor": 1.6, "detourFactor": 1.22, "discountFactors": {"none": 1.0, "vorteilscard": 0.5}},
+  "cityFares": [],
+  "kilometergeldEUR": 0.5,
+  "carFullCostPerKmEUR": 0.6,
+  "emissions": {"car": 166, "train": 8, "bus": 60, "tram": 26},
+  "notes": ["Platzhalter – wird durch Recherche ersetzt"]
+}

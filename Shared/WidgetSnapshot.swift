@@ -16,6 +16,9 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
         var title: String
         var modeSymbol: String
         var value: Double
+        var distanceKm: Double = 0
+        var fromName: String = ""
+        var toName: String = ""
     }
 
     var generatedAt: Date
@@ -50,6 +53,20 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
     func save() {
         guard let data = try? JSONEncoder().encode(self) else { return }
         WidgetSnapshot.store.set(data, forKey: WidgetSnapshot.defaultsKey)
+    }
+
+    /// Optimistically applies a quick-logged favourite (widget / Siri) until the app recomputes precisely.
+    mutating func apply(favorite: Favorite, date: Date) {
+        totalValue += favorite.value
+        tripCount += 1
+        distanceKm += favorite.distanceKm
+        co2SavedKg += max(0, (166 - 8) * favorite.distanceKm / 1000)
+        amortizedFraction = ticketPrice > 0 ? totalValue / ticketPrice : 0
+        isPaidOff = totalValue >= ticketPrice
+        lastTrip = RecentTrip(fromName: favorite.fromName.isEmpty ? favorite.title : favorite.fromName,
+                              toName: favorite.toName, modeSymbol: favorite.modeSymbol, value: favorite.value, date: date)
+        sparkline.append(totalValue)
+        generatedAt = date
     }
 
     /// Realistic sample used for widget previews/placeholders and screenshots.

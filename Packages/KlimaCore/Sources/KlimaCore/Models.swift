@@ -197,9 +197,24 @@ public struct TicketProduct: Codable, Hashable, Sendable, Identifiable {
     public var eligibility: String
     public var coverage: String
     public var sourceUrl: String?
+    /// Earlier prices (by ticket start date), oldest first. The current `priceEUR` applies from `validFrom`.
+    public var priceHistory: [PricePoint]?
+    /// Covers only part of the listed states (e.g. "KlimaTicket Innsbruck") – excluded from the ticket comparison.
+    public var isLocal: Bool?
+
+    public struct PricePoint: Codable, Hashable, Sendable {
+        public var validFrom: String
+        public var priceEUR: Double
+
+        public init(validFrom: String, priceEUR: Double) {
+            self.validFrom = validFrom
+            self.priceEUR = priceEUR
+        }
+    }
 
     public init(id: String, family: TicketFamily, states: [String] = [], name: String, variant: TicketVariant,
-                priceEUR: Double, validFrom: String, eligibility: String = "", coverage: String = "", sourceUrl: String? = nil) {
+                priceEUR: Double, validFrom: String, eligibility: String = "", coverage: String = "", sourceUrl: String? = nil,
+                priceHistory: [PricePoint]? = nil, isLocal: Bool? = nil) {
         self.id = id
         self.family = family
         self.states = states
@@ -210,6 +225,21 @@ public struct TicketProduct: Codable, Hashable, Sendable, Identifiable {
         self.eligibility = eligibility
         self.coverage = coverage
         self.sourceUrl = sourceUrl
+        self.priceHistory = priceHistory
+        self.isLocal = isLocal
+    }
+
+    /// Price for a ticket whose validity starts on `start` (KlimaTicket prices depend on the start date).
+    public func price(forStart start: Date, calendar: Calendar = .vienna) -> Double {
+        let points = (priceHistory ?? []) + [PricePoint(validFrom: validFrom, priceEUR: priceEUR)]
+        let day = TicketProduct.isoDay(start, calendar: calendar)
+        let applicable = points.filter { $0.validFrom <= day }.max { $0.validFrom < $1.validFrom }
+        return applicable?.priceEUR ?? points.min { $0.validFrom < $1.validFrom }?.priceEUR ?? priceEUR
+    }
+
+    static func isoDay(_ date: Date, calendar: Calendar) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
     /// Whether a trip touching the given federal states is covered by this product.

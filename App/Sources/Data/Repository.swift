@@ -1,0 +1,216 @@
+import Foundation
+import SwiftData
+import WidgetKit
+import KlimaCore
+
+/// All writes go through here so that saving, widget refresh, reminders and cloud sync stay consistent.
+@MainActor
+struct Repository {
+    let context: ModelContext
+    let app: AppState
+
+    // MARK: Trips
+
+    @discardableResult
+    func addTrip(_ trip: TripEntity) -> TripEntity {
+        context.insert(trip)
+        commit()
+        return trip
+    }
+
+    func updateTrip(_ trip: TripEntity) {
+        trip.touch()
+        commit()
+    }
+
+    /// Soft delete (kept as tombstone for sync), returns an undo closure.
+    func deleteTrip(_ trip: TripEntity) {
+        trip.deletedAt = Date()
+        trip.touch()
+        commit()
+    }
+
+    func restoreTrip(_ trip: TripEntity) {
+        trip.deletedAt = nil
+        trip.touch()
+        commit()
+    }
+
+    /// Logs a favourite route right now ("Schnellerfassung").
+    @discardableResult
+    func logFavorite(_ favorite: FavoriteRouteEntity, on date: Date = Date()) -> TripEntity {
+        let trip = favorite.makeTrip(on: date)
+        favorite.usageCount += 1
+        favorite.touch()
+        context.insert(trip)
+        commit()
+        return trip
+    }
+
+    /// Duplicates a past trip for today ("Nochmal fahren").
+    @discardableResult
+    func repeatTrip(_ trip: TripEntity, on date: Date = Date()) -> TripEntity {
+        let copy = TripEntity(date: date, fromName: trip.fromName, toName: trip.toName, fromStationID: trip.fromStationID,
+                              toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm, fareEUR: trip.fareEUR,
+                              isFareManual: trip.isFareManual, isRoundTrip: trip.isRoundTrip, travelClass: trip.travelClass,
+                              companions: trip.companions, states: trip.states)
+        context.insert(copy)
+        commit()
+        return copy
+    }
+
+    /// Ingests quick logs queued by widgets / Siri / Control Center. Returns the number of trips added.
+    @discardableResult
+    func ingestQuickLogs() -> Int {
+        let items = QuickLogQueue.drain()
+        guard !items.isEmpty else { return 0 }
+        let favorites = liveFavorites()
+        var added = 0
+        for item in items {
+            guard let fav = favorites.first(where: { $0.id == item.favoriteID }) else { continue }
+            context.insert(fav.makeTrip(on: item.date))
+            fav.usageCount += 1
+            fav.touch()
+            added += 1
+        }
+        commit()
+        return added
+    }
+
+    // MARK: Favourites
+
+    @discardableResult
+    func addFavorite(from trip: TripEntity, title: String = "") -> FavoriteRouteEntity {
+        let count = (try? context.fetchCount(FetchDescriptor<FavoriteRouteEntity>())) ?? 0
+        let fav = FavoriteRouteEntity(title: title, fromName: trip.fromName, toName: trip.toName, fromStationID: trip.fromStationID,
+                                      toStationID: trip.toStationID, mode: trip.mode, distanceKm: trip.distanceKm,
+                                      fareEUR: trip.fareEUR, isRoundTrip: trip.isRoundTrip, states: trip.states, sortIndex: count)
+        context.insert(fav)
+        commit()
+        return fav
+    }
+
+    func addFavorite(_ favorite: FavoriteRouteEntity) {
+        context.insert(favorite)
+        commit()
+    }
+
+    func deleteFavorite(_ favorite: FavoriteRouteEntity) {
+        favorite.deletedAt = Date()
+        favorite.touch()
+        commit()
+    }
+
+    // MARK: Tickets
+
+    func addTicket(_ ticket: TicketEntity) {
+        context.insert(ticket)
+        app.settings.selectedTicketID = ticket.id
+        commit()
+        scheduleReminders(for: ticket)
+    }
+
+    func updateTicket(_ ticket: TicketEntity) {
+        ticket.touch()
+        commit()
+        scheduleReminders(for: ticket)
+    }
+
+    func deleteTicket(_ ticket: TicketEntity) {
+        ticket.deletedAt = Date()
+        ticket.touch()
+        if app.settings.selectedTicketID == ticket.id { app.settings.selectedTicketID = nil }
+        commit()
+        let id = ticket.id
+        Task { await app.notifications.cancelRenewalReminders(ticketID: id) }
+    }
+
+    func scheduleReminders(for ticket: TicketEntity) {
+        guard app.settings.renewalRemindersEnabled else { return }
+        let id = ticket.id, name = ticket.name, end = ticket.endDate, offsets = ticket.reminderOffsets
+        Task { await app.notifications.scheduleRenewalReminders(ticketID: id, ticketName: name, end: end, offsets: offsets) }
+    }
+
+    // MARK: Bulk
+
+    func deleteAllData() {
+        try? context.delete(model: TripEntity.self)
+        try? context.delete(model: FavoriteRouteEntity.self)
+        try? context.delete(model: TicketEntity.self)
+        app.settings.selectedTicketID = nil
+        commit(sync: false)
+    }
+
+    func liveTrips() -> [TripEntity] {
+        (try? context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil },
+                                                        sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+    }
+
+    func liveTickets() -> [TicketEntity] {
+        (try? context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt == nil },
+                                                          sortBy: [SortDescriptor(\.startDate, order: .reverse)]))) ?? []
+    }
+
+    func liveFavorites() -> [FavoriteRouteEntity] {
+        (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil },
+                                                                 sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+    }
+
+    // MARK: Commit
+
+    func commit(sync: Bool = true) {
+        do { try context.save() } catch { print("⚠️ save failed: \(error)") }
+        refreshWidgets()
+        if sync {
+            let context = context, app = app
+            Task { await app.sync.sync(context: context, auth: app.auth) }
+        }
+    }
+
+    /// Writes the widget snapshot and reloads widget timelines.
+    func refreshWidgets() {
+        let tickets = liveTickets()
+        guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else {
+            WidgetSnapshot.store.removeObject(forKey: WidgetSnapshot.defaultsKey)
+            WidgetCenter.shared.reloadAllTimelines()
+            return
+        }
+        let trips = liveTrips()
+        let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: trips, favorites: liveFavorites(), catalog: app.catalog)
+        snapshot.save()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
+enum WidgetSnapshotBuilder {
+    @MainActor
+    static func make(ticket: TicketEntity, trips: [TripEntity], favorites: [FavoriteRouteEntity], catalog: TariffCatalog) -> WidgetSnapshot {
+        let a = Analytics.make(ticket: ticket, trips: trips, catalog: catalog)
+        let last = trips.filter { $0.deletedAt == nil }.max { $0.date < $1.date }
+        let values = a.series.map(\.value)
+        let step = max(1, values.count / 40)
+        let sparkline = stride(from: 0, to: values.count, by: step).map { values[$0] } + (values.last.map { [$0] } ?? [])
+        return WidgetSnapshot(
+            generatedAt: Date(),
+            ticketName: ticket.name,
+            ticketPrice: ticket.price,
+            totalValue: a.summary.totalValue,
+            amortizedFraction: a.summary.amortizedFraction,
+            tripCount: a.summary.tripCount,
+            distanceKm: a.summary.distanceKm,
+            co2SavedKg: a.summary.co2SavedKg,
+            daysRemaining: a.summary.daysRemaining,
+            validUntil: ticket.endDate,
+            isPaidOff: a.summary.isPaidOff,
+            forecastBreakEvenDate: a.summary.forecastBreakEvenDate,
+            lastTrip: last.map { .init(fromName: $0.fromName, toName: $0.toName, modeSymbol: $0.mode.symbolName, value: $0.totalValue, date: $0.date) },
+            favorites: favorites.prefix(6).map { fav in
+                WidgetSnapshot.Favorite(id: fav.id, title: fav.displayTitle, modeSymbol: fav.mode.symbolName,
+                                        value: fav.fareEUR * (fav.isRoundTrip ? 2 : 1),
+                                        distanceKm: fav.distanceKm * (fav.isRoundTrip ? 2 : 1),
+                                        fromName: fav.fromName, toName: fav.toName)
+            },
+            sparkline: sparkline
+        )
+    }
+}
