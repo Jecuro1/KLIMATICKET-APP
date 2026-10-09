@@ -142,8 +142,10 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
     public var state: String
     public var kind: Kind
     public var importance: Int
+    /// Alternative spellings used in search ("Innsbruck Hbf", "St.Pölten Hbf", "Linz/Donau Hauptbahnhof").
+    public var aliases: [String]?
 
-    public init(id: String, name: String, lat: Double, lon: Double, state: String, kind: Kind = .rail, importance: Int = 0) {
+    public init(id: String, name: String, lat: Double, lon: Double, state: String, kind: Kind = .rail, importance: Int = 0, aliases: [String]? = nil) {
         self.id = id
         self.name = name
         self.lat = lat
@@ -151,6 +153,7 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
         self.state = state
         self.kind = kind
         self.importance = importance
+        self.aliases = aliases
     }
 
     public var location: GeoPoint { GeoPoint(latitude: lat, longitude: lon) }

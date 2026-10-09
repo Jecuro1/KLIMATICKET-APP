@@ -225,6 +225,14 @@ final class KlimaCoreTests: XCTestCase {
         XCTAssertEqual(idx.search("anton").first?.id, "2")
         XCTAssertEqual(idx.search("").first?.id, "4")
         XCTAssertEqual(idx.station(named: "wien hbf")?.id, "4")
+
+        let aliased = StationIndex(stations: [
+            Station(id: "a", name: "St. Pölten Hauptbahnhof", lat: 48.2, lon: 15.6, state: "NÖ", importance: 80, aliases: ["St.Pölten Hbf"]),
+            Station(id: "b", name: "Linz Hauptbahnhof", lat: 48.29, lon: 14.29, state: "OÖ", importance: 90, aliases: ["Linz/Donau Hauptbahnhof"]),
+        ])
+        XCTAssertEqual(aliased.search("linz donau").first?.id, "b")
+        XCTAssertEqual(aliased.station(named: "Linz/Donau Hauptbahnhof")?.id, "b")
+        XCTAssertEqual(aliased.search("st polten").first?.id, "a")
     }
 
     // MARK: Comparator

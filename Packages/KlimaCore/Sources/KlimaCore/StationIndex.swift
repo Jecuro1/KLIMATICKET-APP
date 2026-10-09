@@ -5,7 +5,9 @@ public final class StationIndex: @unchecked Sendable {
     public let stations: [Station]
     private let byID: [String: Station]
     private let keys: [String]
-    private let tokens: [[String]]
+    /// All searchable keys per station: normalized name first, then aliases.
+    private let allKeys: [[String]]
+    private let allTokens: [[[String]]]
 
     public init(stations: [Station]) {
         self.stations = stations
@@ -13,7 +15,15 @@ public final class StationIndex: @unchecked Sendable {
         for s in stations { map[s.id] = s }
         byID = map
         keys = stations.map { StationIndex.normalize($0.name) }
-        tokens = keys.map { $0.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "/" }).map(String.init) }
+        allKeys = stations.map { s in
+            var k = [StationIndex.normalize(s.name)]
+            for a in s.aliases ?? [] {
+                let n = StationIndex.normalize(a)
+                if !n.isEmpty && !k.contains(n) { k.append(n) }
+            }
+            return k
+        }
+        allTokens = allKeys.map { list in list.map { $0.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "/" }).map(String.init) } }
     }
 
     /// Decodes the bundled `stations.json` array.
@@ -24,10 +34,11 @@ public final class StationIndex: @unchecked Sendable {
 
     public func station(id: String) -> Station? { byID[id] }
 
-    /// Exact (normalized) name lookup.
+    /// Exact (normalized) name or alias lookup.
     public func station(named name: String) -> Station? {
         let key = StationIndex.normalize(name)
-        guard let i = keys.firstIndex(of: key) else { return nil }
+        if let i = keys.firstIndex(of: key) { return stations[i] }
+        guard let i = allKeys.firstIndex(where: { $0.contains(key) }) else { return nil }
         return stations[i]
     }
 
@@ -73,10 +84,19 @@ public final class StationIndex: @unchecked Sendable {
     }
 
     private func score(index i: Int, query q: String, queryTokens: [String]) -> Double? {
-        let key = keys[i]
+        var best: Double?
+        for (n, key) in allKeys[i].enumerated() {
+            if let s = score(key: key, words: allTokens[i][n], query: q, queryTokens: queryTokens) {
+                let adjusted = n == 0 ? s : s - 2   // prefer the official name slightly
+                best = max(best ?? adjusted, adjusted)
+            }
+        }
+        return best
+    }
+
+    private func score(key: String, words: [String], query q: String, queryTokens: [String]) -> Double? {
         if key == q { return 120 }
         if key.hasPrefix(q) { return 100 - Double(key.count - q.count) * 0.2 }
-        let words = tokens[i]
         // Every query token must prefix-match some word.
         var allMatch = true
         var firstWordBonus = 0.0
@@ -103,12 +123,12 @@ public final class StationIndex: @unchecked Sendable {
 
     /// Lowercases, strips diacritics, expands common abbreviations ("hbf" ↔ "hauptbahnhof", "st." → "st").
     public static func normalize(_ s: String) -> String {
-        var out = s.lowercased()
-            .replacingOccurrences(of: "ß", with: "ss")
-            .replacingOccurrences(of: "ä", with: "ae")
-            .replacingOccurrences(of: "ö", with: "oe")
-            .replacingOccurrences(of: "ü", with: "ue")
+        // Umlauts fold to the plain vowel on both sides ("Pölten", "Poelten", "Polten" → "polten").
+        var out = s.lowercased().replacingOccurrences(of: "ß", with: "ss")
         out = out.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "de_AT"))
+        out = out.replacingOccurrences(of: "ae", with: "a")
+            .replacingOccurrences(of: "oe", with: "o")
+            .replacingOccurrences(of: "ue", with: "u")
         out = out.replacingOccurrences(of: "hauptbahnhof", with: "hbf")
             .replacingOccurrences(of: "bahnhof", with: "bf")
             .replacingOccurrences(of: "sankt ", with: "st ")
