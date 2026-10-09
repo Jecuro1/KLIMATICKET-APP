@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// When and how the app animates (docs/MOTION.md §2). Every animation goes through one of these wrappers so that
+/// When and how the app animates (docs/MOTION.md §3). Every animation goes through one of these wrappers so that
 /// Reduce Motion (cross-fades instead of movement) and the CI screenshot mode (end state at once) hold everywhere.
 enum MotionPolicy {
     /// CI screenshots (`-KBScreenshot`): every animation starts in its end state (DESIGN.md §6).

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Liquid Glass that morphs (docs/MOTION.md §7): controls in one `GlassEffectContainer` share a namespace, so glass
+/// Liquid Glass that morphs (docs/MOTION.md §8): controls in one `GlassEffectContainer` share a namespace, so glass
 /// shapes that appear, disappear or change size melt into each other instead of popping. Glass stays reserved for
 /// controls (DESIGN.md §2) – never for content cards.
 ///

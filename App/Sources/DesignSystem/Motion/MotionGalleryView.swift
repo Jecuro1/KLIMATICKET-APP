@@ -238,7 +238,7 @@ struct MotionGalleryView: View {
     // MARK: Symbols
 
     private var symbolsSection: some View {
-        GallerySection(title: "Symbole", note: ".symbolBounce · .symbolReplaceTransition") {
+        GallerySection(title: "Symbole", note: ".symbolBounce · .symbolReplace… · .breathing · .pulsingHalo") {
             HStack(spacing: Theme.Spacing.l) {
                 Button {
                     withMotion(Motion.bouncy) { isFavorite.toggle() }
@@ -265,6 +265,17 @@ struct MotionGalleryView: View {
                     .font(.title2)
                     .foregroundStyle(Theme.pine)
                     .symbolBounce(on: total)
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.title2)
+                    .foregroundStyle(Theme.alpenglow)
+                    .breathing()
+                Circle()
+                    .fill(Theme.routeGradient)
+                    .frame(width: 14, height: 14)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .pulsingHalo(Theme.dusk)
+                    .frame(width: 28, height: 28)
+                    .accessibilityHidden(true)
             }
         }
     }

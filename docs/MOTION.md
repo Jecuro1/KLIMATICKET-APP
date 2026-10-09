@@ -189,7 +189,19 @@ BreakEvenCelebration(…)                                    // Vollbild „Rent
 - Kurz (≤ `Motion.Duration.celebration`), nie blockierend, jederzeit wegtippbar. Reduce Motion: nur Lichtblitz/Haptik,
   kein Konfetti, kein Ring.
 
-## 12. Tipps (TipKit, `KBTips`)
+## 12. Dauerbewegung (nur wenn sichtbar)
+
+```swift
+Image(systemName: "dot.radiowaves.left.and.right").breathing()   // Live-Fahrt, Erkennung aktiv
+climberDot.pulsingHalo(Theme.dusk)                                 // „du bist hier“, Kletterer auf der Route
+ContinuousMotionReader { isRunning in icon.symbolEffect(.variableColor, isActive: isRunning) }
+```
+
+Endlose Effekte laufen nur, solange man sie sieht: auf dem Bildschirm (auch in Scroll-Views,
+`onScrollVisibilityChange`), Szene aktiv, kein App-Sheet darüber (`ambientSkyPaused`), kein Reduce Motion, kein
+Stromsparmodus, nie in Screenshots. **Nie `repeatForever` direkt** – immer über `ContinuousMotionReader`.
+
+## 13. Tipps (TipKit, `KBTips`)
 
 ```swift
 TipView(KBTips.TripSwipe()).kbTipStyle()        // inline, über der Liste, die er erklärt
@@ -202,7 +214,7 @@ Katalog: `QuickLog` (Favorit = 1 Tipp, lang drücken), `TripSwipe` (Wischen in F
 einmal pro Start in `RootView` (`KBTips.configure()`, stündlich höchstens ein neuer Tipp, jeder max. 2–3 ×), nie in
 Screenshot-/Perf-Läufen. Tipps nur für **versteckte** Gesten – was sichtbar beschriftet ist, braucht keinen Tipp.
 
-## 13. Reduce Motion & Reduce Transparency
+## 14. Reduce Motion & Reduce Transparency
 
 | Muster | Normal | Reduce Motion |
 |---|---|---|
@@ -213,20 +225,21 @@ Screenshot-/Perf-Läufen. Tipps nur für **versteckte** Gesten – was sichtbar 
 | Scroll-Karten / Karussell / Hero | Skalierung + Versatz | nur Deckkraft |
 | Feiern | Pop, Ring, Burst | Lichtblitz + Haptik |
 | Symbole | bounce / replace | `symbolEffectsRemoved` |
+| Dauerbewegung (breathing, Halo) | läuft, solange sichtbar | aus |
 
 Reduce Transparency: Karten werden opak (`FrostedCardModifier` erledigt das), Glas regelt das System. Animationen ändern
 daran nichts – keine Animation darf Deckkraft als einzigen Bedeutungsträger nutzen.
 
-## 14. Performance-Regeln
+## 15. Performance-Regeln
 
 - Nur `scaleEffect`, `offset`, `rotationEffect`, `opacity` animieren. Kein `frame`/`padding` in Animationen auf Listen.
-- Kein `repeatForever`/endlose `PhaseAnimator` off-screen oder unter Sheets (`ambientSkyPaused`); endlose Effekte stoppen
-  bei `scenePhase != .active`.
+- Kein `repeatForever`/endlose `PhaseAnimator` off-screen oder unter Sheets: endlose Effekte nur über
+  `ContinuousMotionReader` / `.breathing()` / `.pulsingHalo()` (§12).
 - Keine Formatter/Sortierung im `body`; `CountUpText`-Formate sind `Format.*` (gecacht).
 - Max. eine animierte Ebene pro Screen (der Himmel); Charts zeichnen einmal (`Motion.gentle`).
 - Blur nur auf kleinen Elementen (`.focus`-Reveal), nie animiert über Karten während des Scrollens.
 
-## 15. Screen-Checkliste
+## 16. Screen-Checkliste
 
 1. `revealScope()` auf den Screen, `reveal(order:)` auf die Blöcke in Lesereihenfolge.
 2. Hauptwert: `CountUpText`; alle anderen Zahlen: `.numericValue`.

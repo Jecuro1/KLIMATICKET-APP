@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Celebrations (docs/MOTION.md §10): short (≤ 0.8 s for these, ≤ Motion.Duration.celebration for full-screen moments),
+// Celebrations (docs/MOTION.md §11): short (≤ 0.8 s for these, ≤ Motion.Duration.celebration for full-screen moments),
 // never blocking, triggered by a value change, Reduce-Motion aware. Full-screen: `BreakEvenCelebration`.
 
 extension View {

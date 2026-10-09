@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Scroll-driven motion (docs/MOTION.md §9). Everything here is a render-time transform (scale, offset, opacity) –
+// Scroll-driven motion (docs/MOTION.md §10). Everything here is a render-time transform (scale, offset, opacity) –
 // no layout, no blur, no state change per frame – so scrolling stays at 120 Hz.
 
 extension View {

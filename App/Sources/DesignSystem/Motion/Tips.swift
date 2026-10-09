@@ -1,7 +1,7 @@
 import SwiftUI
 import TipKit
 
-/// TipKit catalogue (docs/MOTION.md §11): one tip per hidden gesture, German copy in du-Form, each shown at most a few
+/// TipKit catalogue (docs/MOTION.md §13): one tip per hidden gesture, German copy in du-Form, each shown at most a few
 /// times and never again once the gesture was used (`KBTips.used(_:)`). Tips are configured once at launch
 /// (`KBTips.configure()`, RootView) – never in screenshot or performance runs, so CI screens stay deterministic.
 ///

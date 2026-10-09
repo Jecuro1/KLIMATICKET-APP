@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Zoom navigation (docs/MOTION.md §8): a detail grows out of the card or row that opened it and shrinks back into
+/// Zoom navigation (docs/MOTION.md §9): a detail grows out of the card or row that opened it and shrinks back into
 /// it on the way back (interactive, the system zoom transition). Three steps:
 ///
 ///     NavigationStack { TripsList() }

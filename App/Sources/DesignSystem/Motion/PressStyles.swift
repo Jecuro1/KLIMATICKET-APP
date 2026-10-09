@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Direct-manipulation feedback for anything tappable (docs/MOTION.md §5): the label dips under the finger with
+/// Direct-manipulation feedback for anything tappable (docs/MOTION.md §7): the label dips under the finger with
 /// `Motion.press` and springs back with `Motion.release`. Scale and opacity only (no layout), so it stays at 120 Hz
 /// inside scrolling lists. Reduce Motion: a slight dim, no scaling.
 ///
