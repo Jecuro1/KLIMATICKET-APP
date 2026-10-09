@@ -353,6 +353,20 @@ struct ScreenshotRouter: View {
         case "settingsDemo":
             NavigationStack { SettingsView(screenshotScreen: screen) }
                 .task { DemoDataStore.markAllRowsAsDemo(in: context) }
+        // MARK: settings – the Settings sheet from the dashboard with its toast mirror (kept up for the capture)
+        case "settingsToast":
+            MainTabView()
+                .task {
+                    app.selectedTab = .overview
+                    try? await Task.sleep(for: .milliseconds(500))
+                    app.isShowingSettings = true
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .milliseconds(900))
+                        if app.toast == nil {
+                            app.showToast("trash.fill", "Favorit gelöscht", "Arbeit", actionTitle: "Rückgängig") {}
+                        }
+                    }
+                }
         // MARK: benefits
         case "benefits", "benefitsHistory", "benefitCatalog", "benefitEditor":
             NavigationStack { PerkBenefitsView() }
