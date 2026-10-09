@@ -138,6 +138,8 @@ struct AchMedallion: View {
     var pitch: Double = 0
     /// Increment to bounce the symbol of an unlocked medallion.
     var bounceTick: Int = 0
+    /// Increment to sweep a band of light across an unlocked medallion (`AchShineSweep`).
+    var shineTick: Int = 0
     var showsPercentBadge: Bool = true
     var showsGlow: Bool = true
 
@@ -208,6 +210,9 @@ struct AchMedallion: View {
                 .saturation(isUnlocked ? 1 : 0)
                 .opacity(isUnlocked ? 1 : 0.5)
             symbol
+            if isUnlocked {
+                AchShineSweep(trigger: shineTick, size: size)
+            }
         }
         .frame(width: size, height: size)
     }
@@ -275,7 +280,7 @@ struct AchMedallion: View {
             .font(.system(size: size * 0.36, weight: .semibold))
             .foregroundStyle(isUnlocked ? AchTierStyle.engraving(tier) : Theme.textSecondary)
             .shadow(color: Color.white.opacity(isUnlocked ? 0.55 : 0), radius: 0, y: max(0.5, size * 0.011))
-            .symbolEffect(.bounce, value: isUnlocked ? bounceTick : 0)
+            .symbolBounce(on: isUnlocked ? bounceTick : 0)
     }
 
     private var percentBadge: some View {

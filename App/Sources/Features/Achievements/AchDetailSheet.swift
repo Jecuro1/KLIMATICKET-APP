@@ -10,7 +10,6 @@ struct AchDetailSheet: View {
     let achievement: Achievement
     let ticketYear: String
 
-    @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,14 +33,19 @@ struct AchDetailSheet: View {
             ScrollView {
                 VStack(spacing: Theme.Spacing.l) {
                     stage
+                    // The text and the card rise in under the medal while the sheet zooms out of the grid.
                     titleBlock
+                        .reveal(order: 1)
                     infoCard
+                        .reveal(order: 2)
                     shareButton
+                        .reveal(order: 3)
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
                 .padding(.bottom, Theme.Spacing.xl)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .revealScope()
             .background { backdrop }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -57,18 +61,17 @@ struct AchDetailSheet: View {
         }
         .presentationDetents([.large])
         .presentationBackground(Theme.sheetBackground)
-        .sensoryFeedback(.impact(flexibility: .soft), trigger: appeared) { _, newValue in
-            newValue && isUnlocked && app.settings.hapticsEnabled
-        }
+        // An earned medal lands with a light tap.
+        .haptic(.tap, trigger: appeared, when: { _, new in new && isUnlocked })
         .onAppear {
             if animatesMotion {
-                withAnimation(.spring(duration: 0.7, bounce: 0.35).delay(0.08)) { appeared = true }
+                withAnimation(Motion.bouncy.delay(0.08)) { appeared = true }
             } else {
                 appeared = true
             }
         }
         .task {
-            // Let the zoom transition settle, then bounce the symbol once.
+            // Let the zoom transition settle, then bounce the symbol once (and sweep light across an earned medal).
             guard animatesMotion else { return }
             try? await Task.sleep(for: .milliseconds(380))
             bounceTick += 1
@@ -185,7 +188,7 @@ struct AchDetailSheet: View {
             } else {
                 stat(label: "Fortschritt") {
                     Text(AchFormat.percent(progress))
-                        .contentTransition(.numericText(value: progress))
+                        .numericValue(progress)
                 }
             }
         }
@@ -279,7 +282,6 @@ private struct AchDetailStage: View {
     let animatesMotion: Bool
     let medalSize: CGFloat
 
-    @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var tilt = MotionTilt()
@@ -309,6 +311,7 @@ private struct AchDetailStage: View {
                          roll: roll,
                          pitch: pitch,
                          bounceTick: bounceTick,
+                         shineTick: bounceTick + spinTick,
                          showsPercentBadge: false)
                 .rotation3DEffect(.degrees(roll * 18 + spin), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
                 .rotation3DEffect(.degrees(-pitch * 14), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
@@ -325,9 +328,7 @@ private struct AchDetailStage: View {
         .frame(maxWidth: .infinity)
         .frame(height: medalSize + 80)
         .padding(.top, Theme.Spacing.xs)
-        .sensoryFeedback(.impact(weight: .light), trigger: spinTick) { _, _ in
-            app.settings.hapticsEnabled
-        }
+        .haptic(.tap, trigger: spinTick)
         .onAppear {
             if animatesMotion { tilt.start() }
         }
@@ -364,13 +365,13 @@ private struct AchDetailStage: View {
         DragGesture(minimumDistance: 4)
             .onChanged { value in drag = value.translation }
             .onEnded { _ in
-                withAnimation(.spring(duration: 0.6, bounce: 0.45)) { drag = .zero }
+                withMotion(Motion.bouncy) { drag = .zero }
             }
     }
 
     private func spinMedal() {
         guard !reduceMotion else { return }
-        withAnimation(.spring(duration: 1.1, bounce: 0.22)) { spin += 360 }
+        withMotion(Motion.gentle) { spin += 360 }
         spinTick += 1
     }
 

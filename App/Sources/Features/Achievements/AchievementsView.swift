@@ -46,6 +46,9 @@ private struct AchBookScreen: View, Equatable {
     @State private var selection: AchSelection?
     @State private var appeared = LaunchMode.isScreenshot
     @State private var bounceTick = 0
+    /// Medals earned since the last visit (`AchUnlockMemory`) and the tick that plays their unlock moment.
+    @State private var fresh: Set<String> = []
+    @State private var unlockTick = 0
     /// Latched once presented, so the chrome (✕, pale sky, paddings) doesn't flip while a dismiss animates out.
     @State private var wasPresented = false
     @Namespace private var zoom
@@ -80,6 +83,7 @@ private struct AchBookScreen: View, Equatable {
             .padding(.bottom, Theme.Spacing.xxl)
         }
         .accessibilityIdentifier("perf.scroll.gipfelbuch") // MARK: perf – KlimaBilanzPerfTests
+        .revealScope()
         .background { backdrop }
         .overlay(alignment: .topTrailing) { closeButton }
         .toolbar(.hidden, for: .navigationBar)
@@ -87,14 +91,16 @@ private struct AchBookScreen: View, Equatable {
             if presented { wasPresented = true }
         }
         .sheet(item: $selection) { item in
+            // Grows out of the medal that was tapped (Reduce Motion: the standard sheet).
             AchDetailSheet(achievement: item.achievement, ticketYear: item.ticketYear)
-                .navigationTransition(.zoom(sourceID: item.sourceID, in: zoom))
+                .zoomDestination(id: item.sourceID, in: zoom)
         }
-        .sensoryFeedback(.selection, trigger: selection?.id) { _, newValue in
-            newValue != nil && app.settings.hapticsEnabled
-        }
+        .haptic(.selection, trigger: selection?.id, when: { _, new in new != nil })
+        // One haptic for the unlock moment, however many medals were earned since the last visit.
+        .haptic(.milestone, trigger: unlockTick, when: { _, new in new > 0 })
         .onAppear(perform: startEntrance)
         .task { await bounceAfterEntrance() }
+        .task { await celebrateFreshUnlocks() }
         .task {
             guard opensDetailForScreenshot, LaunchMode.isScreenshot, let first = book?.unlocked.first ?? book?.upcoming.first else { return }
             try? await Task.sleep(for: .milliseconds(700))
@@ -152,6 +158,8 @@ private struct AchBookScreen: View, Equatable {
                                          index: indexOffset + index,
                                          appeared: revealed,
                                          bounceTick: bounceTick,
+                                         isFresh: fresh.contains(achievement.id),
+                                         unlockTick: unlockTick,
                                          medalSize: medalSize,
                                          zoom: zoom) {
                                 showDetail(achievement, sourceID: achievement.id, year: year)
@@ -206,15 +214,28 @@ private struct AchBookScreen: View, Equatable {
         if reduceMotion {
             appeared = true
         } else {
-            withAnimation(.smooth(duration: 0.5)) { appeared = true }
+            withMotion(Motion.reveal) { appeared = true }
         }
     }
 
     /// One celebratory bounce of all unlocked symbols once the medallions have landed.
     private func bounceAfterEntrance() async {
-        guard !reduceMotion, !LaunchMode.isScreenshot else { return }
+        guard !reduceMotion, !MotionPolicy.isStatic else { return }
         try? await Task.sleep(for: .milliseconds(560))
         bounceTick += 1
+    }
+
+    /// Medals earned since the last visit get their moment once the grid has landed: a band of light, a pop with a
+    /// ring and a "Neu" tag, one milestone haptic. Reduce Motion: the flash and the tag only.
+    private func celebrateFreshUnlocks() async {
+        guard let book, !MotionPolicy.isStatic else { return }
+        let earned = AchUnlockMemory.takeFresh(unlocked: book.unlocked.map(\.id), ticketYear: year)
+        guard !earned.isEmpty else { return }
+        try? await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 700))
+        withMotion(Motion.bouncy) {
+            fresh = earned
+            unlockTick += 1
+        }
     }
 }
 
@@ -301,7 +322,6 @@ private struct AchSummaryCard: View {
         }
     }
 
-    private var shownCount: Int { appeared ? book.unlocked.count : 0 }
 
     private var caption: String {
         if book.unlocked.isEmpty { return "Dein erster Gipfel wartet" }
@@ -324,7 +344,7 @@ private struct AchSummaryCard: View {
                 }
             }
         }
-        .animation(.spring(duration: 0.8, bounce: 0.15), value: appeared)
+        .motionAnimation(Motion.gentle, value: appeared)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Gipfelbuch")
         .accessibilityValue(accessibilitySummary)
@@ -349,10 +369,10 @@ private struct AchSummaryCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
             Kicker(text: "Erreicht")
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(String(shownCount))
+                // The screen's hero value: counts up once with the ring, then rolls on every change.
+                CountUpText(value: Double(book.unlocked.count), delay: 0.12) { String(Int($0.rounded())) }
                     .font(Theme.Typography.priceNumeral)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: Double(shownCount)))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("von \(book.total)")
@@ -406,8 +426,9 @@ private struct AchSummaryCard: View {
             onOpen(next, sourceID)
         } label: {
             HStack(spacing: Theme.Spacing.s) {
-                AchMedallion(achievement: next, size: 40, ringProgress: appeared ? next.progress : 0, showsPercentBadge: false)
-                    .matchedTransitionSource(id: sourceID, in: zoom)
+                let medal = AchMedallion(achievement: next, size: 40, ringProgress: appeared ? next.progress : 0, showsPercentBadge: false)
+                medal
+                    .zoomSource(id: sourceID, cornerRadius: medal.outerSize / 2, in: zoom)
                 VStack(alignment: .leading, spacing: 2) {
                     Kicker(text: kicker, color: isClose ? Theme.summitText : Theme.textSecondary)
                     Text(AchText.title(next))
@@ -424,6 +445,7 @@ private struct AchSummaryCard: View {
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
+                    .numericValue(next.progress)
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textTertiary)
@@ -431,7 +453,7 @@ private struct AchSummaryCard: View {
             }
             .contentShape(.rect)
         }
-        .buttonStyle(AchPressButtonStyle())
+        .buttonStyle(.pressableCard)
         .accessibilityLabel("\(kicker): \(next.title)")
         .accessibilityValue("\(AchFormat.percent(next.progress)), \(next.progressLabel)")
         .accessibilityHint("Zeigt Details zu diesem Erfolg")
@@ -457,7 +479,7 @@ private struct AchCollectionRing: View {
                 Text(AchFormat.percent(reveal ? share : 0))
                     .font(Theme.Typography.numberSmall)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: reveal ? share : 0))
+                    .numericValue(reveal ? share : 0)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text("erreicht")
@@ -504,7 +526,8 @@ private struct AchRingSegment: View {
         }
         .rotationEffect(.degrees(-90))
         .padding(lineWidth / 2)
-        .animation(.spring(duration: 0.6, bounce: 0.1).delay(0.12 + min(Double(index) * 0.03, 0.5)), value: reveal)
+        // Segments fill one after another around the ring (drawn once, Motion.gentle).
+        .motionAnimation(Motion.gentle.delay(0.12 + Motion.Duration.standard * Double(index) / n), value: reveal)
     }
 }
 
@@ -591,6 +614,9 @@ private struct AchBadgeCell: View {
     let index: Int
     let appeared: Bool
     let bounceTick: Int
+    /// Earned since the last visit: celebrated when `unlockTick` fires, tagged "Neu" for this visit.
+    let isFresh: Bool
+    let unlockTick: Int
     let medalSize: CGFloat
     let zoom: Namespace.ID
     let onTap: () -> Void
@@ -599,13 +625,25 @@ private struct AchBadgeCell: View {
 
     var body: some View {
         let isLarge = dynamicTypeSize.isAccessibilitySize
+        let celebration = isFresh ? unlockTick : 0
+        let medal = AchMedallion(achievement: achievement,
+                                 size: medalSize,
+                                 ringProgress: appeared ? achievement.progress : 0,
+                                 bounceTick: bounceTick,
+                                 shineTick: celebration)
         Button(action: onTap) {
             VStack(spacing: Theme.Spacing.xs) {
-                AchMedallion(achievement: achievement,
-                             size: medalSize,
-                             ringProgress: appeared ? achievement.progress : 0,
-                             bounceTick: bounceTick)
-                    .matchedTransitionSource(id: achievement.id, in: zoom)
+                medal
+                    .celebrate(trigger: celebration, haptic: nil)
+                    .celebrationRing(trigger: celebration, color: AchTierStyle.strokeColors(achievement.tier).last ?? Theme.gold)
+                    .overlay(alignment: .topTrailing) {
+                        if isFresh {
+                            AchNewTag()
+                                .offset(x: 6, y: -2)
+                                .motionTransition(.pop)
+                        }
+                    }
+                    .zoomSource(id: achievement.id, cornerRadius: medal.outerSize / 2, in: zoom)
                 // Caption hugs the name (no reserved second line → no hole under one-line names); cells are
                 // top-aligned, so leftover row height falls below the caption.
                 VStack(spacing: 3) {
@@ -624,10 +662,9 @@ private struct AchBadgeCell: View {
             .frame(maxWidth: .infinity, alignment: .top)
             .contentShape(.rect)
         }
-        .buttonStyle(AchPressButtonStyle())
-        .opacity(appeared ? 1 : 0)
-        .scaleEffect(appeared ? 1 : 0.86)
-        .animation(.spring(duration: 0.55, bounce: 0.32).delay(min(Double(index) * 0.04, 0.5)), value: appeared)
+        .buttonStyle(.pressable)
+        // Medals pop in once, staggered in reading order; rows that arrive later (scrolled in) are simply there.
+        .reveal(.pop, order: index + 2)
         .accessibilityLabel(achievement.title)
         .accessibilityValue(voiceOverValue)
         .accessibilityHint("Zeigt Details zu diesem Erfolg")
@@ -661,7 +698,7 @@ private struct AchBadgeCell: View {
 
     private var voiceOverValue: String {
         let tier = AchTierStyle.name(achievement.tier)
-        if achievement.isUnlocked { return "Erreicht, Stufe \(tier)" }
+        if achievement.isUnlocked { return isFresh ? "Neu erreicht, Stufe \(tier)" : "Erreicht, Stufe \(tier)" }
         return "\(AchFormat.percent(achievement.progress)) geschafft, \(achievement.progressLabel), Stufe \(tier)"
     }
 }
@@ -695,11 +732,18 @@ private struct AchNoteCard: View {
     }
 }
 
-/// Gentle press-down scale for tappable medallions.
-private struct AchPressButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .animation(.spring(duration: 0.25, bounce: 0.4), value: configuration.isPressed)
+/// "Neu" on a medal earned since the last visit (this visit only).
+private struct AchNewTag: View {
+    var body: some View {
+        Text("Neu")
+            .font(.caption2.weight(.heavy))
+            .foregroundStyle(Theme.onAccent)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Theme.summit, in: .capsule)
+            .overlay(Capsule().strokeBorder(Theme.onAccent.opacity(0.8), lineWidth: 1))
+            .shadow(color: Theme.summit.opacity(0.35), radius: 4, y: 1)
+            .fixedSize()
+            .accessibilityHidden(true)
     }
 }
