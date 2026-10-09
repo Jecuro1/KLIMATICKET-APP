@@ -281,28 +281,32 @@ final class BenefitEntity {
 
 enum DataSchema {
     static let models: [any PersistentModel.Type] = [TicketEntity.self, TripEntity.self, FavoriteRouteEntity.self, BenefitEntity.self]
+    static let storeName = "KlimaBilanz.store"
 
-    /// Persistent container in the App Group (shared with widgets) when available, otherwise the app sandbox.
-    /// Falls back to in-memory storage if the store cannot be opened, so the app never crashes on launch.
+    /// The persistent store: in the App Group container (shared with widgets) when available, otherwise in the app
+    /// sandbox's Application Support.
+    static var storeURL: URL {
+        if let group = AppGroup.containerURL { return group.appending(path: storeName) }
+        let support = URL.applicationSupportDirectory
+        try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
+        return support.appending(path: storeName)
+    }
+
+    /// Opens the persistent store. Throws instead of falling back to memory: an in-memory store would show an empty
+    /// app (onboarding, "Noch kein Ticket") and silently drop everything entered. The app target retries and shows a
+    /// recovery screen (StoreLoader); nothing may write before this succeeded.
     @MainActor
-    static func makeContainer(inMemory: Bool = false) -> ModelContainer {
+    static func openPersistentContainer() throws -> ModelContainer {
         let schema = Schema(models)
-        if inMemory {
-            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
-        }
-        let storeURL: URL
-        if let group = AppGroup.containerURL {
-            storeURL = group.appending(path: "KlimaBilanz.store")
-        } else {
-            let support = URL.applicationSupportDirectory
-            try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
-            storeURL = support.appending(path: "KlimaBilanz.store")
-        }
-        do {
-            return try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)])
-        } catch {
-            print("⚠️ ModelContainer failed: \(error) – using in-memory store")
-            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
-        }
+        return try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)])
+    }
+
+    /// Throwaway store for CI screenshots and previews only – never for real user data.
+    @MainActor
+    static func makeInMemoryContainer() -> ModelContainer {
+        let schema = Schema(models)
+        // An in-memory SQLite store has no file, no migration and no data protection – it cannot fail to open.
+        return try! ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true,
+                                                                                  groupContainer: .none, cloudKitDatabase: .none)])
     }
 }

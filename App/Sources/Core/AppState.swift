@@ -97,6 +97,8 @@ final class AppState {
     }
 
     func showToast(_ symbol: String, _ title: String, _ subtitle: String? = nil) {
+        // A failed save was just reported: the caller's "Fahrt gespeichert" right after the write must not replace it.
+        if let failedAt = saveFailureReportedAt, Date().timeIntervalSince(failedAt) < 1.5 { return }
         withAnimation(.spring(duration: 0.45, bounce: 0.3)) { toast = Toast(symbol: symbol, title: title, subtitle: subtitle) }
         let id = toast?.id
         Task { @MainActor in
@@ -104,6 +106,16 @@ final class AppState {
             if toast?.id == id { withAnimation(.easeOut(duration: 0.3)) { toast = nil } }
         }
     }
+
+    /// Called by Repository when SwiftData could not save. Toasts requested in the next 1.5 s (the caller's success
+    /// toast right after the write, also after an `await`) are dropped so they cannot cover the failure.
+    func reportSaveFailure() {
+        saveFailureReportedAt = nil
+        showToast("exclamationmark.triangle.fill", "Speichern fehlgeschlagen", "Noch nicht gesichert – wird erneut versucht")
+        saveFailureReportedAt = Date()
+    }
+
+    @ObservationIgnored private var saveFailureReportedAt: Date?
 
     func presentAddTrip(_ draft: TripDraft = TripDraft()) { tripDraft = draft }
 

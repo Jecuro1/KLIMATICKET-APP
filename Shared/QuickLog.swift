@@ -31,7 +31,27 @@ enum QuickLogQueue {
     /// Returns and clears all pending logs.
     static func drain() -> [PendingQuickLog] {
         let items = pending()
-        AppGroup.defaults.removeObject(forKey: key)
+        remove(items)
         return items
+    }
+
+    /// Removes exactly `items` (once each), keeping logs another process queued in the meantime.
+    static func remove(_ items: [PendingQuickLog]) {
+        guard !items.isEmpty else { return }
+        var toRemove: [PendingQuickLog: Int] = [:]
+        for item in items { toRemove[item, default: 0] += 1 }
+        var remaining: [PendingQuickLog] = []
+        for item in pending() {
+            if let count = toRemove[item], count > 0 {
+                toRemove[item] = count - 1
+            } else {
+                remaining.append(item)
+            }
+        }
+        if remaining.isEmpty {
+            AppGroup.defaults.removeObject(forKey: key)
+        } else if let data = try? JSONEncoder().encode(remaining) {
+            AppGroup.defaults.set(data, forKey: key)
+        }
     }
 }

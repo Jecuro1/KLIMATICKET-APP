@@ -57,6 +57,9 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
 
     /// Optimistically applies a quick-logged favourite (widget / Siri) until the app recomputes precisely.
     mutating func apply(favorite: Favorite, date: Date) {
+        // The widgets count the remaining days from `generatedAt` (WidInsight.daysRemaining): bring the stored value
+        // up to `date` before moving `generatedAt`, or the days left would jump up by the snapshot's age.
+        daysRemaining = max(0, daysRemaining - max(0, WidInsight.dayCount(from: generatedAt, to: date)))
         totalValue += favorite.value
         tripCount += 1
         distanceKm += favorite.distanceKm

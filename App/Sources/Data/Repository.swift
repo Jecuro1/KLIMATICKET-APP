@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import WidgetKit
+import OSLog
 import KlimaCore
 
 /// All writes go through here so that saving, widget refresh, reminders and cloud sync stay consistent.
@@ -8,6 +9,8 @@ import KlimaCore
 struct Repository {
     let context: ModelContext
     let app: AppState
+
+    static let log = Logger(subsystem: "com.knitelarlberg.klimabilanz", category: "store")
 
     // MARK: Trips
 
@@ -62,21 +65,52 @@ struct Repository {
     }
 
     /// Ingests quick logs queued by widgets / Siri / Control Center. Returns the number of trips added.
+    /// The queue entries are removed only after the trips were saved; when saving fails, this attempt is undone and
+    /// the entries stay queued for the next ingest (foreground, launch).
     @discardableResult
     func ingestQuickLogs() -> Int {
-        let items = QuickLogQueue.drain()
+        let items = QuickLogQueue.pending()
         guard !items.isEmpty else { return 0 }
-        let favorites = liveFavorites()
-        var added = 0
-        for item in items {
-            guard let fav = favorites.first(where: { $0.id == item.favoriteID }) else { continue }
-            context.insert(fav.makeTrip(on: item.date))
-            fav.usageCount += 1
-            fav.touch()
-            added += 1
+        // Deleted favourites count as well: the tap happened and the widget/Siri already said "erfasst". Only a
+        // favourite that is gone completely (e.g. after "Alle Daten löschen") cannot be logged.
+        var favorites: [UUID: FavoriteRouteEntity] = [:]
+        for fav in (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>())) ?? []
+        where favorites[fav.id] == nil || fav.deletedAt == nil {
+            favorites[fav.id] = fav
         }
-        commit()
-        return added
+        var inserted: [TripEntity] = []
+        var touched: [(favorite: FavoriteRouteEntity, usageCount: Int, updatedAt: Date)] = []
+        var skipped = 0
+        for item in items {
+            guard let fav = favorites[item.favoriteID] else {
+                skipped += 1
+                continue
+            }
+            let trip = fav.makeTrip(on: item.date)
+            context.insert(trip)
+            inserted.append(trip)
+            if fav.deletedAt == nil {
+                if !touched.contains(where: { $0.favorite === fav }) { touched.append((fav, fav.usageCount, fav.updatedAt)) }
+                fav.usageCount += 1
+                fav.touch()
+            }
+        }
+        // Commit even when nothing was added: the widget refresh replaces the widget's optimistic value.
+        guard commit(sync: !inserted.isEmpty) else {
+            for trip in inserted { context.delete(trip) }
+            for entry in touched {
+                entry.favorite.usageCount = entry.usageCount
+                entry.favorite.updatedAt = entry.updatedAt
+            }
+            return 0
+        }
+        QuickLogQueue.remove(items)
+        if inserted.isEmpty {
+            app.showToast("exclamationmark.triangle.fill",
+                          skipped == 1 ? "Schnellerfassung verworfen" : "\(skipped) Schnellerfassungen verworfen",
+                          "Der Favorit existiert nicht mehr")
+        }
+        return inserted.count
     }
 
     // MARK: Favourites
@@ -138,6 +172,12 @@ struct Repository {
                                 ticketNumber: "")
         next.themeRaw = ticket.themeRaw
         next.remindersRaw = ticket.remindersRaw
+        // How the holder pays carries over to the follow-up year (the edit sheet can change it).
+        next.isMonthlyPayment = ticket.isMonthlyPayment
+        next.autoRenews = ticket.autoRenews
+        next.employerContribution = ticket.employerContribution
+        next.addOnsRaw = ticket.addOnsRaw
+        next.addOnPrice = ticket.addOnPrice
         addTicket(next)
         return next
     }
@@ -150,12 +190,14 @@ struct Repository {
 
     // MARK: Bulk
 
-    /// Local-only wipe (no cloud account, or sync not configured).
+    /// Local-only wipe (no cloud account, or sync not configured). Object by object (not the batch delete, which
+    /// bypasses the registered models that live views hold); call it inside `SyncService.performLocalDataReplacement`
+    /// so no screen still shows one of them.
     func deleteAllData() {
-        try? context.delete(model: TripEntity.self)
-        try? context.delete(model: FavoriteRouteEntity.self)
-        try? context.delete(model: TicketEntity.self)
-        try? context.delete(model: BenefitEntity.self)
+        for e in (try? context.fetch(FetchDescriptor<TripEntity>())) ?? [] { context.delete(e) }
+        for e in (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>())) ?? [] { context.delete(e) }
+        for e in (try? context.fetch(FetchDescriptor<BenefitEntity>())) ?? [] { context.delete(e) }
+        for e in (try? context.fetch(FetchDescriptor<TicketEntity>())) ?? [] { context.delete(e) }
         app.settings.selectedTicketID = nil
         commit(sync: false)
     }
@@ -166,7 +208,7 @@ struct Repository {
     @discardableResult
     func deleteAllDataEverywhere() async -> Bool {
         guard app.auth.isSignedIn, app.auth.isCloudAvailable else {
-            deleteAllData()
+            await app.sync.performLocalDataReplacement { deleteAllData() }
             return true
         }
         let ok = await app.sync.deleteAllDataEverywhere(context: context, auth: app.auth)
@@ -190,6 +232,22 @@ struct Repository {
                                                                  sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
     }
 
+    /// Live trips inside `ticket`'s validity period (newest first) – what its analytics need, not every ticket year.
+    func periodTrips(_ ticket: TicketEntity) -> [TripEntity] {
+        let start = ticket.startDate, end = ticket.endDate
+        let predicate = #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start && $0.date <= end }
+        return (try? context.fetch(FetchDescriptor<TripEntity>(predicate: predicate,
+                                                               sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+    }
+
+    /// The newest live trip of any ticket year (one row).
+    func lastTrip() -> TripEntity? {
+        var descriptor = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil },
+                                                     sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 1
+        return (try? context.fetch(descriptor))?.first
+    }
+
     /// Most used stations (favourites first, then by trip frequency) – used for trip detection regions.
     func frequentStationIDs(limit: Int = 20) -> [String] {
         var counts: [String: Int] = [:]
@@ -208,42 +266,71 @@ struct Repository {
 
     // MARK: Commit
 
-    func commit(sync: Bool = true) {
-        do { try context.save() } catch { print("⚠️ save failed: \(error)") }
-        refreshWidgets()
-        if sync {
-            let context = context, app = app
-            Task { await app.sync.sync(context: context, auth: app.auth) }
+    /// Saves, then schedules the follow-up work (widget snapshot, cloud sync – see CommitEffects) instead of doing it
+    /// inside the tap. Returns false when SwiftData could not save: the user is told ("Speichern fehlgeschlagen"; the
+    /// caller's success toast is suppressed), the changes stay pending and are retried (CommitEffects, every later
+    /// commit, autosave), and neither the widgets nor the cloud see them before they are saved.
+    @discardableResult
+    func commit(sync: Bool = true) -> Bool {
+        do {
+            try context.save()
+        } catch {
+            Self.log.error("save failed: \(String(describing: error), privacy: .public)")
+            app.reportSaveFailure()
+            CommitEffects.scheduleSaveRetry(context: context, app: app)
+            return false
         }
+        CommitEffects.saveDidSucceed()
+        Analytics.invalidateCache()
+        CommitEffects.scheduleWidgetRefresh(context: context, app: app)
+        if sync { CommitEffects.scheduleSync(context: context, app: app) }
+        return true
     }
 
-    /// Writes the widget snapshot and reloads widget timelines.
+    /// Writes the widget snapshot and reloads the widget timelines – only when the snapshot really changed.
     func refreshWidgets() {
-        let tickets = liveTickets()
-        guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else {
+        CommitEffects.widgetRefreshDidRun()
+        guard let ticket = Analytics.activeTicket(in: liveTickets(), selectedID: app.settings.selectedTicketID) else {
+            guard WidgetSnapshot.store.data(forKey: WidgetSnapshot.defaultsKey) != nil else { return }
             WidgetSnapshot.store.removeObject(forKey: WidgetSnapshot.defaultsKey)
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
-        let trips = liveTrips()
-        let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: trips, favorites: liveFavorites(), catalog: app.catalog)
+        let snapshot = WidgetSnapshotBuilder.make(ticket: ticket, trips: periodTrips(ticket), lastTrip: lastTrip(),
+                                                  favorites: liveFavorites(), catalog: app.catalog)
+        // Compared with what is stored – the widget's optimistic quick log may have changed it. A snapshot from
+        // another day is always rewritten: the widgets count the remaining days from `generatedAt`.
+        if var stored = WidgetSnapshot.load(),
+           AnalyticsMemo.calendar.isDate(stored.generatedAt, inSameDayAs: snapshot.generatedAt) {
+            stored.generatedAt = snapshot.generatedAt
+            if stored == snapshot { return }
+        }
         snapshot.save()
-        WidgetCenter.shared.reloadAllTimelines()
+        WidgetCenter.shared.reloadAllTimelines()   // amortisation and quick-log widgets both read the snapshot
     }
 }
 
 enum WidgetSnapshotBuilder {
     @MainActor
     static func make(ticket: TicketEntity, trips: [TripEntity], favorites: [FavoriteRouteEntity], catalog: TariffCatalog) -> WidgetSnapshot {
+        make(ticket: ticket, trips: trips, lastTrip: trips.filter { $0.deletedAt == nil }.max { $0.date < $1.date },
+             favorites: favorites, catalog: catalog)
+    }
+
+    /// `trips` only needs the ticket period's trips; `last` is the newest live trip of any ticket year.
+    @MainActor
+    static func make(ticket: TicketEntity, trips: [TripEntity], lastTrip last: TripEntity?, favorites: [FavoriteRouteEntity],
+                     catalog: TariffCatalog) -> WidgetSnapshot {
         let a = Analytics.make(ticket: ticket, trips: trips, catalog: catalog)
-        let last = trips.filter { $0.deletedAt == nil }.max { $0.date < $1.date }
         let values = a.series.map(\.value)
         let step = max(1, values.count / 40)
         let sparkline = stride(from: 0, to: values.count, by: step).map { values[$0] } + (values.last.map { [$0] } ?? [])
         return WidgetSnapshot(
             generatedAt: Date(),
             ticketName: ticket.name,
-            ticketPrice: ticket.price,
+            // The own share (price + add-ons − employer contribution) – what totalValue, amortizedFraction and
+            // isPaidOff are measured against, here and in the widgets' optimistic quick-log update.
+            ticketPrice: a.summary.ticketPrice,
             totalValue: a.summary.totalValue,
             amortizedFraction: a.summary.amortizedFraction,
             tripCount: a.summary.tripCount,
