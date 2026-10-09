@@ -260,6 +260,58 @@ struct WidLockStage: View {
     }
 }
 
+// MARK: - StandBy stage
+
+/// StandBy (iPhone on its side at the charger): the system shows two small widgets side by side on black, without
+/// their container background and in the dark appearance – exactly what is drawn here.
+struct WidStandByStage: View {
+    let snapshot: WidgetSnapshot
+
+    @State private var stageWidth: CGFloat = 358
+
+    /// Two 170-pt widgets and their gaps in the stage width (never larger than real size).
+    private var scale: CGFloat { min(1, max(0.5, (stageWidth - 3 * 14) / 340)) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            WidStageTitle(title: "StandBy", caption: "Quer am Ladekabel: dein Ticket groß neben der Uhr – auch nachts gut lesbar.")
+            stage
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+        }
+    }
+
+    private var stage: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sheet, style: .continuous)
+        let side = 170 * scale
+        return HStack(spacing: 14 * scale) {
+            widget { AmortizationWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false) }
+                .frame(width: side, height: side)
+            widget { QuickLogWidgetView(snapshot: snapshot, family: .systemSmall, isInteractive: false) }
+                .frame(width: side, height: side)
+        }
+        .padding(.vertical, 18 * scale)
+        .frame(maxWidth: .infinity)
+        .background(Color.black)
+        .clipShape(shape)
+        .overlay { shape.strokeBorder(Color.white.opacity(0.12), lineWidth: 0.6) }
+        .environment(\.colorScheme, .dark)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.width
+        } action: { width in
+            stageWidth = width
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("StandBy-Vorschau")
+    }
+
+    private func widget<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(width: 170, height: 170)
+            .clipShape(RoundedRectangle(cornerRadius: WidLayout.cornerRadius, style: .continuous))
+            .scaleEffect(scale)
+    }
+}
+
 /// Blue-hour wallpaper with stars and a low ridge horizon (always dark). The stars leave a gap behind the inline
 /// row (24–46 pt) – a star beside "75 % rentiert" reads as punctuation – and the ridges stay below the accessory row.
 private struct WidLockWallpaper: View {

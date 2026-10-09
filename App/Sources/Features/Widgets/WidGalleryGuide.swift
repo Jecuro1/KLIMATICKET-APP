@@ -114,12 +114,12 @@ struct WidControlCenterSection: View {
         let title = favorite?.title ?? "Pendeln"
         let symbol = favorite?.modeSymbol ?? "train.side.front.car"
         return Button(action: tryFavorite) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: showsLogged ? "checkmark" : symbol)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.white)
                     .symbolReplaceTransition()
-                    .frame(width: 34, height: 34)
+                    .frame(width: 30, height: 30)
                     .background(Circle().fill(showsLogged ? AnyShapeStyle(Theme.positive.gradient) : AnyShapeStyle(Theme.gold.gradient)))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
@@ -132,12 +132,13 @@ struct WidControlCenterSection: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.white.opacity(0.7))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                         .contentTransition(.opacity)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 6)
-            .padding(.trailing, 8)
+            .padding(.leading, 8)
+            .padding(.trailing, 6)
             .frame(width: 102, height: 46)
             .background(Capsule().fill(Color.white.opacity(0.14)))
             .contentShape(.capsule)

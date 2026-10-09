@@ -46,7 +46,7 @@ struct WidSiriSection: View {
                     .foregroundStyle(isSelected ? Theme.accent : Theme.textTertiary)
                     .frame(width: 18)
                     .accessibilityHidden(true)
-                Text("„\(item.text(favorite: favoriteTitle))“")
+                Text("„\(WidSiriPhrase.unbreakableNames(item.text(favorite: favoriteTitle)))“")
                     .font(.subheadline.weight(isSelected ? .semibold : .regular))
                     .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
                     .multilineTextAlignment(.leading)
@@ -79,9 +79,10 @@ struct WidSiriSection: View {
     private var answer: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Image(systemName: "waveform")
                     .symbolRenderingMode(.hierarchical)
+                    .accessibilityHidden(true)
                 Text(dialog)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -146,6 +147,14 @@ enum WidSiriPhrase: String, CaseIterable, Identifiable {
         case .balance: "Hat sich mein KlimaTicket in KlimaBilanz gelohnt?"
         case .favorite: "\(favorite) in KlimaBilanz erfassen"
         case .addTrip: "Fahrt in KlimaBilanz erfassen"
+        }
+    }
+
+    /// "KlimaBilanz" / "KlimaTicket" never hyphenate across lines ("Klima-" | "Bilanz"): word joiners between their
+    /// letters (display only – VoiceOver gets the plain text).
+    static func unbreakableNames(_ text: String) -> String {
+        ["KlimaBilanz", "KlimaTicket"].reduce(text) { result, name in
+            result.replacingOccurrences(of: name, with: name.map(String.init).joined(separator: "\u{2060}"))
         }
     }
 

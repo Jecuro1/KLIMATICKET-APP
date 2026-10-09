@@ -39,8 +39,11 @@ struct WidgetGalleryView: View {
                         .reveal(order: 6)
                         .scrollCardTransition()
                         .id(WidGallerySection.lock)
-                    WidControlCenterSection(favorite: shown.favorites.first) { openAddTrip() }
+                    WidStandByStage(snapshot: shown)
                         .reveal(order: 7)
+                        .scrollCardTransition()
+                    WidControlCenterSection(favorite: shown.favorites.first) { openAddTrip() }
+                        .reveal(order: 8)
                         .scrollCardTransition()
                     WidSiriSection(snapshot: shown)
                         .reveal(order: 8)
