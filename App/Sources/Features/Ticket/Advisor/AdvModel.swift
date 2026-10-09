@@ -14,15 +14,60 @@ enum AdvAdvisor {
     }
 
     /// All advisor sections for `ticket`, priced with the app's fare estimator (1st vs. 2nd class per relation).
+    /// Memoised on its exact inputs (`AdvMemo`): it prices every train trip twice, far too much for every body pass of
+    /// the Ticket tab (Ratgeber entry card) and the Ratgeber while scrolling, toggling or presenting a sheet.
     static func advice(for ticket: TicketEntity, trips: [TripEntity], app: AppState, now: Date = Date()) -> TicketAdvice {
         let period = ticket.period
+        var inPeriod: [TripEntity] = []
+        var stamps: [AnalyticsMemo.TripStamp] = []
+        var pastTrips = 0
+        for trip in trips where trip.deletedAt == nil {
+            let date = trip.date
+            guard period.contains(date) else { continue }
+            inPeriod.append(trip)
+            stamps.append(AnalyticsMemo.TripStamp(id: trip.id, updatedAt: trip.updatedAt, date: date))
+            if date <= now { pastTrips += 1 }
+        }
+        let advisorTicket = Self.ticket(ticket)
+        let catalog = app.catalog
+        let key = AdvMemo.Key(ticket: advisorTicket, catalogVersion: catalog.version,
+                              day: AnalyticsMemo.calendar.startOfDay(for: now), isAfterEnd: now > period.end,
+                              pastTrips: pastTrips, trips: stamps)
+        if let cached = AdvMemo.value(for: key) { return cached }
         let estimator = app.estimator
         let stations = app.stations
-        let inPeriod = trips.filter { $0.deletedAt == nil && period.contains($0.date) }
         let advisorTrips = inPeriod.map { trip in
             AdvisorTrip.make(trip.record, travelClass: trip.travelClass, estimator: estimator, stations: stations)
         }
-        return TicketAdvisor.advise(ticket: Self.ticket(ticket), trips: advisorTrips, catalog: app.catalog, now: now)
+        let advice = TicketAdvisor.advise(ticket: advisorTicket, trips: advisorTrips, catalog: catalog, now: now)
+        AdvMemo.insert(advice, for: key)
+        return advice
+    }
+}
+
+/// Last two advices (the Ratgeber entry card and the pushed Ratgeber usually ask for the same one). The key holds every
+/// input: the ticket fields, the catalog version, `now` reduced to the Vienna day / past-the-end / number of past trips,
+/// and per in-period trip id, date and `updatedAt` (every edit – also of the travel class – stamps `updatedAt`).
+@MainActor
+private enum AdvMemo {
+    struct Key: Hashable {
+        var ticket: AdvisorTicket
+        var catalogVersion: Int
+        var day: Date
+        var isAfterEnd: Bool
+        var pastTrips: Int
+        var trips: [AnalyticsMemo.TripStamp]
+    }
+
+    private static var entries: [(key: Key, value: TicketAdvice)] = []
+
+    static func value(for key: Key) -> TicketAdvice? {
+        entries.first(where: { $0.key == key })?.value
+    }
+
+    static func insert(_ value: TicketAdvice, for key: Key) {
+        entries.insert((key, value), at: 0)
+        if entries.count > 2 { entries.removeLast(entries.count - 2) }
     }
 }
 

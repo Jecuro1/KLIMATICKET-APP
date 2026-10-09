@@ -7,10 +7,12 @@ struct TktValidityCard: View {
     var start: Date
     var end: Date
     var summary: SavingsSummary
-    var now: Date = Date()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shownDays: Double = 0
+
+    /// Read when the body runs – a stored `now = Date()` would differ on every parent update and defeat SwiftUI's diffing.
+    private var now: Date { Date() }
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.l) {
@@ -84,8 +86,9 @@ struct TktValidityCard: View {
         case .upcoming:
             return "Startet am \(Format.date(start, .long)), \(Format.days(summary.daysTotal)) gültig"
         case .expired:
-            let net = summary.net
-            return net >= 0 ? "Ticketjahr beendet, \(Format.euro(net, decimals: 0)) gespart" : "Ticketjahr beendet, \(Format.euro(-net, decimals: 0)) gefehlt"
+            return summary.isPaidOff
+                ? "Ticketjahr beendet, \(SummitFigures.euro(summary.shownProfitEuro)) gespart"
+                : "Ticketjahr beendet, \(SummitFigures.euro(summary.shownRemainingEuro)) gefehlt"
         case .active:
             guard summary.tripCount > 0 else { return "Erfasse deine Fahrten für eine Prognose." }
             let delta = planDelta
@@ -100,9 +103,11 @@ struct TktValidityCard: View {
             return Text("Startet am \(Format.date(start, .long)) · \(Format.days(summary.daysTotal)) gültig")
                 .foregroundStyle(Theme.textSecondary)
         case .expired:
-            let net = summary.net
-            let result = net >= 0 ? "\(TktText.signedEuro(net)) gespart" : "\(Format.euro(-net, decimals: 0)) gefehlt"
-            let color = net >= 0 ? Theme.positiveText : Theme.summitText
+            // Whole euros from the same rounded figures as the Übersicht ("– € 0" can never appear).
+            let paidOff = summary.isPaidOff
+            let result = paidOff ? "+ \(SummitFigures.euro(summary.shownProfitEuro)) gespart"
+                                 : "\(SummitFigures.euro(summary.shownRemainingEuro)) gefehlt"
+            let color = paidOff ? Theme.positiveText : Theme.summitText
             return Text("Ticketjahr beendet · \(Text(result).foregroundStyle(color).fontWeight(.semibold))")
                 .foregroundStyle(Theme.textSecondary)
         case .active:

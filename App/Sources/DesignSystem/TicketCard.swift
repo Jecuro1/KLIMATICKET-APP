@@ -17,19 +17,28 @@ enum TicketTheme: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Three gradient stops (parsed once – the pass re-renders while it tilts).
     var colors: [Color] {
         switch self {
-        case .twilight: [Color(hex: "#12284E"), Color(hex: "#1B3A70"), Color(hex: "#2C4A86")]
-        case .aurora: [Color(hex: "#3B6CFF"), Color(hex: "#6A4DFF"), Color(hex: "#B05CFF")]
-        case .alpenglow: [Color(hex: "#FF9A6B"), Color(hex: "#FF6F91"), Color(hex: "#8A5CFF")]
-        case .glacier: [Color(hex: "#20C3B0"), Color(hex: "#2E8BFF"), Color(hex: "#3A4CC9")]
-        case .signal: [Color(hex: "#FFE04A"), Color(hex: "#FFD100"), Color(hex: "#FFB800")]
-        case .night: [Color(hex: "#1B2140"), Color(hex: "#2B2F5C"), Color(hex: "#0E1024")]
+        case .twilight: Self.twilightColors
+        case .aurora: Self.auroraColors
+        case .alpenglow: Self.alpenglowColors
+        case .glacier: Self.glacierColors
+        case .signal: Self.signalColors
+        case .night: Self.nightColors
         }
     }
 
+    private static let twilightColors = [Color(hex: "#12284E"), Color(hex: "#1B3A70"), Color(hex: "#2C4A86")]
+    private static let auroraColors = [Color(hex: "#3B6CFF"), Color(hex: "#6A4DFF"), Color(hex: "#B05CFF")]
+    private static let alpenglowColors = [Color(hex: "#FF9A6B"), Color(hex: "#FF6F91"), Color(hex: "#8A5CFF")]
+    private static let glacierColors = [Color(hex: "#20C3B0"), Color(hex: "#2E8BFF"), Color(hex: "#3A4CC9")]
+    private static let signalColors = [Color(hex: "#FFE04A"), Color(hex: "#FFD100"), Color(hex: "#FFB800")]
+    private static let nightColors = [Color(hex: "#1B2140"), Color(hex: "#2B2F5C"), Color(hex: "#0E1024")]
+    private static let signalInk = Color(hex: "#111111")
+
     /// Text colour on the card.
-    var ink: Color { self == .signal ? Color(hex: "#111111") : .white }
+    var ink: Color { self == .signal ? Self.signalInk : .white }
 
     /// Unknown/empty raw values fall back to the signature twilight pass.
     static func from(_ raw: String) -> TicketTheme { TicketTheme(rawValue: raw) ?? .twilight }
@@ -38,6 +47,10 @@ enum TicketTheme: String, CaseIterable, Identifiable {
 /// Signature pass ("Begleitkarte · kein Fahrschein"): twilight gradient with radial glows, topographic contour lines,
 /// iridescent foil + holo seal that follow the device tilt, perforation with real notches, and a stub showing the
 /// amortisation with a mini summit. Never shows a scannable code – the official ticket stays the real document.
+///
+/// Built for the tilt (up to 30 updates a second): only the foil and the holo seal read `roll`/`pitch`. The printed
+/// face is an `Equatable` view that SwiftUI skips while only the tilt changes, and the shadow sits on a separate static
+/// layer behind it, so the rotation never re-renders the texts and gradients or re-rasterises the 26 pt shadow.
 struct TicketCard: View {
     var title: String
     var subtitle: String
@@ -58,12 +71,58 @@ struct TicketCard: View {
     /// "Original" capsule action (open photo/PDF or import). Nil hides the button.
     var onOriginal: (() -> Void)? = nil
 
-    private let height: CGFloat = 280
-    private let notchY: CGFloat = 194
+    static let height: CGFloat = 280
+    static let notchY: CGFloat = 194
+
+    var body: some View {
+        let shape = TicketShape(notchY: Self.notchY)
+        TicketCardFace(title: title, subtitle: subtitle, holder: holder, validFrom: validFrom, validUntil: validUntil,
+                       ticketNumber: ticketNumber, theme: theme, hasPhoto: hasPhoto, amortizedFraction: amortizedFraction,
+                       valueText: valueText, onOriginal: onOriginal)
+            .equatable()
+            .overlay(alignment: .topTrailing) {
+                // Same place as the 44 pt slot the face keeps free in its top row.
+                TicketHoloSeal(roll: roll)
+                    .padding(.top, 18)
+                    .padding(.trailing, 20)
+            }
+            .overlay(TicketFoil(roll: roll, pitch: pitch).clipShape(shape).allowsHitTesting(false))
+            .overlay(TicketEdge(shape: shape).allowsHitTesting(false))
+            .background(TicketShadow(shape: shape, color: theme.colors[1]))
+            .rotation3DEffect(.degrees(roll * 3), axis: (x: 0, y: 1, z: 0))
+            .rotation3DEffect(.degrees(-pitch * 2), axis: (x: 1, y: 0, z: 0))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title), \(subtitle), Inhaber \(holder.isEmpty ? "nicht angegeben" : holder), gültig bis \(Format.date(validUntil, .long)). Begleitkarte, kein Fahrschein.")
+    }
+}
+
+/// The printed, tilt-independent part of the pass: background, texts, stub and perforation, clipped to the notched outline.
+private struct TicketCardFace: View, Equatable {
+    var title: String
+    var subtitle: String
+    var holder: String
+    var validFrom: Date
+    var validUntil: Date
+    var ticketNumber: String
+    var theme: TicketTheme
+    var hasPhoto: Bool
+    var amortizedFraction: Double?
+    var valueText: String?
+    var onOriginal: (() -> Void)?
+
+    /// Everything the face shows. The action closure cannot be compared – only whether there is one; what it does depends
+    /// on `hasPhoto`, which is compared.
+    static func == (lhs: TicketCardFace, rhs: TicketCardFace) -> Bool {
+        lhs.title == rhs.title && lhs.subtitle == rhs.subtitle && lhs.holder == rhs.holder
+            && lhs.validFrom == rhs.validFrom && lhs.validUntil == rhs.validUntil && lhs.ticketNumber == rhs.ticketNumber
+            && lhs.theme == rhs.theme && lhs.hasPhoto == rhs.hasPhoto && lhs.amortizedFraction == rhs.amortizedFraction
+            && lhs.valueText == rhs.valueText && (lhs.onOriginal == nil) == (rhs.onOriginal == nil)
+    }
+
+    private var notchY: CGFloat { TicketCard.notchY }
 
     var body: some View {
         let ink = theme.ink
-        let shape = TicketShape(notchY: notchY)
         ZStack(alignment: .topLeading) {
             background
             VStack(alignment: .leading, spacing: 0) {
@@ -76,20 +135,8 @@ struct TicketCard: View {
             perforation(ink: ink)
         }
         .foregroundStyle(ink)
-        .frame(height: height)
-        .clipShape(shape)
-        .overlay(foil.clipShape(shape).allowsHitTesting(false))
-        .overlay(
-            shape.stroke(LinearGradient(stops: [.init(color: .white.opacity(0.7), location: 0), .init(color: .white.opacity(0.08), location: 0.4),
-                                                .init(color: .white.opacity(0), location: 0.6), .init(color: Color(hex: "#FFBEA0").opacity(0.45), location: 1)],
-                                        startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
-        )
-        .shadow(color: Color(red: 16 / 255, green: 36 / 255, blue: 80 / 255).opacity(0.38), radius: 26, y: 22)
-        .shadow(color: Color(red: 16 / 255, green: 36 / 255, blue: 80 / 255).opacity(0.18), radius: 10, y: 6)
-        .rotation3DEffect(.degrees(roll * 3), axis: (x: 0, y: 1, z: 0))
-        .rotation3DEffect(.degrees(-pitch * 2), axis: (x: 1, y: 0, z: 0))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title), \(subtitle), Inhaber \(holder.isEmpty ? "nicht angegeben" : holder), gültig bis \(Format.date(validUntil, .long)). Begleitkarte, kein Fahrschein.")
+        .frame(height: TicketCard.height)
+        .clipShape(TicketShape(notchY: notchY))
     }
 
     // MARK: Parts
@@ -101,14 +148,15 @@ struct TicketCard: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 30, height: 30)
-                    .background(LinearGradient(colors: [Color(hex: "#3B5BDB"), Color(hex: "#F29C7B")], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                in: .rect(cornerRadius: 8, style: .continuous))
+                    .background(Self.logoGradient, in: .rect(cornerRadius: 8, style: .continuous))
                 Text("KlimaBilanz").font(.system(size: 15, weight: .semibold))
                 Spacer()
-                holoSeal
+                // The holo seal is drawn by `TicketCard` on top (it follows the tilt).
+                Color.clear
+                    .frame(width: 44, height: 44)
             }
             .padding(.top, 18)
-            Text(subtitle.uppercased(with: Locale(identifier: "de_AT")))
+            Text(subtitle.uppercased(with: Format.locale))
                 .font(.system(size: 11, weight: .semibold))
                 .tracking(1.3)
                 .opacity(0.66)
@@ -221,10 +269,17 @@ struct TicketCard: View {
         }
     }
 
-    private var foil: some View {
-        AngularGradient(colors: [Color(hex: "#FF9FB1"), Color(hex: "#FFD6A5"), Color(hex: "#FDFFB6"), Color(hex: "#CAFFBF"),
-                                 Color(hex: "#9BF6FF"), Color(hex: "#A0C4FF"), Color(hex: "#BDB2FF"), Color(hex: "#FFC6FF"), Color(hex: "#FF9FB1")],
-                        center: UnitPoint(x: 0.62, y: 0.4), angle: .degrees(210 + roll * 25))
+    private static let logoGradient = LinearGradient(colors: [Color(hex: "#3B5BDB"), Color(hex: "#F29C7B")],
+                                                     startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+/// Iridescent foil band that slides with the tilt.
+private struct TicketFoil: View {
+    var roll: Double
+    var pitch: Double
+
+    var body: some View {
+        AngularGradient(colors: Self.colors, center: UnitPoint(x: 0.62, y: 0.4), angle: .degrees(210 + roll * 25))
             .blendMode(.overlay)
             .opacity(0.5)
             .mask(
@@ -234,19 +289,61 @@ struct TicketCard: View {
             )
     }
 
-    private var holoSeal: some View {
+    private static let colors = [Color(hex: "#FF9FB1"), Color(hex: "#FFD6A5"), Color(hex: "#FDFFB6"), Color(hex: "#CAFFBF"),
+                                 Color(hex: "#9BF6FF"), Color(hex: "#A0C4FF"), Color(hex: "#BDB2FF"), Color(hex: "#FFC6FF"),
+                                 Color(hex: "#FF9FB1")]
+}
+
+/// Holographic seal in the top-right corner; its sheen turns with the tilt.
+private struct TicketHoloSeal: View {
+    var roll: Double
+
+    var body: some View {
         ZStack {
             Circle()
-                .fill(AngularGradient(colors: [Color(hex: "#FFB3F0"), Color(hex: "#9EF3FF"), Color(hex: "#FFF59E"), Color(hex: "#B5A8FF"), Color(hex: "#FFB3F0")],
-                                      center: .center, angle: .degrees(roll * 90)))
+                .fill(AngularGradient(colors: Self.colors, center: .center, angle: .degrees(roll * 90)))
             Circle().strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [2, 2])).foregroundStyle(.white.opacity(0.7)).padding(5)
             Image(systemName: "mountain.2.fill")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color(hex: "#1B2A55").opacity(0.75))
+                .foregroundStyle(Self.glyph)
         }
         .frame(width: 44, height: 44)
         .accessibilityHidden(true)
     }
+
+    private static let colors = [Color(hex: "#FFB3F0"), Color(hex: "#9EF3FF"), Color(hex: "#FFF59E"), Color(hex: "#B5A8FF"),
+                                 Color(hex: "#FFB3F0")]
+    private static let glyph = Color(hex: "#1B2A55").opacity(0.75)
+}
+
+/// Light rim along the notched outline (bright top-left, warm bottom-right).
+private struct TicketEdge: View {
+    var shape: TicketShape
+
+    var body: some View {
+        shape.stroke(Self.gradient, lineWidth: 1)
+    }
+
+    private static let gradient = LinearGradient(
+        stops: [.init(color: .white.opacity(0.7), location: 0), .init(color: .white.opacity(0.08), location: 0.4),
+                .init(color: .white.opacity(0), location: 0.6), .init(color: Color(hex: "#FFBEA0").opacity(0.45), location: 1)],
+        startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+/// The pass's drop shadow on its own layer behind it: the outline filled in the card's mid colour (only its antialiased
+/// edge can show) casts both shadows, and nothing on it changes while the card tilts.
+private struct TicketShadow: View {
+    var shape: TicketShape
+    var color: Color
+
+    var body: some View {
+        shape
+            .fill(color)
+            .shadow(color: Self.shadowColor.opacity(0.38), radius: 26, y: 22)
+            .shadow(color: Self.shadowColor.opacity(0.18), radius: 10, y: 6)
+    }
+
+    private static let shadowColor = Color(red: 16 / 255, green: 36 / 255, blue: 80 / 255)
 }
 
 /// Tiny summit route used on the ticket stub.

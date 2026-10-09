@@ -304,7 +304,10 @@ struct TktPaymentCard: View {
         let paid = ticket.paidSoFar()
         let count = rate > 0 ? min(12, max(0, Int((paid / rate).rounded()))) : 0
         let covered = totalValue >= paid
-        let status: String = covered ? "Deine Raten sind schon gedeckt" : "Noch \(Format.euroPrecise(paid - totalValue)) bis deine Raten gedeckt sind"
+        // Whole euros that add up with the line below ("€ 583 Fahrtwert · € 817 bezahlt" → "Noch € 234").
+        let shownValue = SummitFigures.shownTotal(value: totalValue, price: paid, isPaidOff: covered)
+        let missing = SummitFigures.shownRemaining(value: totalValue, price: paid, isPaidOff: covered)
+        let status: String = covered ? "Deine Raten sind schon gedeckt" : "Noch \(SummitFigures.euro(missing)) bis deine Raten gedeckt sind"
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HStack(alignment: .lastTextBaseline, spacing: Theme.Spacing.s) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -331,7 +334,7 @@ struct TktPaymentCard: View {
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(covered ? Theme.positiveText : Theme.summitText)
-                Text("\(Format.euro(totalValue, decimals: 0)) Fahrtwert · \(Format.euro(paid, decimals: 0)) bezahlt")
+                Text("\(SummitFigures.euro(shownValue)) Fahrtwert · \(SummitFigures.euro(paid)) bezahlt")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
             }

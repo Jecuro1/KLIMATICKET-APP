@@ -172,24 +172,16 @@ enum TktText {
         return a == b ? "\(a)" : "\(a)/\(String(format: "%02d", b % 100))"
     }
 
-    /// "+ € 412" / "– € 120" (whole euros).
-    static func signedEuro(_ value: Double) -> String {
-        value >= 0 ? "+ \(Format.euro(value, decimals: 0))" : "– \(Format.euro(-value, decimals: 0))"
-    }
-
-    /// Amortisation percent that never claims "100 %" before the break-even (DESIGN_FINAL_SYNTHESIS §4.3).
+    /// Amortisation percent that never claims "100 %" before the break-even (DESIGN_FINAL_SYNTHESIS §4.3) – the same
+    /// rounding as the Übersicht hero (`SummitFigures.percent`).
     static func percent(_ fraction: Double) -> String {
-        let raw = max(fraction, 0) * 100
-        let shown = fraction < 1 ? min(99, raw.rounded()) : raw.rounded(.down)
-        return "\(Format.number(shown)) %"
+        "\(Format.number(SummitFigures.percent(fraction))) %"
     }
 
     /// The fraction rounded the way `percent` shows it, for components that format it themselves: the DS `TicketCard`
     /// stub uses `Format.percent`, which would turn 99,6 % into "100 %" before the break-even (§4.3).
     static func displayFraction(_ fraction: Double) -> Double {
-        let raw = max(fraction, 0) * 100
-        let shown = fraction < 1 ? min(99, raw.rounded()) : raw.rounded(.down)
-        return shown / 100
+        SummitFigures.percent(fraction) / 100
     }
 
     /// Catalog texts carry internal references ("– Details siehe rules.exclusions."); strip them for display.
@@ -204,18 +196,81 @@ enum TktText {
 
 // MARK: - Selection
 
+@MainActor
 enum TktSelection {
-    /// `Repository.addTicket` selects the new ticket app-wide. While another ticket is valid today, a ticket year that has
+    /// `Repository.addTicket` pins the new ticket app-wide. While another ticket is valid today, a ticket year that has
     /// not started yet must not replace it – Übersicht, Statistik and the widgets would show 0 % of a ticket you cannot use
-    /// yet. Restores the previous selection in that case; returns true when it did.
-    @MainActor
+    /// yet. Returns true when it kept the running ticket.
+    ///
+    /// It goes back to automatic mode (no pin) rather than restoring the previous pin: `Analytics.activeTicket` then shows
+    /// the running ticket now and switches to the follow-up by itself on its first day. A restored pin would keep the
+    /// expired year on every screen and in the widget after that day. The running ticket stays pinned only when automatic
+    /// mode would show a different (overlapping) ticket.
     @discardableResult
     static func keepRunningTicket(repo: Repository, app: AppState, added: TicketEntity,
                                   previousSelection: UUID?, running: TicketEntity?) -> Bool {
         guard let running, running.id != added.id, running.isActive, added.startDate > Date() else { return false }
-        app.settings.selectedTicketID = previousSelection
+        let automatic = Analytics.activeTicket(in: repo.liveTickets(), selectedID: nil)
+        app.settings.selectedTicketID = automatic?.id == running.id ? nil : running.id
         repo.refreshWidgets()
         return true
+    }
+
+    /// Vienna day of the last `releaseStalePin` check.
+    private static var lastPinCheckDay: Date?
+
+    /// A pinned ticket year that has expired while a later one is valid today goes back to automatic mode, so every
+    /// screen and the widget follow the running ticket. Every ticket used to be pinned when it was added (and a ticket
+    /// picked in „Ticket-Verlauf“ stays pinned), so without this the old year would stay on screen forever.
+    /// Checked once per day – at launch and on the first activation of a new day – so an old year picked on purpose
+    /// survives switching apps. Returns true when it changed the selection (refresh the widgets then).
+    @discardableResult
+    static func releaseStalePin(tickets: [TicketEntity], app: AppState, now: Date = Date()) -> Bool {
+        let day = Calendar.vienna.startOfDay(for: now)
+        guard lastPinCheckDay != day else { return false }
+        lastPinCheckDay = day
+        guard let id = app.settings.selectedTicketID,
+              let pinned = tickets.first(where: { $0.id == id && $0.deletedAt == nil }), now > pinned.endDate,
+              tickets.contains(where: { $0.deletedAt == nil && $0.startDate > pinned.endDate
+                                        && $0.startDate <= now && now <= $0.endDate }) else { return false }
+        app.settings.selectedTicketID = nil
+        return true
+    }
+}
+
+// MARK: - Inline title
+
+/// Scroll-driven inline navigation title (Ticket, Ratgeber). The flag lives in this observable box and only
+/// `TktInlineTitle` reads it, so crossing the threshold re-renders the toolbar title – not the screen owning the scroll view.
+@Observable
+@MainActor
+final class TktTitleChrome {
+    var showsInlineTitle = false
+}
+
+/// The principal toolbar title that fades in once the large title has scrolled away.
+struct TktInlineTitle: View {
+    let title: String
+    let chrome: TktTitleChrome
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(Theme.textPrimary)
+            .opacity(chrome.showsInlineTitle ? 1 : 0)
+            .accessibilityHidden(!chrome.showsInlineTitle)
+    }
+}
+
+extension View {
+    /// Flips `chrome.showsInlineTitle` when the content scrolls past `threshold` (apply to the ScrollView).
+    func tktInlineTitleTracking(_ chrome: TktTitleChrome, threshold: CGFloat = 52) -> some View {
+        onScrollGeometryChange(for: Bool.self, of: { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > threshold
+        }, action: { _, isPastHeader in
+            guard chrome.showsInlineTitle != isPastHeader else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { chrome.showsInlineTitle = isPastHeader }
+        })
     }
 }
 

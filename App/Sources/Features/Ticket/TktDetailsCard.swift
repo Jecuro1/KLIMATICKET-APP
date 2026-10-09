@@ -358,11 +358,12 @@ private struct TktHistoryRow: View {
         if now < t.startDate {
             return ("–", "ab \(Format.dayMonth(t.startDate))", Theme.textSecondary)
         }
-        let net = item.summary.net
-        if net >= 0 {
-            return (TktText.signedEuro(net), "rentiert", Theme.positiveText)
+        // Whole euros from the same rounded figures as the Übersicht ("– € 0 noch offen" can never appear).
+        let summary = item.summary
+        if summary.isPaidOff {
+            return ("+ " + SummitFigures.euro(summary.shownProfitEuro), "rentiert", Theme.positiveText)
         }
-        return (TktText.signedEuro(net), t.isExpired ? "nicht rentiert" : "noch offen",
+        return ("– " + SummitFigures.euro(summary.shownRemainingEuro), t.isExpired ? "nicht rentiert" : "noch offen",
                 t.isExpired ? Theme.summitText : Theme.textPrimary)
     }
 }

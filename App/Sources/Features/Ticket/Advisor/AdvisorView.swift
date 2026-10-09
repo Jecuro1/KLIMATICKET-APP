@@ -13,7 +13,8 @@ struct AdvisorView: View {
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date)
     private var trips: [TripEntity]
 
-    @State private var showsInlineTitle = false
+    /// Inline-title flag, read only by the toolbar title (scrolling past the header never re-runs this body).
+    @State private var titleChrome = TktTitleChrome()
     @State private var editRequest: TktEditRequest?
     @State private var jumpCount = 0
     @State private var didInitialScroll = false
@@ -40,11 +41,7 @@ struct AdvisorView: View {
                 .padding(.bottom, Theme.Spacing.xxl)
             }
             .scrollEdgeEffectStyle(.soft, for: .all)
-            .onScrollGeometryChange(for: Bool.self, of: { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 52
-            }, action: { _, isPastHeader in
-                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isPastHeader }
-            })
+            .tktInlineTitleTracking(titleChrome)
             .task {
                 guard let initialAnchor, !didInitialScroll else { return }
                 didInitialScroll = true
@@ -57,11 +54,7 @@ struct AdvisorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Ratgeber")
-                    .font(.headline)
-                    .foregroundStyle(Theme.textPrimary)
-                    .opacity(showsInlineTitle ? 1 : 0)
-                    .accessibilityHidden(!showsInlineTitle)
+                TktInlineTitle(title: "Ratgeber", chrome: titleChrome)
             }
             .sharedBackgroundVisibility(.hidden)
         }

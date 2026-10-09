@@ -28,7 +28,8 @@ extension TktCardFace {
                   theme: TicketTheme.from(ticket.themeRaw),
                   // Pre-rounded so the stub's `Format.percent` never shows "100 %" before the break-even.
                   amortizedFraction: summary.map { TktText.displayFraction($0.amortizedFraction) },
-                  valueText: summary.map { "\(Format.euro($0.totalValue, decimals: 0)) von \(Format.euro($0.ticketPrice, decimals: 0))" })
+                  // Same whole-euro figures as the Übersicht hero ("€ 1.050 von € 1.400", never the price before the summit).
+                  valueText: summary.map { "\(SummitFigures.euro($0.shownTotalEuro)) von \(SummitFigures.euro($0.ticketPrice))" })
     }
 }
 
@@ -38,6 +39,8 @@ struct TktCardStack: View {
     let ticket: TicketEntity
     let face: TktCardFace
     var isImportingPhoto: Bool
+    /// A sheet of the Ticket tab (edit, photo picker) covers the pass – the tilt pauses.
+    var isCovered: Bool = false
     var onAddPhoto: () -> Void
     var onRemovePhoto: () -> Void
 
@@ -73,7 +76,7 @@ struct TktCardStack: View {
 
     @ViewBuilder
     private func flipCard(hasPhoto: Bool) -> some View {
-        let front = TktTiltFront(face: face, hasPhoto: hasPhoto, tiltActive: !isFlipped, onOriginal: {
+        let front = TktTiltFront(face: face, hasPhoto: hasPhoto, tiltActive: !isFlipped && !isCovered, onOriginal: {
             if hasPhoto { flip() } else { onAddPhoto() }
         })
         .accessibilityAddTraits(.isButton)
@@ -192,7 +195,9 @@ private struct TktFlipContainer<Front: View, Back: View>: View, Animatable {
 
 // MARK: - Front (tilt)
 
-/// Owns the motion manager so that only this small view re-renders at 30 Hz while the device tilts.
+/// Owns the motion manager so that only this small view re-renders at 30 Hz while the device tilts (and inside it only the
+/// foil and the seal – see `TicketCard`). The sensor runs only while the pass can be seen: not flipped, not scrolled away,
+/// not under a sheet (the Ticket tab's own or an app-level one), not in Low Power Mode.
 private struct TktTiltFront: View {
     var face: TktCardFace
     var hasPhoto: Bool
@@ -200,22 +205,27 @@ private struct TktTiltFront: View {
     var onOriginal: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Set by RootView while an app-level sheet (trip editor, Einstellungen, update) is up.
+    @Environment(\.ambientSkyPaused) private var isCoveredByAppSheet
     @State private var tilt = MotionTilt()
     @State private var isRunning = false
+    @State private var isOnScreen = true
 
     var body: some View {
         TicketCard(title: face.title, subtitle: face.kicker, holder: face.holder,
                    validFrom: face.validFrom, validUntil: face.validUntil, ticketNumber: face.number,
                    theme: face.theme, roll: roll, pitch: pitch, hasPhoto: hasPhoto,
                    amortizedFraction: face.amortizedFraction, valueText: face.valueText, onOriginal: onOriginal)
+            .onScrollVisibilityChange(threshold: 0.05) { visible in isOnScreen = visible }
             .onAppear { updateMotion() }
             .onDisappear { stopMotion() }
             .onChange(of: shouldRun) { _, _ in updateMotion() }
     }
 
-    /// Off with Reduce Motion, in screenshot mode and in Low Power Mode (synthesis §8.15).
+    /// Off with Reduce Motion, in screenshot mode and in Low Power Mode (synthesis §8.15), and while nobody can see it.
     private var shouldRun: Bool {
-        tiltActive && !reduceMotion && !LaunchMode.isScreenshot && !ProcessInfo.processInfo.isLowPowerModeEnabled
+        tiltActive && isOnScreen && !isCoveredByAppSheet && !reduceMotion && !LaunchMode.isScreenshot
+            && !ProcessInfo.processInfo.isLowPowerModeEnabled
     }
 
     /// Screenshot mode shows a fixed, flattering foil position.

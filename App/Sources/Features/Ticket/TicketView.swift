@@ -19,7 +19,8 @@ struct TicketView: View {
 
     /// Drives the staggered entrance; already true in screenshot mode (end state immediately).
     @State private var appeared = LaunchMode.isScreenshot
-    @State private var showsInlineTitle = false
+    /// Inline-title flag, read only by the toolbar title (scrolling past the header never re-runs this body).
+    @State private var titleChrome = TktTitleChrome()
     @State private var editRequest: TktEditRequest?
     @State private var pendingDeletion: TicketEntity?
     @State private var showsDeleteDialog = false
@@ -76,11 +77,7 @@ struct TicketView: View {
                 walletSections(ticket: ticket, snapshot: snapshot, proxy: proxy)
             }
             .scrollEdgeEffectStyle(.soft, for: .all)
-            .onScrollGeometryChange(for: Bool.self, of: { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 52
-            }, action: { _, isPastHeader in
-                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isPastHeader }
-            })
+            .tktInlineTitleTracking(titleChrome)
             .ambientBackground(.standard, glow: 0.45 + 0.5 * snapshot.summary.progressClamped)
         }
     }
@@ -99,6 +96,7 @@ struct TicketView: View {
                 TktCardStack(ticket: ticket,
                              face: face(for: ticket, summary: snapshot.summary),
                              isImportingPhoto: isImportingPhoto,
+                             isCovered: editRequest != nil || showsPhotoPicker,
                              onAddPhoto: { showsPhotoPicker = true },
                              onRemovePhoto: { removePhoto(from: ticket) })
                     .id(ticket.id)
@@ -206,11 +204,7 @@ struct TicketView: View {
     @ToolbarContentBuilder
     private func toolbarContent(ticket: TicketEntity?, snapshot: AnalyticsSnapshot?) -> some ToolbarContent {
         ToolbarItem(placement: .principal) {
-            Text(AppTab.ticket.title)
-                .font(.headline)
-                .foregroundStyle(Theme.textPrimary)
-                .opacity(showsInlineTitle ? 1 : 0)
-                .accessibilityHidden(!showsInlineTitle)
+            TktInlineTitle(title: AppTab.ticket.title, chrome: titleChrome)
         }
         // iOS 26 wraps custom toolbar views in a shared glass capsule – it would stay visible as an empty pill while the
         // title is faded out (same as Übersicht and Statistik).
@@ -310,9 +304,16 @@ struct TicketView: View {
             .min { $0.startDate < $1.startDate }
     }
 
+    /// The other ticket years only need their result: one `SavingsCalculator.summary` over their own trips each –
+    /// not a full analytics pass per year (after every save the analytics memo is empty again).
     private func historyItems(active: TicketEntity, summary: SavingsSummary) -> [TktHistoryItem] {
-        tickets.map { item in
-            let itemSummary = item.id == active.id ? summary : Analytics.make(ticket: item, trips: trips, catalog: app.catalog).summary
+        let catalog = app.catalog
+        return tickets.map { item in
+            guard item.id != active.id else { return TktHistoryItem(ticket: item, summary: summary) }
+            let period = item.period
+            let records = trips.filter { period.contains($0.date) }.map(\.record)
+            let itemSummary = SavingsCalculator.summary(ticket: period, trips: records,
+                                                        kilometergeld: catalog.kilometergeldEUR, emissions: catalog.emissions)
             return TktHistoryItem(ticket: item, summary: itemSummary)
         }
     }
@@ -320,12 +321,13 @@ struct TicketView: View {
     private func sharePass(ticket: TicketEntity, summary: SavingsSummary) -> TktSharePass {
         let verdict: String
         if summary.isPaidOff {
-            verdict = "Mein Ticket hat sich rentiert: \(TktText.signedEuro(summary.net))"
+            verdict = "Mein Ticket hat sich rentiert: + \(SummitFigures.euro(summary.shownProfitEuro))"
         } else {
             verdict = "Mein Ticket ist zu \(TktText.percent(summary.amortizedFraction)) amortisiert"
         }
-        let tripText = summary.tripCount == 1 ? "1 Fahrt" : "\(summary.tripCount) Fahrten"
-        let value = "\(Format.euro(summary.totalValue, decimals: 0)) von \(Format.euro(summary.ticketPrice, decimals: 0))"
+        let tripText = summary.tripCount == 1 ? "1 Fahrt" : "\(Format.number(Double(summary.tripCount))) Fahrten"
+        // Whole euros from the same rounded figures as the Übersicht (never "€ 1.400 von € 1.400" before the summit).
+        let value = "\(SummitFigures.euro(summary.shownTotalEuro)) von \(SummitFigures.euro(summary.ticketPrice))"
         let detail = "\(value) · \(tripText) · \(Format.kg(summary.co2SavedKg)) CO₂ gespart"
         return TktSharePass(face: face(for: ticket, summary: summary), verdict: verdict, detail: detail)
     }

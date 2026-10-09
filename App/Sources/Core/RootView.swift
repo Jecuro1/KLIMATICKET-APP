@@ -124,6 +124,10 @@ struct RootView: View {
             case .background:
                 returnedFromBackground = true
             case .active:
+                // MARK: dashboardTicket – an expired pinned ticket year gives way to the running one (checked once a day).
+                if TktSelection.releaseStalePin(tickets: tickets, app: app) {
+                    Repository(context: context, app: app).refreshWidgets()
+                }
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
                 guard returnedFromBackground else { return }
