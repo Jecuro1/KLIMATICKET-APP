@@ -12,6 +12,8 @@ import os
 /// PointsOfInterest) and is listed in `Diagnostics/perf-tour.json` in seconds since process start. The app stays
 /// open afterwards (xctrace stops at its time limit – an attached recording hung when the target exited).
 ///
+/// With `-KBPerfTourGate YES` each phase waits for the profiler's go file instead (see `waitForGo`).
+///
 /// `-KBPerfPresent gipfelbuch` (the XCUITests) only opens the Gipfelbuch sheet after the first frame.
 @MainActor
 final class PerfTour: NSObject {
@@ -54,9 +56,23 @@ final class PerfTour: NSObject {
         Task { @MainActor in await run(tour) }
     }
 
+    /// `-KBPerfTourGate YES`: every phase waits for `Diagnostics/perf-go-<phase>` (scripts/perf_profile.sh creates it
+    /// once its sampler runs), at most 60 s.
+    static var isGated: Bool { UserDefaults.standard.bool(forKey: "KBPerfTourGate") }
+
+    private static func waitForGo(_ phase: String) async {
+        guard isGated else { return }
+        let url = Diagnostics.service.store.url("perf-go-\(phase)")
+        let deadline = Date().addingTimeInterval(60)
+        while !FileManager.default.fileExists(atPath: url.path), Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        try? FileManager.default.removeItem(at: url)
+    }
+
     private static func run(_ tour: String) async {
         // Time for an attaching profiler (scripts/perf_profile.sh) to start recording.
-        try? await Task.sleep(for: .seconds(4))
+        try? await Task.sleep(for: .seconds(isGated ? 0.5 : 4))
         let screens: [String]
         switch tour {
         case "all": screens = ["overview", "trips", "stats", "ticket", "gipfelbuch"]
@@ -67,10 +83,12 @@ final class PerfTour: NSObject {
             await phase("idle") { try? await Task.sleep(for: .seconds(6)) }
         }
         for screen in screens {
+            await waitForGo("open")
             await phase("open \(screen)") {
                 open(screen)
                 try? await Task.sleep(for: .seconds(2.5))
             }
+            await waitForGo("scroll")
             await phase("scroll \(screen)") {
                 await scrollMainScrollView()
             }

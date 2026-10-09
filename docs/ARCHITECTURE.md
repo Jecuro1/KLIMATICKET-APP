@@ -84,10 +84,11 @@ CI lädt die PNGs (hell/dunkel) als Artefakt `screenshots-<build>` des Laufs hoc
   Hitch-Metriken liefert, misst die App im Perf-Modus selbst (`PerfFrameMonitor`): Hitch Time Ratio je Bildschirm
   beim Scrollen (KVO auf `contentOffset` + `CADisplayLink`), Bildschirmwechsel (Auswahl → erstes Bild), Start
   (App.init → erstes Bild, dann 4 s Frames), Speicher (phys_footprint) → `Diagnostics/perf-*.json`; dazu
-  LaunchTrace-Marken und der Hänger-Watchdog. Danach nimmt `scripts/perf_profile.sh` je Bildschirm eine Time-Profiler-
-  Aufnahme der app-eigenen Tour auf (`-KBPerfTour <screen>`: öffnen, mit 2 400 pt/s scrollen, beenden; Phasen als
-  Signposts) und `scripts/perf_profile.py` nennt die Hauptthread-Hotspots. Alles → `$GITHUB_STEP_SUMMARY` und Artefakt
-  `perf-<run>` (`perf-summary.md/.json` = Baseline, `scripts/perf_summary.py`).
+  LaunchTrace-Marken und der Hänger-Watchdog. Vor den Tests profiliert `scripts/perf_profile.sh` je Bildschirm die
+  app-eigene Tour (`-KBPerfTour <screen> -KBPerfTourGate YES`: öffnen, mit 2 400 pt/s scrollen; jede Phase wartet auf
+  eine Go-Datei) mit `/usr/bin/sample` (1 ms), `scripts/perf_profile.py` nennt die Hauptthread-Hotspots je Phase
+  (xctrace war im CI-Simulator unbrauchbar: `--launch` mehrdeutig, Aufnahmen endeten nicht). Alles →
+  `$GITHUB_STEP_SUMMARY` und Artefakt `perf-<run>` (`perf-summary.md/.json` = Baseline, `scripts/perf_summary.py`).
 
 ## Updates
 

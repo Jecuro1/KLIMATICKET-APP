@@ -11,7 +11,7 @@ Renders Markdown for $GITHUB_STEP_SUMMARY from
     screen while scrolling (XCUITest swipes = "touch", the in-app tour = "tour"), tab / sheet transitions, memory –
     plus what DiagnosticsService recorded (watchdog hangs per screen and data set, Analytics.make timings);
   • the LaunchTrace marks of the perf launches (--launch-trace, Documents/launch-trace.txt);
-  • the Time Profiler hotspots per tour phase (--profiles, scripts/perf_profile.sh → *.profile.json).
+  • the main-thread hotspots per tour phase (--profiles, scripts/perf_profile.sh → *.profile.json).
 """
 import argparse
 import glob
@@ -370,7 +370,7 @@ def markdown(summary, diag=None):
         lines.append("")
     if diag and diag.get("profiles"):
         import perf_profile
-        lines += ["### Time Profiler: Hauptthread-Hotspots je Tour-Phase (+1 500 Fahrten)", "",
+        lines += ["### Profil (sample, 1 ms): Hauptthread-Hotspots je Tour-Phase (+1 500 Fahrten)", "",
                   "_Jedes Sample zählt für die innerste App-Funktion auf dem Stack – inklusive der SwiftUI-/SwiftData-/"
                   "Foundation-Arbeit, die sie auslöst._", "", perf_profile.markdown(diag["profiles"]), ""]
     if diag:

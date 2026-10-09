@@ -1,0 +1,24 @@
+Analysis of sampling KlimaBilanz (pid 4242) every 1 millisecond
+Process:         KlimaBilanz [4242]
+Path:            /Users/runner/Library/Developer/CoreSimulator/Devices/X/data/Containers/Bundle/Application/Y/KlimaBilanz.app/KlimaBilanz
+
+Call graph:
+    1000 Thread_8812   DispatchQueue_1: com.apple.main-thread  (serial)
+    + 1000 start  (in dyld) + 6076  [0x19a2d8274]
+    +   1000 main  (in KlimaBilanz) + 64  [0x100c8a0c4]
+    +     1000 static App.main()  (in SwiftUI) + 224  [0x1c5e2c5b8]
+    +       1000 CFRunLoopRunSpecific  (in CoreFoundation) + 572  [0x1a1]
+    +         600 __CFRunLoopRun  (in CoreFoundation) + 1188  [0x1a2]
+    +         ! 600 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1a3]
+    +         400 AG::Graph::update(AG::data::ptr<AG::Node>)  (in AttributeGraph) + 120  [0x1a4]
+    +           300 closure #1 in StatsScreen.body.getter  (in KlimaBilanz) + 100  [0x100]
+    +           ! 200 TicketComparator.compare(trips:products:variant:)  (in KlimaBilanz) + 44  [0x101]
+    +           ! : 150 swift_retain  (in libswiftCore.dylib) + 8  [0x1a5]
+    +           ! 80 Date.formatted<A>(_:)  (in Foundation) + 30  [0x1a6]
+    +           100 swift_release  (in libswiftCore.dylib) + 4  [0x1a7]
+    1000 Thread_8813
+    + 1000 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1a8]
+    +   1000 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1a9]
+
+Total number in stack (recursive counted multiple, when >=5):
+        5       swift_retain  (in libswiftCore.dylib) + 0  [0x1a5]

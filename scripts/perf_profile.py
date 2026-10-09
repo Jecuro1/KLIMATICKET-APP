@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-"""Main-thread hotspots from an Instruments Time Profiler export (CI job "perf", scripts/perf_profile.sh).
+"""Main-thread hotspots of the app's own tour (CI job "perf", scripts/perf_profile.sh).
 
-Usage: perf_profile.py <prefix> [--app KlimaBilanz] [--json out.json]
+Usage: perf_profile.py --sample <tour> <phase>=<sample report> [<phase>=<report> …] [--json out.json]
+       perf_profile.py <prefix> [--json out.json]            (Instruments export, see below)
 
-Reads <prefix>.time-profile.xml (`xctrace export --xpath '…/table[@schema="time-profile"]'`), every
-<prefix>.signpost-*.xml (os_signpost / Points of Interest tables) and <prefix>.tour.json (the app's own phase list,
-App/Sources/Services/Diagnostics/PerfTour.swift). For every tour phase ("open stats", "scroll stats", …) it sums the
-app's main-thread samples and ranks
-  • app functions by *attributed* time – each sample goes to the leaf-most frame in the app binary, i.e. the app code
-    that (directly or through SwiftUI / SwiftData / Foundation) did the work;
-  • app functions by inclusive time (on the stack at all);
-  • leaf symbols (where the CPU actually was) and binaries.
-Phase windows come from the "Tour" signpost intervals; without them from tour.json, aligned to the first sample of
-the app process.
+Input 1 – `/usr/bin/sample` reports (what CI records: one per tour phase, e.g. open=stats.open.sample.txt
+scroll=stats.scroll.sample.txt). The main thread's call tree is read from the "Call graph:" section; every sample
+(1 ms) goes to the leaf-most frame in the app binary, i.e. the app code that – directly or through SwiftUI / SwiftData /
+Foundation – did the work. Run-loop waits (mach_msg, …) count as idle.
+
+Input 2 – an Instruments Time Profiler export: <prefix>.time-profile.xml (`xctrace export --xpath
+'…/table[@schema="time-profile"]'`), optional <prefix>.signpost-*.xml and <prefix>.tour.json for the phase windows.
+
+Per phase it ranks app functions by attributed time and by inclusive time (on the stack at all), the leaf symbols
+(where the CPU actually was) and the binaries.
 """
 import argparse
 import glob
@@ -168,6 +169,11 @@ def is_app(binary):
     return binary in APP_BINARIES
 
 
+def is_entry(symbol):
+    """`main` / `KlimaBilanzApp.$main()`: on every main-thread stack – not an owner of the work below it."""
+    return symbol == "main" or symbol.endswith(".$main()") or symbol.endswith("$main()")
+
+
 def aggregate(samples, start=None, end=None, top=20):
     attributed, inclusive, leaf, binaries = {}, {}, {}, {}
     busy = 0
@@ -205,6 +211,123 @@ def aggregate(samples, start=None, end=None, top=20):
             "attributed": ranked(attributed), "inclusive": ranked(inclusive), "leaf": ranked(leaf),
             "binaries": ranked(binaries)}
 
+
+
+# MARK: - /usr/bin/sample reports
+
+SAMPLE_LINE = re.compile(r"^(?P<indent>[ +!:|]*)(?P<count>\d+) (?P<rest>.+)$")
+IDLE_LEAVES = {"mach_msg2_trap", "mach_msg_trap", "__psynch_cvwait", "__semwait_signal", "__workq_kernreturn",
+               "semaphore_wait_trap", "__select", "kevent_id", "__ulock_wait", "__ulock_wait2"}
+
+
+class Node:
+    __slots__ = ("symbol", "binary", "count", "children")
+
+    def __init__(self, symbol, binary, count):
+        self.symbol, self.binary, self.count, self.children = symbol, binary, count, []
+
+
+def parse_sample(path):
+    """Root node of the main thread's call tree in a `sample` report (None if there is none)."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return None
+    try:
+        start = next(i for i, line in enumerate(lines) if line.startswith("Call graph:"))
+    except StopIteration:
+        return None
+    threads = []
+    stack = []
+    for line in lines[start + 1:]:
+        if not line.strip():
+            if threads:
+                break
+            continue
+        if not line.startswith(" "):
+            break
+        m = SAMPLE_LINE.match(line)
+        if not m:
+            continue
+        depth = (len(m["indent"]) - 4) // 2
+        count = int(m["count"])
+        rest = m["rest"]
+        if depth <= 0 and rest.startswith("Thread_"):
+            root = Node(rest.strip(), "thread", count)
+            threads.append(root)
+            stack = [root]
+            continue
+        if not stack:
+            continue
+        sm = re.match(r"(.*?)  \(in ([^)]+)\)", rest)
+        symbol, binary = (sm[1].strip(), sm[2]) if sm else (rest.split("  [")[0].strip(), "?")
+        node = Node(symbol, binary, count)
+        while len(stack) > depth:
+            stack.pop()
+        if not stack:
+            continue
+        stack[-1].children.append(node)
+        stack.append(node)
+    if not threads:
+        return None
+    return next((t for t in threads if "main-thread" in t.symbol), threads[0])
+
+
+def aggregate_tree(root, top=20):
+    attributed, inclusive, leaf, binaries = {}, {}, {}, {}
+    idle = 0
+
+    def walk(node, owner, path):
+        nonlocal idle
+        is_app_node = is_app(node.binary) and not is_entry(node.symbol)
+        own = node if is_app_node else owner
+        added = False
+        if is_app_node and node.symbol not in path:
+            key = short(node.symbol)
+            inclusive[key] = inclusive.get(key, 0) + node.count
+            path.add(node.symbol)
+            added = True
+        child_total = sum(c.count for c in node.children)
+        self_count = node.count - child_total
+        if self_count > 0 and node is not root:
+            if node.symbol in IDLE_LEAVES:
+                idle += self_count
+            else:
+                name = short(own.symbol) if own else "(ohne App-Frame: SwiftUI/UIKit/CA)"
+                attributed[name] = attributed.get(name, 0) + self_count
+                key = f"{short(node.symbol)}  [{node.binary}]"
+                leaf[key] = leaf.get(key, 0) + self_count
+                binaries[node.binary] = binaries.get(node.binary, 0) + self_count
+        for child in node.children:
+            walk(child, own, path)
+        if added:
+            path.discard(node.symbol)
+
+    walk(root, None, set())
+
+    def ranked(d):
+        return [{"name": k, "ms": float(v)} for k, v in sorted(d.items(), key=lambda kv: -kv[1])[:top]]
+
+    total = root.count
+    return {"mainThreadBusyMs": float(total - idle), "samples": total, "windowSeconds": round(total / 1000, 2),
+            "attributed": ranked(attributed), "inclusive": ranked(inclusive), "leaf": ranked(leaf),
+            "binaries": ranked(binaries)}
+
+
+def analyse_samples(tour, phases):
+    """phases: [(name, report path)]"""
+    result = {"tour": tour, "phaseSource": "sample", "sampleCount": 0, "phases": []}
+    for name, path in phases:
+        root = parse_sample(path)
+        if root is None:
+            continue
+        entry = aggregate_tree(root)
+        entry["phase"] = name
+        result["sampleCount"] += entry["samples"]
+        result["phases"].append(entry)
+    result["whole"] = result["phases"][0] if result["phases"] else aggregate_tree(Node("empty", "thread", 0))
+    return result
 
 def analyse(prefix, app=APP_BINARIES[0]):
     profile = prefix + ".time-profile.xml"
@@ -247,11 +370,22 @@ def markdown(results, top=8):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("prefix", nargs="+", help="<dir>/<tour> (expects <prefix>.time-profile.xml)")
+    parser.add_argument("prefix", nargs="+", help="<dir>/<tour> (expects <prefix>.time-profile.xml); with --sample: "
+                                                  "<tour> <phase>=<report> …")
+    parser.add_argument("--sample", action="store_true", help="read /usr/bin/sample reports")
     parser.add_argument("--app", default=APP_BINARIES[0])
     parser.add_argument("--json")
     args = parser.parse_args(argv)
     results = []
+    if args.sample:
+        tour, specs = args.prefix[0], args.prefix[1:]
+        phases = [tuple(spec.split("=", 1)) for spec in specs if "=" in spec]
+        result = analyse_samples(tour, phases)
+        if result["phases"]:
+            results.append(result)
+        else:
+            print(f"_{tour}: keine sample-Daten_\n")
+        args.prefix = []
     for prefix in args.prefix:
         if not os.path.exists(prefix + ".time-profile.xml"):
             print(f"_{os.path.basename(prefix)}: keine Time-Profiler-Daten_\n")

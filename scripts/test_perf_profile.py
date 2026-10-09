@@ -31,6 +31,22 @@ class PerfProfileTests(unittest.TestCase):
         self.assertIn("**scroll stats**", text)
         self.assertIn("`StatsScreen.body.getter`", text)
 
+    def test_sample_report(self):
+        result = perf_profile.analyse_samples("stats", [("open", os.path.join(HERE, "testdata", "perf-sample.txt"))])
+        phase = result["phases"][0]
+        self.assertEqual(phase["samples"], 1000)
+        self.assertEqual(phase["mainThreadBusyMs"], 400)  # 600 samples wait in mach_msg2_trap
+        attributed = {i["name"]: i["ms"] for i in phase["attributed"]}
+        # swift_retain under compare() belongs to compare(); Date.formatted under the body closure to the closure;
+        # swift_release under AttributeGraph has no app frame below `main`.
+        self.assertEqual(attributed["TicketComparator.compare(trips:products:variant:)"], 200)
+        self.assertEqual(attributed["closure #1 in StatsScreen.body.getter"], 100)
+        self.assertEqual(attributed["(ohne App-Frame: SwiftUI/UIKit/CA)"], 100)
+        inclusive = {i["name"]: i["ms"] for i in phase["inclusive"]}
+        self.assertEqual(inclusive["closure #1 in StatsScreen.body.getter"], 300)
+        self.assertNotIn("main", inclusive)
+        self.assertIn("**open** – Hauptthread belegt 400 ms", perf_profile.markdown([result]))
+
 
 if __name__ == "__main__":
     unittest.main()
