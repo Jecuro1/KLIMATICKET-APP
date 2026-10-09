@@ -53,7 +53,7 @@ App/Sources, Shared, Widgets/Sources ──preprocess.py──▶ swiftc -emit-s
 
 The Swift frameworks (SwiftUI, SwiftUICore, Charts, SwiftData, WidgetKit, AppIntents, Combine, CryptoKit,
 StoreKit, CoreTransferable, UniformTypeIdentifiers, Symbols, DeveloperToolsSupport, os/OSLog, Accessibility,
-ActivityKit and the cross-import overlays `_SwiftData_SwiftUI`, `_AppIntents_SwiftUI`, `_MapKit_SwiftUI`,
+ActivityKit, TipKit and the cross-import overlays `_SwiftData_SwiftUI`, `_AppIntents_SwiftUI`, `_MapKit_SwiftUI`,
 `_AuthenticationServices_SwiftUI`, `_StoreKit_SwiftUI`, `_PhotosUI_SwiftUI`) are **not hand-written**:
 `gen/transform.py` converts the iOS SDK's own `arm64e-apple-ios.swiftinterface` into a Linux-buildable
 textual interface. Every declaration keeps its exact signature (labels, generics, default arguments,

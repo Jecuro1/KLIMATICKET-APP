@@ -111,6 +111,7 @@ struct RootView: View {
             handleExternalRequests()
             // Nothing below is visible right away: let the first frames and the entrance animations run first.
             try? await Task.sleep(for: .milliseconds(700))
+            KBTips.configure()   // MARK: motion – TipKit, once per launch (never in screenshot/perf runs)
             let repo = Repository(context: context, app: app)
             if widgetSnapshotIsStale() { repo.refreshWidgets() }   // date-dependent fields; data changes refresh on save
             if app.detection.isEnabled { repo.configureTripDetection() }
@@ -371,6 +372,12 @@ struct ScreenshotRouter: View {
             MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
         case "hero":
             DesignSystemPreview()
+        case "motionGallery", "motionGallery2", "motionGallery3": // MARK: motion – DEBUG builds only
+            #if DEBUG
+            MotionGalleryView(initialSection: screen == "motionGallery2" ? .controls : (screen == "motionGallery3" ? .celebrate : .top))
+            #else
+            MainTabView()
+            #endif
         case "stationSearch":
             // All-stops search QA: waits for the place index, then searches like a user typing.
             ScreenshotStationSearch(query: "warth am arlberg dorf")

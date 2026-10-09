@@ -110,7 +110,20 @@ RidgeShape(peakX:peakY:seed:roughness:), SmoothPath(points:), FlagShape()
 
 ## Bewegung
 
+Vollständig in `docs/MOTION.md` (Tokens `Motion.*` in `Shared/Motion/`, Modifier in `App/Sources/DesignSystem/Motion/`).
+
 ```swift
+withMotion(Motion.snappy / .smooth / .bouncy / .gentle) { … }      // Reduce-Motion- und Screenshot-fest
+view.reveal(.rise | .focus | .pop | .fade, order: i)  ·  screen.revealScope()
+Text(…).numericValue(value)  ·  CountUpText(value:from:delay:format:)
+.buttonStyle(.pressable / .pressableCard / .pressable(scale:haptic:))
+.haptic(.success | .warning | .error | .selection | .tap | .snap | .increase | .decrease | .milestone | .start | .stop, trigger:)
+GlassMorphGroup { ns in … .morphingGlass(in:id:namespace:) }  ·  GlassSegmentedPicker(selection:options:label:)
+.zoomTransitionScope()  ·  .zoomSource(id:cornerRadius:)  ·  .zoomDestination(id:)
+.scrollCardTransition()  ·  .carouselScrolling()  ·  .carouselItem()  ·  ScrollCondense + .tracksScrollCondense / .heroCondense
+.celebrate(trigger:)  ·  .celebrationRing(trigger:)  ·  .celebrationBurst(trigger:)
+.symbolBounce(on:)  ·  .symbolReplaceTransition()  ·  .motionAnimation(_:value:)  ·  .motionTransition(.rise/.pop/.lift/.drop)
+KBTips.QuickLog / TripSwipe / SwapStations / ChartScrub / TicketFlip / LongPress  ·  TipView(…).kbTipStyle()  ·  KBTips.used(_:)
 @State private var tilt = MotionTilt()   // .roll / .pitch in −1…1; tilt.start() onAppear, tilt.stop() onDisappear
 view.if(condition) { $0.modifier… }
 ```

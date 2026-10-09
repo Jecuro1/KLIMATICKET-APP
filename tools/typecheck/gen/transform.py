@@ -115,6 +115,7 @@ MODULES = {
     "_StoreKit_SwiftUI": dict(),
     "PhotosUI": dict(objc="PhotosUI_ObjC"),
     "_PhotosUI_SwiftUI": dict(),
+    "TipKit": dict(),
 }
 GENERATED_ORDER = [m for m, _ in build_stubs.MODULES if m in MODULES]
 

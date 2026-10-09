@@ -74,6 +74,7 @@ MODULES = [
     ("PhotosUI_ObjC", ["UIKit", "FoundationShim"]),
     ("PhotosUI", ["PhotosUI_ObjC"]),
     ("_PhotosUI_SwiftUI", ["PhotosUI", "SwiftUI", "CoreTransferable"]),
+    ("TipKit", ["SwiftUI", "FoundationShim"]),
 ]
 
 CROSS_IMPORTS = {
