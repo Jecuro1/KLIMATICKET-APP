@@ -154,102 +154,23 @@ struct SetBackdrop: View {
 
 // MARK: - App icon
 
-/// The real app icon (read from the bundle), with a vector fallback drawn from the icon artwork.
+// MARK: icons – the icon the user picked in Einstellungen › Darstellung › App-Symbol (preview artwork from
+// scripts/render_app_icons.py; follows light/dark like the home screen).
+/// The current app icon (Update sheet, Über, Updates).
 struct SetAppIconView: View {
     var size: CGFloat = 60
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size * 0.2237, style: .continuous)
-        Group {
-            if let image = SetAppIconView.bundleIcon {
-                Image(uiImage: image)
-                    .resizable()
-                    .interpolation(.high)
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                SetDrawnAppIcon()
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(shape)
-        .overlay { shape.strokeBorder(Color.white.opacity(0.28), lineWidth: max(0.5, size / 120)) }
-        .shadow(color: Color.black.opacity(0.16), radius: size / 10, y: size / 22)
-        .accessibilityHidden(true)
-    }
-
-    /// Primary icon from Info.plist (`CFBundleIcons › CFBundlePrimaryIcon`), nil if not loadable.
-    static let bundleIcon: UIImage? = {
-        if let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any],
-           let primary = icons["CFBundlePrimaryIcon"] as? [String: Any] {
-            if let files = primary["CFBundleIconFiles"] as? [String] {
-                for name in files.reversed() {
-                    if let image = UIImage(named: name) { return image }
-                }
-            }
-            if let name = primary["CFBundleIconName"] as? String, let image = UIImage(named: name) {
-                return image
-            }
-        }
-        return UIImage(named: "AppIcon")
-    }()
-}
-
-/// Vector version of design/icon/icon.svg (sky, two ridges, climbing route, summit dot) using brand tokens.
-private struct SetDrawnAppIcon: View {
-    private static let far: [CGPoint] = SetDrawnAppIcon.unit([(0, 690), (130, 590), (230, 640), (360, 500), (450, 560), (520, 470),
-                                                               (600, 520), (760, 400), (880, 500), (1024, 450), (1024, 1024), (0, 1024)])
-    private static let near: [CGPoint] = SetDrawnAppIcon.unit([(0, 860), (170, 760), (250, 790), (360, 650), (430, 690), (640, 300),
-                                                                (760, 470), (830, 430), (1024, 680), (1024, 1024), (0, 1024)])
-    private static let shade: [CGPoint] = SetDrawnAppIcon.unit([(640, 300), (760, 470), (700, 440), (655, 520), (620, 430), (600, 470)])
-    private static let route: [CGPoint] = SetDrawnAppIcon.unit([(120, 880), (250, 790), (360, 650), (430, 690), (640, 300)])
-
-    private static func unit(_ points: [(Double, Double)]) -> [CGPoint] {
-        points.map { CGPoint(x: $0.0 / 1024, y: $0.1 / 1024) }
-    }
-
-    var body: some View {
-        GeometryReader { geo in
-            let s = geo.size.width
-            ZStack {
-                LinearGradient(colors: [Theme.glacier, Theme.dusk, Theme.dawn],
-                               startPoint: UnitPoint(x: 0.1, y: 0), endPoint: UnitPoint(x: 0.6, y: 1))
-                RadialGradient(colors: [Theme.dawn2.opacity(0.85), Theme.dawn2.opacity(0)],
-                               center: UnitPoint(x: 0.62, y: 0.34), startRadius: 0, endRadius: s * 0.42)
-                SetUnitPolygon(points: SetDrawnAppIcon.far)
-                    .fill(LinearGradient(colors: [Color.white.opacity(0.34), Color.white.opacity(0.04)],
-                                         startPoint: .top, endPoint: .bottom))
-                SetUnitPolygon(points: SetDrawnAppIcon.near)
-                    .fill(LinearGradient(colors: [Color.white, Theme.sheetBackground], startPoint: .top, endPoint: .bottom))
-                SetUnitPolygon(points: SetDrawnAppIcon.shade)
-                    .fill(Theme.dusk.opacity(0.22))
-                SetUnitPolygon(points: SetDrawnAppIcon.route, closed: false)
-                    .stroke(LinearGradient(colors: [Theme.glacier, Theme.dusk], startPoint: .bottomLeading, endPoint: .topTrailing),
-                            style: StrokeStyle(lineWidth: s * 0.039, lineCap: .round, lineJoin: .round))
-                Circle()
-                    .fill(Theme.dawn)
-                    .overlay { Circle().strokeBorder(Color.white, lineWidth: s * 0.0176) }
-                    .frame(width: s * 0.1035, height: s * 0.1035)
-                    .position(x: s * 0.625, y: s * 0.293)
-            }
-        }
-        .environment(\.colorScheme, .light)
-    }
-}
-
-/// Polygon / polyline defined in unit coordinates (0…1).
-private struct SetUnitPolygon: Shape {
-    var points: [CGPoint]
-    var closed: Bool = true
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        guard let first = points.first else { return path }
-        path.move(to: CGPoint(x: rect.minX + first.x * rect.width, y: rect.minY + first.y * rect.height))
-        for point in points.dropFirst() {
-            path.addLine(to: CGPoint(x: rect.minX + point.x * rect.width, y: rect.minY + point.y * rect.height))
-        }
-        if closed { path.closeSubpath() }
-        return path
+        Image(AppIconStore.shared.current.previewAsset)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fill)
+            .frame(width: size, height: size)
+            .clipShape(shape)
+            .overlay { shape.strokeBorder(Color.white.opacity(0.28), lineWidth: max(0.5, size / 120)) }
+            .shadow(color: Color.black.opacity(0.16), radius: size / 10, y: size / 22)
+            .accessibilityHidden(true)
     }
 }
 

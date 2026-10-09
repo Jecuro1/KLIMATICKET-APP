@@ -380,6 +380,11 @@ struct ScreenshotRouter: View {
             NavigationStack { RideActivityPreviewView() }
         case "dashboardLive":  // MARK: live
             MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
+        // MARK: icons – Einstellungen › Darstellung › App-Symbol
+        case "appIcon":
+            NavigationStack { AppIconPickerView() }
+        case "appIconSunrise":
+            NavigationStack { AppIconPickerView(screenshotChoice: .sonnenaufgang) }
         case "hero":
             DesignSystemPreview()
         case "motionGallery", "motionGallery2", "motionGallery3", "motionCelebration": // MARK: motion – DEBUG builds only

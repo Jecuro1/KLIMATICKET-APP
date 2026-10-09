@@ -108,6 +108,21 @@ MiniSummit(progress: Double)   // kleiner Gipfel mit Route (66×44)
 RidgeShape(peakX:peakY:seed:roughness:), SmoothPath(points:), FlagShape()
 ```
 
+## App-Symbol <!-- MARK: icons -->
+
+```swift
+AppIconChoice.allCases            // .alpin (primär) · .nacht · .sonnenaufgang · .gletscher · .minimal – title, subtitle, previewAsset
+AppIconStore.shared.current       // das gerade aktive Home-Bildschirm-Symbol (@Observable); .select(_:completion:) wechselt es
+AppIconImage(choice: AppIconChoice, size: CGFloat)   // Vorschau mit Home-Bildschirm-Form, hell/dunkel nach Umgebung
+AppIconPickerView()               // Einstellungen › Darstellung › App-Symbol (Zeile: AppIconSettingsRow)
+SetAppIconView(size:)             // aktives Symbol in Update-Sheet, „Über“, Updates
+```
+
+Artwork nur über `python3 scripts/render_app_icons.py` ändern (rendert alle `AppIcon*.appiconset` in hell/dunkel/getönt und die
+`AppIconPreview-*.imageset`; `--check DIR` zeigt 60/40/29-px-Proben auf Home-Bildschirm-Hintergründen). Neue Alternative: im Skript
+ergänzen, Name in `project.yml` (`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`), in `.github/workflows/ios.yml` (Prüfung) und in
+`AppIconChoice` eintragen.
+
 ## Bewegung
 
 Vollständig in `docs/MOTION.md` (Tokens `Motion.*` in `Shared/Motion/`, Modifier in `App/Sources/DesignSystem/Motion/`).

@@ -174,6 +174,10 @@ struct SetAppearanceSection: View {
                 SetAppearancePicker(selection: $settings.appearance, hapticsEnabled: settings.hapticsEnabled)
                     .padding(.vertical, Theme.Spacing.xs)
                     .id(SetScrollAnchor.appearance)
+                // MARK: icons – Einstellungen › Darstellung › App-Symbol
+                if AppIconStore.shared.isSupported {
+                    AppIconSettingsRow()
+                }
                 Toggle(isOn: $settings.hapticsEnabled) {
                     SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
                                 symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
