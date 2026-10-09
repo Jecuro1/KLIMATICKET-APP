@@ -289,6 +289,8 @@ struct EmptyStateView: View {
 /// Top banner bound to `app.toast`.
 struct ToastOverlay: View {
     @Environment(AppState.self) private var app
+    /// MARK: settings – false for a mirror above a sheet (Einstellungen): RootView's toast underneath already plays it.
+    var playsHaptic = true
 
     var body: some View {
         if let toast = app.toast {
@@ -325,7 +327,7 @@ struct ToastOverlay: View {
             .glassEffect(.regular, in: .capsule)
             .padding(.top, Theme.Spacing.xs)
             .transition(.move(edge: .top).combined(with: .opacity))
-            .sensoryFeedback(.success, trigger: toast.id, condition: { _, _ in app.settings.hapticsEnabled })
+            .sensoryFeedback(.success, trigger: toast.id, condition: { _, _ in playsHaptic && app.settings.hapticsEnabled })
             .onTapGesture { withAnimation { app.toast = nil } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.updatesFrequently)

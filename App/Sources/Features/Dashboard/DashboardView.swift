@@ -305,7 +305,7 @@ private struct DashPresentation: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: settingsBinding) {
-                NavigationStack { SettingsView() }
+                SettingsSheet() // MARK: settings – own NavigationStack + toast above every settings page
             }
             .sheet(isPresented: achievementsBinding) {
                 NavigationStack { AchievementsView() }

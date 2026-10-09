@@ -55,13 +55,6 @@ struct SettingsView: View {
         .navigationTitle("Einstellungen")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
-        .overlay(alignment: .top) {
-            // RootView's global toast sits underneath this sheet – mirror it here so feedback from settings
-            // ("Backup wiederhergestellt", "Tarife aktualisiert", …) is visible. Not needed when shown inline.
-            if showsDoneButton {
-                ToastOverlay()
-            }
-        }
         .sheet(isPresented: $showsUpdateSheet) {
             UpdateSheet()
         }
@@ -109,6 +102,18 @@ struct SettingsView: View {
     /// What the screen holds, like the informational eyebrows of the other screens ("TICKETJAHR 2026/27").
     /// A greeting would only repeat the name shown on the profile card right below.
     private var headerKicker: String { "Konto, App & Daten" }
+}
+
+/// Einstellungen as the dashboard's sheet: its own NavigationStack with the toast mirrored above it. RootView's global
+/// toast sits underneath the sheet, and an overlay on the list itself would vanish on every pushed page ("Favorit
+/// gelöscht" in Favoriten verwalten, a quick log from Widgets & Kurzbefehle) – above the stack it covers all of them.
+struct SettingsSheet: View {
+    var body: some View {
+        NavigationStack { SettingsView() }
+            .overlay(alignment: .top) {
+                ToastOverlay(playsHaptic: false)
+            }
+    }
 }
 
 /// Row ids the CI screenshots scroll to (`SettingsView.screenshotScreen`).

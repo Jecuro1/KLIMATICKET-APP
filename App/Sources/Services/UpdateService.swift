@@ -256,8 +256,7 @@ final class UpdateService {
             state = .upToDate(checkedAt: Date())
         case .available(let m):
             state = .available(m)
-            let key = "updates.dismissed.\(m.version).\(m.build)"
-            if force || !defaults.bool(forKey: key) { isPresentingSheet = true }
+            if force || !defaults.bool(forKey: Self.dismissedKey(m)) { isPresentingSheet = true }
         case .required(let m):
             state = .required(m)
             isPresentingSheet = true
@@ -310,10 +309,13 @@ final class UpdateService {
         isPresentingSheet = true
     }
 
-    func dismissCurrent() {
-        if let m = availableManifest { defaults.set(true, forKey: "updates.dismissed.\(m.version).\(m.build)") }
-        isPresentingSheet = false
+    /// "Später" or swiping the sheet away: this release no longer presents itself on the next checks (a manual check
+    /// still does, and a required update always does). Works with the sheet's pinned release while a re-check runs.
+    func rememberDismissal(of manifest: UpdateManifest) {
+        defaults.set(true, forKey: Self.dismissedKey(manifest))
     }
+
+    private static func dismissedKey(_ m: UpdateManifest) -> String { "updates.dismissed.\(m.version).\(m.build)" }
 
     // MARK: Install actions
 

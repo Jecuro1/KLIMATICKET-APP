@@ -70,6 +70,12 @@ struct UpdateSheet: View {
                 appeared = true
             }
         }
+        .onDisappear {
+            // Swiped away counts like "Später" – otherwise the same release pops up again after every 6-hour check.
+            // A required update cannot be swiped away and keeps presenting itself.
+            guard !isRequired, let manifest else { return }
+            app.updates.rememberDismissal(of: manifest)
+        }
     }
 
     // MARK: Cards
@@ -206,7 +212,8 @@ struct UpdateSheet: View {
     }
 
     private func later() {
-        if manifest != nil { app.updates.dismissCurrent() }
+        if let manifest { app.updates.rememberDismissal(of: manifest) }
+        app.updates.isPresentingSheet = false
         dismiss()
     }
 }
