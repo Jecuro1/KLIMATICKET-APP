@@ -244,6 +244,10 @@ struct ScreenshotRouter: View {
             NavigationStack { WidgetGalleryView(screenshotSection: .large) }
         case "widgets3":
             NavigationStack { WidgetGalleryView(screenshotSection: .lock) }
+        // MARK: work
+        case "car", "carDetails", "carSettings", "carSettingsDetails", "carCard", "work", "workDetails", "workSelf",
+             "workAssign", "workContribution", "workPDF", "workLogbookPDF":
+            WorkScreenshotHost(screen: screen)
         case "hero":
             DesignSystemPreview()
         case "stationSearch":

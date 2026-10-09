@@ -28,6 +28,7 @@ struct SettingsView: View {
             List {
                 SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen"))
                 SetFareSection()
+                WorkSettingsSection() // MARK: work – "Arbeit & Steuer", "Auto-Vergleich"
                 SetCaptureSection()
                 SetAppearanceSection()
                 SetNotificationsSection()
