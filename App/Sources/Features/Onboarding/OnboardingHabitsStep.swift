@@ -268,21 +268,11 @@ private struct OnbNearbyStation: Identifiable {
 
 private enum OnbStationText {
     static func subtitle(for station: Station) -> String {
-        let kind: String
-        switch station.kind {
-        case .rail: kind = "Bahnhof"
-        case .metro: kind = "U-Bahn"
-        case .tramHub: kind = "Bim-Haltestelle"
-        }
-        return "\(kind) · \(station.federalState?.displayName ?? station.state)"
+        station.rowSubtitle
     }
 
     static func mode(for station: Station) -> TransportMode {
-        switch station.kind {
-        case .rail: .train
-        case .metro: .metro
-        case .tramHub: .tram
-        }
+        station.primaryMode
     }
 }
 

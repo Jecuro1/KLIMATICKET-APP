@@ -216,11 +216,11 @@ public struct Place: Identifiable, Hashable, Sendable {
     /// Bridge to the legacy `Station` model (FareEstimator, trip editor, geofences). Kind: rail products → `.rail`,
     /// U-Bahn → `.metro`, everything else → `.tramHub` (use `products.primaryMode` for the precise mode).
     public var station: Station {
-        let kind: Station.Kind = products.isRail || self.kind == .station ? .rail : (products.contains(.subway) ? .metro : .tramHub)
+        let kind: Station.Kind = products.isRail || self.kind == .station ? .rail : (products.contains(.subway) ? .metro : .stop)
         return Station(id: stationID, name: PlaceNames.display(name), lat: coordinate.latitude, lon: coordinate.longitude,
                        state: state ?? FederalState.foreign.rawValue, kind: kind,
                        importance: Int((importance * 100).rounded()),
-                       aliases: aliases.isEmpty ? nil : aliases, products: products.rawValue)
+                       aliases: aliases.isEmpty ? nil : aliases, products: products.rawValue, municipality: municipality)
     }
 
     /// Walking time HAFAS uses for nearby stops (SUGGEST_SPEC §2.6, fitted on 37 LocGeoPos rows, max error 0.5 s).

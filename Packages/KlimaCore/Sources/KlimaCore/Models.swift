@@ -133,6 +133,8 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
         case rail
         case metro
         case tramHub = "tram_hub"
+        /// Any other stop (bus, tram, cable car, ship …) from the complete place database; see `primaryMode`.
+        case stop
     }
 
     public var id: String
@@ -147,9 +149,11 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
     /// HAFAS product bits (`PlaceProducts`) when the station comes from the place database (bus, tram, ship …).
     /// nil for entries of the bundled stations.json.
     public var products: Int?
+    /// Municipality (Gemeinde) for stops from the place database ("Warth"); nil for stations.json entries.
+    public var municipality: String?
 
     public init(id: String, name: String, lat: Double, lon: Double, state: String, kind: Kind = .rail, importance: Int = 0,
-                aliases: [String]? = nil, products: Int? = nil) {
+                aliases: [String]? = nil, products: Int? = nil, municipality: String? = nil) {
         self.id = id
         self.name = name
         self.lat = lat
@@ -159,6 +163,7 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
         self.importance = importance
         self.aliases = aliases
         self.products = products
+        self.municipality = municipality
     }
 
     public var location: GeoPoint { GeoPoint(latitude: lat, longitude: lon) }
@@ -171,7 +176,39 @@ public struct Station: Codable, Hashable, Sendable, Identifiable {
         case .rail: return .train
         case .metro: return .metro
         case .tramHub: return .tram
+        case .stop: return .bus
         }
+    }
+
+    public var isMainStation: Bool { name.contains("Hauptbahnhof") || name.hasSuffix("Hbf") }
+
+    /// German type label for rows: "Hauptbahnhof", "Bahnhof", "U-Bahn-Station", "Bushaltestelle", "Bim-Haltestelle" …
+    public var kindLabel: String {
+        switch kind {
+        case .rail: return isMainStation ? "Hauptbahnhof" : "Bahnhof"
+        case .metro: return "U-Bahn-Station"
+        case .tramHub: return "Haltestelle"
+        case .stop:
+            switch primaryMode {
+            case .train, .sBahn: return "Bahnhof"
+            case .metro: return "U-Bahn-Station"
+            case .tram: return "Bim-Haltestelle"
+            case .bus: return "Bushaltestelle"
+            case .ferry: return "Schiffsanlegestelle"
+            case .cableCar: return "Seilbahn"
+            case .other: return "Haltestelle"
+            }
+        }
+    }
+
+    /// "Bushaltestelle · Warth · Vorarlberg" / "Hauptbahnhof · Tirol".
+    public var rowSubtitle: String {
+        var parts = [kindLabel]
+        if let municipality, !municipality.isEmpty, kind == .stop || !name.localizedCaseInsensitiveContains(municipality) {
+            parts.append(municipality)
+        }
+        if let state = federalState { parts.append(state.displayName) }
+        return parts.joined(separator: " · ")
     }
 }
 
