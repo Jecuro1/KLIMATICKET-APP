@@ -409,7 +409,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.perf) ||
       (github.event_name == 'push' && contains(github.event.head_commit.message, '[perf]'))
     runs-on: macos-26
-    timeout-minutes: 80
+    timeout-minutes: 95
     permissions:
       contents: read
     steps:
@@ -439,12 +439,31 @@ jobs:
           xcrun simctl boot "$UDID" 2>/dev/null || true
           xcrun simctl bootstatus "$UDID" -b
 
-      - name: Run performance tests
-        id: tests
+      - name: Build for testing
         run: |
           mkdir -p build/perf
+          xcodebuild build-for-testing \
+            -project KlimaBilanz.xcodeproj -scheme KlimaBilanzPerf \
+            -destination "id=$UDID" -derivedDataPath build/perf/dd \
+            ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="" \
+            > build/perf/build.log 2>&1 || { grep -E "error:" build/perf/build.log | sort -u | head -100; tail -40 build/perf/build.log; exit 1; }
+
+      # First, so a slow XCUITest run can never squeeze it out of the job's time.
+      - name: Profile (Time Profiler, the app's own tour per screen)
+        continue-on-error: true
+        timeout-minutes: 20
+        run: |
+          APP=$(ls -d build/perf/dd/Build/Products/Release-iphonesimulator/KlimaBilanz.app 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then echo "::notice::Keine App gebaut – keine Profile"; exit 0; fi
+          bash scripts/perf_profile.sh "$UDID" "$APP" build/perf/profiles
+
+      - name: Run performance tests
+        id: tests
+        timeout-minutes: 50
+        run: |
           set +e
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project KlimaBilanz.xcodeproj -scheme KlimaBilanzPerf \
             -destination "id=$UDID" \
             -derivedDataPath build/perf/dd -resultBundlePath build/perf/Perf.xcresult \
@@ -456,15 +475,6 @@ jobs:
           grep -E "error:|measured \[|Test Case .*(passed|failed)|Executed [0-9]+ test" build/perf/test.log | grep -v "SourcePackages" | tail -150 || true
           if [ $STATUS -ne 0 ]; then tail -60 build/perf/test.log; fi
           exit $STATUS
-
-      - name: Profile (Time Profiler, the app's own tour per screen)
-        if: always() && steps.tests.outcome != 'cancelled'
-        continue-on-error: true
-        timeout-minutes: 15
-        run: |
-          APP=$(ls -d build/perf/dd/Build/Products/Release-iphonesimulator/KlimaBilanz.app 2>/dev/null | head -1)
-          if [ -z "$APP" ]; then echo "::notice::Keine App gebaut – keine Profile"; exit 0; fi
-          bash scripts/perf_profile.sh "$UDID" "$APP" build/perf/profiles
 
       - name: Collect the app's diagnostics
         if: always()
@@ -496,6 +506,7 @@ jobs:
           name: perf-${{ github.run_number }}
           path: |
             build/perf/test.log
+            build/perf/build.log
             build/perf/perf-summary.json
             build/perf/perf-summary.md
             build/perf/launch-trace.txt

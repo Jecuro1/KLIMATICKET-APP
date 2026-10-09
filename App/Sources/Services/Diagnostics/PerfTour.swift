@@ -5,12 +5,12 @@ import os
 /// `-KBPerfTour <name>` (perf mode only): the app drives itself, so Instruments can profile one screen without
 /// XCUITest querying the accessibility tree in between (scripts/perf_profile.sh records the Time Profiler around it).
 ///
-/// 2 s after the first frame it opens the screen (`overview`, `trips`, `stats`, `ticket`, `gipfelbuch`; `all` visits
+/// 4 s after the first frame it opens the screen (`overview`, `trips`, `stats`, `ticket`, `gipfelbuch`; `all` visits
 /// them in turn, `launch` only waits), lets it settle for 2.5 s and then scrolls its main scroll view to the end and
 /// back, three times, at a constant 2 400 pt/s – a display link moves `contentOffset`, the same rendering path as a
 /// flick, measured by `PerfFrameMonitor` as source `tour`. Every phase is a signpost interval (category
-/// PointsOfInterest) and is listed in `Diagnostics/perf-tour.json` in seconds since process start; when the tour is
-/// done the app exits, which ends the recording.
+/// PointsOfInterest) and is listed in `Diagnostics/perf-tour.json` in seconds since process start. The app stays
+/// open afterwards (xctrace stops at its time limit – an attached recording hung when the target exited).
 ///
 /// `-KBPerfPresent gipfelbuch` (the XCUITests) only opens the Gipfelbuch sheet after the first frame.
 @MainActor
@@ -55,7 +55,8 @@ final class PerfTour: NSObject {
     }
 
     private static func run(_ tour: String) async {
-        try? await Task.sleep(for: .seconds(2))
+        // Time for an attaching profiler (scripts/perf_profile.sh) to start recording.
+        try? await Task.sleep(for: .seconds(4))
         let screens: [String]
         switch tour {
         case "all": screens = ["overview", "trips", "stats", "ticket", "gipfelbuch"]
@@ -77,8 +78,6 @@ final class PerfTour: NSObject {
         }
         PerfFrameMonitor.shared.write()
         writePhases()
-        try? await Task.sleep(for: .seconds(1.5))
-        exit(0)
     }
 
     private static func open(_ screen: String) {

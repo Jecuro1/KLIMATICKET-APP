@@ -82,7 +82,8 @@ final class DiagnosticsService: NSObject, MXMetricManagerSubscriber, @unchecked 
         let current = currentSession()
         store.queue.async {
             store.ensureDirectories()
-            self.closePreviousSession(store: store, current: current)
+            // CI performance runs end every launch by killing the app (XCUITest) – no "Unerwartet beendet" for those.
+            self.closePreviousSession(store: store, current: current, reportsAbnormalExit: mode != .perf)
             if mode == .screenshot { self.seedScreenshotSamples(store: store) }
             store.prunePayloads()
             store.saveEventsIfNeeded()
@@ -191,7 +192,7 @@ final class DiagnosticsService: NSObject, MXMetricManagerSubscriber, @unchecked 
     }
 
     /// Runs once per launch on the store queue: reports how the previous session ended and rotates its files.
-    private func closePreviousSession(store: DiagnosticsStore, current: DiagnosticsSession) {
+    private func closePreviousSession(store: DiagnosticsStore, current: DiagnosticsSession, reportsAbnormalExit: Bool = true) {
         var file = store.read(DiagnosticsSessionsFile.self, from: "sessions.json") ?? DiagnosticsSessionsFile(current: nil, history: [])
         var events: [DiagnosticsEvent] = []
         let marker = store.read(HangMarker.self, from: "hang-inprogress.json")
@@ -204,7 +205,7 @@ final class DiagnosticsService: NSObject, MXMetricManagerSubscriber, @unchecked 
                     title: "Hänger bis zum Ende der App",
                     detail: "Hauptthread mindestens \(Self.seconds(marker.durationMs)) blockiert, danach wurde die App beendet",
                     appVersion: previous.appVersion, build: previous.build))
-            } else if previous.endedUnexpectedly {
+            } else if previous.endedUnexpectedly, reportsAbnormalExit {
                 let during = previous.state == .launching ? "beim Start" : "im Vordergrund"
                 events.append(DiagnosticsEvent(
                     id: "exit-\(previous.id)", kind: .abnormalExit, source: .session, date: previous.lastSeenAt,
