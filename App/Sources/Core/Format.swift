@@ -43,18 +43,24 @@ enum Format {
         date.formatted(styled(Date.FormatStyle(date: style, time: .omitted)))
     }
 
+    // Styles built once – these run for every row, chart label and toast.
+    private static let dayMonthStyle = styled(.dateTime.day().month(.abbreviated))
+    private static let weekdayDayMonthStyle = styled(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    private static let timeStyle = styled(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+    private static let monthYearStyle = styled(.dateTime.month(.wide).year())
+
     /// "14. Dez."
     static func dayMonth(_ date: Date) -> String {
-        date.formatted(styled(.dateTime.day().month(.abbreviated)))
+        date.formatted(dayMonthStyle)
     }
 
     /// "Fr., 9. Okt."
     static func weekdayDayMonth(_ date: Date) -> String {
-        date.formatted(styled(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+        date.formatted(weekdayDayMonthStyle)
     }
 
     static func time(_ date: Date) -> String {
-        date.formatted(styled(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
+        date.formatted(timeStyle)
     }
 
     /// "Heute", "Gestern", or "Fr., 9. Okt."
@@ -67,7 +73,7 @@ enum Format {
 
     /// "Oktober 2026"
     static func monthYear(_ date: Date) -> String {
-        date.formatted(styled(.dateTime.month(.wide).year()))
+        date.formatted(monthYearStyle)
     }
 
     static func days(_ n: Int) -> String { n == 1 ? "1 Tag" : "\(n) Tage" }

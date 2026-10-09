@@ -71,7 +71,13 @@ enum Theme {
 
     // MARK: Transport modes (landscape colours; always paired with icon + label)
 
-    static func modeColor(_ mode: TransportMode) -> Color {
+    // MARK: global – one Color per mode (built once): rows get equal values, so SwiftUI can skip them on re-render.
+    static func modeColor(_ mode: TransportMode) -> Color { modeColors[mode] ?? makeModeColor(mode) }
+
+    private static let modeColors: [TransportMode: Color] =
+        Dictionary(uniqueKeysWithValues: TransportMode.allCases.map { ($0, makeModeColor($0)) })
+
+    private static func makeModeColor(_ mode: TransportMode) -> Color {
         switch mode {
         case .train: Color(light: "#2F7FDA", dark: "#6CB6FF")      // Gletscher
         case .sBahn: Color(light: "#1FA9B8", dark: "#4FD3DD")      // Bergsee
@@ -86,7 +92,13 @@ enum Theme {
 
     // MARK: Achievement tiers
 
-    static func tierGradient(_ tier: Achievement.Tier) -> LinearGradient {
+    // MARK: global – built once per tier (see modeColor).
+    static func tierGradient(_ tier: Achievement.Tier) -> LinearGradient { tierGradients[tier] ?? makeTierGradient(tier) }
+
+    private static let tierGradients: [Achievement.Tier: LinearGradient] =
+        Dictionary(uniqueKeysWithValues: [Achievement.Tier.bronze, .silver, .gold, .platinum].map { ($0, makeTierGradient($0)) })
+
+    private static func makeTierGradient(_ tier: Achievement.Tier) -> LinearGradient {
         let colors: [Color]
         switch tier {
         case .bronze: colors = [Color(hex: "#E7A06B"), Color(hex: "#B8672E")]

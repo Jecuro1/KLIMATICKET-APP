@@ -99,7 +99,7 @@ struct Kicker: View {
     var color: Color = Theme.textSecondary
 
     var body: some View {
-        Text(text.uppercased(with: Locale(identifier: "de_AT")))
+        Text(text.uppercased(with: Format.locale))
             .font(Theme.Typography.kicker)
             .tracking(1.2)
             .foregroundStyle(color)
@@ -306,7 +306,7 @@ struct ToastOverlay: View {
             HStack(spacing: Theme.Spacing.s) {
                 Image(systemName: toast.symbol)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.positive)
+                    .foregroundStyle(Self.symbolColor(for: toast))
                     .symbolEffect(.bounce, value: toast.id)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(toast.title).font(.subheadline.weight(.semibold))
@@ -365,6 +365,11 @@ struct ToastOverlay: View {
                 }
             }
         }
+    }
+
+    /// A failure ("Speichern fehlgeschlagen", "… verworfen") is not shown in the success green.
+    private static func symbolColor(for toast: Toast) -> Color {
+        toast.haptic == .error || toast.symbol.hasPrefix("exclamationmark") ? Theme.negative : Theme.positive
     }
 
     // MARK: trips – closes the toast, then runs its action.

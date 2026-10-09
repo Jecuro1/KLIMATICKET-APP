@@ -7,16 +7,19 @@ extension Color {
         self.init(uiColor: UIColor(hex: hex))
     }
 
-    /// Adaptive colour that follows light/dark appearance (works in widgets too).
+    /// Adaptive colour that follows light/dark appearance (works in widgets too). Both variants are parsed once, here –
+    /// the provider runs on every trait resolution and only picks one (UIColor is immutable, safe to capture).
     init(light: String, dark: String) {
+        let light = UIColor(hex: light), dark = UIColor(hex: dark)
         self.init(uiColor: UIColor { traits in
-            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+            traits.userInterfaceStyle == .dark ? dark : light
         })
     }
 
     init(light: Color, dark: Color) {
+        let light = UIColor(light), dark = UIColor(dark)
         self.init(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+            traits.userInterfaceStyle == .dark ? dark : light
         })
     }
 }
