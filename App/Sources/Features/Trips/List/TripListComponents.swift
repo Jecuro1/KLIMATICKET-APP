@@ -9,24 +9,34 @@ import KlimaCore
 
 @MainActor
 enum TripListFormat {
+    /// Vienna calendar for every day label – the month sections, the ticket period and the time shown (Format.time) all
+    /// use Austrian time, so "Heute"/"Gestern" must too (one instance: `Calendar.vienna` builds a new one per access).
+    static let calendar = Calendar.vienna
+
     /// Row eyebrow: "Heute", "Gestern" or "Fr. 9." (the month is already given by the section header).
     static func dayLabel(_ date: Date) -> String {
-        let calendar = Calendar.current
         if calendar.isDateInToday(date) { return "Heute" }
         if calendar.isDateInYesterday(date) { return "Gestern" }
-        let weekday = date.formatted(.dateTime.weekday(.abbreviated).locale(Format.locale))
+        let weekday = date.formatted(viennaStyle(.dateTime.weekday(.abbreviated)))
         let day = calendar.component(.day, from: date)
         return "\(weekday) \(day)."
     }
 
     /// Detail eyebrow: "Heute · 07:12" or "Fr., 9. Oktober 2026 · 07:12".
     static func detailDateLine(_ date: Date) -> String {
-        let calendar = Calendar.current
         let time = Format.time(date)
         if calendar.isDateInToday(date) { return "Heute · \(time)" }
         if calendar.isDateInYesterday(date) { return "Gestern · \(time)" }
-        let day = date.formatted(.dateTime.weekday(.abbreviated).day().month(.wide).year().locale(Format.locale))
+        let day = date.formatted(viennaStyle(.dateTime.weekday(.abbreviated).day().month(.wide).year()))
         return "\(day) · \(time)"
+    }
+
+    /// de-AT in Austrian time (the default style would format in the device's time zone).
+    private static func viennaStyle(_ style: Date.FormatStyle) -> Date.FormatStyle {
+        var style = style.locale(Format.locale)
+        style.timeZone = Format.timeZone
+        style.calendar = calendar
+        return style
     }
 
     /// "Ticketjahr 2026/27" (or "Ticketjahr 2026" when the validity stays within one calendar year).
@@ -70,16 +80,42 @@ enum TripListFormat {
     static func stationSubtitle(_ station: Station?) -> String? {
         station?.rowSubtitle
     }
+}
 
-    /// Search over station names, notes, the mode and the purpose (case- and diacritic-insensitive).
-    static func matches(_ trip: TripEntity, query: String) -> Bool {
-        guard !query.isEmpty else { return true }
-        return trip.fromName.localizedStandardContains(query)
-            || trip.toName.localizedStandardContains(query)
-            || trip.note.localizedStandardContains(query)
-            || trip.mode.displayName.localizedStandardContains(query)
-            || (trip.category?.displayName.localizedStandardContains(query) ?? false)
-            || (trip.isInduced && MetaCategoryStyle.inducedTitle.localizedStandardContains(query))
+// MARK: - Search
+
+/// Fahrten search: one folded key per trip (stations, note, mode, purpose), cached until the trip changes (`updatedAt`),
+/// so a keystroke costs one `contains` per word and trip instead of six `localizedStandardContains` calls. The key holds
+/// the names folded twice – plain (case, accents, "ß") for typing in progress ("Hauptbahn") and StationIndex-normalised,
+/// so what the rows show and the usual spellings find the trip too: "Hbf", "Wien Hbf", "Poelten", "Sankt Anton".
+@MainActor
+final class TripSearchIndex {
+    private var keys: [UUID: (stamp: Date, key: String)] = [:]
+
+    /// The words of a query (StationIndex-normalised); every one must appear in a trip, in any order.
+    static func tokens(_ query: String) -> [String] {
+        StationIndex.normalize(query).split(separator: " ").map(String.init)
+    }
+
+    func matches(_ trip: TripEntity, tokens: [String]) -> Bool {
+        guard !tokens.isEmpty else { return true }
+        let key = key(for: trip)
+        return tokens.allSatisfy { key.contains($0) }
+    }
+
+    private func key(for trip: TripEntity) -> String {
+        let id = trip.id
+        let stamp = trip.updatedAt
+        if let entry = keys[id], entry.stamp == stamp { return entry.key }
+        var parts = [trip.fromName, trip.toName, trip.note, trip.mode.displayName]
+        if let category = trip.category { parts.append(category.displayName) }
+        if trip.isInduced { parts.append(MetaCategoryStyle.inducedTitle) }
+        let text = parts.joined(separator: " ")
+        let plain = text.lowercased().replacingOccurrences(of: "ß", with: "ss")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Format.locale)
+        let key = StationIndex.normalize(text) + " | " + plain
+        keys[id] = (stamp, key)
+        return key
     }
 }
 
@@ -320,17 +356,20 @@ struct TripListPill: View {
     }
 }
 
-/// Frosted list-row background (insetGrouped clips it into the rounded section card); opaque with Reduce Transparency.
+/// List-row card: a tinted, non-blurred surface over the sky (insetGrouped clips it into the rounded section card).
+/// No material per row – a dozen live backdrop blurs on screen made scrolling the history stutter; opaque with
+/// Reduce Transparency.
 struct TripListCardBackground: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if reduceTransparency {
             Theme.sheetBackground
         } else {
             ZStack {
-                Rectangle().fill(.regularMaterial)
-                Theme.surface.opacity(0.6)
+                Theme.sheetBackground.opacity(colorScheme == .dark ? 0.62 : 0.5)
+                Theme.surface
             }
         }
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 import KlimaCore
 
 /// Fahrten (Tab 2): ticket-year summary, search, mode chips and the trip history grouped by month.
@@ -16,11 +17,13 @@ struct TripsView: View {
     private var favorites: [FavoriteRouteEntity]
 
     @State private var path: [TripListRoute] = []
-    @State private var searchText = ""
+    /// The trimmed search text the list follows – debounced by TripListSearchField, which owns the live text.
+    @State private var query = ""
+    @State private var searchResetToken = 0
     @State private var modeFilter: TransportMode?
     @State private var categoryFilter: MetaTripFilter = .all
     @State private var scopeSelection: TripListScope?
-    @State private var csvURL: URL?
+    @State private var contentCache = TripListContentCache()
     @State private var successTick = 0
     @State private var warningTick = 0
     @State private var selectionTick = 0
@@ -32,13 +35,12 @@ struct TripsView: View {
             tripList(content)
                 .navigationTitle("Fahrten")
                 .navigationBarTitleDisplayMode(.large)
-                .searchable(text: $searchText, prompt: Text("Bahnhof, Notiz oder Kategorie"))
+                .modifier(TripListSearchField(query: $query, resetToken: searchResetToken))
                 .toolbar { toolbarContent }
                 .navigationDestination(for: TripListRoute.self) { route in
                     destination(for: route)
                 }
         }
-        .task(id: csvStamp) { prepareCSV() }
         .sensoryFeedback(.success, trigger: successTick, condition: { _, _ in hapticsEnabled })
         .sensoryFeedback(.warning, trigger: warningTick, condition: { _, _ in hapticsEnabled })
         .sensoryFeedback(.selection, trigger: selectionTick, condition: { _, _ in hapticsEnabled })
@@ -229,8 +231,10 @@ struct TripsView: View {
                 } label: {
                     Label("Favoriten verwalten", systemImage: "star")
                 }
-                if let csvURL {
-                    ShareLink(item: csvURL, subject: Text("KlimaBilanz – Fahrten"), message: Text("Meine Fahrten als CSV-Datei")) {
+                if !trips.isEmpty {
+                    ShareLink(item: TripsCSVExport(container: context.container),
+                              subject: Text("KlimaBilanz – Fahrten"), message: Text("Meine Fahrten als CSV-Datei"),
+                              preview: SharePreview("KlimaBilanz – Fahrten")) {
                         Label("CSV exportieren", systemImage: "tablecells")
                     }
                 }
@@ -258,8 +262,24 @@ struct TripsView: View {
 
     // MARK: Derived content
 
+    /// Served from `contentCache` while nothing it depends on changed – haptic ticks, sheets and other re-renders
+    /// cost one pass over the trips' `updatedAt` instead of filtering, grouping and the amortisation.
     private func makeContent() -> TripListContent {
         let scope = resolvedScope
+        let key = TripListContentCache.Key(
+            trips: TripListFingerprint(trips),
+            tickets: TripListFingerprint(tickets),
+            scope: scope,
+            query: query,
+            mode: modeFilter,
+            purpose: categoryFilter,
+            day: TripListFormat.calendar.startOfDay(for: Date()),
+            kilometergeld: app.catalog.kilometergeldEUR,
+            emissions: app.catalog.emissions)
+        return contentCache.content(for: key) { buildContent(scope: scope) }
+    }
+
+    private func buildContent(scope: TripListScope) -> TripListContent {
         var scopeTicket: TicketEntity?
         if case .ticket(let id) = scope {
             scopeTicket = tickets.first { $0.id == id }
@@ -273,11 +293,17 @@ struct TripsView: View {
             periodTrips = trips
         }
 
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tokens = TripSearchIndex.tokens(query)
         let mode = modeFilter
         let purpose = categoryFilter
-        let visible = periodTrips.filter { trip in
-            (mode.map { trip.mode == $0 } ?? true) && purpose.matches(trip) && TripListFormat.matches(trip, query: query)
+        let isFiltered = mode != nil || purpose.isActive || !tokens.isEmpty
+        let index = contentCache.searchIndex
+        let visible = !isFiltered ? periodTrips : periodTrips.filter { trip in
+            (mode.map { trip.mode == $0 } ?? true) && purpose.matches(trip) && index.matches(trip, tokens: tokens)
+        }
+        // The amortisation only when nothing is filtered (otherwise it would mislead) – memoised by Analytics.
+        let summary: SavingsSummary? = isFiltered ? nil : scopeTicket.map {
+            Analytics.make(ticket: $0, trips: periodTrips, catalog: app.catalog).summary
         }
 
         return TripListContent(
@@ -287,10 +313,12 @@ struct TripsView: View {
             visibleTrips: visible,
             months: TripListMonth.group(visible),
             modeOptions: modeOptions(for: periodTrips),
-            snapshot: scopeTicket.map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) },
+            summary: summary,
+            stats: summary.map { TripListStats(count: $0.tripCount, distanceKm: $0.distanceKm, value: $0.totalValue) }
+                ?? TripListStats(visible),
             // Stays visible on "Alle Fahrten" too – otherwise a single-ticket user could never switch back.
             showsScopePicker: !tickets.isEmpty && (tickets.count > 1 || scope == .all || periodTrips.count < trips.count),
-            isFiltered: mode != nil || purpose.isActive || !query.isEmpty,
+            isFiltered: isFiltered,
             query: query,
             purposeCounts: MetaTripFilterCounts(trips: periodTrips)
         )
@@ -359,10 +387,11 @@ struct TripsView: View {
 
     private func resetFilters() {
         withAnimation(listAnimation) {
-            searchText = ""
+            query = ""
             modeFilter = nil
             categoryFilter = .all
         }
+        searchResetToken += 1
         selectionTick += 1
     }
 
@@ -403,26 +432,58 @@ struct TripsView: View {
         actions.addFavorite(trip, favorites: favorites)
         successTick += 1
     }
+}
 
-    // MARK: CSV export
+// MARK: - Search field
 
-    /// Changes whenever a trip is added, deleted or edited – regenerates the CSV file for the share sheet.
-    private var csvStamp: String {
-        let latest = trips.map(\.updatedAt).max() ?? .distantPast
-        return "\(trips.count)-\(Int(latest.timeIntervalSince1970))"
+/// The search field owns the live text, so a keystroke re-renders only this modifier. The list follows the trimmed text
+/// once typing pauses (150 ms) – right away when the field is cleared. `resetToken` empties the field ("Filter zurücksetzen").
+private struct TripListSearchField: ViewModifier {
+    @Binding var query: String
+    var resetToken: Int
+
+    @State private var text = ""
+
+    func body(content: Content) -> some View {
+        content
+            .searchable(text: $text, prompt: Text("Bahnhof, Notiz oder Kategorie"))
+            .task(id: text) {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty && trimmed != query {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    if Task.isCancelled { return }
+                }
+                if query != trimmed { query = trimmed }
+            }
+            .onChange(of: resetToken) { _, _ in text = "" }
+    }
+}
+
+// MARK: - CSV export
+
+/// "CSV exportieren" (same file as Einstellungen › Daten: CSV v2 with notes). Built only when the share sheet asks for
+/// it – from a background context, off the main actor – instead of after every change while the list is open.
+struct TripsCSVExport: Transferable {
+    let container: ModelContainer
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .commaSeparatedText) { export in
+            let url = try await Task.detached(priority: .userInitiated) { try export.writeFile() }.value
+            return SentTransferredFile(url)
+        }
     }
 
-    private func prepareCSV() {
-        guard !trips.isEmpty else {
-            csvURL = nil
-            return
-        }
-        do {
-            let data = try Backup.csv(context: context)
-            csvURL = try Backup.temporaryFile(named: "\(Backup.timestampedName)-Fahrten.csv", data: data)
-        } catch {
-            csvURL = nil
-        }
+    private func writeFile() throws -> URL {
+        let context = ModelContext(container)
+        let trips = try context.fetch(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil }))
+        var notes: [UUID: String] = [:]
+        for trip in trips where !trip.note.isEmpty { notes[trip.id] = trip.note }
+        let data = Data(TripCSVExport.trips(trips.map(\.record), notes: notes).utf8)
+        let day = Calendar.vienna.dateComponents([.year, .month, .day], from: Date())
+        let name = String(format: "KlimaBilanz-%04d-%02d-%02d-Fahrten.csv", day.year ?? 0, day.month ?? 0, day.day ?? 0)
+        let url = FileManager.default.temporaryDirectory.appending(path: name)
+        try data.write(to: url, options: .atomic)
+        return url
     }
 }
 
@@ -463,7 +524,7 @@ private struct TripListMonth: Identifiable {
     }
 }
 
-/// Everything the list renders, computed once per body evaluation.
+/// Everything the list renders (cached in TripListContentCache).
 private struct TripListContent {
     var scope: TripListScope
     var scopeTicket: TicketEntity?
@@ -471,11 +532,88 @@ private struct TripListContent {
     var visibleTrips: [TripEntity]
     var months: [TripListMonth]
     var modeOptions: [TransportMode]
-    var snapshot: AnalyticsSnapshot?
+    /// Amortisation of the scope ticket – nil while filtering (it would mislead) and for "Alle Fahrten".
+    var summary: SavingsSummary?
+    /// Fahrten / km / value of the card: the ticket year's summary, or what the filter shows.
+    var stats: TripListStats
     var showsScopePicker: Bool
     var isFiltered: Bool
     var query: String
     var purposeCounts: MetaTripFilterCounts
+}
+
+private struct TripListStats {
+    var count: Int
+    var distanceKm: Double
+    var value: Double
+
+    init(count: Int, distanceKm: Double, value: Double) {
+        self.count = count
+        self.distanceKm = distanceKm
+        self.value = value
+    }
+
+    init(_ trips: [TripEntity]) {
+        var distance = 0.0, value = 0.0
+        for trip in trips {
+            distance += trip.totalDistanceKm
+            value += trip.totalValue
+        }
+        self.init(count: trips.count, distanceKm: distance, value: value)
+    }
+}
+
+/// Count + hash of the rows' `updatedAt` in query order: every edit stamps `updatedAt` (`touch()`, the invariant sync
+/// and AnalyticsMemo rely on too), inserts and deletes change the count, a new date changes the order.
+private struct TripListFingerprint: Equatable {
+    var count: Int
+    var hash: Int
+
+    init(_ trips: [TripEntity]) {
+        var hasher = Hasher()
+        for trip in trips { hasher.combine(trip.updatedAt) }
+        count = trips.count
+        hash = hasher.finalize()
+    }
+
+    init(_ tickets: [TicketEntity]) {
+        var hasher = Hasher()
+        for ticket in tickets {
+            hasher.combine(ticket.id)
+            hasher.combine(ticket.updatedAt)
+        }
+        count = tickets.count
+        hash = hasher.finalize()
+    }
+}
+
+/// Last list content and the inputs it was built from (a plain reference in @State: reading or refilling it never
+/// triggers a re-render). Also owns the search keys, which outlive single queries.
+@MainActor
+private final class TripListContentCache {
+    struct Key: Equatable {
+        var trips: TripListFingerprint
+        var tickets: TripListFingerprint
+        var scope: TripListScope
+        var query: String
+        var mode: TransportMode?
+        var purpose: MetaTripFilter
+        var day: Date
+        var kilometergeld: Double
+        var emissions: EmissionFactors
+    }
+
+    let searchIndex = TripSearchIndex()
+    private var key: Key?
+    private var value: TripListContent?
+
+    func content(for key: Key, build: () -> TripListContent) -> TripListContent {
+        if let value, self.key == key { return value }
+        let built = build()
+        self.key = key
+        value = built
+        return built
+    }
 }
 
 // MARK: - Summary card
@@ -580,10 +718,10 @@ private struct TripListSummaryCard: View {
                 Text("€")
                     .font(.system(.title2, design: .rounded, weight: .light))
                     .foregroundStyle(Theme.textSecondary)
-                Text(Format.number(stats.value))
+                Text(Format.number(shownValue))
                     .font(Theme.Typography.priceNumeral)
                     .foregroundStyle(Theme.textPrimary)
-                    .contentTransition(.numericText(value: stats.value))
+                    .contentTransition(.numericText(value: shownValue))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -592,7 +730,7 @@ private struct TripListSummaryCard: View {
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .animation(.snappy, value: stats.value)
+        .animation(.snappy, value: shownValue)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Wert der Fahrten")
         .accessibilityValue("\(Format.euro(stats.value)), \(subline)")
@@ -603,7 +741,7 @@ private struct TripListSummaryCard: View {
                      leadingLabel: summary.isPaidOff
                         ? "+ \(SummitFigures.euro(summary.shownProfitEuro)) im Plus"
                         : "Noch \(SummitFigures.euro(summary.shownRemainingEuro)) bis zum Gipfel",
-                     trailingLabel: "Gipfel \(Format.euro(summary.ticketPrice))",
+                     trailingLabel: "Gipfel \(SummitFigures.euro(summary.ticketPrice.rounded()))",
                      height: 8)
             .padding(.top, Theme.Spacing.xxs)
             .accessibilityLabel("Fortschritt bis zum Break-even")
@@ -670,18 +808,14 @@ private struct TripListSummaryCard: View {
     // MARK: Derived
 
     /// Amortisation of the selected ticket – only when the list is not filtered (otherwise it would mislead).
-    private var amortization: SavingsSummary? {
-        content.isFiltered ? nil : content.snapshot?.summary
-    }
+    private var amortization: SavingsSummary? { content.summary }
 
-    private var stats: (count: Int, distanceKm: Double, value: Double) {
-        if !content.isFiltered, let summary = content.snapshot?.summary {
-            return (summary.tripCount, summary.distanceKm, summary.totalValue)
-        }
-        let visible = content.visibleTrips
-        return (visible.count,
-                visible.reduce(0) { $0 + $1.totalDistanceKm },
-                visible.reduce(0) { $0 + $1.totalValue })
+    private var stats: TripListStats { content.stats }
+
+    /// The big numeral in whole euros – never the summit before it is reached (SummitFigures, as on the dashboard).
+    private var shownValue: Double {
+        guard let summary = amortization else { return stats.value.rounded() }
+        return SummitFigures.shownTotal(value: summary.totalValue, price: summary.ticketPrice, isPaidOff: summary.isPaidOff)
     }
 
     private var scopeTitle: String {
@@ -696,6 +830,9 @@ private struct TripListSummaryCard: View {
             return "\(Format.number(Double(content.visibleTrips.count))) von \(TripListFormat.tripCount(content.periodTrips.count)) · gefiltert"
         }
         if let ticket = content.scopeTicket {
+            // The summit is the own share (price + add-ons − employer contribution) – name it when it differs.
+            let share = ticket.ownShare
+            if abs(share - ticket.price) >= 0.005 { return "Normalpreis-Wert · Eigenanteil \(Format.euro(share))" }
             return "Normalpreis-Wert · Ticket \(Format.euro(ticket.price))"
         }
         return "Normalpreis-Wert aller Fahrten"
