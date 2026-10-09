@@ -292,7 +292,7 @@ struct ToastOverlay: View {
             .glassEffect(.regular, in: .capsule)
             .padding(.top, Theme.Spacing.xs)
             .transition(.move(edge: .top).combined(with: .opacity))
-            .sensoryFeedback(.success, trigger: toast.id)
+            .sensoryFeedback(.success, trigger: toast.id, condition: { _, _ in app.settings.hapticsEnabled })
             .onTapGesture { withAnimation { app.toast = nil } }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.updatesFrequently)

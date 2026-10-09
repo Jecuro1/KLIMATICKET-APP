@@ -281,6 +281,49 @@ public struct TicketPeriod: Hashable, Sendable {
 // MARK: - Trips
 
 /// Value-type snapshot of a logged trip used for all calculations.
+/// Why a trip was made. Drives filters, statistics per purpose and the work/tax overview.
+public enum TripCategory: String, Codable, CaseIterable, Sendable, Identifiable {
+    case commute      // Arbeitsweg
+    case business     // Dienstreise
+    case education    // Schule / Uni / Ausbildung
+    case leisure      // Freizeit / Ausflug
+    case holiday      // Urlaub
+    case visit        // Besuch (Familie, Freunde)
+    case errand       // Erledigung / Einkauf / Arzt
+    case other
+
+    public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .commute: "Arbeitsweg"
+        case .business: "Dienstreise"
+        case .education: "Ausbildung"
+        case .leisure: "Freizeit"
+        case .holiday: "Urlaub"
+        case .visit: "Besuch"
+        case .errand: "Erledigung"
+        case .other: "Sonstiges"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .commute: "briefcase.fill"
+        case .business: "suitcase.rolling.fill"
+        case .education: "graduationcap.fill"
+        case .leisure: "mountain.2.fill"
+        case .holiday: "sun.max.fill"
+        case .visit: "house.fill"
+        case .errand: "bag.fill"
+        case .other: "ellipsis.circle.fill"
+        }
+    }
+
+    /// Work-related purposes (shown in "Arbeit & Steuer").
+    public var isWorkRelated: Bool { self == .commute || self == .business }
+}
+
 public struct TripRecord: Hashable, Sendable, Identifiable {
     public var id: UUID
     public var date: Date
@@ -297,9 +340,14 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
     /// Additional people travelling on the same ticket (e.g. children on KlimaTicket Familie). Not valued by default.
     public var companions: Int
     public var states: Set<String>
+    /// Purpose of the trip; nil = not categorised.
+    public var category: TripCategory?
+    /// "Ohne Ticket wäre ich nicht gefahren" – the trip was induced by the flat-rate ticket (counts as extra value, not as money saved).
+    public var isInduced: Bool
 
     public init(id: UUID = UUID(), date: Date, fromName: String, toName: String, fromStationID: String? = nil, toStationID: String? = nil,
-                mode: TransportMode, distanceKm: Double, fareEUR: Double, isRoundTrip: Bool = false, companions: Int = 0, states: Set<String> = []) {
+                mode: TransportMode, distanceKm: Double, fareEUR: Double, isRoundTrip: Bool = false, companions: Int = 0, states: Set<String> = [],
+                category: TripCategory? = nil, isInduced: Bool = false) {
         self.id = id
         self.date = date
         self.fromName = fromName
@@ -312,6 +360,8 @@ public struct TripRecord: Hashable, Sendable, Identifiable {
         self.isRoundTrip = isRoundTrip
         self.companions = companions
         self.states = states
+        self.category = category
+        self.isInduced = isInduced
     }
 
     public var legs: Int { isRoundTrip ? 2 : 1 }

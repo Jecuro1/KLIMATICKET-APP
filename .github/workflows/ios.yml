@@ -122,21 +122,54 @@ jobs:
           grep -E "warning:" build/device-build.log | grep -v "SourcePackages" | sort -u | head -60 || true
 
       - name: Package .ipa
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GROUP: group.com.knitelarlberg.klimabilanz
         run: |
-          APP=build/device/Build/Products/Release-iphoneos/KlimaBilanz.app
-          test -d "$APP"
-          # Fake-sign with entitlements so AltStore/SideStore/TrollStore keep App Groups etc.
+          set -euo pipefail
+          SRC=build/device/Build/Products/Release-iphoneos/KlimaBilanz.app
+          test -d "$SRC"
+          rm -rf build/ipa build/entitlements dist
+          mkdir -p build/ipa/Payload build/entitlements dist
+          cp -R "$SRC" build/ipa/Payload/
+          APP=build/ipa/Payload/KlimaBilanz.app
+          # Fake-sign with the sideload entitlements so AltStore/SideStore keep the App Group when they re-sign.
+          # Nested code first (frameworks, then the widget extension), the app binary last.
+          for FW in "$APP"/Frameworks/*.framework "$APP"/Frameworks/*.dylib; do
+            [ -e "$FW" ] || continue
+            if [ -d "$FW" ]; then FW="$FW/$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$FW/Info.plist")"; fi
+            ldid -S "$FW"
+          done
           for EXT in "$APP"/PlugIns/*.appex; do
             [ -d "$EXT" ] || continue
+            NAME=$(basename "$EXT" .appex)
+            ENT="App/Supporting/${NAME}-Sideload.entitlements"
+            test -f "$ENT" || { echo "::error::$ENT fehlt – jede App-Extension braucht eigene Sideload-Entitlements"; exit 1; }
             EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$EXT/Info.plist")
-            ldid -SWidgets/Supporting/KlimaBilanzWidgets.entitlements "$EXT/$EXE"
+            ldid -S"$ENT" "$EXT/$EXE"
+            ldid -e "$EXT/$EXE" > "build/entitlements/${NAME}.plist"
           done
           # Sideload builds must not request Sign in with Apple (not available to free Apple IDs).
           ldid -SApp/Supporting/KlimaBilanz-Sideload.entitlements "$APP/KlimaBilanz"
-          mkdir -p dist/Payload
-          cp -R "$APP" dist/Payload/
-          (cd dist && zip -qry "KlimaBilanz-${{ steps.version.outputs.version }}.ipa" Payload && rm -rf Payload)
+          ldid -e "$APP/KlimaBilanz" > build/entitlements/KlimaBilanz.plist
+          # Sanity checks: widget embedded, App Group on app + widget, no Sign in with Apple in the sideload app.
+          test -f "$APP/PlugIns/KlimaBilanzWidgets.appex/KlimaBilanzWidgets" || { echo "::error::Widget-Extension fehlt in PlugIns/"; exit 1; }
+          for E in build/entitlements/*.plist; do
+            echo "── $E"; cat "$E"
+            grep -q "<string>$GROUP</string>" "$E" || { echo "::error::$E: App Group $GROUP fehlt"; exit 1; }
+          done
+          if grep -q "com.apple.developer.applesignin" build/entitlements/KlimaBilanz.plist; then
+            echo "::error::Sideload-App darf keine Sign-in-with-Apple-Entitlements haben"; exit 1
+          fi
+          IPA="dist/KlimaBilanz-${VERSION}.ipa"
+          (cd build/ipa && zip -qry -X "../../$IPA" Payload)
+          unzip -Z1 "$IPA" > build/ipa-files.txt
+          for F in Payload/KlimaBilanz.app/KlimaBilanz Payload/KlimaBilanz.app/Info.plist \
+                   Payload/KlimaBilanz.app/PlugIns/KlimaBilanzWidgets.appex/KlimaBilanzWidgets; do
+            grep -qx "$F" build/ipa-files.txt || { echo "::error::$F fehlt in der .ipa"; exit 1; }
+          done
           ls -la dist
+          shasum -a 256 "$IPA"
 
       - name: Upload .ipa artifact
         uses: actions/upload-artifact@v4
@@ -209,7 +242,16 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           BUILD: ${{ steps.version.outputs.build }}
           DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, github.ref_name) }}
-        run: python3 scripts/make_release_metadata.py dist
+          # Immutable per-tag .ipa URL, so the sha256 in the source always matches the file behind it.
+          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, github.ref_name) || '' }}
+          MINIMUM_SUPPORTED_VERSION: ${{ vars.MINIMUM_SUPPORTED_VERSION }}
+        run: |
+          set -euo pipefail
+          # appPermissions, version, buildVersion, size and sha256 are all derived from the final .ipa
+          # (entitlements as extracted with `ldid -e` in "Package .ipa").
+          python3 scripts/make_release_metadata.py dist --strict --entitlements build/entitlements/*.plist
+          python3 -m json.tool dist/altstore-source.json > /dev/null
+          python3 -m json.tool dist/update.json > /dev/null
 
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')

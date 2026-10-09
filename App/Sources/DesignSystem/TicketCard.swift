@@ -140,32 +140,43 @@ struct TicketCard: View {
         HStack(spacing: 12) {
             if let fraction = amortizedFraction {
                 MiniSummit(progress: fraction)
-                    .frame(width: 66, height: 44)
+                    .frame(width: 56, height: 40)
                 VStack(alignment: .leading, spacing: 1) {
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
                         Text(Format.percent(fraction))
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                        Text(fraction >= 1 ? "rentiert" : "amortisiert").font(.system(size: 13, weight: .semibold))
+                            .fixedSize()
+                        Text(fraction >= 1 ? "rentiert" : "amortisiert")
+                            .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     if let valueText {
-                        Text(valueText).font(.system(size: 12, weight: .medium)).opacity(0.72)
+                        Text(valueText)
+                            .font(.system(size: 12, weight: .medium).monospacedDigit())
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .opacity(0.72)
                     }
                 }
+                .layoutPriority(1)
             } else {
                 Text(ticketNumber.isEmpty ? "Begleitkarte · kein Fahrschein" : "Nr. \(ticketNumber)")
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .opacity(0.8)
             }
             Spacer(minLength: 4)
             if let onOriginal {
                 Button(action: onOriginal) {
-                    Label(hasPhoto ? "Original" : "Hinzufügen", systemImage: hasPhoto ? "doc.fill" : "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(Capsule().fill(.white.opacity(0.16)))
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.26), lineWidth: 1))
+                    Image(systemName: hasPhoto ? "doc.text.image" : "camera.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(.white.opacity(0.16)))
+                        .overlay(Circle().strokeBorder(.white.opacity(0.28), lineWidth: 1))
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(hasPhoto ? "Original-Ticket anzeigen" : "Foto des Original-Tickets hinzufügen")

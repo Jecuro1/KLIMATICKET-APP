@@ -39,7 +39,7 @@ struct RootView: View {
         .preferredColorScheme(app.settings.appearance.colorScheme)
         .tint(Theme.accent)
         .onOpenURL { url in handleDeepLink(url) }
-        .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue).receive(on: RunLoop.main)) { _ in
             handleExternalRequests()
         }
         .task {

@@ -27,7 +27,7 @@ Bedienung, Frost-Karten für Inhalte.
 - **Automatische Fahrterkennung** (optional) – erkennt Fahrten zwischen deinen Stamm-Bahnhöfen und schlägt sie vor
 - **Widgets, Sperrbildschirm, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung
 - **Konten** – Anmeldung mit Apple, Google oder Microsoft, Cloud-Sync zwischen Geräten (Supabase)
-- **Automatische Updates** – In-App-Update-Hinweis + AltStore/SideStore-Quelle; Ticketpreise aktualisieren sich selbst
+- **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
 - **Datenschutz** – ohne Konto bleibt alles auf dem iPhone; kein Tracking, keine Werbung
 
 ## Installieren

@@ -25,6 +25,14 @@ final class TicketEntity {
     var remindersRaw: String = "30,7,1"
     /// Paid in 12 monthly instalments instead of once (KlimaTicket Ö option).
     var isMonthlyPayment: Bool = false
+    /// Renews automatically (SEPA direct debit) unless the holder objects before the deadline in the renewal letter.
+    var autoRenews: Bool = false
+    /// Amount the employer pays (Jobticket / Zuschuss); the payoff is measured against the holder's own share.
+    var employerContribution: Double = 0
+    /// Price of add-ons bought for this ticket year (e.g. ÖBB 1st-class upgrade, Vorteilsabo), EUR.
+    var addOnPrice: Double = 0
+    /// Comma separated add-on identifiers ("firstClass", "vorteilsabo", "business").
+    var addOnsRaw: String = ""
     @Attribute(.externalStorage) var photoData: Data?
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
@@ -67,11 +75,18 @@ final class TicketEntity {
         set { remindersRaw = newValue.map(String.init).joined(separator: ",") }
     }
 
+    /// The payoff is measured against what the holder actually paid (own share incl. add-ons).
     var period: TicketPeriod {
-        TicketPeriod(productID: productID, name: name, price: price, start: startDate, end: endDate)
+        TicketPeriod(productID: productID, name: name, price: ownShare, start: startDate, end: endDate)
     }
 
     var isActive: Bool { period.contains(Date()) }
+    /// What the holder paid themselves (price + add-ons − employer contribution, never negative).
+    var ownShare: Double { max(0, price + addOnPrice - employerContribution) }
+    var addOns: [String] {
+        get { addOnsRaw.split(separator: ",").map(String.init) }
+        set { addOnsRaw = newValue.joined(separator: ",") }
+    }
 
     /// Amount paid so far (monthly instalments are due at the start of each validity month).
     func paidSoFar(now: Date = Date()) -> Double {
@@ -107,6 +122,10 @@ final class TripEntity {
     /// Comma separated federal state codes touched by the trip.
     var statesRaw: String = ""
     var note: String = ""
+    /// TripCategory raw value; empty = not categorised.
+    var categoryRaw: String = ""
+    /// "Ohne Ticket wäre ich nicht gefahren" – counted as extra value, shown separately from money actually saved.
+    var isInduced: Bool = false
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -148,6 +167,11 @@ final class TripEntity {
         set { statesRaw = newValue.joined(separator: ",") }
     }
 
+    var category: TripCategory? {
+        get { categoryRaw.isEmpty ? nil : TripCategory(rawValue: categoryRaw) }
+        set { categoryRaw = newValue?.rawValue ?? "" }
+    }
+
     var totalValue: Double { fareEUR * (isRoundTrip ? 2 : 1) }
     var totalDistanceKm: Double { distanceKm * (isRoundTrip ? 2 : 1) }
     var isTrashed: Bool { deletedAt != nil }
@@ -155,7 +179,7 @@ final class TripEntity {
     var record: TripRecord {
         TripRecord(id: id, date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
                    mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, companions: companions,
-                   states: Set(states))
+                   states: Set(states), category: category, isInduced: isInduced)
     }
 
     func touch() { updatedAt = Date() }
@@ -176,6 +200,8 @@ final class FavoriteRouteEntity {
     var statesRaw: String = ""
     var sortIndex: Int = 0
     var usageCount: Int = 0
+    /// TripCategory raw value applied to trips logged from this favourite; empty = none.
+    var categoryRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -213,15 +239,48 @@ final class FavoriteRouteEntity {
 
     /// Creates a new trip entity from this favourite for the given date.
     func makeTrip(on date: Date = Date()) -> TripEntity {
-        TripEntity(date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
-                   mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, states: states)
+        let trip = TripEntity(date: date, fromName: fromName, toName: toName, fromStationID: fromStationID, toStationID: toStationID,
+                              mode: mode, distanceKm: distanceKm, fareEUR: fareEUR, isRoundTrip: isRoundTrip, states: states)
+        trip.categoryRaw = categoryRaw
+        return trip
     }
 
     func touch() { updatedAt = Date() }
 }
 
+/// A used KlimaTicket holder benefit ("Vorteilswelt": CAT −50 %, nextbike, museums, cable cars …).
+/// Shown as "Zusatz-Ersparnis", always separate from the trip-based payoff.
+@Model
+final class BenefitEntity {
+    var id: UUID = UUID()
+    var date: Date = Date()
+    /// Catalogue id (see BenefitCatalog) or "custom".
+    var partnerID: String = "custom"
+    var title: String = ""
+    /// Money saved thanks to the benefit, EUR.
+    var savedEUR: Double = 0
+    var note: String = ""
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var deletedAt: Date?
+
+    init(date: Date = Date(), partnerID: String = "custom", title: String, savedEUR: Double, note: String = "") {
+        self.id = UUID()
+        self.date = date
+        self.partnerID = partnerID
+        self.title = title
+        self.savedEUR = savedEUR
+        self.note = note
+        self.createdAt = Date()
+        self.updatedAt = Date()
+    }
+
+    var isTrashed: Bool { deletedAt != nil }
+    func touch() { updatedAt = Date() }
+}
+
 enum DataSchema {
-    static let models: [any PersistentModel.Type] = [TicketEntity.self, TripEntity.self, FavoriteRouteEntity.self]
+    static let models: [any PersistentModel.Type] = [TicketEntity.self, TripEntity.self, FavoriteRouteEntity.self, BenefitEntity.self]
 
     /// Persistent container in the App Group (shared with widgets) when available, otherwise the app sandbox.
     /// Falls back to in-memory storage if the store cannot be opened, so the app never crashes on launch.
