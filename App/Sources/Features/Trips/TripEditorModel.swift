@@ -25,6 +25,16 @@ final class TripEditorModel {
     var note: String = ""
     var saveAsFavorite: Bool = false
 
+    // Purpose & honest balance (see MetaTripPurposeSection)
+    /// Why the trip was made; nil = not categorised.
+    var category: TripCategory?
+    /// "Ohne KlimaTicket wäre ich nicht gefahren" – counted as extra value, not as money saved.
+    var isInduced: Bool = false
+    /// Where a preselected category came from (nil = chosen by the user, or none).
+    var categorySource: MetaCategorySource?
+    /// The user picked or cleared the category – suggestions never overwrite that choice.
+    var categoryWasChosen = false
+
     // Price
     var manualFare: Double?
     var manualDistanceKm: Double?
@@ -49,6 +59,10 @@ final class TripEditorModel {
             travelClass = trip.travelClass
             companions = trip.companions
             note = trip.note
+            category = trip.category
+            isInduced = trip.isInduced
+            // Editing never re-categorises silently.
+            categoryWasChosen = true
             if trip.isFareManual { manualFare = trip.fareEUR }
             if fromStation == nil || toStation == nil { manualDistanceKm = trip.distanceKm }
         } else {
@@ -143,6 +157,12 @@ final class TripEditorModel {
         toName = favorite.toName
         mode = favorite.mode
         isRoundTrip = favorite.isRoundTrip
+        if let favoriteCategory = TripCategory(rawValue: favorite.categoryRaw) {
+            // The favourite is a template: its purpose wins over an earlier pick.
+            category = favoriteCategory
+            categorySource = .favorite
+            categoryWasChosen = false
+        }
         manualFare = nil
         manualDistanceKm = nil
         recompute()
@@ -195,15 +215,19 @@ final class TripEditorModel {
             trip.companions = companions
             trip.states = states
             trip.note = note
+            trip.category = category
+            trip.isInduced = isInduced
             repo.updateTrip(trip)
         } else {
             trip = TripEntity(date: date, fromName: resolvedFromName, toName: resolvedToName, fromStationID: fromStation?.id,
                               toStationID: toStation?.id, mode: mode, distanceKm: distanceKm, fareEUR: fare,
                               isFareManual: isFareManual, isRoundTrip: isRoundTrip, travelClass: travelClass,
                               companions: companions, states: states, note: note)
+            trip.category = category
+            trip.isInduced = isInduced
             repo.addTrip(trip)
         }
-        if saveAsFavorite { repo.addFavorite(from: trip) }
+        if saveAsFavorite { repo.metaAddFavorite(from: trip) }
         return trip
     }
 }

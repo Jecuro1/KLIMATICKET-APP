@@ -18,6 +18,7 @@ struct TripsView: View {
     @State private var path: [TripListRoute] = []
     @State private var searchText = ""
     @State private var modeFilter: TransportMode?
+    @State private var categoryFilter: MetaTripFilter = .all
     @State private var scopeSelection: TripListScope?
     @State private var csvURL: URL?
     @State private var successTick = 0
@@ -31,7 +32,7 @@ struct TripsView: View {
             tripList(content)
                 .navigationTitle("Fahrten")
                 .navigationBarTitleDisplayMode(.large)
-                .searchable(text: $searchText, prompt: Text("Bahnhof oder Notiz suchen"))
+                .searchable(text: $searchText, prompt: Text("Bahnhof, Notiz oder Kategorie"))
                 .toolbar { toolbarContent }
                 .navigationDestination(for: TripListRoute.self) { route in
                     destination(for: route)
@@ -75,8 +76,8 @@ struct TripsView: View {
                 .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xs, trailing: 0))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-            if content.modeOptions.count > 1 || modeFilter != nil {
-                modeChips(content.modeOptions)
+            if content.modeOptions.count > 1 || modeFilter != nil || content.purposeCounts.hasPurposes || categoryFilter.isActive {
+                modeChips(content.modeOptions, counts: content.purposeCounts)
                     .listRowInsets(EdgeInsets(top: Theme.Spacing.xxs, leading: 0, bottom: Theme.Spacing.xxs, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -84,10 +85,18 @@ struct TripsView: View {
         }
     }
 
-    private func modeChips(_ options: [TransportMode]) -> some View {
+    private func modeChips(_ options: [TransportMode], counts: MetaTripFilterCounts) -> some View {
         ScrollView(.horizontal) {
             GlassEffectContainer(spacing: Theme.Spacing.xs) {
                 HStack(spacing: Theme.Spacing.xs) {
+                    if counts.hasPurposes || categoryFilter.isActive {
+                        MetaCategoryFilterMenu(selection: categoryFilterBinding, counts: counts)
+                        Capsule()
+                            .fill(Theme.separator)
+                            .frame(width: 1, height: 22)
+                            .padding(.horizontal, 2)
+                            .accessibilityHidden(true)
+                    }
                     Chip(title: "Alle", isSelected: modeFilter == nil, tint: Theme.accentText) {
                         selectMode(nil)
                     }
@@ -103,7 +112,7 @@ struct TripsView: View {
         .scrollIndicators(.hidden)
         .scrollClipDisabled()
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Nach Verkehrsmittel filtern")
+        .accessibilityLabel("Nach Kategorie und Verkehrsmittel filtern")
     }
 
     private func monthSection(_ month: TripListMonth) -> some View {
@@ -155,6 +164,9 @@ struct TripsView: View {
         Button { repeatToday(trip) } label: { Label("Heute nochmal fahren", systemImage: "arrow.clockwise") }
         Button { duplicate(trip) } label: { Label("Duplizieren", systemImage: "plus.square.on.square") }
         Button { favorite(trip) } label: { Label("Als Favorit speichern", systemImage: "star") }
+        MetaTripPurposeMenu(trip: trip) { category, isInduced in
+            setPurpose(trip, category: category, isInduced: isInduced)
+        }
         Divider()
         Button(role: .destructive) { delete(trip) } label: { Label("Löschen", systemImage: "trash") }
     }
@@ -263,8 +275,9 @@ struct TripsView: View {
 
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let mode = modeFilter
+        let purpose = categoryFilter
         let visible = periodTrips.filter { trip in
-            (mode.map { trip.mode == $0 } ?? true) && TripListFormat.matches(trip, query: query)
+            (mode.map { trip.mode == $0 } ?? true) && purpose.matches(trip) && TripListFormat.matches(trip, query: query)
         }
 
         return TripListContent(
@@ -277,8 +290,9 @@ struct TripsView: View {
             snapshot: scopeTicket.map { Analytics.make(ticket: $0, trips: trips, catalog: app.catalog) },
             // Stays visible on "Alle Fahrten" too – otherwise a single-ticket user could never switch back.
             showsScopePicker: !tickets.isEmpty && (tickets.count > 1 || scope == .all || periodTrips.count < trips.count),
-            isFiltered: mode != nil || !query.isEmpty,
-            query: query
+            isFiltered: mode != nil || purpose.isActive || !query.isEmpty,
+            query: query,
+            purposeCounts: MetaTripFilterCounts(trips: periodTrips)
         )
     }
 
@@ -323,7 +337,7 @@ struct TripsView: View {
     }
 
     private func noResultsMessage(_ content: TripListContent) -> String {
-        let modeText = modeFilter.map { " mit \($0.displayName)" } ?? ""
+        let modeText = (modeFilter.map { " mit \($0.displayName)" } ?? "") + categoryFilter.resultPhrase
         if !content.query.isEmpty {
             return "Für „\(content.query)“ gibt es keine Fahrt\(modeText) in diesem Zeitraum."
         }
@@ -347,6 +361,25 @@ struct TripsView: View {
         withAnimation(listAnimation) {
             searchText = ""
             modeFilter = nil
+            categoryFilter = .all
+        }
+        selectionTick += 1
+    }
+
+    private var categoryFilterBinding: Binding<MetaTripFilter> {
+        Binding(
+            get: { categoryFilter },
+            set: { newValue in
+                guard newValue != categoryFilter else { return }
+                withAnimation(listAnimation) { categoryFilter = newValue }
+                selectionTick += 1
+            }
+        )
+    }
+
+    private func setPurpose(_ trip: TripEntity, category: TripCategory?, isInduced: Bool) {
+        withAnimation(listAnimation) {
+            Repository(context: context, app: app).metaSetPurpose(trip, category: category, isInduced: isInduced)
         }
         selectionTick += 1
     }
@@ -442,6 +475,7 @@ private struct TripListContent {
     var showsScopePicker: Bool
     var isFiltered: Bool
     var query: String
+    var purposeCounts: MetaTripFilterCounts
 }
 
 // MARK: - Summary card

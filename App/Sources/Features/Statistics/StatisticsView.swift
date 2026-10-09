@@ -59,26 +59,34 @@ struct StatsScreen: View {
     @State private var shareImageKey: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                header
-                    .padding(.bottom, Theme.Spacing.xxs)
-                if snapshot.trips.isEmpty {
-                    emptyTrips
-                } else {
-                    primarySections
-                    secondarySections
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    header
+                        .padding(.bottom, Theme.Spacing.xxs)
+                    if snapshot.trips.isEmpty {
+                        emptyTrips
+                    } else {
+                        primarySections
+                        secondarySections
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+                .padding(.top, Theme.Spacing.xxs)
+                .padding(.bottom, Theme.Spacing.xxl)
             }
-            .padding(.horizontal, Theme.Spacing.cardGutter)
-            .padding(.top, Theme.Spacing.xxs)
-            .padding(.bottom, Theme.Spacing.xxl)
-        }
-        .scrollIndicators(.hidden)
-        .onScrollGeometryChange(for: Bool.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top > 64
-        } action: { _, isScrolled in
-            withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
+            .scrollIndicators(.hidden)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > 64
+            } action: { _, isScrolled in
+                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
+            }
+            .task {
+                // CI screenshot "statsCategories": scroll to "Wofür du fährst" + "Ehrliche Bilanz".
+                guard LaunchMode.screenshotScreen == "statsCategories" else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                proxy.scrollTo(MetaStatsAnchor.purpose, anchor: .top)
+            }
         }
         .navigationTitle("Statistik")
         .navigationBarTitleDisplayMode(.inline)
@@ -127,6 +135,11 @@ struct StatsScreen: View {
             .statsEntrance(1)
         StatsModesCard(snapshot: snapshot, grow: grow)
             .statsEntrance(2)
+        MetaPurposeCard(snapshot: snapshot, grow: grow)
+            .id(MetaStatsAnchor.purpose)
+            .statsEntrance(3)
+        MetaHonestBalanceCard(snapshot: snapshot, grow: grow)
+            .statsEntrance(3)
         StatsCalendarCard(snapshot: snapshot)
             .statsEntrance(3)
         StatsWeekdayCard(snapshot: snapshot, grow: grow)

@@ -102,6 +102,7 @@ struct TripDetailView: View {
                     .minimumScaleFactor(0.4)
             }
             heroCaption
+            purposePills
         }
         .frame(maxWidth: .infinity)
         .padding(.top, Theme.Spacing.s)
@@ -131,6 +132,24 @@ struct TripDetailView: View {
             .foregroundStyle(Theme.textSecondary)
     }
 
+    /// Purpose and "Mehrwert-Fahrt" (ohne KlimaTicket nicht gefahren) – only when set.
+    @ViewBuilder
+    private var purposePills: some View {
+        if trip.category != nil || trip.isInduced {
+            HStack(spacing: Theme.Spacing.xs) {
+                if let category = trip.category {
+                    MetaCategoryPill(title: category.displayName, symbol: category.symbolName,
+                                     color: MetaCategoryStyle.color(category))
+                }
+                if trip.isInduced {
+                    MetaCategoryPill(title: MetaCategoryStyle.inducedTitle, symbol: MetaCategoryStyle.inducedSymbol,
+                                     color: MetaCategoryStyle.inducedColor)
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+
     private var heroCaptionText: String {
         trip.isRoundTrip ? "2 × \(Format.euroPrecise(trip.fareEUR)) Normalpreis" : "Normalpreis · eine Richtung"
     }
@@ -144,6 +163,8 @@ struct TripDetailView: View {
     private var heroAccessibilityValue: String {
         var text = Format.euroPrecise(trip.totalValue)
         if trip.isRoundTrip { text += ", hin und retour, 2 mal \(Format.euroPrecise(trip.fareEUR))" }
+        if let category = trip.category { text += ", \(category.displayName)" }
+        if trip.isInduced { text += ", Mehrwert-Fahrt, ohne KlimaTicket nicht gefahren" }
         return "\(text), \(TripListFormat.detailDateLine(trip.date))"
     }
 

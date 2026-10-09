@@ -83,13 +83,15 @@ enum TripListFormat {
         return kind
     }
 
-    /// Search over station names, notes and the mode name (case- and diacritic-insensitive).
+    /// Search over station names, notes, the mode and the purpose (case- and diacritic-insensitive).
     static func matches(_ trip: TripEntity, query: String) -> Bool {
         guard !query.isEmpty else { return true }
         return trip.fromName.localizedStandardContains(query)
             || trip.toName.localizedStandardContains(query)
             || trip.note.localizedStandardContains(query)
             || trip.mode.displayName.localizedStandardContains(query)
+            || (trip.category?.displayName.localizedStandardContains(query) ?? false)
+            || (trip.isInduced && MetaCategoryStyle.inducedTitle.localizedStandardContains(query))
     }
 }
 
@@ -152,7 +154,7 @@ struct TripListActions {
             app.showToast("star.circle.fill", "Schon ein Favorit", existing.displayTitle)
             return
         }
-        let favorite = repository.addFavorite(from: trip)
+        let favorite = repository.metaAddFavorite(from: trip)
         app.showToast("star.circle.fill", "Als Favorit gespeichert",
                       TripListFormat.routeTitle(favorite.fromName, favorite.toName, roundTrip: favorite.isRoundTrip))
     }
@@ -266,6 +268,7 @@ struct TripListRow: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
             HStack(spacing: 5) {
+                MetaTripRowPurpose(category: trip.category, isInduced: trip.isInduced)
                 if trip.isRoundTrip {
                     Image(systemName: "arrow.left.arrow.right")
                         .font(.caption2.weight(.bold))
@@ -286,6 +289,8 @@ struct TripListRow: View {
 
     private var accessibilityValue: String {
         var parts = [Format.euroPrecise(trip.totalValue), Format.relativeDay(trip.date), Format.time(trip.date)]
+        if let category = trip.category { parts.append(category.displayName) }
+        if trip.isInduced { parts.append("\(MetaCategoryStyle.inducedTitle), ohne KlimaTicket nicht gefahren") }
         if !trip.note.isEmpty { parts.append("Notiz: \(trip.note)") }
         return parts.joined(separator: ", ")
     }

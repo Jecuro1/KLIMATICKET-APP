@@ -67,38 +67,53 @@ private struct TripEdSheet: View {
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.selection, trigger: model.mode) { _, _ in haptics }
         .sensoryFeedback(.selection, trigger: selectionTick) { _, _ in haptics }
+        .onAppear { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+        .onChange(of: model.metaSuggestionKey) { _, _ in
+            withAnimation(.snappy(duration: 0.3)) { model.metaApplySuggestion(favorites: favorites, trips: trips) }
+        }
     }
 
     // MARK: Layout
 
     private var form: some View {
-        ScrollView {
-            VStack(spacing: 10) {
-                if showsFavorites {
-                    TripEdFavoritesRow(model: model, favorites: favorites) { favorite in
-                        applyFavorite(favorite)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 10) {
+                    if showsFavorites {
+                        TripEdFavoritesRow(model: model, favorites: favorites) { favorite in
+                            applyFavorite(favorite)
+                        }
                     }
-                }
-                Group {
-                    TripEdRouteCard(model: model) { pick in
-                        focus = nil
-                        picking = pick
+                    Group {
+                        TripEdRouteCard(model: model) { pick in
+                            focus = nil
+                            picking = pick
+                        }
+                        TripEdModePicker(model: model)
+                        TripEdDateCard(model: model)
+                        TripEdPriceCard(model: model, focus: $focus)
+                        TripEdImpactCard(model: model)
                     }
-                    TripEdModePicker(model: model)
-                    TripEdDateCard(model: model)
-                    TripEdPriceCard(model: model, focus: $focus)
-                    TripEdImpactCard(model: model)
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    MetaTripPurposeSection(model: model)
+                        .id(MetaTripPurposeSection.anchorID)
                     TripEdDetailsCard(model: model, showsCompanions: showsCompanions,
                                       isExistingFavorite: existingFavorite != nil, focus: $focus)
+                        .padding(.horizontal, Theme.Spacing.cardGutter)
                 }
-                .padding(.horizontal, Theme.Spacing.cardGutter)
+                .padding(.top, Theme.Spacing.xxs)
+                .padding(.bottom, Theme.Spacing.l)
             }
-            .padding(.top, Theme.Spacing.xxs)
-            .padding(.bottom, Theme.Spacing.l)
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+            .scrollEdgeEffectStyle(.soft, for: .bottom)
+            .task {
+                // CI screenshot "addTripCategory": show the purpose section.
+                guard LaunchMode.screenshotScreen == "addTripCategory" else { return }
+                try? await Task.sleep(for: .milliseconds(500))
+                proxy.scrollTo(MetaTripPurposeSection.anchorID, anchor: .top)
+            }
         }
-        .scrollIndicators(.hidden)
-        .scrollDismissesKeyboard(.interactively)
-        .scrollEdgeEffectStyle(.soft, for: .bottom)
         .background { TripEdBackdrop() }
     }
 

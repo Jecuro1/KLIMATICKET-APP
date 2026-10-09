@@ -191,7 +191,7 @@ struct ScreenshotRouter: View {
         content
             .task {
                 switch screen {
-                case "addTrip":
+                case "addTrip", "addTripCategory":
                     var draft = TripDraft()
                     draft.fromName = "St. Anton am Arlberg"
                     draft.toName = "Innsbruck Hbf"
@@ -216,7 +216,7 @@ struct ScreenshotRouter: View {
             OnboardingFlow()
         case "trips":
             MainTabView().onAppear { app.selectedTab = .trips }
-        case "stats":
+        case "stats", "statsCategories":
             MainTabView().onAppear { app.selectedTab = .stats }
         case "ticket":
             MainTabView().onAppear { app.selectedTab = .ticket }
@@ -226,6 +226,8 @@ struct ScreenshotRouter: View {
                     TripDetailView(trip: trip)
                 }
             }
+        case "favoriteEdit":
+            NavigationStack { FavoritesManagerView() }
         case "achievements":
             NavigationStack { AchievementsView() }
         case "settings":

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import KlimaCore
 
-/// Favoriten verwalten: reorder (Bearbeiten), rename, delete, usage counts and value per use.
+/// Favoriten verwalten: reorder (Bearbeiten), edit name & purpose, delete, usage counts and value per use.
 /// Pushed inside an existing NavigationStack (Fahrten, Einstellungen, …).
 struct FavoritesManagerView: View {
     @Environment(AppState.self) private var app
@@ -11,9 +11,8 @@ struct FavoritesManagerView: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var favorites: [FavoriteRouteEntity]
 
-    @State private var renameTarget: FavoriteRouteEntity?
-    @State private var renameText = ""
-    @State private var isRenaming = false
+    /// Favourite in the "Favorit bearbeiten" sheet (name + purpose).
+    @State private var editTarget: FavoriteRouteEntity?
     @State private var successTick = 0
     @State private var warningTick = 0
     /// Captured on first appearance (see `backdrop`).
@@ -43,13 +42,14 @@ struct FavoritesManagerView: View {
                     .disabled(favorites.isEmpty)
             }
         }
-        .alert("Favorit umbenennen", isPresented: $isRenaming) {
-            TextField("Name, z. B. Arbeit", text: $renameText)
-                .textInputAutocapitalization(.words)
-            Button("Sichern") { applyRename() }
-            Button("Abbrechen", role: .cancel) { renameTarget = nil }
-        } message: {
-            Text("Ein kurzer Name für Schnellerfassung und Widget. Leer lassen, um die Strecke anzuzeigen.")
+        .sheet(item: $editTarget) { favorite in
+            MetaFavoriteEditSheet(favorite: favorite)
+        }
+        .task {
+            // CI screenshot "favoriteEdit": open the editor of the first favourite.
+            guard LaunchMode.screenshotScreen == "favoriteEdit", editTarget == nil else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            editTarget = favorites.first
         }
         .sensoryFeedback(.success, trigger: successTick, condition: { _, _ in hapticsEnabled })
         .sensoryFeedback(.warning, trigger: warningTick, condition: { _, _ in hapticsEnabled })
@@ -75,7 +75,7 @@ struct FavoritesManagerView: View {
     }
 
     private func favoriteRow(_ favorite: FavoriteRouteEntity) -> some View {
-        TripListFavoriteRow(favorite: favorite) {
+        TripListFavoriteRow(favorite: favorite, onEdit: { beginEdit(favorite) }) {
             log(favorite)
         }
         .listRowBackground(TripListCardBackground())
@@ -89,16 +89,16 @@ struct FavoritesManagerView: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
-                beginRename(favorite)
+                beginEdit(favorite)
             } label: {
-                Label("Umbenennen", systemImage: "pencil")
+                Label("Bearbeiten", systemImage: "pencil")
             }
             .tint(Theme.accent)
         }
         .contextMenu {
             Button { log(favorite) } label: { Label("Jetzt erfassen", systemImage: "plus.circle") }
             Button { openInEditor(favorite) } label: { Label("Mit Anpassungen erfassen", systemImage: "square.and.pencil") }
-            Button { beginRename(favorite) } label: { Label("Umbenennen", systemImage: "pencil") }
+            Button { beginEdit(favorite) } label: { Label("Name & Kategorie", systemImage: "pencil") }
             Divider()
             Button(role: .destructive) { delete(favorite) } label: { Label("Löschen", systemImage: "trash") }
         }
@@ -207,21 +207,8 @@ struct FavoritesManagerView: View {
         }
     }
 
-    private func beginRename(_ favorite: FavoriteRouteEntity) {
-        renameTarget = favorite
-        renameText = favorite.title
-        isRenaming = true
-    }
-
-    private func applyRename() {
-        guard let target = renameTarget else { return }
-        let newTitle = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        renameTarget = nil
-        guard newTitle != target.title else { return }
-        target.title = newTitle
-        target.touch()
-        Repository(context: context, app: app).commit()
-        successTick += 1
+    private func beginEdit(_ favorite: FavoriteRouteEntity) {
+        editTarget = favorite
     }
 
     private func delete(_ favorite: FavoriteRouteEntity) {
@@ -261,6 +248,7 @@ struct FavoritesManagerView: View {
 /// Mode icon · name + plaque · route · "12× genutzt · € 47,00 je Fahrt" · round "+" (one tap = logged).
 private struct TripListFavoriteRow: View {
     let favorite: FavoriteRouteEntity
+    var onEdit: () -> Void = {}
     let onLog: () -> Void
 
     @Environment(\.editMode) private var editMode
@@ -276,9 +264,13 @@ private struct TripListFavoriteRow: View {
                 details
                 Spacer(minLength: Theme.Spacing.xs)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if !isEditing { onEdit() } }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(accessibilityLabel)
-            .accessibilityValue(meta)
+            .accessibilityValue(spokenMeta)
+            .accessibilityHint("Öffnet Name und Kategorie")
+            .accessibilityAddTraits(.isButton)
 
             if !isEditing {
                 Button(action: onLog) {
@@ -314,16 +306,30 @@ private struct TripListFavoriteRow: View {
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
-            Text(meta)
+            metaLine
                 .font(.footnote.monospacedDigit())
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(2)
         }
     }
 
+    private var category: TripCategory? { TripCategory(rawValue: favorite.categoryRaw) }
+
+    /// "💼 Arbeitsweg · 12× genutzt · € 47,00 je Fahrt" (purpose symbol in its colour).
+    private var metaLine: Text {
+        guard let category else { return Text(meta) }
+        let symbol = Text(Image(systemName: category.symbolName)).foregroundStyle(MetaCategoryStyle.color(category))
+        return Text("\(symbol) \(category.displayName) · \(meta)")
+    }
+
     private var meta: String {
         let usage = favorite.usageCount == 0 ? "Noch nicht genutzt" : "\(favorite.usageCount)× genutzt"
         return "\(usage) · \(Format.euroPrecise(valuePerUse)) je Fahrt"
+    }
+
+    private var spokenMeta: String {
+        guard let category else { return meta }
+        return "\(category.displayName), \(meta)"
     }
 
     private var accessibilityLabel: String {
