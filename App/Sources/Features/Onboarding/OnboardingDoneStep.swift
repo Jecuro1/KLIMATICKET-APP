@@ -16,6 +16,9 @@ struct OnbDoneStep: View {
     @State private var celebration = 0
     @State private var tilt = MotionTilt()
 
+    /// Check and ticket are in place: after the entrance, and from the first frame on a later visit.
+    private var isDealt: Bool { appeared || !firstVisit }
+
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.l) {
@@ -69,8 +72,8 @@ struct OnbDoneStep: View {
                     .foregroundStyle(Color.white, Theme.positive)
                     .symbolEffect(.bounce, value: celebration)
                     .celebrationRing(trigger: celebration, color: Theme.positive)
-                    .scaleEffect(appeared || reduceMotion ? 1 : 0.2)
-                    .opacity(appeared ? 1 : 0)
+                    .scaleEffect(isDealt || reduceMotion ? 1 : 0.2)
+                    .opacity(isDealt ? 1 : 0)
                     .offset(x: 10, y: 10)
             }
             .celebrationBurst(trigger: celebration)
@@ -105,10 +108,10 @@ struct OnbDoneStep: View {
                    roll: tilt.roll,
                    pitch: tilt.pitch)
             // Dealt onto the table: tips up out of a slight tilt and settles (Reduce Motion: fades in).
-            .rotation3DEffect(.degrees(appeared || reduceMotion ? 0 : 16), axis: (x: 1, y: 0, z: 0))
-            .offset(y: appeared || reduceMotion ? 0 : 36)
-            .opacity(appeared ? 1 : 0)
-            .motionAnimation(Motion.gentle.delay(0.12), value: appeared)
+            .rotation3DEffect(.degrees(isDealt || reduceMotion ? 0 : 16), axis: (x: 1, y: 0, z: 0))
+            .offset(y: isDealt || reduceMotion ? 0 : 36)
+            .opacity(isDealt ? 1 : 0)
+            .motionAnimation(Motion.gentle.delay(0.12), value: isDealt)
             .padding(.horizontal, Theme.Spacing.xxs)
     }
 

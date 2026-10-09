@@ -52,14 +52,6 @@ struct SetUpdatesSection: View {
         } footer: {
             SetFooter(text: app.updates.channelFooter)
         }
-        .onChange(of: app.updates.availableManifest, initial: true) { old, new in
-            guard shownManifest != new else { return }
-            if old == new {
-                shownManifest = new   // initial: the row is simply there
-            } else {
-                withMotion(Motion.smooth) { shownManifest = new }
-            }
-        }
 
         Section {
             Group {
@@ -92,6 +84,15 @@ struct SetUpdatesSection: View {
         }
         .padding(.vertical, Theme.Spacing.xxs)
         .accessibilityElement(children: .combine)
+        // On the always-present first row: mirrors the found release into `shownManifest`.
+        .onChange(of: app.updates.availableManifest, initial: true) { old, new in
+            guard shownManifest != new else { return }
+            if old == new {
+                shownManifest = new   // initial: the row is simply there
+            } else {
+                withMotion(Motion.smooth) { shownManifest = new }
+            }
+        }
     }
 
     /// The relative time ("geprüft vor 5 Minuten") moves on while Settings stays open. Each state morphs into the
