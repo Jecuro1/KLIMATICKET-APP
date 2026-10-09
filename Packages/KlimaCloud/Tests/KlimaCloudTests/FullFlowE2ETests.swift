@@ -424,9 +424,10 @@ final class SimDevice {
     }
 
     func addTrips(_ count: Int) -> [UUID] {
-        let start = now
+        let end = now
         return (0..<count).map { i in
-            let at = APITimestamp.date(from: APITimestamp.string(from: start.addingTimeInterval(Double(i) / 1000)))!
+            // 1 ms apart, all in the past: a stamp in the future would count as "changed since the last push" again.
+            let at = APITimestamp.date(from: APITimestamp.string(from: end.addingTimeInterval(-Double(count - i) / 1000)))!
             let trip = TripDTO(id: UUID(), user_id: "", date: at, from_name: "Feldkirch", to_name: "Wien Hbf", mode: "train",
                                distance_km: 683.4, fare_eur: 104.6, is_fare_manual: i % 5 == 0, is_round_trip: i % 2 == 0,
                                travel_class: i % 7 == 0 ? "first" : "second", companions: i % 3, states: "V,T,S,W",
