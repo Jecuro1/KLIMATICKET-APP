@@ -70,9 +70,11 @@ private struct WidQuickLogMedium: View {
         let grid = self.rows
         let showsFooter = grid.count < 2
         ZStack(alignment: .topLeading) {
-            // With the progress footer below, the ridge dissolves into mist before it reaches the bar.
-            WidSummitArt(model: .decorative, top: 0.6, bottom: 1, scale: 0.9, showsRoute: false, ridgeOpacity: 0.5, showsFlag: false,
-                         mistFrom: showsFooter ? 0.66 : 0.72, mistTo: showsFooter ? 0.8 : 1, mistOpacity: showsFooter ? 0 : 0.35)
+            // Two rows: a low horizon below the buttons (its rim would show through the capsules).
+            // One row + footer: the ridge rises between them and dissolves into mist before it reaches the bar.
+            WidSummitArt(model: .decorative, top: showsFooter ? 0.6 : 0.76, bottom: 1, scale: 0.9, showsRoute: false,
+                         ridgeOpacity: 0.5, showsFlag: false,
+                         mistFrom: showsFooter ? 0.66 : 0.86, mistTo: showsFooter ? 0.8 : 1, mistOpacity: showsFooter ? 0 : 0.35)
             VStack(alignment: .leading, spacing: 8) {
                 header
                 if grid.isEmpty {
