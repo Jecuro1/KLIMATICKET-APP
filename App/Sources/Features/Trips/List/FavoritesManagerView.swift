@@ -341,7 +341,7 @@ private struct TripListFavoriteRow: View {
             if legs.count > 1 {
                 HStack(spacing: 6) {
                     TripJourneyModeStrip(modes: legs.map(\.mode), font: .caption2.weight(.bold))
-                    Text("Kombi-Vorlage · \(TripJourneyFormat.legCount(legs.count))")
+                    Text(TripJourneyFormat.legCount(legs.count))
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
                         .lineLimit(1)

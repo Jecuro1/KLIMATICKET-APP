@@ -105,10 +105,14 @@ struct TripListJourneyRow: View {
     private var legStrip: some View {
         HStack(spacing: 6) {
             TripJourneyModeStrip(modes: item.modes)
-            Text(TripJourneyFormat.legCount(item.legs.count))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(1)
+            // The count only where it fits whole – never "…" next to the strip.
+            ViewThatFits(in: .horizontal) {
+                Text(TripJourneyFormat.legCount(item.legs.count))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize()
+                Color.clear.frame(width: 0, height: 0)
+            }
             Image(systemName: "chevron.down")
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(Theme.textSecondary)
