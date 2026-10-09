@@ -53,9 +53,6 @@ extension TripEditorModel {
 /// "Wofür warst du unterwegs?": optional purpose as horizontal Liquid Glass chips (deselectable, suggested from the
 /// route's last trip or the favourite) and the honest-balance switch "Ohne KlimaTicket wäre ich nicht gefahren".
 struct MetaTripPurposeSection: View {
-    /// Scroll anchor (CI screenshot "addTripCategory").
-    static let anchorID = "metaTripPurpose"
-
     let model: TripEditorModel
 
     @Environment(AppState.self) private var app
@@ -73,20 +70,35 @@ struct MetaTripPurposeSection: View {
         }
         .padding(.top, 6)
         .sensoryFeedback(.selection, trigger: tapTick) { _, _ in haptics }
+        .metaScreenshotScrollTarget("addTripCategory")
     }
 
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
-            Kicker(text: "Wofür warst du unterwegs?")
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: Theme.Spacing.xs)
-            hint
-                .transition(.opacity)
+        // One line when it fits; kicker above the hint at large Dynamic Type sizes.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+                kicker
+                Spacer(minLength: Theme.Spacing.xs)
+                hint
+                    .fixedSize()
+                    .transition(.opacity)
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                kicker
+                hint
+                    .transition(.opacity)
+            }
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.categorySource)
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.category)
+    }
+
+    private var kicker: some View {
+        Kicker(text: "Wofür unterwegs?")
+            .fixedSize()
+            .accessibilityAddTraits(.isHeader)
     }
 
     @ViewBuilder
@@ -166,7 +178,7 @@ struct MetaTripPurposeSection: View {
             Toggle(isOn: inducedBinding) {
                 TripEdRowLabel(symbol: MetaCategoryStyle.inducedSymbol, tint: MetaCategoryStyle.inducedColor,
                                title: "Ohne KlimaTicket wäre ich nicht gefahren",
-                               subtitle: "Zählt als Mehrwert, nicht als Ersparnis")
+                               subtitle: "Zählt als Mehrwert statt Ersparnis")
             }
             .tint(Theme.accent)
             .padding(.horizontal, Theme.Spacing.m)

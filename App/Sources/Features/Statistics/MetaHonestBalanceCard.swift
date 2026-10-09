@@ -39,6 +39,7 @@ struct MetaHonestBalanceCard: View {
                 researchNote(balance)
             }
         }
+        .metaScreenshotScrollTarget("statsHonest")
     }
 
     // MARK: Numerals
@@ -241,7 +242,7 @@ struct MetaHonestBalanceCard: View {
                 .foregroundStyle(Theme.textPrimary)
             } else if balance.ticketPrice > 0 {
                 Label {
-                    Text("Noch \(Text(Format.euro(balance.remainingHonest, decimals: 0)).foregroundStyle(Theme.summitText)) echte Ersparnis bis zum Break-even")
+                    Text("Noch \(Text(Format.euro(balance.remainingHonest, decimals: 0)).foregroundStyle(Theme.summitText)) echte Ersparnis bis zum Gipfel")
                 } icon: {
                     Image(systemName: "flag.fill").foregroundStyle(Theme.summit)
                 }

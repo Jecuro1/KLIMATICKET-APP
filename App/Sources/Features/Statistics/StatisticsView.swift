@@ -59,34 +59,26 @@ struct StatsScreen: View {
     @State private var shareImageKey: String?
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    header
-                        .padding(.bottom, Theme.Spacing.xxs)
-                    if snapshot.trips.isEmpty {
-                        emptyTrips
-                    } else {
-                        primarySections
-                        secondarySections
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                header
+                    .padding(.bottom, Theme.Spacing.xxs)
+                if snapshot.trips.isEmpty {
+                    emptyTrips
+                } else {
+                    primarySections
+                    secondarySections
                 }
-                .padding(.horizontal, Theme.Spacing.cardGutter)
-                .padding(.top, Theme.Spacing.xxs)
-                .padding(.bottom, Theme.Spacing.xxl)
             }
-            .scrollIndicators(.hidden)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > 64
-            } action: { _, isScrolled in
-                withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
-            }
-            .task {
-                // CI screenshots "statsCategories" / "statsHonest": scroll to "Wofür du fährst" / "Ehrliche Bilanz".
-                guard let target = MetaStatsAnchor.screenshotTarget else { return }
-                try? await Task.sleep(for: .milliseconds(400))
-                proxy.scrollTo(target, anchor: .top)
-            }
+            .padding(.horizontal, Theme.Spacing.cardGutter)
+            .padding(.top, Theme.Spacing.xxs)
+            .padding(.bottom, Theme.Spacing.xxl)
+        }
+        .scrollIndicators(.hidden)
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > 64
+        } action: { _, isScrolled in
+            withAnimation(.easeInOut(duration: 0.2)) { showsInlineTitle = isScrolled }
         }
         .navigationTitle("Statistik")
         .navigationBarTitleDisplayMode(.inline)
@@ -135,11 +127,10 @@ struct StatsScreen: View {
             .statsEntrance(1)
         StatsModesCard(snapshot: snapshot, grow: grow)
             .statsEntrance(2)
+        // MARK: tripmeta – "Wofür du fährst" and "Ehrliche Bilanz"
         MetaPurposeCard(snapshot: snapshot, grow: grow)
-            .id(MetaStatsAnchor.purpose)
             .statsEntrance(3)
         MetaHonestBalanceCard(snapshot: snapshot, grow: grow)
-            .id(MetaStatsAnchor.honest)
             .statsEntrance(3)
         StatsCalendarCard(snapshot: snapshot)
             .statsEntrance(3)

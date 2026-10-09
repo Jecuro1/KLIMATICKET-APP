@@ -36,7 +36,7 @@ enum DemoData {
         var generator = SeededGenerator(seed: 42)
         var day = start
         var count = 0
-        var seeded: [TripEntity] = []
+        var seeded: [TripEntity] = [] // MARK: tripmeta
         while day <= now {
             let weekday = cal.component(.weekday, from: day) // 1 = So
             let roll = Double.random(in: 0..<1, using: &generator)
@@ -79,7 +79,7 @@ enum DemoData {
                                 fareEUR: routes[9].fare, states: routes[9].states, sortIndex: 3),
         ]
         favorites.forEach { context.insert($0) }
-        // Purposes + "Ohne KlimaTicket nicht gefahren" (values unchanged, so the totals stay the same).
+        // MARK: tripmeta – purposes + "Ohne KlimaTicket nicht gefahren" (values unchanged, so the totals stay the same).
         MetaDemoCategories.assign(trips: seeded, favorites: favorites)
         try? context.save()
         print("Demo data: \(count) trips")

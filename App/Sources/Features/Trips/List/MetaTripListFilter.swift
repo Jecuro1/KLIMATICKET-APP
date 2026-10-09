@@ -104,16 +104,16 @@ struct MetaCategoryFilterMenu: View {
                 Label("Alle Kategorien", systemImage: "square.grid.2x2")
                     .tag(MetaTripFilter.all)
                 Section("Kategorien") {
-                    ForEach(counts.byCategory) { entry in
+                    ForEach(categoryEntries) { entry in
                         Label("\(entry.category.displayName) · \(entry.count)", systemImage: entry.category.symbolName)
                             .tag(MetaTripFilter.category(entry.category))
                     }
-                    if counts.uncategorized > 0 {
+                    if counts.uncategorized > 0 || selection == .uncategorized {
                         Label("Ohne Kategorie · \(counts.uncategorized)", systemImage: "circle.dashed")
                             .tag(MetaTripFilter.uncategorized)
                     }
                 }
-                if counts.induced > 0 {
+                if counts.induced > 0 || selection == .induced {
                     Section("Ehrliche Bilanz") {
                         Label("Mehrwert-Fahrten · \(counts.induced)", systemImage: MetaCategoryStyle.inducedSymbol)
                             .tag(MetaTripFilter.induced)
@@ -129,6 +129,18 @@ struct MetaCategoryFilterMenu: View {
                      in: .capsule)
         .accessibilityLabel("Nach Kategorie filtern")
         .accessibilityValue(selection.isActive ? selection.title : "Alle Kategorien")
+    }
+
+    /// Categories with trips in the period – plus the active one, even when the period has none of it (the picker
+    /// always needs a row for its selection).
+    private var categoryEntries: [MetaTripFilterCounts.Entry] {
+        guard case .category(let active) = selection, !counts.byCategory.contains(where: { $0.category == active }) else {
+            return counts.byCategory
+        }
+        return TripCategory.allCases.compactMap { category in
+            if category == active { return MetaTripFilterCounts.Entry(category: category, count: 0) }
+            return counts.byCategory.first { $0.category == category }
+        }
     }
 
     private var chipLabel: some View {

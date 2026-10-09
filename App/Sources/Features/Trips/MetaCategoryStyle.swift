@@ -176,3 +176,35 @@ struct MetaFlowLayout: Layout {
         }
     }
 }
+
+// MARK: - CI screenshot scrolling
+
+/// CI screenshots ("addTripCategory", "statsCategories", "statsHonest"): when the launch's `-KBScreenshot` screen
+/// matches, the enclosing scroll view scrolls this view to the top. A `ScrollViewReader` inside the scroll view's
+/// content drives that scroll view, so the screens hosting the view need no extra hook. No effect in normal launches.
+struct MetaScreenshotScrollTarget: ViewModifier {
+    let screen: String
+
+    func body(content: Content) -> some View {
+        if LaunchMode.screenshotScreen == screen {
+            let id = "meta.screenshot.\(screen)"
+            ScrollViewReader { proxy in
+                content
+                    .id(id)
+                    .task {
+                        try? await Task.sleep(for: .milliseconds(500))
+                        proxy.scrollTo(id, anchor: .top)
+                    }
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Scrolls to this view in the CI screenshot `screen` (see `MetaScreenshotScrollTarget`).
+    func metaScreenshotScrollTarget(_ screen: String) -> some View {
+        modifier(MetaScreenshotScrollTarget(screen: screen))
+    }
+}

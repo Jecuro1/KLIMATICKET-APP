@@ -191,7 +191,7 @@ struct ScreenshotRouter: View {
         content
             .task {
                 switch screen {
-                case "addTrip", "addTripCategory":
+                case "addTrip", "addTripCategory": // MARK: tripmeta – addTripCategory
                     var draft = TripDraft()
                     draft.fromName = "St. Anton am Arlberg"
                     draft.toName = "Innsbruck Hbf"
@@ -216,7 +216,7 @@ struct ScreenshotRouter: View {
             OnboardingFlow()
         case "trips":
             MainTabView().onAppear { app.selectedTab = .trips }
-        case "stats", "statsCategories", "statsHonest":
+        case "stats", "statsCategories", "statsHonest": // MARK: tripmeta – statsCategories, statsHonest
             MainTabView().onAppear { app.selectedTab = .stats }
         case "ticket":
             MainTabView().onAppear { app.selectedTab = .ticket }
@@ -226,7 +226,7 @@ struct ScreenshotRouter: View {
                     TripDetailView(trip: trip)
                 }
             }
-        case "favoriteEdit":
+        case "favoriteEdit": // MARK: tripmeta
             NavigationStack { FavoritesManagerView() }
         case "achievements":
             NavigationStack { AchievementsView() }

@@ -9,21 +9,6 @@ extension AnalyticsSnapshot {
     var metaHonestBalance: HonestBalance { CategoryStats.honestBalance(ticket: ticket, trips: trips) }
 }
 
-/// Scroll anchors of the module's statistics cards (CI screenshots "statsCategories" / "statsHonest").
-enum MetaStatsAnchor {
-    static let purpose = "metaStatsPurpose"
-    static let honest = "metaStatsHonest"
-
-    /// The card a CI screenshot launch should scroll to (nil for normal launches).
-    static var screenshotTarget: String? {
-        switch LaunchMode.screenshotScreen {
-        case "statsCategories"?: purpose
-        case "statsHonest"?: honest
-        default: nil
-        }
-    }
-}
-
 // MARK: - Wofür du fährst
 
 /// Donut + spotlight + directly labelled rows per trip purpose (value or trips), "Ohne Kategorie" always last.
@@ -75,6 +60,7 @@ struct MetaPurposeCard: View {
             guard let value else { return }
             selectedID = bucket(atCumulative: value, in: buckets)?.id
         }
+        .metaScreenshotScrollTarget("statsCategories")
     }
 
     // MARK: Header
