@@ -129,8 +129,7 @@ struct AppIconPickerView: View {
         SurfaceCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Kicker(text: "Alle Symbole")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: tileMinimum), spacing: Theme.Spacing.s, alignment: .top)],
-                          spacing: Theme.Spacing.l) {
+                IconCenteredGrid(minimumWidth: tileMinimum, spacing: Theme.Spacing.s, rowSpacing: Theme.Spacing.l) {
                     ForEach(AppIconChoice.allCases) { choice in
                         tile(choice)
                     }
@@ -222,7 +221,8 @@ private struct IconHomeStage: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-        ZStack {
+        // Zoomed-in home screen: the row above is cut by the top edge, the switch sits where the search pill would.
+        ZStack(alignment: .top) {
             wallpaper
             VStack(spacing: 22) {
                 HStack(spacing: columnSpacing) {
@@ -234,15 +234,15 @@ private struct IconHomeStage: View {
                     placeholder
                 }
             }
-            .offset(y: -6)
+            .padding(.top, -30)
             .accessibilityHidden(true)
         }
-        .frame(height: 252)
+        .frame(height: 266)
         .frame(maxWidth: .infinity)
         .clipShape(shape)
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottom) {
             schemeToggle
-                .padding(Theme.Spacing.s)
+                .padding(.bottom, 14)
         }
         .overlay {
             shape.strokeBorder(Color.white.opacity(scheme == .dark ? 0.14 : 0.5), lineWidth: 1)
@@ -340,6 +340,53 @@ private struct IconGlowPulse: View {
                 CubicKeyframe(0.0, duration: 0.8)
             }
             .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Layout
+
+/// Tiles of equal width in as many columns as fit; a shorter last row is centred (5 icons → 3 + 2, not 3 + 2 hanging
+/// on the left). Dynamic Type grows `minimumWidth`, so the grid drops to two or one column on its own.
+private struct IconCenteredGrid: Layout {
+    var minimumWidth: CGFloat
+    var spacing: CGFloat
+    var rowSpacing: CGFloat
+
+    private func metrics(width: CGFloat) -> (columns: Int, tileWidth: CGFloat) {
+        let columns = max(1, Int((width + spacing) / (minimumWidth + spacing)))
+        return (columns, (width - CGFloat(columns - 1) * spacing) / CGFloat(columns))
+    }
+
+    private func rows(_ subviews: Subviews, columns: Int) -> [Range<Int>] {
+        stride(from: 0, to: subviews.count, by: columns).map { $0..<min($0 + columns, subviews.count) }
+    }
+
+    private func height(of row: Range<Int>, in subviews: Subviews, tileWidth: CGFloat) -> CGFloat {
+        row.map { subviews[$0].sizeThatFits(ProposedViewSize(width: tileWidth, height: nil)).height }.max() ?? 0
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? (minimumWidth * 3 + spacing * 2)
+        let (columns, tileWidth) = metrics(width: width)
+        let rowRanges = rows(subviews, columns: columns)
+        let total = rowRanges.reduce(0) { $0 + height(of: $1, in: subviews, tileWidth: tileWidth) }
+        return CGSize(width: width, height: total + CGFloat(max(rowRanges.count - 1, 0)) * rowSpacing)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let (columns, tileWidth) = metrics(width: bounds.width)
+        var y = bounds.minY
+        for row in rows(subviews, columns: columns) {
+            let rowHeight = height(of: row, in: subviews, tileWidth: tileWidth)
+            let rowWidth = CGFloat(row.count) * tileWidth + CGFloat(row.count - 1) * spacing
+            var x = bounds.minX + (bounds.width - rowWidth) / 2
+            for index in row {
+                subviews[index].place(at: CGPoint(x: x, y: y), anchor: .topLeading,
+                                      proposal: ProposedViewSize(width: tileWidth, height: rowHeight))
+                x += tileWidth + spacing
+            }
+            y += rowHeight + rowSpacing
+        }
     }
 }
 
