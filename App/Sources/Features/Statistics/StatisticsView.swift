@@ -57,6 +57,7 @@ struct StatsScreen: View {
     @State private var shareImage: Image?
     /// Key the current `shareImage` was rendered for – the tab re-runs `.task` on every re-appear.
     @State private var shareImageKey: String?
+    // MARK: reports
     @State private var isShowingReport = false
 
     var body: some View {
@@ -87,6 +88,7 @@ struct StatsScreen: View {
         .sensoryFeedback(.selection, trigger: ticket.id) { _, _ in app.settings.hapticsEnabled }
         .onAppear { startEntrance() }
         .task(id: shareKey) { renderShareImage() }
+        // MARK: reports
         .sheet(isPresented: $isShowingReport) { RepReportSheet(ticketID: ticket.id) }
     }
 
@@ -214,6 +216,7 @@ struct StatsScreen: View {
         "\(StatsCalc.ticketYearLabel(item.period)) · \(item.name)"
     }
 
+    // MARK: reports – share menu: image card + "Jahresbericht als PDF"
     private var shareButton: some View {
         Menu {
             if let shareImage {
@@ -232,7 +235,9 @@ struct StatsScreen: View {
 
     private var shareKey: String {
         let summary = snapshot.summary
-        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(ticket.name)"
+        // Everything the card prints: ticket, trips/value, price (own share) and the day (date line + forecast).
+        let day = Int(Calendar.vienna.startOfDay(for: Date()).timeIntervalSince1970)
+        return "\(ticket.id.uuidString)-\(summary.tripCount)-\(Int(summary.totalValue.rounded()))-\(Int(summary.ticketPrice.rounded()))-\(day)-\(ticket.name)"
     }
 
     private func renderShareImage() {

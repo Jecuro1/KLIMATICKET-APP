@@ -3,6 +3,15 @@ import Foundation
 /// Austrian German formatting helpers ("€ 1.300", "4.812 km", "14. Dez.").
 enum Format {
     static let locale = Locale(identifier: "de_AT")
+    /// Dates are shown in Austrian time, matching the Vienna calendar used for all date maths (Calendar.vienna).
+    static let timeZone = TimeZone(identifier: "Europe/Vienna") ?? .current
+
+    private static func styled(_ style: Date.FormatStyle) -> Date.FormatStyle {
+        var s = style.locale(locale)
+        s.timeZone = timeZone
+        s.calendar = .vienna
+        return s
+    }
 
     static func euro(_ value: Double, decimals: Int? = nil) -> String {
         let digits = decimals ?? (abs(value) >= 1000 || value == value.rounded() ? 0 : 2)
@@ -23,29 +32,34 @@ enum Format {
         value >= 1000 ? "\(number(value / 1000, decimals: 1)) t" : "\(number(value)) kg"
     }
 
-    static func percent(_ fraction: Double) -> String { "\(number(fraction * 100)) %" }
+    /// "75 %". Never shows "100 %" before the goal is actually reached (99,6 % → "99 %").
+    static func percent(_ fraction: Double) -> String {
+        var value = (fraction * 100).rounded()
+        if fraction < 1, value >= 100 { value = 99 }
+        return "\(number(value)) %"
+    }
 
     static func date(_ date: Date, _ style: Date.FormatStyle.DateStyle = .abbreviated) -> String {
-        date.formatted(Date.FormatStyle(date: style, time: .omitted).locale(locale))
+        date.formatted(styled(Date.FormatStyle(date: style, time: .omitted)))
     }
 
     /// "14. Dez."
     static func dayMonth(_ date: Date) -> String {
-        date.formatted(.dateTime.day().month(.abbreviated).locale(locale))
+        date.formatted(styled(.dateTime.day().month(.abbreviated)))
     }
 
     /// "Fr., 9. Okt."
     static func weekdayDayMonth(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).locale(locale))
+        date.formatted(styled(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
     }
 
     static func time(_ date: Date) -> String {
-        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(locale))
+        date.formatted(styled(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits)))
     }
 
     /// "Heute", "Gestern", or "Fr., 9. Okt."
     static func relativeDay(_ date: Date) -> String {
-        let cal = Calendar.current
+        let cal = Calendar.vienna
         if cal.isDateInToday(date) { return "Heute" }
         if cal.isDateInYesterday(date) { return "Gestern" }
         return weekdayDayMonth(date)
@@ -53,7 +67,7 @@ enum Format {
 
     /// "Oktober 2026"
     static func monthYear(_ date: Date) -> String {
-        date.formatted(.dateTime.month(.wide).year().locale(locale))
+        date.formatted(styled(.dateTime.month(.wide).year()))
     }
 
     static func days(_ n: Int) -> String { n == 1 ? "1 Tag" : "\(n) Tage" }

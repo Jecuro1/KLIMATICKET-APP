@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import UIKit
 import UserNotifications
 import KlimaCore
@@ -14,7 +15,8 @@ struct TktReminderCard: View {
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
-    @State private var authStatus: UNAuthorizationStatus = .notDetermined
+    /// nil until iOS answered – so no permission notice flashes up before the status is known.
+    @State private var authStatus: UNAuthorizationStatus?
 
     private static let options = [30, 7, 1]
 
@@ -30,13 +32,16 @@ struct TktReminderCard: View {
                     if authStatus == .denied {
                         deniedNotice
                             .transition(.opacity)
+                    } else if authStatus == .notDetermined && !LaunchMode.isScreenshot {
+                        askNotice
+                            .transition(.opacity)
                     }
                 }
             }
             .clipShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
         }
         .animation(.smooth(duration: 0.3), value: isOn)
-        .animation(.smooth(duration: 0.3), value: authStatus == .denied)
+        .animation(.smooth(duration: 0.3), value: authStatus)
         .task { await refreshStatus() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { Task { await refreshStatus() } }
@@ -71,7 +76,7 @@ struct TktReminderCard: View {
                 HStack(spacing: Theme.Spacing.xs) { chips }
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) { chips }
             }
-            Text("Vor dem Ablauf am \(Format.date(ticket.endDate, .long)) · jeweils um 9:00 Uhr")
+            Text("Vor dem Ablauf am \(Format.date(ticket.endDate, .long)) und am Ablauftag selbst · jeweils um 9:00 Uhr")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -97,20 +102,32 @@ struct TktReminderCard: View {
     }
 
     private var deniedNotice: some View {
+        permissionNotice(symbol: "bell.slash.fill", title: "Mitteilungen sind ausgeschaltet",
+                         actionTitle: "Einstellungen öffnen") { openSystemSettings() }
+    }
+
+    /// Reminders are on but iOS was never asked (demo data, onboarding without reminders) – nothing would arrive.
+    private var askNotice: some View {
+        permissionNotice(symbol: "bell.badge.fill", title: "Mitteilungen noch nicht erlaubt",
+                         actionTitle: "Mitteilungen erlauben") { Task { await ensurePermission() } }
+    }
+
+    private func permissionNotice(symbol: String, title: String, actionTitle: String,
+                                  action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: Theme.Spacing.s) {
-            Image(systemName: "bell.slash.fill")
+            Image(systemName: symbol)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.summitText)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                Text("Mitteilungen sind ausgeschaltet")
+                Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                 Text("Erlaube Mitteilungen für KlimaBilanz, damit deine Erinnerungen ankommen.")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button("Einstellungen öffnen") { openSystemSettings() }
+                Button(actionTitle, action: action)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.accentText)
                     .buttonStyle(.plain)
@@ -129,16 +146,17 @@ struct TktReminderCard: View {
 
     private var subtitle: String {
         guard isOn else { return "Aus" }
-        let offsets = ticket.reminderOffsets
-        if offsets.isEmpty { return "Am Ablauftag um 9:00 Uhr" }
         guard let next = nextReminder else { return "Keine weiteren Erinnerungen" }
-        return "\(Format.date(next.date, .long)) · \(Format.days(next.offset)) vorher"
+        let when = next.offset == 0 ? "am Ablauftag" : "\(Format.days(next.offset)) vorher"
+        return "\(Format.date(next.date, .long)) · \(when)"
     }
 
+    /// Next pending reminder. `NotificationService` always adds one on the expiry day itself (offset 0), so it counts
+    /// too – otherwise the row would claim "Keine weiteren Erinnerungen" while that one is still scheduled.
     private var nextReminder: TktReminderSlot? {
         let now = Date()
         var best: TktReminderSlot?
-        for offset in ticket.reminderOffsets {
+        for offset in Set(ticket.reminderOffsets + [0]) {
             guard let date = reminderDate(offset), date > now else { continue }
             if let current = best, current.date <= date { continue }
             best = TktReminderSlot(date: date, offset: offset)
@@ -159,15 +177,29 @@ struct TktReminderCard: View {
 
     // MARK: Actions
 
+    /// The switch is the app-wide setting (same as Einstellungen › Mitteilungen), so it applies to every ticket –
+    /// a follow-up ticket's reminders must not keep firing after "aus".
     private func setEnabled(_ enabled: Bool) {
         app.settings.renewalRemindersEnabled = enabled
         if enabled {
-            Repository(context: context, app: app).scheduleReminders(for: ticket)
+            scheduleAllReminders()
             Task { await ensurePermission() }
         } else {
-            let id = ticket.id
-            Task { await app.notifications.cancelRenewalReminders(ticketID: id) }
+            let ids = Repository(context: context, app: app).liveTickets().map(\.id)
+            Task { for id in ids { await app.notifications.cancelRenewalReminders(ticketID: id) } }
         }
+    }
+
+    /// (Re)schedules the reminders of every ticket that has not expired yet.
+    private func scheduleAllReminders() {
+        let repo = Repository(context: context, app: app)
+        for item in repo.liveTickets() where !item.isExpired {
+            repo.scheduleReminders(for: item)
+        }
+    }
+
+    private static func isAllowed(_ status: UNAuthorizationStatus?) -> Bool {
+        status == .authorized || status == .provisional || status == .ephemeral
     }
 
     private func toggle(_ offset: Int) {
@@ -189,7 +221,7 @@ struct TktReminderCard: View {
             let granted = await app.notifications.requestAuthorization()
             status = await app.notifications.authorizationStatus()
             if granted {
-                Repository(context: context, app: app).scheduleReminders(for: ticket)
+                scheduleAllReminders()
             } else {
                 app.showToast("bell.slash.fill", "Ohne Mitteilungen keine Erinnerung", "Du kannst sie in den iOS-Einstellungen erlauben.")
             }
@@ -198,8 +230,11 @@ struct TktReminderCard: View {
     }
 
     private func refreshStatus() async {
+        let previous = authStatus
         let status = await app.notifications.authorizationStatus()
         withAnimation(.smooth(duration: 0.3)) { authStatus = status }
+        // Allowed again in the iOS Settings app: schedule what was skipped while notifications were off.
+        if previous == .denied, Self.isAllowed(status), isOn { scheduleAllReminders() }
     }
 
     private func openSystemSettings() {
@@ -351,10 +386,13 @@ struct TktRenewalCard: View {
     @Environment(AppState.self) private var app
 
     var body: some View {
-        if let followUp {
-            followUpCard(followUp)
-        } else {
-            renewCard
+        // ZStack so the two states cross-fade in place instead of stacking in the parent VStack during the transition.
+        ZStack(alignment: .top) {
+            if let followUp {
+                followUpCard(followUp)
+            } else {
+                renewCard
+            }
         }
     }
 

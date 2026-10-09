@@ -68,7 +68,7 @@ struct TktDetailsCard: View {
     @ViewBuilder
     private var perTripRow: some View {
         if summary.tripCount > 0 {
-            TktDetailRow(label: "Pro Fahrt bisher", value: Format.euroPrecise(ticket.price / Double(summary.tripCount))) {
+            TktDetailRow(label: "Pro Fahrt bisher", value: Format.euroPrecise(basePrice / Double(summary.tripCount))) {
                 if let drop = perTripDrop {
                     TktDropBadge(drop: drop)
                 }
@@ -78,15 +78,20 @@ struct TktDetailsCard: View {
         }
     }
 
+    /// The price the payoff is measured against (`TicketEntity.period` – the holder's own share), so "Pro Fahrt bisher"
+    /// matches "Kosten pro Tag" and the amortisation.
+    private var basePrice: Double { summary.ticketPrice }
+
     /// How much cheaper each trip got since the start of this month (or, early on, since the previous trip).
     private var perTripDrop: TktPerTripDrop? {
         let total = records.count
-        guard total > 1, ticket.price > 0 else { return nil }
+        let price = basePrice
+        guard total > 1, price > 0 else { return nil }
         let monthStart = Calendar.vienna.dateInterval(of: .month, for: Date())?.start ?? Date()
         let before = records.filter { $0.date < monthStart }.count
         let sinceMonthStart = before > 0 && before < total
         let reference = sinceMonthStart ? before : total - 1
-        let amount = ticket.price / Double(reference) - ticket.price / Double(total)
+        let amount = price / Double(reference) - price / Double(total)
         guard amount >= 0.005 else { return nil }
         return TktPerTripDrop(amount: amount, sinceMonthStart: sinceMonthStart)
     }
@@ -188,7 +193,8 @@ struct TktActionsCard: View {
                 actionRow(title: "Ticket bearbeiten", symbol: "pencil", color: Theme.accentText, action: onEdit)
                 TktHairline()
                     .padding(.leading, TktStyle.rowPaddingH + 28 + Theme.Spacing.s)
-                actionRow(title: "Ticket löschen", symbol: "trash", color: Theme.negative, action: onDelete)
+                // Text-safe red: `negative` (#D64545) stays below 4.5:1 for 17 pt text on the light frosted card.
+                actionRow(title: "Ticket löschen", symbol: "trash", color: Theme.negativeText, action: onDelete)
             }
         }
     }

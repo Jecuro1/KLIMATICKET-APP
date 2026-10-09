@@ -54,6 +54,34 @@ enum Copy {
         ("Was passiert nach Ablauf meines Tickets?",
          "Lege einfach das Folgeticket an. Deine bisherigen Jahre bleiben im Verlauf erhalten – inklusive Bilanz."),
         ("Wie aktualisiert sich die App?",
-         "KlimaBilanz prüft automatisch auf neue Versionen und aktuelle Ticketpreise. Über AltStore oder SideStore installieren sich Updates sogar im Hintergrund."),
+         // Channel-neutral on purpose: this FAQ also ships in App Store/TestFlight builds, where App Review objects to
+         // naming alternative app marketplaces (Guideline 2.3.10). The AltStore/SideStore hint is `Updates.footerSource`.
+         "Neue Versionen werden automatisch erkannt – ein Tipp, und die App ist aktuell. Wo du aktualisierst, zeigt dir Einstellungen › Updates. Ticketpreise aktualisieren sich von selbst, ganz ohne App-Update."),
     ]
+
+    /// Update wording. AltStore/SideStore/TestFlight detect new versions and notify (badge), but the user still taps
+    /// „Aktualisieren“ – never promise silent background installs.
+    enum Updates {
+        static let headline = "Neue Versionen werden automatisch erkannt – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst."
+
+        // Footers under Einstellungen › Updates (`UpdateService.channelFooter`).
+        static let footerSource = "Füge KlimaBilanz einmal als Quelle in AltStore oder SideStore hinzu: Neue Versionen erscheinen dort automatisch – ein Tipp auf „Aktualisieren“, und die App ist aktuell."
+        static let footerDirect = "KlimaBilanz erkennt neue Versionen automatisch und lädt sie auf Wunsch herunter. Tipp: Über AltStore oder SideStore geht das Aktualisieren mit einem Tipp."
+        static let footerAppStore = "Neue Versionen kommen über den App Store – ein Tipp auf „Aktualisieren“, und die App ist aktuell."
+        static let footerTestFlight = "Neue Testversionen kommen über TestFlight – ein Tipp auf „Aktualisieren“, und die App ist aktuell."
+        static let footerTariffs = "Ticketpreise und das Tarifmodell aktualisieren sich von selbst, sobald online neue Werte liegen – ganz ohne App-Update."
+
+        // AltStore/SideStore source rows.
+        static let sourceRowSubtitle = "Neue Versionen automatisch erkennen"
+        static let sourceRowUnavailable = "Verfügbar nach der ersten Update-Prüfung"
+
+        // Primary button in the update sheet (`UpdateService.installActionTitle`).
+        static let actionAltStore = "In AltStore aktualisieren"
+        static let actionSideStore = "In SideStore aktualisieren"
+        static let actionAppStore = "Im App Store aktualisieren"
+        static let actionTestFlight = "In TestFlight aktualisieren"
+        static let actionDownload = "Update herunterladen"
+
+        static let toggleSubtitle = "Beim Start und alle paar Stunden"
+    }
 }

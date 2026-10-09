@@ -26,7 +26,8 @@ extension TktCardFace {
                   validUntil: ticket.endDate,
                   number: ticket.ticketNumber,
                   theme: TicketTheme.from(ticket.themeRaw),
-                  amortizedFraction: summary?.amortizedFraction,
+                  // Pre-rounded so the stub's `Format.percent` never shows "100 %" before the break-even.
+                  amortizedFraction: summary.map { TktText.displayFraction($0.amortizedFraction) },
                   valueText: summary.map { "\(Format.euro($0.totalValue, decimals: 0)) von \(Format.euro($0.ticketPrice, decimals: 0))" })
     }
 }
@@ -212,7 +213,10 @@ private struct TktTiltFront: View {
             .onChange(of: shouldRun) { _, _ in updateMotion() }
     }
 
-    private var shouldRun: Bool { tiltActive && !reduceMotion && !LaunchMode.isScreenshot }
+    /// Off with Reduce Motion, in screenshot mode and in Low Power Mode (synthesis §8.15).
+    private var shouldRun: Bool {
+        tiltActive && !reduceMotion && !LaunchMode.isScreenshot && !ProcessInfo.processInfo.isLowPowerModeEnabled
+    }
 
     /// Screenshot mode shows a fixed, flattering foil position.
     private var roll: Double {

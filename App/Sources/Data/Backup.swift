@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import KlimaCore
+import KlimaCloud
 
 /// Full JSON backup (Einstellungen › Daten › Sichern/Wiederherstellen) – merge-import by id.
 ///

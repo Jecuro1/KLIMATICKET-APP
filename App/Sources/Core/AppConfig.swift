@@ -1,11 +1,32 @@
 import Foundation
+import KlimaCloud
 
-/// Build-time configuration from `AppConfig.json` (written by CI from repository variables).
+/// Build-time configuration from `AppConfig.json` (written by CI, see scripts/write_app_config.py).
 struct AppConfig: Decodable, Sendable {
-    var supabaseURL: String = ""
-    var supabaseAnonKey: String = ""
+    /// Origin of the Cloudflare Worker (`https://klimabilanz-api.<subdomain>.workers.dev` or a custom domain).
+    /// Empty = no cloud: the app runs locally only.
+    var apiBaseURL: String = ""
     var updateManifestURL: String = ""
     var tariffsURL: String = ""
+
+    init(apiBaseURL: String = "", updateManifestURL: String = "", tariffsURL: String = "") {
+        self.apiBaseURL = apiBaseURL
+        self.updateManifestURL = updateManifestURL
+        self.tariffsURL = tariffsURL
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case apiBaseURL, updateManifestURL, tariffsURL
+    }
+
+    /// Every key is optional and unknown keys (e.g. the retired `supabaseURL`) are ignored, so one missing or extra
+    /// key never switches the whole configuration off.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        apiBaseURL = (try? c.decodeIfPresent(String.self, forKey: .apiBaseURL)).flatMap { $0 } ?? ""
+        updateManifestURL = (try? c.decodeIfPresent(String.self, forKey: .updateManifestURL)).flatMap { $0 } ?? ""
+        tariffsURL = (try? c.decodeIfPresent(String.self, forKey: .tariffsURL)).flatMap { $0 } ?? ""
+    }
 
     static let shared: AppConfig = {
         guard let url = Bundle.main.url(forResource: "AppConfig", withExtension: "json"),
@@ -16,14 +37,27 @@ struct AppConfig: Decodable, Sendable {
         return config
     }()
 
-    var supabase: URL? {
-        guard !supabaseURL.isEmpty, !supabaseAnonKey.isEmpty else { return nil }
-        return URL(string: supabaseURL)
+    /// The API origin: `https` only, no path, query or fragment (a trailing "/" is tolerated). nil = cloud off.
+    var api: URL? {
+        var raw = apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while raw.hasSuffix("/") { raw.removeLast() }
+        guard !raw.isEmpty, let comps = URLComponents(string: raw), comps.scheme?.lowercased() == "https",
+              let host = comps.host, !host.isEmpty, comps.path.isEmpty, comps.query == nil, comps.fragment == nil,
+              comps.user == nil, comps.password == nil else { return nil }
+        return comps.url
     }
 
-    var isCloudConfigured: Bool { supabase != nil }
+    var isCloudConfigured: Bool { api != nil }
     var updateManifest: URL? { updateManifestURL.isEmpty ? nil : URL(string: updateManifestURL) }
     var remoteTariffs: URL? { tariffsURL.isEmpty ? nil : URL(string: tariffsURL) }
+
+    /// HTTP client of the cloud backend (nil without `apiBaseURL`). Auth and sync share one URLSession.
+    var cloudClient: CloudAPIClient? {
+        api.map { CloudAPIClient(baseURL: $0, transport: Self.cloudTransport, appVersion: Self.appVersion,
+                                 build: String(Self.buildNumber), osVersion: CloudAPIClient.systemVersion) }
+    }
+
+    private static let cloudTransport = URLSessionTransport()
 
     static let urlScheme = "klimabilanz"
     static let authCallback = "klimabilanz://auth-callback"

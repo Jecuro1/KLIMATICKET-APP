@@ -19,6 +19,10 @@ on:
         description: "Simulator-Screenshots aufnehmen"
         type: boolean
         default: true
+      release_tag:
+        description: "Release veröffentlichen, z. B. v1.0.1 (leer = kein Release). Legt Tag + GitHub Release mit .ipa, update.json und AltStore-Quelle an."
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -43,6 +47,41 @@ jobs:
       - name: Test KlimaCore
         shell: bash
         run: swift test --package-path Packages/KlimaCore --no-parallel 2>&1 | tail -60
+      - name: Test KlimaCloud
+        shell: bash
+        run: |
+          # Linux-testable cloud core (HTTP client, DTOs, PKCE, merge rule) – docs/CLOUDFLARE_BACKEND.md §6.
+          if [ -f Packages/KlimaCloud/Package.swift ]; then
+            swift test --package-path Packages/KlimaCloud --no-parallel 2>&1 | tail -60
+          else
+            echo "::notice::Packages/KlimaCloud gibt es in diesem Stand noch nicht – übersprungen."
+          fi
+      - name: Test CI scripts
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+  cloud-e2e:
+    # The Swift cloud client against the real Worker: wrangler dev + local D1 + fake Google/Microsoft/Apple OIDC
+    # (Packages/KlimaCloud/E2E/run-e2e.sh). No secrets: throwaway keys only, nothing leaves the runner.
+    name: Cloud E2E (Worker + KlimaCloud, Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend
+        working-directory: backend
+        run: npm ci
+      - name: End-to-end (sign-in via fake providers, two devices, 1 200 rows, account switch, deletion)
+        shell: bash
+        run: TAIL=40 bash Packages/KlimaCloud/E2E/run-e2e.sh
 
   build:
     name: Build iOS (.ipa)
@@ -79,12 +118,21 @@ jobs:
 
       - name: KlimaCore tests (macOS)
         shell: bash
-        run: swift test --package-path Packages/KlimaCore 2>&1 | tail -25
+        run: |
+          swift test --package-path Packages/KlimaCore 2>&1 | tail -25
+          if [ -f Packages/KlimaCloud/Package.swift ]; then
+            swift test --package-path Packages/KlimaCloud 2>&1 | tail -25
+          fi
 
       - name: Version
         id: version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || '' }}
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+(\.[0-9]+){1,2}$ ]] || { echo "::error::release_tag must look like v1.2.3"; exit 1; }
+            VERSION="${RELEASE_TAG#v}"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
             VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/.*"([0-9.]+)".*/\1/')
@@ -92,14 +140,22 @@ jobs:
           BUILD=$((GITHUB_RUN_NUMBER + 100))
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=${RELEASE_TAG:-${GITHUB_REF_NAME}}" >> "$GITHUB_OUTPUT"
+          if [[ -n "${RELEASE_TAG}" || "$GITHUB_REF" == refs/tags/v* ]]; then echo "release=true" >> "$GITHUB_OUTPUT"; else echo "release=false" >> "$GITHUB_OUTPUT"; fi
           echo "Version $VERSION ($BUILD)"
 
       - name: App configuration (from repository secrets/variables)
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL }}
-          TARIFFS_URL: ${{ vars.TARIFFS_URL }}
+          # Cloud backend (Cloudflare Worker, docs/SETUP.md §3): repository variable API_BASE_URL (custom domain), else
+          # derived from the Cloudflare account's workers.dev subdomain, else empty = the app runs local-only.
+          # The token is only used to read the subdomain; scripts/write_app_config.py never prints it.
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Public repo: update.json / tariffs.json come straight from this repo's latest GitHub Release
+          # (override with repository variables if the files are hosted elsewhere).
+          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL || format('https://github.com/{0}/releases/latest/download/update.json', github.repository) }}
+          TARIFFS_URL: ${{ vars.TARIFFS_URL || format('https://github.com/{0}/releases/latest/download/tariffs.json', github.repository) }}
         run: python3 scripts/write_app_config.py App/Resources/AppConfig.json
 
       - name: Generate Xcode project
@@ -122,21 +178,54 @@ jobs:
           grep -E "warning:" build/device-build.log | grep -v "SourcePackages" | sort -u | head -60 || true
 
       - name: Package .ipa
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GROUP: group.com.knitelarlberg.klimabilanz
         run: |
-          APP=build/device/Build/Products/Release-iphoneos/KlimaBilanz.app
-          test -d "$APP"
-          # Fake-sign with entitlements so AltStore/SideStore/TrollStore keep App Groups etc.
+          set -euo pipefail
+          SRC=build/device/Build/Products/Release-iphoneos/KlimaBilanz.app
+          test -d "$SRC"
+          rm -rf build/ipa build/entitlements dist
+          mkdir -p build/ipa/Payload build/entitlements dist
+          cp -R "$SRC" build/ipa/Payload/
+          APP=build/ipa/Payload/KlimaBilanz.app
+          # Fake-sign with the sideload entitlements so AltStore/SideStore keep the App Group when they re-sign.
+          # Nested code first (frameworks, then the widget extension), the app binary last.
+          for FW in "$APP"/Frameworks/*.framework "$APP"/Frameworks/*.dylib; do
+            [ -e "$FW" ] || continue
+            if [ -d "$FW" ]; then FW="$FW/$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$FW/Info.plist")"; fi
+            ldid -S "$FW"
+          done
           for EXT in "$APP"/PlugIns/*.appex; do
             [ -d "$EXT" ] || continue
+            NAME=$(basename "$EXT" .appex)
+            ENT="App/Supporting/${NAME}-Sideload.entitlements"
+            test -f "$ENT" || { echo "::error::$ENT fehlt – jede App-Extension braucht eigene Sideload-Entitlements"; exit 1; }
             EXE=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$EXT/Info.plist")
-            ldid -SWidgets/Supporting/KlimaBilanzWidgets.entitlements "$EXT/$EXE"
+            ldid -S"$ENT" "$EXT/$EXE"
+            ldid -e "$EXT/$EXE" > "build/entitlements/${NAME}.plist"
           done
           # Sideload builds must not request Sign in with Apple (not available to free Apple IDs).
           ldid -SApp/Supporting/KlimaBilanz-Sideload.entitlements "$APP/KlimaBilanz"
-          mkdir -p dist/Payload
-          cp -R "$APP" dist/Payload/
-          (cd dist && zip -qry "KlimaBilanz-${{ steps.version.outputs.version }}.ipa" Payload && rm -rf Payload)
+          ldid -e "$APP/KlimaBilanz" > build/entitlements/KlimaBilanz.plist
+          # Sanity checks: widget embedded, App Group on app + widget, no Sign in with Apple in the sideload app.
+          test -f "$APP/PlugIns/KlimaBilanzWidgets.appex/KlimaBilanzWidgets" || { echo "::error::Widget-Extension fehlt in PlugIns/"; exit 1; }
+          for E in build/entitlements/*.plist; do
+            echo "── $E"; cat "$E"
+            grep -q "<string>$GROUP</string>" "$E" || { echo "::error::$E: App Group $GROUP fehlt"; exit 1; }
+          done
+          if grep -q "com.apple.developer.applesignin" build/entitlements/KlimaBilanz.plist; then
+            echo "::error::Sideload-App darf keine Sign-in-with-Apple-Entitlements haben"; exit 1
+          fi
+          IPA="dist/KlimaBilanz-${VERSION}.ipa"
+          (cd build/ipa && zip -qry -X "../../$IPA" Payload)
+          unzip -Z1 "$IPA" > build/ipa-files.txt
+          for F in Payload/KlimaBilanz.app/KlimaBilanz Payload/KlimaBilanz.app/Info.plist \
+                   Payload/KlimaBilanz.app/PlugIns/KlimaBilanzWidgets.appex/KlimaBilanzWidgets; do
+            grep -qx "$F" build/ipa-files.txt || { echo "::error::$F fehlt in der .ipa"; exit 1; }
+          done
           ls -la dist
+          shasum -a 256 "$IPA"
 
       - name: Upload .ipa artifact
         uses: actions/upload-artifact@v4
@@ -204,17 +293,33 @@ jobs:
           bash scripts/signed_build.sh
 
       - name: Release metadata (update.json + AltStore source)
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.version.outputs.release == 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           BUILD: ${{ steps.version.outputs.build }}
-          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, github.ref_name) }}
-        run: python3 scripts/make_release_metadata.py dist
+          # Stable "latest" URLs for update.json / altstore-source.json / tariffs.json, so AltStore and the app always
+          # see the newest release; the .ipa itself uses the immutable per-tag URL (sha256 always matches).
+          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/latest/download', github.repository) }}
+          # Immutable per-tag .ipa URL, so the sha256 in the source always matches the file behind it.
+          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, steps.version.outputs.tag) || format('https://github.com/{0}/releases/download/{1}', github.repository, steps.version.outputs.tag) }}
+          MINIMUM_SUPPORTED_VERSION: ${{ vars.MINIMUM_SUPPORTED_VERSION }}
+        run: |
+          set -euo pipefail
+          # appPermissions, version, buildVersion, size and sha256 are all derived from the final .ipa
+          # (entitlements as extracted with `ldid -e` in "Package .ipa").
+          python3 scripts/make_release_metadata.py dist --strict --entitlements build/entitlements/*.plist
+          python3 -m json.tool dist/altstore-source.json > /dev/null
+          python3 -m json.tool dist/update.json > /dev/null
 
       - name: GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.version.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: KlimaBilanz ${{ steps.version.outputs.version }}
+          make_latest: true
+          overwrite_files: true
           files: |
             dist/*.ipa
             dist/update.json
@@ -225,12 +330,12 @@ jobs:
           generate_release_notes: true
 
       - name: Publish to public releases repository (enables auto-updates)
-        if: startsWith(github.ref, 'refs/tags/v') && vars.PUBLIC_RELEASES_REPO != ''
+        if: steps.version.outputs.release == 'true' && vars.PUBLIC_RELEASES_REPO != ''
         uses: softprops/action-gh-release@v2
         with:
           repository: ${{ vars.PUBLIC_RELEASES_REPO }}
           token: ${{ secrets.RELEASES_TOKEN }}
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.version.outputs.tag }}
           name: KlimaBilanz ${{ steps.version.outputs.version }}
           make_latest: true
           files: |

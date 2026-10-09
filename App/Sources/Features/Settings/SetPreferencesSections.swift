@@ -169,6 +169,12 @@ struct SetAppearanceSection: View {
                     SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
                                 symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
                 }
+                NavigationLink {
+                    WidgetGalleryView()
+                } label: {
+                    SetRowLabel(title: "Widgets & Kurzbefehle", subtitle: "Home- und Sperrbildschirm, Kontrollzentrum, Siri",
+                                symbol: "square.grid.2x2.fill", tint: Theme.glacier)
+                }
             }
             .listRowBackground(Theme.surface)
         } header: {
