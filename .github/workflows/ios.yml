@@ -254,9 +254,11 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
           BUILD: ${{ steps.version.outputs.build }}
-          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/download/{1}', github.repository, steps.version.outputs.tag) }}
+          # Stable "latest" URLs for update.json / altstore-source.json / tariffs.json, so AltStore and the app always
+          # see the newest release; the .ipa itself uses the immutable per-tag URL (sha256 always matches).
+          DOWNLOAD_BASE: ${{ vars.PUBLIC_DOWNLOAD_BASE_URL || format('https://github.com/{0}/releases/latest/download', github.repository) }}
           # Immutable per-tag .ipa URL, so the sha256 in the source always matches the file behind it.
-          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, steps.version.outputs.tag) || '' }}
+          IPA_DOWNLOAD_BASE: ${{ vars.PUBLIC_RELEASES_REPO != '' && format('https://github.com/{0}/releases/download/{1}', vars.PUBLIC_RELEASES_REPO, steps.version.outputs.tag) || format('https://github.com/{0}/releases/download/{1}', github.repository, steps.version.outputs.tag) }}
           MINIMUM_SUPPORTED_VERSION: ${{ vars.MINIMUM_SUPPORTED_VERSION }}
         run: |
           set -euo pipefail
@@ -274,6 +276,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: KlimaBilanz ${{ steps.version.outputs.version }}
           make_latest: true
+          overwrite_files: true
           files: |
             dist/*.ipa
             dist/update.json
