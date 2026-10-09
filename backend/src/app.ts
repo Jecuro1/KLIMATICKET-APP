@@ -6,6 +6,7 @@ import { isProviderName, SPECS, type ProviderName } from "./providers";
 import { deleteAccount, getMe, patchMe } from "./routes/account";
 import { appleNativeEndpoint } from "./routes/appleNative";
 import { callbackFlow, startFlow } from "./routes/authWeb";
+import { OTA_ROUTE_RE, otaAsset, udidCallback, udidDone, udidProfile } from "./routes/device";
 import { config, health } from "./routes/meta";
 import { pullEndpoint, pushEndpoint } from "./routes/sync";
 import { logoutEndpoint, tokenEndpoint } from "./routes/token";
@@ -21,12 +22,18 @@ type RouteName =
   | "me"
   | "account_delete"
   | "sync_push"
-  | "sync_pull";
+  | "sync_pull"
+  | "udid_profile"
+  | "udid_callback"
+  | "udid_done"
+  | "ota_asset";
 
 interface Route {
   name: RouteName;
   methods: string[];
   provider?: ProviderName;
+  /** ota_asset: release tag and file name. */
+  params?: [string, string];
 }
 
 const STATIC_ROUTES: Record<string, Route> = {
@@ -39,12 +46,21 @@ const STATIC_ROUTES: Record<string, Route> = {
   "/v1/account/delete": { name: "account_delete", methods: ["POST"] },
   "/v1/sync/push": { name: "sync_push", methods: ["POST"] },
   "/v1/sync/pull": { name: "sync_pull", methods: ["GET"] },
+  // Direct install (routes/device.ts): Safari pages and the iOS profile service – no credentials, nothing stored.
+  "/v1/udid": { name: "udid_profile", methods: ["GET"] },
+  "/v1/udid/callback": { name: "udid_callback", methods: ["POST"] },
+  "/v1/udid/done": { name: "udid_done", methods: ["GET"] },
 };
+
+/** Requests from Safari navigations and iOS' installer/profile daemons; an Origin header changes nothing there. */
+const ORIGIN_EXEMPT: ReadonlySet<RouteName> = new Set(["auth_start", "auth_callback", "udid_profile", "udid_callback", "udid_done", "ota_asset"]);
 
 const PROVIDER_ROUTE_RE = /^\/v1\/auth\/([a-z]{1,20})\/(start|callback)$/;
 
 function matchRoute(pathname: string): Route | null {
   if (Object.hasOwn(STATIC_ROUTES, pathname)) return STATIC_ROUTES[pathname]!;
+  const ota = OTA_ROUTE_RE.exec(pathname);
+  if (ota) return { name: "ota_asset", methods: ["GET", "HEAD"], params: [ota[1]!, ota[2]!] };
   const m = PROVIDER_ROUTE_RE.exec(pathname);
   if (!m || !isProviderName(m[1]!)) return null;
   const provider = m[1];
@@ -76,6 +92,14 @@ async function dispatch(route: Route, request: Request, env: Env, ctx: Ctx, deps
       return pushEndpoint(request, env, deps, info);
     case "sync_pull":
       return pullEndpoint(request, env, deps, info);
+    case "udid_profile":
+      return udidProfile(request, env, deps, info);
+    case "udid_callback":
+      return udidCallback(request, env, deps, info);
+    case "udid_done":
+      return udidDone(request, env, deps, info);
+    case "ota_asset":
+      return otaAsset(request, env, deps, info, route.params![0], route.params![1]);
   }
 }
 
@@ -87,8 +111,9 @@ function route(request: Request): Route {
   const url = new URL(request.url);
   const r = matchRoute(url.pathname);
   if (!r) throw new ApiError(404, "not_found", "Not found.");
-  // Native URLSession sends no Origin; start/callback are browser navigations (Apple's form_post is checked there).
-  if (r.name !== "auth_start" && r.name !== "auth_callback" && request.headers.has("Origin")) {
+  // Native URLSession sends no Origin; start/callback are browser navigations (Apple's form_post is checked there),
+  // the device routes serve Safari and iOS daemons without any credentials.
+  if (!ORIGIN_EXEMPT.has(r.name) && request.headers.has("Origin")) {
     throw new ApiError(403, "origin_not_allowed", "Browser origins are not allowed.");
   }
   if (!r.methods.includes(request.method)) {

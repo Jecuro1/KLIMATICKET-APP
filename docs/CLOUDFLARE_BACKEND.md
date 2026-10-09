@@ -349,6 +349,7 @@ D1 free-tier write quota.
 | 426 | `upgrade_required` (+ `min_app_version`) |
 | 429 | `rate_limited` (+ `Retry-After`) |
 | 500 | `server_error` |
+| 502 | `upstream_unavailable` (`/v1/ota/*` only: GitHub not reachable) |
 | 503 | `server_not_configured` |
 
 - Limits: body ≤ **1 048 576 bytes** on `/v1/sync/push`, ≤ 65 536 bytes elsewhere. Check `Content-Length` first,
@@ -379,8 +380,14 @@ D1 free-tier write quota.
 | POST | `/v1/account/delete` | bearer | §3.9 → `200 {"deleted":true}` |
 | POST | `/v1/sync/push` | bearer | §3.6 |
 | GET | `/v1/sync/pull` | bearer | §3.7 |
+| GET | `/v1/udid` | – | Direct install: unsigned iOS „Profile Service“ `.mobileconfig` (asks for UDID + PRODUCT; nothing stays installed) |
+| POST | `/v1/udid/callback` | – | iOS posts the device-signed plist → `301` to `/v1/udid/done?udid=…&product=…` (`400 invalid_request` without a UDID) |
+| GET | `/v1/udid/done` | – | German page: the UDID, a copy button, the link to „Gerät registrieren“ (nonce CSP, no third-party resources) |
+| GET/HEAD | `/v1/ota/{tag}/{file}` | – | Streams `manifest.plist`, `KlimaBilanz-<v>-adhoc.ipa`, `AppIcon-57.png`/`-512.png` of a GitHub release of `OTA_GITHUB_REPO` (default this repo) without GitHub's redirect; `latest` only for the manifest; `502 upstream_unavailable` if GitHub fails |
 
-Unknown path → `404 not_found`; wrong method → `405`.
+Unknown path → `404 not_found`; wrong method → `405`. The direct-install routes (`/v1/udid*`, `/v1/ota/*`) store
+nothing and never touch D1; the UDID travels only in the redirect URL (Workers Logs strip query strings) – see
+docs/DIREKT_INSTALLIEREN.md.
 
 ### 3.3 `GET /v1/config`
 

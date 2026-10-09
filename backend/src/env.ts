@@ -6,6 +6,8 @@ export interface Env {
   PUBLIC_BASE_URL?: string;
   MIN_APP_VERSION?: string;
   APP_REDIRECT_URIS?: string;
+  /** owner/repo whose GitHub releases /v1/ota serves and whose "Gerät registrieren" workflow /v1/udid/done links. */
+  OTA_GITHUB_REPO?: string;
 
   // Secrets
   SESSION_SIGNING_KEY?: string;
