@@ -93,6 +93,7 @@ private struct TripEdSheet: View {
                     TripEdDateCard(model: model)
                     TripEdPriceCard(model: model, focus: $focus)
                     TripEdImpactCard(model: model)
+                    RideEdStartCard(model: model, isExistingFavorite: existingFavorite != nil) { dismiss() }  // MARK: live
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
                 // MARK: tripmeta – purpose chips scroll edge to edge, so the section sits outside the padded group.
@@ -105,6 +106,7 @@ private struct TripEdSheet: View {
             .padding(.bottom, Theme.Spacing.l)
         }
         .scrollIndicators(.hidden)
+        .rideScreenshotScrollAnchor()  // MARK: live
         .scrollDismissesKeyboard(.interactively)
         .scrollEdgeEffectStyle(.soft, for: .bottom)
         .background { TripEdBackdrop() }

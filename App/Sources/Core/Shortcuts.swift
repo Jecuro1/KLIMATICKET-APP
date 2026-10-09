@@ -31,5 +31,15 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
             shortTitle: "Fahrt erfassen",
             systemImageName: "plus.circle.fill"
         )
+        // MARK: live
+        AppShortcut(
+            intent: RideStartIntent(),
+            phrases: [
+                "\(\.$favorite) mit \(.applicationName) starten",
+                "Fahrt mit \(.applicationName) starten",
+            ],
+            shortTitle: "Fahrt starten",
+            systemImageName: "dot.radiowaves.left.and.right"
+        )
     }
 }

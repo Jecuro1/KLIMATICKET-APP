@@ -66,6 +66,7 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: QuickLogQueue.didEnqueue).receive(on: RunLoop.main)) { _ in
             handleExternalRequests()
         }
+        .rideActivityHost()  // MARK: live
         .task {
             // All Austrian stops + localities (places.bin): built once off the main thread, then every station
             // search (StationIndex façade) covers all ~40.000 stops.
@@ -195,7 +196,7 @@ struct ScreenshotRouter: View {
         content
             .task {
                 switch screen {
-                case "addTrip", "addTripCategory": // MARK: tripmeta – addTripCategory
+                case "addTrip", "addTripCategory", "addTripLive": // MARK: tripmeta – addTripCategory; live – addTripLive
                     var draft = TripDraft()
                     draft.fromName = "St. Anton am Arlberg"
                     draft.toName = "Innsbruck Hbf"
@@ -266,6 +267,10 @@ struct ScreenshotRouter: View {
         case "car", "carDetails", "carSettings", "carSettingsDetails", "carCard", "work", "workDetails", "workSelf",
              "workAssign", "workContribution", "workPDF", "workLogbookPDF":
             WorkScreenshotHost(screen: screen)
+        case "liveActivityPreview":  // MARK: live
+            NavigationStack { RideActivityPreviewView() }
+        case "dashboardLive":  // MARK: live
+            MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
         case "hero":
             DesignSystemPreview()
         case "stationSearch":

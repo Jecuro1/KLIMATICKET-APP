@@ -149,6 +149,13 @@ struct DashboardView: View {
             .dashEntrance(0, visible: appeared)
         }
 
+        // MARK: live – "Unterwegs nach …" capsule(s) while a ride runs (renders nothing otherwise).
+        RideDashCapsule()
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, Theme.Spacing.screen)
+            .padding(.top, Theme.Spacing.xs)
+            .dashEntrance(0, visible: appeared)
+
         // Spec §8.1: mountain canvas 134 pt, full width.
         AmortizationHero(snapshot: snapshot, chartHeight: 134)
             .padding(.top, Theme.Spacing.xxs)
