@@ -57,7 +57,7 @@ struct RepImportPreviewStep: View {
                     }
                     .padding(.top, 2)
                 }
-                .animation(.smooth, value: model.importValue)
+                .motionAnimation(Motion.number, value: model.importValue)
 
                 pillLayout {
                     RepStatusPill(value: model.readyCandidates.count, label: "bereit", symbol: "checkmark", tint: Theme.pine,
@@ -95,7 +95,7 @@ struct RepImportPreviewStep: View {
     }
 
     private func toggleFilter(_ filter: RepImportModel.PreviewFilter) {
-        withAnimation(.smooth(duration: 0.25)) {
+        withMotion(Motion.snappy) {
             model.filter = model.filter == filter ? .all : filter
         }
     }

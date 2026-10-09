@@ -78,7 +78,7 @@ struct RepImportResultStep: View {
         .onAppear {
             guard !appeared else { return }
             if animates {
-                withAnimation(.spring(duration: 0.7, bounce: 0.35)) { appeared = true }
+                withAnimation(Motion.bouncy) { appeared = true }
             } else {
                 appeared = true
             }
@@ -215,7 +215,7 @@ struct RepImpactRail: View {
             if reduceMotion || LaunchMode.isScreenshot {
                 grown = true
             } else {
-                withAnimation(.spring(duration: 0.9, bounce: 0.2).delay(0.25)) { grown = true }
+                withAnimation(Motion.gentle.delay(0.25)) { grown = true }
             }
         }
         .accessibilityHidden(true)

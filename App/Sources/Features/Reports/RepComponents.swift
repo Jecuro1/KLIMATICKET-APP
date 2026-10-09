@@ -43,7 +43,7 @@ struct RepStepProgress: View {
             }
         }
         .frame(maxWidth: 180)
-        .animation(.spring(duration: 0.5), value: step)
+        .motionAnimation(Motion.smooth, value: step)
         .accessibilityHidden(true)
     }
 }
@@ -150,10 +150,6 @@ struct RepGlassCapsuleButton: View {
 }
 
 extension View {
-    /// `.sensoryFeedback` that respects the "Haptisches Feedback" setting.
-    func repHaptic<T: Equatable>(_ feedback: SensoryFeedback, trigger: T, enabled: Bool) -> some View {
-        sensoryFeedback(trigger: trigger) { _, _ in enabled ? feedback : nil }
-    }
 }
 
 /// German helpers for the module.

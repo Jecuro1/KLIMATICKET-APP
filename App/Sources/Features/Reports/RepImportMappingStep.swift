@@ -158,7 +158,7 @@ struct RepColumnRow: View {
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, 10)
         .opacity(field == nil ? 0.78 : 1)
-        .animation(.smooth(duration: 0.25), value: field)
+        .motionAnimation(Motion.snappy, value: field)
     }
 
     private func tile(_ field: CSVImport.Field?) -> some View {

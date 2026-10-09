@@ -53,7 +53,7 @@ struct RepReportSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .task(id: renderKey) { await render() }
-        .repHaptic(.selection, trigger: selectedID, enabled: app.settings.hapticsEnabled)
+        .haptic(.selection, trigger: selectedID)
     }
 
     // MARK: Content
@@ -76,9 +76,11 @@ struct RepReportSheet: View {
                 VStack(spacing: Theme.Spacing.s) {
                     header(data)
                         .padding(.horizontal, Theme.Spacing.screen)
+                        .reveal(.focus)
                     preview
                 }
                 .padding(.top, Theme.Spacing.xs)
+                .revealScope()
             }
         } else {
             ScrollView {
@@ -100,9 +102,11 @@ struct RepReportSheet: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(2)
+                    .contentTransition(.numericText())
             }
             Spacer(minLength: Theme.Spacing.xs)
-            Text(Format.percent(data.summary.amortizedFraction))
+            // The sheet's hero value: counts in once, rolls when another ticket year is picked.
+            CountUpText(value: data.summary.amortizedFraction, delay: 0.1) { Format.percent($0) }
                 .font(.system(size: 34, weight: .light, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(data.summary.isPaidOff ? Theme.positiveText : Theme.textPrimary)
@@ -123,7 +127,7 @@ struct RepReportSheet: View {
         ZStack {
             if let report {
                 RepPDFPreview(url: report.url, key: report.key, startPage: previewPage)
-                    .transition(.opacity)
+                    .motionTransition(.rise)
                     .accessibilityLabel("Vorschau des Jahresberichts, \(report.pageCount) Seiten")
             }
             if isRendering {
@@ -136,7 +140,7 @@ struct RepReportSheet: View {
                 }
                 .padding(Theme.Spacing.l)
                 .frostedCard(cornerRadius: Theme.Radius.tile)
-                .transition(.opacity)
+                .motionTransition(.pop)
             } else if failed {
                 EmptyStateView(symbol: "exclamationmark.triangle", title: "Das hat nicht geklappt",
                                message: "Der Bericht ließ sich nicht erstellen. Versuch es bitte noch einmal.",
@@ -146,7 +150,7 @@ struct RepReportSheet: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .animation(.smooth(duration: 0.3), value: isRendering)
+        .motionAnimation(Motion.smooth, value: isRendering)
     }
 
     // MARK: Toolbar & actions
@@ -207,7 +211,7 @@ struct RepReportSheet: View {
         guard !Task.isCancelled else { return }
         let rendered = await RepPDFRenderer.render(data, key: key)
         guard !Task.isCancelled else { return }
-        withAnimation(.smooth(duration: 0.35)) {
+        withMotion(Motion.smooth) {
             report = rendered
             failed = rendered == nil
             isRendering = false

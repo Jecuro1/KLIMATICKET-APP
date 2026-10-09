@@ -56,15 +56,11 @@ struct RepImportSteps: View {
     @Bindable var model: RepImportModel
     var onClose: () -> Void
 
-    @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
     @State private var isPickingFile = false
     @State private var templateURL: URL?
-
-    private var animates: Bool { !(reduceMotion || LaunchMode.isScreenshot) }
 
     var body: some View {
         ScrollView {
@@ -76,9 +72,8 @@ struct RepImportSteps: View {
             .padding(.bottom, Theme.Spacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
             .id(model.step)
-            .transition(animates ? AnyTransition.asymmetric(insertion: AnyTransition.move(edge: .trailing).combined(with: .opacity),
-                                                            removal: AnyTransition.opacity)
-                                 : AnyTransition.identity)
+            // The next step slides in from the trailing edge (Reduce Motion: cross-fade).
+            .motionTransition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
         }
         .scrollIndicators(.hidden)
         .scrollEdgeEffectStyle(.soft, for: .bottom)
@@ -97,10 +92,10 @@ struct RepImportSteps: View {
             }
         }
         .onAppear { prepareTemplate() }
-        .repHaptic(.selection, trigger: model.mappingRevision, enabled: app.settings.hapticsEnabled)
-        .repHaptic(.success, trigger: model.importRevision, enabled: app.settings.hapticsEnabled)
-        .repHaptic(.warning, trigger: model.undoRevision, enabled: app.settings.hapticsEnabled)
-        .sensoryFeedback(trigger: model.loadError) { _, new in new != nil && app.settings.hapticsEnabled ? .error : nil }
+        .haptic(.selection, trigger: model.mappingRevision)
+        .haptic(.success, trigger: model.importRevision)
+        .haptic(.warning, trigger: model.undoRevision)
+        .haptic(.error, trigger: model.loadError, when: { _, new in new != nil })
     }
 
     @ViewBuilder
@@ -181,7 +176,7 @@ struct RepImportSteps: View {
                             go { model.undo(context: context) }
                         }
                         .accessibilityHint("Entfernt alle eben importierten Fahrten wieder")
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+                        .motionTransition(.move(edge: .leading).combined(with: .opacity))
                     }
                     Button {
                         onClose()
@@ -214,7 +209,7 @@ struct RepImportSteps: View {
                     .frame(width: 1, height: 22)
                 Text(Format.euroPrecise(model.importValue))
                     .monospacedDigit()
-                    .contentTransition(.numericText(value: model.importValue))
+                    .numericValue(model.importValue)
             }
         }
         .lineLimit(1)
@@ -233,11 +228,7 @@ struct RepImportSteps: View {
     // MARK: Helpers
 
     private func go(_ change: () -> Void) {
-        if animates {
-            withAnimation(.smooth(duration: 0.35), change)
-        } else {
-            change()
-        }
+        withMotion(Motion.smooth, change)
     }
 
     private func prepareTemplate() {
