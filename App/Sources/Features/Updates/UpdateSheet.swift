@@ -2,7 +2,7 @@ import SwiftUI
 import KlimaCore
 
 /// "Update verfügbar" (DESIGN.md §5.7): app icon on a summit glow, "Version 1.1 ist da" + "Du hast 1.0", release notes
-/// with feature tiles, "Jetzt aktualisieren" (CTA), optional "AltStore-Quelle hinzufügen" (tinted secondary) and "Später".
+/// with feature tiles, the channel CTA ("Update herunterladen" …), optional "AltStore-Quelle hinzufügen" (tinted) and "Später".
 /// Presented by RootView (`app.updates.isPresentingSheet`) or from Einstellungen › Updates.
 struct UpdateSheet: View {
     @Environment(AppState.self) private var app
@@ -133,8 +133,8 @@ struct UpdateSheet: View {
             if manifest != nil {
                 Button {
                     installTrigger += 1
-                    if app.updates.availableManifest == nil, let url = manifest.flatMap({ URL(string: $0.downloadURL) }) {
-                        openURL(url)   // service is mid re-check – fall back to the pinned release's download
+                    if app.updates.availableManifest == nil, let url = pinnedInstallURL {
+                        openURL(url)   // service is mid re-check (or offline) – fall back to the pinned release
                     } else {
                         app.updates.install()
                     }
@@ -147,6 +147,7 @@ struct UpdateSheet: View {
                     Button {
                         openURL(source) { accepted in
                             withAnimation(.snappy) { altStoreMissing = !accepted }
+                            if !accepted { AccessibilityNotification.Announcement(storeMissingText).post() }
                         }
                     } label: {
                         Label(isSideStore ? "SideStore-Quelle hinzufügen" : "AltStore-Quelle hinzufügen", systemImage: "plus.square.on.square")
@@ -154,7 +155,7 @@ struct UpdateSheet: View {
                     .buttonStyle(UpdSecondaryButtonStyle())
 
                     if altStoreMissing {
-                        Text(isSideStore ? "SideStore ist auf diesem iPhone nicht installiert." : "AltStore ist auf diesem iPhone nicht installiert. Mit SideStore fügst du die Quelle unter Einstellungen › Updates hinzu.")
+                        Text(storeMissingText)
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .multilineTextAlignment(.center)
@@ -164,17 +165,20 @@ struct UpdateSheet: View {
                 }
             }
             if !isRequired {
-                Button(laterTitle) {
+                Button {
                     later()
+                } label: {
+                    Text(laterTitle)
+                        .font(.body.weight(.semibold))
+                        .frame(minWidth: 160, minHeight: 44)   // HIG hit target, not just the word
+                        .contentShape(.rect)
                 }
-                .font(.body.weight(.semibold))
                 .foregroundStyle(Theme.accentText)
-                .padding(.vertical, Theme.Spacing.xxs)
             }
         }
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.top, Theme.Spacing.m)
-        .padding(.bottom, Theme.Spacing.xs)
+        .padding(.bottom, isRequired ? Theme.Spacing.xs : 0)
         .background {
             LinearGradient(stops: [.init(color: Theme.sheetBackground.opacity(0), location: 0),
                                    .init(color: Theme.sheetBackground.opacity(0.94), location: 0.28),
@@ -185,6 +189,21 @@ struct UpdateSheet: View {
     }
 
     private var laterTitle: String { manifest == nil ? "Schließen" : "Später" }
+
+    private var storeMissingText: String {
+        isSideStore ? "SideStore ist auf diesem iPhone nicht installiert."
+            : "AltStore ist auf diesem iPhone nicht installiert. Mit SideStore fügst du die Quelle unter Einstellungen › Updates hinzu."
+    }
+
+    /// Where the CTA goes when the service has no current release (re-check in flight, offline): the channel's own
+    /// store first – a TestFlight copy must never be sent to the raw .ipa – then the pinned release's download.
+    private var pinnedInstallURL: URL? {
+        switch app.updates.channel {
+        case .testFlight: return app.updates.testFlightURL
+        case .appStore: return app.updates.appStoreURL ?? manifest.flatMap { URL(string: $0.downloadURL) }
+        case .sideloaded, .development: return manifest.flatMap { URL(string: $0.downloadURL) }
+        }
+    }
 
     private func later() {
         if manifest != nil { app.updates.dismissCurrent() }
@@ -228,12 +247,13 @@ private struct UpdHero: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
-    /// Same version, newer build (re-signed / hotfix build): the build is the only thing that differs.
+    /// Same version, newer build (TestFlight / re-signed hotfix): the build is the only thing that differs.
     private var isBuildOnly: Bool {
         guard let manifest else { return false }
-        return manifest.version <= installed
+        return manifest.version == installed && manifest.build > installedBuild
     }
 
     private var title: String {
@@ -266,26 +286,41 @@ private struct UpdHero: View {
         .accessibilityHidden(true)
     }
 
-    /// "Du hast 1.0" – the installed version in the same short form as the title ("Build 7" for build-only updates).
+    /// "Du hast 1.0" – the installed version in the same short form as the title. A build-only update has no new
+    /// version to name, so there the pill carries the step itself: "Build 7 → 8".
     private var installedPill: some View {
-        let value = isBuildOnly ? "Build \(installedBuild)" : SetFormat.shortVersion(installed)
-        let lead = manifest == nil ? "Version" : "Du hast"
-        return HStack(spacing: 6) {
+        HStack(spacing: 6) {
             Image(systemName: "iphone")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textTertiary)
-            Text(lead)
-                .foregroundStyle(Theme.textSecondary)
-            Text(value)
-                .fontWeight(.semibold)
-                .foregroundStyle(Theme.textPrimary)
+            if let manifest, isBuildOnly {
+                Text(verbatim: "Build \(installedBuild)")
+                    .foregroundStyle(Theme.textSecondary)
+                Image(systemName: "arrow.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.textTertiary)
+                Text(verbatim: "\(manifest.build)")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.textPrimary)
+            } else {
+                Text(manifest == nil ? "Version" : "Du hast")
+                    .foregroundStyle(Theme.textSecondary)
+                Text(SetFormat.shortVersion(installed))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.textPrimary)
+            }
         }
         .font(.subheadline.monospacedDigit())
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
         .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isBuildOnly ? "Installiert ist \(value)" : "Installierte Version \(value)")
+        .accessibilityLabel(pillAccessibilityLabel)
+    }
+
+    private var pillAccessibilityLabel: String {
+        if let manifest, isBuildOnly { return "Von Build \(installedBuild) auf Build \(manifest.build)" }
+        return "Installierte Version \(SetFormat.shortVersion(installed))"
     }
 }
 
@@ -309,6 +344,8 @@ private struct UpdNotesCard: View {
         SurfaceCard(padding: Theme.Spacing.l, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 Kicker(text: "Was ist neu")
+                    .accessibilityLabel("Was ist neu")
+                    .accessibilityAddTraits(.isHeader)
                 ForEach(Array(lines.enumerated()), id: \.offset) { index, note in
                     UpdNoteRow(text: note)
                         .opacity(appeared ? 1 : 0)
@@ -318,7 +355,6 @@ private struct UpdNotesCard: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Was ist neu")
     }
 }
 
@@ -350,7 +386,11 @@ private struct UpdFeature {
     var tint: Color
 
     init(note: String) {
-        let match = Self.match(note.lowercased(with: Locale(identifier: "de_AT")))
+        // "Besuch"/"versuchen" contain "such" but are no search feature.
+        let text = note.lowercased(with: Locale(identifier: "de_AT"))
+            .replacingOccurrences(of: "besuch", with: "")
+            .replacingOccurrences(of: "versuch", with: "")
+        let match = Self.match(text)
         symbol = match.symbol
         tint = match.tint
     }
@@ -360,14 +400,17 @@ private struct UpdFeature {
         if has("widget") { return ("rectangle.stack.fill", Theme.dusk) }
         if has("such", "search", "finde") { return ("magnifyingglass", Theme.glacier) }
         if has("preis", "tarif", "€", "kosten") { return ("eurosign", Theme.dawn) }
-        if has("sync", "icloud", "konto", "anmeld") { return ("arrow.triangle.2.circlepath", Theme.glacier) }
+        if has("sync", "cloud", "konto", "anmeld") { return ("arrow.triangle.2.circlepath", Theme.glacier) }
         if has("co₂", "co2", "umwelt", "emission") { return ("leaf.fill", Theme.pine) }
         if has("statistik", "diagramm", "auswertung") { return ("chart.bar.fill", Theme.dusk) }
         if has("erinner", "mitteilung", "benachrichtig") { return ("bell.fill", Theme.alpenglow) }
+        // Austrian "…karte" is usually a ticket card, not a map.
+        if has("fahrkarte", "jahreskarte", "vorteilskarte", "vorteilscard") { return ("ticket.fill", Theme.dawn) }
         if has("karte", "route", "strecke", "haltestelle", "bahnhof") { return ("map.fill", Theme.pine) }
         if has("ticket") { return ("ticket.fill", Theme.dawn) }
         if has("fehler", "stabil", "absturz", "bug") { return ("wrench.and.screwdriver.fill", Theme.pine) }
         if has("design", "darstellung", "dunkel") { return ("paintbrush.fill", Theme.alpenglow) }
+        if has("fahrt") { return ("tram.fill", Theme.glacier) }
         return ("sparkle", Theme.glacier)
     }
 }
