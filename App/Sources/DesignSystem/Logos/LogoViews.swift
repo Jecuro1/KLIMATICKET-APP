@@ -57,6 +57,8 @@ struct BrandChip<Fallback: View>: View {
 
     let brand: LogoPackManifest.Brand?
     var size: Size = .row
+    /// Degradation step ② (LOGO_SPEC §4.3): a tile loses its name, a wordmark gives way to the own icon-only badge.
+    var nameless = false
     @ViewBuilder var fallback: () -> Fallback
 
     @Environment(\.colorScheme) private var scheme
@@ -67,14 +69,16 @@ struct BrandChip<Fallback: View>: View {
 
     var body: some View {
         let dark = scheme == .dark
-        if let b = brand, b.compact != .none, let img = logos.image(b, large: size == .detail, dark: dark) {
+        if let b = brand, b.compact != .none, !(nameless && b.compact == .logo), let img = logos.image(b, large: size == .detail, dark: dark) {
             let h = min(logoH * (size == .detail ? 16.0 / 14.0 : 1), size == .detail ? 22 : 20)
             Group {
                 if b.compact == .tile {
                     HStack(spacing: size == .detail ? 6 : 5) {
                         plated(Image(uiImage: img).resizable().scaledToFit().frame(width: h + 2, height: h + 2), b, dark: dark, tight: true)
-                        Text(b.name).font(.system(size: size == .detail ? 12.5 : 11.5, weight: .semibold))
-                            .foregroundStyle(Theme.textPrimary).lineLimit(1)
+                        if !nameless {
+                            Text(b.name).font(.system(size: size == .detail ? 12.5 : 11.5, weight: .semibold))
+                                .foregroundStyle(Theme.textPrimary).lineLimit(1)
+                        }
                     }
                 } else {
                     plated(Image(uiImage: img).resizable().scaledToFit().frame(height: h).frame(maxWidth: size == .detail ? 100 : 66),

@@ -10,6 +10,7 @@
 // only says `import Foundation` sees these declarations, like on iOS.
 
 import Foundation
+import FoundationNetworking
 
 @inline(never) @usableFromInline func _kbUnimplemented() -> Never { fatalError("type-check stub") }
 

@@ -189,7 +189,7 @@ final class LogoPackStore {
     private func decode(_ path: String, in m: LogoPackManifest) -> UIImage? {
         let key = "\(m.packVersion)/\(path)" as NSString
         if let hit = cache.object(forKey: key) { return hit }
-        guard StoredZip.isSafe(path), let dir = packDirectory(m),
+        guard !path.hasPrefix("/"), !path.contains(".."), let dir = packDirectory(m),
               let data = try? Data(contentsOf: dir.appendingPathComponent(path)),
               let img = UIImage(data: data, scale: CGFloat(m.scale)) else { return nil }
         cache.setObject(img, forKey: key)

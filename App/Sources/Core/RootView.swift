@@ -469,6 +469,11 @@ struct ScreenshotRouter: View {
             ScreenshotStationSearch(query: "warth am arlberg dorf")
         case "stationSearchBus":
             ScreenshotStationSearch(query: "lech post")
+        // MARK: stops – the picker with the SYNTHETIC demo logo pack (DEBUG), the stop details
+        case "stationSearchLogos":
+            ScreenshotStationSearch(query: "warth am arlberg dorf", demoLogos: true)
+        case let stop where stop.hasPrefix("stopDetail"):
+            ScreenshotStopDetail(screen: stop)
         // MARK: reports
         case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
             RepScreenshotHost(screen: reportScreen)
@@ -488,6 +493,7 @@ struct ScreenshotRouter: View {
 /// CI screenshot: the station picker once the complete place index is attached.
 private struct ScreenshotStationSearch: View {
     let query: String
+    var demoLogos = false   // MARK: stops
     @State private var isReady = false
 
     var body: some View {
@@ -499,8 +505,40 @@ private struct ScreenshotStationSearch: View {
             }
         }
         .task {
+            #if DEBUG
+            if demoLogos { LogoPackStore.shared.installDemoPack() }   // MARK: stops – solid-colour „DEMO“ logos
+            #endif
             _ = try? await PlaceIndexLoader.shared.load()
             isReady = true
+        }
+    }
+}
+
+/// MARK: stops – CI screenshots of the stop detail: `stopDetailWarth`, `…StAnton`, `…Floridsdorf`, `…Lech`, with the
+/// suffixes `Mid` / `End` / `Lines` (scrolled) and `Logos` (the synthetic demo pack, DEBUG only).
+private struct ScreenshotStopDetail: View {
+    let screen: String
+    @State private var placeID: String?
+
+    var body: some View {
+        NavigationStack {
+            if let placeID {
+                StopDetailView(placeID: placeID)
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            #if DEBUG
+            if screen.contains("Logos") { LogoPackStore.shared.installDemoPack() }
+            #endif
+            guard let index = try? await PlaceIndexLoader.shared.load() else { return }
+            if screen.contains("StAnton") { placeID = "at:47:1222" }
+            else if screen.contains("Floridsdorf") { placeID = "at:49:334" }
+            else if screen.contains("Lech") {
+                placeID = index.search("lech am arlberg post", context: .planner, limit: 10)
+                    .first { $0.kind == .stop && $0.state == "V" }?.id ?? "at:48:344"
+            } else { placeID = "at:48:344" }
         }
     }
 }

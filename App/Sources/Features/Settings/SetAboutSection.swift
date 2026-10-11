@@ -164,7 +164,7 @@ private struct SetSourcesPage: View {
         List {
             Section {
                 Group {
-                    ForEach(Array(Copy.dataSources.enumerated()), id: \.offset) { _, source in
+                    ForEach(Array((Copy.dataSources + Copy.placeDataSources).enumerated()), id: \.offset) { _, source in  // MARK: stops – plus the stop-detail sources
                         VStack(alignment: .leading, spacing: 4) {
                             Text(source.title)
                                 .font(.body.weight(.semibold))

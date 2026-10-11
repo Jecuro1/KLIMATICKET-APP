@@ -27,6 +27,8 @@ struct StationPickerView: View {
     @State private var locator: LocationService?
     @State private var recents: [Station] = []
     @State private var popular: [Station] = []
+    /// MARK: stops – the stop detail opened from the context menu.
+    @State private var detailPlaceID: String?
 
     init(title: String, initialQuery: String = "", selection: @escaping (Station) -> Void, customName: ((String) -> Void)? = nil) {
         self.title = title
@@ -51,6 +53,7 @@ struct StationPickerView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: prepare)
+        .stopDetail(placeID: $detailPlaceID)
         .task {
             if TripEdLocationAccess.current == .granted, case .idle = nearby {
                 await loadNearby()
@@ -183,12 +186,28 @@ struct StationPickerView: View {
     // MARK: Rows
 
     private func stationButton(_ station: Station, distanceKm: Double? = nil) -> some View {
-        Button {
+        // MARK: stops – rich row (line plates, Landesmarke, Gebietszeichen) once the place index is attached
+        let place = app.stations.richPlace(for: station)
+        return Button {
             choose(station)
         } label: {
-            TripEdStationRow(station: station, distanceKm: distanceKm)
+            if let place {
+                StopSuggestionRow(model: StopSuggestionRowModel(place: place, index: app.stations.places),
+                                  query: trimmedQuery, distanceText: distanceKm.map { Format.km($0) })
+            } else {
+                TripEdStationRow(station: station, distanceKm: distanceKm)
+            }
         }
         .listRowBackground(Theme.surface)
+        .contextMenu {
+            if place != nil {
+                Button {
+                    detailPlaceID = place?.id
+                } label: {
+                    Label("Haltestelle ansehen", systemImage: "info.circle")
+                }
+            }
+        }
     }
 
     // MARK: Actions

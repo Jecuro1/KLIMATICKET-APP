@@ -16,6 +16,8 @@ struct TripEdRouteCard: View {
     var onRemoveTransfer: (Int) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(AppState.self) private var app   // MARK: stops
+    @State private var detailPlaceID: String?     // MARK: stops
     @Namespace private var labels
     @State private var swapTurns = 0
     /// Bottom edges of the "Von" / "Nach" captions in the stops' coordinate space (to pin the glyph's dots to the names).
@@ -35,6 +37,7 @@ struct TripEdRouteCard: View {
             .padding(.trailing, Theme.Spacing.s)
         }
         .haptic(.tap, trigger: swapTurns)
+        .stopDetail(placeID: $detailPlaceID)   // MARK: stops
     }
 
     // MARK: Stops
@@ -92,6 +95,7 @@ struct TripEdRouteCard: View {
         let subtitle: String? = station.map { TripEdFormat.stationSubtitle($0) } ?? (hasValue ? "Eigener Ort" : nil)
         let caption = pick == .from ? "Von" : "Nach"
         let key = labelKey(for: pick, name: rawName)
+        let stopPlace = station.flatMap { app.stations.richPlace(for: $0) }   // MARK: stops
         var spoken = caption + ": " + (hasValue ? rawName : name)
         if hasValue, let subtitle { spoken += ", " + subtitle }
 
@@ -113,7 +117,10 @@ struct TripEdRouteCard: View {
                         .foregroundStyle(hasValue ? Theme.textPrimary : Theme.textTertiary)
                         .lineLimit(2)
                         .minimumScaleFactor(0.85)
-                    if let subtitle {
+                    if let place = stopPlace {
+                        // MARK: stops – Landesmarke · Gebietszeichen · Ortsmarke + line plates instead of „Bahnhof · Tirol“
+                        StopMetaRow(place: place, index: app.stations.places)
+                    } else if let subtitle {
                         Text(subtitle)
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
@@ -130,6 +137,12 @@ struct TripEdRouteCard: View {
             .contentShape(.rect)
         }
         .buttonStyle(.pressable(scale: Motion.Distance.pressScaleCard))
+        .contextMenu {
+            // MARK: stops – entry point to the stop detail
+            if let stopPlace {
+                Button { detailPlaceID = stopPlace.id } label: { Label("Haltestelle ansehen", systemImage: "info.circle") }
+            }
+        }
         .accessibilityLabel(spoken)
         .accessibilityHint(pick == .from ? "Öffnet die Suche für den Start" : "Öffnet die Suche für das Ziel")
     }
