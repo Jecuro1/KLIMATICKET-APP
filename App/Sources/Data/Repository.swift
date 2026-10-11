@@ -78,6 +78,8 @@ struct Repository {
         copy.categoryRaw = trip.categoryRaw
         copy.isInduced = trip.isInduced
         copy.viaRaw = trip.viaRaw   // MARK: via
+        // MARK: planner – the price is copied, not asked again: a table price stays a table price, an own price stays own.
+        copy.priceSourceRaw = trip.isFareManual ? PriceSource.manual.rawValue : (trip.priceSourceRaw.isEmpty ? "" : PriceSource.table.rawValue)
         context.insert(copy)
         commit()
         return copy

@@ -366,7 +366,9 @@ struct TripDetailView: View {
 
     @ViewBuilder
     private func fareBadge(_ info: TripListDetailInfo) -> some View {
-        if trip.isFareManual {
+        if let source = plannerSource {   // MARK: planner – the recorded source, in plain words
+            PriceSourceBadge(source: source)
+        } else if trip.isFareManual {
             TripListPill(title: "Eigener Preis", symbol: "pencil", foreground: Theme.summitText, fill: Theme.summit)
         } else if let estimate = info.estimate {
             if estimate.method == .officialTable && abs(estimate.fareEUR - trip.fareEUR) < 0.05 {
@@ -379,7 +381,23 @@ struct TripDetailView: View {
         }
     }
 
+    /// MARK: planner – the source saved with the trip (nil for trips from before the live planner: their text stays).
+    private var plannerSource: PriceSourceBadge.Source? {
+        guard !trip.isFareManual, let source = PriceSource(rawValue: trip.priceSourceRaw) else { return nil }
+        switch source {
+        case .liveOebb, .liveVerbund: return .live(trip.priceProvider.isEmpty ? (source == .liveOebb ? "ÖBB" : "VAO") : trip.priceProvider)
+        case .table, .cityTicket: return .table
+        case .distanceModel: return .estimate
+        case .manual: return .edited
+        }
+    }
+
     private func fareExplanation(_ info: TripListDetailInfo) -> String {
+        // MARK: planner – „Normalpreis € 29,70 · Live-Preis ÖBB · abgefragt 9. Okt., 11:58“
+        if plannerSource != nil, case .live(let provider)? = plannerSource, let fetched = trip.priceFetchedAt {
+            let product = trip.priceProduct.isEmpty ? "" : "\(trip.priceProduct) · "
+            return "Normalpreis \(Format.euroPrecise(trip.fareEUR)) · \(product)Live-Preis \(provider) · abgefragt \(Format.dayMonth(fetched)), \(Format.time(fetched))"
+        }
         if trip.isFareManual {
             if let estimate = info.estimate {
                 return "Diesen Preis hast du selbst eingetragen. Unsere Schätzung für die Strecke: \(Format.euroPrecise(estimate.fareEUR)) (\(estimate.explanation))."

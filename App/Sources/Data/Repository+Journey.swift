@@ -13,11 +13,11 @@ extension Repository {
     func logJourney(_ journey: Journey, quote: PriceQuote?, coverage: JourneyCoverage?, travelClass: TravelClass,
                     isRoundTrip: Bool = false, via: [ViaStop] = []) -> [TripEntity] {
         let plan = JourneyLogPlanner.plan(journey: journey, quote: quote, coverage: coverage, via: via, stations: app.stations)
-        return logPlan(plan, travelClass: travelClass, isRoundTrip: isRoundTrip)
+        return logPlan(plan, quote: quote, travelClass: travelClass, isRoundTrip: isRoundTrip)
     }
 
     @discardableResult
-    func logPlan(_ plan: JourneyLogPlan, travelClass: TravelClass, isRoundTrip: Bool = false) -> [TripEntity] {
+    func logPlan(_ plan: JourneyLogPlan, quote: PriceQuote? = nil, travelClass: TravelClass, isRoundTrip: Bool = false) -> [TripEntity] {
         guard !plan.isEmpty else { return [] }
         let journeyID: UUID? = plan.isJourney ? UUID() : nil
         var trips: [TripEntity] = []
@@ -28,6 +28,16 @@ extension Repository {
             trip.viaRaw = TripViaCodec.encode(leg.via)
             trip.journeyID = journeyID
             trip.legIndex = index
+            // MARK: planner – provenance (the price is shared over the legs, the source is the same)
+            if let quote {
+                trip.priceSourceRaw = quote.source.rawValue
+                trip.priceProvider = quote.provider ?? ""
+                trip.priceProduct = quote.productName ?? ""
+                trip.priceFetchedAt = quote.fetchedAt
+            }
+            trip.journeyRef = plan.journeyRef
+            trip.lineSummary = plan.isJourney ? leg.lineTitle : plan.lineSummary
+            trip.arrivalAt = leg.arrival
             trips.append(trip)
         }
         for trip in trips { context.insert(trip) }

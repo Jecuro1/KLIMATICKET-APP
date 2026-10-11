@@ -132,6 +132,20 @@ final class TripEntity {
     /// travel order. Every leg keeps its own stations, mode, price and km; the legs share date, direction and purpose.  // MARK: trips
     var journeyID: UUID?
     var legIndex: Int = 0
+    // MARK: planner – where the price came from (docs/OEBB_LIVE.md §E4). All defaults, so the store migrates lightweight;
+    // "" = a trip saved before the live planner (its text stays as it was). Kept on this device (not synced yet).
+    /// `PriceSource.rawValue` ("liveOebb", "liveVerbund", "table", "cityTicket", "distanceModel", "manual").
+    var priceSourceRaw: String = ""
+    /// "ÖBB", "VVT", "VOR" … (live prices only).
+    var priceProvider: String = ""
+    /// "Standard-Ticket", "VVT Einzelticket" …
+    var priceProduct: String = ""
+    var priceFetchedAt: Date?
+    /// `Journey.refreshToken` of the planner connection (refresh, „Rückfahrt planen“).
+    var journeyRef: String = ""
+    /// „RJX 19910 · Bus 760“.
+    var lineSummary: String = ""
+    var arrivalAt: Date?
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?

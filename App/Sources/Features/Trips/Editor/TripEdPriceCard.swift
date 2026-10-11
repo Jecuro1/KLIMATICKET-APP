@@ -18,6 +18,7 @@ struct TripEdPriceCard: View {
     /// "1" of "150").
     @State private var shownHint: TripEdFareHint?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(AppState.self) private var app   // MARK: planner
 
     var body: some View {
         SurfaceCard(padding: 0, cornerRadius: Theme.Radius.formGroup) {
@@ -29,6 +30,22 @@ struct TripEdPriceCard: View {
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    // MARK: planner – live vs. table, the manual refresh and the one-time consent
+                    if let comparison = model.liveComparison {
+                        Text(comparison).font(.footnote.weight(.medium)).foregroundStyle(model.liveQuote.map { _ in Theme.positiveText } ?? Theme.textSecondary)
+                    }
+                    if model.showsStoredFare || model.legs[model.selectedLeg].storedFare != nil, !model.isFareManual, model.liveQuote == nil,
+                       app.live.isLivePriceAvailable {
+                        Button { model.fetchLivePrice() } label: {
+                            Label("Live-Preis abrufen", systemImage: "arrow.triangle.2.circlepath")
+                                .font(.footnote.weight(.semibold)).foregroundStyle(Theme.accentText)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
+                    }
+                    if app.live.consent == .undecided, !LaunchMode.isSandboxed, model.estimate != nil, !model.isFareManual {
+                        LiveConsentCard(style: .inline).padding(.top, Theme.Spacing.xs).motionTransition(.rise)
+                    }
                     if let shownHint {
                         TripEdFareHintCallout(hint: shownHint, onFix: applyFix)
                             .padding(.top, Theme.Spacing.xxs)
@@ -116,7 +133,14 @@ struct TripEdPriceCard: View {
 
     @ViewBuilder
     private var eyebrow: some View {
-        if model.isOfficialPrice {
+        // MARK: planner – the source in plain words (Live-Preis · ÖBB, Tarif-Tabelle, Schätzung, Angepasst, Offline)
+        if let badge = model.priceBadge {
+            HStack(spacing: 6) {
+                if model.isJourney { Text("Etappe \(model.selectedLeg + 1)").font(.caption.weight(.semibold)).foregroundStyle(Theme.textSecondary) }
+                PriceSourceBadge(source: badge)
+            }
+            .motionTransition(.opacity.combined(with: .scale(scale: 0.9, anchor: .leading)))
+        } else if model.isOfficialPrice {
             Label("Offizieller ÖBB-Preis", systemImage: "checkmark.seal.fill")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.positiveText)

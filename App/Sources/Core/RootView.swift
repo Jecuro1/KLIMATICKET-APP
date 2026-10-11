@@ -293,7 +293,7 @@ struct ScreenshotRouter: View {
             .onAppear { LaunchTrace.mark("screen.appear") }
             .task {
                 switch screen {
-                case "addTrip", "addTripCategory", "addTripLive": // MARK: tripmeta – addTripCategory; live – addTripLive
+                case "addTrip", "addTripCategory", "addTripLive", "editorLive": // MARK: tripmeta – addTripCategory; live – addTripLive; planner – editorLive (live price + badge)
                     var draft = TripDraft()
                     draft.fromName = "St. Anton am Arlberg"
                     draft.toName = "Innsbruck Hbf"

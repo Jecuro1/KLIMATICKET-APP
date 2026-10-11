@@ -31,6 +31,10 @@ struct TripEdLeg: Identifiable {
     var routeChanged = false
     /// The saved trip this leg edits (nil = a new leg).
     var trip: TripEntity?
+    // MARK: planner – the live regular price of this leg (docs/OEBB_LIVE.md §E5). `liveKey` = the inputs it was asked for.
+    var liveQuote: PriceQuote?
+    var liveKey = ""
+    var isLoadingLive = false
 
     init(mode: TransportMode, vias: [TripEdViaStop] = []) {
         self.mode = mode
@@ -43,6 +47,7 @@ struct TripEdLeg: Identifiable {
     var fare: Double {
         if let manualFare { return manualFare }
         if let storedFare, keepsStoredPrice { return storedFare }
+        if let liveQuote, liveQuote.isLive { return liveQuote.amountEUR }   // MARK: planner
         return estimate?.fareEUR ?? 0
     }
 
@@ -90,6 +95,7 @@ final class TripEditorModel {
     /// Amortisation preview: the ticket's other trips, summed once per ticket period (see `tripEdBaseline`).
     @ObservationIgnored private let openedAt = Date()
     @ObservationIgnored private var baseline: (ticketID: UUID, period: TicketPeriod, value: Double)?
+    @ObservationIgnored private var priceTask: Task<Void, Never>?   // MARK: planner
 
     /// Editing: every saved leg of the trip or journey in travel order (empty for a new trip).
     private(set) var editingLegs: [TripEntity] = []
@@ -249,6 +255,7 @@ final class TripEditorModel {
     /// Short explanation under the price ("ÖBB-Standardticket 2. Kl. · Tarif ab 14.12.2025").
     var fareExplanation: String {
         if isFareManual { return "Eigener Preis" }
+        if let q = liveQuote { return q.explanation }   // MARK: planner
         if showsStoredFare {
             guard let e = estimate else { return "Beim Erfassen gespeichert" }
             return "Beim Erfassen gespeichert · aktuell \(Format.euroPrecise(e.fareEUR))"
@@ -257,7 +264,98 @@ final class TripEditorModel {
         return "Preis wird nach Wahl von Start und Ziel geschätzt"
     }
 
-    var isOfficialPrice: Bool { !isFareManual && !showsStoredFare && estimate?.method == .officialTable }
+    var isOfficialPrice: Bool { !isFareManual && !showsStoredFare && (estimate?.method == .officialTable || liveQuote?.isLive == true) }
+
+    // MARK: planner – live price (docs/OEBB_LIVE.md §E5)
+
+    /// The live quote of the selected leg when it counts as the price.
+    var liveQuote: PriceQuote? {
+        let leg = legs[selectedLeg]
+        guard leg.manualFare == nil, !(leg.storedFare != nil && leg.keepsStoredPrice) else { return nil }
+        return leg.liveQuote?.isLive == true ? leg.liveQuote : nil
+    }
+
+    var isLoadingLivePrice: Bool { legs[selectedLeg].isLoadingLive }
+
+    /// Where the selected leg's price comes from; nil for a saved price that stays as it was (legacy text).
+    var priceBadge: PriceSourceBadge.Source? {
+        if isFareManual { return .edited }
+        if let q = liveQuote { return .live(q.provider ?? "ÖBB") }
+        if isLoadingLivePrice { return .loading }
+        if showsStoredFare || (legs[selectedLeg].storedFare != nil && legs[selectedLeg].keepsStoredPrice) { return nil }
+        guard let e = estimate else { return nil }
+        let offline = app.live.consent == .granted && app.live.priceUnavailable == .offline
+        switch e.method {
+        case .officialTable, .cityTicket: return offline ? .offline : .table
+        case .distanceTariff: return .estimate
+        case .liveOebb, .liveVerbund: return .table
+        case .manual: return .edited
+        }
+    }
+
+    /// „✓ stimmt mit der Tarif-Tabelle überein“ / „Tarif-Tabelle: € 23,50“ under a live price.
+    var liveComparison: String? {
+        guard let q = liveQuote, let e = estimate, e.method == .officialTable || e.method == .cityTicket else { return nil }
+        if abs(e.fareEUR - q.amountEUR) < 0.05 { return "✓ stimmt mit der Tarif-Tabelle überein" }
+        return "Tarif-Tabelle: \(Format.euroPrecise(e.fareEUR))"
+    }
+
+    /// Live prices are asked in the editor – not in demo runs, except the screenshot of exactly that.
+    private var asksLivePrice: Bool { !app.live.isDemo || LaunchMode.screenshotScreen == "editorLive" }
+
+    /// The live price may be asked now: no own price, and (editing) no saved price that is still in force.
+    private func wantsLive(_ index: Int) -> Bool {
+        let leg = legs[index]
+        guard leg.manualFare == nil, stops[index].station != nil, stops[index + 1].station != nil else { return false }
+        if leg.storedFare != nil, leg.keepsStoredPrice { return false }   // editing never re-prices silently (D7)
+        return true
+    }
+
+    private func liveKey(_ index: Int) -> String {
+        guard let a = stops[index].station, let b = stops[index + 1].station else { return "" }
+        let vias = legs[index].vias.compactMap(\.station).map(\.id).joined(separator: ",")
+        let day = Int(Calendar.vienna.startOfDay(for: date).timeIntervalSince1970)
+        return "\(a.id)>\(b.id)|\(vias)|\(legs[index].mode.rawValue)|\(travelClass.rawValue)|\(discount.rawValue)|\(day)"
+    }
+
+    /// Debounced (600 ms); cancels the previous ask. `force`: „Live-Preis abrufen“ on a saved trip.
+    func schedulePriceRefresh(force: Bool = false) {
+        priceTask?.cancel()
+        guard asksLivePrice, app.live.isLivePriceAvailable else {
+            for index in legs.indices { legs[index].isLoadingLive = false }
+            return
+        }
+        let wanted = legs.indices.filter { (force || wantsLive($0)) && legs[$0].liveQuote == nil }
+        guard !wanted.isEmpty else { return }
+        for index in wanted { legs[index].isLoadingLive = true }
+        priceTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(force ? 0 : 600))
+            guard let self, !Task.isCancelled else { return }
+            for index in wanted where self.legs.indices.contains(index) {
+                let key = self.liveKey(index)
+                guard let a = self.stops[index].station, let b = self.stops[index + 1].station else { continue }
+                let request = PriceRequest(from: PriceEndpoint(station: a), to: PriceEndpoint(station: b), departure: self.date,
+                                           mode: self.legs[index].mode, travelClass: self.travelClass, discount: self.discount,
+                                           via: self.legs[index].vias.compactMap(\.station).map { PriceEndpoint(station: $0) })
+                let quote = await self.app.live.quote(request)
+                if Task.isCancelled { return }
+                guard self.legs.indices.contains(index), self.liveKey(index) == key else { continue }
+                withMotion(Motion.number) {
+                    self.legs[index].liveQuote = quote.isLive ? quote : nil
+                    self.legs[index].liveKey = key
+                    self.legs[index].isLoadingLive = false
+                }
+            }
+            for index in self.legs.indices { self.legs[index].isLoadingLive = false }
+        }
+    }
+
+    /// „Live-Preis abrufen“ on a saved trip: the saved price is replaced by the live one only when the user asks.
+    func fetchLivePrice() {
+        legs[selectedLeg].pricingChanged = true
+        legs[selectedLeg].liveQuote = nil
+        schedulePriceRefresh(force: true)
+    }
 
     /// Federal states touched by the whole trip (for regional ticket comparison).
     var states: [String] {
@@ -507,6 +605,12 @@ final class TripEditorModel {
                                                           mode: legs[index].mode, travelClass: travelClass, discount: discount,
                                                           date: date)
         }
+        // MARK: planner – a live price belongs to the inputs it was asked for; any change asks again.
+        for index in legs.indices where legs[index].liveKey != liveKey(index) {
+            legs[index].liveQuote = nil
+            legs[index].liveKey = liveKey(index)
+        }
+        schedulePriceRefresh()
     }
 
     /// Value of `ticket`'s period without the trip being edited, from the trips saved before the sheet opened (the one this
@@ -538,6 +642,32 @@ final class TripEditorModel {
             if let id = via.stationID, endpoints.contains(id) { return false }
             return !names.contains(via.name)
         })
+    }
+
+    /// MARK: planner – where the saved price came from. A saved price that stays in force keeps its own provenance.
+    private func applyProvenance(to trip: TripEntity, leg: TripEdLeg) {
+        if leg.manualFare != nil {
+            trip.priceSourceRaw = PriceSource.manual.rawValue
+            trip.priceProvider = ""
+            trip.priceProduct = ""
+            trip.priceFetchedAt = nil
+        } else if leg.storedFare != nil, leg.keepsStoredPrice {
+            return
+        } else if let q = leg.liveQuote, q.isLive {
+            trip.priceSourceRaw = q.source.rawValue
+            trip.priceProvider = q.provider ?? ""
+            trip.priceProduct = q.productName ?? ""
+            trip.priceFetchedAt = q.fetchedAt
+        } else if let e = leg.estimate {
+            switch e.method {
+            case .officialTable: trip.priceSourceRaw = PriceSource.table.rawValue
+            case .cityTicket: trip.priceSourceRaw = PriceSource.cityTicket.rawValue
+            default: trip.priceSourceRaw = PriceSource.distanceModel.rawValue
+            }
+            trip.priceProvider = ""
+            trip.priceProduct = ""
+            trip.priceFetchedAt = nil
+        }
     }
 
     /// Persists the trip – or every leg of the journey – in one commit (inserts, updates, legs dropped while editing are
@@ -579,6 +709,7 @@ final class TripEditorModel {
             trip.via = viaRecords(ofLeg: index)   // MARK: via
             trip.journeyID = journeyID
             trip.legIndex = isJourney ? index : 0
+            applyProvenance(to: trip, leg: leg)   // MARK: planner
             saved.append(trip)
         }
         let kept = Set(saved.map(\.id))
