@@ -3,19 +3,21 @@ import KlimaCore
 
 /// The Von / Nach card of the Fahrplan (UX §4.1, mock 10): two slots on a dotted route glyph, optional „Über“ stops, a
 /// glass swap button and the time row. Geometry follows `TripEdRouteCard` (copied constants, not shared code).
-struct RouteSlotsCard<Footer: View>: View {
-    struct Slot: Identifiable, Equatable {
-        var id: String
-        var caption: String
-        var title: String
-        var subtitle: String?
-        var isPlaceholder: Bool
-        var showsLocationArrow = false
-    }
+struct RouteSlot: Identifiable, Equatable {
+    var id: String
+    var caption: String
+    var title: String
+    var subtitle: String?
+    var isPlaceholder: Bool
+    var showsLocationArrow = false
+}
 
-    var origin: Slot
-    var vias: [Slot] = []
-    var destination: Slot
+struct RouteSlotsCard<Footer: View>: View {
+    typealias Slot = RouteSlot
+
+    var origin: RouteSlot
+    var vias: [RouteSlot] = []
+    var destination: RouteSlot
     var onTap: (String) -> Void
     var onSwap: () -> Void
     var onRemoveVia: (String) -> Void = { _ in }
@@ -70,7 +72,7 @@ struct RouteSlotsCard<Footer: View>: View {
 
     private var addViaVisible: Bool { onAddVia != nil && vias.count < JourneyQuery.maxViaStops }
 
-    private func slot(_ slot: Slot) -> some View {
+    private func slot(_ slot: RouteSlot) -> some View {
         Button { onTap(slot.id) } label: {
             VStack(alignment: .leading, spacing: 1) {
                 Text(slot.caption).font(.system(size: 14, weight: .medium)).foregroundStyle(Theme.textSecondary)
@@ -98,7 +100,7 @@ struct RouteSlotsCard<Footer: View>: View {
         .accessibilityHint("Öffnet die Suche")
     }
 
-    private func viaRow(_ via: Slot) -> some View {
+    private func viaRow(_ via: RouteSlot) -> some View {
         HStack(spacing: 8) {
             Button { onTap(via.id) } label: {
                 HStack(spacing: 8) {

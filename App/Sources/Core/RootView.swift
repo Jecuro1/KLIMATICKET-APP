@@ -278,6 +278,7 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .plannerTabSearch()   // MARK: planner
     }
 }
 
@@ -453,6 +454,9 @@ struct ScreenshotRouter: View {
             .dynamicTypeSize(.accessibility3)
         case "hero":
             DesignSystemPreview()
+        // MARK: planner – the Fahrplan with the demo timetable (PlannerScreenshotScene)
+        case let plannerScreen where PlannerScreenshotScene.screens.contains(plannerScreen):
+            PlannerScreenshotScene(screen: plannerScreen)
         case "motionGallery", "motionGallery2", "motionGallery3", "motionCelebration": // MARK: motion – DEBUG builds only
             #if DEBUG
             if screen == "motionCelebration" {

@@ -54,10 +54,12 @@ struct TimelineStopRow: View {
     var below: TimelineRail
     /// A walk to or from an address or POI: the node is hollow and grey.
     var isFootnote = false
+    /// „Fahrplan“ under a time without realtime.
+    var showsScheduledHint = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.xs) {
-            RealtimeTime(planned: planned, label: realtime, style: .row, showsScheduledHint: false)
+            RealtimeTime(planned: planned, label: realtime, style: .row, showsScheduledHint: showsScheduledHint)
                 .frame(width: RailMetrics.timeWidth, alignment: .leading)
                 .padding(.top, 1)
             VStack(spacing: 0) {
