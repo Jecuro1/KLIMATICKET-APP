@@ -3,7 +3,7 @@ import XCTest
 
 // MARK: settings – Manuell aktualisieren
 final class ManualUpdateTests: XCTestCase {
-    private let hash = String(repeating: "ab", count: 32)
+    private let sampleSHA = String(repeating: "ab", count: 32)
 
     private func manifest(size: Int? = 1000, sha: String? = nil) -> UpdateManifest {
         UpdateManifest(version: SemanticVersion(major: 1, minor: 0, patch: 5), build: 361, publishedAt: "2026-10-09T10:00:00Z",
@@ -13,11 +13,11 @@ final class ManualUpdateTests: XCTestCase {
     func testDecodesSizeAndChecksumFromPublishedManifest() throws {
         let json = """
         {"version":"1.0.4","build":350,"publishedAt":"2026-10-09T22:44:28Z","downloadURL":"https://x/y.ipa",
-         "size":23692125,"sha256":"\(hash)","releaseNotes":["A"],"tariffsSHA256":"ff","bundleIdentifier":"b"}
+         "size":23692125,"sha256":"\(sampleSHA)","releaseNotes":["A"],"tariffsSHA256":"ff","bundleIdentifier":"b"}
         """
         let m = try JSONDecoder().decode(UpdateManifest.self, from: Data(json.utf8))
         XCTAssertEqual(m.size, 23692125)
-        XCTAssertEqual(m.sha256, hash)
+        XCTAssertEqual(m.sha256, sampleSHA)
     }
 
     func testOlderManifestWithoutTheFieldsStillDecodes() throws {
@@ -29,12 +29,12 @@ final class ManualUpdateTests: XCTestCase {
     }
 
     func testVerification() {
-        let m = manifest(sha: hash.uppercased())
-        XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 1000, actualChecksum: hash), .verified)
-        XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 999, actualChecksum: hash), .sizeMismatch(expected: 1000, actual: 999))
+        let m = manifest(sha: sampleSHA.uppercased())
+        XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 1000, actualChecksum: sampleSHA), .verified)
+        XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 999, actualChecksum: sampleSHA), .sizeMismatch(expected: 1000, actual: 999))
         XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 1000, actualChecksum: String(repeating: "0", count: 64)), .checksumMismatch)
         XCTAssertEqual(ManualUpdate.verify(manifest: m, actualSize: 1000, actualChecksum: nil), .checksumMismatch)
-        XCTAssertEqual(ManualUpdate.verify(manifest: manifest(sha: "nothex"), actualSize: 1000, actualChecksum: hash), .unverifiable)
+        XCTAssertEqual(ManualUpdate.verify(manifest: manifest(sha: "nothex"), actualSize: 1000, actualChecksum: sampleSHA), .unverifiable)
     }
 
     func testFileNameAndSizes() {
