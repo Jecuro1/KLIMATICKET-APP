@@ -168,7 +168,8 @@ struct TimelineRideLeg: View {
                     Text(subtitle).font(.system(size: 15)).foregroundStyle(Theme.textSecondary)
                 }
                 if !attributes.isEmpty {
-                    HStack(spacing: 6) {
+                    // A grid, not a row: six chips would be wider than the card on a small phone.
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 34, maximum: 40), spacing: 6)], alignment: .leading, spacing: 6) {
                         ForEach(attributes, id: \.self) { symbol in
                             Image(systemName: symbol)
                                 .font(.system(size: 14, weight: .medium))
