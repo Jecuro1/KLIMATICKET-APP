@@ -48,6 +48,11 @@ enum Theme {
     static let negativeText = Color(light: "#B42318", dark: "#FF9A9A")
     static let eco = pine
     static let summit = dawn
+    // MARK: stops – live departures (green, 5.4:1 on light cards), the Schneehaube and the Gipfelnacht tile.
+    static let live = Color(light: "#0B7A4E", dark: "#5BE0A0")
+    static let snow = Color(light: .white, dark: Color(hex: "#EEF5FF"))
+    /// Tile gradient of places without a mode (towns, unknown): Gipfelnacht.
+    static let fernTile = LinearGradient(colors: [Color(hex: "#2E4A7F"), Color(hex: "#16284D")], startPoint: .topLeading, endPoint: .bottomTrailing)
 
     // Text-safe variants of the accents (≥ 4.5:1 on light backgrounds) – use these for small text.
     static let positiveText = Color(light: "#0A6B52", dark: "#6BD6A9")
