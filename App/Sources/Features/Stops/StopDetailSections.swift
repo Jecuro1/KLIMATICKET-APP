@@ -51,8 +51,8 @@ struct StopContext {
     }
 
     func terminus(_ name: String?, id: String?) -> String? {
-        if let id, let p = index?.place(id: id) { return PlaceTitle.display(name: p.name, stateShown: false) }
-        return name.flatMap { $0.isEmpty ? nil : PlaceTitle.display(name: $0, stateShown: false) }
+        if let id, let p = index?.place(id: id) { return PlaceTitle.display(name: p.name, stateShown: true, state: p.state) }
+        return name.flatMap { $0.isEmpty ? nil : PlaceTitle.display(name: $0, stateShown: true) }
     }
 }
 
@@ -120,7 +120,8 @@ struct StopHeroCard: View {
 
     /// Region chips without a logo cell and without the ski area's own name.
     private var regionChips: [Region] {
-        let cellNames = Set(ctx.cells.map { PlaceNormalizer.fold($0.name) })
+        // Not twice: a region named like a logo cell or like the state („Wien“ in Wien).
+        let cellNames = Set(ctx.cells.map { PlaceNormalizer.fold($0.name) } + [ctx.state.map { PlaceNormalizer.fold($0.name) }].compactMap { $0 })
         let ids = PlaceMarkSelection.detailRegions(tags: ctx.tags, skiArea: ctx.details.skiArea) { id in
             ctx.details.regions.first { $0.id == id }?.name
         }
@@ -242,7 +243,7 @@ struct StopLinesSection: View {
         let t = l.line.termini
         var from = ctx.terminus(t?.from, id: t?.fromStopID)
         var to = ctx.terminus(t?.to, id: t?.toStopID)
-        if from == nil && to == nil { to = l.directions.first.map { PlaceTitle.display(name: $0, stateShown: false) } }
+        if from == nil && to == nil { to = l.directions.first.map { PlaceTitle.display(name: $0, stateShown: true) } }
         if from == to { from = nil }
         let op = l.line.operatorName ?? l.line.operatorLegalName.map { ctx.index?.operatorName($0) ?? OperatorNames.display($0) }
         let operatorText = [op, l.line.network.flatMap { $0 == .international ? nil : $0.rawValue }].compactMap { $0 }

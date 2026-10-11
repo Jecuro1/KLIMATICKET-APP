@@ -13,14 +13,14 @@ struct StopMapHero: View {
         let center = place.coordinate.coordinate
         Map(initialPosition: .region(MKCoordinateRegion(center: center, latitudinalMeters: 1_200, longitudinalMeters: 1_200)),
             interactionModes: []) {
-            ForEach(neighbours, id: \.place.id) { n in
-                Annotation(n.place.title, coordinate: n.place.coordinate.coordinate, anchor: .center) {
+            ForEach(Array(neighbours.enumerated()), id: \.element.place.id) { i, n in
+                Annotation(PlaceTitle.display(name: n.place.name, stateShown: true, state: n.place.state), coordinate: n.place.coordinate.coordinate, anchor: .center) {
                     Circle().fill(Theme.modeColor(n.place.products.primaryMode))
                         .frame(width: 10, height: 10)
                         .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
                         .shadow(color: .black.opacity(0.25), radius: 1.5, y: 0.5)
                 }
-                .annotationTitles(.visible)
+                .annotationTitles(i < 2 ? .visible : .hidden)   // a few names, not a wall of text
             }
             Annotation(place.title, coordinate: center, anchor: .bottom) {
                 StopPin(place: place, snowcap: snowcap)
