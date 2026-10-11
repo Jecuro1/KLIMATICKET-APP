@@ -62,10 +62,16 @@ public struct UpdateManifest: Codable, Hashable, Sendable {
     /// Newer tariff catalog version available at `tariffsURL`.
     public var tariffsVersion: Int?
     public var tariffsURL: String?
+    // MARK: settings – Manuell aktualisieren: the .ipa behind `downloadURL` (scripts/make_release_metadata.py writes both).
+    /// Size of the .ipa in bytes.
+    public var size: Int?
+    /// Lowercase hex SHA-256 of the .ipa.
+    public var sha256: String?
 
     public init(version: SemanticVersion, build: Int, publishedAt: String, minimumOSVersion: String? = nil, downloadURL: String,
                 altstoreSourceURL: String? = nil, otaManifestURL: String? = nil, releaseNotes: [String] = [],
-                minimumSupportedVersion: SemanticVersion? = nil, tariffsVersion: Int? = nil, tariffsURL: String? = nil) {
+                minimumSupportedVersion: SemanticVersion? = nil, tariffsVersion: Int? = nil, tariffsURL: String? = nil,
+                size: Int? = nil, sha256: String? = nil) {
         self.version = version
         self.build = build
         self.publishedAt = publishedAt
@@ -77,6 +83,8 @@ public struct UpdateManifest: Codable, Hashable, Sendable {
         self.minimumSupportedVersion = minimumSupportedVersion
         self.tariffsVersion = tariffsVersion
         self.tariffsURL = tariffsURL
+        self.size = size
+        self.sha256 = sha256
     }
 }
 
@@ -136,5 +144,60 @@ public enum DirectInstall {
         allowed.remove(charactersIn: "&=+?#")
         guard let encoded = manifestURL.addingPercentEncoding(withAllowedCharacters: allowed) else { return nil }
         return URL(string: "itms-services://?action=download-manifest&url=" + encoded)
+    }
+}
+
+// MARK: settings – Manuell aktualisieren (docs/MANUAL_UPDATE.md)
+
+/// The in-app .ipa download: where the file is kept and whether a finished download is the release it claims to be.
+/// iOS installs no .ipa by itself – the verified file goes to SideStore/AltStore (Teilen) or into the Files app.
+public enum ManualUpdate {
+    public enum Verification: Equatable, Sendable {
+        case verified
+        /// The manifest names no checksum – only the size could be compared (or nothing at all).
+        case unverifiable
+        case sizeMismatch(expected: Int, actual: Int)
+        case checksumMismatch
+    }
+
+    /// "KlimaBilanz-1.0.5-361.ipa" – version and build, so an older download is never taken for a newer release.
+    public static func fileName(for manifest: UpdateManifest) -> String {
+        "KlimaBilanz-\(manifest.version)-\(manifest.build).ipa"
+    }
+
+    /// The manifest's checksum when it is a well-formed SHA-256 (64 hex digits), lowercased.
+    public static func expectedChecksum(_ manifest: UpdateManifest) -> String? {
+        guard let raw = manifest.sha256?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              raw.count == 64, raw.allSatisfy({ $0.isHexDigit }) else { return nil }
+        return raw
+    }
+
+    /// The size to show and to compare against: the manifest's, else what the server announced.
+    public static func expectedSize(_ manifest: UpdateManifest, announced: Int64? = nil) -> Int64? {
+        if let size = manifest.size, size > 0 { return Int64(size) }
+        if let announced, announced > 0 { return announced }
+        return nil
+    }
+
+    /// Size first (cheap, catches truncated files), then the checksum when the manifest has one.
+    public static func verify(manifest: UpdateManifest, actualSize: Int64, actualChecksum: String?) -> Verification {
+        if let size = manifest.size, size > 0, Int64(size) != actualSize {
+            return .sizeMismatch(expected: size, actual: Int(actualSize))
+        }
+        guard let expected = expectedChecksum(manifest) else { return .unverifiable }
+        guard let actualChecksum, actualChecksum.lowercased() == expected else { return .checksumMismatch }
+        return .verified
+    }
+
+    /// A kept download is only worth offering while it is newer than (or a rebuild of) the installed copy.
+    public static func isStale(fileVersion: SemanticVersion, fileBuild: Int, installed: SemanticVersion, installedBuild: Int) -> Bool {
+        if fileVersion != installed { return fileVersion < installed }
+        return fileBuild <= installedBuild
+    }
+
+    /// 0…1 progress, clamped; nil while the total is unknown.
+    public static func fraction(received: Int64, total: Int64?) -> Double? {
+        guard let total, total > 0 else { return nil }
+        return min(max(Double(received) / Double(total), 0), 1)
     }
 }

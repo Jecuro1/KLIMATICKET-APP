@@ -173,7 +173,11 @@ jobs:
           elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
-            VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/.*"([0-9.]+)".*/\1/')
+            # Ordinary builds carry the newest released version (with a higher build number), so the in-app updater
+            # never offers that release as an "update" to a newer main build. project.yml is only the fallback.
+            VERSION=$(git ls-remote --tags --refs origin 'v*' 2>/dev/null | sed -E 's#.*refs/tags/v##' \
+              | grep -E '^[0-9]+(\.[0-9]+){1,2}$' | sort -V | tail -1 || true)
+            [[ -n "$VERSION" ]] || VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | sed -E 's/.*"([0-9.]+)".*/\1/')
           fi
           BUILD=$((GITHUB_RUN_NUMBER + 100))
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"

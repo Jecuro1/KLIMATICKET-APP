@@ -27,6 +27,8 @@ struct UpdateSheet: View {
     /// "AltStore-Quelle hinzufügen" was not handled (AltStore not installed). Shown inline – the global toast
     /// is hidden behind this sheet.
     @State private var altStoreMissing = false
+    /// MARK: settings – "Manuell aktualisieren" (download the .ipa in the app) over this sheet.
+    @State private var showsManualUpdate = false
 
     private var manifest: UpdateManifest? { app.updates.availableManifest ?? pinnedManifest }
     private var isRequired: Bool {
@@ -43,6 +45,10 @@ struct UpdateSheet: View {
                     if let tariffs = manifest.tariffsVersion, tariffs > app.catalog.version {
                         tariffsHint(tariffs)
                             .reveal(order: 8)
+                    }
+                    if app.updates.showsSideloadOptions {
+                        UpdManualUpdateRow { showsManualUpdate = true }
+                            .reveal(order: 9)
                     }
                 } else {
                     upToDateCard
@@ -69,6 +75,9 @@ struct UpdateSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(isRequired ? .hidden : .visible)
         .interactiveDismissDisabled(isRequired)
+        .sheet(isPresented: $showsManualUpdate) {
+            ManualUpdateSheet(release: manifest)
+        }
         // One haptic per step of the install: a tap when it starts, an error if nothing could be opened.
         .haptic(.tap, trigger: installTrigger)
         .haptic(.error, trigger: handoff, when: { _, new in new == .failed })
@@ -540,7 +549,7 @@ private struct UpdFeature {
 
 /// Calm tinted capsule for the secondary action ("AltStore-Quelle hinzufügen"): one step below the CTA, and – unlike
 /// Liquid Glass over the opaque action bar – never a dark slab in dark mode.
-private struct UpdSecondaryButtonStyle: ButtonStyle {
+struct UpdSecondaryButtonStyle: ButtonStyle {   // MARK: settings – also Manuell aktualisieren
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -565,5 +574,43 @@ private struct UpdSecondaryButtonStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(MotionPolicy.isStatic ? nil : (configuration.isPressed ? Motion.press : Motion.release),
                        value: configuration.isPressed)
+    }
+}
+
+// MARK: settings – Manuell aktualisieren
+
+/// The way to the in-app .ipa download: a calm row under the notes, so the action bar keeps one primary button. Its
+/// own view – it follows a running download without re-rendering the sheet.
+private struct UpdManualUpdateRow: View {
+    var action: () -> Void
+    var downloader: ManualUpdateDownloader = .shared
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Spacing.s) {
+                SetIconTile(symbol: "arrow.down.doc.fill", tint: Theme.dusk, size: 36)
+                    .setBusySymbol(downloader.isBusy, style: .pulse)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ManualUpdateCopy.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                    Text(ManualUpdateCopy.rowStatus(downloader))
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contentTransition(.opacity)
+                }
+                .multilineTextAlignment(.leading)
+                Spacer(minLength: Theme.Spacing.xs)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.textTertiary)
+            }
+            .padding(Theme.Spacing.m)
+            .background(Theme.surface, in: .rect(cornerRadius: Theme.Radius.tile, style: .continuous))
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityHint("Lädt die .ipa-Datei in der App, prüft sie und gibt sie an SideStore oder AltStore weiter.")
     }
 }

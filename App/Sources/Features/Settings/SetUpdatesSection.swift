@@ -40,6 +40,7 @@ struct SetUpdatesSection: View {
                 }
                 .haptic(.selection, trigger: settings.autoUpdateCheck)
                 if app.updates.showsSideloadOptions {
+                    SetManualUpdateRow()   // MARK: settings – Manuell aktualisieren
                     if !UpdateService.isDirectInstallCopy {   // MARK: ota – an ad-hoc copy needs no store source
                         sourceRow(title: "AltStore-Quelle hinzufügen", symbol: "plus.square.on.square",
                                   tint: Theme.modeColor(.sBahn), url: app.updates.altStoreSourceURL)
@@ -287,6 +288,31 @@ struct SetUpdatesSection: View {
             app.showToast("checkmark.circle.fill", "Tarife sind aktuell", "Tarif-Version \(app.catalog.version)")
         } else {
             app.showToast("exclamationmark.triangle.fill", "Tarife nicht erreichbar", "Bitte später noch einmal versuchen")
+        }
+    }
+}
+
+// MARK: settings – Manuell aktualisieren
+
+/// The in-app .ipa download (`ManualUpdateView`). Its own view: the subtitle follows a running download, and only
+/// this row re-renders with the progress – not the Updates section.
+private struct SetManualUpdateRow: View {
+    var downloader: ManualUpdateDownloader = .shared
+
+    var body: some View {
+        NavigationLink {
+            ManualUpdateView()
+        } label: {
+            HStack(spacing: Theme.Spacing.s) {
+                SetRowLabel(title: ManualUpdateCopy.title, subtitle: ManualUpdateCopy.rowStatus(downloader),
+                            symbol: "arrow.down.doc.fill", tint: Theme.dusk, isBusy: downloader.isBusy, busyStyle: .pulse)
+                if downloader.phase.isReady {
+                    Spacer(minLength: Theme.Spacing.xs)
+                    SetPill(text: "Bereit", symbol: "checkmark", tint: Theme.positiveText)
+                        .motionTransition(.pop)
+                }
+            }
+            .motionAnimation(Motion.smooth, value: downloader.phase)
         }
     }
 }

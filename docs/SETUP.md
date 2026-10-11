@@ -42,10 +42,15 @@ neuen Version ein Update-Fenster. Wohin „Jetzt aktualisieren“ führt, hängt
 |------------------|-----------------------|---------------|
 | **AltStore** mit Quelle | AltStore prüft die Quelle und zeigt ein Badge bzw. eine Mitteilung; dazu das Update-Fenster der App | Tipp auf **Aktualisieren** in AltStore – oder „Jetzt aktualisieren“ in der App übergibt die neue `.ipa` an AltStore |
 | **SideStore** mit Quelle | wie AltStore | „Jetzt aktualisieren“ übergibt die neue `.ipa` an SideStore, oder Tipp auf **Aktualisieren** in SideStore |
-| **Sideloadly** / anderes | Update-Fenster der App | `.ipa` herunterladen und neu installieren |
+| **Sideloadly** / anderes | Update-Fenster der App | `.ipa` herunterladen und neu installieren ([Manuell aktualisieren](MANUAL_UPDATE.md)) |
 | **Direkt installiert** (Ad hoc, [DIREKT_INSTALLIEREN.md](DIREKT_INSTALLIEREN.md)) | Update-Fenster der App | „Jetzt installieren“ → iOS fragt „Installieren“ → App wird ersetzt, Daten bleiben |
 | **TestFlight** | TestFlight-App (Mitteilung) | in TestFlight auf **Aktualisieren** tippen – oder dort „Automatische Updates“ einschalten |
 | **App Store** | App Store (Versionsabgleich über `itunes.apple.com/lookup`) | im App Store bzw. automatisch, wenn App-Updates in den iOS-Einstellungen aktiv sind |
+
+**Manuell aktualisieren (nur mit der `.ipa`):** Unter *Einstellungen › Updates › Manuell aktualisieren* (und im
+Update-Fenster) lädt die App die neue `.ipa` selbst – mit Fortschrittsring, fortsetzbar, geprüft per Größe und SHA-256 –
+und gibt sie über das Teilen-Menü an SideStore/AltStore weiter oder sichert sie in der Dateien-App. iOS selbst installiert
+keine `.ipa`; Details, die 3 Schritte und was ohne Sideload-App geht: **[MANUAL_UPDATE.md](MANUAL_UPDATE.md)**.
 
 > AltStore und SideStore installieren Updates **nicht unbemerkt im Hintergrund** – im Hintergrund erneuern sie nur
 > die 7-Tage-Signatur. Ein neues Update bestätigst du immer mit einem Tipp auf „Aktualisieren“.

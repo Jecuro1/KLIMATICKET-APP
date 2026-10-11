@@ -183,7 +183,8 @@ final class UpdateService {
     // MARK: Checking
 
     /// Checks at most every 6 hours unless forced. Presents the sheet once per new version.
-    func checkIfDue(force: Bool) async {
+    /// `presents: false` (MARK: settings – Manuell aktualisieren) fetches the release without raising the update sheet.
+    func checkIfDue(force: Bool, presents: Bool = true) async {
         let channel = await resolveChannel()
         if channel == .appStore {
             await checkAppStore(force: force)
@@ -196,7 +197,9 @@ final class UpdateService {
             let manifest = try JSONDecoder().decode(UpdateManifest.self, from: try await fetch(url))
             self.manifest = manifest
             defaults.set(Date(), forKey: "updates.lastCheck")
+            let presentsBefore = isPresentingSheet
             apply(UpdateDecision.evaluate(installed: installedVersion, installedBuild: installedBuild, manifest: manifest), force: force)
+            if !presents { isPresentingSheet = presentsBefore }   // MARK: settings
         } catch {
             state = .failed("Update-Prüfung fehlgeschlagen")
         }
@@ -305,7 +308,8 @@ final class UpdateService {
             publishedAt: ISO8601DateFormatter().string(from: Date()),
             downloadURL: "https://example.com/KlimaBilanz.ipa",
             altstoreSourceURL: "https://example.com/altstore-source.json",
-            releaseNotes: ["Neue Widgets für den Sperrbildschirm", "Schnellere Haltestellensuche", "Aktualisierte Ticketpreise 2027"]
+            releaseNotes: ["Neue Widgets für den Sperrbildschirm", "Schnellere Haltestellensuche", "Aktualisierte Ticketpreise 2027"],
+            size: 23_692_125, sha256: String(repeating: "5e", count: 32)   // MARK: settings – Manuell aktualisieren
         )
         manifest = sample
         state = .available(sample)
@@ -369,6 +373,17 @@ final class UpdateService {
     var sideStoreInstallURL: URL? {
         guard showsSideloadOptions else { return nil }
         return Self.link("sidestore://install?url=", availableManifest?.downloadURL)
+    }
+
+    // MARK: settings – Manuell aktualisieren: one-tap store links for any release (also the current one, to reinstall).
+    func altStoreInstallURL(for manifest: UpdateManifest?) -> URL? {
+        guard showsSideloadOptions else { return nil }
+        return Self.link("altstore://install?url=", manifest?.downloadURL)
+    }
+
+    func sideStoreInstallURL(for manifest: UpdateManifest?) -> URL? {
+        guard showsSideloadOptions else { return nil }
+        return Self.link("sidestore://install?url=", manifest?.downloadURL)
     }
 
     var directDownloadURL: URL? {

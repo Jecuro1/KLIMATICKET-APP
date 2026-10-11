@@ -385,6 +385,9 @@ struct ScreenshotRouter: View {
         case "settingsDemo":
             NavigationStack { SettingsView(screenshotScreen: screen) }
                 .task { DemoDataStore.markAllRowsAsDemo(in: context) }
+        // MARK: settings – Manuell aktualisieren: nothing loaded, 62 % loaded, verified file ready to share
+        case let manualScreen where ManualUpdateScreenshotHost.screens.contains(manualScreen):
+            ManualUpdateScreenshotHost(screen: manualScreen)
         // MARK: settings – the Settings sheet from the dashboard with its toast mirror (kept up for the capture)
         case "settingsToast":
             MainTabView()
