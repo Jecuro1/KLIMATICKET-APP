@@ -32,7 +32,7 @@ struct TripEdPriceCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                     // MARK: planner – live vs. table, the manual refresh and the one-time consent
                     if let comparison = model.liveComparison {
-                        Text(comparison).font(.footnote.weight(.medium)).foregroundStyle(model.liveQuote.map { _ in Theme.positiveText } ?? Theme.textSecondary)
+                        Text(comparison).font(.footnote.weight(.medium)).foregroundStyle(comparison.hasPrefix("✓") ? Theme.positiveText : Theme.textSecondary)
                     }
                     if model.showsStoredFare || model.legs[model.selectedLeg].storedFare != nil, !model.isFareManual, model.liveQuote == nil,
                        app.live.isLivePriceAvailable {

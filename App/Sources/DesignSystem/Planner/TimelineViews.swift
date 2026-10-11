@@ -12,7 +12,7 @@ enum TimelineRail: Equatable {
 
 private enum RailMetrics {
     static let width: CGFloat = 30
-    static let timeWidth: CGFloat = 78
+    static let timeWidth: CGFloat = 68
     static let nodeSize: CGFloat = 16
     static let lineWidth: CGFloat = 4
 }
@@ -142,21 +142,26 @@ struct TimelineRideLeg: View {
             Color.clear.frame(width: RailMetrics.timeWidth)
             RailSegment(style: .ride(color)).frame(width: RailMetrics.width)
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                HStack(spacing: 8) {
-                    LinePlate(badge, size: .m)
-                    Text(title)
-                        .font(.system(size: 19, weight: .bold))
-                        .foregroundStyle(isCancelled ? Theme.textSecondary : Theme.textPrimary)
-                        .strikethrough(isCancelled, color: Theme.negativeText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                    if let direction {
-                        Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
-                        Text(direction)
-                            .font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(isCancelled ? Theme.textSecondary : Theme.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        LinePlate(badge, size: .m)
+                        titleText
+                        if let direction {
+                            Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
+                            directionText(direction)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            LinePlate(badge, size: .m)
+                            titleText
+                        }
+                        if let direction {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.textTertiary)
+                                directionText(direction)
+                            }
+                        }
                     }
                 }
                 if let subtitle {
@@ -180,6 +185,23 @@ struct TimelineRideLeg: View {
             .padding(.vertical, Theme.Spacing.s)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(.system(size: 19, weight: .bold))
+            .foregroundStyle(isCancelled ? Theme.textSecondary : Theme.textPrimary)
+            .strikethrough(isCancelled, color: Theme.negativeText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+    }
+
+    private func directionText(_ direction: String) -> some View {
+        Text(direction)
+            .font(.system(size: 19, weight: .bold))
+            .foregroundStyle(isCancelled ? Theme.textSecondary : Theme.textPrimary)
+            .lineLimit(2)
+            .minimumScaleFactor(0.7)
     }
 
     private var intermediate: some View {

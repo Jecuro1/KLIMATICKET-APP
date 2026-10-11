@@ -416,7 +416,8 @@ struct RouteSuggestionRow: View {
         if route.badges.count > 1, let arrival = s.plannedArrival { return "an \(Format.time(arrival))" }
         var parts: [String] = []
         if let platform = s.departurePlatform { parts.append(platform.text) }
-        if let text = s.departure.text { parts.append(text) }
+        // „pünktlich“ is already the green dot; only a delay or a cancellation is worth the room.
+        if s.departure.state == .late || s.departure.state == .veryLate || s.departure.state == .cancelled, let text = s.departure.text { parts.append(text) }
         return parts.joined(separator: " · ")
     }
 

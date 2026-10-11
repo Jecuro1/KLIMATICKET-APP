@@ -483,7 +483,7 @@ final class PlannerModel {
                 if Task.isCancelled || mine != generation { return }
                 let request = priceRequest(for: row.journey, coverage: row.coverage)
                 let quote = await live.offlineQuote(request)
-                priceStates[row.id] = PlannerPriceState(quote: quote, isLoading: livePossible && position < 3, isOffline: offline)
+                priceStates[row.id] = PlannerPriceState(quote: quote, isLoading: livePossible && position < 3 && !live.isDemo, isOffline: offline)
             }
             rebuildRows()
             guard livePossible else { return }
