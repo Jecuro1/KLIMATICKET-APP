@@ -36,6 +36,7 @@ struct PriceSourceBadge: View {
                 .font(.system(size: style == .tag ? 10.5 : 12.5, weight: .bold, design: .rounded))
                 .tracking(style == .tag ? 0.4 : 0)
                 .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .foregroundStyle(tint)
         .padding(.horizontal, style == .tag ? 6 : 9)
