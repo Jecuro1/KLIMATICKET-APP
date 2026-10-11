@@ -21,7 +21,7 @@ struct SkiPassBadge: View {
     }
 
     init(area: SkiArea, style: Style = .compact) {
-        self.init(name: style == .full ? area.name : (area.shortName ?? area.name),
+        self.init(name: area.name,
                   hue: SummitHue(rawValue: area.hue) ?? .fels, glyph: BadgeGlyph(area.glyph), style: style)
         spokenName = area.name
     }

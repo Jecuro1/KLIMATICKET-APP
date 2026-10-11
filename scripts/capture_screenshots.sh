@@ -45,6 +45,9 @@ for APPEARANCE in light dark; do
     # MARK: stats – MapKit streams its tiles from the network; map screens get extra time so they don't capture the
     # empty beige grid (the map screens open their sheets/camera moves after ~1 s on top).
     case "$SCREEN" in map*) sleep "${MAP_TILE_DELAY:-6}" ;; esac
+    # MARK: stops – the complete place index (40,000 stops) builds in the background of a debug simulator build in ~5–9 s.
+    case "$SCREEN" in stationSearch*|stopDetail*) sleep "${PLACES_DELAY:-10}" ;; esac
+    case "$SCREEN" in stopDetail*) sleep "${MAP_TILE_DELAY:-6}" ;; esac
     xcrun simctl io "$UDID" screenshot --type=png "$OUT/${APPEARANCE}-${SCREEN}.png" >/dev/null 2>&1
     echo "captured $APPEARANCE-$SCREEN"
     sample_if_stuck "${APPEARANCE}-${SCREEN}"
