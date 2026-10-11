@@ -62,14 +62,9 @@ enum DashStyle {
 struct DashModeBadge: View {
     var text: String
 
+    // MARK: stops – a Wegzeichen plate instead of the outline capsule
     var body: some View {
-        Text(text)
-            .font(.caption2.weight(.heavy))
-            .foregroundStyle(Theme.textPrimary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .overlay { Capsule().strokeBorder(Theme.textTertiary, lineWidth: 1) }
-            .accessibilityHidden(true)
+        CategoryPlate(text: text, size: .xs)
     }
 
     static func label(for mode: TransportMode) -> String? {

@@ -5,7 +5,9 @@ import KlimaCore
 
 extension StationIndex {
     /// The enriched place (lines, tags) of a station of the picker; nil while the place index is not attached yet.
-    func richPlace(for station: Station) -> Place? { places?.place(id: station.id) }
+    func richPlace(for station: Station) -> Place? { richPlace(for: station.id) }
+
+    func richPlace(for stationID: String) -> Place? { places?.place(id: stationID) }
 }
 
 /// The single area mark of a row (LOGO_SPEC §4.3): official brand if the pack has one, else the own badge.

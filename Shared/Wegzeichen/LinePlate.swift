@@ -242,3 +242,47 @@ extension BadgeGlyph {
         }
     }
 }
+
+// MARK: - Category plate (trips without a stored line)
+
+/// The plate of a trip's mode category („S“, „U“, „Bus“, „Bim“): replaces the old outline capsules of trip rows, the
+/// trip editor and the dashboard favourites (ENRICH_SPEC §3.3). Hidden from VoiceOver, like the capsule before: the
+/// row's own label already names the mode.
+struct CategoryPlate: View {
+    let text: String
+    var size: PlateSize = .xs
+
+    var body: some View {
+        LinePlate(LineBadge(kind: Self.kind(for: text), text: text, spoken: text), size: size)
+            .accessibilityHidden(true)
+    }
+
+    static func kind(for category: String) -> LineKind {
+        switch category {
+        case "S": .sBahn
+        case "U": .uBahn
+        case "Bim": .tram
+        case "Bus": .bus
+        default: .sonst
+        }
+    }
+}
+
+/// What a widget or a Live Activity needs of a line plate, so they never load the place index (ENRICH_SPEC §3.1).
+struct LineBadgeSnapshot: Codable, Hashable, Sendable {
+    var kind: String
+    var text: String
+    var glyph: String?
+    var spoken: String
+
+    init(_ badge: LineBadge) {
+        kind = badge.kind.rawValue
+        text = badge.text
+        if case .symbol(let name)? = badge.glyph { glyph = name }
+        spoken = badge.spoken
+    }
+
+    var badge: LineBadge {
+        LineBadge(kind: LineKind(rawValue: kind) ?? .sonst, text: text, glyph: glyph.map { .symbol($0) }, spoken: spoken)
+    }
+}

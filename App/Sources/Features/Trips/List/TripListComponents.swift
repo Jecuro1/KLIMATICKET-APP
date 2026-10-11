@@ -441,14 +441,9 @@ struct TripListRow: View {
 struct TripListModeBadge: View {
     let text: String
 
+    // MARK: stops – a Wegzeichen plate (S, U, Bus, Bim) instead of the outline capsule
     var body: some View {
-        Text(text)
-            .font(Theme.Typography.kicker)
-            .foregroundStyle(Theme.textSecondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .overlay(Capsule().strokeBorder(Theme.textTertiary, lineWidth: 1))
-            .accessibilityHidden(true)
+        CategoryPlate(text: text, size: .xs)
     }
 }
 

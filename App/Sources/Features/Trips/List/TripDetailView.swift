@@ -212,11 +212,11 @@ struct TripDetailView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     TripListDetailStop(caption: "Von", name: trip.fromName,
                                        subtitle: TripListFormat.stationSubtitle(info.fromStation),
-                                       isOrigin: true, color: Theme.modeColor(trip.mode))
+                                       isOrigin: true, color: Theme.modeColor(trip.mode), stationID: info.fromStation?.id)
                     TripListViaDetailStops(vias: trip.via, stations: info.viaStations, color: Theme.modeColor(trip.mode))   // MARK: via
                     TripListDetailStop(caption: "Nach", name: trip.toName,
                                        subtitle: TripListFormat.stationSubtitle(info.toStation),
-                                       isOrigin: false, color: Theme.modeColor(trip.mode))
+                                       isOrigin: false, color: Theme.modeColor(trip.mode), stationID: info.toStation?.id)
                 }
                 if trip.isRoundTrip, let back = ViaText.returnSubtitle(trip.via) {   // MARK: via – the return leg in reverse
                     Label(back.prefix(1).uppercased() + back.dropFirst(), systemImage: "arrow.uturn.backward")
@@ -688,6 +688,10 @@ private struct TripListDetailStop: View {
     let subtitle: String?
     let isOrigin: Bool
     let color: Color
+    /// MARK: stops – id of the stop (opens the stop detail); nil for own places.
+    var stationID: String? = nil
+    @State private var detailPlaceID: String?
+    @Environment(AppState.self) private var app
 
     /// Distance from the top of the stop to the top of its dot (caption line + half the name line − dot radius).
     @ScaledMetric(relativeTo: .title3) private var dotTop: CGFloat = 28
@@ -720,8 +724,17 @@ private struct TripListDetailStop: View {
             }
             .padding(.bottom, isOrigin ? Theme.Spacing.m : 0)
             Spacer(minLength: 0)
+            if let place = stationID.flatMap({ app.stations.richPlace(for: $0) }) {   // MARK: stops
+                Button { detailPlaceID = place.id } label: {
+                    Image(systemName: "info.circle").font(.system(size: 20)).foregroundStyle(Theme.accent)
+                        .frame(width: 44, height: 44).contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Haltestelle ansehen")
+            }
         }
         .fixedSize(horizontal: false, vertical: true)
+        .stopDetail(placeID: $detailPlaceID)
     }
 
     private var rail: some View {
