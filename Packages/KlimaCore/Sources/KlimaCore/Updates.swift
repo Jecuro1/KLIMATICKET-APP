@@ -67,11 +67,13 @@ public struct UpdateManifest: Codable, Hashable, Sendable {
     public var size: Int?
     /// Lowercase hex SHA-256 of the .ipa.
     public var sha256: String?
+    // MARK: planner – where the remote live config (kill switch, endpoints) lives; nil = the build's `liveConfigURL`.
+    public var liveConfigURL: String?
 
     public init(version: SemanticVersion, build: Int, publishedAt: String, minimumOSVersion: String? = nil, downloadURL: String,
                 altstoreSourceURL: String? = nil, otaManifestURL: String? = nil, releaseNotes: [String] = [],
                 minimumSupportedVersion: SemanticVersion? = nil, tariffsVersion: Int? = nil, tariffsURL: String? = nil,
-                size: Int? = nil, sha256: String? = nil) {
+                size: Int? = nil, sha256: String? = nil, liveConfigURL: String? = nil) {
         self.version = version
         self.build = build
         self.publishedAt = publishedAt
@@ -85,6 +87,7 @@ public struct UpdateManifest: Codable, Hashable, Sendable {
         self.tariffsURL = tariffsURL
         self.size = size
         self.sha256 = sha256
+        self.liveConfigURL = liveConfigURL
     }
 }
 

@@ -198,6 +198,7 @@ jobs:
           # (override with repository variables if the files are hosted elsewhere).
           UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL || format('https://github.com/{0}/releases/latest/download/update.json', github.repository) }}
           TARIFFS_URL: ${{ vars.TARIFFS_URL || format('https://github.com/{0}/releases/latest/download/tariffs.json', github.repository) }}
+          LIVE_CONFIG_URL: ${{ vars.LIVE_CONFIG_URL || format('https://raw.githubusercontent.com/{0}/main/data/live_config.json', github.repository) }}   # planner – remote kill switch
         run: python3 scripts/write_app_config.py App/Resources/AppConfig.json
 
       - name: Generate Xcode project

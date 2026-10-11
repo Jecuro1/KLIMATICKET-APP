@@ -159,6 +159,7 @@ class WriteConfigTests(unittest.TestCase):
             "updateManifestURL": "https://github.com/Jecuro1/KLIMATICKET-APP/releases/latest/download/update.json",
             "tariffsURL": "https://github.com/Jecuro1/KLIMATICKET-APP/releases/latest/download/tariffs.json",
             "apiBaseURL": "https://klimabilanz-api.marcel.workers.dev",
+            "liveConfigURL": "",
         })
         self.assertEqual(opener.calls[-1][0], "https://klimabilanz-api.marcel.workers.dev/v1/health")
         self.assertEqual(opener.calls[-1][2], 5)
@@ -175,11 +176,11 @@ class WriteConfigTests(unittest.TestCase):
     def test_local_values_are_kept_without_env(self):
         config, _, _ = self.run_write({}, initial={"apiBaseURL": "https://dev.example", "updateManifestURL": "https://u",
                                                    "tariffsURL": "", "extra": 1}, probe=False)
-        self.assertEqual(config, {"apiBaseURL": "https://dev.example", "updateManifestURL": "https://u", "tariffsURL": "", "extra": 1})
+        self.assertEqual(config, {"apiBaseURL": "https://dev.example", "updateManifestURL": "https://u", "tariffsURL": "", "liveConfigURL": "", "extra": 1})
 
     def test_missing_file_gets_all_keys(self):
         config, out, _ = self.run_write({})
-        self.assertEqual(config, {"apiBaseURL": "", "updateManifestURL": "", "tariffsURL": ""})
+        self.assertEqual(config, {"apiBaseURL": "", "updateManifestURL": "", "tariffsURL": "", "liveConfigURL": ""})
         self.assertIn("(leer)", out)
 
     def test_committed_appconfig_is_compatible(self):

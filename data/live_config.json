@@ -1,0 +1,61 @@
+{
+  "hafas" : {
+    "aid" : "5vHavmuWPWIfetEe",
+    "client" : {
+      "id" : "OEBB",
+      "l" : "vs_webapp",
+      "name" : "webapp",
+      "type" : "WEB"
+    },
+    "enabled" : true,
+    "ext" : "OEBB.14",
+    "lang" : "deu",
+    "minInterval" : 0.3,
+    "timeout" : 20,
+    "url" : "https://fahrplan.oebb.at/gate",
+    "ver" : "1.88"
+  },
+  "hafasFallback" : {
+    "aid" : "OWDL4fE4ixNiPBBm",
+    "client" : {
+      "id" : "OEBB",
+      "name" : "oebbIPH",
+      "type" : "IPH",
+      "v" : "6120300"
+    },
+    "enabled" : true,
+    "lang" : "de",
+    "minInterval" : 0.5,
+    "timeout" : 20,
+    "url" : "https://fahrplan.oebb.at/bin/mgate.exe",
+    "ver" : "1.41"
+  },
+  "killSwitch" : false,
+  "shop" : {
+    "baseURL" : "https://shop.oebbtickets.at",
+    "enabled" : true,
+    "minInterval" : 1,
+    "timeout" : 15,
+    "tokenRenewAfter" : 240,
+    "vorteilscardCardID" : 108
+  },
+  "userAgent" : "KlimaBilanz/{version} (iPhone; iOS; private, low-volume)",
+  "vao" : {
+    "aid" : "wf7mcf9bv3nv8g5f",
+    "client" : {
+      "id" : "VAO",
+      "l" : "vs_anachb",
+      "name" : "webapp",
+      "type" : "WEB",
+      "v" : 10022
+    },
+    "enabled" : true,
+    "ext" : "VAO.22",
+    "lang" : "deu",
+    "minInterval" : 1,
+    "timeout" : 12,
+    "url" : "https://anachb.vor.at/hamm/gate",
+    "ver" : "1.59"
+  },
+  "version" : 1
+}

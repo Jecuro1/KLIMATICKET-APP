@@ -105,6 +105,7 @@ struct RootView: View {
         .rideActivityHost()  // MARK: live
         .task {
             LaunchTrace.mark("root.task")
+            await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
             // All Austrian stops + localities (places.bin): built once off the main thread, then every station
             // search (StationIndex façade) covers all ~40.000 stops.
             PlaceIndexLoader.shared.preload()
@@ -214,7 +215,8 @@ struct RootView: View {
     }
 
     /// klimabilanz://add · klimabilanz://add?from=<stationID>&to=<stationID>
-    /// klimabilanz://log?favorite=<uuid> · klimabilanz://tab/<overview|trips|stats|ticket> · klimabilanz://update
+    /// klimabilanz://log?favorite=<uuid> · klimabilanz://tab/<overview|trips|stats|ticket|planner> · klimabilanz://update
+    /// klimabilanz://plan?from=…&to=…&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<stationID>   // MARK: planner
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -234,6 +236,14 @@ struct RootView: View {
             }
         case "tab":
             if let tab = AppTab(rawValue: url.lastPathComponent) { app.selectedTab = tab }
+        // MARK: planner – klimabilanz://plan?from=<stationID|name>&to=<stationID|name>&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<id>
+        case "plan":
+            app.selectedTab = .planner
+            app.planner.handleDeepLink(from: value("from"), to: value("to"),
+                                       at: value("at").flatMap { ISO8601DateFormatter().date(from: $0) }, arrival: value("arr") == "1")
+        case "board":
+            app.selectedTab = .planner
+            if let station = value("station") { app.planner.showBoard(stationID: station) }
         case "update":
             Task { await app.updates.checkIfDue(force: true) }
         default:
@@ -242,13 +252,14 @@ struct RootView: View {
     }
 }
 
-/// The main interface: Liquid Glass tab bar with a separated "+" action.
+/// The main interface: Liquid Glass tab bar; the last tab is the search-role „Fahrplan“ (docs/OEBB_LIVE.md §E1).
 struct MainTabView: View {
     @Environment(AppState.self) private var app
-    @State private var lastContentTab: AppTab = .overview
 
     var body: some View {
-        TabView(selection: tabSelection) {
+        // MARK: planner – `Tab(role: .search)` with the planner's own search field (bottom of the tab bar on iOS 26).
+        @Bindable var app = app
+        TabView(selection: $app.selectedTab) {
             Tab(AppTab.overview.title, systemImage: AppTab.overview.symbol, value: AppTab.overview) {
                 DashboardView()
             }
@@ -261,26 +272,12 @@ struct MainTabView: View {
             Tab(AppTab.ticket.title, systemImage: AppTab.ticket.symbol, value: AppTab.ticket) {
                 TicketView()
             }
-            Tab(AppTab.add.title, systemImage: AppTab.add.symbol, value: AppTab.add, role: .search) {
-                Color.clear
+            Tab(AppTab.planner.title, systemImage: AppTab.planner.symbol, value: AppTab.planner,
+                role: PlannerModel.navigationStyle == .searchTab ? .search : nil) {
+                PlannerRootView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-    }
-
-    /// The "+" tab never becomes selected – it opens the add-trip sheet instead.
-    private var tabSelection: Binding<AppTab> {
-        Binding(
-            get: { app.selectedTab == .add ? lastContentTab : app.selectedTab },
-            set: { newValue in
-                if newValue == .add {
-                    app.presentAddTrip()
-                } else {
-                    lastContentTab = newValue
-                    app.selectedTab = newValue
-                }
-            }
-        )
     }
 }
 

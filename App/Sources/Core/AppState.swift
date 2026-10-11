@@ -3,7 +3,8 @@ import SwiftData
 import KlimaCore
 
 enum AppTab: String, Hashable, CaseIterable {
-    case overview, trips, stats, ticket, add
+    // MARK: planner – the iOS 26 search-role tab is „Fahrplan“; „Fahrt erfassen“ moved into the toolbars.
+    case overview, trips, stats, ticket, planner
 
     var title: String {
         switch self {
@@ -11,7 +12,7 @@ enum AppTab: String, Hashable, CaseIterable {
         case .trips: "Fahrten"
         case .stats: "Statistik"
         case .ticket: "Ticket"
-        case .add: "Erfassen"
+        case .planner: "Fahrplan"
         }
     }
 
@@ -21,7 +22,7 @@ enum AppTab: String, Hashable, CaseIterable {
         case .trips: "tram.fill"
         case .stats: "chart.bar.fill"
         case .ticket: "ticket.fill"
-        case .add: "plus"
+        case .planner: "magnifyingglass"
         }
     }
 }
@@ -86,6 +87,9 @@ final class AppState {
     let tariffs: TariffService
     let notifications: NotificationService
     let detection: TripDetectionService
+    // MARK: planner – live data (consent, kill switch, services) and the Fahrplan model.
+    let live: LiveDataService
+    let planner: PlannerModel
 
     // Navigation / presentation
     var selectedTab: AppTab = .overview
@@ -105,12 +109,20 @@ final class AppState {
         self.settings = settings ?? AppSettings()
         let tariffs = TariffService()
         self.tariffs = tariffs
-        self.catalog = tariffs.currentCatalog()
+        let initialCatalog = tariffs.currentCatalog()
+        self.catalog = initialCatalog
         self.auth = AuthService(config: AppConfig.shared)
         self.sync = SyncService(config: AppConfig.shared)
         self.updates = UpdateService(config: AppConfig.shared)
         self.notifications = NotificationService()
         self.detection = TripDetectionService()
+        // MARK: planner – nothing is built or requested here: the live stack is created on first use and only talks to the
+        // network with the user's consent (LiveDataService).
+        let appSettings = self.settings
+        let live = LiveDataService(appConfig: AppConfig.shared, settings: appSettings, catalog: initialCatalog,
+                                   stations: { bundled.stations.value }, relations: { bundled.relations.value })
+        self.live = live
+        self.planner = PlannerModel(live: live, stations: { bundled.stations.value }, settings: appSettings)
         LaunchTrace.mark("state.services")
         // Region events relaunch the app in the background, without UI – so RootView never configures detection.
         // Resolve the monitored stations (region id = station id) and prices lazily instead.
@@ -120,7 +132,11 @@ final class AppState {
 
     var estimator: FareEstimator { FareEstimator(catalog: catalog, relations: relations) }
 
-    func reloadCatalog() { catalog = tariffs.currentCatalog() }
+    func reloadCatalog() {
+        catalog = tariffs.currentCatalog()
+        let catalog = self.catalog
+        Task { await live.catalogDidChange(catalog) }   // MARK: planner
+    }
 
     /// Called once at launch and when returning to foreground. Concurrent calls share one pass (no duplicate downloads).
     func refreshRemoteContent() async {
@@ -132,6 +148,7 @@ final class AppState {
             defer { self.remoteRefresh = nil }
             if await self.tariffs.refreshIfNeeded(manifestHint: self.updates.manifest) { self.reloadCatalog() }
             await self.updates.checkIfDue(force: false)
+            await self.live.refreshConfigIfDue(manifest: self.updates.manifest)   // MARK: planner
         }
         remoteRefresh = task
         await task.value
@@ -298,6 +315,13 @@ final class AppSettings {
     var weeklySummaryEnabled: Bool { didSet { defaults.set(weeklySummaryEnabled, forKey: "weeklySummaryEnabled") } }
     var selectedTicketID: UUID? { didSet { defaults.set(selectedTicketID?.uuidString, forKey: "selectedTicketID") } }
     var celebratedBreakEvenTicketIDs: [String] { didSet { defaults.set(celebratedBreakEvenTicketIDs, forKey: "celebratedBreakEven") } }
+    // MARK: planner – live data (docs/OEBB_LIVE.md §E4). Nothing is sent before `liveConsentRaw` is "granted".
+    /// "undecided" · "granted" · "declined" (`LiveDataService.Consent`).
+    var liveConsentRaw: String { didSet { defaults.set(liveConsentRaw, forKey: "liveConsent") } }
+    /// „Fahrplan & Echtzeit“ (effective only with consent).
+    var liveTimetableEnabled: Bool { didSet { defaults.set(liveTimetableEnabled, forKey: "liveTimetableEnabled") } }
+    /// „Live-Ticketpreise“ (effective only with consent).
+    var livePricesEnabled: Bool { didSet { defaults.set(livePricesEnabled, forKey: "livePricesEnabled") } }
 
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
@@ -319,5 +343,8 @@ final class AppSettings {
         weeklySummaryEnabled = defaults.bool(forKey: "weeklySummaryEnabled")
         selectedTicketID = defaults.string(forKey: "selectedTicketID").flatMap(UUID.init(uuidString:))
         celebratedBreakEvenTicketIDs = defaults.stringArray(forKey: "celebratedBreakEven") ?? []
+        liveConsentRaw = defaults.string(forKey: "liveConsent") ?? "undecided"   // MARK: planner
+        liveTimetableEnabled = defaults.object(forKey: "liveTimetableEnabled") as? Bool ?? true
+        livePricesEnabled = defaults.object(forKey: "livePricesEnabled") as? Bool ?? true
     }
 }

@@ -75,7 +75,7 @@ Oben → unten (Mockup `alpine-glass/01-dashboard-*.jpg`):
    **Tempo-Pille** (Glas): „Schneller als nötig · + € 370 vor Plan“ bzw. „Etwas hinter Plan · – € 120“ (Wert-% vs. Zeit-%).
 5. **Schnell erfassen:** horizontale Favoriten-Chips (Modus-Icon + Badge + „St. Anton → Innsbruck“ + € + runder „+“-Knopf, 1 Tap =
    erfasst + Haptik + Toast); sauber angeschnitten mit `contentMargins` + `scrollTargetBehavior(.viewAligned)`, kein abgeschnittener Preis.
-   Kein doppelter „Neue Fahrt“-Knopf (der „+“-Slot der Tab-Leiste reicht); bei 0 Favoriten ein Hinweis-Chip „Favorit anlegen“.
+   Kein zweiter Erfassen-Knopf im Inhalt – Toolbar-„+“ und Favoriten reichen; bei 0 Favoriten ein Hinweis-Chip „Favorit anlegen“.
 6. **Vorschläge** (automatische Fahrterkennung) – nur wenn vorhanden.
 7. **Letzte Fahrten** (5) in einer Karte mit `TripRow`, „Alle“ → Fahrten-Tab.
 8. **Nächster Erfolg** (kompakte Zeile, öffnet „Gipfelbuch“) und **„Diese Woche“** (Fahrten & Wert vs. Vorwoche).

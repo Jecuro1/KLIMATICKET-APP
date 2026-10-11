@@ -8,15 +8,18 @@ struct AppConfig: Decodable, Sendable {
     var apiBaseURL: String = ""
     var updateManifestURL: String = ""
     var tariffsURL: String = ""
+    // MARK: planner – remote live config (kill switch, endpoints), docs/OEBB_LIVE.md §A3.8. Empty = bundled default only.
+    var liveConfigURL: String = ""
 
-    init(apiBaseURL: String = "", updateManifestURL: String = "", tariffsURL: String = "") {
+    init(apiBaseURL: String = "", updateManifestURL: String = "", tariffsURL: String = "", liveConfigURL: String = "") {
         self.apiBaseURL = apiBaseURL
         self.updateManifestURL = updateManifestURL
         self.tariffsURL = tariffsURL
+        self.liveConfigURL = liveConfigURL
     }
 
     private enum CodingKeys: String, CodingKey {
-        case apiBaseURL, updateManifestURL, tariffsURL
+        case apiBaseURL, updateManifestURL, tariffsURL, liveConfigURL
     }
 
     /// Every key is optional and unknown keys (e.g. the retired `supabaseURL`) are ignored, so one missing or extra
@@ -26,6 +29,7 @@ struct AppConfig: Decodable, Sendable {
         apiBaseURL = (try? c.decodeIfPresent(String.self, forKey: .apiBaseURL)).flatMap { $0 } ?? ""
         updateManifestURL = (try? c.decodeIfPresent(String.self, forKey: .updateManifestURL)).flatMap { $0 } ?? ""
         tariffsURL = (try? c.decodeIfPresent(String.self, forKey: .tariffsURL)).flatMap { $0 } ?? ""
+        liveConfigURL = (try? c.decodeIfPresent(String.self, forKey: .liveConfigURL)).flatMap { $0 } ?? ""   // MARK: planner
     }
 
     static let shared: AppConfig = {
@@ -50,6 +54,7 @@ struct AppConfig: Decodable, Sendable {
     var isCloudConfigured: Bool { api != nil }
     var updateManifest: URL? { updateManifestURL.isEmpty ? nil : URL(string: updateManifestURL) }
     var remoteTariffs: URL? { tariffsURL.isEmpty ? nil : URL(string: tariffsURL) }
+    var remoteLiveConfig: URL? { liveConfigURL.isEmpty ? nil : URL(string: liveConfigURL) }   // MARK: planner
 
     /// HTTP client of the cloud backend (nil without `apiBaseURL`). Auth and sync share one URLSession.
     var cloudClient: CloudAPIClient? {

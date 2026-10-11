@@ -8,7 +8,7 @@ import os, re, sys, collections
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DECL = re.compile(r'^(?:@\w+(?:\([^)]*\))?\s+)*(?:(public|internal|fileprivate|private|open)\s+)?(?:final\s+)?(struct|class|enum|actor|protocol)\s+([A-Za-z_]\w*)', re.M)
 CONTRACT = ["DashboardView", "TripsView", "TripDetailView", "TripEditorView", "StationPickerView", "FavoritesManagerView",
-            "StatisticsView", "TicketView", "OnboardingFlow", "AchievementsView", "SettingsView", "UpdateSheet", "WidgetGalleryView"]
+            "StatisticsView", "TicketView", "OnboardingFlow", "AchievementsView", "SettingsView", "UpdateSheet", "WidgetGalleryView", "PlannerRootView"]
 
 def swift_files(*dirs):
     for d in dirs:

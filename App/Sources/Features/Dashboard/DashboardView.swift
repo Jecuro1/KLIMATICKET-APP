@@ -82,7 +82,7 @@ struct DashboardView: View {
                     }
 
                     if hasTrips || !favorites.isEmpty {
-                        // No second "Neue Fahrt" button – the "+" tab does that (DESIGN.md §5.1 · 5).
+                        // No second "Neue Fahrt" button in the content – the header's "+" and the favourites do that (DESIGN.md §5.1 · 5).
                         DashQuickLogSection(favorites: favorites, summary: summary, ticketID: ticket.id,
                                             ticketIsCurrent: ticket.isActive, showsNewTripButton: false)
                             // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the card.
@@ -260,7 +260,8 @@ private struct DashAccountHeader: View {
         DashHeader(eyebrow: eyebrow, compactEyebrow: compactEyebrow, onEyebrow: onEyebrow,
                    avatarInitials: avatarInitials,
                    isSignedIn: app.auth.profile != nil,
-                   hasUpdate: app.updates.availableManifest != nil && !LaunchMode.isScreenshot) {
+                   hasUpdate: app.updates.availableManifest != nil && !LaunchMode.isScreenshot,
+                   onAdd: { app.presentAddTrip() }) {   // MARK: planner
             app.isShowingSettings = true
         }
         .padding(.horizontal, Theme.Spacing.screen)

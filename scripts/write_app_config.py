@@ -11,6 +11,7 @@ Keys (docs/CLOUDFLARE_BACKEND.md §5.2):
                      A failing GET <url>/v1/health is only a warning (the backend may be deployed later).
   updateManifestURL  UPDATE_MANIFEST_URL
   tariffsURL         TARIFFS_URL
+  liveConfigURL      LIVE_CONFIG_URL (remote live-data config / kill switch, docs/OEBB_LIVE.md §A3.8; empty = bundled default only)
 The Supabase-era keys (supabaseURL, supabaseAnonKey) are removed. The build never fails because of this script, and
 the Cloudflare token is only sent to api.cloudflare.com (header), never printed.
 """
@@ -25,7 +26,7 @@ import urllib.request
 DEFAULT_WORKER_NAME = "klimabilanz-api"
 CLOUDFLARE_API = "https://api.cloudflare.com/client/v4"
 LEGACY_KEYS = ("supabaseURL", "supabaseAnonKey")
-PASSTHROUGH = {"UPDATE_MANIFEST_URL": "updateManifestURL", "TARIFFS_URL": "tariffsURL"}
+PASSTHROUGH = {"UPDATE_MANIFEST_URL": "updateManifestURL", "TARIFFS_URL": "tariffsURL", "LIVE_CONFIG_URL": "liveConfigURL"}
 WORKER_NAME = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 SUBDOMAIN = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
 

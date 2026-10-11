@@ -5,13 +5,13 @@ enum Copy {
     static let tagline = "Hat sich dein Ticket schon rentiert?"
     static let subline = "Erfasse deine Fahrten – KlimaBilanz zeigt dir, wann dein KlimaTicket den Gipfel erreicht."
 
+    // MARK: planner – the order of sources (docs/OEBB_LIVE.md §E9)
     static let fareExplanation = """
-    Für jede Fahrt schätzt KlimaBilanz, was sie mit regulären Tickets gekostet hätte:
-
-    • Bahn & Regionalbus: ÖBB-Standardticket nach Bahnkilometern (Luftlinie × Umwegfaktor), wahlweise mit Vorteilscard oder in der 1. Klasse.
-    • Innerhalb einer Stadt (U-Bahn, Bim, Stadtbus): Einzelfahrschein der jeweiligen Kernzone.
-
-    Die Schätzung ist bewusst konservativ. Du kannst jeden Preis antippen und anpassen – etwa wenn du sonst ein Sparschiene-Ticket genommen hättest.
+    So bestimmt KlimaBilanz den Normalpreis – in dieser Reihenfolge:
+    • Live aus dem ÖBB-Ticketshop: das Standard-Ticket für deine Verbindung, innerhalb eines Verkehrsverbunds das Verbund-Einzelticket.
+    • Live von der Verkehrsauskunft Österreich: das Verbund-Einzelticket – auch für vergangene Fahrten.
+    • Offline: offizielle ÖBB-Relationspreise (Kauf am Reisetag), sonst Kernzonen-Tarif oder eine Schätzung nach Bahnkilometern.
+    Ein Preis, den du selbst einträgst, wird nie überschrieben.
     """
 
     static let amortizationExplanation = """
@@ -34,11 +34,16 @@ enum Copy {
 
     static let privacy = """
     Deine Daten gehören dir. Ohne Konto bleiben alle Fahrten ausschließlich auf deinem iPhone. Mit Konto werden sie verschlüsselt (TLS) in deine persönliche Cloud-Datenbank synchronisiert, auf die nur du Zugriff hast. Es gibt kein Tracking, keine Werbung und keine Weitergabe an Dritte. Standortdaten werden nur kurz genutzt, um die nächste Haltestelle vorzuschlagen, und nie gespeichert.
+
+    Live-Daten: Wenn du sie aktivierst, fragt dein iPhone Fahrplan und Preise direkt bei der ÖBB und der Verkehrsauskunft Österreich ab. Dabei werden die gesuchten Haltestellen und Zeiten übertragen, für „In der Nähe“ auch dein auf rund 100 m gerundeter Standort. KlimaBilanz selbst erhält diese Daten nicht.
     """
 
     static let dataSources: [(title: String, detail: String)] = [
         ("Ticketpreise", "klimaticket.at (AGB 2021–2026) sowie die Websites der Verkehrsverbünde"),
-        ("Normalpreise", "ÖBB Relationspreise (Standardticket, Tarif ab 14.12.2025), sonst Näherung nach Bahnkilometern; Kernzonen-Tarife der Verkehrsverbünde"),
+        ("Fahrplan & Echtzeit", "ÖBB-Personenverkehr AG – Scotty-Fahrplanauskunft (HAFAS)"),
+        ("Live-Ticketpreise", "ÖBB-Ticketshop (Standard-Ticket) · Verkehrsauskunft Österreich VAO (Verbundtarife)"),
+        ("Offline-Normalpreise", "ÖBB-Personenverkehr AG, Relationspreise, CC BY 4.0 (bearbeitet) · sonst Näherung nach Bahnkilometern; Kernzonen-Tarife der Verkehrsverbünde"),
+        ("KlimaTicket-Gültigkeit", "Eigene Auswertung der KlimaTicket-AGB, ohne Gewähr"),
         ("Haltestellen", "Mobilitätsverbünde Österreich OG, Haltestellenverzeichnis (Stand 10/2025, über ÖV-Güteklassen 2025 von ÖROK/BMIMI/AustriaTech), verändert (zusammengeführt, gekürzt, Koordinaten umgerechnet) · ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · ÖBB-Infrastruktur AG Verkehrsstationen (CC BY 3.0 AT) · Stadt Wien – data.wien.gv.at (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at (CC BY 4.0) · Statistik Austria – Gemeindegrenzen 2026 (CC BY 4.0)"),
         ("Orte", "© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright)"),
         ("CO₂-Faktoren", "Umweltbundesamt, Emissionsfaktoren Personenverkehr"),

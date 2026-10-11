@@ -11,6 +11,8 @@ struct DashHeader: View {
     var avatarInitials: String?
     var isSignedIn: Bool
     var hasUpdate: Bool = false
+    // MARK: planner – „Fahrt erfassen“ moved here from the tab bar (the search tab is now „Fahrplan“).
+    var onAdd: (() -> Void)? = nil
     var onAvatar: () -> Void
 
     var body: some View {
@@ -25,6 +27,9 @@ struct DashHeader: View {
                     .accessibilityAddTraits(.isHeader)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            if let onAdd {
+                DashAddButton(action: onAdd)
+            }
             DashAvatarButton(initials: avatarInitials, isSignedIn: isSignedIn, hasUpdate: hasUpdate, action: onAvatar)
                 // Einstellungen grows out of the avatar (docs/MOTION.md §9).
                 .zoomSource(id: DashZoomID.settings, cornerRadius: 22)
@@ -64,6 +69,24 @@ struct DashHeader: View {
             Kicker(text: compactEyebrow ?? eyebrow)
                 .lineLimit(1)
         }
+    }
+}
+
+/// 44 pt glass circle with a plus: „Fahrt erfassen“ (opens the add-trip sheet).
+struct DashAddButton: View {
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.accentText)
+                .frame(width: 44, height: 44)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel("Fahrt erfassen")
     }
 }
 
