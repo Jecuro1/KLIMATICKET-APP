@@ -160,6 +160,21 @@ final class ClientRequestTests: XCTestCase {
         // A malformed list is ignored, not fatal.
         XCTAssertEqual(try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"features":"trip_via"}"#.utf8)).features, [])
     }
+
+    func testConfigLogosBlockIsPassedOn() throws {
+        let body = #"{"api_version":1,"logos":{"enabled":true,"pack":{"version":2026100901,"bytes":12},"revoked":["x"]}}"#
+        let config = try JSONDecoder().decode(CloudConfig.self, from: Data(body.utf8))
+        let block = try XCTUnwrap(config.logos)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: block) as? [String: Any])
+        XCTAssertEqual(object["revoked"] as? [String], ["x"])
+        XCTAssertEqual((object["pack"] as? [String: Any])?["version"] as? Int, 2026100901)
+        // Round trip (the cached copy) keeps it, and equal blocks compare equal.
+        let again = try JSONDecoder().decode(CloudConfig.self, from: try JSONEncoder().encode(config))
+        XCTAssertEqual(again, config)
+        // No block, or one that is not an object: nothing to apply.
+        XCTAssertNil(try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"api_version":1}"#.utf8)).logos)
+        XCTAssertNil(try JSONDecoder().decode(CloudConfig.self, from: Data(#"{"logos":"on"}"#.utf8)).logos)
+    }
 }
 
 final class ErrorMappingTests: XCTestCase {

@@ -210,6 +210,7 @@ struct SetAppearanceSection: View {
                         .setSymbolOnEnable(settings.hapticsEnabled, .wiggle)
                 }
                 .haptic(.snap, trigger: settings.hapticsEnabled, when: { _, isOn in isOn })
+                SetOfficialLogosToggle() // MARK: stops
                 NavigationLink {
                     WidgetGalleryView()
                 } label: {
@@ -221,6 +222,18 @@ struct SetAppearanceSection: View {
         } header: {
             SetSectionHeader(title: "Darstellung")
         }
+    }
+}
+
+// MARK: stops – „Offizielle Logos & Wappen“ (LOGO_SPEC §3.3): off = own Wegzeichen and no download.
+private struct SetOfficialLogosToggle: View {
+    var body: some View {
+        @Bindable var logos = LogoPackStore.shared
+        Toggle(isOn: $logos.userEnabled) {
+            SetRowLabel(title: "Offizielle Logos & Wappen", subtitle: "Skigebiets-Logos und Landeswappen bei Haltestellen",
+                        symbol: "mountain.2.fill", tint: Theme.dusk)
+        }
+        .haptic(.selection, trigger: logos.userEnabled)
     }
 }
 

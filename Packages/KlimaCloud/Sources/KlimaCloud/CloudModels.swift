@@ -104,10 +104,13 @@ public struct CloudConfig: Codable, Equatable, Sendable {
     public var maxBodyBytes: Int?
     /// Additive server capabilities (`features`, contract §3.3), e.g. `CloudFeature.tripVia`. Empty for older Workers.
     public var features: [String]
+    /// The raw `logos` block (JSON object, LOGO_SPEC §3.2): the app decodes it into its `LogoConfig`; nil = the Worker
+    /// serves none (the app silently stays on its own badges).
+    public var logos: Data?
 
     public init(apiVersion: Int = 1, googleWeb: Bool = false, microsoftWeb: Bool = false, appleWeb: Bool = false,
                 appleNative: Bool = false, minAppVersion: String? = nil, syncTables: [String] = [], serverTime: Date? = nil,
-                pushMaxRows: Int? = nil, pullMaxLimit: Int? = nil, maxBodyBytes: Int? = nil, features: [String] = []) {
+                pushMaxRows: Int? = nil, pullMaxLimit: Int? = nil, maxBodyBytes: Int? = nil, features: [String] = [], logos: Data? = nil) {
         self.apiVersion = apiVersion
         self.googleWeb = googleWeb
         self.microsoftWeb = microsoftWeb
@@ -120,6 +123,7 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         self.pullMaxLimit = pullMaxLimit
         self.maxBodyBytes = maxBodyBytes
         self.features = features
+        self.logos = logos
     }
 
     /// The server lists `feature` (e.g. `CloudFeature.tripVia`): the app may send the sync keys that come with it.
@@ -132,7 +136,7 @@ public struct CloudConfig: Codable, Equatable, Sendable {
 
     private enum Keys: String, CodingKey {
         case apiVersion = "api_version", providers, minAppVersion = "min_app_version", syncTables = "sync_tables"
-        case limits, serverTime = "server_time", features
+        case limits, serverTime = "server_time", features, logos
     }
 
     private enum ProviderKeys: String, CodingKey { case google, microsoft, apple }
@@ -148,6 +152,12 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         syncTables = (try? c.decodeIfPresent([String].self, forKey: .syncTables)).flatMap { $0 } ?? []
         serverTime = (try? c.decodeIfPresent(String.self, forKey: .serverTime)).flatMap { $0 }.flatMap(APITimestamp.date(from:))
         features = (try? c.decodeIfPresent([String].self, forKey: .features)).flatMap { $0 } ?? []
+        // Only a JSON object counts; anything else (or a missing block) is "no logos block".
+        if let block = (try? c.decodeIfPresent(JSONValue.self, forKey: .logos)).flatMap({ $0 }), case .object = block {
+            logos = try? JSONValue.encoder.encode(block)
+        } else {
+            logos = nil
+        }
 
         func flag(_ provider: ProviderKeys, _ key: FlagKeys) -> Bool {
             guard let providers = try? c.nestedContainer(keyedBy: ProviderKeys.self, forKey: .providers),
@@ -181,11 +191,47 @@ public struct CloudConfig: Codable, Equatable, Sendable {
         try c.encode(syncTables, forKey: .syncTables)
         try c.encodeIfPresent(serverTime.map(APITimestamp.string(from:)), forKey: .serverTime)
         if !features.isEmpty { try c.encode(features, forKey: .features) }
+        if let logos, let block = try? JSONDecoder().decode(JSONValue.self, from: logos) { try c.encode(block, forKey: .logos) }
         if pushMaxRows != nil || pullMaxLimit != nil || maxBodyBytes != nil {
             var limits = c.nestedContainer(keyedBy: LimitKeys.self, forKey: .limits)
             try limits.encodeIfPresent(pushMaxRows, forKey: .pushMaxRows)
             try limits.encodeIfPresent(pullMaxLimit, forKey: .pullMaxLimit)
             try limits.encodeIfPresent(maxBodyBytes, forKey: .maxBodyBytes)
+        }
+    }
+}
+
+/// Any JSON value, for blocks of the config the Cloud layer only passes on (`CloudConfig.logos`).
+enum JSONValue: Codable, Equatable {
+    case null, bool(Bool), number(Double), string(String), array([JSONValue]), object([String: JSONValue])
+
+    /// Stable bytes: equal blocks give equal `Data` (config change detection).
+    static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.outputFormatting = [.sortedKeys]
+        return e
+    }()
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null }
+        else if let v = try? c.decode(Bool.self) { self = .bool(v) }
+        else if let v = try? c.decode(Double.self) { self = .number(v) }
+        else if let v = try? c.decode(String.self) { self = .string(v) }
+        else if let v = try? c.decode([JSONValue].self) { self = .array(v) }
+        else { self = .object(try c.decode([String: JSONValue].self)) }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .null: try c.encodeNil()
+        case .bool(let v): try c.encode(v)
+        case .number(let v):
+            if v == v.rounded(), abs(v) < 9e15 { try c.encode(Int64(v)) } else { try c.encode(v) }
+        case .string(let v): try c.encode(v)
+        case .array(let v): try c.encode(v)
+        case .object(let v): try c.encode(v)
         }
     }
 }

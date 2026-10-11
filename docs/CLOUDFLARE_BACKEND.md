@@ -410,6 +410,11 @@ takes that column from pulled rows only then (`CloudConfig.supports`). Missing `
 `trip_journey`: `journey_id` + `leg_index` on trips and `legs` on favorite_routes (migration `0003_journey.sql`,
 docs/JOURNEYS.md).
 
+`logos` (optional): the value of the Worker variable `LOGOS_CONFIG_JSON`, passed on unchanged when it parses as a JSON
+object, otherwise left out (docs/LOGO_SPEC.md §3.2, docs/LOGO_ROLLOUT.md). It carries the URL and SHA-256 of the logo
+pack and the kill switches (`enabled`, `revoked`, `armsDisabled`, `armsEnabled`). No secret: the pack URL is public by
+design. Without the block the app stays on its own badges.
+
 ### 3.4 Wire values
 
 | Type | JSON on the wire | Server rules |

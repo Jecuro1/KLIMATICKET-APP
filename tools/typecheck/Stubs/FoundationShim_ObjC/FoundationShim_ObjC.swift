@@ -409,3 +409,17 @@ extension _KeyValueCodingAndObserving {
         _kbUnimplemented()
     }
 }
+
+// MARK: - URLSessionConfiguration network-access switches (NSURLSession.h, iOS 13)
+// Darwin-only; swift-corelibs-foundation has neither. `waitsForConnectivity` exists there (get-only) and is not used.
+
+extension URLSessionConfiguration {
+    public var allowsExpensiveNetworkAccess: Bool {
+        get { _kbUnimplemented() }
+        set { _kbUnimplemented() }
+    }
+    public var allowsConstrainedNetworkAccess: Bool {
+        get { _kbUnimplemented() }
+        set { _kbUnimplemented() }
+    }
+}

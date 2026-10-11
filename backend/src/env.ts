@@ -8,6 +8,8 @@ export interface Env {
   APP_REDIRECT_URIS?: string;
   /** owner/repo whose GitHub releases /v1/ota serves and whose "Gerät registrieren" workflow /v1/udid/done links. */
   OTA_GITHUB_REPO?: string;
+  /** JSON object served as the `logos` block of GET /v1/config (docs/LOGO_ROLLOUT.md): logo-pack URL, sha256, kill switches. */
+  LOGOS_CONFIG_JSON?: string;
 
   // Secrets
   SESSION_SIGNING_KEY?: string;

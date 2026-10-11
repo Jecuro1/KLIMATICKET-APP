@@ -26,8 +26,25 @@ export async function health(env: Env, deps: Deps, info: RequestInfo): Promise<R
  */
 export const FEATURES = ["trip_via", "trip_journey"] as const;
 
+/**
+ * The `logos` block (docs/LOGO_SPEC.md §3.2): the owner's JSON from the `LOGOS_CONFIG_JSON` variable, passed on as is.
+ * Absent or not a JSON object → no block, and the app stays on its own badges.
+ */
+export function logosBlock(env: Env): Record<string, unknown> | undefined {
+  const raw = (env.LOGOS_CONFIG_JSON ?? "").trim();
+  if (!raw) return undefined;
+  try {
+    const value: unknown = JSON.parse(raw);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function config(env: Env, deps: Deps, info: RequestInfo): Promise<Response> {
+  const logos = logosBlock(env);
   return json(info, {
+    ...(logos ? { logos } : {}),
     api_version: 1,
     providers: await providerFlags(env, deps),
     min_app_version: (env.MIN_APP_VERSION ?? "").trim() || "1.0.0",

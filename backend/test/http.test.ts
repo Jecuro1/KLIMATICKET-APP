@@ -176,6 +176,14 @@ describe("GET /v1/config", () => {
     });
   });
 
+  it("passes the logos block on only when LOGOS_CONFIG_JSON is a JSON object", async () => {
+    const block = { enabled: true, pack: { schema: 1, version: 2026100901, url: "https://static.example/p.zip", sha256: "ab", bytes: 3 } };
+    expect((await cfg({ LOGOS_CONFIG_JSON: JSON.stringify(block) })).logos).toEqual(block);
+    for (const bad of ["", "   ", "not json", "[1]", "null", '"x"']) {
+      expect("logos" in (await cfg({ LOGOS_CONFIG_JSON: bad }))).toBe(false);
+    }
+  });
+
   it("enables each provider only with its complete secret set", async () => {
     expect((await cfg(all)).providers).toEqual({
       google: { web: true },

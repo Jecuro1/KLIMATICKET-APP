@@ -172,6 +172,7 @@ final class AuthService {
             guard let config = try? await client.fetchConfig() else { return }
             self.configFetchedAt = Date()
             if self.serverConfig != config { self.serverConfig = config }
+            LogoPackStore.shared.apply(configBlock: config.logos)   // MARK: stops – the `logos` block (LOGO_SPEC §3.2)
             if let data = try? JSONEncoder().encode(config) { UserDefaults.standard.set(data, forKey: Self.configCacheKey) }
         }
         configTask = task
