@@ -103,10 +103,17 @@ struct ConnectionCardFooter: View {
     var price: PlannerPriceState
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.xs) {
-            leading
-            Spacer(minLength: Theme.Spacing.xs)
-            trailing
+        // One line when it fits; otherwise the coverage text on top and the price below, right-aligned.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: Theme.Spacing.xs) {
+                leading.fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: Theme.Spacing.xs)
+                trailing.fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                leading
+                HStack { Spacer(minLength: 0); trailing }
+            }
         }
     }
 

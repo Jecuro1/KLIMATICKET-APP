@@ -158,58 +158,76 @@ struct ConnectionDetailView: View {
         let coverage = row.coverage?.overall ?? .unknown
         let snapshot = valueSnapshot(extra: counts(coverage) ? amount : nil)
         return GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.card) {
-            HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                Image(systemName: coverage == .notCovered ? "ticket" : "ticket.fill")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(coverage == .notCovered ? Theme.negativeText : Theme.positive)
-                    .frame(width: 52, height: 52)
-                    .background((coverage == .notCovered ? Theme.negative : Theme.positive).opacity(0.14), in: .rect(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        if let amount {
-                            Text(Format.euroPrecise(amount))
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                                .foregroundStyle(coverage == .notCovered ? Theme.textPrimary : Theme.positiveText)
-                                .numericValue(amount)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                        }
-                        Text(valueCaption(coverage)).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.textPrimary)
-                    }
-                    HStack(spacing: 6) {
-                        Text(valueSubcaption(row, coverage: coverage)).font(.system(size: 15)).foregroundStyle(Theme.textSecondary)
-                            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                        if let badge = price.badge ?? row.price.badge { PriceSourceBadge(source: badge) }
-                        if let quote = price.quote ?? row.price.quote {
-                            Button { showsPriceInfo = true } label: {
-                                Image(systemName: "info.circle").font(.system(size: 16)).foregroundStyle(Theme.textSecondary)
-                                    .frame(width: 32, height: 32).contentShape(.rect)
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    Image(systemName: coverage == .notCovered ? "ticket" : "ticket.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(coverage == .notCovered ? Theme.negativeText : Theme.positive)
+                        .frame(width: 52, height: 52)
+                        .background((coverage == .notCovered ? Theme.negative : Theme.positive).opacity(0.14), in: .rect(cornerRadius: 14, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            if let amount {
+                                Text(Format.euroPrecise(amount))
+                                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                                    .monospacedDigit()
+                                    .foregroundStyle(coverage == .notCovered ? Theme.textPrimary : Theme.positiveText)
+                                    .numericValue(amount)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Woher kommt der Preis?")
-                            .popover(isPresented: $showsPriceInfo) { PriceInfoPopover(quote: quote).presentationCompactAdaptation(.popover) }
+                            Text(valueCaption(coverage)).font(.system(size: 18, weight: .semibold)).foregroundStyle(Theme.textPrimary)
+                                .lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                        HStack(spacing: 6) {
+                            Text("Normalpreis").font(.system(size: 15)).foregroundStyle(Theme.textSecondary).lineLimit(1)
+                            if let badge = price.badge ?? row.price.badge { PriceSourceBadge(source: badge) }
+                            if let quote = price.quote ?? row.price.quote {
+                                Button { showsPriceInfo = true } label: {
+                                    Image(systemName: "info.circle").font(.system(size: 16)).foregroundStyle(Theme.textSecondary)
+                                        .frame(width: 32, height: 32).contentShape(.rect)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Woher kommt der Preis?")
+                                .popover(isPresented: $showsPriceInfo) { PriceInfoPopover(quote: quote).presentationCompactAdaptation(.popover) }
+                            }
                         }
                     }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                if let note = valueNote(row, coverage: coverage) {
+                    Text(note).font(.system(size: 15)).foregroundStyle(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+                }
                 if let snapshot {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        HStack(spacing: 4) {
+                    Divider().overlay(Theme.separator)
+                    HStack {
+                        Text("Amortisiert").font(.system(size: 15)).foregroundStyle(Theme.textSecondary)
+                        Spacer()
+                        HStack(spacing: 5) {
                             Text(Format.percent(snapshot.before)).foregroundStyle(Theme.textSecondary)
-                            Image(systemName: "arrow.right").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textTertiary)
+                            Image(systemName: "arrow.right").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.textTertiary)
                             Text(Format.percent(snapshot.after)).foregroundStyle(Theme.accentText)
                         }
-                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        Text("amortisiert").font(.system(size: 14)).foregroundStyle(Theme.textSecondary)
                     }
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
                 }
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    /// The honest note under the price: where the ticket stops, why a price needs a check.
+    private func valueNote(_ row: ConnectionRow, coverage: CoverageResult) -> String? {
+        switch coverage {
+        case .partial:
+            if let name = row.coverage?.lastCoveredStopName { return "Dein Ticket gilt bis \(DisplayNames.name(name)) – nur dieser Teil wird bewertet. Danach brauchst du ein Ticket." }
+            return "Dein Ticket gilt nur auf einem Teil der Strecke – nur dieser Teil wird bewertet."
+        case .notCovered: return "Nicht im \(app.planner.ticketName) enthalten – für diese Fahrt brauchst du ein Ticket."
+        case .unknown, .notApplicable: return "Ob dein Ticket hier gilt, lässt sich nicht sicher sagen – bitte prüfen."
+        case .discount: return row.coverage?.legs.compactMap(\.badge).first
+        default: return nil
+        }
     }
 
     private func counts(_ coverage: CoverageResult) -> Bool { coverage == .covered || coverage == .surcharge || coverage == .partial }
@@ -219,18 +237,6 @@ struct ConnectionDetailView: View {
         case .covered, .surcharge, .partial: "gespart"
         case .notCovered: "Ticket nötig"
         default: "Normalpreis"
-        }
-    }
-
-    private func valueSubcaption(_ row: ConnectionRow, coverage: CoverageResult) -> String {
-        switch coverage {
-        case .partial:
-            if let name = row.coverage?.lastCoveredStopName { return "Gültig bis \(DisplayNames.name(name)) · Normalpreis" }
-            return "Teilstrecke · Normalpreis"
-        case .notCovered: return "Nicht im \(app.planner.ticketName) enthalten"
-        case .unknown, .notApplicable: return "Gültigkeit prüfen · Normalpreis"
-        case .discount: return row.coverage?.legs.compactMap(\.badge).first ?? "Ermäßigt · Normalpreis"
-        default: return "Normalpreis"
         }
     }
 

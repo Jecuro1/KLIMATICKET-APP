@@ -12,7 +12,7 @@ enum TimelineRail: Equatable {
 
 private enum RailMetrics {
     static let width: CGFloat = 30
-    static let timeWidth: CGFloat = 58
+    static let timeWidth: CGFloat = 78
     static let nodeSize: CGFloat = 16
     static let lineWidth: CGFloat = 4
 }

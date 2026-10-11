@@ -14,7 +14,7 @@ struct PlannerTabSearch: ViewModifier {
             content
                 .searchable(text: $planner.query, prompt: Text(planner.searchPrompt))
                 .searchFocused($focused)
-                .tabViewSearchActivation(.searchTabSelection)
+                .tabViewSearchActivation(.automatic)   // the field waits in the tab bar until it is tapped (searchTabSelection would open it at once)
                 .onChange(of: planner.isSearchFocused) { _, wanted in
                     if focused != wanted { focused = wanted }
                 }

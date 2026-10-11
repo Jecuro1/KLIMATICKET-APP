@@ -151,7 +151,8 @@ struct PlannerResultsView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "clock").font(.system(size: 15, weight: .semibold))
                     Text("\(model.isArrival ? "An" : "Ab") \(PlannerTimeText.chip(model.when ?? Date()))")
-                        .font(.system(size: 16, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        .font(.system(size: 16, weight: .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .layoutPriority(1)
                     Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
                 }
                 .foregroundStyle(Theme.textPrimary)
@@ -163,7 +164,7 @@ struct PlannerResultsView: View {
             Button { model.showsOptions = true } label: {
                 HStack(spacing: 6) {
                     Image(systemName: model.isKlimaTicketOnly ? "ticket.fill" : "tram.fill").font(.system(size: 15, weight: .semibold))
-                    Text(model.isKlimaTicketOnly ? "Nur KlimaTicket" : "Alle Verkehrsmittel")
+                    Text(model.isKlimaTicketOnly ? "KlimaTicket" : "Alle")
                         .font(.system(size: 16, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
                 }
                 .foregroundStyle(model.isKlimaTicketOnly ? Theme.accentText : Theme.textPrimary)

@@ -13,7 +13,7 @@ struct PlannerUnavailableView: View {
         case .consentUndecided:
             LiveConsentCard(style: .card)
         case .declined, .switchedOff:
-            PlannerNoticeCard(symbol: "dot.radiowaves.left.and.right.slash", title: "Live-Daten sind aus",
+            PlannerNoticeCard(symbol: "antenna.radiowaves.left.and.right.slash", title: "Live-Daten sind aus",
                               message: "Für den Fahrplan fragt KlimaBilanz bei der ÖBB-Fahrplanauskunft ab – das geht erst, wenn du Live-Daten einschaltest. Deine Fahrten und Normalpreise funktionieren weiter offline.",
                               actionTitle: "Einstellungen", action: onSettings)
         case .killSwitch(let notice):
