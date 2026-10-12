@@ -156,6 +156,13 @@ final class LiveDataService {
         return stack.hafas
     }
 
+    /// Zug-Radar positions (`JourneyGeoPos`) – same gate as the timetable (consent, switch, kill switch, connectivity).
+    var radar: (any RadarService)? {
+        if isDemo { return DemoRadarService() }
+        guard isTimetableAvailable else { return nil }
+        return stack.hafas
+    }
+
     /// Live prices – nil whenever they are not available.
     var priceProvider: (any LivePriceProvider)? {
         if isDemo { return DemoPriceProvider() }

@@ -68,6 +68,12 @@ struct ConnectionDetailView: View {
         .safeAreaInset(edge: .bottom) { actionBar(row, amount: amount, model: model) }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                if let target = followTarget(row) {   // MARK: scotty – Live verfolgen (first ride leg)
+                    Button { LiveFollowTracker.shared.start(target, live: app.live) } label: {
+                        Image(systemName: "location.fill")
+                    }
+                    .accessibilityLabel("Live verfolgen")
+                }
                 ShareLink(item: shareText(row)) { Image(systemName: "square.and.arrow.up") }
                     .accessibilityLabel("Teilen")
                 if let calendarFile {
@@ -688,3 +694,14 @@ private struct SafariRepresentable: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 #endif
+
+// MARK: scotty – the follow target of a connection
+extension ConnectionDetailView {
+    /// The first ride leg as a follow target; nil without live data or without a trip id.
+    fileprivate func followTarget(_ row: ConnectionRow) -> LiveFollowTarget? {
+        guard app.live.timetable != nil, let leg = row.journey.rideLegs.first, let tripID = leg.tripID else { return nil }
+        return LiveFollowTarget(tripID: tripID, lineName: leg.line.map { LinePresentation.title($0) } ?? "Verbindung",
+                                boardingStop: leg.origin, alightStop: leg.destination,
+                                plannedDeparture: leg.departure.planned, plannedArrival: leg.arrival.planned)
+    }
+}

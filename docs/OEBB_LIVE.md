@@ -2384,3 +2384,49 @@ struct DemoPriceProvider: LivePriceProvider        // e.g. Innsbruck Hbf→Lech 
 | Staged fixtures + goldens | `$OEBB/repo-fixtures/` (118 files, `MANIFEST.json`, `golden.json`); generator `$OEBB/arch/stage_fixtures.py` |
 | Architect live checks | `$OEBB/arch/verify_assumptions.py`, `verify_assumptions2.py`, `$OEBB/arch/fixtures/arch_*.json` (10 requests on 2026-10-09) |
 | Linux probes | `$OEBB/arch-probe/` (URLSession async + ICU regex), `$OEBB/arch/repo-dryrun/` (Step-0 dry run, tests green) |
+
+---
+
+## R. Phase 1 · Zug-Radar, Störungen, Live verfolgen (ÖBB-Scotty-Funktionen)
+
+Owner request 2026-10-12: alles, was die ÖBB-Scotty-App kann, in KlimaBilanz. Phase 1 = Zug-Radar, Störungen, Live verfolgen.
+Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
+
+### R1 Zug-Radar: `JourneyGeoPos` [LIVE 2026-10-12 · einmalige Anfrage]
+- Request (`HafasRequests.journeyGeoPos`, Schlüssel exakt wie Referenz `format/radar-req.js`): `maxJny` (≤ 256), `onlyRT:false`,
+  `date`/`time` (Wien), `rect` (`llCrd` = West/Süd, `urCrd` = Ost/Nord, Mikrograd), `perSize` (30 000 ms), `perStep` (10 000 ms),
+  `ageOfReport:true`, `jnyFltrL` (PROD, Standard `rail` = 4157), `trainPosMode:"CALC"`. Kein `cfg`.
+- **Live-Ergebnis (`RadarLiveTests`, `KB_LIVE_TESTS=1`, genau 1 Anfrage):** HTTP 200, kein
+  `PARSE`/`AUTH`, `jnyL` mit **256 Fahrzeugen** (= Serverlimit), Beispiele „REX 92 → Wr.Neustadt Hbf“, „EC → Wien Hbf“.
+  ÖBB beantwortet `JourneyGeoPos` also. Die Antwort wurde **nicht** als Fixture gespeichert (kein Live-Dump).
+- **Folge:** Bei vollem Österreich-Ausschnitt liefert der Server nur 256 Fahrzeuge. Die App zeigt dann „Zoom näher heran“.
+- Parser: `HafasCodec.radar` (Referenz `parse/movement.js`): Fahrzeuge ohne `pos` und doppelte `jid` fallen weg, fehlendes `jnyL`
+  ist eine leere Karte. Offline-Fixture: `Fixtures/OEBB/hafas/radar_synthetic_austria.response.json` (**synthetisch**, Zugnummern erfunden).
+- Gate: Zustimmung + Schalter + Kill-Switch über `LiveDataService.radar` (wie Fahrplan). Drosselung über `RequestThrottle`
+  (HAFAS 40/min). App-seitig: eine Anfrage alle 20 s, nur solange der Bildschirm sichtbar und die App aktiv ist; Kartenbewegung
+  löst eine Anfrage beim Ende aus.
+
+### R2 Wagenreihung (Formation): [LIVE 2026-10-12 · einmalige Anfrage] – **nicht vorhanden in der getesteten Antwort**
+- Eine Anfrage: TripSearch Wien Hbf → Salzburg Hbf (Schiene, 3 Ergebnisse). Antwort 133 167 Byte, 6 Verbindungen, 14 Fahrt-IDs.
+- Gesucht als JSON-Schlüssel (`"formation"`, `"sector"`, `"coach"`, `"wagon"`, `"waggon"`, `"carSequence"`, `"prognosedCoach"`):
+  **kein Treffer.** Der erste Suchlauf fand nur „Informationen“ (Teilstring) – deshalb auf Schlüssel eingegrenzt.
+- **Nicht geprüft:** `JourneyDetails` (braucht eine zweite Anfrage, die nach der Regel „genau eine“ nicht gestellt wurde).
+  Deshalb ist Wagenreihung über ÖBB **unverifiziert**, nicht widerlegt. Ohne Daten gibt es keine Wagen-Anzeige (kein Feature-Flag,
+  keine Kacheln, keine erfundenen Daten).
+
+### R3 Live verfolgen (KlimaCore `Live/Follow/LiveFollow.swift`, rein, Uhr injiziert)
+- Ziel: Fahrt-ID + Ein-/Ausstieg. Zustand: `upcoming` · `underway` · `arrived` · `cancelled`. Letzter passierter Halt, nächste Halte,
+  Verspätung am Ausstieg, Gleis am Ein- und Ausstieg.
+- Hinweise (nur bei Änderung, nie bei der ersten Antwort): Verspätung ≥ 5 Min (Schwelle oder Zuwachs um 5 Min), „wieder pünktlich“,
+  Gleiswechsel, Ausfall, Ankunft.
+- Abfrage: `JourneyDetails` alle 10 Min (Abfahrt > 30 Min), 2 Min (nahe Abfahrt), 1 Min (unterwegs); Stopp bei Ankunft/Ausfall.
+- **Keine Hintergrundabfrage.** Änderungen werden nur bemerkt, während die App läuft. Lokale Mitteilungen gehen nur dann raus.
+  Live Activity nicht angebunden (Seam `RideActivityControlling` passt nicht ohne Umbau des Planner-Snapshots).
+
+### R4 Störungen (HimSearch, KlimaCore `Live/Disruptions/DisruptionFeed.swift`)
+- Abfragefenster: jetzt bis +2 Tage. Verkehrsmittel gehen an den Server (`himFltrL`). Linie, Bundesland und „nur aktuelle“ im Gerät.
+- **Bundesland ist eine Stichwortsuche** im Titel/Text (keine Koordinaten in den HIM-Meldungen). Fehlende oder falsche Treffer sind möglich.
+- Die Karte aus dem Auftrag gibt es für Störungen nicht: HIM-Meldungen haben keine Position. „Map“ wurde als Verkehrsmittel-Filter gebaut.
+
+### R5 Demo und CI
+- `-KBDemo`/Screenshots: alles aus `App/Sources/Features/Radar/ScottyDemo.swift`, kein Netz (synthetische Fahrten, Meldungen).

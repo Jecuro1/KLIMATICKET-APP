@@ -68,6 +68,23 @@ public enum HafasCodec {
         return dedupe((res.msgL ?? []).compactMap(ctx.him))
     }
 
+    /// JourneyGeoPos (Zug-Radar). Reference `parse/movement.js`: `jnyL[i].pos` is the position, `stopL` the run.
+    /// Entries without a position are dropped, duplicate trip ids keep their first occurrence, and an absent `jnyL`
+    /// means an empty map (not an error).
+    public static func radar(from data: Data, serviceIndex: Int = 0) throws -> RadarSnapshot {
+        let res = try serviceResult(from: data, serviceIndex: serviceIndex)
+        let ctx = Context(res.common)
+        var seen = Set<String>()
+        let vehicles: [RadarVehicle] = (res.jnyL ?? []).compactMap { j in
+            guard let position = Context.coordinate(j.pos), let tripID = j.jid, !tripID.isEmpty else { return nil }
+            guard seen.insert(tripID).inserted else { return nil }
+            let stops = (j.stopL ?? []).filter { $0.locX != nil }.map { ctx.stopover($0, base: j.date) }
+            return RadarVehicle(tripID: tripID, line: ctx.line(at: j.prodX), direction: ctx.direction(j),
+                                coordinate: position, stopovers: stops)
+        }
+        return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS))
+    }
+
     /// Envelope-level error (HTTP 200 with top-level `err`), nil when OK. Non-JSON → `.decoding`.
     public static func envelopeError(_ data: Data) -> LiveError? {
         envelopeError(data, provider: .oebbHafas)

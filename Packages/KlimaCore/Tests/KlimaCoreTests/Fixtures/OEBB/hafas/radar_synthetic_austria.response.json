@@ -1,0 +1,312 @@
+{
+  "ver": "1.88",
+  "ext": "OEBB.14",
+  "lang": "deu",
+  "id": "SYNTHETIC-RADAR",
+  "err": "OK",
+  "svcResL": [
+    {
+      "meth": "JourneyGeoPos",
+      "err": "OK",
+      "res": {
+        "common": {
+          "locL": [
+            {
+              "lid": "A=1@L=8100108@",
+              "type": "S",
+              "name": "Salzburg Hbf",
+              "extId": "8100108",
+              "crd": {
+                "x": 13045000,
+                "y": 47812000
+              },
+              "pCls": 1
+            },
+            {
+              "lid": "A=1@L=8100173@",
+              "type": "S",
+              "name": "Linz Hbf",
+              "extId": "8100173",
+              "crd": {
+                "x": 14291000,
+                "y": 48290000
+              },
+              "pCls": 1
+            },
+            {
+              "lid": "A=1@L=8100003@",
+              "type": "S",
+              "name": "Wien Hbf",
+              "extId": "8100003",
+              "crd": {
+                "x": 16375000,
+                "y": 48185000
+              },
+              "pCls": 1
+            },
+            {
+              "lid": "A=1@L=8101000@",
+              "type": "S",
+              "name": "Wien Floridsdorf",
+              "extId": "8101000",
+              "crd": {
+                "x": 16398000,
+                "y": 48264000
+              },
+              "pCls": 1
+            }
+          ],
+          "prodL": [
+            {
+              "name": "RJX 66",
+              "number": "66",
+              "cls": 1,
+              "oprX": 0,
+              "prodCtx": {
+                "name": "RJX 66",
+                "num": "66",
+                "catOut": "RJX",
+                "catOutS": "RJX",
+                "catOutL": "railjet xpress",
+                "admin": "81____"
+              }
+            },
+            {
+              "name": "S 45",
+              "number": "45",
+              "cls": 32,
+              "oprX": 0,
+              "prodCtx": {
+                "name": "S 45",
+                "num": "45",
+                "line": "45",
+                "catOut": "S",
+                "catOutS": "s",
+                "catOutL": "S-Bahn",
+                "admin": "81____"
+              }
+            },
+            {
+              "name": "Bus 750",
+              "number": "750",
+              "cls": 64,
+              "oprX": 0,
+              "prodCtx": {
+                "name": "Bus 750",
+                "line": "750",
+                "catOut": "Bus",
+                "catOutS": "obu",
+                "catOutL": "Postbus",
+                "admin": "81____"
+              }
+            }
+          ],
+          "opL": [
+            {
+              "name": "Nahreisezug"
+            }
+          ]
+        },
+        "date": "20261012",
+        "time": "091500",
+        "jnyL": [
+          {
+            "jid": "1|SYN0000001|0|1012",
+            "date": "20261012",
+            "prodX": 0,
+            "dirTxt": "Wien Hbf",
+            "pos": {
+              "x": 13600000,
+              "y": 48000000
+            },
+            "stopL": [
+              {
+                "locX": 0,
+                "idx": 0,
+                "dTimeS": "093000",
+                "dTimeR": "093000",
+                "dPltfS": {
+                  "type": "PL",
+                  "txt": "5"
+                },
+                "dPltfR": {
+                  "type": "PL",
+                  "txt": "5"
+                },
+                "dProgType": "PROGNOSED"
+              },
+              {
+                "locX": 1,
+                "idx": 1,
+                "aTimeS": "104500",
+                "aTimeR": "104500",
+                "dTimeS": "104700",
+                "dTimeR": "105200",
+                "aPltfS": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "aPltfR": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "dPltfS": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "dPltfR": {
+                  "type": "PL",
+                  "txt": "4"
+                },
+                "dPlatfCh": true,
+                "aProgType": "PROGNOSED",
+                "dProgType": "PROGNOSED"
+              },
+              {
+                "locX": 2,
+                "idx": 2,
+                "aTimeS": "120100",
+                "aTimeR": "120700",
+                "aPltfS": {
+                  "type": "PL",
+                  "txt": "11"
+                },
+                "aPltfR": {
+                  "type": "PL",
+                  "txt": "11"
+                },
+                "aProgType": "PROGNOSED"
+              }
+            ]
+          },
+          {
+            "jid": "1|SYN0000002|0|1012",
+            "date": "20261012",
+            "prodX": 1,
+            "dirTxt": "Wien Floridsdorf",
+            "pos": {
+              "x": 16380000,
+              "y": 48200000
+            },
+            "stopL": [
+              {
+                "locX": 2,
+                "idx": 0,
+                "dTimeS": "110000",
+                "dTimeR": "110000",
+                "dPltfS": {
+                  "type": "PL",
+                  "txt": "1"
+                },
+                "dPltfR": {
+                  "type": "PL",
+                  "txt": "1"
+                }
+              },
+              {
+                "locX": 3,
+                "idx": 1,
+                "aTimeS": "110900",
+                "aTimeR": "110900",
+                "aPltfS": {
+                  "type": "PL",
+                  "txt": "2"
+                },
+                "aPltfR": {
+                  "type": "PL",
+                  "txt": "2"
+                }
+              }
+            ]
+          },
+          {
+            "jid": "1|SYN0000003|0|1012",
+            "date": "20261012",
+            "prodX": 2,
+            "dirTxt": "Hallein",
+            "stopL": [
+              {
+                "locX": 0,
+                "idx": 0,
+                "dTimeS": "094500",
+                "dTimeR": "094500"
+              }
+            ]
+          },
+          {
+            "jid": "1|SYN0000001|0|1012",
+            "date": "20261012",
+            "prodX": 0,
+            "dirTxt": "Wien Hbf",
+            "pos": {
+              "x": 13700000,
+              "y": 48050000
+            },
+            "stopL": [
+              {
+                "locX": 0,
+                "idx": 0,
+                "dTimeS": "093000",
+                "dTimeR": "093000",
+                "dPltfS": {
+                  "type": "PL",
+                  "txt": "5"
+                },
+                "dPltfR": {
+                  "type": "PL",
+                  "txt": "5"
+                },
+                "dProgType": "PROGNOSED"
+              },
+              {
+                "locX": 1,
+                "idx": 1,
+                "aTimeS": "104500",
+                "aTimeR": "104500",
+                "dTimeS": "104700",
+                "dTimeR": "105200",
+                "aPltfS": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "aPltfR": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "dPltfS": {
+                  "type": "PL",
+                  "txt": "3"
+                },
+                "dPltfR": {
+                  "type": "PL",
+                  "txt": "4"
+                },
+                "dPlatfCh": true,
+                "aProgType": "PROGNOSED",
+                "dProgType": "PROGNOSED"
+              },
+              {
+                "locX": 2,
+                "idx": 2,
+                "aTimeS": "120100",
+                "aTimeR": "120700",
+                "aPltfS": {
+                  "type": "PL",
+                  "txt": "11"
+                },
+                "aPltfR": {
+                  "type": "PL",
+                  "txt": "11"
+                },
+                "aProgType": "PROGNOSED"
+              }
+            ]
+          }
+        ],
+        "fpB": "20260807",
+        "fpE": "20271211",
+        "planrtTS": "1791796500"
+      }
+    }
+  ]
+}

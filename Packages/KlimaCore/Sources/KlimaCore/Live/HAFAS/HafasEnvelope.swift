@@ -157,6 +157,21 @@ enum HafasRequests {
         var himFltrL: [HafasFilter]?
     }
 
+    /// `JourneyGeoPos` (Zug-Radar, reference `format/radar-req.js`). Exactly these keys; `rect` in micro-degrees.
+    struct Rect: Encodable { var llCrd: Coord; var urCrd: Coord }
+    struct JourneyGeoPos: Encodable {
+        var maxJny: Int
+        var onlyRT: Bool
+        var date: String
+        var time: String
+        var rect: Rect
+        var perSize: Int
+        var perStep: Int
+        var ageOfReport: Bool
+        var jnyFltrL: [HafasFilter]
+        var trainPosMode: String
+    }
+
     struct ServerInfo: Encodable { var getVersionInfo: Bool; var getClientFilter: Bool; var getServerDateTime: Bool }
 
     // Builders
@@ -218,6 +233,22 @@ enum HafasRequests {
         HafasServiceRequest(meth: "HimSearch", req: HimSearch(
             maxNum: q.maxResults, dateB: HafasTime.dateString(q.from), timeB: HafasTime.timeString(q.from),
             dateE: HafasTime.dateString(q.to), timeE: HafasTime.timeString(q.to), himFltrL: q.products.map { [.products($0)] }))
+    }
+
+    /// Radar request. `rect` is llCrd (west, south) / urCrd (east, north) in micro-degrees (reference `formatRectangle`).
+    static func journeyGeoPos(_ q: RadarQuery) -> HafasServiceRequest<JourneyGeoPos> {
+        func micro(_ degrees: Double) -> Int { Int((degrees * 1_000_000).rounded()) }
+        let frames = max(q.frames, 1)
+        return HafasServiceRequest(meth: "JourneyGeoPos", req: JourneyGeoPos(
+            maxJny: min(max(q.maxVehicles, 1), 256), onlyRT: false,
+            date: HafasTime.dateString(q.when), time: HafasTime.timeString(q.when),
+            rect: Rect(llCrd: Coord(x: micro(q.box.west), y: micro(q.box.south)),
+                       urCrd: Coord(x: micro(q.box.east), y: micro(q.box.north))),
+            perSize: max(q.durationSeconds, 1) * 1000,
+            perStep: Int((Double(max(q.durationSeconds, 1)) / Double(frames) * 1000).rounded()),
+            ageOfReport: true,
+            jnyFltrL: [.products(q.products)],
+            trainPosMode: "CALC"))
     }
 
     static func serverInfo() -> HafasServiceRequest<ServerInfo> {

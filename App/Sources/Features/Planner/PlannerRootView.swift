@@ -58,6 +58,8 @@ struct PlannerHomeView: View {
     @Environment(\.isSearching) private var isSearching
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse) private var trips: [TripEntity]
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex) private var favorites: [FavoriteRouteEntity]
+    @State private var showsRadar = false          // MARK: scotty
+    @State private var showsDisruptions = false    // MARK: scotty
 
     var body: some View {
         let model = app.planner
@@ -88,6 +90,8 @@ struct PlannerHomeView: View {
         }
         .ambientBackground(.standard, glow: 0.45)
         .toolbarVisibility(.hidden, for: .navigationBar)
+        .fullScreenCover(isPresented: $showsRadar) { RadarView() }          // MARK: scotty – Zug-Radar
+        .sheet(isPresented: $showsDisruptions) { DisruptionsView() }        // MARK: scotty – Störungen
         .motionAnimation(Motion.snappy, value: isSearching)
         .onChange(of: isSearching) { _, searching in
             if !searching { model.isSearchFocused = false }
@@ -111,6 +115,27 @@ struct PlannerHomeView: View {
             }
             .padding(.leading, Theme.Spacing.xxs + 0)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // MARK: scotty – Zug-Radar and Störungen (the ÖBB Scotty functions, inside the Fahrplan)
+            Button { showsRadar = true } label: {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(width: 46, height: 46)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("Zug-Radar")
+            Button { showsDisruptions = true } label: {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(width: 46, height: 46)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("Störungen")
             Button { model.showsOptions = true } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 18, weight: .semibold))

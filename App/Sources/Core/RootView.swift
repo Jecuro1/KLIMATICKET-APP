@@ -279,6 +279,10 @@ struct MainTabView: View {
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .plannerTabSearch()   // MARK: planner
+        // MARK: scotty – „Live verfolgen“: the active trip above the tab bar (shown only while a follow runs)
+        .tabViewBottomAccessory {
+            LiveFollowAccessoryHost(tracker: LiveFollowTracker.shared)
+        }
     }
 }
 
@@ -437,6 +441,9 @@ struct ScreenshotRouter: View {
         case "car", "carDetails", "carSettings", "carSettingsDetails", "carCard", "work", "workDetails", "workSelf",
              "workAssign", "workContribution", "workPDF", "workLogbookPDF":
             WorkScreenshotHost(screen: screen)
+        // MARK: scotty – Zug-Radar, Störungen, Live verfolgen (demo data, no network)
+        case let scottyScreen where ScottyScreenshotHost.screens.contains(scottyScreen):
+            ScottyScreenshotHost(screen: scottyScreen)
         case "liveActivityPreview":  // MARK: live
             NavigationStack { RideActivityPreviewView() }
         case "dashboardLive":  // MARK: live
