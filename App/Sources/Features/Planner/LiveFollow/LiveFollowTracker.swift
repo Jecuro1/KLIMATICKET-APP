@@ -47,7 +47,8 @@ final class LiveFollowTracker {
                 return try await service.trip(id, includePolyline: false)
             }
         }
-        LiveFollowNotifications.requestAuthorization()
+        // Screenshot and perf runs must not show the system permission prompt over the scene.
+        if !LaunchMode.isSandboxed { LiveFollowNotifications.requestAuthorization() }
         loop = Task { [weak self] in await self?.run() }
     }
 
