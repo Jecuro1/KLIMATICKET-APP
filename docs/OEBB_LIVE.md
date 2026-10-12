@@ -2410,9 +2410,12 @@ Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
 - Eine Anfrage: TripSearch Wien Hbf → Salzburg Hbf (Schiene, 3 Ergebnisse). Antwort 133 167 Byte, 6 Verbindungen, 14 Fahrt-IDs.
 - Gesucht als JSON-Schlüssel (`"formation"`, `"sector"`, `"coach"`, `"wagon"`, `"waggon"`, `"carSequence"`, `"prognosedCoach"`):
   **kein Treffer.** Der erste Suchlauf fand nur „Informationen“ (Teilstring) – deshalb auf Schlüssel eingegrenzt.
-- **Nicht geprüft:** `JourneyDetails` (braucht eine zweite Anfrage, die nach der Regel „genau eine“ nicht gestellt wurde).
-  Deshalb ist Wagenreihung über ÖBB **unverifiziert**, nicht widerlegt. Ohne Daten gibt es keine Wagen-Anzeige (kein Feature-Flag,
-  keine Kacheln, keine erfundenen Daten).
+- **JourneyDetails [LIVE 2026-10-12, nach Owner-Freigabe · `JourneyDetailsFormationLiveTests`]:** eine Anfrage auf IC 642
+  (Fernverkehr aus der Suche oben; für die Trip-ID wurde vorher eine TripSearch gebraucht, insgesamt 2 ÖBB-Anfragen).
+  Antwort 21 552 Byte, **keine** Formations-Schlüssel (`formation`, `sector`, `coach`, `wagon`, `waggon`, `carSequence`,
+  `prognosedCoach`).
+- **Ergebnis:** Keine Wagenreihung in den getesteten ÖBB-Antworten (TripSearch und JourneyDetails). Es gibt keine Wagen-Anzeige,
+  kein Feature-Flag und keine erfundenen Daten. Ein Test mit anderem Zugtyp oder einer Zugbildung-Anfrage ist offen.
 
 ### R3 Live verfolgen (KlimaCore `Live/Follow/LiveFollow.swift`, rein, Uhr injiziert)
 - Ziel: Fahrt-ID + Ein-/Ausstieg. Zustand: `upcoming` · `underway` · `arrived` · `cancelled`. Letzter passierter Halt, nächste Halte,
