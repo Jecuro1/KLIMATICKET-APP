@@ -38,6 +38,16 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
             shortTitle: "Fahrt erfassen",
             systemImageName: "plus.circle.fill"
         )
+        // MARK: planner – one parameter per phrase; the origin defaults to the start station of the app
+        AppShortcut(
+            intent: PlanConnectionIntent(),
+            phrases: [
+                "Nächste Verbindung nach \(\.$to) in \(.applicationName)",
+                "Verbindung nach \(\.$to) in \(.applicationName)",
+            ],
+            shortTitle: "Nächste Verbindung",
+            systemImageName: "point.topleft.down.to.point.bottomright.curvepath"
+        )
         // MARK: live
         AppShortcut(
             intent: RideStartIntent(),

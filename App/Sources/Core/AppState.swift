@@ -128,6 +128,7 @@ final class AppState {
         // Resolve the monitored stations (region id = station id) and prices lazily instead.
         detection.stationResolver = { id in await bundled.station(id: id) }
         detection.estimatorProvider = { [weak self] in self?.estimator }
+        PlannerIntentHost.app = self   // MARK: planner – Siri and Shortcuts answer from this state
     }
 
     var estimator: FareEstimator { FareEstimator(catalog: catalog, relations: relations) }
