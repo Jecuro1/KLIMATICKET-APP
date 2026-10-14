@@ -17,6 +17,7 @@ struct PlannerResultsView: View {
                                destination: slot(model, "destination", "Nach", model.destination),
                                onTap: { tap($0, model) }, onSwap: { model.swap() },
                                onRemoveVia: { id in if let i = Int(id.dropFirst(4)) { model.removeVia(at: i) } },
+                               onMoveVia: { id, delta in if let i = Int(id.dropFirst(4)) { model.moveVia(at: i, by: delta) } },
                                onAddVia: { model.addVia() }) {
                     resultsFooter(model)
                 }
@@ -77,6 +78,7 @@ struct PlannerResultsView: View {
                 PlannerErrorBanner(failure: failure) { model.restartSearch() }
             }
         }
+        sortChips(model)
         if model.canLoadEarlier {
             earlierLater("Früher", symbol: "chevron.up", model: model, earlier: true)
         }
@@ -85,20 +87,36 @@ struct PlannerResultsView: View {
             ForEach(Array(visible.enumerated()), id: \.element.id) { index, row in
                 NavigationLink(value: PlannerRoute.detail(row.id)) {
                     ConnectionCard(summary: row.summary, badges: row.badges, coverage: row.coverage, ticketName: model.ticketName,
-                                   price: row.price, priceText: priceText(row))
+                                   price: row.price, priceText: priceText(row), co2Text: co2Text(row))
                 }
                 .buttonStyle(.pressableCard)
                 .zoomSource(id: row.id, cornerRadius: Theme.Radius.card)
                 .reveal(order: min(index + 1, 6))
                 .onAppear {
-                    if index >= visible.count - 2, model.canLoadLater { Task { await model.loadMore(earlier: false) } }
+                    if model.isNearEnd(row), model.canLoadLater { Task { await model.loadMore(earlier: false) } }
                 }
             }
         }
         .opacity(stale ? 0.72 : 1)
         .motionAnimation(Motion.smooth, value: visible.map(\.id))
+        Text(model.sort.caption)
+            .font(.footnote)
+            .foregroundStyle(Theme.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Theme.Spacing.xs)
         if model.canLoadLater {
             earlierLater("Später", symbol: "chevron.down", model: model, earlier: false)
+        }
+        if model.hiddenByWalkCount > 0 {
+            HStack(spacing: 6) {
+                Image(systemName: "figure.walk").font(.system(size: 13, weight: .semibold))
+                Text(model.hiddenByWalkCount == 1 ? "1 Verbindung mit mehr Fußweg ausgeblendet" : "\(model.hiddenByWalkCount) Verbindungen mit mehr Fußweg ausgeblendet")
+                    .font(.footnote)
+                Button("Filter aus") { model.options.maxWalkMeters = nil; model.restartSearch() }.font(.footnote.weight(.semibold))
+            }
+            .foregroundStyle(Theme.textSecondary)
+            .frame(maxWidth: .infinity)
+            .padding(.top, Theme.Spacing.xs)
         }
         if model.hiddenByKlimaTicketCount > 0 {
             HStack(spacing: 6) {
@@ -130,6 +148,40 @@ struct PlannerResultsView: View {
         .disabled(model.isLoadingMore)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 2)
+    }
+
+    /// The result sort as a row of glass chips („Abfahrt“, „Schnellste“, …). Changing it re-sorts the rows, no request.
+    private func sortChips(_ model: PlannerModel) -> some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Theme.Spacing.xs) {
+                ForEach(ConnectionSort.allCases) { option in
+                    let selected = model.sort == option
+                    Button { withMotion(Motion.snappy) { model.sort = option } } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: option.symbol).font(.system(size: 13, weight: .semibold))
+                            Text(option.title).font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundStyle(selected ? Theme.accentText : Theme.textPrimary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(selected ? Theme.accent.opacity(0.16) : Theme.surfaceSecondary, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    /// „≈ 2,3 kg CO₂ · 320 m zu Fuß“: the CO₂ estimate and the walking of a connection.
+    private func co2Text(_ row: ConnectionRow) -> String? {
+        var parts: [String] = []
+        if let kg = row.co2Kg { parts.append("≈ \(Format.kg(kg)) CO₂") }
+        let walk = PlannerResults.walkMeters(row.journey)
+        if walk > 0 { parts.append("\(walk) m zu Fuß") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func priceText(_ row: ConnectionRow) -> String? {

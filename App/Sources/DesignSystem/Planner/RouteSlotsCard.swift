@@ -21,6 +21,8 @@ struct RouteSlotsCard<Footer: View>: View {
     var onTap: (String) -> Void
     var onSwap: () -> Void
     var onRemoveVia: (String) -> Void = { _ in }
+    /// Moves a via stop by one place: (id, -1 = earlier, +1 = later). Shown with two or more via stops.
+    var onMoveVia: (String, Int) -> Void = { _, _ in }
     var onAddVia: (() -> Void)? = nil
     @ViewBuilder var footer: Footer
 
@@ -35,8 +37,8 @@ struct RouteSlotsCard<Footer: View>: View {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 VStack(alignment: .leading, spacing: 0) {
                     slot(origin).railed(.first, nodeY: nodeY)
-                    ForEach(vias) { via in
-                        viaRow(via).railed(.middle, nodeY: viaNodeY).motionTransition(.rise)
+                    ForEach(Array(vias.enumerated()), id: \.element.id) { index, via in
+                        viaRow(via, index: index).railed(.middle, nodeY: viaNodeY).motionTransition(.rise)
                     }
                     slot(destination).railed(.last, nodeY: nodeY, extendsBelow: addViaVisible)
                     if addViaVisible, let onAddVia {
@@ -100,7 +102,7 @@ struct RouteSlotsCard<Footer: View>: View {
         .accessibilityHint("Öffnet die Suche")
     }
 
-    private func viaRow(_ via: RouteSlot) -> some View {
+    private func viaRow(_ via: RouteSlot, index: Int) -> some View {
         HStack(spacing: 8) {
             Button { onTap(via.id) } label: {
                 HStack(spacing: 8) {
@@ -113,6 +115,22 @@ struct RouteSlotsCard<Footer: View>: View {
                 .contentShape(.rect)
             }
             .buttonStyle(.plain)
+            if vias.count > 1 {
+                VStack(spacing: 0) {
+                    Button { onMoveVia(via.id, -1) } label: {
+                        Image(systemName: "chevron.up").font(.system(size: 13, weight: .bold)).frame(width: 30, height: 22).contentShape(.rect)
+                    }
+                    .disabled(index == 0)
+                    .accessibilityLabel("\(via.title) als Zwischenhalt früher")
+                    Button { onMoveVia(via.id, 1) } label: {
+                        Image(systemName: "chevron.down").font(.system(size: 13, weight: .bold)).frame(width: 30, height: 22).contentShape(.rect)
+                    }
+                    .disabled(index == vias.count - 1)
+                    .accessibilityLabel("\(via.title) als Zwischenhalt später")
+                }
+                .foregroundStyle(Theme.accentText)
+                .buttonStyle(.plain)
+            }
             Button { onRemoveVia(via.id) } label: {
                 Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.textTertiary).frame(width: 32, height: 32)
             }

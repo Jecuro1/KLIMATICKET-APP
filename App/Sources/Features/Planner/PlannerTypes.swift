@@ -101,6 +101,13 @@ struct PlannerOptions: Codable, Equatable {
     var extraTransferMinutes: Int = 0
     var accessible = false
     var bike = false
+    /// Walking limit in metres for each connection; nil = no limit. The planner has no such request option, so the
+    /// connections are filtered after the search (`PlannerResults.withinWalk`).
+    var maxWalkMeters: Int? = nil
+    /// Price class of the prices shown and of a logged trip; nil = the class of the settings.
+    var travelClass: TravelClass? = nil
+    /// Discount of the prices shown (Vorteilscard); nil = the discount of the settings.
+    var discount: FareDiscount? = nil
 
     var products: ProductMask {
         get { ProductMask(rawValue: productsRaw) }
@@ -118,6 +125,9 @@ struct PlannerOptions: Codable, Equatable {
         if extraTransferMinutes != 0 { n += 1 }
         if accessible { n += 1 }
         if bike { n += 1 }
+        if maxWalkMeters != nil { n += 1 }
+        if travelClass != nil { n += 1 }
+        if discount != nil { n += 1 }
         return n
     }
 
@@ -231,11 +241,20 @@ struct ConnectionRow: Identifiable, Equatable {
     var badges: [LineBadge]
     var coverage: JourneyCoverage?
     var price: PlannerPriceState
+    /// Estimated CO₂ in kg (`PlannerEmissions`), nil without coordinates.
+    var co2Kg: Double? = nil
 
     var id: String { journey.id }
 
     static func == (a: ConnectionRow, b: ConnectionRow) -> Bool {
-        a.journey == b.journey && a.summary == b.summary && a.coverage == b.coverage && a.price == b.price
+        a.journey == b.journey && a.summary == b.summary && a.coverage == b.coverage && a.price == b.price && a.co2Kg == b.co2Kg
+    }
+}
+
+/// The result sort sees the price the card shows (the regular fare, live or table) and the CO₂ estimate.
+extension ConnectionRow: SortableConnection {
+    var sortFacts: ConnectionSortFacts {
+        PlannerResults.sortFacts(journey, priceEUR: price.quote?.amountEUR)
     }
 }
 

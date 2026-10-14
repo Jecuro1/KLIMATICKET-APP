@@ -58,6 +58,32 @@ struct PlannerOptionsSheet: View {
                         .listRowBackground(Theme.surface)
                     Toggle("Fahrradmitnahme", isOn: Binding(get: { model.options.bike }, set: { model.options.bike = $0 }))
                         .listRowBackground(Theme.surface)
+                } header: {
+                    SetSectionHeader(title: "Komfort")
+                }
+                Section {
+                    Picker("Max. Fußweg", selection: Binding(get: { model.options.maxWalkMeters ?? -1 }, set: { model.options.maxWalkMeters = $0 < 0 ? nil : $0 })) {
+                        Text("Beliebig").tag(-1)
+                        Text("300 m").tag(300)
+                        Text("500 m").tag(500)
+                        Text("1 km").tag(1_000)
+                        Text("2 km").tag(2_000)
+                    }
+                    .listRowBackground(Theme.surface)
+                    Picker("Klasse", selection: Binding(get: { model.options.travelClass }, set: { model.options.travelClass = $0 })) {
+                        Text("Wie Einstellungen").tag(TravelClass?.none)
+                        Text("2. Klasse").tag(TravelClass?.some(.second))
+                        Text("1. Klasse").tag(TravelClass?.some(.first))
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Theme.surface)
+                    Toggle("Mit Vorteilscard", isOn: Binding(get: { model.effectiveDiscount == .vorteilscard },
+                                                             set: { model.options.discount = $0 ? .vorteilscard : FareDiscount.none }))
+                        .listRowBackground(Theme.surface)
+                } header: {
+                    SetSectionHeader(title: "Fußweg und Preis")
+                } footer: {
+                    SetFooter(text: "Der Fußweg zählt je Verbindung (Umsteigen in einem Bahnhof zählt nicht). Klasse und Vorteilscard gelten für die Preise hier und für die Erfassung.")
                 }
                 Section {
                     Button("Zurücksetzen", role: .destructive) { model.options = PlannerOptions() }

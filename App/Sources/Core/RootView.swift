@@ -238,9 +238,9 @@ struct RootView: View {
             if let tab = AppTab(rawValue: url.lastPathComponent) { app.selectedTab = tab }
         // MARK: planner – klimabilanz://plan?from=<stationID|name>&to=<stationID|name>&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<id>
         case "plan":
+            guard let link = PlannerLink.parse(url) else { return }   // from + to required; via stops, at, arr
             app.selectedTab = .planner
-            app.planner.handleDeepLink(from: value("from"), to: value("to"),
-                                       at: value("at").flatMap { ISO8601DateFormatter().date(from: $0) }, arrival: value("arr") == "1")
+            app.planner.handleDeepLink(link)
         case "board":
             app.selectedTab = .planner
             if let station = value("station") { app.planner.showBoard(stationID: station) }

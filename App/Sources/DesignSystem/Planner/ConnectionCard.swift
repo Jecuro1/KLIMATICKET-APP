@@ -25,6 +25,8 @@ struct ConnectionCard: View {
     var ticketName: String
     var price: PlannerPriceState
     var priceText: String? = nil
+    /// „≈ 2,3 kg CO₂ · 320 m zu Fuß“ (estimate, `PlannerEmissions`), nil when unknown.
+    var co2Text: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,6 +34,12 @@ struct ConnectionCard: View {
                 header
                 JourneyBar(segments: summary.bar, badges: badges)
                 meta
+                if let co2Text {
+                    HStack(spacing: 5) {
+                        Image(systemName: "leaf.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.pine)
+                        Text(co2Text).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                }
                 if let notice = summary.topNotice { NoticeRow(notice: notice) }
             }
             .padding(.horizontal, Theme.Spacing.m)

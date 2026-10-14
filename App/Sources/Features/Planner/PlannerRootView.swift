@@ -208,6 +208,7 @@ struct ConnectionsHome: View {
                            destination: slot(model, "destination", "Nach", model.destination, placeholder: "Wohin?"),
                            onTap: { tap($0, model) }, onSwap: { model.swap() },
                            onRemoveVia: { id in if let i = Int(id.dropFirst(4)) { model.removeVia(at: i) } },
+                           onMoveVia: { id, delta in if let i = Int(id.dropFirst(4)) { model.moveVia(at: i, by: delta) } },
                            onAddVia: model.hasBoth || model.destination != nil ? { model.addVia() } : nil) {
                 PlannerTimeRow()
             }

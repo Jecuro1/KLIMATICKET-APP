@@ -466,10 +466,7 @@ struct ConnectionDetailView: View {
     }
 
     private func shareText(_ row: ConnectionRow) -> String {
-        let s = row.summary
-        let from = row.journey.origin.map { DisplayNames.name($0.name) } ?? "", to = row.journey.destination.map { DisplayNames.name($0.name) } ?? ""
-        let times = [s.plannedDeparture, s.plannedArrival].compactMap { $0.map(Format.time) }.joined(separator: "–")
-        return "\(from) → \(to) · \(Format.weekdayDayMonth(s.plannedDeparture ?? Date())), \(times) · \(s.lineSummary)"
+        PlannerExport.shareText(row.journey)
     }
 }
 
@@ -641,29 +638,12 @@ struct PriceInfoPopover: View {
 
 /// A one-event .ics file of the connection (shared through the share sheet: „In den Kalender“).
 enum PlannerCalendarFile {
+    /// The .ics text comes from `PlannerExport` (KlimaCore, tested); the file is written to the temporary folder.
     static func make(journey: Journey) -> URL? {
-        guard let start = journey.departure?.planned, let end = journey.arrival?.planned else { return nil }
-        let from = journey.origin.map { DisplayNames.name($0.name) } ?? "", to = journey.destination.map { DisplayNames.name($0.name) } ?? ""
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
-        let lines = journey.rideLegs.map { leg -> String in
-            let name = leg.line.map(LinePresentation.title) ?? "Fahrt"
-            let dep = leg.departure.planned.map(Format.time) ?? "", arr = leg.arrival.planned.map(Format.time) ?? ""
-            return "\(dep) \(DisplayNames.name(leg.origin.name)) → \(arr) \(DisplayNames.name(leg.destination.name)) (\(name))"
-        }
-        func escape(_ s: String) -> String { s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: ",", with: "\\,").replacingOccurrences(of: ";", with: "\\;").replacingOccurrences(of: "\n", with: "\\n") }
-        let ics = [
-            "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//KlimaBilanz//Fahrplan//DE", "BEGIN:VEVENT",
-            "UID:\(UUID().uuidString)@klimabilanz", "DTSTAMP:\(formatter.string(from: Date()))",
-            "DTSTART:\(formatter.string(from: start))", "DTEND:\(formatter.string(from: end))",
-            "SUMMARY:\(escape("\(from) → \(to)"))", "LOCATION:\(escape(from))", "DESCRIPTION:\(escape(lines.joined(separator: "\n")))",
-            "END:VEVENT", "END:VCALENDAR",
-        ].joined(separator: "\r\n")
-        let url = FileManager.default.temporaryDirectory.appending(path: "Fahrt \(from) nach \(to).ics", directoryHint: .notDirectory)
+        guard let text = PlannerExport.ics(journey, uid: "\(UUID().uuidString)@klimabilanz", stamp: Date(), alarmMinutes: 10) else { return nil }
+        let url = FileManager.default.temporaryDirectory.appending(path: PlannerExport.icsFileName(journey), directoryHint: .notDirectory)
         do {
-            try ics.write(to: url, atomically: true, encoding: .utf8)
+            try text.write(to: url, atomically: true, encoding: .utf8)
             return url
         } catch {
             return nil

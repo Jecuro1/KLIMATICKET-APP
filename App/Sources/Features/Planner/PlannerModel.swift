@@ -72,6 +72,10 @@ final class PlannerModel {
             rebuildRows()
         }
     }
+    /// Order of the result list (UserDefaults `planner.sort`). The list is only re-sorted, never searched again.
+    var sort: ConnectionSort = ConnectionSort(rawValue: UserDefaults.standard.string(forKey: "planner.sort") ?? "") ?? .departure {
+        didSet { UserDefaults.standard.set(sort.rawValue, forKey: "planner.sort") }
+    }
     var path: [PlannerRoute] = []
     var showsOptions = false
     var showsTimeSheet = false
@@ -93,6 +97,8 @@ final class PlannerModel {
     @ObservationIgnored private var searchTask: Task<Void, Never>?
     @ObservationIgnored private var priceTask: Task<Void, Never>?
     private(set) var rows: [ConnectionRow] = []
+    /// Connections the walking limit of the options hides (on the current result pages).
+    private(set) var hiddenByWalkCount = 0
     private(set) var phase: PlannerPhase = .idle
     private(set) var resultsUpdatedAt: Date?
     private(set) var isLoadingMore = false
@@ -139,11 +145,18 @@ final class PlannerModel {
 
     var activeOptionCount: Int { options.activeCount(klimaTicketDefault: scope == .oe) }
 
-    /// Rows after „Nur mit KlimaTicket gültig“ (not-covered connections are hidden; partial ones stay).
+    /// Rows after „Nur mit KlimaTicket gültig“ (not-covered connections are hidden; partial ones stay), in the chosen order.
     var visibleRows: [ConnectionRow] {
-        guard isKlimaTicketOnly else { return rows }
-        return rows.filter { $0.coverage?.overall != .notCovered }
+        let base = isKlimaTicketOnly ? rows.filter { $0.coverage?.overall != .notCovered } : rows
+        return ConnectionSorting.sorted(base, by: sort)
     }
+
+    /// The price class and discount the prices of a search use: the options, else the settings.
+    var effectiveTravelClass: TravelClass { options.travelClass ?? settings.defaultTravelClass }
+    var effectiveDiscount: FareDiscount { options.discount ?? settings.defaultDiscount }
+
+    /// Whether a row is one of the last two in departure order: the list asks for the next page there („Später“).
+    func isNearEnd(_ row: ConnectionRow) -> Bool { rows.suffix(2).contains { $0.id == row.id } }
 
     var hiddenByKlimaTicketCount: Int { rows.count - visibleRows.count }
 
@@ -228,14 +241,14 @@ final class PlannerModel {
 
     // MARK: Deep links
 
-    /// `klimabilanz://plan?from=<stationID|name>&to=<stationID|name>&at=<ISO8601>&arr=0|1`
-    func handleDeepLink(from: String?, to: String?, at: Date?, arrival: Bool) {
+    /// `klimabilanz://plan?from=…&to=…&via=…&at=<ISO8601>&arr=0|1` (`PlannerLink`): fills the form and starts the search.
+    func handleDeepLink(_ link: PlannerLink) {
         mode = .connections
-        if let from, let place = place(for: from) { origin = place }
-        if let to, let place = place(for: to) { destination = place }
-        when = at
-        isArrival = arrival
-        vias = []
+        if let place = place(for: link.from) { origin = place }
+        if let place = place(for: link.to) { destination = place }
+        vias = link.vias.compactMap { place(for: $0) }
+        when = link.at
+        isArrival = link.isArrival
         path = []
         if hasBoth { startSearch() }
     }
@@ -247,6 +260,14 @@ final class PlannerModel {
         boardStation = .live(location)
         boardDate = nil
         Task { await loadBoard() }
+    }
+
+    /// Moves a via stop one place up (`by: -1`) or down (`by: 1`): the order of the stops is the order of the trip.
+    func moveVia(at index: Int, by delta: Int) {
+        let target = index + delta
+        guard vias.indices.contains(index), vias.indices.contains(target) else { return }
+        vias.swapAt(index, target)
+        if hasBoth, path.contains(.results) { restartSearch() }
     }
 
     /// `klimabilanz://board?station=<stationID>`
@@ -398,13 +419,8 @@ final class PlannerModel {
             let page = try await timetable.journeys(query)
             let known = Set(journeys.map(\.id))
             let fresh = page.journeys.filter { !known.contains($0.id) }
-            if earlier {
-                journeys = fresh + journeys
-                earlierContext = page.earlierContext
-            } else {
-                journeys += fresh
-                laterContext = page.laterContext
-            }
+            journeys = PlannerResults.merge(journeys, page: page.journeys)
+            if earlier { earlierContext = page.earlierContext } else { laterContext = page.laterContext }
             rebuildRows()
             startPrices(generation: generation, only: Set(fresh.map(\.id)))
         } catch {
@@ -455,11 +471,15 @@ final class PlannerModel {
     }
 
     func rebuildRows() {
-        let summaries = JourneyPresentation.summaries(journeys, now: Date(), via: viaStops)
-        rows = zip(journeys, summaries).map { journey, summary in
+        // The walking limit filters the connections; `journeys` keeps every page so the refresh keeps its indices.
+        let shown = PlannerResults.withinWalk(journeys, maxMeters: options.maxWalkMeters)
+        hiddenByWalkCount = journeys.count - shown.count
+        let summaries = JourneyPresentation.summaries(shown, now: Date(), via: viaStops)
+        rows = zip(shown, summaries).map { journey, summary in
             ConnectionRow(journey: journey, summary: summary,
                           badges: journey.rideLegs.compactMap(\.line).map { LineBadge(line: $0, size: .s) },
-                          coverage: coverage(for: journey), price: priceStates[journey.id] ?? PlannerPriceState())
+                          coverage: coverage(for: journey), price: priceStates[journey.id] ?? PlannerPriceState(),
+                          co2Kg: PlannerEmissions.co2Kg(journey))
         }
     }
 
@@ -470,7 +490,7 @@ final class PlannerModel {
     /// The request for the price a card or the detail shows: the whole connection, or – for a partly covered one – the
     /// covered part only (docs/OEBB_LIVE.md §E6.2).
     func priceRequest(for journey: Journey, coverage: JourneyCoverage?) -> PriceRequest {
-        var request = PriceRequest(journey: journey, travelClass: settings.defaultTravelClass, discount: settings.defaultDiscount,
+        var request = PriceRequest(journey: journey, travelClass: effectiveTravelClass, discount: effectiveDiscount,
                                    stations: stations, via: viaStops)
         if let coverage, coverage.overall == .partial, let segment = JourneyMetrics.coveredSegment(journey, coverage: coverage) {
             request.to = PriceEndpoint(location: segment.to, stations: stations)
