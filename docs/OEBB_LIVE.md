@@ -2622,6 +2622,10 @@ Geblieben: Envelope (`err`, `ext`, `ver`, `lang`), Dienst (`meth`, `err`), `comm
 `LiveDataService.trainSearch` (gleiches Gate wie der Fahrplan: Zustimmung, Schalter, Kill-Switch, Verbindung).
 - Namensregeln: „RJX 66“, „rjx66“, „RJX-66“ und „66“ werden erkannt. Wörter wie „Wien“ werden **nicht** als Zugnummer gesucht.
 - Bedingung: „Live verfolgen“ und „Auf der Karte zeigen“ gibt es nur für eine Fahrt, die heute (Wiener Zeit) abfährt oder ankommt.
+- Ohne Zustimmung oder bei abgeschaltetem Dienst startet „Live verfolgen“ nicht (Guard in `TrainSearchView.follow`).
+- „Auf der Karte zeigen“ schaltet die Ebene „Züge“ ein (die Wahl bleibt gespeichert). Steht der Zug nach der ersten Antwort nicht auf der
+  Karte, sagt die Karte das („Dieser Zug ist gerade nicht auf der Karte …“). Ob die Fahrt-ID aus der Zugsuche mit der ID der Radar-Positionen
+  übereinstimmt, ist **nicht live geprüft**.
 - Demo: `-KBDemo` und Screenshot-Hosts `trainSearch`, `trainResult` (`DemoTrainSearchService`, kein Netz).
 
 **Offen:** Die Anfrage mit Datum (`date`/`time`) ist nicht live geprüft (der Test stoppt nach dem ersten Treffer, Budget bleibt ungenutzt). Ob „Live verfolgen“ für eine
@@ -2634,11 +2638,15 @@ Glasleiste an- und ausgeschaltet werden. Die Basiskarte ist unverändert MapKit;
 Entscheidung des Owners. Jede Ebene liegt über der Basiskarte und hängt nicht von ihr ab.
 
 - **Stationen:** Marker aus dem gebündelten Stationsindex (kein Netz). Sie erscheinen erst ab etwa 180 km Kartenbreite
-  (`MapStations.maxLatitudeSpan` 1,6°), höchstens 250 je Ausschnitt, nach Name geordnet. Gruppen (Cluster) hängen vom Zoom ab.
+  (`MapStations.maxLatitudeSpan` 1,6°). Alle Stationen im Ausschnitt werden gruppiert (Cluster nach Zoom, `MapClustering`), damit
+  keine Stationsgruppe abgeschnitten wird. Die Zahl der Marker folgt dem Raster, nicht der Stationszahl. (Vorher: höchstens 250 nach
+  Name; so fehlten ganze Regionen.)
   Ein Tipp auf eine Station öffnet ihre Abfahrten in der Fahrplan-Ansicht (`showBoard(stationID:)`).
   - **Nicht gebaut:** die Zahl der nächsten Abfahrten je Station. Dafür gibt es keinen Abfahrts-Cache, und eine Anfrage je
     Station würde das Budget (§2) sprengen. Der Pin zeigt den Namen, keine erfundene Zahl.
-- **Züge:** der Zug-Radar aus §R7, nur solange die Ebene an ist. Ist „Züge“ aus, werden keine Anfragen gesendet.
+- **Züge:** der Zug-Radar aus §R7, nur solange die Ebene an ist. Ist „Züge“ aus, werden keine Anfragen gesendet. Ohne Zustimmung zu
+  Live-Daten bleibt die Karte da: Stationen und Routen funktionieren offline, für die Züge steht ein Hinweis (Grund je Fall: Zustimmung,
+  Schalter, Kill-Switch oder offline). Die Statusanzeige der Züge erscheint nur, wenn die Ebene an und die Abfrage erlaubt ist.
 - **Störungen:** HIM-Meldungen haben keine Position (§R4). Die Ebene ist deshalb eine Liste („Störungen ansehen“), keine Pins.
 - **Meine Routen:** gespeicherte Routen als **Luftlinie** zwischen Start- und Zielstation (gestrichelt, mit Hinweis
   „nicht die Strecke“). Zwischenhalte werden nicht gezeichnet. Routen ohne bekannte Station stehen in der Liste (`SavedRoutesView`).

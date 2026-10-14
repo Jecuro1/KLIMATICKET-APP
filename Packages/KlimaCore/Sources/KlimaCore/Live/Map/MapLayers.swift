@@ -64,15 +64,15 @@ public enum MapStations {
     /// Station markers are drawn only when the view is this close (about 180 km of latitude). A country-wide view would
     /// draw thousands of stops; the layer says "Zoom näher heran" instead.
     public static let maxLatitudeSpan: Double = 1.6
-    /// At most this many markers are handed to the map, in name order.
-    public static let limit = 250
 
     public static func isDrawn(latitudeSpan span: Double) -> Bool {
         span.isFinite && span > 0 && span <= maxLatitudeSpan
     }
 
-    /// The stations inside the box, in name order, at most `limit`. Deterministic for the same input.
-    public static func visible(_ stations: [MapStationPin], in box: RadarBox, limit: Int = limit) -> [MapStationPin] {
+    /// The stations inside the box, in name order. Deterministic for the same input. Every station is kept: the map draws
+    /// clusters (`MapClustering`), so the number of markers follows the grid at this zoom, not the station count. A cap in
+    /// name order would silently drop whole regions from the map.
+    public static func visible(_ stations: [MapStationPin], in box: RadarBox, limit: Int = .max) -> [MapStationPin] {
         guard box.isValid else { return [] }
         return stations
             .filter { box.contains($0.coordinate) }

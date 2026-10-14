@@ -57,6 +57,12 @@ final class MapLayersTests: XCTestCase {
         XCTAssertEqual(visible.map(\.name), ["Station 0", "Station 1", "Station 2"])
     }
 
+    func testEveryStationInTheBoxIsKept() {
+        // No cap in name order: a dense area keeps all its stations, the clusters bound the markers (see MapClustering).
+        let dense = (0..<400).map { pin("s\($0)", "Station \($0)", 48.2, 16.3) }
+        XCTAssertEqual(MapStations.visible(dense, in: vienna).count, 400)
+    }
+
     func testInvalidBoxShowsNothing() {
         let broken = RadarBox(north: 48, west: 16, south: 48, east: 17)
         XCTAssertTrue(MapStations.visible([pin("a", "Wien", 48.2, 16.3)], in: broken).isEmpty)

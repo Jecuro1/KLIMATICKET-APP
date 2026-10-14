@@ -18,9 +18,9 @@ struct MapLayerBar: View {
                         Image(systemName: symbol(layer))
                             .font(.system(size: 16, weight: .semibold))
                         Text(layer.title)
-                            .font(.system(size: 11, weight: .semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                            .font(.caption2.weight(.semibold))
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
                     }
                     .foregroundStyle(on ? Theme.accentText : Theme.textSecondary)
                     .frame(maxWidth: .infinity)
@@ -56,7 +56,7 @@ struct StationMapMarker: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(name)
-                .font(.system(size: 11, weight: .semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .padding(.horizontal, Theme.Spacing.xs)
@@ -77,7 +77,7 @@ struct StationClusterBubble: View {
 
     var body: some View {
         Text("\(count)")
-            .font(.system(size: 13, weight: .bold))
+            .font(.footnote.weight(.bold))
             .foregroundStyle(Theme.textPrimary)
             .frame(minWidth: 34, minHeight: 34)
             .glassEffect(.regular, in: .circle)

@@ -274,6 +274,9 @@ struct RadarView: View {
     var preset: RadarPreset = .live
     /// „Auf der Karte zeigen“ from a train search (docs/OEBB_LIVE.md §R9): the map centres on this trip once its pin is there.
     var focusTripID: String? = nil
+    /// Set when the radar is opened from the train search: a departures board then closes the search as well, because the
+    /// board opens in the Fahrplan underneath the search's cover.
+    var closeSearch: (() -> Void)? = nil
 
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -309,8 +312,14 @@ struct RadarView: View {
 
     private var mapStyle: RadarMapStyle { RadarMapStyle(rawValue: styleRaw) ?? .standard }
 
+    /// The train layer is on and the live data is allowed. Without it no train request is sent, and the map still shows
+    /// the layers that work offline (stations, saved routes).
+    private var trainsOn: Bool {
+        layers.isOn(.trains) && app.live.timetableUnavailable == nil
+    }
+
     private var isRunning: Bool {
-        scenePhase == .active && app.live.timetableUnavailable == nil && layers.isOn(.trains)
+        scenePhase == .active && trainsOn
     }
 
     /// The visible rectangle at 0.01° resolution, so small camera moves do not restart the loop.
@@ -320,16 +329,7 @@ struct RadarView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let reason = app.live.timetableUnavailable {
-                    ScrollView {
-                        PlannerUnavailableView(reason: reason, onSettings: { app.isShowingSettings = true })
-                            .padding(Theme.Spacing.cardGutter)
-                    }
-                } else {
-                    mapLayer
-                }
-            }
+            mapLayer
             .navigationTitle("Zug-Radar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -338,7 +338,13 @@ struct RadarView: View {
                 ToolbarItem(placement: .topBarTrailing) { Button("Fertig") { dismiss() } }
             }
             .safeAreaInset(edge: .top, spacing: Theme.Spacing.xs) { topBar }
-            .safeAreaInset(edge: .bottom, spacing: Theme.Spacing.xs) { statusBar }
+            .safeAreaInset(edge: .bottom, spacing: Theme.Spacing.xs) {
+                // Large text sizes scroll the panel instead of covering the map: it takes its content's height, up to a cap.
+                ScrollView { statusBar }
+                    .scrollBounceBehavior(.basedOnSize)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxHeight: 360)
+            }
             .task(id: RunKey(products: model.products, box: boxKey, active: isRunning)) {
                 guard isRunning, let service = app.live.radar else { return }
                 await model.run(service, interval: .seconds(20))
@@ -361,9 +367,7 @@ struct RadarView: View {
                                    model.route = points
                                },
                                onStation: { stop in
-                                   dismiss()
-                                   app.selectedTab = .planner
-                                   app.planner.showBoard(live: stop)
+                                   showBoard { app.planner.showBoard(live: stop) }
                                })
                     .presentationDetents([.fraction(0.32), .medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
@@ -382,7 +386,7 @@ struct RadarView: View {
 
     private var mapLayer: some View {
         Map(position: $camera) {
-            if layers.isOn(.trains) {
+            if trainsOn {
             ForEach(clusters) { cluster in
                 if cluster.isSingle, let id = cluster.tripIDs.first, let pin = pinsByID[id] {
                     Annotation(pin.vehicle.line.map { LinePresentation.title($0) } ?? "Zug",
@@ -465,14 +469,23 @@ struct RadarView: View {
                                             span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.5)))
     }
 
-    /// Once, when the focused trip first appears among the pins. A trip that is not on the map now is simply not centred.
+    /// Once, when the focused trip first appears among the pins.
     private func centerOnFocusedTrip() {
         guard !focusDone, let focusTripID, pinsByID[focusTripID] != nil else { return }
         focusDone = true
         center(on: focusTripID)
     }
 
+    /// The focused trip was asked for, the trains are on, and the last answer did not put it on the map: said in the status
+    /// area, instead of a map that silently stays where it is.
+    private var focusMissing: Bool {
+        guard let focusTripID, !focusDone, trainsOn, model.load == .loaded else { return false }
+        return pinsByID[focusTripID] == nil
+    }
+
     private func applyPreset() {
+        // "Auf der Karte zeigen" needs the train layer: it is switched on, and the choice stays (the layer bar shows it).
+        if focusTripID != nil, !layers.isOn(.trains) { toggleLayer(.trains) }
         switch preset {
         case .live:
             break
@@ -499,6 +512,27 @@ struct RadarView: View {
         var next = layers
         next.toggle(layer)
         layersRaw = next.storageValue
+    }
+
+    /// Why the train layer is off, in words that match the reason: without consent it names the setting, offline it says the
+    /// trains come back online. Stations and saved routes do not depend on any of this.
+    @ViewBuilder private func trainsOffNotice(_ reason: LiveDataService.Unavailable) -> some View {
+        switch reason {
+        case .consentUndecided, .declined, .switchedOff:
+            PlannerNoticeCard(symbol: "train.side.front.car", title: "Züge brauchen Live-Daten",
+                              message: "Die Zugpositionen fragt KlimaBilanz bei der ÖBB ab. Das geht erst, wenn du Live-Daten einschaltest. Stationen und Routen funktionieren weiter.",
+                              actionTitle: "Einstellungen") {
+                app.isShowingSettings = true
+            }
+        case .killSwitch(let notice):
+            PlannerNoticeCard(symbol: "exclamationmark.shield", title: "Züge gerade aus",
+                              message: notice ?? "Die Zugpositionen sind gerade abgeschaltet. Stationen und Routen funktionieren weiter.",
+                              actionTitle: nil, action: nil)
+        case .offline:
+            PlannerNoticeCard(symbol: "wifi.slash", title: "Züge offline",
+                              message: "Ohne Internet gibt es keine Zugpositionen. Stationen und Routen funktionieren weiter.",
+                              actionTitle: nil, action: nil)
+        }
     }
 
     private func stationPin(_ station: Station) -> MapStationPin {
@@ -557,9 +591,20 @@ struct RadarView: View {
 
     /// Station → its departures in the Fahrplan, the same way the trip sheet opens a stop.
     private func openDepartures(stationID: String) {
-        dismiss()
-        app.selectedTab = .planner
-        app.planner.showBoard(stationID: stationID)
+        showBoard { app.planner.showBoard(stationID: stationID) }
+    }
+
+    /// Closes the radar and shows a departures board in the Fahrplan. Opened from the train search, the search closes too:
+    /// the board would otherwise open behind its cover and the tap would seem to do nothing.
+    private func showBoard(_ show: () -> Void) {
+        if let closeSearch {
+            show()
+            closeSearch()
+        } else {
+            dismiss()
+            app.selectedTab = .planner
+            show()
+        }
     }
 
     private func zoom(toStations center: GeoPoint) {
@@ -723,27 +768,40 @@ struct RadarView: View {
     private var statusBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
             mapLayerPanel
-            if model.lowPower {
-                PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
-                                  message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
-                                  actionTitle: "Jetzt aktualisieren") {
-                    Task { if let s = app.live.radar { await model.refresh(s) } }
+            if layers.isOn(.trains), let reason = app.live.timetableUnavailable {
+                trainsOffNotice(reason)
+            }
+            // The train status is only shown while trains are on: with the layer off no request is sent and nothing is pending.
+            if trainsOn {
+                if model.lowPower {
+                    PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
+                                      message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
+                                      actionTitle: "Jetzt aktualisieren") {
+                        Task { if let s = app.live.radar { await model.refresh(s) } }
+                    }
                 }
-            }
-            if case .failed(let message) = model.load {
-                PlannerNoticeCard(symbol: "wifi.exclamationmark", title: "Radar pausiert", message: message,
-                                  actionTitle: "Erneut versuchen") {
-                    Task { if let s = app.live.radar { await model.refresh(s) } }
+                if case .failed(let message) = model.load {
+                    PlannerNoticeCard(symbol: "wifi.exclamationmark", title: "Radar pausiert", message: message,
+                                      actionTitle: "Erneut versuchen") {
+                        Task { if let s = app.live.radar { await model.refresh(s) } }
+                    }
                 }
+                if model.cutOff {
+                    Text("Zoom hinein für alle Züge. Gerade sind nur die ersten \(RadarTiling.serverCap) Fahrzeuge je Abfrage zu sehen.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.l)
+                }
+                if focusMissing {
+                    Text("Dieser Zug ist gerade nicht auf der Karte. Zoom heraus oder probier es später noch einmal.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.l)
+                }
+                statusPill
             }
-            if model.cutOff {
-                Text("Zoom hinein für alle Züge. Gerade sind nur die ersten \(RadarTiling.serverCap) Fahrzeuge je Abfrage zu sehen.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Theme.Spacing.l)
-            }
-            statusPill
             if !model.route.isEmpty {
                 Button("Route ausblenden") {
                     model.route = []

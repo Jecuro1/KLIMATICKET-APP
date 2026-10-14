@@ -38,7 +38,7 @@ struct TrainSearchView: View {
                 }
             }
             .fullScreenCover(item: $mapRun) { run in
-                RadarView(focusTripID: run.tripID)
+                RadarView(focusTripID: run.tripID, closeSearch: { dismiss() })
             }
             .task {
                 guard let initialText else { return }
@@ -173,12 +173,13 @@ struct TrainSearchView: View {
     private var footnote: String? {
         var parts: [String] = []
         if let updated = model.realtimeUpdatedAt { parts.append("Echtzeit-Stand \(Format.time(updated))") }
-        if model.hiddenCount > 0 { parts.append("\(model.hiddenCount) mit längerer Nummer ausgeblendet") }
+        if model.hiddenCount > 0 { parts.append("\(model.hiddenCount) ähnliche Nummern ausgeblendet") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private func follow(_ run: TrainRun) {
-        guard let target = run.followTarget else { return }
+        // The live follow polls ÖBB: it starts only while live data is allowed (consent, switch, kill switch, connectivity).
+        guard app.live.timetableUnavailable == nil, let target = run.followTarget else { return }
         LiveFollowTracker.shared.start(target, live: app.live)
         dismiss()
     }
@@ -240,7 +241,7 @@ private struct TrainRunCard: View {
             Text(name)
                 .font(Theme.Typography.body)
                 .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: Theme.Spacing.s)
             if let event {
                 RealtimeTime(planned: event.planned, label: RealtimePresentation.label(event), style: .row)

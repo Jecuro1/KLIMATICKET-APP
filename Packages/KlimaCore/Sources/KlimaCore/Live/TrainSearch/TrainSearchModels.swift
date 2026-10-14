@@ -121,9 +121,9 @@ public struct TrainRun: Sendable, Hashable, Identifiable {
 }
 
 public struct TrainSearchResult: Sendable, Hashable {
-    /// Where the runs come from. `journeyMatch` is the ÖBB name search; `stationBoards` is the honest fallback that searches
-    /// today's departures of the big stations (the UI labels it).
-    public enum Source: String, Sendable, Hashable { case journeyMatch, stationBoards }
+    /// Where the runs come from. Only the ÖBB name search (`journeyMatch`) exists. A fallback over station boards is not
+    /// built (docs/OEBB_LIVE.md §R9), so there is no second case that the UI would have to label.
+    public enum Source: String, Sendable, Hashable { case journeyMatch }
 
     public var source: Source
     public var runs: [TrainRun]
