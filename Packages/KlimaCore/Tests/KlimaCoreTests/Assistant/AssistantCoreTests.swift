@@ -58,4 +58,9 @@ final class AssistantCoreTests: XCTestCase {
         let nothing = rules.filled(from: TripQueryDraft(source: .model))
         XCTAssertEqual(nothing.source, .rules)
     }
+
+    func testIsoDayIsTheFormTheModelAnswersIn() {
+        let date = Calendar.vienna.date(from: DateComponents(year: 2026, month: 10, day: 4, hour: 23))!
+        XCTAssertEqual(AssistantFormat.isoDay(date), "2026-10-04")
+    }
 }

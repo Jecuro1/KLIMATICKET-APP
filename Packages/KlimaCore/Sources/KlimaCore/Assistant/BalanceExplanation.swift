@@ -73,6 +73,20 @@ public struct BalanceFacts: Equatable, Sendable {
                             lines: lines)
     }
 
+    /// Fixed figures for the demo and screenshot scene (no user data, no model call): a ticket that is on track.
+    public static var demo: BalanceFacts {
+        var calendar = Calendar.vienna
+        let breakEven = calendar.date(from: DateComponents(year: 2026, month: 11, day: 14, hour: 12)) ?? Date(timeIntervalSince1970: 0)
+        calendar.timeZone = TimeZone(identifier: "Europe/Vienna") ?? .current
+        let summary = SavingsSummary(ticketPrice: 1400, totalValue: 1085, net: -315, amortizedFraction: 0.775,
+                                     tripCount: 12, legCount: 12, travelDays: 9, distanceKm: 1240, co2SavedKg: 182,
+                                     carCostEquivalent: 0, daysElapsed: 200, daysTotal: 365, daysRemaining: 60,
+                                     costPerDay: 3.8, valuePerDay: 5.4, averageValuePerTrip: 90.4, effectivePricePerKm: nil,
+                                     isPaidOff: false, paidOffDate: nil, forecastBreakEvenDate: breakEven,
+                                     forecastEndValue: 1520, forecastReachesBreakEven: true)
+        return make(ticketName: "KlimaTicket Österreich 2026", summary: summary, isExpired: false, calendar: calendar)
+    }
+
     /// The deterministic explanation. Used whenever the model is off, unavailable, or its text fails the number check.
     public var ruleText: String {
         let f = AssistantFormat.self
@@ -174,6 +188,18 @@ public struct RouteTimeSuggestion: Equatable, Sendable {
     /// Trips of this relation that started within the window around the current hour.
     public var matching: Int
     public var total: Int
+
+    /// Facts for the model and for the number check: the relation and the two counts.
+    public func facts(fromName: String, toName: String) -> [String] {
+        ["Strecke: \(fromName) – \(toName)",
+         "Fahrten um diese Zeit: \(AssistantFormat.integer(matching))",
+         "Fahrten insgesamt: \(AssistantFormat.integer(total))"]
+    }
+
+    /// The rule text, e.g. "Du fährst Wien Hbf – Innsbruck Hbf oft um diese Zeit: 3 von 4 Fahrten."
+    public func ruleText(fromName: String, toName: String) -> String {
+        "Du fährst \(fromName) – \(toName) oft um diese Zeit: \(AssistantFormat.integer(matching)) von \(AssistantFormat.integer(total)) Fahrten."
+    }
 }
 
 /// Rule-based suggestion: a saved relation that is usually driven around this time of day. Needs enough trips and a clear
@@ -209,6 +235,10 @@ public enum AssistantPrompts {
         + "in der Du-Form, warm und klar, höchstens vier kurze Sätze, ohne Überschrift und ohne Aufzählung. Verwende nur die "
         + "Angaben in der Liste und übernimm jede Zahl genau so, wie sie dort steht. Erfinde keine Zahlen, Preise, Strecken "
         + "oder Termine."
+
+    public static let routeInstructions =
+        "Du formulierst einen kurzen Vorschlag für eine Zugverbindung in Österreich, auf Deutsch, in der Du-Form, höchstens zwei "
+        + "Sätze. Verwende nur die Angaben in der Liste und übernimm jede Zahl genau so, wie sie dort steht. Erfinde nichts."
 
     public static let recapInstructions =
         "Du schreibst einen Wochenrückblick für ein Ticket in Österreich in einem kurzen Satz auf Deutsch, Du-Form. Verwende nur "

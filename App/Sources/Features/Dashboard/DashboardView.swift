@@ -74,6 +74,10 @@ struct DashboardView: View {
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, -Theme.Spacing.xs)
                             .reveal(order: 2)
+                        // MARK: ai – "Warum lohnt sich mein Ticket?" (docs/LOCAL_AI.md §3.2)
+                        AssistantWhyTicketButton(snapshot: snapshot)
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.top, Theme.Spacing.xs)
                     } else {
                         DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
                             .padding(.horizontal, Theme.Spacing.cardGutter)

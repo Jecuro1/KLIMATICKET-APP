@@ -102,9 +102,12 @@ private struct CelebrationRing<T: Equatable>: View {
 /// The burst's dots: fixed directions and sizes (no randomness per frame, nothing allocated while animating).
 private enum BurstDots {
     static let all: [(angle: Double, distance: Double, size: Double)] = (0..<12).map { i in
-        (angle: Double(i) / 12 * 2 * .pi + (i.isMultiple(of: 2) ? 0 : 0.18),
-         distance: i.isMultiple(of: 2) ? 1 : 0.72,
-         size: i.isMultiple(of: 3) ? 6 : 4.5)
+        // Split up for the type checker (same values as before).
+        let turn: Double = Double(i) / 12 * 2 * Double.pi
+        let skew: Double = i.isMultiple(of: 2) ? 0 : 0.18
+        return (angle: turn + skew,
+                distance: i.isMultiple(of: 2) ? 1 : 0.72,
+                size: i.isMultiple(of: 3) ? 6 : 4.5)
     }
 }
 

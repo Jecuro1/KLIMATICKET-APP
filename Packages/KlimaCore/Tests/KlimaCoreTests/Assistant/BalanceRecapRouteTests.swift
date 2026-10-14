@@ -90,4 +90,21 @@ final class BalanceRecapRouteTests: XCTestCase {
         XCTAssertEqual(groups.count, 1)
         XCTAssertEqual(groups.first?.starts.count, 2)
     }
+
+    func testDemoFactsAreOnTrackAndTheirTextsUseOnlyFacts() {
+        let demo = BalanceFacts.demo
+        XCTAssertEqual(demo.phase, .onTrack)
+        XCTAssertTrue(demo.lines.contains("Fehlt bis zum Preis: € 315"))
+        XCTAssertTrue(demo.ruleText.contains("14.11."))
+        XCTAssertEqual(AssistantNumberGuard.unknown(in: demo.ruleText, facts: demo.lines), [])
+    }
+
+    func testRouteSuggestionTextsUseOnlyFacts() {
+        let suggestion = RouteTimeSuggestion(fromID: "a", toID: "b", matching: 3, total: 4)
+        let facts = suggestion.facts(fromName: "Wien Hbf", toName: "Innsbruck Hbf")
+        XCTAssertEqual(suggestion.ruleText(fromName: "Wien Hbf", toName: "Innsbruck Hbf"),
+                       "Du fährst Wien Hbf – Innsbruck Hbf oft um diese Zeit: 3 von 4 Fahrten.")
+        XCTAssertEqual(AssistantNumberGuard.unknown(in: suggestion.ruleText(fromName: "Wien Hbf", toName: "Innsbruck Hbf"), facts: facts), [])
+        XCTAssertEqual(AssistantNumberGuard.unknown(in: "Du fährst oft um 7 Uhr", facts: facts), ["7"])
+    }
 }

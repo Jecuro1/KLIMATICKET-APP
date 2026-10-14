@@ -89,6 +89,11 @@ public protocol ConvertibleToGeneratedContent: InstructionsRepresentable, Prompt
     var generatedContent: GeneratedContent { get }
 }
 
+extension ConvertibleToGeneratedContent {
+    public var instructionsRepresentation: Instructions { _fmStub() }
+    public var promptRepresentation: Prompt { _fmStub() }
+}
+
 public protocol Generable: ConvertibleFromGeneratedContent, ConvertibleToGeneratedContent {
     associatedtype PartiallyGenerated: ConvertibleFromGeneratedContent = Self
     static var generationSchema: GenerationSchema { get }

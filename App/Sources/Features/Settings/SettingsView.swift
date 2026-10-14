@@ -35,6 +35,7 @@ struct SettingsView: View {
                 PerkSettingsSection() // MARK: benefits
                 SetCaptureSection()
                 SetAppearanceSection()
+                SetAssistantSection() // MARK: ai – „KI auf dem Gerät“ (docs/LOCAL_AI.md)
                 SetNotificationsSection()
                 SetUpdatesSection(showsUpdateSheet: $showsUpdateSheet)
                 SetDataSection()

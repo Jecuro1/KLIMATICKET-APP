@@ -137,6 +137,11 @@ struct RootView: View {
                 }
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
+                // MARK: ai – the Sunday recap text is written here, in the foreground (docs/LOCAL_AI.md §3)
+                if app.settings.weeklySummaryEnabled {
+                    let weekTrips = Repository(context: context, app: app).liveTrips().map(\.record)
+                    Task { await app.refreshWeeklySummary(trips: weekTrips) }
+                }
                 // MARK: widgets – the station list (offline) and, with consent and at most every 15 min, the live caches
                 let favorites = Repository(context: context, app: app).liveFavorites()
                 WidgetCacheSync.stationsDidChange(favorites: favorites, homeStationID: app.settings.homeStationID, stations: app.stations)
@@ -454,6 +459,9 @@ struct ScreenshotRouter: View {
         case "car", "carDetails", "carSettings", "carSettingsDetails", "carCard", "work", "workDetails", "workSelf",
              "workAssign", "workContribution", "workPDF", "workLogbookPDF":
             WorkScreenshotHost(screen: screen)
+        // MARK: ai – on-device assistant: Settings › KI (available, unavailable), Suche in Worten, Warum lohnt sich mein Ticket (demo, no model call)
+        case let aiScreen where AIScreenshotHost.screens.contains(aiScreen):
+            AIScreenshotHost(screen: aiScreen)
         // MARK: scotty – Zug-Radar, Störungen, Live verfolgen (demo data, no network)
         case let scottyScreen where ScottyScreenshotHost.screens.contains(scottyScreen):
             ScottyScreenshotHost(screen: scottyScreen)

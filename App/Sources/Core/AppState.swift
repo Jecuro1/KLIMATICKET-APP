@@ -90,6 +90,8 @@ final class AppState {
     // MARK: planner – live data (consent, kill switch, services) and the Fahrplan model.
     let live: LiveDataService
     let planner: PlannerModel
+    /// The on-device assistant (docs/LOCAL_AI.md): asked only in the foreground, rule-based fallbacks everywhere.
+    let assistant: LocalAssistant
 
     // Navigation / presentation
     var selectedTab: AppTab = .overview
@@ -123,6 +125,7 @@ final class AppState {
                                    stations: { bundled.stations.value }, relations: { bundled.relations.value })
         self.live = live
         self.planner = PlannerModel(live: live, stations: { bundled.stations.value }, settings: appSettings)
+        self.assistant = LocalAssistant(settings: appSettings)   // MARK: ai
         LaunchTrace.mark("state.services")
         // Region events relaunch the app in the background, without UI – so RootView never configures detection.
         // Resolve the monitored stations (region id = station id) and prices lazily instead.
@@ -132,6 +135,13 @@ final class AppState {
     }
 
     var estimator: FareEstimator { FareEstimator(catalog: catalog, relations: relations) }
+
+    /// The Sunday notification's text is written here, when the app becomes active, never in the background (docs/LOCAL_AI.md §3).
+    func refreshWeeklySummary(trips: [TripRecord]) async {
+        guard settings.weeklySummaryEnabled else { return }
+        let recap = await assistant.weeklyRecap(WeeklyRecapFacts.make(trips: trips, now: Date()))
+        await notifications.setWeeklySummary(enabled: true, body: recap.text)
+    }
 
     func reloadCatalog() {
         catalog = tariffs.currentCatalog()
@@ -314,6 +324,8 @@ final class AppSettings {
     var autoUpdateCheck: Bool { didSet { defaults.set(autoUpdateCheck, forKey: "autoUpdateCheck") } }
     var renewalRemindersEnabled: Bool { didSet { defaults.set(renewalRemindersEnabled, forKey: "renewalRemindersEnabled") } }
     var weeklySummaryEnabled: Bool { didSet { defaults.set(weeklySummaryEnabled, forKey: "weeklySummaryEnabled") } }
+    /// KI auf dem Gerät (docs/LOCAL_AI.md): off means the model is never asked; the rule-based texts keep working.
+    var localAIEnabled: Bool { didSet { defaults.set(localAIEnabled, forKey: "localAIEnabled") } }
     var selectedTicketID: UUID? { didSet { defaults.set(selectedTicketID?.uuidString, forKey: "selectedTicketID") } }
     var celebratedBreakEvenTicketIDs: [String] { didSet { defaults.set(celebratedBreakEvenTicketIDs, forKey: "celebratedBreakEven") } }
     // MARK: planner – live data (docs/OEBB_LIVE.md §E4). Nothing is sent before `liveConsentRaw` is "granted".
@@ -345,6 +357,7 @@ final class AppSettings {
         autoUpdateCheck = defaults.object(forKey: "autoUpdateCheck") as? Bool ?? true
         renewalRemindersEnabled = defaults.object(forKey: "renewalRemindersEnabled") as? Bool ?? true
         weeklySummaryEnabled = defaults.bool(forKey: "weeklySummaryEnabled")
+        localAIEnabled = defaults.object(forKey: "localAIEnabled") as? Bool ?? true
         selectedTicketID = defaults.string(forKey: "selectedTicketID").flatMap(UUID.init(uuidString:))
         celebratedBreakEvenTicketIDs = defaults.stringArray(forKey: "celebratedBreakEven") ?? []
         liveConsentRaw = defaults.string(forKey: "liveConsent") ?? "undecided"   // MARK: planner

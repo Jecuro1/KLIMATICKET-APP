@@ -232,6 +232,8 @@ struct ConnectionsHome: View {
                 PlannerTimeRow()
             }
             .reveal(order: 2)
+            AssistantTripQueryButton()   // MARK: ai – "In Worten suchen" (docs/LOCAL_AI.md §3.1)
+                .reveal(order: 2)
             if model.hasBoth {
                 Button { model.startSearch() } label: {
                     Text("Verbindungen suchen").font(.headline).frame(maxWidth: .infinity, minHeight: 28)
@@ -241,6 +243,8 @@ struct ConnectionsHome: View {
                 .disabled(app.live.timetable == nil)
                 .motionTransition(.rise)
             }
+            AssistantRouteHint(trips: trips)   // MARK: ai – "Vorschlag für jetzt" (docs/LOCAL_AI.md §3.4)
+                .reveal(order: 3)
             if !model.routes.isEmpty {
                 YourRoutesSection(routes: model.routes)
                     .reveal(order: 3)

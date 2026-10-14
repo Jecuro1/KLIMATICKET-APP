@@ -56,13 +56,13 @@ final class NotificationService {
         center.removePendingNotificationRequests(withIdentifiers: pending)
     }
 
-    /// Sunday 18:00 nudge to review the week ("Deine Woche: 6 Fahrten, € 84 Wert").
-    func setWeeklySummary(enabled: Bool) async {
+    /// Sunday 18:00 nudge to review the week. `body` is the recap text written in the foreground (LocalAssistant), if any.
+    func setWeeklySummary(enabled: Bool, body: String? = nil) async {
         center.removePendingNotificationRequests(withIdentifiers: ["weekly.summary"])
         guard enabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "Deine Woche mit den Öffis"
-        content.body = "Schau nach, wie viel du diese Woche gespart hast – und ob alle Fahrten erfasst sind."
+        content.body = body ?? "Schau nach, wie viel du diese Woche gespart hast – und ob alle Fahrten erfasst sind."
         content.sound = .default
         var comps = DateComponents()
         comps.weekday = 1

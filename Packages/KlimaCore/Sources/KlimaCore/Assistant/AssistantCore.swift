@@ -100,6 +100,12 @@ public enum AssistantFormat {
 
     public static func kilometres(_ value: Double) -> String { integer(Int(value.rounded())) + " km" }
 
+    /// yyyy-MM-dd in the Vienna calendar: the form the model is asked to answer dates in.
+    public static func isoDay(_ date: Date, calendar: Calendar = .vienna) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04ld-%02ld-%02ld", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
     /// `04.10.` – day and month with a trailing dot, the way German dates are written.
     public static func dayMonth(_ date: Date, calendar: Calendar = .vienna) -> String {
         let parts = calendar.dateComponents([.day, .month], from: date)
