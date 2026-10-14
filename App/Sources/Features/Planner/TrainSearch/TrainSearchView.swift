@@ -250,7 +250,8 @@ private struct TrainRunCard: View {
 
     @ViewBuilder private var actions: some View {
         if isActive {
-            HStack(spacing: Theme.Spacing.s) {
+            // Stacked, full width: two labels side by side truncated at the phone width.
+            VStack(spacing: Theme.Spacing.s) {
                 Button(action: onFollow) {
                     Label("Live verfolgen", systemImage: "location.fill")
                         .frame(maxWidth: .infinity)
@@ -259,8 +260,6 @@ private struct TrainRunCard: View {
                 .disabled(run.followTarget == nil)
                 Button(action: onMap) {
                     Label("Auf der Karte zeigen", systemImage: "map")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
