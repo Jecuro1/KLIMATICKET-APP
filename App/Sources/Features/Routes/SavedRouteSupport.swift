@@ -52,16 +52,18 @@ enum SavedRouteFigures {
 /// request of the view itself.
 @MainActor
 enum SavedRouteDepartures {
-    /// Only direct routes have cached connections: a route with via stops or several legs is not asked for.
-    static func cached(for route: FavoriteRouteEntity) -> WidgetConnectionCache? {
-        guard route.viaRaw.isEmpty, !route.isCombo else { return nil }
-        guard let cache = WidgetCache.connections, cache.routes[route.id.uuidString] != nil else { return nil }
-        return cache
+    /// The connection cache the route screens show. It is read once per render and passed down to the rows (a decode per
+    /// row would run in the view body). nil in demo mode, where the demo departures are used instead.
+    static func currentCache() -> WidgetConnectionCache? {
+        LaunchMode.useDemoData ? nil : WidgetCache.connections
     }
 
-    static func connections(for route: FavoriteRouteEntity) -> [WidgetConnection] {
+    /// The next connections of one route from `cache`. Only direct routes have cached connections: a route with via stops
+    /// or several legs is not asked for, so it has none.
+    static func connections(for route: FavoriteRouteEntity, in cache: WidgetConnectionCache?) -> [WidgetConnection] {
         if LaunchMode.useDemoData { return SavedRouteDemo.connections(for: route, now: Date()) }
-        return cached(for: route)?.routes[route.id.uuidString] ?? []
+        guard route.viaRaw.isEmpty, !route.isCombo else { return [] }
+        return cache?.routes[route.id.uuidString] ?? []
     }
 
     /// Asks for fresh departures of the routes when the live data is allowed and the last refresh is old enough. The

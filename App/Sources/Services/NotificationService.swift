@@ -67,6 +67,7 @@ final class NotificationService {
         var comps = DateComponents()
         comps.weekday = 1
         comps.hour = 18
+        comps.timeZone = AlarmCalendar.vienna.timeZone   // the Alarms screen shows Sunday 18:00 in Vienna time
         let request = UNNotificationRequest(identifier: "weekly.summary", content: content,
                                             trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: true))
         try? await center.add(request)

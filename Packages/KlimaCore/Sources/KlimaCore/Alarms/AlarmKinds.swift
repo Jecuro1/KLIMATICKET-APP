@@ -89,4 +89,13 @@ public enum AlarmIdentifier {
         guard parts.count == 2, !parts[0].isEmpty else { return nil }
         return String(parts[0])
     }
+
+    /// The route reminders among `identifiers` whose saved route is not in `activeRouteIDs`. Such a reminder must not fire
+    /// any more: its route was deleted (on another device through sync, or by "Alles löschen").
+    public static func orphanedRouteReminders(in identifiers: [String], activeRouteIDs: Set<String>) -> [String] {
+        identifiers.filter { identifier in
+            guard let routeID = routeID(of: identifier) else { return false }
+            return !activeRouteIDs.contains(routeID)
+        }
+    }
 }

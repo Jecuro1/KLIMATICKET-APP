@@ -135,7 +135,14 @@ final class AlarmsModel {
             app.settings.weeklySummaryEnabled = on
             await NotificationService().setWeeklySummary(enabled: on)
         default:
-            if on { await resume(group: item.id) } else { await pause(group: item.id) }
+            if on {
+                let resumed = await resume(group: item.id)
+                if !resumed {
+                    app.showToast("bell.slash.fill", "Alarm bleibt aus", "Erlaube Mitteilungen in den iOS-Einstellungen, dann schaltest du ihn wieder ein.")
+                }
+            } else {
+                await pause(group: item.id)
+            }
         }
         await reload(app: app, routes: routes)
     }
@@ -191,25 +198,39 @@ final class AlarmsModel {
         center.removePendingNotificationRequests(withIdentifiers: pending.map(\.identifier))
     }
 
-    /// Schedules the paused alarms of one row again. Nothing happens without the system permission; the screen says why.
-    private func resume(group key: String) async {
+    /// Schedules the paused alarms of one row again. Asks for the system permission when it was never asked. Without the
+    /// permission nothing is scheduled and the alarm stays paused. An alarm leaves the paused list only once iOS accepted
+    /// it; a moment that has passed is dropped. Returns false when an alarm could not be scheduled.
+    private func resume(group key: String) async -> Bool {
         let center = UNUserNotificationCenter.current()
-        let status = await center.notificationSettings().authorizationStatus
-        guard status == .authorized || status == .provisional || status == .ephemeral else { return }
+        var status = await center.notificationSettings().authorizationStatus
+        if status == .notDetermined {
+            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+            status = await center.notificationSettings().authorizationStatus
+        }
+        guard status == .authorized || status == .provisional || status == .ephemeral else { return false }
         let now = Date()
         var paused = PausedAlarmStore.load()
-        let mine = paused.filter { AlarmIdentifier.groupKey(of: $0.id) == key }
-        for record in mine {
-            guard let trigger = AlarmTriggers.notificationTrigger(for: record.trigger, now: now) else { continue }
+        var allResumed = true
+        for record in paused where AlarmIdentifier.groupKey(of: record.id) == key {
+            guard let trigger = AlarmTriggers.notificationTrigger(for: record.trigger, now: now) else {
+                paused.removeAll { $0.id == record.id }
+                continue
+            }
             let content = UNMutableNotificationContent()
             content.title = record.title
             content.body = record.body
             content.sound = .default
             content.threadIdentifier = record.kind == .routeReminder ? AlarmIdentifier.routePrefix + (AlarmIdentifier.routeID(of: record.id) ?? "") : "alarms"
-            try? await center.add(UNNotificationRequest(identifier: record.id, content: content, trigger: trigger))
+            do {
+                try await center.add(UNNotificationRequest(identifier: record.id, content: content, trigger: trigger))
+                paused.removeAll { $0.id == record.id }
+            } catch {
+                allResumed = false
+            }
         }
-        paused.removeAll { AlarmIdentifier.groupKey(of: $0.id) == key }
         PausedAlarmStore.save(paused)
+        return allResumed
     }
 
     private func dropPending(group key: String) async {

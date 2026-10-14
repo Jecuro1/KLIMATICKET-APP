@@ -15,6 +15,8 @@ struct SavedRoutesView: View {
     @State private var isRefreshing = false
 
     var body: some View {
+        // Read once per render: the rows and the footer share it.
+        let cache = SavedRouteDepartures.currentCache()
         NavigationStack {
             List {
                 if routes.isEmpty {
@@ -32,14 +34,14 @@ struct SavedRoutesView: View {
                             NavigationLink {
                                 SavedRouteDetailView(route: route, onSearch: { dismiss() })
                             } label: {
-                                SavedRouteRow(route: route)
+                                SavedRouteRow(route: route, cache: cache)
                             }
                             .listRowBackground(Theme.surface)
                         }
                         .onMove(perform: move)
                         .onDelete(perform: delete)
                     } footer: {
-                        Text(footerText)
+                        Text(footerText(cache: cache))
                     }
                 }
             }
@@ -72,10 +74,10 @@ struct SavedRoutesView: View {
     }
 
     /// The live line under the list: why there are no departures, or when they were fetched.
-    private var footerText: String {
+    private func footerText(cache: WidgetConnectionCache?) -> String {
         if let text = SavedRouteDepartures.unavailableText(app.live) { return text }
         if isRefreshing { return "Abfahrten werden geladen …" }
-        if let fetched = WidgetCache.connections?.fetchedAt {
+        if let fetched = cache?.fetchedAt {
             return "Abfahrten Stand \(Format.time(fetched)). Ziehen zum Aktualisieren."
         }
         return "Ziehen zum Laden der nächsten Abfahrten."

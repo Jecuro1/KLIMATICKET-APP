@@ -124,13 +124,16 @@ enum AlarmTriggers {
         return RouteSchedule(weekdays: weekdays, hour: clock.hour, minute: clock.minute).summary
     }
 
-    /// The system trigger for a stored one; nil when a single moment has passed.
+    /// The system trigger for a stored one; nil when a single moment has passed. Calendar triggers carry Vienna's time zone,
+    /// as the schedules do: the moment the Alarms screen shows is the moment the notification fires.
     static func notificationTrigger(for trigger: AlarmTrigger, now: Date) -> UNNotificationTrigger? {
-        if let components = trigger.components {
+        if var components = trigger.components {
+            components.timeZone = AlarmCalendar.vienna.timeZone
             return UNCalendarNotificationTrigger(dateMatching: components, repeats: trigger.repeats)
         }
         guard let date = trigger.date, date > now else { return nil }
-        let parts = AlarmCalendar.vienna.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        var parts = AlarmCalendar.vienna.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        parts.timeZone = AlarmCalendar.vienna.timeZone
         return UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
     }
 }

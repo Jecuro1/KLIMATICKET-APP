@@ -124,6 +124,7 @@ struct RootView: View {
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
             await Diagnostics.measureAsync("Sync") { await app.sync.sync(context: context, auth: app.auth) }
             repo.refreshWidgets()
+            await SavedRouteReminders.reconcile(context: context)   // MARK: routes – a route deleted by sync stops reminding
         }
         .onChange(of: scenePhase, initial: true) { _, phase in
             guard !LaunchMode.isSandboxed else { return }
@@ -137,6 +138,8 @@ struct RootView: View {
                 }
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
+                // MARK: routes – reminders of routes that are gone (deleted here or on another device) do not fire
+                Task { await SavedRouteReminders.reconcile(context: context) }
                 // MARK: ai – the Sunday recap text is written here, in the foreground (docs/LOCAL_AI.md §3)
                 if app.settings.weeklySummaryEnabled {
                     let weekTrips = Repository(context: context, app: app).liveTrips().map(\.record)

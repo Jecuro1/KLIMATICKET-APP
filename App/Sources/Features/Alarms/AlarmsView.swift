@@ -258,11 +258,12 @@ struct AlarmRow: View {
                 .foregroundStyle(item.isOn ? item.kind.tint : Theme.textTertiary)
                 .frame(width: 36, height: 36)
                 .background(item.kind.tint.opacity(item.isOn ? 0.16 : 0.07), in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(item.title)
                     .font(.headline)
                     .foregroundStyle(item.isOn ? Theme.textPrimary : Theme.textSecondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(item.detail)
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)

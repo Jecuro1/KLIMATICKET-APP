@@ -23,28 +23,39 @@ was bewusst fehlt und welche Kennungen als Vertrag gelten. Live-Regeln bleiben i
 
 ### 1.3 Erinnerungen
 
-- Je Wochentag eine wiederkehrende lokale Mitteilung (`UNCalendarNotificationTrigger`, `repeats: true`), `leadMinutes` vor der Abfahrt,
-  in Europe/Vienna. Die Kennung ist `route.<Route-UUID>.<Wochentag der Erinnerung>`. Ein Vorlauf kann eine Erinnerung auf den Vortag
+- Je Wochentag eine wiederkehrende lokale Mitteilung (`UNCalendarNotificationTrigger`, `repeats: true`), `leadMinutes` vor der Abfahrt.
+  Die Zeit ist Wiener Fahrplanzeit: die Trigger tragen `timeZone = Europe/Vienna`, unabhängig von der Zeitzone des Telefons.
+  Erinnerungen, die vor diesem Stand gesetzt wurden, folgen der Gerätezeit (auf einem Gerät in Wien gleich).
+  Die Kennung ist `route.<Route-UUID>.<Wochentag der Erinnerung>`. Ein Vorlauf kann eine Erinnerung auf den Vortag
   schieben (Montag 00:05 mit 10 Min Vorlauf → Sonntag 23:55); `RouteSchedule.reminderSlots` rechnet das.
 - Beim Speichern einer Route werden alle ihre Erinnerungen ersetzt (`SavedRouteReminders.apply`). Die Berechtigung wird nur gefragt,
-  wenn die Route einen Zeitplan hat. Ohne Erlaubnis bleibt die Route gespeichert, die Erinnerung nicht; der Editor sagt das.
+  wenn die Route einen Zeitplan hat. Das Ergebnis (`Outcome`) sagt der Editor: ohne Erlaubnis bleibt die Route gespeichert, die
+  Erinnerung nicht; kann iOS einzelne Erinnerungen nicht annehmen, steht das dabei.
+- Eine gelöschte Route (lokal, durch Sync von einem anderen Gerät oder durch „Alles löschen“) verliert ihre Erinnerungen: beim Start,
+  bei der Rückkehr in die App, nach jedem Sync und beim Löschen der lokalen Daten räumt `SavedRouteReminders.reconcile` auf. Die
+  Auswahl der betroffenen Kennungen ist `AlarmIdentifier.orphanedRouteReminders` (Linux-getestet). Ist der Speicher nicht lesbar,
+  bleibt alles stehen.
 - Keine Anfrage ans Netz, kein Hintergrundlauf der App. iOS löst die Mitteilungen selbst aus.
 
 ### 1.4 Live-Abfahrten (Einwilligung, Zwischenspeicher)
 
 - Die nächsten Abfahrten kommen aus dem Widget-Zwischenspeicher (`WidgetCache.connections`, geschrieben von `WidgetCacheSync.refreshLive`).
   Die Route-Ansicht fragt nichts selbst ab. Die Aktualisierung prüft die Einwilligung, die Drosselung (15 Min, außer
-  „Ziehen zum Aktualisieren“) und das Anfragebudget.
+  „Ziehen zum Aktualisieren“) und das Anfragebudget. Die Liste liest den Zwischenspeicher einmal je Darstellung und gibt ihn an die
+  Zeilen weiter. Die Detailkarte nennt den Stand („Stand HH:mm · vom letzten Abruf“), weil die Zeiten vom letzten Abruf sind.
+  Im Demo-Lauf kommen die Abfahrten aus `SavedRouteDemo`, nie aus dem Zwischenspeicher.
 - Nur Direktstrecken ohne Zwischenhalt und ohne Kombi-Vorlage haben Abfahrten (so fragt auch das Widget). Für die anderen steht das
   im Text, es wird nichts vorgetäuscht.
 - Ohne Einwilligung, bei Sperre oder ohne Netz zeigt die Liste den Grund in Worten (`SavedRouteDepartures.unavailableText`).
 
 ### 1.5 Preis und CO₂
 
-- Der Preis ist der gespeicherte Preis je Fahrt. Beim Anlegen mit zwei bekannten Stationen schätzt der Editor ihn und die Strecke mit dem
-  App-Schätzer (`app.estimator`, `FareEstimator`), wenn der Nutzer den Preis nicht selbst eingetragen hat. Ohne Preis steht „Preis offen“.
+- Der Preis ist der gespeicherte Preis je Fahrt (eine Richtung). Beim Anlegen mit zwei bekannten Stationen schätzt der Editor ihn und die
+  Strecke mit dem App-Schätzer (`app.estimator`, `FareEstimator`), wenn der Nutzer den Preis nicht selbst eingetragen hat; die Schätzung
+  gilt, bis der Nutzer den Preis ändert, und ändert sich mit den Stationen. Ohne Preis steht „Preis offen“.
+- Hin und zurück zählt doppelt: Preis und CO₂ der Liste und der Detailkarte sind dann „hin & retour“ beschriftet (`valuePerLog`).
 - CO₂ je Fahrt = Strecke × Faktor des Verkehrsmittels (`app.catalog.emissions`, `EmissionFactors`; Standardwerte des Umweltbundesamts,
-  `SavedRoutes.co2Kg`). Hin und zurück zählt doppelt.
+  `SavedRoutes.co2Kg`).
 
 ### 1.6 Aktionen
 
@@ -80,7 +91,9 @@ Die Präfixe stehen in `AlarmIdentifier` (KlimaCore). Eine Änderung verwaist di
 ### 2.2 Ein, aus, löschen, bearbeiten
 
 - **Aus** entfernt die ausstehende Mitteilung und merkt sich ihren Auslöser (`PausedAlarmStore`, UserDefaults). **An** plant sie neu,
-  nur wenn der Termin noch kommt und die Erlaubnis da ist. Ein Termin in der Vergangenheit bleibt als „abgelaufen“ aus.
+  nur wenn der Termin noch kommt. Wurde die Erlaubnis nie erfragt, fragt iOS jetzt; ohne Erlaubnis bleibt der Alarm aus und ein Hinweis
+  erscheint. Ein Alarm verlässt die Liste der ausgeschalteten erst, wenn iOS ihn angenommen hat; ein Termin in der Vergangenheit bleibt
+  als „abgelaufen“ aus.
 - Mehrere Mitteilungen einer Zeile (alle Wochentage einer Route, alle Fristen eines Tickets) schalten gemeinsam
   (`AlarmIdentifier.groupKey`).
 - **Löschen** einer Routen-Erinnerung entfernt auch den Zeitplan der Route. Die Route bleibt.
@@ -110,7 +123,7 @@ Die Präfixe stehen in `AlarmIdentifier` (KlimaCore). Eine Änderung verwaist di
 - `Alarms/AlarmKinds.swift`: Arten, Kennungen, Gruppen, Route-ID aus Kennung.
 - `Alarms/AlarmModel.swift`: Auslöser als Werte, pausierter Alarm, Zeile, Sortierung, Budget ausstehender Mitteilungen.
 - `Alarms/NoticeHistory.swift`: Verlauf mit Obergrenze 30, Dubletten, Zusammenführung.
-- Tests: `Packages/KlimaCore/Tests/KlimaCoreTests/Routes/` und `…/Alarms/` (36 Tests, alle grün auf Linux).
+- Tests: `Packages/KlimaCore/Tests/KlimaCoreTests/Routes/` und `…/Alarms/` (38 Tests, Linux).
 
 ## 4. Demo und Screenshots
 

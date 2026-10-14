@@ -14,6 +14,7 @@ struct SavedRouteDetailView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showsEditor = false
     @State private var showsWidgetHelp = false
     @State private var showsDeleteConfirm = false
@@ -80,7 +81,7 @@ struct SavedRouteDetailView: View {
                         Text(name)
                             .font(index == 0 || index == stops.count - 1 ? .headline : .subheadline)
                             .foregroundStyle(Theme.textPrimary)
-                            .lineLimit(1)
+                            .lineLimit(2)
                     }
                 }
                 if route.isRoundTrip {
@@ -93,12 +94,17 @@ struct SavedRouteDetailView: View {
         }
     }
 
+    /// The figures: side by side, stacked at the accessibility sizes. The fare and CO₂ say "hin & retour" for a return trip,
+    /// as the fare and the CO₂ of a log do (`valuePerLog`, the doubled distance).
     private var figures: some View {
-        HStack(spacing: Theme.Spacing.s) {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
+        return layout {
             StatTile(value: SavedRouteFigures.fareEUR(route).map { Format.euroPrecise($0) } ?? "offen",
-                     label: "Preis je Fahrt", symbol: "eurosign.circle.fill", color: Theme.glacier)
+                     label: route.isRoundTrip ? "Preis hin & retour" : "Preis je Fahrt", symbol: "eurosign.circle.fill", color: Theme.glacier)
             StatTile(value: Format.number(SavedRouteFigures.co2Kg(route, app: app), decimals: 1), unit: "kg",
-                     label: "CO₂ je Fahrt", symbol: "leaf.fill", color: Theme.pine)
+                     label: route.isRoundTrip ? "CO₂ hin & retour" : "CO₂ je Fahrt", symbol: "leaf.fill", color: Theme.pine)
             StatTile(value: Format.number(SavedRouteFigures.distanceKm(route)), unit: "km",
                      label: route.isRoundTrip ? "Hin & retour" : "Strecke", symbol: "point.topleft.down.to.point.bottomright.curvepath.fill",
                      color: Theme.dusk)
@@ -106,13 +112,15 @@ struct SavedRouteDetailView: View {
     }
 
     @ViewBuilder private var departures: some View {
+        // One read of the cache for this render (see SavedRouteDepartures.currentCache).
+        let cache = SavedRouteDepartures.currentCache()
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             SectionHeader(title: "Nächste Abfahrten")
             GlassCard(padding: Theme.Spacing.m) {
                 if !route.viaRaw.isEmpty || route.isCombo {
                     departureNote("Für Strecken mit Zwischenhalt oder mehreren Teilstrecken holen wir keine Live-Abfahrten.")
                 } else {
-                    let upcoming = SavedRouteDepartures.connections(for: route)
+                    let upcoming = SavedRouteDepartures.connections(for: route, in: cache)
                         .filter { ($0.realtime ?? $0.planned) >= Date().addingTimeInterval(-60) }
                         .prefix(4)
                     if upcoming.isEmpty {
@@ -126,6 +134,12 @@ struct SavedRouteDetailView: View {
                         }
                     }
                 }
+            }
+            // The times are the ones of the last live refresh: say when that was.
+            if let fetched = cache?.fetchedAt, !route.isCombo, route.viaRaw.isEmpty {
+                Text("Stand \(Format.time(fetched)) · vom letzten Abruf")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textTertiary)
             }
         }
     }
@@ -161,6 +175,7 @@ struct SavedRouteDetailView: View {
                     .foregroundStyle(connection.platformChanged ? Theme.summitText : Theme.textSecondary)
             }
         }
+        .accessibilityElement(children: .combine)
     }
 
     private var actions: some View {
@@ -175,7 +190,10 @@ struct SavedRouteDetailView: View {
             .buttonStyle(.glassProminent)
             .controlSize(.large)
 
-            HStack(spacing: Theme.Spacing.s) {
+            let pair = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+                : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
+            pair {
                 Button { showsWidgetHelp = true } label: {
                     Label("Als Widget", systemImage: "square.grid.2x2")
                         .frame(maxWidth: .infinity)
@@ -221,7 +239,7 @@ struct RouteWidgetHelpSheet: View {
                 Section("So geht’s") {
                     Label("Home-Bildschirm lange drücken und oben auf „+“ tippen.", systemImage: "1.circle")
                     Label("„KlimaBilanz“ und dann „Nächste Verbindung“ wählen.", systemImage: "2.circle")
-                    Label("Bei „Strecke“ „\(routeTitle)“ auswählen.", systemImage: "3.circle")
+                    Label("Bei „Lieblingsfahrt“ „\(routeTitle)“ auswählen.", systemImage: "3.circle")
                 }
                 .listRowBackground(Theme.surface)
             }

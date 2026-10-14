@@ -1,31 +1,44 @@
 import Foundation
+import SwiftData
 import UserNotifications
 import KlimaCore
 
-// „Meine Routen“ (docs/ROUTES_ALARMS.md §1.4): the weekday/time reminders of a saved route. One repeating local notification
-// per weekday, `leadMinutes` before the departure, in Vienna time. Nothing is requested from the network and nothing runs in
-// the background: iOS fires the notifications itself. The identifiers are `AlarmIdentifier.routeReminder`, so the Alarms
-// screen can pause and resume them.
+// „Meine Routen“ (docs/ROUTES_ALARMS.md §1.3): the weekday/time reminders of a saved route. One repeating local notification
+// per weekday, `leadMinutes` before the departure, in Vienna time (the timetable's time, whatever the phone's time zone).
+// Nothing is requested from the network and nothing runs in the background: iOS fires the notifications itself. The
+// identifiers are `AlarmIdentifier.routeReminder`, so the Alarms screen can pause and resume them.
 
 @MainActor
 enum SavedRouteReminders {
+    /// What `apply` reached. The editor says it in words.
+    enum Outcome: Equatable {
+        /// The route has no schedule: nothing to remind.
+        case noSchedule
+        /// Every reminder of the schedule is set.
+        case scheduled
+        /// iOS does not allow notifications for the app: the route is saved, its reminders are not.
+        case denied
+        /// iOS refused some reminders (for example the limit of pending notifications).
+        case incomplete(failed: Int)
+    }
+
     /// The reminders of the route are replaced by the ones of its current schedule (none when it has no schedule).
     /// The permission is asked only for a route that has a schedule, and only when `requestingPermission` is set.
-    /// Returns false when a schedule exists but iOS does not allow notifications for the app.
     @discardableResult
-    static func apply(to route: FavoriteRouteEntity, requestingPermission: Bool = true) async -> Bool {
+    static func apply(to route: FavoriteRouteEntity, requestingPermission: Bool = true) async -> Outcome {
         let center = UNUserNotificationCenter.current()
         await removeReminders(routeID: route.id.uuidString)
-        guard let schedule = route.schedule, !schedule.weekdays.isEmpty else { return true }
+        guard let schedule = route.schedule, !schedule.weekdays.isEmpty else { return .noSchedule }
 
         var status = await center.notificationSettings().authorizationStatus
         if status == .notDetermined, requestingPermission {
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             status = await center.notificationSettings().authorizationStatus
         }
-        guard status == .authorized || status == .provisional || status == .ephemeral else { return false }
+        guard status == .authorized || status == .provisional || status == .ephemeral else { return .denied }
 
         let copy = RouteCopy(route)
+        var failed = 0
         for slot in schedule.reminderSlots {
             let content = UNMutableNotificationContent()
             content.title = schedule.leadMinutes == 0 ? "Abfahrt jetzt" : "Abfahrt in \(schedule.leadMinutes) Min"
@@ -36,12 +49,17 @@ enum SavedRouteReminders {
             components.weekday = slot.weekday.calendarWeekday
             components.hour = slot.hour
             components.minute = slot.minute
+            components.timeZone = AlarmCalendar.vienna.timeZone
             let request = UNNotificationRequest(
                 identifier: AlarmIdentifier.routeReminder(routeID: copy.id, weekday: slot.weekday), content: content,
                 trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true))
-            try? await center.add(request)
+            do {
+                try await center.add(request)
+            } catch {
+                failed += 1
+            }
         }
-        return true
+        return failed == 0 ? .scheduled : .incomplete(failed: failed)
     }
 
     /// Removes every reminder of one route, pending or paused in the Alarms screen (its schedule was switched off, the
@@ -52,6 +70,25 @@ enum SavedRouteReminders {
         let pending = await center.pendingNotificationRequests().map(\.identifier).filter { $0.hasPrefix(prefix) }
         center.removePendingNotificationRequests(withIdentifiers: pending)
         PausedAlarmStore.removeGroup(AlarmIdentifier.routePrefix + routeID)
+    }
+
+    /// Removes the reminders (pending and paused) of saved routes that are not among `activeRouteIDs`. A route deleted on
+    /// another device (sync) or by "Alles löschen" must not keep notifying.
+    static func removeOrphans(activeRouteIDs: Set<String>) async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests().map(\.identifier)
+        let orphans = AlarmIdentifier.orphanedRouteReminders(in: pending, activeRouteIDs: activeRouteIDs)
+        if !orphans.isEmpty { center.removePendingNotificationRequests(withIdentifiers: orphans) }
+        let paused = PausedAlarmStore.load()
+        let gone = Set(AlarmIdentifier.orphanedRouteReminders(in: paused.map(\.id), activeRouteIDs: activeRouteIDs))
+        if !gone.isEmpty { PausedAlarmStore.save(paused.filter { !gone.contains($0.id) }) }
+    }
+
+    /// `removeOrphans` for the routes the store holds that are not deleted. A store that cannot be read removes nothing.
+    static func reconcile(context: ModelContext) async {
+        let descriptor = FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil })
+        guard let routes = try? context.fetch(descriptor) else { return }
+        await removeOrphans(activeRouteIDs: Set(routes.map { $0.id.uuidString }))
     }
 
     /// The values the notification text needs, read once from the entity.

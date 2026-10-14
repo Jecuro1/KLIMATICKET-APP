@@ -13,6 +13,7 @@ struct SavedRouteEditView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var title: String
     @State private var fromName: String
@@ -25,6 +26,8 @@ struct SavedRouteEditView: View {
     @State private var fareText: String
     @State private var distanceText: String
     @State private var fareIsEstimated = false
+    /// The fare text the estimator wrote; a change of the fare text by the user ends the estimate.
+    @State private var estimatedFare: String?
     @State private var scheduleOn: Bool
     @State private var weekdays: Set<RouteWeekday>
     @State private var time: Date
@@ -94,7 +97,9 @@ struct SavedRouteEditView: View {
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .monospacedDigit()
-                            .onChange(of: fareText) { _, _ in fareIsEstimated = false }
+                            .onChange(of: fareText) { _, newValue in
+                                if newValue != estimatedFare { fareIsEstimated = false }
+                            }
                         Text("€").foregroundStyle(Theme.textSecondary)
                     }
                 }
@@ -118,7 +123,10 @@ struct SavedRouteEditView: View {
                 Toggle("Zeitplan und Erinnerung", isOn: $scheduleOn)
                 if scheduleOn {
                     weekdayChips
+                    // The timetable's clock (Vienna), whatever time zone the phone is in: the reminders use the same one.
                     DatePicker("Abfahrt", selection: $time, displayedComponents: .hourAndMinute)
+                        .environment(\.calendar, AlarmCalendar.vienna)
+                        .environment(\.timeZone, AlarmCalendar.vienna.timeZone)
                     Picker("Erinnern", selection: $lead) {
                         ForEach(RouteSchedule.leadChoices, id: \.self) { minutes in
                             Text(minutes == 0 ? "Zur Abfahrt" : "\(minutes) Min vorher").tag(minutes)
@@ -170,8 +178,11 @@ struct SavedRouteEditView: View {
         .buttonStyle(.plain)
     }
 
+    /// Seven chips in one row; at the accessibility sizes four per row, so the names keep their room.
     private var weekdayChips: some View {
-        HStack(spacing: Theme.Spacing.xxs) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.xxs),
+                                 count: typeSize.isAccessibilitySize ? 4 : 7),
+                  spacing: Theme.Spacing.xxs) {
             ForEach(RouteWeekday.allCases, id: \.self) { day in
                 let selected = weekdays.contains(day)
                 Button {
@@ -217,7 +228,9 @@ struct SavedRouteEditView: View {
         guard let fromID, let toID, let from = app.stations.station(id: fromID), let to = app.stations.station(id: toID),
               fareText.isEmpty || fareIsEstimated,
               let estimate = SavedRouteFigures.estimate(from: from, to: to, mode: mode, app: app) else { return }
-        fareText = EuroInput.editableText(estimate.fareEUR)
+        let text = EuroInput.editableText(estimate.fareEUR)
+        estimatedFare = text
+        fareText = text
         distanceText = Format.number(estimate.distanceKm, decimals: 1)
         fareIsEstimated = true
     }
@@ -247,7 +260,7 @@ struct SavedRouteEditView: View {
         target.fareEUR = fare
         target.isRoundTrip = isRoundTrip
         target.via = vias
-        let clock = Calendar.current.dateComponents([.hour, .minute], from: time)
+        let clock = AlarmCalendar.vienna.dateComponents([.hour, .minute], from: time)
         target.schedule = scheduleOn
             ? RouteSchedule(weekdays: weekdays, hour: clock.hour ?? 7, minute: clock.minute ?? 30, leadMinutes: lead)
             : nil
@@ -257,17 +270,19 @@ struct SavedRouteEditView: View {
             target.touch()
             repository.commit()
         }
-        let reminders = await SavedRouteReminders.apply(to: target)
-        if !reminders {
+        switch await SavedRouteReminders.apply(to: target) {
+        case .denied:
             app.showToast("bell.slash.fill", "Route gespeichert", "Die Erinnerung ist aus. Erlaube Mitteilungen in den iOS-Einstellungen.")
-        } else {
+        case .incomplete:
+            app.showToast("exclamationmark.triangle.fill", "Route gespeichert", "Nicht alle Erinnerungen konnten gesetzt werden. Prüfe sie unter Alarme.")
+        case .noSchedule, .scheduled:
             app.showToast("checkmark.circle.fill", "Route gespeichert", target.displayTitle)
         }
         dismiss()
     }
 
     private static func clock(hour: Int, minute: Int) -> Date {
-        Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        AlarmCalendar.vienna.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
     }
 }
 

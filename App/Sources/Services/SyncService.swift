@@ -140,6 +140,7 @@ final class SyncService {
             for e in try context.fetch(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt != nil })) { context.delete(e) }
             try context.save()
             Analytics.invalidateCache()
+            await SavedRouteReminders.reconcile(context: context)   // MARK: routes – deleted routes stop reminding
             return true
         } catch {
             state = .failed(Self.message(for: error))
@@ -406,6 +407,7 @@ final class SyncService {
     private func deleteAllLocalData(_ context: ModelContext) throws {
         for e in try context.fetch(FetchDescriptor<TripEntity>()) { context.delete(e) }
         for e in try context.fetch(FetchDescriptor<FavoriteRouteEntity>()) { context.delete(e) }
+        Task { await SavedRouteReminders.removeOrphans(activeRouteIDs: []) }   // MARK: routes – every route is gone
         for e in try context.fetch(FetchDescriptor<BenefitEntity>()) { context.delete(e) }
         for e in try context.fetch(FetchDescriptor<TicketEntity>()) { context.delete(e) }
     }

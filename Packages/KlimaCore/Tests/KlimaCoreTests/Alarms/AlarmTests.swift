@@ -41,6 +41,12 @@ final class AlarmTests: XCTestCase {
         XCTAssertEqual(AlarmIdentifier.groupKey(of: "weekly.summary"), "weekly.summary")
     }
 
+    func testOrphanedRouteRemindersAreThoseOfRoutesThatAreGone() {
+        let identifiers = ["route.A.0", "route.B.1", "route.B.2", "route.C", "planner.reminder.x", "renewal.U.30"]
+        XCTAssertEqual(AlarmIdentifier.orphanedRouteReminders(in: identifiers, activeRouteIDs: ["A"]), ["route.B.1", "route.B.2"])
+        XCTAssertEqual(AlarmIdentifier.orphanedRouteReminders(in: identifiers, activeRouteIDs: []), ["route.A.0", "route.B.1", "route.B.2"])
+    }
+
     func testRouteIDIsNilForOtherIdentifiers() {
         XCTAssertNil(AlarmIdentifier.routeID(of: "route.6F1C0D2A"))
         XCTAssertNil(AlarmIdentifier.routeID(of: "renewal.6F1C0D2A.4"))
