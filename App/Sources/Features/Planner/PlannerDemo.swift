@@ -371,7 +371,8 @@ enum DemoBoards {
 /// departures | plannerConsent | plannerStates | plannerOptions`): the real tab with the demo timetable – no network.
 struct PlannerScreenshotScene: View {
     static let screens: Set<String> = ["planner", "plannerResults", "plannerVia", "connection", "departures", "plannerConsent",
-                                       "plannerStates", "plannerOptions", "plannerSearch"]
+                                       "plannerStates", "plannerOptions", "plannerSearch", "plannerAdvanced", "plannerDetail",
+                                       "plannerSort", "plannerViaEdit", "plannerShare"]
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -391,6 +392,10 @@ struct PlannerScreenshotScene: View {
                 .padding(Theme.Spacing.screen)
             }
             .ambientBackground()
+        case "plannerShare":
+            PlannerShareStage()
+                .ambientBackground()
+                .task { await prepareShare() }
         case "plannerStates":
             ScrollView {
                 VStack(spacing: Theme.Spacing.m) {
@@ -407,6 +412,17 @@ struct PlannerScreenshotScene: View {
             MainTabView()
                 .task { await prepare() }
         }
+    }
+
+    /// „Teilen“ of the first demo connection: a search from Innsbruck to Lech, then the share sheet.
+    @MainActor
+    private func prepareShare() async {
+        let model = app.planner
+        app.selectedTab = .planner
+        if let innsbruck = app.stations.station(named: "Innsbruck Hbf") { model.origin = .station(innsbruck) }
+        model.destination = .live(DemoPlaces.named("Lech")!)
+        model.startSearch()
+        for _ in 0..<40 where model.phase != .loaded { try? await Task.sleep(for: .milliseconds(100)) }
     }
 
     @MainActor
@@ -428,13 +444,31 @@ struct PlannerScreenshotScene: View {
         case "plannerOptions":
             try? await Task.sleep(for: .milliseconds(500))
             model.showsOptions = true
+        case "plannerAdvanced":
+            // Every advanced option set, so the sheet shows the walking limit, the price class and the Vorteilscard.
+            var options = PlannerOptions()
+            options.maxWalkMeters = 500
+            options.travelClass = .first
+            options.discount = .vorteilscard
+            options.maxChanges = 1
+            options.extraTransferMinutes = 5
+            model.options = options
+            try? await Task.sleep(for: .milliseconds(500))
+            model.showsOptions = true
         case "departures":
             model.mode = .departures
             if let innsbruck { model.boardStation = .station(innsbruck) }
             await model.loadBoard()
-        case "plannerResults", "connection", "plannerVia":
+        case "plannerViaEdit":
+            // The search form with two via stops: the reorder buttons show next to them.
             if let innsbruck { model.origin = .station(innsbruck) }
-            if screen == "plannerVia" {
+            if let bregenz = stations.station(named: "Bregenz") { model.destination = .station(bregenz) }
+            model.vias = ["Landeck-Zams", "Feldkirch"].compactMap { stations.station(named: $0).map { .station($0) } }
+            model.path = []
+        case "plannerResults", "connection", "plannerVia", "plannerSort", "plannerDetail":
+            if let innsbruck { model.origin = .station(innsbruck) }
+            if screen == "plannerSort" { model.sort = .lowestCO2 }
+            if screen == "plannerVia" || screen == "plannerDetail" {
                 if let bregenz = stations.station(named: "Bregenz") { model.destination = .station(bregenz) }
                 model.vias = ["Landeck-Zams", "Feldkirch"].compactMap { stations.station(named: $0).map { .station($0) } }
             } else {
@@ -442,9 +476,22 @@ struct PlannerScreenshotScene: View {
             }
             model.startSearch()
             for _ in 0..<40 where model.phase != .loaded { try? await Task.sleep(for: .milliseconds(100)) }
-            if screen == "connection", let id = model.rows.first?.id { model.path = [.results, .detail(id)] }
+            if screen == "connection" || screen == "plannerDetail", let id = model.rows.first?.id { model.path = [.results, .detail(id)] }
         default:
             break
+        }
+    }
+}
+
+/// The share sheet of the first connection in the list, shown as a screen (CI screenshot „plannerShare“).
+private struct PlannerShareStage: View {
+    @Environment(AppState.self) private var app
+
+    var body: some View {
+        if let row = app.planner.rows.first {
+            PlannerShareSheet(journey: row.journey, link: PlannerShare.link(for: row.journey, vias: app.planner.queriedVias))
+        } else {
+            ProgressView()
         }
     }
 }
