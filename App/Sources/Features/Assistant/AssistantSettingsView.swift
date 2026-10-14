@@ -49,7 +49,7 @@ struct AssistantSettingsView: View {
             } header: {
                 SetSectionHeader(title: "Was die KI tut")
             } footer: {
-                SetFooter(text: "Die KI erfindet keine Zeiten, Preise oder Zahlen. Jede Zahl in einem Text wird gegen deine Daten geprüft. Passt etwas nicht, zeigt KlimaBilanz den Regeltext.")
+                SetFooter(text: "Die KI erfindet keine Zahlen, Zeiten oder Tage. Jede Zahl im Text, auch ausgeschrieben, muss in deinen Daten stehen. Passt etwas nicht, zeigt KlimaBilanz den Regeltext.")
             }
 
             Section {

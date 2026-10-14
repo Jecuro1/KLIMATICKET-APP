@@ -77,8 +77,15 @@ public enum AssistantFormat {
         return (value < 0 ? "-" : "") + out
     }
 
+    /// A whole number from a Double. NaN, infinity and absurd sizes show a dash instead of trapping in `Int(_:)`.
+    public static func wholeNumber(_ value: Double) -> String {
+        guard value.isFinite, abs(value) < 1e15 else { return "–" }
+        return integer(Int(value.rounded()))
+    }
+
     /// `decimals` digits after a decimal comma, rounded half away from zero.
     public static func decimal(_ value: Double, decimals: Int) -> String {
+        guard value.isFinite, abs(value) < 1e15 else { return "–" }
         let factor = pow(10, Double(decimals))
         let rounded = (abs(value) * factor).rounded() / factor
         let whole = Int(rounded.rounded(.down))
@@ -98,7 +105,7 @@ public enum AssistantFormat {
         return "€ " + decimal(value, decimals: decimals)
     }
 
-    public static func kilometres(_ value: Double) -> String { integer(Int(value.rounded())) + " km" }
+    public static func kilometres(_ value: Double) -> String { wholeNumber(value) + " km" }
 
     /// yyyy-MM-dd in the Vienna calendar: the form the model is asked to answer dates in.
     public static func isoDay(_ date: Date, calendar: Calendar = .vienna) -> String {
@@ -113,18 +120,43 @@ public enum AssistantFormat {
     }
 }
 
+// MARK: - Name guard (a text about a relation must name both places)
+
+/// A model text about a saved relation must name both places it was given, by their first word ("Innsbruck" for
+/// "Innsbruck Hbf"), so it cannot describe a different relation under the same label.
+public enum AssistantNameGuard {
+    public static func mentionsAll(_ text: String, names: [String]) -> Bool {
+        let folded = fold(text)
+        return names.allSatisfy { name in
+            guard let first = name.split(separator: " ").first, !first.isEmpty else { return false }
+            return folded.contains(fold(String(first)))
+        }
+    }
+
+    private static func fold(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "de_AT"))
+    }
+}
+
 // MARK: - Number guard (the model must not invent numbers)
 
 /// Every number a generated text contains must also occur in the facts the model was given (docs/LOCAL_AI.md §4).
 /// Numbers are compared in one normal form: `1.400` and `1400` are the same, `23,50` and `23.5` are the same,
 /// `18.10.` is `18.1` on both sides. A text that fails the check is never shown; the rule-based text is used instead.
 public enum AssistantNumberGuard {
-    /// The normal forms of all numbers in `text`, in order of appearance.
+    /// The normal forms of all numbers in `text`, in order of appearance. Spelled-out numbers ("zwei", "zwölf") count as
+    /// the digits they stand for; the article "ein"/"eine" does not count.
     public static func tokens(in text: String) -> [String] {
         let chars = Array(text)
         var out: [String] = []
         var index = 0
         while index < chars.count {
+            if chars[index].isLetter {
+                let start = index
+                while index < chars.count, chars[index].isLetter { index += 1 }
+                if let value = spelledNumbers[String(chars[start..<index]).lowercased()] { out.append(value) }
+                continue
+            }
             guard isDigit(chars[index]) else { index += 1; continue }
             var integerPart = digits(chars, from: &index)
             var fraction: String?
@@ -171,14 +203,24 @@ public enum AssistantNumberGuard {
         return out
     }
 
+    /// Works on the digit strings only: an `Int` conversion would turn a 23-digit number into 0 and let it pass a "0" fact.
     private static func normal(integer: String, fraction: String?) -> String {
-        guard let fraction, !fraction.isEmpty else {
-            return String(Int(integer) ?? 0)
-        }
+        let whole = String(integer.drop(while: { $0 == "0" }))
+        let wholeText = whole.isEmpty ? "0" : whole
+        guard let fraction, !fraction.isEmpty else { return wholeText }
         // Trailing zeros carry no value ("18.10" == "18.1", "23,50" == "23.5").
         var trimmed = fraction
         while trimmed.hasSuffix("0") { trimmed.removeLast() }
-        if trimmed.isEmpty { return String(Int(integer) ?? 0) }
-        return String(Int(integer) ?? 0) + "." + trimmed
+        return trimmed.isEmpty ? wholeText : wholeText + "." + trimmed
     }
+
+    /// German number words up to a thousand, as the digits they stand for. Lower case; "ein"/"eine" are left out on purpose.
+    private static let spelledNumbers: [String: String] = [
+        "null": "0", "eins": "1", "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "fuenf": "5", "sechs": "6",
+        "sieben": "7", "acht": "8", "neun": "9", "zehn": "10", "elf": "11", "zwölf": "12", "zwoelf": "12",
+        "dreizehn": "13", "vierzehn": "14", "fünfzehn": "15", "fuenfzehn": "15", "sechzehn": "16", "siebzehn": "17",
+        "achtzehn": "18", "neunzehn": "19", "zwanzig": "20", "dreißig": "30", "dreissig": "30", "vierzig": "40",
+        "fünfzig": "50", "fuenfzig": "50", "sechzig": "60", "siebzig": "70", "achtzig": "80", "neunzig": "90",
+        "hundert": "100", "tausend": "1000",
+    ]
 }

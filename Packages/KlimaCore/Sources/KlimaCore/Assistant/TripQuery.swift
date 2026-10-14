@@ -181,7 +181,8 @@ public enum TripQueryParser {
                 }
                 continue
             }
-            if folded == "in", index + 2 < words.count, let count = Int(words[index + 1]), fold(words[index + 2]).hasPrefix("tag") {
+            if folded == "in", index + 2 < words.count, let count = Int(words[index + 1]), (0...365).contains(count),
+               fold(words[index + 2]).hasPrefix("tag") {
                 day = calendar.date(byAdding: .day, value: count, to: today)
                 index += 3
                 continue
@@ -195,6 +196,18 @@ public enum TripQueryParser {
             index += 1
         }
         return (rest, day)
+    }
+
+    /// Whether the sentence names a day the way people write one: a weekday, heute, morgen, a Tag/Woche/Monat word, or a
+    /// date such as 18.10. The validator takes a model's date only then (docs/LOCAL_AI.md §4.1).
+    public static func namesDay(_ text: String, now: Date, calendar: Calendar = .vienna) -> Bool {
+        text.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" || $0 == "," || $0 == ";" }).contains { raw in
+            let word = String(raw)
+            let folded = fold(word)
+            if dayCueStems.contains(where: { folded.hasPrefix($0) }) { return true }
+            if weekdayIndex(word) != nil { return true }
+            return explicitDate(word, now: now, calendar: calendar) != nil
+        }
     }
 
     /// Words that carry no place are dropped. The remaining words keep their casing ("St. Anton am Arlberg").
@@ -219,10 +232,13 @@ public enum TripQueryParser {
         return explicitDate(word, now: now, calendar: calendar)
     }
 
-    /// "18.10." or "18.10.2026". Without a year the next occurrence of that date is used.
+    /// "18.10." or "18.10.2026". Without a year the next occurrence of that date is used. "18.10" (no dot at the end and no
+    /// year) stays a clock time, as before.
     private static func explicitDate(_ word: String, now: Date, calendar: Calendar) -> Date? {
         let parts = word.split(separator: ".", omittingEmptySubsequences: false).map(String.init)
-        guard parts.count >= 2, parts.count <= 3, word.hasSuffix("."), parts.count == 2 || parts[2].isEmpty || parts[2].count == 4,
+        let dottedDay = parts.count == 3 && parts[2].isEmpty && word.hasSuffix(".")
+        let withYear = parts.count == 3 && parts[2].count == 4
+        guard dottedDay || withYear,
               let day = Int(parts[0]), let month = Int(parts[1]), (1...31).contains(day), (1...12).contains(month) else {
             return nil
         }
@@ -303,6 +319,8 @@ public enum TripQueryParser {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    /// Prefixes of day words: "heute", "morgen", "nächsten", "in 3 Tagen", "zwei Wochen", "kommenden".
+    private static let dayCueStems = ["heute", "morgen", "übermorgen", "uebermorgen", "übernächst", "nächst", "kommend", "tag", "woche", "monat"]
     private static let returnMarkers: Set<String> = ["rückfahrt", "rückfahrten", "rückweg", "rück", "zurück", "retour", "heimfahrt"]
     private static let destinationMarkers: Set<String> = ["nach", "richtung"]
     private static let timeMarkers: Set<String> = ["um", "ab", "gegen", "bis", "spätestens"]

@@ -7,12 +7,14 @@ Gerät braucht und was sie nicht kann. Sie ist ehrlich gemeint: Was hier nicht s
 
 - **Modell:** das Apple-Foundation-Modell auf dem Gerät (Framework `FoundationModels`, iOS 26). Es läuft lokal, ohne Server,
   ohne Netzanfrage, ohne Kosten pro Aufruf.
-- **Nur im Vordergrund, nur auf Anfrage:** Das Modell wird gefragt, wenn du „Suche in Worten“ benutzt, das Sheet
-  „Warum lohnt sich mein Ticket?“ öffnest oder der Planer einen Vorschlag für die übliche Fahrzeit formuliert. Jeder Aufruf
-  nutzt eine eigene Sitzung; es gibt keine langlebige Unterhaltung.
+- **Nur im Vordergrund.** Das Modell wird nie im Hintergrund gefragt. Auf deine Anfrage läuft es bei „Suche in Worten“ und
+  beim Sheet „Warum lohnt sich mein Ticket?“. Ohne Anfrage läuft es, sobald die Ansicht erscheint: der Vorschlag „für jetzt“
+  im Planer und der Wochenrückblick beim Öffnen der App. Jeder Aufruf nutzt eine eigene Sitzung; es gibt keine langlebige
+  Unterhaltung.
 - **Hintergrund: keine Modellaufrufe.** Das gilt für Hintergrund-Tasks, Hintergrund-Starts, Widgets und Mitteilungen.
   Der Wochenrückblick wird beim Aktivieren der App (Vordergrund) geschrieben und als Text in die lokale Sonntags-Mitteilung
-  gelegt. Die Mitteilung zeigt also den Stand vom letzten Öffnen, und der Text nennt sein Datum („Stand …“).
+  gelegt. Die Mitteilung zeigt also den Stand vom letzten Öffnen, und der Text nennt sein Datum („Stand …“). Die Mitteilung
+  kann Zahlen zeigen (Fahrten, Wert, Kilometer); bei aktivierten Vorschauen sieht sie auch der Sperrbildschirm.
 - **Ohne Modell arbeitet alles:** Jede KI-Funktion hat einen regelbasierten Ersatz im Modul `KlimaCore/Assistant`. Die Regeln
   laufen immer, auch ohne Apple Intelligence und ohne Schalter.
 
@@ -43,19 +45,23 @@ Datei nennt bewusst keine Gerätetabelle.
 | Suche in Worten („nächste Woche Freitag nach Innsbruck, Rückfahrt Sonntag“) | Modell liefert Felder per `@Generable`, Prüfung in `TripQueryValidator` | `TripQueryParser`: Ort, Tag, Uhrzeit, „bis“ als Ankunft, Rückfahrt | Planer: Button „In Worten suchen“ |
 | Warum lohnt sich mein Ticket? | Text aus den Zahlen der Bilanz, geprüft in `AssistantNumberGuard` | Regeltext `BalanceFacts.ruleText` mit denselben Zahlen | Übersicht, unter der Bilanz-Karte |
 | Wochenrückblick | Ein Satz, geprüft wie oben | `WeeklyRecapFacts.ruleText` | Sonntags-Mitteilung (Text vom letzten Öffnen) |
-| Strecke zur üblichen Zeit | Ein Satz über die Strecke, geprüft wie oben | Regeln: mindestens 3 Fahrten in ±1 Stunde und mindestens 40 % | Planer: „Vorschlag für jetzt“ |
+| Strecke zur üblichen Zeit | Ein Satz über die Strecke, Zahlen wie oben geprüft, und beide Orte müssen darin stehen | Regeln: mindestens 3 Fahrten in ±1 Stunde und mindestens 40 % | Planer: „Vorschlag für jetzt“ |
 
 Die Auswahl (welche Strecke, welcher Tag, welche Uhrzeit) kommt immer aus den Regeln. Die KI formuliert nur.
 
 ## 4. Garantien
 
 1. **Keine erfundenen Zeiten, Orte, Tage.** Das Modell liefert Felder (Ort, Datum, Uhrzeit, Ankunft). `TripQueryValidator`
-   übernimmt nur, was der Satz hergibt: ein Ort nur, wenn er im Satz steht; eine Uhrzeit nur, wenn ihre Zahl im Satz steht;
-   ein Datum nur innerhalb von 365 Tagen ab heute; „Ankunft“ nur bei „bis“, „spätestens“ oder „Ankunft“ im Satz.
+   übernimmt nur, was der Satz hergibt: ein Ort nur, wenn er im Satz steht; eine Uhrzeit nur, wenn ihre Zahl im Satz steht
+   (auch ausgeschrieben, „sieben“); ein Datum nur, wenn der Satz einen Tag nennt (Wochentag, heute, morgen, Tag- oder
+   Wochenangabe, Datum wie 18.10.), und höchstens 365 Tage ab heute; „Ankunft“ nur bei „bis“, „spätestens“, „Ankunft“ oder
+   „ankommen“ als Wort im Satz. Die Regeln für Tage laufen vor dem Modell: das Modell füllt nur Lücken.
 2. **Regeln zuerst.** Die Regeln lesen den Satz zuerst. Das Modell füllt nur Felder, die die Regeln offen lassen.
 3. **Keine erfundenen Zahlen im Text.** Jede Zahl im Ergebnis eines Modells muss als Angabe in der Liste stehen, die dem Modell
-   gegeben wurde (`AssistantNumberGuard`: `1.400` und `1400` sind gleich, `23,50` und `23.5` ebenfalls). Passt eine Zahl nicht,
-   verwirft KlimaBilanz den Modelltext und zeigt den Regeltext. Zu lange oder mehrzeilige Texte werden ebenfalls verworfen.
+   gegeben wurde (`AssistantNumberGuard`: `1.400` und `1400` sind gleich, `23,50` und `23.5` ebenfalls; ausgeschriebene
+   Zahlen wie „zwei“ zählen wie ihre Ziffern, „ein“ und „eine“ als Artikel nicht). Passt eine Zahl nicht, verwirft
+   KlimaBilanz den Modelltext und zeigt den Regeltext. Zu lange oder mehrzeilige Texte werden ebenfalls verworfen.
+   Die Prüfung sieht nur die Zahl, nicht den Sinn: Eine Zahl aus der Liste kann an der falschen Stelle stehen.
 4. **Kein Rechnen durch das Modell.** Die Zahlen kommen aus `SavingsSummary` und dem Wochenauszug, die die App ohnehin berechnet.
    Das Modell bekommt nur eine Liste fertiger Angaben.
 5. **Quelle immer sichtbar.** Jeder KI-bezogene Text trägt eine Zeile: „Mit der KI auf deinem Gerät formuliert“, „Aus deinen
@@ -100,5 +106,7 @@ Die Auswahl (welche Strecke, welcher Tag, welche Uhrzeit) kommt immer aus den Re
 ## 9. Offen
 
 - Gerätetest: Verfügbarkeit, Deutsch, Antwortzeit, Qualität der Formulierungen.
+- Sperrbildschirm: Der Wochenrückblick nennt Zahlen. Ob das für Vorschauen ausgeblendet werden soll, entscheidet der Besitzer.
+- Der Wochenrückblick ist der Text vom letzten Öffnen; die Sonntags-Mitteilung kann daher älter sein als der Sonntag.
 - Ob die Modell-Schnittstelle im Xcode-26.6-SDK genau so heißt, bestätigt erst der macOS-CI-Lauf.
 - Der Begriff „KI“ in der Oberfläche folgt der Vorgabe des Besitzers („integrierte lokale KI“).

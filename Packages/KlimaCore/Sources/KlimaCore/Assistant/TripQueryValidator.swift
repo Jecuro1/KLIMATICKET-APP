@@ -36,6 +36,9 @@ public enum TripQueryValidator {
         let tokens = Set(AssistantNumberGuard.tokens(in: sourceText))
         let today = calendar.startOfDay(for: now)
         let horizon = calendar.date(byAdding: .day, value: 365, to: today) ?? today
+        // A date from the model is taken only when the sentence names a day (weekday, heute, Woche, 18.10.): the model may
+        // not pick one on its own (docs/LOCAL_AI.md §4.1).
+        let namesDay = TripQueryParser.namesDay(sourceText, now: now, calendar: calendar)
 
         func place(_ raw: String, _ name: String) -> String? {
             let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -50,6 +53,10 @@ public enum TripQueryValidator {
         func day(_ raw: String, _ name: String, notBefore lower: Date) -> Date? {
             guard !raw.isEmpty else { return nil }
             let parts = raw.split(separator: "-").compactMap { Int($0) }
+            guard namesDay else {
+                rejected.append(name)
+                return nil
+            }
             guard parts.count == 3, let date = TripQueryParser.makeDate(year: parts[0], month: parts[1], day: parts[2],
                                                                          calendar: calendar),
                   date >= lower, date <= horizon else {
@@ -74,9 +81,10 @@ public enum TripQueryValidator {
                 rejected.append("outboundTime")
             }
         }
-        // "bis 9 Uhr" is an arrival only when the sentence says so.
-        let arrivalWords = ["bis", "ankunft", "spätestens", "an "]
-        draft.isArrival = fields.isArrival && arrivalWords.contains { source.contains($0) }
+        // "bis 9 Uhr" is an arrival only when the sentence says so, as a word ("bisher" is not "bis").
+        let words = Set(source.split(whereSeparator: { !$0.isLetter }).map(String.init))
+        let arrivalWords: Set<String> = ["bis", "ankunft", "spatestens", "ankommen"]
+        draft.isArrival = fields.isArrival && !words.isDisjoint(with: arrivalWords)
         if let outbound = draft.outboundDay {
             draft.returnDay = day(fields.returnDay, "returnDay", notBefore: outbound)
         } else {

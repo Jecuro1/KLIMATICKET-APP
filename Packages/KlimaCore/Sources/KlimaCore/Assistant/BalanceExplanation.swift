@@ -46,7 +46,7 @@ public struct BalanceFacts: Equatable, Sendable {
             "Wert bisher: \(f.euro(summary.totalValue))",
             "Fahrten: \(f.integer(summary.tripCount))",
             "Kilometer: \(f.kilometres(summary.distanceKm))",
-            "CO₂ gespart: \(f.integer(Int(summary.co2SavedKg.rounded()))) kg",
+            "CO₂ gespart: \(f.wholeNumber(summary.co2SavedKg)) kg",
         ]
         if summary.tripCount > 0 {
             lines.append("Durchschnitt pro Fahrt: \(f.euro(summary.averageValuePerTrip))")

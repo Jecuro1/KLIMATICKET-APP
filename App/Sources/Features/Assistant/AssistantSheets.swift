@@ -131,6 +131,7 @@ struct AssistantTripQueryButton: View {
 struct AssistantTripQuerySheet: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var text: String
     @State private var result: LocalAssistant.TripQueryResult?
     @State private var isWorking = false
@@ -160,6 +161,11 @@ struct AssistantTripQuerySheet: View {
                     .buttonStyle(.glassProminent)
                     .tint(Theme.prominentTint)
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isWorking)
+                    if isWorking {
+                        ProgressView("Satz wird gelesen")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                     if let result {
                         resultCard(result)
                             .motionTransition(.rise)
@@ -182,10 +188,12 @@ struct AssistantTripQuerySheet: View {
         }
     }
 
+    /// One run at a time: Return on the keyboard and the button cannot start two model calls for the same sentence.
     private func run() async {
+        guard !isWorking else { return }
         isWorking = true
+        defer { isWorking = false }
         result = await app.assistant.parseTripQuery(text, stations: app.stations)
-        isWorking = false
     }
 
     @ViewBuilder
@@ -198,7 +206,7 @@ struct AssistantTripQuerySheet: View {
             queryRow(draft.isArrival ? "Ankunft" : "Abfahrt", timeText(draft))
             if let back = draft.returnDay {
                 queryRow("Rückfahrt", Format.weekdayDayMonth(back))
-                Text("Die Rückfahrt suche ich nicht mit. Sie steht hier zur Erinnerung, du suchst sie separat.")
+                Text("Die Rückfahrt wird nicht mitgesucht. Sie steht hier nur zur Erinnerung, du suchst sie separat.")
                     .font(.footnote)
                     .foregroundStyle(Theme.textTertiary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -221,12 +229,17 @@ struct AssistantTripQuerySheet: View {
         .frostedCard()
     }
 
+    /// Label and value side by side; stacked at the accessibility sizes, where a fixed label column would clip the word.
     private func queryRow(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+        let large = typeSize.isAccessibilitySize
+        let layout = large
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xxs))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.s))
+        return layout {
             Text(label)
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
-                .frame(width: 84, alignment: .leading)
+                .frame(width: large ? nil : 84, alignment: .leading)
             Text(value)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
@@ -235,14 +248,17 @@ struct AssistantTripQuerySheet: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The day and the time as the planner will take them: a time is shown even when no day was named.
     private func timeText(_ draft: TripQueryDraft) -> String {
-        guard let day = draft.outboundDay else { return draft.outboundHour == nil ? "heute, jetzt" : "heute" }
+        let clock = draft.outboundHour.map { String(format: "%02ld:%02ld Uhr", $0, draft.outboundMinute ?? 0) }
+        guard let day = draft.outboundDay else { return clock.map { "heute, \($0)" } ?? "heute, jetzt" }
         let dayText = Format.weekdayDayMonth(day)
-        guard let hour = draft.outboundHour else { return dayText }
-        return "\(dayText), \(String(format: "%02ld:%02ld", hour, draft.outboundMinute ?? 0)) Uhr"
+        guard let clock else { return dayText }
+        return "\(dayText), \(clock)"
     }
 
-    /// The planner's own setters: a station fills its slot, the time goes to the time row, and a full query starts the search.
+    /// The planner's own setters: a station fills its slot and the time goes to the time row. The search is not started
+    /// here: the sheet says "du prüfst und suchst", so the user starts it from the planner.
     private func apply(_ result: LocalAssistant.TripQueryResult) {
         let model = app.planner
         if let origin = result.origin { model.origin = .station(origin) }
@@ -250,7 +266,6 @@ struct AssistantTripQuerySheet: View {
         model.mode = .connections
         model.setWhen(planned(result.draft), arrival: result.draft.isArrival)
         dismiss()
-        if model.hasBoth { model.startSearch() }
     }
 
     private func planned(_ draft: TripQueryDraft) -> Date? {
@@ -267,15 +282,23 @@ struct AssistantTripQuerySheet: View {
 struct AssistantRouteHint: View {
     var trips: [TripEntity]
     @Environment(AppState.self) private var app
-    @State private var wording: AssistantText?
+    /// The model's wording, kept with the relation it was written for: a text never shows under another relation.
+    @State private var wording: Wording?
+
+    private struct Wording: Equatable {
+        var key: String
+        var text: AssistantText
+    }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 900)) { context in
             if let hint = hint(at: context.date) {
                 card(hint)
                     .task(id: hint.key) {
-                        wording = nil
-                        wording = await app.assistant.routeWording(hint.suggestion, fromName: hint.from.name, toName: hint.to.name)
+                        let text = await app.assistant.routeWording(hint.suggestion, fromName: hint.from.name, toName: hint.to.name)
+                        // The task is cancelled when the relation changes; a late answer for the old one is dropped.
+                        guard !Task.isCancelled else { return }
+                        wording = Wording(key: hint.key, text: text)
                     }
             }
         }
@@ -297,7 +320,8 @@ struct AssistantRouteHint: View {
 
     private func card(_ hint: Hint) -> some View {
         let model = app.planner
-        let shown = wording ?? AssistantText(text: hint.suggestion.ruleText(fromName: hint.from.name, toName: hint.to.name), source: .rules)
+        let rules = AssistantText(text: hint.suggestion.ruleText(fromName: hint.from.name, toName: hint.to.name), source: .rules)
+        let shown = wording.flatMap { $0.key == hint.key ? $0.text : nil } ?? rules
         return VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Kicker(text: "Vorschlag für jetzt")
             Text(shown.text)

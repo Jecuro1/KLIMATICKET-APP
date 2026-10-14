@@ -122,8 +122,10 @@ final class LocalAssistant {
         let rules = AssistantText(text: suggestion.ruleText(fromName: fromName, toName: toName), source: .rules)
         if isDemo { return AssistantText(text: rules.text, source: .demo) }
         let facts = suggestion.facts(fromName: fromName, toName: toName)
+        // The text must name both places: a suggestion under this relation's label may not describe another relation.
         guard canUseModel, let text = await modelText(instructions: AssistantPrompts.routeInstructions,
-                                                      prompt: AssistantPrompts.facts(facts), facts: facts, maxLength: 160) else {
+                                                      prompt: AssistantPrompts.facts(facts), facts: facts, maxLength: 160),
+              AssistantNameGuard.mentionsAll(text, names: [fromName, toName]) else {
             return rules
         }
         return AssistantText(text: text, source: .model)
