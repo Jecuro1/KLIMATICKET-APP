@@ -4,7 +4,8 @@ import KlimaCore
 // MARK: scotty – CI screenshot hosts for Zug-Radar, Störungen and Live verfolgen (demo data, no network).
 
 struct ScottyScreenshotHost: View {
-    static let screens: Set<String> = ["radar", "radarTrip", "disruptions", "disruptionDetail", "liveFollow"]
+    static let screens: Set<String> = ["radar", "radarTrip", "radarFilter", "radarSearch", "radarCluster",
+                                       "disruptions", "disruptionDetail", "liveFollow"]
 
     let screen: String
 
@@ -12,6 +13,12 @@ struct ScottyScreenshotHost: View {
         switch screen {
         case "radar":
             RadarView()
+        case "radarFilter":   // MARK: radar – the filter sheet open over the map
+            RadarView(preset: .filter)
+        case "radarSearch":   // MARK: radar – search with suggestions for "RJX"
+            RadarView(preset: .search)
+        case "radarCluster":  // MARK: radar – zoomed out: clusters with counts
+            RadarView(preset: .cluster)
         case "radarTrip":
             RadarTripSheet(vehicle: DemoScotty.vehicles(now: Date())[0])
         case "disruptions":

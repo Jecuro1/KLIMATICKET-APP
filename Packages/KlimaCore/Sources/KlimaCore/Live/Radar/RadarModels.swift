@@ -71,15 +71,19 @@ public struct RadarVehicle: Sendable, Hashable, Identifiable {
     public var direction: String?
     public var coordinate: GeoPoint
     public var stopovers: [Stopover]
+    /// `isCncl`: the whole run is cancelled (partial cancellations are not shown on the radar).
+    public var isCancelled: Bool
 
     public var id: String { tripID }
 
-    public init(tripID: String, line: Line? = nil, direction: String? = nil, coordinate: GeoPoint, stopovers: [Stopover] = []) {
+    public init(tripID: String, line: Line? = nil, direction: String? = nil, coordinate: GeoPoint, stopovers: [Stopover] = [],
+                isCancelled: Bool = false) {
         self.tripID = tripID
         self.line = line
         self.direction = direction
         self.coordinate = coordinate
         self.stopovers = stopovers
+        self.isCancelled = isCancelled
     }
 }
 

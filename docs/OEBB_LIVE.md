@@ -2491,3 +2491,31 @@ Keine Fixture gespeichert, weil nichts gefunden wurde.
   Request-Parameter kommen, der nicht in der Spezifikation steht. Den suchen wir nicht ohne Freigabe (§2).
 - Ohne solche Quelle bleibt die Wagenreihung im App-Plan ungebaut. Eine Anzeige ohne Daten wäre erfunden.
 - Nächster Schritt, falls der Owner es will: Quelle und Nutzungsbedingungen klären, bevor irgendein Endpunkt getestet wird.
+
+## R7 Zug-Radar: Karte, Zug-Ebene, Filter, Suche (2026-10-14)
+
+Ersetzt den einfachen Radar aus §R1 als Vollbild. Kein Wechsel in die Karten-App. Die Basiskarte ist MapKit (das Kartenmaterial
+des Systems), alles darüber ist unser: Marker, Cluster, Route, Filter, Suche, Status.
+
+- **Dateien:** KlimaCore `Live/Radar/RadarMap.swift` (rein, mit `RadarMapTests` unter Linux), `RadarModels.swift` (Feld
+  `isCancelled` aus `isCncl`). App `Features/Radar/RadarView.swift`, `RadarTripSheet.swift`, `RadarFilterSheet.swift`.
+- **Abfrage (Kacheln):** Eine Kachel pro Lauf. Liefert die Antwort das Limit von 256 Fahrzeugen, teilt die nächste Runde die
+  Kartenfläche in vier Quadranten (vier Anfragen, im 40/min-Limit). Bleibt eine Kachel am Limit, steht im Status
+  „Zoom hinein für alle Züge“. Eine Kartenbewegung setzt die Teilung zurück.
+- **Bewegung:** Die Positionen kommen vom Server (`trainPosMode` CALC). Zwischen zwei Antworten läuft der Marker linear von der
+  letzten zur neuesten Position, gestrichelter Ring = geschätzt. Nach der neuesten Antwort bleibt er stehen (keine Hochrechnung).
+  Die `ani`-Frames aus der Referenz (`parse/movement.js`) werden **nicht** ausgewertet: Ihr Format (`fromLocations`, `toLocations`)
+  ist gegen keine Live-Antwort geprüft.
+- **Aufbewahrung:** Ein Fahrzeug bleibt 60 s nach der letzten Antwort, in der es vorkam (`RadarFrameStore`).
+- **Verspätung (Ring):** grün pünktlich (unter 5 Min), orange ab 5 Min, rot fällt aus, grau ohne Echtzeit. Maßgeblich ist die
+  Verspätung des nächsten Halts mit Fahrplanzeit nach „jetzt“, sonst der letzte bekannte Wert.
+- **Bundesland:** Stichwortsuche über Haltestellennamen und Richtung. Das ist eine **Schätzung** (keine Koordinaten je Land).
+  Bei Gleichstand gibt es keine Zuordnung. Die Filterseite sagt das.
+- **Suche:** „RJX 66“, „RJX66“, „66“ oder ein Wort (Haltestelle, Richtung). Vorschläge aus den letzten 60 s.
+- **Route:** `JourneyDetails` mit Polyline, im Speicher 5 Min je Fahrt. Halte mit Echtzeit-Label, „Haltestelle öffnen“ zeigt die Abfahrten.
+- **Energie und Hintergrund:** Anfragen nur, solange der Schirm sichtbar und die App aktiv ist. Im Stromspar-Modus keine Anfrage
+  (manuell „Jetzt aktualisieren“). Nichts läuft im Hintergrund.
+- **Zustimmung und Notschalter:** wie bisher über `LiveDataService.radar` (Gate aus §E2).
+- **Demo und Screenshots:** `-KBDemo` und die Hosts `radar`, `radarTrip`, `radarFilter`, `radarSearch`, `radarCluster` (kein Netz).
+- **Nicht gebaut:** Hintergrund-Mitteilungen zu Zügen (würde Abfragen ohne Sichtbarkeit bedeuten, dafür fehlt die Freigabe nach
+  §2). Live Activity für einen Radar-Zug (der Planner-Snapshot passt nicht ohne Umbau, siehe §R3). Wagenreihung (§R6: keine Daten).

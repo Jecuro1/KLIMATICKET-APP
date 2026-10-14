@@ -240,6 +240,15 @@ final class PlannerModel {
         if hasBoth { startSearch() }
     }
 
+    /// Zug-Radar: the departures of a stop from a live run. No station index entry is needed for it.
+    func showBoard(live location: Location) {
+        path = []
+        mode = .departures
+        boardStation = .live(location)
+        boardDate = nil
+        Task { await loadBoard() }
+    }
+
     /// `klimabilanz://board?station=<stationID>`
     func showBoard(stationID: String) {
         guard let station = place(for: stationID) else { return }

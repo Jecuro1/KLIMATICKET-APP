@@ -80,7 +80,7 @@ public enum HafasCodec {
             guard seen.insert(tripID).inserted else { return nil }
             let stops = (j.stopL ?? []).filter { $0.locX != nil }.map { ctx.stopover($0, base: j.date) }
             return RadarVehicle(tripID: tripID, line: ctx.line(at: j.prodX), direction: ctx.direction(j),
-                                coordinate: position, stopovers: stops)
+                                coordinate: position, stopovers: stops, isCancelled: j.isCncl == true)
         }
         return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS))
     }
