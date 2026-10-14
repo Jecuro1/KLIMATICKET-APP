@@ -2196,7 +2196,11 @@ def stage_v2(a, base_report, root):
                   "zlib": zlib.ZLIB_VERSION},
         "keys": V2_TAG_KEYS, "vals": vals_x, "lifts": lifts, "skiAreas": ski_x, "skiAreaStats": ski_stats,
         "operatorsExtra": [{"name": o, "display": CU.operator_display(o)} for o in ops_x],
-        "nOfficialLines": len(Lo), "nExtraLines": len(extra), "attribution": ATTRIBUTION_ODBL}
+        "nOfficialLines": len(Lo), "nExtraLines": len(extra), "attribution": ATTRIBUTION_ODBL,
+        **({"equipment": {k: v for k, v in T["equipment"].items() if k != "stops"}} if "equipment" in T else {})}
+    # EQUI (ENRICH_SPEC §1.11): one u64 per stop record, index = RECS position (dense, offset 8 × index), OSM only
+    eq_stops = (T.get("equipment") or {}).get("stops", {})
+    equi = b"".join(struct.pack("<Q", int(eq_stops.get(sid, 0))) for sid in ids)
     mj = lambda m: json.dumps(m, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     base = hashlib.sha256("\n".join(ids).encode("utf-8")).digest()
 
@@ -2207,7 +2211,7 @@ def stage_v2(a, base_report, root):
              ("TAGS", tags_o, counts["tags_official"]), ("META", mj(meta_o), 0), ("BASE", base, 0)]
     sec_x = [("STRS", bytes(pool_x.b), 0), ("LCAT", lcat_x, len(extra)), ("LNAM", names_x.section(), len(names_x.offs)),
              ("LPAT", bytes(lpat), counts["lines_patched"]), ("LSTP", lstp_x, pairs_x),
-             ("TAGS", tags_x, counts["tags_osm"]), ("META", mj(meta_x), 0), ("BASE", base, 0)]
+             ("TAGS", tags_x, counts["tags_osm"]), ("EQUI", equi, n_stops), ("META", mj(meta_x), 0), ("BASE", base, 0)]
     out_sizes = {"places.bin": write_kbpl2(p(stage_dir, "places.bin"), sec_o, n_all, n_gem, n_stops),
                  "stops_osm.bin": write_kbpl2(p(stage_dir, "stops_osm.bin"), sec_x, 0, 0, n_stops)}
     lb = open(p(v1, "localities.bin"), "rb").read()
@@ -2233,6 +2237,7 @@ def stage_v2(a, base_report, root):
         for e in errors:
             log("SELF-TEST FAIL", e)
     v2rep = {"files": files, "total_bytes": total, "budget_bytes": V2_BUDGET,
+             "equipment": {"stops_with_any": sum(1 for v in eq_stops.values() if v), "section_bytes": len(equi)},
              "gzip": {f: len(gzip.compress(open(p(stage_dir, f), "rb").read(), 9)) for f in files},
              "sizes": out_sizes, "counts": {"stops": n_stops, "lines_official": len(Lo), "lines_extra_osm": len(extra),
                                             "pairs_official": pairs_o, "pairs_osm": pairs_x, "lifts": len(lifts),

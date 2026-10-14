@@ -699,6 +699,29 @@ def check(res, spot_path, compare=None, out=None):
             m = re.search(rb"#[0-9A-Fa-f]{6}\b", raw)
             C.ok(m is None, f"AT-D9 {f} {tag} contains a colour value {m.group(0) if m else ''}")
     C.ok(all(a.get("verified") is False for a in D.mo.get("skiAlliances", {}).values()) or True, "E5")
+    # ---- AT-E1 facilities (ENRICH_SPEC §1.11): EQUI = one u64 per stop record in stops_osm.bin, META.equipment
+    #      describes the layout, the reference stops carry the facts OSM records for them (never invented)
+    if D.X is not None:
+        eq = D.mx.get("equipment") or {}
+        equi = D.X.sections.get("EQUI")
+        C.ok(eq.get("v") == 1 and eq.get("record") == "u64le", "AT-E1 META.equipment missing or not v1 u64le")
+        C.ok(equi is not None and len(equi) == 8 * D.n, "AT-E1 EQUI must hold one u64 per stop record")
+        if equi is not None and len(equi) == 8 * D.n:
+            feats = eq.get("features", [])
+            C.ok(set(feats) >= {"elevator", "toilets", "bicycle_parking", "ticket_machine", "shelter", "bench",
+                                "tactile_paving", "departures_board", "wheelchair"}, "AT-E1 feature list incomplete")
+            bits = eq.get("bits", {})
+            C.ok(bits.get("nearby", [0, 0])[0] >= 2 * len(feats) and bits["nearby"][0] + len(feats) <= 64,
+                 "AT-E1 nearby bits overlap the state bits")
+            def word(i):
+                return struct.unpack_from("<Q", equi, 8 * i)[0]
+            def state(i, name):
+                return (word(i) >> (2 * feats.index(name))) & 3
+            for sid, name, want in (("at:47:1187", "wheelchair", 2), ("at:47:1187", "shelter", 2),
+                                    ("at:48:344", "shelter", 1), ("at:48:344", "bench", 2),
+                                    ("at:48:344", "tactile_paving", 1), ("at:48:344", "wheelchair", 0)):
+                i = D.ids.index(sid) if sid in D.ids else None
+                C.ok(i is not None and state(i, name) == want, f"AT-E1 {sid} {name} state != {want}")
     rep["errors"] = len(C.errors)
     if out:
         json.dump({"report": rep, "errors": C.errors}, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)

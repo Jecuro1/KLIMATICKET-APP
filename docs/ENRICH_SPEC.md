@@ -241,6 +241,54 @@ Unless noted, the measured raw → stored sizes are from `$SPEC/out_deflate/size
 | `TAGS` | 113,275 → 37,025 | Same layout; OSM-derived tags only |
 | `META` | 85,829 → 21,338 | `{v, keys, vals, lifts: [[name, role, liftType]], skiAreas: {osm-only areas, same schema, "source":"osm"}, operatorsExtra: [...] (operator index space = official list ++ extra), nOfficialLines, nExtraLines, attribution: "© OpenStreetMap-Mitwirkende, ODbL 1.0"}` |
 | `BASE` | 32 | must equal places.bin `BASE` |
+| `EQUI` | 317,688 → 42,528 | **Facilities per stop (§1.11)**: one little-endian `u64` per stop record, index = RECS position (offset `8 × index`). Missing or inconsistent section = no facility data. |
+
+## 1.11 Facilities of a stop (`EQUI`, OSM layer) [DECISION, MEASURED]
+
+Stops show the facilities OpenStreetMap records for them: elevator, WC, bicycle parking, ticket machine, shelter,
+bench, tactile paving, departures board and barrier-free access. Only the ODbL layer carries them (`stops_osm.bin`);
+`places.bin` stays free of OSM content.
+
+**Sources (OSM, Austria extract, one pass).** Stop tags on the stop's own PT node or platform (`bench`, `shelter`,
+`tactile_paving`, `departures_board`, `wheelchair`) belong to the stop. Objects count for the stop when they lie
+**within 40 m of a PT object that maps to the stop** (`highway=elevator` or `elevator=yes`; `amenity=toilets`;
+`amenity=bicycle_parking`; `amenity=vending_machine` with `vending` containing `public_transport_tickets`, also in
+`;`-lists; `amenity=shelter`; `amenity=bench`). Points, area centroids and ways with a facility tag are all read;
+a closed way that pyosmium yields twice counts once. The PT-to-stop mapping is the one of `wheelchair`
+(`map_osm_point`: name or IFOPT, ≤ 150 m, strictly 25 m without a name match).
+
+**Layout** (`META.equipment`, resolved by name, never by number):
+
+| Bits | Field |
+|---|---|
+| `2f…2f+1`, f = feature | state: `00` not recorded, `01` no, `10` yes, `11` special (wheelchair `limited`, departures `realtime`) |
+| `44 + f` | the state comes from an object within 40 m (otherwise from the stop's own tag) |
+| `18…21` | elevator count, 0…15 (15 = at least) |
+| `22…25` | toilet count, 0…15 |
+| `26…27` | toilet wheelchair: `00` n/a, `01` no, `10` yes, `11` limited |
+| `28…29` | toilet fee: `00` n/a, `01` no, `10` yes |
+| `30…37` | bicycle stands: sum of `capacity`, else one per object; 255 = at least |
+| `38…39` | bicycle covered: `00` n/a, `01` no, `10` any stand covered (`yes`, `roof`, `building`) |
+| `40…43` | ticket machine count, 0…15 |
+
+Features in META order: `elevator`, `toilets`, `bicycle_parking`, `ticket_machine`, `shelter`, `bench`,
+`tactile_paving`, `departures_board`, `wheelchair`. Facilities without an entry are *not recorded*: OSM is voluntary,
+so a missing entry is never shown as "fehlt" (App text: „nicht erfasst“). An explicit `=no` is „laut OpenStreetMap
+nicht vorhanden“.
+
+**Pipeline:** `scripts/extract_osm_tags.py` (`equip` list), `scripts/build_tags.py` (`equipment()`, `tags.json`
+`equipment`), `scripts/build_places.py --stage v2` (EQUI section, `META.equipment`). The TAGS, LSTP and places.bin
+bytes do not change. `check_places_v2.py` AT-E1 checks layout and reference stops.
+
+**Measured (Austria, 2026-10-09 extract):** 23,477 of 39,711 stops have at least one statement. Facility objects:
+elevator 455 stops, WC 958, bicycle parking 2,476, ticket machine 630, stop-tag wheelchair 5,532 (unchanged), shelter,
+bench and tactile paving most often as stop tags. Section 317,688 B raw, 42,528 B stored; `stops_osm.bin` 224,848 →
+267,940 B (budget 5 MB).
+
+**Limits (say so in the UI and in reviews):** nearby objects can belong to a neighbouring building (an elevator
+next to the station, a WC of a café); the 40 m rule is approximate; a count of 255 stands means at least 255. Only
+the OSM snapshot of the build date is shown (“Stand …”), never live data. Widgets read only the App Group cache and
+do not use EQUI yet.
 
 ## 1.6 Runtime merge rules (KlimaCore, `PlaceEnrichment`) [DECISION]
 
@@ -389,6 +437,7 @@ swift test --package-path Packages/KlimaCore --no-parallel
 - **„Haltestellen“** – existing text from DATA_SOURCES §5.
 - **„Linien“** – „ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · Stadt Wien – data.wien.gv.at, Wiener Linien Fahrplandaten (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at, Haltestellen und Linienverkehr des Verkehrsverbundes Steiermark (CC BY 4.0) · Linien je Haltestelle: ÖV-Güteklassen 2025 (ÖROK/BMIMI/AustriaTech; Daten der Mobilitätsverbünde Österreich OG), verändert (zusammengeführt).“ When MVO is used, the last clause becomes: „Datenquelle: Mobilitätsverbünde Österreich OG, Datenlizenz Mobilitätsverbünde Österreich v1.1 (data.mobilitaetsverbuende.at); verändert.“
 - **„Linienverläufe, Skigebiete, Lifte, Barrierefreiheit, Orte“** – „© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright)“
+- **„Ausstattung an Haltestellen“** (§1.11) – „© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright). Die Angaben sind freiwillige Einträge in OpenStreetMap. „nicht erfasst“ heißt nur, dass OpenStreetMap dazu nichts sagt, nicht dass etwas fehlt.“
 - **„Gemeinden und Bezirke“** – „Statistik Austria, Gemeinden 01.01.2026 (CC BY 4.0)“
 - **„Zeichen und Namen“** – „Skigebiets-, Regions-, Verbund- und Betreibernamen dienen nur der Ortsangabe; es besteht keine Verbindung zu den Betreibern. KlimaBilanz verwendet keine offiziellen Logos und keine Landeswappen; Farben und Symbole sind eigene Gestaltung.“
 

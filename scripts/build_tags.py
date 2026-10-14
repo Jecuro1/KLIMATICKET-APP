@@ -56,6 +56,18 @@ DEF_SPOT = os.path.join(ROOT, "data", "places_spot_checks.json")
 OSM_KEYS = {"ski", "skiAlliance", "glacierSki", "glacier", "lift", "hut", "nationalPark", "wheelchair", "landscape"}
 # place types ENRICH_SPEC AT-D7 keeps out of places.bin even when the stop name says so ("P+R …")
 OSM_LAYER_TYPES = {"airport", "parkAndRide", "bikeAndRide", "university", "mall"}
+# ENRICH_SPEC §1.11 facilities (EQUI section, stops_osm.bin). Stop-tag facilities come from the PT objects, nearby
+# objects count for a stop when they lie within EQUIP_RADIUS_M of a PT object that maps to the stop.
+EQUIP_RADIUS_M = 40.0
+EQUIP_FEATURES = ["elevator", "toilets", "bicycle_parking", "ticket_machine", "shelter", "bench",
+                  "tactile_paving", "departures_board", "wheelchair"]
+# u64 per stop record (little endian). Feature f: state in bits 2f..2f+1 (00 not recorded, 01 no, 10 yes,
+# 11 special: wheelchair limited, departures realtime). Bit 44+f: the state comes from a nearby object (<= 40 m).
+EQUIP_ELEV_N, EQUIP_TOI_N = 18, 22          # 4-bit counts (0..15)
+EQUIP_TOI_WC, EQUIP_TOI_FEE = 26, 28        # 2-bit codes: 00 not recorded, 01 no, 10 yes, 11 limited (wc only)
+EQUIP_BIKE_N, EQUIP_BIKE_COV = 30, 38       # stands 0..255 (8 bits), covered 2-bit code (00, 01 no, 10 yes)
+EQUIP_TICKET_N = 40                         # 4-bit count
+EQUIP_NEARBY = 44
 
 
 def load_curated():
@@ -1119,6 +1131,115 @@ class Tagger:
             self.add(j, "wheelchair", v, 80 if n >= 2 else 70, {"n": n, **{k: c[k] for k in c}})
 
     # =========================================================================================
+    # facilities (ENRICH_SPEC §1.11): elevator, toilets, bicycle parking, ticket machine, shelter, bench, tactile
+    # paving, departures board, wheelchair – OSM only, packed into one u64 per stop (EQUIP_* constants)
+    # =========================================================================================
+    def equipment(self):
+        R = EQUIP_RADIUS_M
+        anchors = [(la, lo, t, nid) for nid, (la, lo, t) in self.osm["pt"].items()]
+        anchors += [(la, lo, t, wid) for wid, (la, lo, t) in self.osm["ptw"].items()]
+        stop_of = []
+        for la, lo, t, _ in anchors:
+            j = None
+            if not t.get("aerialway"):
+                j, _d, _how = self.map_osm_point(la, lo, t.get("name"), t.get("ref:IFOPT"), max_d=150, strict_d=25)
+            stop_of.append(j)
+        tagv = {}                                   # stop -> key -> Counter(value) of stop tags on its PT objects
+        for (la, lo, t, _), j in zip(anchors, stop_of):
+            if j is None:
+                continue
+            for key in ("bench", "shelter", "tactile_paving", "departures_board"):
+                if t.get(key):
+                    tagv.setdefault(j, {}).setdefault(key, collections.Counter())[t[key]] += 1
+        objs = {}                                   # stop -> kind -> [tags of nearby objects]
+        if anchors:
+            atree = STRtree(shapely.points(np.array([to_m(la, lo) for la, lo, _, _ in anchors])))
+            for o in self.osm.get("equip", []):
+                x, y = to_m(o["a"][0], o["a"][1])
+                seen = set()
+                for c in atree.query(Point(x, y), predicate="dwithin", distance=R):
+                    j = stop_of[c]
+                    if j is None or j in seen:
+                        continue
+                    seen.add(j)
+                    objs.setdefault(j, {}).setdefault(o["k"], []).append(o["t"])
+        packed, cnt = {}, collections.Counter()
+        for j in range(self.n):
+            tv, ob = tagv.get(j, {}), objs.get(j, {})
+            st, nb, word = [0] * len(EQUIP_FEATURES), [False] * len(EQUIP_FEATURES), 0
+            # elevator, toilets, bicycle parking, ticket machine: nearby objects only (no explicit "no" in OSM)
+            if ob.get("elevator"):
+                st[0], nb[0] = 2, True
+                word |= min(len(ob["elevator"]), 15) << EQUIP_ELEV_N
+            toi = ob.get("toilets", [])
+            if toi:
+                st[1], nb[1] = 2, True
+                word |= min(len(toi), 15) << EQUIP_TOI_N
+                wc = {t.get("toilets:wheelchair") or t.get("wheelchair") for t in toi}
+                code = 2 if "yes" in wc else 3 if "limited" in wc else 1 if "no" in wc else 0
+                word |= code << EQUIP_TOI_WC
+                fee = {t.get("fee") for t in toi}
+                word |= (2 if "yes" in fee else 1 if "no" in fee else 0) << EQUIP_TOI_FEE
+            bic = ob.get("bicycle_parking", [])
+            if bic:
+                st[2], nb[2] = 2, True
+                stands = sum(int(t["capacity"]) if str(t.get("capacity", "")).isdigit() else 1 for t in bic)
+                word |= min(stands, 255) << EQUIP_BIKE_N
+                cov = {t.get("covered") for t in bic}
+                word |= (2 if cov & {"yes", "roof", "building"} else 1 if "no" in cov else 0) << EQUIP_BIKE_COV
+            if ob.get("ticket_machine"):
+                st[3], nb[3] = 2, True
+                word |= min(len(ob["ticket_machine"]), 15) << EQUIP_TICKET_N
+            # shelter, bench: stop tag yes, else a nearby object, else stop tag no
+            for f, key in ((4, "shelter"), (5, "bench")):
+                tc = tv.get(key, {})
+                if tc.get("yes"):
+                    st[f] = 2
+                elif ob.get(key):
+                    st[f], nb[f] = 2, True
+                elif tc.get("no"):
+                    st[f] = 1
+            # tactile paving: stop tag only (Querungen gehören nicht zur Haltestelle)
+            tc = tv.get("tactile_paving", {})
+            st[6] = 2 if tc.get("yes") else 1 if tc.get("no") else 0
+            # departures board: realtime (special), timetable/yes, no
+            tc = tv.get("departures_board", {})
+            st[7] = 3 if tc.get("realtime") else 2 if (tc.get("timetable") or tc.get("yes")) else 1 if tc.get("no") else 0
+            # wheelchair: the stop value of wheelchair() (TAGS layer), the same evidence
+            wv = self.tags[j].get("wheelchair")
+            if wv:
+                best = max(wv.items(), key=lambda kv: kv[1][0])[0]
+                st[8] = {"yes": 2, "limited": 3, "no": 1}.get(best, 0)
+            for f in range(len(EQUIP_FEATURES)):
+                word |= st[f] << (2 * f)
+                if nb[f]:
+                    word |= 1 << (EQUIP_NEARBY + f)
+                if st[f]:
+                    cnt[EQUIP_FEATURES[f]] += 1
+            if word:
+                packed[self.P[j]["id"]] = word
+                cnt["stops_with_any"] += 1
+        self.equip_packed = packed
+        self.stats["equipment"] = dict(sorted(cnt.items()))
+        log("equipment stops", len(packed), dict(cnt))
+
+    def equipment_doc(self):
+        return {"v": 1, "record": "u64le", "radius_m": EQUIP_RADIUS_M, "features": EQUIP_FEATURES,
+                "mapping": "PT-Knoten und Haltestellenwege werden über Name bzw. IFOPT dem Halt zugeordnet (wie "
+                           "wheelchair: höchstens 150 m, streng 25 m). Stop-Tags (bench, shelter, tactile_paving, "
+                           "departures_board, wheelchair) gelten für den Halt. Aufzug, WC, Fahrradständer, Automat, "
+                           f"Wartehäuschen und Bank zählen, wenn sie höchstens {EQUIP_RADIUS_M:.0f} m von so einem PT-Objekt liegen. "
+                           "Keine Angabe heißt nicht, dass es fehlt.",
+                "bits": {"state": "bits 2f..2f+1 for feature f: 00 not recorded, 01 no, 10 yes, 11 special "
+                                  "(wheelchair limited, departures realtime)",
+                         "nearby": [EQUIP_NEARBY, len(EQUIP_FEATURES)],
+                         "elevator_n": [EQUIP_ELEV_N, 4], "toilets_n": [EQUIP_TOI_N, 4],
+                         "toilets_wheelchair": [EQUIP_TOI_WC, 2], "toilets_fee": [EQUIP_TOI_FEE, 2],
+                         "bicycle_stands": [EQUIP_BIKE_N, 8], "bicycle_covered": [EQUIP_BIKE_COV, 2],
+                         "ticket_n": [EQUIP_TICKET_N, 4]},
+                "stops": self.equip_packed}
+
+    # =========================================================================================
     # KlimaTicket hint
     # =========================================================================================
     def klimaticket(self):
@@ -1374,6 +1495,7 @@ class Tagger:
             "skiAreas": ski_cat,
             "regions": self.region_catalog,
             "stops": stops,
+            "equipment": self.equipment_doc(),
         }
         self.stats["provenance"] = dict(sorted(prov_ct.items()))
         with open(os.path.join(out_dir, "tags.json"), "w", encoding="utf-8") as f:
@@ -1553,6 +1675,7 @@ def main():
     tg.routes()
     tg.regions()
     tg.wheelchair()
+    tg.equipment()
     tg.klimaticket()
     doc = tg.export(a.out)
     log("exported")

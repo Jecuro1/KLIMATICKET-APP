@@ -17,6 +17,8 @@ Collected:
   masters   route_master relations
   sites     type=site (site=piste) relations with member way ids
   admin     boundary=administrative relation tags (admin_level 4/6/7/8) - names + ref:at:gkz
+  equip     facility objects (ENRICH_SPEC §1.11): elevators, toilets, bicycle parking, ticket vending machines,
+            shelters, benches - points (nodes, area centroids, way centroids), no geometry
 Usage: python extract_osm_tags.py <austria.osm.pbf> <out.json>
 """
 import json
@@ -37,6 +39,29 @@ PT_KEEP = ("name", "official_name", "alt_name", "wheelchair", "route_ref", "netw
 ROUTE_KEEP = ("name", "ref", "network", "operator", "from", "to", "via", "description", "route", "bus",
               "tourism", "seasonal", "opening_hours", "interval", "note", "official_name", "wikidata",
               "public_transport:version", "colour", "night", "school", "service")
+
+
+EQUIP_KEEP = ("amenity", "highway", "elevator", "vending", "toilets:wheelchair", "wheelchair", "fee", "covered",
+              "capacity")
+
+
+def equip_kind(t):
+    """Facility kind of an object, or None. Stop-tag facilities (bench=*, shelter=*, tactile_paving=*,
+    departures_board=*) are read from the PT objects themselves, not from here."""
+    if t.get("highway") == "elevator" or t.get("elevator") == "yes":
+        return "elevator"
+    a = t.get("amenity")
+    if a == "toilets":
+        return "toilets"
+    if a == "bicycle_parking":
+        return "bicycle_parking"
+    if a == "vending_machine" and "public_transport_tickets" in [x.strip() for x in (t.get("vending") or "").split(";")]:
+        return "ticket_machine"
+    if a == "shelter":
+        return "shelter"
+    if a == "bench":
+        return "bench"
+    return None
 
 
 def slim(tags, keep):
@@ -93,18 +118,25 @@ def main(src, dst):
     t0 = time.time()
     fab = osmium.geom.WKBFactory()
     out = {"pt": {}, "ptw": {}, "lifts": [], "pistes": [], "areas": [], "pois": [], "routes": [],
-           "masters": [], "sites": [], "admin": []}
+           "masters": [], "sites": [], "admin": [], "equip": []}
     pt = out["pt"]
     ptw = out["ptw"]
     piste_ways = {}
     keys = osmium.filter.KeyFilter("public_transport", "highway", "railway", "amenity", "aerialway", "aeroway",
                                    "shop", "healthcare", "piste:type", "route", "boundary", "site", "landuse",
-                                   "natural", "type", "tourism", "park_ride", "bike_ride", "place")
+                                   "natural", "type", "tourism", "park_ride", "bike_ride", "place", "elevator")
     fp = (osmium.FileProcessor(src).with_locations("flex_mem")
           .with_areas(osmium.filter.KeyFilter("landuse", "natural", "amenity", "shop", "aeroway", "boundary",
                                               "healthcare", "place", "tourism"))
           .with_filter(keys))
     n = 0
+    equip_seen = set()          # pyosmium yields a closed way both as Way and as Area: one facility per (kind, id)
+
+    def add_equip(k, osm_id, a, t):
+        if (k, osm_id) not in equip_seen:
+            equip_seen.add((k, osm_id))
+            out["equip"].append({"k": k, "osm": osm_id, "a": a, "t": slim(t, EQUIP_KEEP)})
+
     for o in fp:
         n += 1
         if n % 2_000_000 == 0:
@@ -112,13 +144,19 @@ def main(src, dst):
         t = dict(o.tags)
         if o.is_area():
             k = area_kind(t)
-            if not k:
+            ek = equip_kind(t)
+            if not k and not ek:
                 continue
             try:
                 g = swkb.loads(fab.create_multipolygon(o), hex=True)
             except Exception:
                 continue
             if g.is_empty:
+                continue
+            if ek:
+                c = g.representative_point()
+                add_equip(ek, ("w" if o.from_way() else "r") + str(o.orig_id()), [round(c.y, 6), round(c.x, 6)], t)
+            if not k:
                 continue
             tol = 0.0004 if k in ("tourism", "national_park", "region") else 0.00008
             area_deg = g.area
@@ -143,11 +181,20 @@ def main(src, dst):
                      or t.get("aerialway") == "station")
             if is_pt:
                 pt[o.id] = [round(loc.lat, 7), round(loc.lon, 7), slim(t, PT_KEEP)]
+            ek = equip_kind(t)
+            if ek:
+                add_equip(ek, "n" + str(o.id), [round(loc.lat, 7), round(loc.lon, 7)], t)
             k = poi_kind(t)
             if k:
                 out["pois"].append({"kind": k, "osm": "n" + str(o.id), "lat": round(loc.lat, 7),
                                     "lon": round(loc.lon, 7), "tags": slim(t, AREA_TAGS)})
         elif isinstance(o, osmium.osm.Way):
+            ek = equip_kind(t)
+            if ek:
+                pts = [(nd.lat, nd.lon) for nd in o.nodes if nd.location.valid()]
+                if pts:
+                    add_equip(ek, "w" + str(o.id), [round(sum(p[0] for p in pts) / len(pts), 6),
+                                                    round(sum(p[1] for p in pts) / len(pts), 6)], t)
             aw = t.get("aerialway")
             if aw in LIFT_TYPES or t.get("railway") == "funicular":
                 pts = [(nd.lat, nd.lon) for nd in o.nodes if nd.location.valid()]

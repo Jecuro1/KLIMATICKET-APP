@@ -232,8 +232,8 @@
    "gzip -9": 1185589
   },
   "stops_osm.bin": {
-   "bytes": 224848,
-   "gzip -9": 224762
+   "bytes": 267940,
+   "gzip -9": 267556
   },
   "localities.bin": {
    "bytes": 637416,
@@ -244,14 +244,18 @@
  "v2": {
   "files": {
    "places.bin": 1190424,
-   "stops_osm.bin": 224848,
+   "stops_osm.bin": 267940,
    "localities.bin": 637416
   },
-  "total_bytes": 2052688,
+  "total_bytes": 2095780,
   "budget_bytes": 5000000,
+  "equipment": {
+   "stops_with_any": 23477,
+   "section_bytes": 317688
+  },
   "gzip": {
    "places.bin": 1185589,
-   "stops_osm.bin": 224762,
+   "stops_osm.bin": 267556,
    "localities.bin": 636647
   },
   "sizes": {
@@ -384,12 +388,19 @@
      "count": 45465,
      "crc32": 2787237093
     },
+    "EQUI": {
+     "raw": 317688,
+     "stored": 42528,
+     "codec": 1,
+     "count": 39711,
+     "crc32": 455800813
+    },
     "META": {
-     "raw": 84822,
-     "stored": 20805,
+     "raw": 85720,
+     "stored": 21342,
      "codec": 1,
      "count": 0,
-     "crc32": 3769635018
+     "crc32": 3010397838
     },
     "BASE": {
      "raw": 32,
@@ -564,7 +575,7 @@
    },
    "sha256": {
     "places.bin": "98044d749c1c40f6002c6ea897b124227f58fbcd3097bb3560cddd9dc1c506bc",
-    "stops_osm.bin": "f2cf2524c8cc7dcf6508517de717cf2f8b0e6e2923aecc03b0375a0c11aaeaea",
+    "stops_osm.bin": "72ba8bfdac63d57e0e0c4c08d0b8f483a37e4da5aaf236f65225960e472cdfbe",
     "localities.bin": "0ea37ce590ed0d510ece259f59ef7d0874f20c5150a3dcbc8eaf44224c0bdad7"
    }
   },
@@ -579,7 +590,7 @@
    "lines_official": "f9b09c608f39bffd",
    "tags_official_records": "ed9f7669303ccf0a",
    "lines_full": "8a771ea1f065f622",
-   "tags": "407e3222a79f86d8",
+   "tags": "5d37b944311beb77",
    "osm_json": "149bfeb8678482b2"
   },
   "zlib": "1.3",
