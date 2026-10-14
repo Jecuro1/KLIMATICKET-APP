@@ -37,7 +37,7 @@ struct ConnectionCard: View {
                 if let co2Text {
                     HStack(spacing: 5) {
                         Image(systemName: "leaf.fill").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.pine)
-                        Text(co2Text).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(co2Text).font(.system(size: 14)).foregroundStyle(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if let notice = summary.topNotice { NoticeRow(notice: notice) }

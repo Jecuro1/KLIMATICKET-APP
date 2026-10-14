@@ -1,7 +1,8 @@
 import Foundation
 
 /// A search as a link: `klimabilanz://plan?from=…&to=…&via=…&at=<ISO 8601>&arr=0|1` (docs/PLANNER.md §Deep-Links).
-/// The places are station ids (`uic:…`) or names; the app resolves them. A link opens the search in the app, nothing is sent.
+/// The places are station ids (`uic:…`) or names; the app resolves them. A link fills the search in the app and starts it only
+/// when both ends are known places (the app's search then uses the live timetable, with consent, like any search).
 public struct PlannerLink: Equatable, Sendable {
     public var from: String
     public var to: String

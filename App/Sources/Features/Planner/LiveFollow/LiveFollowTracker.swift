@@ -137,6 +137,9 @@ final class LiveFollowTracker {
         guard let target, let fetch else { return }
         do {
             let trip = try await fetch(target.tripID)
+            // The follow was stopped or replaced while the request was in flight: this answer must not start or update a Live
+            // Activity, nor write a snapshot into the follow that replaced it.
+            guard !Task.isCancelled, self.target?.tripID == target.tripID else { return }
             let now = Date()
             let next = LiveFollow.snapshot(trip, target: target, now: now)
             let settings = FollowNoticeStore.load()
@@ -159,7 +162,13 @@ final class LiveFollowTracker {
         } catch is CancellationError {
             return
         } catch {
+            guard !Task.isCancelled, self.target?.tripID == target.tripID else { return }
             status = .paused(LiveMessage.text(for: error))
+            // A failed background answer must not end the chain of background requests: the next one is asked for as usual.
+            if FollowNoticeStore.load().isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(
+                stage: snapshot?.stage ?? .beforeDeparture, plannedDeparture: target.plannedDeparture, now: Date()) {
+                FollowBackgroundRefresh.schedule(at: next)
+            }
         }
     }
 

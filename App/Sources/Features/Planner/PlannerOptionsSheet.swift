@@ -49,7 +49,7 @@ struct PlannerOptionsSheet: View {
                     .pickerStyle(.segmented)
                     .listRowBackground(Theme.surface)
                     Toggle("Mit Vorteilscard", isOn: Binding(get: { model.effectiveDiscount == .vorteilscard },
-                                                             set: { model.options.discount = $0 ? .vorteilscard : FareDiscount.none }))
+                                                             set: { model.setVorteilscard($0) }))
                         .listRowBackground(Theme.surface)
                 } header: {
                     SetSectionHeader(title: "Fußweg und Preis")
@@ -99,7 +99,14 @@ struct PlannerOptionsSheet: View {
         }
         .onAppear { original = model.options }
         .onDisappear {
-            if original != model.options, model.hasBoth, model.path.contains(.results) { model.restartSearch() }
+            guard let original, original != model.options, model.hasBoth, model.path.contains(.results) else { return }
+            // Only the options a search sends start a new search. The walking limit filters the rows already there, and a price
+            // class or discount prices them again: no request for the connections in either case.
+            if model.options.changesSearch(from: original) {
+                model.restartSearch()
+            } else if model.options.changesPrices(from: original) {
+                model.repriceRows()
+            }
         }
         .presentationDetents([.large])
         .presentationBackground(Theme.sheetBackground)

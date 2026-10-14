@@ -155,8 +155,11 @@ final class PlannerModel {
     var effectiveTravelClass: TravelClass { options.travelClass ?? settings.defaultTravelClass }
     var effectiveDiscount: FareDiscount { options.discount ?? settings.defaultDiscount }
 
-    /// Whether a row is one of the last two in departure order: the list asks for the next page there („Später“).
-    func isNearEnd(_ row: ConnectionRow) -> Bool { rows.suffix(2).contains { $0.id == row.id } }
+    /// The Vorteilscard switch of the options. The value that equals the setting is stored as „wie Einstellungen“ (nil).
+    func setVorteilscard(_ on: Bool) {
+        let discount: FareDiscount = on ? .vorteilscard : FareDiscount.none
+        options.discount = discount == settings.defaultDiscount ? nil : discount
+    }
 
     var hiddenByKlimaTicketCount: Int { rows.count - visibleRows.count }
 
@@ -242,15 +245,18 @@ final class PlannerModel {
     // MARK: Deep links
 
     /// `klimabilanz://plan?from=…&to=…&via=…&at=<ISO8601>&arr=0|1` (`PlannerLink`): fills the form and starts the search.
+    /// The search starts only when both ends are known places. An unknown name never leaves the default origin
+    /// („Aktueller Standort“) in place, so an external link cannot start a location lookup by itself.
     func handleDeepLink(_ link: PlannerLink) {
         mode = .connections
-        if let place = place(for: link.from) { origin = place }
-        if let place = place(for: link.to) { destination = place }
+        path = []
+        guard let from = place(for: link.from), let to = place(for: link.to) else { return }
+        origin = from
+        destination = to
         vias = link.vias.compactMap { place(for: $0) }
         when = link.at
         isArrival = link.isArrival
-        path = []
-        if hasBoth { startSearch() }
+        startSearch()
     }
 
     /// Zug-Radar: the departures of a stop from a live run. No station index entry is needed for it.
@@ -417,9 +423,12 @@ final class PlannerModel {
         guard !isLoadingMore, let timetable = live.timetable, let context = earlier ? earlierContext : laterContext else { return }
         isLoadingMore = true
         defer { isLoadingMore = false }
+        let mine = generation
         do {
             let query = try await makeQuery(pageContext: context)
             let page = try await timetable.journeys(query)
+            // A search that started meanwhile (other places, time or options) owns the list: this page belongs to the old one.
+            guard mine == generation, !Task.isCancelled else { return }
             let known = Set(journeys.map(\.id))
             let fresh = page.journeys.filter { !known.contains($0.id) }
             journeys = PlannerResults.merge(journeys, page: page.journeys)
@@ -435,23 +444,27 @@ final class PlannerModel {
     func refreshRows() async {
         guard !journeys.isEmpty, let timetable = live.timetable else { return }
         if phase == .loading { return }
-        let tokens = journeys.enumerated().compactMap { index, journey in journey.refreshToken.map { (index, $0) } }
+        let tokens = journeys.compactMap { journey in journey.refreshToken.map { (journey.id, $0) } }
         guard !tokens.isEmpty else { return }
+        let mine = generation
         do {
             let results = try await timetable.refresh(batch: tokens.map(\.1))
+            // The list may have changed while the request was in flight (a new search, a page merged in between). The answers
+            // go to the connection they were asked for, found by id, never by the position it had when the request left.
+            guard mine == generation else { return }
             var changed = false
             for (offset, result) in results.enumerated() where tokens.indices.contains(offset) {
-                if case .success(let fresh) = result, journeys.indices.contains(tokens[offset].0) {
-                    var merged = fresh
-                    if merged.legs.count == journeys[tokens[offset].0].legs.count {
-                        // A refresh may come without stopovers: keep the ones we have.
-                        for i in merged.legs.indices where merged.legs[i].stopovers.isEmpty {
-                            merged.legs[i].stopovers = journeys[tokens[offset].0].legs[i].stopovers
-                        }
+                guard case .success(let fresh) = result,
+                      let index = journeys.firstIndex(where: { $0.id == tokens[offset].0 }) else { continue }
+                var merged = fresh
+                if merged.legs.count == journeys[index].legs.count {
+                    // A refresh may come without stopovers: keep the ones we have.
+                    for i in merged.legs.indices where merged.legs[i].stopovers.isEmpty {
+                        merged.legs[i].stopovers = journeys[index].legs[i].stopovers
                     }
-                    journeys[tokens[offset].0] = merged
-                    changed = true
                 }
+                journeys[index] = merged
+                changed = true
             }
             if changed {
                 resultsUpdatedAt = Date()
@@ -487,6 +500,9 @@ final class PlannerModel {
     }
 
     func row(id: String) -> ConnectionRow? { rows.first { $0.id == id } }
+
+    /// Prices the listed connections again (a price class or discount changed): no new search, no new connections.
+    func repriceRows() { startPrices(generation: generation) }
 
     // MARK: Prices
 

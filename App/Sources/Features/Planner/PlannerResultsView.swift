@@ -92,9 +92,6 @@ struct PlannerResultsView: View {
                 .buttonStyle(.pressableCard)
                 .zoomSource(id: row.id, cornerRadius: Theme.Radius.card)
                 .reveal(order: min(index + 1, 6))
-                .onAppear {
-                    if model.isNearEnd(row), model.canLoadLater { Task { await model.loadMore(earlier: false) } }
-                }
             }
         }
         .opacity(stale ? 0.72 : 1)
@@ -112,7 +109,7 @@ struct PlannerResultsView: View {
                 Image(systemName: "figure.walk").font(.system(size: 13, weight: .semibold))
                 Text(model.hiddenByWalkCount == 1 ? "1 Verbindung mit mehr Fußweg ausgeblendet" : "\(model.hiddenByWalkCount) Verbindungen mit mehr Fußweg ausgeblendet")
                     .font(.footnote)
-                Button("Filter aus") { model.options.maxWalkMeters = nil; model.restartSearch() }.font(.footnote.weight(.semibold))
+                Button("Filter aus") { model.options.maxWalkMeters = nil }.font(.footnote.weight(.semibold))
             }
             .foregroundStyle(Theme.textSecondary)
             .frame(maxWidth: .infinity)
@@ -254,8 +251,8 @@ struct PlannerResultsView: View {
     private func tomorrowMorning(_ model: PlannerModel) {
         let cal = Calendar.vienna
         let tomorrow = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) ?? Date()
+        // setWhen starts the search itself while the results are shown (one request, not two).
         model.setWhen(cal.date(bySettingHour: 5, minute: 0, second: 0, of: tomorrow) ?? tomorrow, arrival: false)
-        model.restartSearch()
     }
 
     private func widen(_ model: PlannerModel) {

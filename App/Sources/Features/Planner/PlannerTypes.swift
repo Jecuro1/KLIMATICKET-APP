@@ -116,6 +116,18 @@ struct PlannerOptions: Codable, Equatable {
 
     var isDefault: Bool { self == PlannerOptions() }
 
+    /// Whether the options a search sends to ÖBB differ (KlimaTicket filter, products, changes, transfer time, accessibility,
+    /// bikes). Only these need a new search; the others filter or price the rows that are there.
+    func changesSearch(from other: PlannerOptions) -> Bool {
+        klimaTicketOnly != other.klimaTicketOnly || productsRaw != other.productsRaw || maxChanges != other.maxChanges
+            || extraTransferMinutes != other.extraTransferMinutes || accessible != other.accessible || bike != other.bike
+    }
+
+    /// Whether the price class or the discount differ: the prices of the rows are asked again, the connections are not.
+    func changesPrices(from other: PlannerOptions) -> Bool {
+        travelClass != other.travelClass || discount != other.discount
+    }
+
     /// Number of non-default settings (badge on the options button).
     func activeCount(klimaTicketDefault: Bool) -> Int {
         var n = 0
