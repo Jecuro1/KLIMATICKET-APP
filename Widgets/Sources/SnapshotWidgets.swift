@@ -30,6 +30,7 @@ private struct TicketRemainingEntryView: View {
     var body: some View {
         TicketRemainingWidgetView(snapshot: entry.snapshot, family: family, now: entry.date,
                                   margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
@@ -60,6 +61,7 @@ private struct BreakEvenEntryView: View {
     var body: some View {
         BreakEvenWidgetView(snapshot: entry.snapshot, family: family, now: entry.date,
                             margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
@@ -90,6 +92,7 @@ private struct YearReviewEntryView: View {
     var body: some View {
         YearReviewWidgetView(snapshot: entry.snapshot, family: family, now: entry.date,
                              margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.stats)
             .widgetBrandBackground(family)
@@ -120,6 +123,7 @@ private struct HeatmapEntryView: View {
     var body: some View {
         HeatmapWidgetView(counts: entry.snapshot?.heat, storedDay: entry.snapshot?.generatedAt ?? entry.date,
                           now: entry.date, family: family, margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.stats)
             .widgetBrandBackground(family)

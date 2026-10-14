@@ -113,6 +113,7 @@ struct WidgetPreviewHost: View {
                 }
                 tileFrame(.systemSmall, scale: 1) {
                     TicketRemainingWidgetView(snapshot: snapshot, family: .systemSmall, now: now)
+                        .widContent(.systemSmall, WidLayout.defaultMargins)
                         .environment(\.isLuminanceReduced, true)
                 }
             }
@@ -137,7 +138,7 @@ struct WidgetPreviewHost: View {
             tile(.systemSmall) { BreakEvenWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
         }
         HStack(spacing: 14) {
-            tile(.systemSmall) { SummitWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
+            tileFrame(.systemSmall, scale: 1) { SummitWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
             tile(.systemSmall) { YearReviewWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
         }
     }
@@ -166,7 +167,7 @@ struct WidgetPreviewHost: View {
     private func tile<Content: View>(_ family: WidgetFamily, @ViewBuilder _ content: () -> Content) -> some View {
         tileFrame(family, scale: 1) {
             content()
-                .padding(WidLayout.defaultMargins)
+                .widContent(family, WidLayout.defaultMargins)
         }
     }
 

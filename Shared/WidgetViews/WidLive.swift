@@ -5,6 +5,13 @@ import KlimaCore
 // MARK: - Live widgets: states, rows and wording shared by the connection, departure and disruption widgets
 // (docs/WIDGETS.md §6). The widgets never fetch: they show the app's cache and say how old it is ("Stand HH:mm").
 
+extension View {
+    /// The content margins on the home-screen families. The lock-screen families get none: the system places them.
+    func widContent(_ family: WidgetFamily, _ margins: EdgeInsets) -> some View {
+        padding(family.widIsAccessory ? EdgeInsets() : margins)
+    }
+}
+
 extension WidFormat {
     /// "08:12" (24-hour clock, German).
     static func clock(_ date: Date) -> String {

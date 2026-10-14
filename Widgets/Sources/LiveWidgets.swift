@@ -30,6 +30,7 @@ private struct NextConnectionEntryView: View {
     var body: some View {
         NextConnectionWidgetView(title: entry.title, state: entry.state, items: entry.items, family: family,
                                  margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.planner)
             .widgetBrandBackground(family)
@@ -60,6 +61,7 @@ private struct DeparturesEntryView: View {
     var body: some View {
         DeparturesWidgetView(stationName: entry.stationName, facilities: entry.facilities, state: entry.state,
                              items: entry.items, family: family, margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(entry.stationID.map { WidDeepLink.board(stationID: $0) } ?? WidDeepLink.planner)
             .widgetBrandBackground(family)
@@ -90,6 +92,7 @@ private struct DisruptionsEntryView: View {
     var body: some View {
         DisruptionsWidgetView(state: entry.state, items: entry.items, followedLines: entry.followedLines, family: family,
                               margins: WidLayout.resolved(contentMargins))
+            .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.planner)
             .widgetBrandBackground(family)
