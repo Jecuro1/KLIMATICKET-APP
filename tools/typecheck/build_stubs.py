@@ -61,6 +61,7 @@ MODULES = [
     ("WidgetKit", ["AppIntents", "_AppIntents_SwiftUI", "SwiftUI", "DeveloperToolsSupport", "ActivityKit"]),
     ("UserNotifications", ["FoundationShim", "CoreLocation"]),
     ("BackgroundTasks", ["FoundationShim"]),  # hand-written (Stubs/BackgroundTasks): app refresh for "Live verfolgen"
+    ("FoundationModels", ["FoundationShim"]),  # hand-written (Stubs/FoundationModels): on-device assistant (docs/LOCAL_AI.md)
     ("CoreMotion", ["FoundationShim"]),
     ("MetricKit", ["FoundationShim"]),
     ("ImageIO", ["CoreGraphics", "FoundationShim"]),
