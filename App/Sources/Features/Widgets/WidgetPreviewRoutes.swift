@@ -8,7 +8,7 @@ import KlimaCore
 /// widget sizes, with demo data (WidSamples / WidgetSnapshot.sample) and no network. DEBUG builds only.
 struct WidgetPreviewHost: View {
     static let screens: Set<String> = ["widgetsGallery", "widgetsGalleryDark", "widgetsNextConnection", "widgetsHeatmap",
-                                       "widgetsLockScreen", "widgetsStandBy"]
+                                       "widgetsLockScreen", "widgetsStandBy", "widgetsEquipment"]
 
     let screen: String
 
@@ -18,6 +18,9 @@ struct WidgetPreviewHost: View {
         switch screen {
         case "widgetsNextConnection":
             page() { nextConnectionTiles }
+        // MARK: review-widgets – equipment on top of the page (the other tiles stay below the fold of a capture)
+        case "widgetsEquipment":
+            page() { equipmentTiles }
         case "widgetsHeatmap":
             page() { heatmapTiles }
         case "widgetsLockScreen":
@@ -141,6 +144,15 @@ struct WidgetPreviewHost: View {
             tileFrame(.systemSmall, scale: 1) { SummitWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
             tile(.systemSmall) { YearReviewWidgetView(snapshot: snapshot, family: .systemSmall, now: now) }
         }
+    }
+
+    @ViewBuilder
+    private var equipmentTiles: some View {
+        caption("Abfahrten · Ausstattung aus OpenStreetMap, mit Quellenvermerk")
+        tile(.systemLarge) { DeparturesWidgetView(stationName: "Innsbruck Hbf", facilities: [.bikeRide, .barrierFree, .elevator, .toilets], state: fresh, items: departures, family: .systemLarge) }
+        tile(.systemLarge) { DeparturesWidgetView(stationName: "Landeck-Zams", facilities: [.elevator, .toilets, .bicycleParking, .barrierFreePartial], state: fresh, items: departures, family: .systemLarge) }
+        caption("Mit Zwischenhalt · wird nicht live abgefragt")
+        tile(.systemMedium) { NextConnectionWidgetView(title: "Pendeln über Landeck", state: fresh, items: connections, family: .systemMedium, viaStops: true) }
     }
 
     @ViewBuilder
