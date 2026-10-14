@@ -53,7 +53,7 @@ struct DisruptionsWidgetView: View {
                 .minimumScaleFactor(0.7)
                 .widgetAccentable()
             if let first = items.first {
-                Text(verbatim: "\(first.lines.joined(separator: ", ")) \(validity(first))")
+                Text(verbatim: summary(first))
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(.widSecondary)
                     .lineLimit(2)
@@ -80,7 +80,7 @@ struct DisruptionsWidgetView: View {
             } else {
                 ForEach(items.prefix(3)) { item in
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(verbatim: "\(item.lines.joined(separator: ", ")) · \(validity(item))")
+                        Text(verbatim: summary(item))
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(Theme.textPrimary)
                             .lineLimit(1)
@@ -111,7 +111,7 @@ struct DisruptionsWidgetView: View {
                 .lineLimit(1)
                 .widgetAccentable()
             if let first = items.first {
-                Text(verbatim: "\(first.lines.joined(separator: ", ")) \(validity(first))")
+                Text(verbatim: summary(first))
                     .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -131,7 +131,12 @@ struct DisruptionsWidgetView: View {
 
     private var inlineText: String {
         guard let first = items.first else { return "Keine Störung auf deinen Linien" }
-        return "Störung \(first.lines.joined(separator: ", ")) \(validity(first))"
+        return "Störung \(summary(first))"
+    }
+
+    /// "S 4 · bis 14:00"; without an end time just the lines (no dangling separator).
+    private func summary(_ item: WidgetDisruption) -> String {
+        [item.lines.joined(separator: ", "), validity(item)].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     /// "bis 14:00" from the validity end; "" without one.

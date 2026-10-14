@@ -17,26 +17,28 @@ struct WidgetPreviewHost: View {
     var body: some View {
         switch screen {
         case "widgetsNextConnection":
-            page(scheme: .light) { nextConnectionTiles }
+            page() { nextConnectionTiles }
         case "widgetsHeatmap":
-            page(scheme: .light) { heatmapTiles }
+            page() { heatmapTiles }
         case "widgetsLockScreen":
             lockScreen
         case "widgetsStandBy":
             standBy
         case "widgetsGalleryDark":
-            page(scheme: .dark) { galleryTiles }
+            page(dark: true) { galleryTiles }
         default:
-            page(scheme: .light) { galleryTiles }
+            page() { galleryTiles }
         }
     }
 
     // MARK: Pages
 
-    private func page<Tiles: View>(scheme: ColorScheme, @ViewBuilder _ tiles: () -> Tiles) -> some View {
+    /// A scrollable page of tiles. Light and dark follow the system appearance (the CI captures both); `dark` forces the
+    /// dark variant for the gallery route that shows it.
+    private func page<Tiles: View>(dark: Bool = false, @ViewBuilder _ tiles: () -> Tiles) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text(verbatim: scheme == .dark ? "Widgets · dunkel" : "Widgets · hell")
+                Text(verbatim: dark ? "Widgets · dunkel" : "Widgets")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(Theme.textPrimary)
                 tiles()
@@ -47,7 +49,7 @@ struct WidgetPreviewHost: View {
         }
         .scrollIndicators(.hidden)
         .background(Theme.background.ignoresSafeArea())
-        .environment(\.colorScheme, scheme)
+        .environment(\.colorScheme, dark ? .dark : systemScheme)
         .environment(\.widNow, now)
     }
 
@@ -104,12 +106,12 @@ struct WidgetPreviewHost: View {
     private var standBy: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            HStack(spacing: 18) {
-                tileFrame(.systemSmall, scale: 1.25) {
+            HStack(spacing: 14) {
+                tileFrame(.systemSmall, scale: 1) {
                     SummitWidgetView(snapshot: snapshot, family: .systemSmall, now: now)
                         .environment(\.isLuminanceReduced, true)
                 }
-                tileFrame(.systemSmall, scale: 1.25) {
+                tileFrame(.systemSmall, scale: 1) {
                     TicketRemainingWidgetView(snapshot: snapshot, family: .systemSmall, now: now)
                         .environment(\.isLuminanceReduced, true)
                 }
