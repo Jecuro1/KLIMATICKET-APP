@@ -57,15 +57,14 @@ public struct RadarFrameStore: Sendable {
         self.retention = retention
     }
 
-    /// Merges one answer (one tile or several tiles of the same refresh).
+    /// Merges one answer (one tile or several tiles of the same refresh). The previous point is always the position of the
+    /// answer before this one, so a vehicle that stands still interpolates from its own position and stays there.
     public mutating func merge(_ vehicles: [RadarVehicle], at now: Date) {
         for vehicle in vehicles {
             if let old = entries[vehicle.tripID] {
-                let moved = old.vehicle.coordinate != vehicle.coordinate
                 entries[vehicle.tripID] = Entry(
                     vehicle: vehicle, seenAt: now,
-                    previousCoordinate: moved ? old.vehicle.coordinate : old.previousCoordinate,
-                    previousSeenAt: moved ? old.seenAt : old.previousSeenAt)
+                    previousCoordinate: old.vehicle.coordinate, previousSeenAt: old.seenAt)
             } else {
                 entries[vehicle.tripID] = Entry(vehicle: vehicle, seenAt: now, previousCoordinate: nil, previousSeenAt: nil)
             }
@@ -87,17 +86,28 @@ public struct RadarFrameStore: Sendable {
 // MARK: - Estimates between two answers
 
 public enum RadarEstimate {
-    /// Position at `now`. Between two answers the position moves linearly from the previous server position to the
+    /// The map draws every train this long behind the clock. The refresh runs every 20 s: the latest answer is always in
+    /// the past, so without the lag the interpolation between two answers would never run and the marker would jump.
+    /// With the lag the marker moves from the previous answer to the latest one over one interval and then holds there.
+    public static let displayLag: TimeInterval = 20
+
+    /// The position drawn at `now`: `position(of:at:)` at `now` minus `displayLag`.
+    public static func shown(_ entry: RadarFrameStore.Entry, now: Date) -> (coordinate: GeoPoint, isEstimate: Bool) {
+        position(of: entry, at: now.addingTimeInterval(-displayLag))
+    }
+
+    /// Position at `at`. Between two answers the position moves linearly from the previous server position to the
     /// latest one (the server computes the positions, `trainPosMode` CALC); after the latest answer it holds there.
-    /// `isEstimate` is true while `now` lies between the two answers, so the UI can mark the marker as estimated.
-    public static func position(of entry: RadarFrameStore.Entry, at now: Date) -> (coordinate: GeoPoint, isEstimate: Bool) {
+    /// `isEstimate` is true while `at` lies between two answers that differ, so the UI marks only real movement.
+    public static func position(of entry: RadarFrameStore.Entry, at at: Date) -> (coordinate: GeoPoint, isEstimate: Bool) {
         guard let from = entry.previousCoordinate, let fromAt = entry.previousSeenAt,
               entry.seenAt > fromAt else {
             return (entry.vehicle.coordinate, false)
         }
-        let span = entry.seenAt.timeIntervalSince(fromAt)
-        let t = min(max(now.timeIntervalSince(fromAt) / span, 0), 1)
         let to = entry.vehicle.coordinate
+        guard from != to else { return (to, false) }
+        let span = entry.seenAt.timeIntervalSince(fromAt)
+        let t = min(max(at.timeIntervalSince(fromAt) / span, 0), 1)
         let point = GeoPoint(latitude: from.latitude + (to.latitude - from.latitude) * t,
                              longitude: from.longitude + (to.longitude - from.longitude) * t)
         return (point, t < 1)

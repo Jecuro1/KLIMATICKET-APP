@@ -27,6 +27,14 @@ public struct RadarBox: Sendable, Hashable, Codable {
             && north > south && east > west
     }
 
+    /// The box limited to the WGS84 range. A map zoomed out past a pole or the date line would otherwise fail `isValid`,
+    /// and the radar would stop asking without saying why. A box with a non-finite side is returned unchanged.
+    public var clamped: RadarBox {
+        guard [north, west, south, east].allSatisfy(\.isFinite) else { return self }
+        return RadarBox(north: min(max(north, -90), 90), west: min(max(west, -180), 180),
+                        south: min(max(south, -90), 90), east: min(max(east, -180), 180))
+    }
+
     /// Box around a point (used when the radar is opened from a trip or a station).
     public static func around(_ center: GeoPoint, halfSpan: Double = 0.6) -> RadarBox {
         RadarBox(north: center.latitude + halfSpan, west: center.longitude - halfSpan,

@@ -23,6 +23,8 @@ struct SetFollowNoticesSection: View {
                     SetRowLabel(title: "Live-Mitteilungen", subtitle: "Bei „Live verfolgen“ über Verspätung, Gleis, Umstieg und Ankunft informieren",
                                 symbol: "bell.and.waves.left.and.right.fill", tint: Theme.glacier)
                 }
+                // Without the live-data consent the switch cannot go on: no permission is asked before the consent exists.
+                .disabled(!settings.isEnabled && app.live.consent != .granted)
 
                 if settings.isEnabled {
                     statusRow(title: "Mitteilungen", value: notificationStatus.text, ok: notificationStatus.ok)
@@ -97,7 +99,8 @@ struct SetFollowNoticesSection: View {
 
     private func setEnabled(_ on: Bool) {
         update { $0.isEnabled = on }
-        if on, !LaunchMode.isSandboxed { LiveFollowNotifications.requestAuthorization() }
+        // The permission is asked only when live data is granted too (§2: nothing is asked or sent before the consent).
+        if on, app.live.consent == .granted, !LaunchMode.isSandboxed { LiveFollowNotifications.requestAuthorization() }
         Task { await refreshStatus() }
     }
 

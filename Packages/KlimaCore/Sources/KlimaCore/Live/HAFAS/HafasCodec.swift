@@ -69,14 +69,15 @@ public enum HafasCodec {
     }
 
     /// JourneyGeoPos (Zug-Radar). Reference `parse/movement.js`: `jnyL[i].pos` is the position, `stopL` the run.
-    /// Entries without a position are dropped, duplicate trip ids keep their first occurrence, and an absent `jnyL`
-    /// means an empty map (not an error).
+    /// Entries without a position (or with one outside the WGS84 range) are dropped, duplicate trip ids keep their first
+    /// occurrence, and an absent `jnyL` means an empty map (not an error).
     public static func radar(from data: Data, serviceIndex: Int = 0) throws -> RadarSnapshot {
         let res = try serviceResult(from: data, serviceIndex: serviceIndex)
         let ctx = Context(res.common)
         var seen = Set<String>()
         let vehicles: [RadarVehicle] = (res.jnyL ?? []).compactMap { j in
-            guard let position = Context.coordinate(j.pos), let tripID = j.jid, !tripID.isEmpty else { return nil }
+            guard let position = Context.coordinate(j.pos), let tripID = j.jid, !tripID.isEmpty,
+                  abs(position.latitude) <= 90, abs(position.longitude) <= 180 else { return nil }
             guard seen.insert(tripID).inserted else { return nil }
             let stops = (j.stopL ?? []).filter { $0.locX != nil }.map { ctx.stopover($0, base: j.date) }
             return RadarVehicle(tripID: tripID, line: ctx.line(at: j.prodX), direction: ctx.direction(j),

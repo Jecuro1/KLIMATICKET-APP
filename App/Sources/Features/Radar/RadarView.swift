@@ -224,13 +224,21 @@ final class RadarModel {
         updatedAt = stamp ?? now
         if truncated { splitNext = true }
         cutOff = truncated
-        load = .loaded
+        if let failure {
+            // A quadrant failed while the others answered: the map keeps what came in and says that some is missing.
+            load = .failed(LiveMessage.text(for: failure))
+        } else {
+            load = .loaded
+        }
         rebuildPins(at: now)
     }
 
     /// Refreshes every `interval` and moves the markers every second in between. Low Power Mode pauses the requests
     /// (the clock still runs, so the pins stay where the last answer put them). Ends with the task.
     func run(_ service: any RadarService, interval: Duration) async {
+        // A map that is still moving restarts this loop on every move: the short pause makes a burst of moves cost one
+        // request instead of one each (the shared 40 requests/min budget also serves the live follow).
+        try? await Task.sleep(for: .milliseconds(800))
         while !Task.isCancelled {
             lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
             if !lowPower {
@@ -248,7 +256,7 @@ final class RadarModel {
 
     private func rebuildPins(at now: Date) {
         pins = store.visible(at: now).compactMap { entry -> RadarPin? in
-            let (point, estimate) = RadarEstimate.position(of: entry, at: now)
+            let (point, estimate) = RadarEstimate.shown(entry, now: now)
             guard box.contains(point) else { return nil }
             let vehicle = entry.vehicle
             guard filter.matches(vehicle, now: now) else { return nil }
@@ -268,7 +276,6 @@ struct RadarView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var model = RadarModel()
     @State private var camera: MapCameraPosition = .region(RadarView.austriaRegion)
     @State private var query = ""
@@ -327,7 +334,10 @@ struct RadarView: View {
             .sheet(isPresented: $showsFilter) {
                 RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
                                  modes: Binding(get: { model.modes }, set: { model.modes = $0 }),
-                                 categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) }).filter { !$0.isEmpty }.sorted())
+                                 // Selected lines stay in the list even when none of them is on the map right now, so an
+                                 // active line filter is always visible and can be cleared.
+                                 categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
+                                    .union(model.filter.categories).filter { !$0.isEmpty }.sorted())
                     .presentationDetents([.medium, .large])
             }
             .sheet(item: $sheetVehicle) { vehicle in
@@ -363,8 +373,8 @@ struct RadarView: View {
                         .buttonStyle(.plain)
                     }
                 } else {
-                    Annotation("\(cluster.count) Fahrzeuge", coordinate: cluster.center.clCoordinate, anchor: .center) {
-                        Button { zoom(to: cluster) } label: { RadarClusterBubble(cluster: cluster) }
+                    Annotation("\(cluster.count) \(vehicleNoun)", coordinate: cluster.center.clCoordinate, anchor: .center) {
+                        Button { zoom(to: cluster) } label: { RadarClusterBubble(cluster: cluster, noun: vehicleNoun) }
                             .buttonStyle(.plain)
                     }
                 }
@@ -385,13 +395,16 @@ struct RadarView: View {
             model.setView(box: RadarBox(north: r.center.latitude + r.span.latitudeDelta / 2,
                                         west: r.center.longitude - r.span.longitudeDelta / 2,
                                         south: r.center.latitude - r.span.latitudeDelta / 2,
-                                        east: r.center.longitude + r.span.longitudeDelta / 2),
+                                        east: r.center.longitude + r.span.longitudeDelta / 2).clamped,
                           span: r.span.latitudeDelta)
         }
         .accessibilityLabel("Zug-Radar, \(model.summary)")
         .ignoresSafeArea(edges: .bottom)
         .haptic(.selection, trigger: model.selectedTripID)
     }
+
+    /// The noun of the summary and the clusters: "Züge" when only rail is on, else "Fahrzeuge" (as the status line says).
+    private var vehicleNoun: String { model.isRailOnly ? "Züge" : "Fahrzeuge" }
 
     private var pinsByID: [String: RadarPin] {
         Dictionary(model.pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -654,6 +667,7 @@ struct RadarMarker: View {
 /// A cluster of vehicles at this zoom. The ring shows the worst state inside it.
 struct RadarClusterBubble: View {
     var cluster: RadarCluster
+    var noun = "Fahrzeuge"
 
     var body: some View {
         let worst: RadarDelayState = cluster.cancelledCount > 0 ? .cancelled : (cluster.lateCount > 0 ? .late : .onTime)
@@ -667,7 +681,7 @@ struct RadarClusterBubble: View {
             .overlay(Circle().strokeBorder(worst.tint, lineWidth: 3))
             .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(cluster.count) Fahrzeuge an dieser Stelle, \(cluster.lateCount) verspätet")
+            .accessibilityLabel("\(cluster.count) \(noun) an dieser Stelle, \(cluster.lateCount) verspätet")
             .accessibilityHint("Tippen zum Heranzoomen")
             .accessibilityAddTraits(.isButton)
     }

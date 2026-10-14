@@ -56,16 +56,58 @@ final class RadarMapTests: XCTestCase {
         XCTAssertEqual(store.visible(at: t0.addingTimeInterval(61)).count, 0, "after 60 s the frame is gone")
     }
 
-    func testMergeKeepsPreviousPositionOnlyWhenItMoved() {
+    func testMergeKeepsThePreviousAnswerAsTheStartOfTheEstimate() {
         var store = RadarFrameStore()
         store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.0)], at: t0)
         store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.2)], at: t0.addingTimeInterval(20))
         let moved = store.entries["a"]
         XCTAssertEqual(moved?.previousCoordinate?.latitude ?? 0, 47.0, accuracy: 1e-12)
         XCTAssertEqual(moved?.previousSeenAt, t0)
-        // Same position again: the previous point stays the one before the move.
+        // Same position again: the start of the estimate is that answer, so the train stands still instead of creeping
+        // towards a point it reached one answer earlier.
         store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.2)], at: t0.addingTimeInterval(40))
-        XCTAssertEqual(store.entries["a"]?.previousCoordinate?.latitude ?? 0, 47.0, accuracy: 1e-12)
+        XCTAssertEqual(store.entries["a"]?.previousCoordinate?.latitude ?? 0, 47.2, accuracy: 1e-12)
+        XCTAssertEqual(store.entries["a"]?.previousSeenAt, t0.addingTimeInterval(20))
+    }
+
+    func testStandingStillIsNotAnEstimate() throws {
+        var store = RadarFrameStore()
+        store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.2)], at: t0)
+        store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.2)], at: t0.addingTimeInterval(20))
+        let entry = try XCTUnwrap(store.entries["a"])
+        let between = RadarEstimate.position(of: entry, at: t0.addingTimeInterval(10))
+        XCTAssertEqual(between.coordinate.latitude, 47.2, accuracy: 1e-12)
+        XCTAssertFalse(between.isEstimate, "no movement between two answers is no estimate")
+    }
+
+    func testShownPositionMovesContinuouslyBehindTheLatestAnswer() throws {
+        var store = RadarFrameStore()
+        store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.0)], at: t0)
+        // Before the second answer the marker sits at the first position (no jump when the second answer arrives).
+        let before = try XCTUnwrap(store.entries["a"])
+        XCTAssertEqual(RadarEstimate.shown(before, now: t0.addingTimeInterval(20)).coordinate.latitude, 47.0, accuracy: 1e-9)
+
+        store.merge([vehicle("a", line: "RJX 66", category: "RJX", lat: 47.2)], at: t0.addingTimeInterval(20))
+        let entry = try XCTUnwrap(store.entries["a"])
+        // Just after the second answer: at the start of the window, a moment of motion in.
+        let early = RadarEstimate.shown(entry, now: t0.addingTimeInterval(21))
+        XCTAssertEqual(early.coordinate.latitude, 47.01, accuracy: 1e-9)
+        XCTAssertTrue(early.isEstimate)
+        // One interval after the second answer the marker is on it and no longer estimated.
+        let arrived = RadarEstimate.shown(entry, now: t0.addingTimeInterval(40))
+        XCTAssertEqual(arrived.coordinate.latitude, 47.2, accuracy: 1e-9)
+        XCTAssertFalse(arrived.isEstimate)
+    }
+
+    func testBoxIsClampedToTheWorldAndStaysValid() {
+        let zoomedOut = RadarBox(north: 112, west: -200, south: 20, east: 190)
+        XCTAssertFalse(zoomedOut.isValid)
+        let clamped = zoomedOut.clamped
+        XCTAssertEqual(clamped, RadarBox(north: 90, west: -180, south: 20, east: 180))
+        XCTAssertTrue(clamped.isValid)
+        XCTAssertEqual(RadarBox.austria.clamped, RadarBox.austria, "a valid box is unchanged")
+        let broken = RadarBox(north: .nan, west: 9, south: 46, east: 17)
+        XCTAssertFalse(broken.clamped.isValid, "a non-finite side is left alone, the query refuses it")
     }
 
     func testEstimateMovesLinearlyBetweenAnswersAndHoldsAfterwards() throws {

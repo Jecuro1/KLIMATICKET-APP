@@ -135,13 +135,10 @@ public actor HafasClient: TimetableService, RadarService {
 
     public func radar(_ query: RadarQuery) async throws -> RadarSnapshot {
         try ensureEnabled()
-        // An invalid rectangle never reaches the wire (HAFAS rejects degenerate boxes).
+        // An invalid rectangle never reaches the wire (HAFAS rejects degenerate boxes). Errors, offline included, are not
+        // turned into an empty map: the view would otherwise show "0 Züge" with a fresh time stamp.
         guard query.box.isValid else { return .empty }
-        do {
-            return try HafasCodec.radar(from: try await send([HafasRequests.journeyGeoPos(query)]))
-        } catch LiveError.noConnection {
-            return .empty
-        }
+        return try HafasCodec.radar(from: try await send([HafasRequests.journeyGeoPos(query)]))
     }
 
     public func remarks(_ query: RemarksQuery) async throws -> [Remark] {

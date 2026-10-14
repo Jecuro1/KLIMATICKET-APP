@@ -64,8 +64,10 @@ final class LiveFollowTracker {
         fetch = makeFetch(live)
         WidgetCacheSync.liveFollowDidChange(active: true)   // MARK: widgets – the Live-verfolgen control
         // Screenshot and perf runs must not show the system permission prompt over the scene. The prompt only appears
-        // when the user has switched Live-Mitteilungen on.
-        if FollowNoticeStore.load().isEnabled, !LaunchMode.isSandboxed { LiveFollowNotifications.requestAuthorization() }
+        // when the user has switched Live-Mitteilungen on and granted live data (§2: nothing is asked before the consent).
+        if FollowNoticeStore.load().isEnabled, live.consent == .granted, !LaunchMode.isSandboxed {
+            LiveFollowNotifications.requestAuthorization()
+        }
         persist()
         loop = Task { [weak self] in await self?.run() }
     }
@@ -164,6 +166,8 @@ final class LiveFollowTracker {
         } catch {
             guard !Task.isCancelled, self.target?.tripID == target.tripID else { return }
             status = .paused(LiveMessage.text(for: error))
+            // Live data switched off or withdrawn: nothing was asked, so no background request is booked for it.
+            if case .disabled? = error as? LiveError { return }
             // A failed background answer must not end the chain of background requests: the next one is asked for as usual.
             if FollowNoticeStore.load().isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(
                 stage: snapshot?.stage ?? .beforeDeparture, plannedDeparture: target.plannedDeparture, now: Date()) {

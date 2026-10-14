@@ -2504,9 +2504,17 @@ des Systems), alles darüber ist unser: Marker, Cluster, Route, Filter, Suche, S
   `isCancelled` aus `isCncl`). App `Features/Radar/RadarView.swift`, `RadarTripSheet.swift`, `RadarFilterSheet.swift`.
 - **Abfrage (Kacheln):** Eine Kachel pro Lauf. Liefert die Antwort das Limit von 256 Fahrzeugen, teilt die nächste Runde die
   Kartenfläche in vier Quadranten (vier Anfragen, im 40/min-Limit). Bleibt eine Kachel am Limit, steht im Status
-  „Zoom hinein für alle Züge“. Eine Kartenbewegung setzt die Teilung zurück.
-- **Bewegung:** Die Positionen kommen vom Server (`trainPosMode` CALC). Zwischen zwei Antworten läuft der Marker linear von der
-  letzten zur neuesten Position, gestrichelter Ring = geschätzt. Nach der neuesten Antwort bleibt er stehen (keine Hochrechnung).
+  „Zoom hinein für alle Züge“. Die Teilung bleibt, bis die Karte bewegt wird (dann bis zu vier Anfragen je 20-s-Lauf, also bis zu
+  12 je Minute für das Radar allein). Antwortet eine Kachel nicht, zeigt die Karte die anderen und den Hinweis „Radar pausiert“
+  mit „Erneut versuchen“. Ohne Netz gibt es keine leere Karte mit neuer Uhrzeit, sondern denselben Hinweis.
+- **Ausschnitt:** Die Kartenbox wird auf den WGS84-Bereich begrenzt (Zoom über Pole oder Datumsgrenze hinaus). Eine ungültige
+  Box würde sonst still keine Anfrage mehr auslösen.
+- **Bewegung:** Die Positionen kommen vom Server (`trainPosMode` CALC). Der Marker wird **20 s hinter der Uhr** gezeichnet
+  (`RadarEstimate.displayLag`). Zwischen zwei Antworten läuft er linear von der vorletzten zur letzten Position, gestrichelter Ring
+  = geschätzt, und nur solange er sich bewegt. Ein stehender Zug bleibt stehen und ist nicht geschätzt. Nach der letzten Antwort
+  bleibt er stehen (keine Hochrechnung). Ohne die Verzögerung läge die letzte Antwort immer in der Vergangenheit: Die Schätzung
+  wäre nie sichtbar und der Marker würde bei jeder Antwort springen. Preis: Die Anzeige hängt bis zu 20 s hinter der
+  Serverposition. Positionen außerhalb des WGS84-Bereichs werden verworfen.
   Die `ani`-Frames aus der Referenz (`parse/movement.js`) werden **nicht** ausgewertet: Ihr Format (`fromLocations`, `toLocations`)
   ist gegen keine Live-Antwort geprüft.
 - **Aufbewahrung:** Ein Fahrzeug bleibt 60 s nach der letzten Antwort, in der es vorkam (`RadarFrameStore`).
@@ -2514,11 +2522,16 @@ des Systems), alles darüber ist unser: Marker, Cluster, Route, Filter, Suche, S
   Verspätung des nächsten Halts mit Fahrplanzeit nach „jetzt“, sonst der letzte bekannte Wert.
 - **Bundesland:** Stichwortsuche über Haltestellennamen und Richtung. Das ist eine **Schätzung** (keine Koordinaten je Land).
   Bei Gleichstand gibt es keine Zuordnung. Die Filterseite sagt das.
+- **Filter:** „Nur verspätet“ ersetzt „Pünktlich“ und „Fällt aus“ (sonst wären die Auswahlen leer). Eine gewählte Linie bleibt in
+  der Liste, auch wenn sie gerade nicht im Ausschnitt ist, damit der Filter sichtbar und zurücksetzbar bleibt. Ohne Echtzeit
+  fällt ein Zug unter „Pünktlich“ und „Fällt aus“ heraus; dafür gibt es noch keinen eigenen Schalter.
 - **Suche:** „RJX 66“, „RJX66“, „66“ oder ein Wort (Haltestelle, Richtung). Vorschläge aus den letzten 60 s.
 - **Route:** `JourneyDetails` mit Polyline, im Speicher 5 Min je Fahrt. Halte mit Echtzeit-Label, „Haltestelle öffnen“ zeigt die Abfahrten.
 - **Energie und Hintergrund:** Anfragen nur, solange der Schirm sichtbar und die App aktiv ist. Im Stromspar-Modus keine Anfrage
-  (manuell „Jetzt aktualisieren“). Nichts läuft im Hintergrund.
-- **Zustimmung und Notschalter:** wie bisher über `LiveDataService.radar` (Gate aus §E2).
+  (manuell „Jetzt aktualisieren“). Nichts läuft im Hintergrund. Eine Kartenbewegung löst die Abfrage erst 0,8 s nach dem Ende
+  der letzten Bewegung aus (Entprellung), damit eine Serie von Verschiebungen nicht je eine volle Abfrage kostet.
+- **Zustimmung und Notschalter:** wie bisher über `LiveDataService.radar` (Gate aus §E2). Der Client gibt Fehler weiter, auch
+  „keine Verbindung“; die Karte macht daraus keine leere Ansicht.
 - **Demo und Screenshots:** `-KBDemo` und die Hosts `radar`, `radarTrip`, `radarFilter`, `radarSearch`, `radarCluster` (kein Netz).
 - **Nicht gebaut:** Hintergrund-Mitteilungen zu Zügen (würde Abfragen ohne Sichtbarkeit bedeuten, dafür fehlt die Freigabe nach
   §2). Live Activity für einen Radar-Zug (der Planner-Snapshot passt nicht ohne Umbau, siehe §R3). Wagenreihung (§R6: keine Daten).
@@ -2540,12 +2553,15 @@ Owner-Auftrag 2026-10-14: Hintergrund-Mitteilungen, Live-Verfolgung und Live-Akt
 - **Hintergrund** (`App/Sources/Services/Live/FollowBackgroundRefresh.swift`): `BGAppRefreshTask` mit der Kennung
   `com.knitelarlberg.klimabilanz.follow-refresh` (Info-Plist-Eintrag `BGTaskSchedulerPermittedIdentifiers`, Modus `fetch`).
   Die App sendet nur „frühestens“-Zeiten (`earliestBeginDate`). Ein Lauf fragt ÖBB einmal für die gespeicherte Fahrt ab.
-  Er läuft nur, wenn der Schalter an ist und Live-Daten zugestimmt sind.
+  Er läuft nur, wenn der Schalter an ist und Live-Daten zugestimmt sind. Schlägt eine Abfrage wegen fehlender Zustimmung fehl,
+  wird kein weiterer Hintergrundlauf eingeplant.
 - **Benachrichtigungen** (`NotificationCategories.swift`): Kategorie `live.follow` mit „Details öffnen“, „Fahrt erfassen“ und
   „Nicht mehr verfolgen“. Alle Kategorien werden in einem Aufruf registriert, weil `setNotificationCategories` die ganze Menge ersetzt.
   Die Vorschlags-Kategorie der Ortserkennung bleibt unverändert.
 - **Einstellungen › Live-Mitteilungen** (`SetFollowNoticesSection.swift`): Hauptschalter (aus), Erlaubnis-Status, Live-Aktivitäten,
-  Hintergrund-Aktualisierung, Verspätungsschwelle, Schalter je Art, Ruhezeit. Die Erlaubnis wird erst beim Einschalten erfragt.
+  Hintergrund-Aktualisierung, Verspätungsschwelle, Schalter je Art, Ruhezeit. Die Erlaubnis wird erst beim Einschalten erfragt,
+  und nur, wenn auch die Zustimmung zu Live-Daten erteilt ist. Ohne Zustimmung ist der Hauptschalter gesperrt. Dasselbe gilt für
+  „Live verfolgen“: Die Erlaubnis wird beim Start nur mit Zustimmung erfragt.
 
 **Zustimmung und Schalter (§2)**: ohne Zustimmung zu Live-Daten keine Anfrage, auch nicht im Hintergrund. Ohne Hauptschalter keine
 Mitteilungserlaubnis, keine Live-Aktivität und keine Hintergrund-Aktualisierung für Fahrten. Demo-Läufe (`-KBDemo`, Screenshots) nutzen

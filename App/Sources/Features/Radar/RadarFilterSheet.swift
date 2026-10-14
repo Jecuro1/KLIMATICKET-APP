@@ -42,11 +42,13 @@ struct RadarFilterSheet: View {
                 }
 
                 Section {
-                    Toggle("Nur verspätet (ab 5 Minuten)", isOn: $filter.onlyLate)
+                    Toggle("Nur verspätet (ab 5 Minuten)", isOn: lateBinding)
                     Toggle("Pünktlich", isOn: delayBinding(.onTime))
                     Toggle("Fällt aus", isOn: delayBinding(.cancelled))
                 } header: {
                     Text("Verspätung")
+                } footer: {
+                    Text("Ohne Auswahl sind alle Züge zu sehen. „Nur verspätet“ ersetzt „Pünktlich“ und „Fällt aus“.")
                 }
 
                 Section {
@@ -105,9 +107,19 @@ struct RadarFilterSheet: View {
                 set: { on in
                     if on {
                         filter.delays.insert(state)
+                        filter.onlyLate = false   // "Nur verspätet" and the other delay states exclude each other
                     } else {
                         filter.delays.remove(state)
                     }
+                })
+    }
+
+    /// "Nur verspätet": on, it replaces the delay states. Without it the states above apply as they are.
+    private var lateBinding: Binding<Bool> {
+        Binding(get: { filter.onlyLate },
+                set: { on in
+                    filter.onlyLate = on
+                    if on { filter.delays = [] }
                 })
     }
 }
