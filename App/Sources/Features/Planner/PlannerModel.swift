@@ -119,8 +119,14 @@ final class PlannerModel {
     private(set) var boardRows: [BoardRow] = []
     @ObservationIgnored private var boardEntries: [BoardEntry] = []
     private(set) var boardPhase: PlannerPhase = .idle
+    /// When the fetch happened (the „vor N s“ age).
     private(set) var boardUpdatedAt: Date?
+    /// The realtime time stamp ÖBB gives the board (`Board.realtimeUpdatedAt`); nil when the answer carries none.
+    private(set) var boardRealtimeAt: Date?
     @ObservationIgnored private var boardMinutes = 60
+    /// Every board request gets a number; only the newest one may write the board (a late answer for another station,
+    /// kind or refresh must not show under the header of the current one).
+    @ObservationIgnored private var boardRequest = 0
 
     // MARK: Home sections
 
@@ -549,6 +555,8 @@ final class PlannerModel {
 
     func loadBoard(reset: Bool = true) async {
         guard let station = boardStation else { return }
+        boardRequest &+= 1
+        let request = boardRequest
         guard let timetable = live.timetable else {
             boardPhase = .failed(.unavailable(live.timetableUnavailable ?? .offline))
             return
@@ -559,13 +567,17 @@ final class PlannerModel {
             let location = try await resolve(station)
             let query = BoardQuery(station: location, kind: boardKind, date: boardDate ?? Date(), durationMinutes: boardMinutes, maxResults: 40)
             let board = try await timetable.board(query)
+            // A newer request (another station or kind, the 30 s refresh, „Später“) owns the board now.
+            guard request == boardRequest else { return }
             boardEntries = board.entries
             boardRows = BoardPresentation.rows(board)
+            boardRealtimeAt = board.realtimeUpdatedAt
             boardUpdatedAt = Date()
             withMotion(Motion.smooth) { boardPhase = .loaded }
         } catch is CancellationError {
             return
         } catch {
+            guard request == boardRequest else { return }
             withMotion(Motion.smooth) { boardPhase = .failed(PlannerFailure(error)) }
         }
     }
@@ -579,11 +591,12 @@ final class PlannerModel {
         await loadBoard(reset: false)
     }
 
-    /// Station of the board when none was picked: the nearest one, else the home station.
-    func prepareBoardStation() async {
+    /// Station of the board when none was picked: the nearest one, else the home station. Only sets the station: the
+    /// board view loads it once its `.task` sees the new station (no second request from here).
+    func prepareBoardStation() {
         guard boardStation == nil else { return }
-        if let near = nearby?.station { boardStation = .station(near); await loadBoard(); return }
-        if let id = settings.homeStationID, let home = stations.station(id: id) { boardStation = .station(home); await loadBoard() }
+        if let near = nearby?.station { boardStation = .station(near); return }
+        if let id = settings.homeStationID, let home = stations.station(id: id) { boardStation = .station(home) }
     }
 
     // MARK: Home: Deine Strecken, In der Nähe

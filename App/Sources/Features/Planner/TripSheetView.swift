@@ -47,14 +47,15 @@ struct TripSheetView: View {
             HStack(spacing: Theme.Spacing.s) {
                 PlannerLinePlate(row: row, size: .l)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(isArrival ? "von" : "nach") \(row.destination.name)").font(.system(size: 19, weight: .bold)).foregroundStyle(Theme.textPrimary).lineLimit(2)
+                    Text("\(isArrival ? "von" : "nach") \(row.destination.name)")
+                        .font(.system(.title3, weight: .bold)).foregroundStyle(Theme.textPrimary).lineLimit(2)
                     Text(row.lineTitle).font(.subheadline).foregroundStyle(Theme.textSecondary)
                 }
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(row.time).font(.system(size: 22, weight: .bold, design: .rounded)).monospacedDigit()
+                    Text(row.time).font(.system(.title2, design: .rounded, weight: .bold)).monospacedDigit()
                     if let text = row.realtime.text {
-                        Text(text).font(.system(size: 13, weight: .semibold)).foregroundStyle(PlannerRealtimeStyle.text(row.realtime.state))
+                        Text(text).font(.system(.footnote, weight: .semibold)).foregroundStyle(PlannerRealtimeStyle.text(row.realtime.state))
                     }
                 }
             }
@@ -64,10 +65,9 @@ struct TripSheetView: View {
 
     private func stopsCard(_ details: TripDetails) -> some View {
         let color = PlannerPalette.stroke(for: row.mode)
-        let here = station.map { StationIndex.normalize($0.title) }
         return VStack(spacing: 0) {
             ForEach(Array(details.stopovers.enumerated()), id: \.offset) { index, stop in
-                let isHere = here.map { StationIndex.normalize(DisplayNames.name(stop.location.name)).hasPrefix($0.prefix(8)) } ?? false
+                let isHere = marksBoardStop(stop.location)
                 let event = stop.departure ?? stop.arrival
                 TimelineStopRow(role: index == 0 ? .start : (index == details.stopovers.count - 1 ? .end : .transfer),
                                 planned: event?.planned, realtime: event.map(RealtimePresentation.label) ?? RealtimeLabel(state: .scheduled),
@@ -82,8 +82,29 @@ struct TripSheetView: View {
         .frostedCard(cornerRadius: Theme.Radius.card)
     }
 
+    /// The stop of the board: the same station id when both have one, else the same name (exact, not a prefix: „Wien Mitte“
+    /// must not mark „Wien Mitterndorf“).
+    private func marksBoardStop(_ location: Location) -> Bool {
+        if let boardID = boardExtID, let stopID = location.extId { return stopID == boardID }
+        guard let title = station?.title else { return false }
+        return StationIndex.normalize(DisplayNames.name(location.name)) == StationIndex.normalize(title)
+    }
+
+    private var boardExtID: String? {
+        switch station {
+        case .station(let s)?: s.id.hasPrefix("uic:") ? String(s.id.dropFirst(4)) : s.id
+        case .live(let l)?: l.extId
+        case .currentLocation?, nil: nil
+        }
+    }
+
     private func load() async {
         failure = nil
+        // A row without its run id has nothing to ask ÖBB for: no request.
+        guard !tripID.isEmpty else {
+            failure = .tripGone
+            return
+        }
         guard let timetable = app.live.timetable else {
             failure = .unavailable(app.live.timetableUnavailable ?? .offline)
             return

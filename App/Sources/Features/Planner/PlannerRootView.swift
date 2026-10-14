@@ -188,7 +188,7 @@ struct PlannerHomeView: View {
         }
         .reveal(order: 1)
         .onChange(of: model.mode) { _, mode in
-            if mode == .departures { Task { await model.prepareBoardStation() } }
+            if mode == .departures { model.prepareBoardStation() }
         }
     }
 }
@@ -494,8 +494,7 @@ struct NearbySection: View {
                     let model = app.planner
                     model.boardStation = .station(nearby.station)
                     model.boardDate = nil
-                    withMotion(Motion.snappy) { model.mode = .departures }
-                    Task { await model.loadBoard() }
+                    withMotion(Motion.snappy) { model.mode = .departures }   // the board view loads the station
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.accentText)

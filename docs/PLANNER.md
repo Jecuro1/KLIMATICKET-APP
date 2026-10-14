@@ -40,6 +40,12 @@ Line plates are the Wegzeichen plates (`LineBadge(line:)`), identical to the off
 Refresh cadences (visible screens only, paused in the background and in Low Power Mode): results/detail 60 s, board 30 s,
 „Deine Strecken“ 60 s. Cards ask for the live price of the first three connections; the detail asks for its own.
 
+Board (Abfahrten): one load per station and kind when the board appears or either changes; the 30 s refresh restarts with
+the scene phase, so it stops in the background. An answer that arrives after a newer request (another station or kind,
+„Später“, a refresh) is dropped. The header says „Live · Stand vor N s“ only when ÖBB stated a realtime time stamp for the
+answer; without one it says „Fahrplan, abgefragt vor N s“; the demo timetable says „Demo-Daten“. Offline with rows on
+screen the rows stay under the offline pill. A row without its run id opens the trip sheet without a request.
+
 ## 3. Logging a connection
 
 `Repository.logJourney(journey, quote:, coverage:, travelClass:, isRoundTrip:, via:)` → `JourneyLogPlanner` (KlimaCore,

@@ -129,6 +129,7 @@ struct PlannerErrorBanner: View {
         case .offline: "wifi.slash"
         case .tooClose: "arrow.triangle.merge"
         case .stationNotFound, .locationUnavailable: "mappin.slash"
+        case .tripGone: "questionmark.circle"
         default: "arrow.triangle.2.circlepath.circle"
         }
     }
@@ -140,6 +141,7 @@ struct PlannerErrorBanner: View {
         case .tooClose: "Start und Ziel sind zu nah beieinander."
         case .stationNotFound: "Haltestelle nicht gefunden – bitte anders suchen."
         case .locationUnavailable: "Standort nicht verfügbar"
+        case .tripGone: "Diese Fahrt ist nicht mehr abrufbar"
         default: "ÖBB-Fahrplan gerade nicht erreichbar"
         }
     }
@@ -151,6 +153,7 @@ struct PlannerErrorBanner: View {
         case .tooClose: "Wähle ein weiter entferntes Ziel."
         case .stationNotFound: "Such die Haltestelle über ihren Namen."
         case .locationUnavailable: "Erlaube den Standort in den Einstellungen oder wähle einen Startpunkt."
+        case .tripGone: "Schließ das Blatt und öffne die Abfahrt noch einmal."
         default: "Das liegt nicht an dir. Wir versuchen es automatisch wieder."
         }
     }

@@ -221,6 +221,8 @@ enum PlannerFailure: Equatable {
     case tooClose
     case stationNotFound
     case locationUnavailable
+    /// A board row whose run id is missing or no longer known (the trip sheet has nothing to ask for).
+    case tripGone
     case unavailable(LiveDataService.Unavailable)
 
     init(_ error: Error) {
