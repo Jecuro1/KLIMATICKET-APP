@@ -271,6 +271,8 @@ final class RadarModel {
 
 struct RadarView: View {
     var preset: RadarPreset = .live
+    /// „Auf der Karte zeigen“ from a train search (docs/OEBB_LIVE.md §R9): the map centres on this trip once its pin is there.
+    var focusTripID: String? = nil
 
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -283,6 +285,7 @@ struct RadarView: View {
     @State private var sheetVehicle: RadarVehicle?
     @AppStorage("radar.mapStyle") private var styleRaw = RadarMapStyle.standard.rawValue
     @FocusState private var searchFocused: Bool
+    @State private var focusDone = false
 
     private static var austriaRegion: MKCoordinateRegion {
         MKCoordinateRegion(center: RadarBox.austria.center.clCoordinate, span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 9.0))
@@ -331,6 +334,7 @@ struct RadarView: View {
                 guard isRunning, let service = app.live.radar else { return }
                 await model.run(service, interval: .seconds(20))
             }
+            .onChange(of: model.pins.count) { _, _ in centerOnFocusedTrip() }
             .sheet(isPresented: $showsFilter) {
                 RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
                                  modes: Binding(get: { model.modes }, set: { model.modes = $0 }),
@@ -435,6 +439,13 @@ struct RadarView: View {
         guard let pin = pinsByID[tripID] else { return }
         camera = .region(MKCoordinateRegion(center: pin.coordinate.clCoordinate,
                                             span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.5)))
+    }
+
+    /// Once, when the focused trip first appears among the pins. A trip that is not on the map now is simply not centred.
+    private func centerOnFocusedTrip() {
+        guard !focusDone, let focusTripID, pinsByID[focusTripID] != nil else { return }
+        focusDone = true
+        center(on: focusTripID)
     }
 
     private func applyPreset() {

@@ -61,6 +61,7 @@ struct PlannerHomeView: View {
     @State private var showsRadar = false          // MARK: scotty
     @State private var showsDisruptions = false    // MARK: scotty
     @State private var showsRoutes = false         // MARK: routes – „Meine Routen“
+    @State private var showsTrainSearch = false    // MARK: trainsearch – „Züge suchen“ (Fahrplan header, not a tab)
 
     var body: some View {
         let model = app.planner
@@ -68,6 +69,7 @@ struct PlannerHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     header(model)
+                    trainSearchEntry
                     modePicker(model)
                     if model.mode == .connections {
                         ConnectionsHome(trips: trips, favorites: favorites)
@@ -92,6 +94,7 @@ struct PlannerHomeView: View {
         .ambientBackground(.standard, glow: 0.45)
         .toolbarVisibility(.hidden, for: .navigationBar)
         .fullScreenCover(isPresented: $showsRadar) { RadarView() }          // MARK: scotty – Zug-Radar
+        .fullScreenCover(isPresented: $showsTrainSearch) { TrainSearchView() }  // MARK: trainsearch – Züge suchen
         // MARK: widgets – klimabilanz://radar and the Live-verfolgen control open the radar
         .onChange(of: model.radarRequested, initial: true) { _, requested in
             guard requested else { return }
@@ -108,6 +111,31 @@ struct PlannerHomeView: View {
             await model.loadNearby()
             await model.refreshHereIfAuthorized()
         }
+    }
+
+    /// „Züge suchen“: a search capsule under the title. Opens the train search; nothing is requested before a submit.
+    private var trainSearchEntry: some View {
+        Button { showsTrainSearch = true } label: {   // MARK: trainsearch
+            HStack(spacing: Theme.Spacing.s) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .accessibilityHidden(true)
+                Text("Züge suchen, z. B. RJX 66")
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.vertical, Theme.Spacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityLabel("Züge suchen")
+        .accessibilityHint("Zugnummer eingeben, zum Beispiel RJX 66")
     }
 
     private func header(_ model: PlannerModel) -> some View {

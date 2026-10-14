@@ -164,6 +164,13 @@ final class LiveDataService {
         return stack.hafas
     }
 
+    /// Zugsuche (JourneyMatch, docs/OEBB_LIVE.md §R9) – same gate as the timetable: consent, switch, kill switch, connectivity.
+    var trainSearch: (any TrainSearchService)? {
+        if isDemo { return DemoTrainSearchService() }
+        guard isTimetableAvailable else { return nil }
+        return stack.hafas
+    }
+
     /// Live prices – nil whenever they are not available.
     var priceProvider: (any LivePriceProvider)? {
         if isDemo { return DemoPriceProvider() }
