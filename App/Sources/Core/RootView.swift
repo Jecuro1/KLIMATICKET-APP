@@ -515,6 +515,11 @@ struct ScreenshotRouter: View {
         case "advisor", "advisorRenewal", "advisorCancel", "advisorCancelChart", "advisorExtras", "advisorFamily",
              "advisorJob", "ticketEdit", "ticketAdvisor":
             AdvScreenshotHost(screen: screen)
+        // MARK: routes – „Meine Routen“ (list, detail, editor) and „Alarme“ (list, history), demo data, no network
+        case let routesScreen where RoutesScreenshotHost.screens.contains(routesScreen):
+            RoutesScreenshotHost(screen: routesScreen)
+        case let alarmsScreen where AlarmsScreenshotHost.screens.contains(alarmsScreen):
+            AlarmsScreenshotHost(screen: alarmsScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

@@ -125,7 +125,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .sound, .list]
+        // Alarme einsehen (docs/ROUTES_ALARMS.md §2): a notice shown in the app goes into the on-device history.
+        let notice = NoticeHistoryStore.notice(from: notification)
+        await MainActor.run { NoticeHistoryStore.record(notice) }
+        return [.banner, .sound, .list]
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
@@ -161,8 +164,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 return
             }
             guard action == UNNotificationDefaultActionIdentifier else { return }
-            if identifier.hasPrefix("renewal.") {
-                app.selectedTab = .ticket            // "Morgen läuft dein Ticket ab"
+            if identifier.hasPrefix("renewal.") || identifier.hasPrefix(AlarmIdentifier.objectionPrefix) {
+                app.selectedTab = .ticket            // "Morgen läuft dein Ticket ab", "Dein Verlängerungsbrief kommt bald"
+            } else if identifier.hasPrefix(AlarmIdentifier.routePrefix) {
+                app.selectedTab = .planner           // MARK: routes – "Abfahrt in 10 Min" of a saved route: the planner
             } else if identifier == "weekly.summary" || identifier.hasPrefix("breakeven.") {
                 app.selectedTab = .overview          // "Deine Woche mit den Öffis", "… hat sich rentiert"
             }

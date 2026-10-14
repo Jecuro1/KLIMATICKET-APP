@@ -48,6 +48,16 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
             shortTitle: "Nächste Verbindung",
             systemImageName: "point.topleft.down.to.point.bottomright.curvepath"
         )
+        // MARK: routes – „Meine Routen“: a saved route by name (the names come from the favourites, like the phrases above)
+        AppShortcut(
+            intent: SavedRouteSearchIntent(),
+            phrases: [
+                "Strecke \(\.$route) suchen in \(.applicationName)",
+                "Verbindung für \(\.$route) in \(.applicationName) suchen",
+            ],
+            shortTitle: "Strecke suchen",
+            systemImageName: "magnifyingglass"
+        )
         // MARK: live
         AppShortcut(
             intent: RideStartIntent(),

@@ -373,6 +373,14 @@ struct SetNotificationsSection: View {
         @Bindable var settings = app.settings
         Section {
             Group {
+                // MARK: routes – every alarm in one list: on/off, time, edit, history (docs/ROUTES_ALARMS.md §2)
+                NavigationLink {
+                    AlarmsView()
+                } label: {
+                    SetRowLabel(title: "Alle Alarme", subtitle: "Erinnerungen, Live-Verfolgung, Verlauf",
+                                symbol: "bell.badge.fill", tint: Theme.gold)
+                }
+                .listRowBackground(Theme.surface)
                 if status == .denied {
                     deniedRow
                         .motionTransition(.rise)

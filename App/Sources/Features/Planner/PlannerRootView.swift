@@ -60,6 +60,7 @@ struct PlannerHomeView: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex) private var favorites: [FavoriteRouteEntity]
     @State private var showsRadar = false          // MARK: scotty
     @State private var showsDisruptions = false    // MARK: scotty
+    @State private var showsRoutes = false         // MARK: routes – „Meine Routen“
 
     var body: some View {
         let model = app.planner
@@ -98,6 +99,7 @@ struct PlannerHomeView: View {
             showsRadar = true
         }
         .sheet(isPresented: $showsDisruptions) { DisruptionsView() }        // MARK: scotty – Störungen
+        .sheet(isPresented: $showsRoutes) { SavedRoutesView() }             // MARK: routes – Meine Routen
         .motionAnimation(Motion.snappy, value: isSearching)
         .onChange(of: isSearching) { _, searching in
             if !searching { model.isSearchFocused = false }
@@ -121,6 +123,17 @@ struct PlannerHomeView: View {
             }
             .padding(.leading, Theme.Spacing.xxs + 0)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // MARK: routes – „Meine Routen“: saved routes with their next departures, search, widget and Siri entries
+            Button { showsRoutes = true } label: {
+                Image(systemName: "bookmark")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(width: 46, height: 46)
+                    .contentShape(.circle)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("Meine Routen")
             // MARK: scotty – Zug-Radar and Störungen (the ÖBB Scotty functions, inside the Fahrplan)
             Button { showsRadar = true } label: {
                 Image(systemName: "dot.radiowaves.left.and.right")

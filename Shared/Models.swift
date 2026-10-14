@@ -235,6 +235,9 @@ final class FavoriteRouteEntity {
     /// favourite's own fields then describe the whole journey – first start, last destination, main mode, summed km and
     /// fare – which is what widgets, Siri, older apps and the quick-log chips show.  // MARK: trips
     var legsRaw: String = ""
+    /// "Meine Routen" time pattern: `RouteSchedule.raw` ("" = none). Added with a default value, so existing stores open
+    /// without a schema version. Local only for now: the cloud DTO does not carry it (docs/ROUTES_ALARMS.md §1.3).  // MARK: routes
+    var scheduleRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
@@ -274,6 +277,12 @@ final class FavoriteRouteEntity {
     var via: [TripVia] {
         get { TripViaCodec.decode(viaRaw) }
         set { viaRaw = TripViaCodec.encode(newValue) }
+    }
+
+    // MARK: routes – the weekday/time pattern of "Meine Routen" (nil = none or unreadable)
+    var schedule: RouteSchedule? {
+        get { RouteSchedule(raw: scheduleRaw) }
+        set { scheduleRaw = newValue?.raw ?? "" }
     }
 
     /// Creates a new trip entity from this favourite for the given date.

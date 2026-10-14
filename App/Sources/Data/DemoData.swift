@@ -83,9 +83,12 @@ enum DemoData {
             day = cal.date(byAdding: .day, value: 1, to: day) ?? now.addingTimeInterval(86_400)
         }
 
+        // MARK: routes – the commute carries a weekday pattern, so the route screens and their reminders show one
+        let commute = FavoriteRouteEntity(title: "Arbeit", fromName: routes[0].from, toName: routes[0].to, fromStationID: routes[0].fromID, toStationID: routes[0].toID, mode: .train, distanceKm: routes[0].km,
+                                          fareEUR: routes[0].fare, isRoundTrip: true, states: routes[0].states, sortIndex: 0)
+        commute.schedule = RouteSchedule(weekdays: [.monday, .tuesday, .wednesday, .thursday, .friday], hour: 7, minute: 20, leadMinutes: 10)
         let favorites = [
-            FavoriteRouteEntity(title: "Arbeit", fromName: routes[0].from, toName: routes[0].to, fromStationID: routes[0].fromID, toStationID: routes[0].toID, mode: .train, distanceKm: routes[0].km,
-                                fareEUR: routes[0].fare, isRoundTrip: true, states: routes[0].states, sortIndex: 0),
+            commute,
             FavoriteRouteEntity(title: "Landeck", fromName: routes[1].from, toName: routes[1].to, fromStationID: routes[1].fromID, toStationID: routes[1].toID, mode: .train, distanceKm: routes[1].km,
                                 fareEUR: routes[1].fare, isRoundTrip: true, states: routes[1].states, sortIndex: 1),
             FavoriteRouteEntity(title: "Bludenz", fromName: routes[2].from, toName: routes[2].to, fromStationID: routes[2].fromID, toStationID: routes[2].toID, mode: .train, distanceKm: routes[2].km,
