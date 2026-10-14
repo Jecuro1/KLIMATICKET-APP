@@ -33,64 +33,6 @@ struct PlannerOptionsSheet: View {
                     SetSectionHeader(title: "Verkehrsmittel")
                 }
                 Section {
-                    Picker("Umstiege", selection: Binding(get: { model.options.maxChanges ?? -1 }, set: { model.options.maxChanges = $0 < 0 ? nil : $0 })) {
-                        Text("Beliebig").tag(-1)
-                        Text("Direkt").tag(0)
-                        Text("Max. 1").tag(1)
-                        Text("Max. 2").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Theme.surface)
-                    Picker("Umsteigezeit", selection: Binding(get: { model.options.extraTransferMinutes }, set: { model.options.extraTransferMinutes = $0 })) {
-                        Text("Normal").tag(0)
-                        Text("+5 min").tag(5)
-                        Text("+10 min").tag(10)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Theme.surface)
-                } header: {
-                    SetSectionHeader(title: "Umstiege")
-                } footer: {
-                    SetFooter(text: "Mehr Umsteigezeit macht die Verbindung sicherer, aber oft länger.")
-                }
-                Section {
-                    Toggle("Barrierefrei", isOn: Binding(get: { model.options.accessible }, set: { model.options.accessible = $0 }))
-                        .listRowBackground(Theme.surface)
-                    Toggle("Fahrradmitnahme", isOn: Binding(get: { model.options.bike }, set: { model.options.bike = $0 }))
-                        .listRowBackground(Theme.surface)
-                } header: {
-                    SetSectionHeader(title: "Komfort")
-                }
-                Section {
-                    Picker("Umstiege", selection: Binding(get: { model.options.maxChanges ?? -1 }, set: { model.options.maxChanges = $0 < 0 ? nil : $0 })) {
-                        Text("Beliebig").tag(-1)
-                        Text("Direkt").tag(0)
-                        Text("Max. 1").tag(1)
-                        Text("Max. 2").tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Theme.surface)
-                    Picker("Umsteigezeit", selection: Binding(get: { model.options.extraTransferMinutes }, set: { model.options.extraTransferMinutes = $0 })) {
-                        Text("Normal").tag(0)
-                        Text("+5 min").tag(5)
-                        Text("+10 min").tag(10)
-                    }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Theme.surface)
-                } header: {
-                    SetSectionHeader(title: "Umstiege")
-                } footer: {
-                    SetFooter(text: "Mehr Umsteigezeit macht die Verbindung sicherer, aber oft länger.")
-                }
-                Section {
-                    Toggle("Barrierefrei", isOn: Binding(get: { model.options.accessible }, set: { model.options.accessible = $0 }))
-                        .listRowBackground(Theme.surface)
-                    Toggle("Fahrradmitnahme", isOn: Binding(get: { model.options.bike }, set: { model.options.bike = $0 }))
-                        .listRowBackground(Theme.surface)
-                } header: {
-                    SetSectionHeader(title: "Komfort")
-                }
-                Section {
                     Picker("Max. Fußweg", selection: Binding(get: { model.options.maxWalkMeters ?? -1 }, set: { model.options.maxWalkMeters = $0 < 0 ? nil : $0 })) {
                         Text("Beliebig").tag(-1)
                         Text("300 m").tag(300)
@@ -113,6 +55,35 @@ struct PlannerOptionsSheet: View {
                     SetSectionHeader(title: "Fußweg und Preis")
                 } footer: {
                     SetFooter(text: "Der Fußweg zählt je Verbindung (Umsteigen in einem Bahnhof zählt nicht). Klasse und Vorteilscard gelten für die Preise hier und für die Erfassung.")
+                }
+                Section {
+                    Picker("Umstiege", selection: Binding(get: { model.options.maxChanges ?? -1 }, set: { model.options.maxChanges = $0 < 0 ? nil : $0 })) {
+                        Text("Beliebig").tag(-1)
+                        Text("Direkt").tag(0)
+                        Text("Max. 1").tag(1)
+                        Text("Max. 2").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Theme.surface)
+                    Picker("Umsteigezeit", selection: Binding(get: { model.options.extraTransferMinutes }, set: { model.options.extraTransferMinutes = $0 })) {
+                        Text("Normal").tag(0)
+                        Text("+5 min").tag(5)
+                        Text("+10 min").tag(10)
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Theme.surface)
+                } header: {
+                    SetSectionHeader(title: "Umstiege")
+                } footer: {
+                    SetFooter(text: "Mehr Umsteigezeit macht die Verbindung sicherer, aber oft länger.")
+                }
+                Section {
+                    Toggle("Barrierefrei", isOn: Binding(get: { model.options.accessible }, set: { model.options.accessible = $0 }))
+                        .listRowBackground(Theme.surface)
+                    Toggle("Fahrradmitnahme", isOn: Binding(get: { model.options.bike }, set: { model.options.bike = $0 }))
+                        .listRowBackground(Theme.surface)
+                } header: {
+                    SetSectionHeader(title: "Komfort")
                 }
                 Section {
                     Button("Zurücksetzen", role: .destructive) { model.options = PlannerOptions() }
