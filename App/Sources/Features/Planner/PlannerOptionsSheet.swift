@@ -42,7 +42,7 @@ struct PlannerOptionsSheet: View {
                     }
                     .listRowBackground(Theme.surface)
                     Picker("Klasse", selection: Binding(get: { model.options.travelClass }, set: { model.options.travelClass = $0 })) {
-                        Text("Wie Einstellungen").tag(TravelClass?.none)
+                        Text("Standard").tag(TravelClass?.none)
                         Text("2. Klasse").tag(TravelClass?.some(.second))
                         Text("1. Klasse").tag(TravelClass?.some(.first))
                     }

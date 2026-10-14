@@ -467,7 +467,6 @@ struct PlannerScreenshotScene: View {
             model.path = []
         case "plannerResults", "connection", "plannerVia", "plannerSort", "plannerDetail":
             if let innsbruck { model.origin = .station(innsbruck) }
-            if screen == "plannerSort" { model.sort = .lowestCO2 }
             if screen == "plannerVia" || screen == "plannerDetail" {
                 if let bregenz = stations.station(named: "Bregenz") { model.destination = .station(bregenz) }
                 model.vias = ["Landeck-Zams", "Feldkirch"].compactMap { stations.station(named: $0).map { .station($0) } }
@@ -476,6 +475,8 @@ struct PlannerScreenshotScene: View {
             }
             model.startSearch()
             for _ in 0..<40 where model.phase != .loaded { try? await Task.sleep(for: .milliseconds(100)) }
+            // Set once the results are in: the sort chips and the order then show the sort the scene names.
+            if screen == "plannerSort" { model.sort = .lowestCO2 }
             if screen == "connection" || screen == "plannerDetail", let id = model.rows.first?.id { model.path = [.results, .detail(id)] }
         default:
             break
