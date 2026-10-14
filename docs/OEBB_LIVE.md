@@ -2485,6 +2485,9 @@ Die Nummer „§R3“ ist auf main bereits für „Live verfolgen“ belegt, des
 
 **Verdict:** **NO DATA.** Kein Formation-Feld in den ÖBB-HAFAS-Antworten für Railjet/RJX, EC, REX oder Nightjet.
 Keine Fixture gespeichert, weil nichts gefunden wurde.
+**App-Stand (geprüft auf origin/main):** Planer-Detail, „Live verfolgen“ (`App/Sources/Features/Planner/LiveFollow/`) und die
+Live Activity (`App/Sources/Features/LiveActivity/`) zeigen **keinen** Wagen- oder Wagenreihungs-Abschnitt. Es gibt kein
+Feature-Flag dafür. Die einzige `coach`-Stelle im Planer ist die Produktmaske für Fernbus (`PlannerTypes.swift`).
 
 **Offene Punkte:**
 - Ein negatives Ergebnis beweist nicht, dass ÖBB keine Wagenreihung hat. Sie könnte über einen anderen Endpunkt oder einen
