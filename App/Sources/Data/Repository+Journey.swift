@@ -44,4 +44,25 @@ extension Repository {
         commit()
         return trips
     }
+
+    /// „Als Favorit speichern“ of a planned connection: every ride leg becomes a leg of one Kombi-Vorlage (docs/JOURNEYS.md);
+    /// a single leg is a plain favourite. Distances and fares are the ones the log plan computed.
+    @discardableResult
+    func addFavorite(fromPlan plan: JourneyLogPlan, mode: TransportMode, title: String = "") -> FavoriteRouteEntity? {
+        guard let first = plan.legs.first, let last = plan.legs.last else { return nil }
+        let legs = plan.legs.map { leg in
+            JourneyLeg(fromName: leg.fromName, fromStationID: leg.fromStationID, toName: leg.toName, toStationID: leg.toStationID,
+                       mode: leg.mode, distanceKm: leg.distanceKm, fareEUR: leg.fareEUR, viaRaw: TripViaCodec.encode(leg.via),
+                       statesRaw: leg.states.joined(separator: ","))
+        }
+        let count = (try? context.fetchCount(FetchDescriptor<FavoriteRouteEntity>())) ?? 0
+        let favorite = FavoriteRouteEntity(title: title, fromName: first.fromName, toName: last.toName,
+                                           fromStationID: first.fromStationID, toStationID: last.toStationID, mode: mode,
+                                           distanceKm: legs.reduce(0) { $0 + $1.distanceKm }, fareEUR: legs.reduce(0) { $0 + $1.fareEUR },
+                                           isRoundTrip: false, states: Array(Set(plan.legs.flatMap(\.states))).sorted(), sortIndex: count)
+        favorite.legsRaw = JourneyLegCodec.encode(legs)
+        context.insert(favorite)
+        commit()
+        return favorite
+    }
 }
