@@ -94,20 +94,37 @@ struct DeparturesWidgetView: View {
                 Spacer(minLength: 0)
                 WidSourceLine()
             }
+            // The equipment comes from OpenStreetMap, which needs its credit where it is shown (ODbL).
+            if !facilities.isEmpty {
+                WidSourceLine(text: "Ausstattung: © OpenStreetMap-Mitwirkende, ODbL")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// The station's equipment in one row: with words when they fit, else symbols only (the words stay for VoiceOver).
     private var facilityRow: some View {
-        HStack(spacing: 10) {
-            ForEach(facilities, id: \.self) { facility in
-                Label(WidStationFacility.label(facility), systemImage: WidStationFacility.symbol(facility))
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.widSecondary)
-                    .lineLimit(1)
-            }
+        ViewThatFits(in: .horizontal) {
+            facilityItems(iconOnly: false)
+            facilityItems(iconOnly: true)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func facilityItems(iconOnly: Bool) -> some View {
+        HStack(spacing: 10) {
+            ForEach(facilities, id: \.self) { facility in
+                if iconOnly {
+                    Image(systemName: WidStationFacility.symbol(facility))
+                        .accessibilityLabel(WidStationFacility.label(facility))
+                } else {
+                    Label(WidStationFacility.label(facility), systemImage: WidStationFacility.symbol(facility))
+                }
+            }
+        }
+        .font(.system(size: 11, weight: .medium))
+        .foregroundStyle(.widSecondary)
+        .lineLimit(1)
     }
 
     private var rectangular: some View {
@@ -153,14 +170,19 @@ enum WidStationFacility {
         case .parkRide: "P+R"
         case .barrierFree: "barrierefrei"
         case .barrierFreePartial: "teilweise barrierefrei"
+        case .elevator: "Aufzug"
+        case .toilets: "WC"
+        case .bicycleParking: "Fahrradständer"
         }
     }
 
     static func symbol(_ facility: WidgetFacility) -> String {
         switch facility {
-        case .bikeRide: "bicycle"
+        case .bikeRide, .bicycleParking: "bicycle"
         case .parkRide: "car.fill"
         case .barrierFree, .barrierFreePartial: "figure.roll"
+        case .elevator: "arrow.up.arrow.down.square"
+        case .toilets: "toilet"
         }
     }
 }

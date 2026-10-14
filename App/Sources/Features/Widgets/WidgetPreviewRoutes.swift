@@ -150,6 +150,11 @@ struct WidgetPreviewHost: View {
         caption("Mittel und groß")
         tile(.systemMedium) { NextConnectionWidgetView(title: "Pendeln", state: fresh, items: connections, family: .systemMedium) }
         tile(.systemLarge) { NextConnectionWidgetView(title: "Pendeln", state: fresh, items: connections, family: .systemLarge) }
+        // MARK: review-widgets – the station equipment from the place data and OpenStreetMap, and a via favourite
+        caption("Abfahrten · groß mit Ausstattung und Quellenvermerk")
+        tile(.systemLarge) { DeparturesWidgetView(stationName: "Innsbruck Hbf", facilities: [.bikeRide, .barrierFree, .elevator, .toilets], state: fresh, items: departures, family: .systemLarge) }
+        caption("Mit Zwischenhalt · wird nicht live abgefragt")
+        tile(.systemMedium) { NextConnectionWidgetView(title: "Pendeln über Landeck", state: fresh, items: connections, family: .systemMedium, viaStops: true) }
         caption("Keine Lieblingsfahrt gewählt · Live-Daten aus")
         tile(.systemMedium) { NextConnectionWidgetView(title: nil, state: .off, items: [], family: .systemMedium) }
         tile(.systemMedium) { NextConnectionWidgetView(title: "Pendeln", state: .stale(now.addingTimeInterval(-3 * 3_600)),

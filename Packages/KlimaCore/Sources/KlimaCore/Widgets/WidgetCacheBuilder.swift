@@ -1,12 +1,16 @@
 import Foundation
 
-/// Equipment of a station the data delivers (docs/WIDGETS.md §3.1): Bike+Ride, Park+Ride, barrier-free access. Lifts and
-/// toilets are not in the place data, so there is no case for them. Train equipment is a different thing (`trainAttributes`).
+/// Equipment of a station the data delivers: Bike+Ride, Park+Ride and barrier-free access (place data), elevator, toilets
+/// and bicycle stands (OpenStreetMap facilities, EQUI section). Only positive statements get a case: a station without a
+/// lift in OSM shows no lift, and "nicht erfasst" is never shown as missing. Train equipment is `trainAttributes`.
 public enum WidgetFacility: String, Codable, Sendable, CaseIterable {
     case bikeRide
     case parkRide
     case barrierFree
     case barrierFreePartial
+    case elevator
+    case toilets
+    case bicycleParking
 }
 
 /// Turns live answers into the widget cache. Pure mapping, no I/O: the app passes in what `HafasClient` returned.
@@ -48,9 +52,10 @@ public enum WidgetCacheBuilder {
     /// a toilet here, because the widget names the equipment of the train, not a seat.
     public static func trainEquipment(_ remarks: [Remark]) -> [String] {
         let codes = Set(remarks.filter { $0.kind == .attribute }.compactMap(\.code))
+        // RO and HS: "Rollstuhlstellplatz" (the ÖBB texts in the fixtures); OA: the same with prior registration.
         let table: [(codes: Set<String>, symbol: String)] = [
             (["WV"], "wifi"), (["BR"], "fork.knife"), (["HD"], "moon"), (["KN"], "figure.2.and.child.holdinghands"),
-            (["RO", "OA", "EF"], "figure.roll"), (["OC", "OG"], "toilet"), (["FK", "FR"], "bicycle"), (["UA"], "briefcase"),
+            (["RO", "HS", "OA", "EF"], "figure.roll"), (["OC", "OG"], "toilet"), (["FK", "FR"], "bicycle"), (["UA"], "briefcase"),
         ]
         return table.filter { !$0.codes.isDisjoint(with: codes) }.map(\.symbol).sorted()
     }
@@ -94,8 +99,9 @@ public enum WidgetCacheBuilder {
         return items.sorted { $0.1 > $1.1 }.prefix(max(0, limit)).map(\.0)
     }
 
-    /// The widget equipment of a station from its place marks (`PlaceMarkSelection.detailMarks`), in a fixed order.
-    public static func facilities(_ marks: [StopMark]) -> [WidgetFacility] {
+    /// The widget equipment of a station: the place marks (`PlaceMarkSelection.detailMarks`) and the OSM facilities
+    /// (`equipment`, `PlaceIndex.facilities(for:)`), in a fixed order. Only what the data states as present or limited.
+    public static func facilities(_ marks: [StopMark], equipment: [StopFacility] = []) -> [WidgetFacility] {
         let kinds = Set(marks.map(\.kind))
         var out: [WidgetFacility] = []
         if kinds.contains(.bikeAndRide) { out.append(.bikeRide) }
@@ -103,6 +109,11 @@ public enum WidgetCacheBuilder {
         if let access = marks.first(where: { $0.kind == .barrierefrei }) {
             out.append(access.isPartial ? .barrierFreePartial : .barrierFree)
         }
+        let stated = Set(equipment.filter { $0.status == .present || $0.status == .limited }.map(\.kind))
+        if stated.contains(.elevator) { out.append(.elevator) }
+        if stated.contains(.toilets) { out.append(.toilets) }
+        // Bike+Ride already says the bicycle stands; a second "Fahrradständer" would name the same thing twice.
+        if stated.contains(.bicycleParking), !out.contains(.bikeRide) { out.append(.bicycleParking) }
         return out
     }
 

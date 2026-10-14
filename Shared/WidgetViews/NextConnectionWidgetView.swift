@@ -12,12 +12,17 @@ struct NextConnectionWidgetView: View {
     var items: [WidgetConnection]
     var family: WidgetFamily
     var margins: EdgeInsets = WidLayout.defaultMargins
+    /// The favourite has via stops: the app asks only for direct connections, so the widget says so.
+    var viaStops: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         if title == nil {
             WidLiveEmpty(status: state, family: family, choice: "Lieblingsfahrt wählen")
+        } else if viaStops {
+            WidLiveEmpty(status: state, family: family,
+                         message: ("Mit Zwischenhalt", "Dieses Widget zeigt nur Fahrten ohne Zwischenhalt"))
         } else if !state.hasTimes {
             WidLiveEmpty(status: state, family: family)
         } else if items.isEmpty {
@@ -260,7 +265,7 @@ enum WidTrainEquipment {
         case "moon": "Ruhezone"
         case "figure.2.and.child.holdinghands": "Familienzone"
         case "figure.roll": "Rollstuhlplatz"
-        case "toilet": "WC rollstuhltauglich"
+        case "toilet": "WC"
         case "bicycle": "Fahrradmitnahme"
         case "briefcase": "Businessabteil"
         default: "Ausstattung"

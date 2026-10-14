@@ -13,6 +13,8 @@ struct ConnectionEntry: TimelineEntry {
     let title: String?
     let state: WidgetLiveState
     let items: [WidgetConnection]
+    /// The favourite has via stops, which the app does not ask for.
+    var viaStops: Bool = false
 
     var relevance: TimelineEntryRelevance? {
         guard state.hasTimes, let first = items.first else { return nil }
@@ -91,13 +93,20 @@ struct NextConnectionProvider: AppIntentTimelineProvider {
     private static func entry(_ configuration: NextConnectionConfigIntent, routeID: String?, at date: Date) -> ConnectionEntry {
         let selection = WidgetSelection.connections(WidgetCache.connections, routeID: routeID, consent: WidgetCache.consent,
                                                     now: date)
-        return ConnectionEntry(date: date, title: title(configuration), state: selection.state, items: selection.items)
+        return ConnectionEntry(date: date, title: title(configuration), state: selection.state, items: selection.items,
+                               viaStops: hasViaStops(configuration))
     }
 
     /// The favourite's current name from the snapshot (renamed since the choice), else the name the choice carries.
     private static func title(_ configuration: NextConnectionConfigIntent) -> String? {
         guard let favorite = configuration.favorite else { return nil }
         return WidgetSnapshot.load()?.favorites.first { $0.id == favorite.id }?.title ?? favorite.title
+    }
+
+    /// Whether the favourite goes through stops (its via list in the snapshot is not empty).
+    private static func hasViaStops(_ configuration: NextConnectionConfigIntent) -> Bool {
+        guard let favorite = configuration.favorite else { return false }
+        return WidgetSnapshot.load()?.favorites.first { $0.id == favorite.id }?.via?.isEmpty == false
     }
 }
 

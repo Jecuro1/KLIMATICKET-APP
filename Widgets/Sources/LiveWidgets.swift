@@ -29,7 +29,7 @@ private struct NextConnectionEntryView: View {
 
     var body: some View {
         NextConnectionWidgetView(title: entry.title, state: entry.state, items: entry.items, family: family,
-                                 margins: WidLayout.resolved(contentMargins))
+                                 margins: WidLayout.resolved(contentMargins), viaStops: entry.viaStops)
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
             .widgetURL(WidDeepLink.planner)

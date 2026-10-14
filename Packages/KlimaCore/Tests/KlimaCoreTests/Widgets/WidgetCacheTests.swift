@@ -218,6 +218,52 @@ final class WidgetCacheTests: XCTestCase {
         XCTAssertEqual(WidgetCacheBuilder.facilities([]), [])
     }
 
+    func testFacilitiesAddOnlyWhatOpenStreetMapStates() {
+        let equipment = [
+            StopFacility(kind: .elevator, status: .present, count: 2),
+            StopFacility(kind: .toilets, status: .limited),
+            StopFacility(kind: .bicycleParking, status: .absent),
+            StopFacility(kind: .ticketMachine, status: .present),
+        ]
+        XCTAssertEqual(WidgetCacheBuilder.facilities([StopMark(kind: .parkAndRide, confidence: 90)], equipment: equipment),
+                       [.parkRide, .elevator, .toilets])
+        // Nothing stated (`notRecorded`) and an explicit `absent` never become an item.
+        XCTAssertEqual(WidgetCacheBuilder.facilities([], equipment: [StopFacility(kind: .elevator, status: .notRecorded),
+                                                                   StopFacility(kind: .bicycleParking, status: .absent)]), [])
+    }
+
+    func testTrainWheelchairSpaceAndPartialToiletAreMapped() {
+        let remarks = [Remark(kind: .attribute, code: "HS", text: "Rollstuhlstellplatz"),
+                       Remark(kind: .attribute, code: "OG", text: "bedingt rollstuhltaugliches WC")]
+        XCTAssertEqual(WidgetCacheBuilder.trainEquipment(remarks), ["figure.roll", "toilet"])
+    }
+
+    // MARK: Selection never shows an unfetched list as fresh
+
+    func testUnfetchedRouteIsNotAFreshEmptyList() {
+        let now = at(2026, 10, 14, 14, 0)
+        let fetched = WidgetConnection(id: "c1", planned: at(2026, 10, 14, 14, 30), fromName: "A", toName: "B",
+                                       lineName: "S 4", modeSymbol: "tram.fill")
+        let cache = WidgetConnectionCache(fetchedAt: now, routes: ["fav-a": [fetched]])
+        let missing = WidgetSelection.connections(cache, routeID: "fav-b", consent: .granted, now: now)
+        XCTAssertEqual(missing.state, .empty)
+        XCTAssertEqual(missing.items, [])
+        XCTAssertEqual(WidgetSelection.connections(cache, routeID: "fav-b", consent: .declined, now: now).state, .off)
+        // A fetched route with no journey left is a real, fresh "no connection".
+        let empty = WidgetConnectionCache(fetchedAt: now, routes: ["fav-b": []])
+        XCTAssertEqual(WidgetSelection.connections(empty, routeID: "fav-b", consent: .granted, now: now).state, .fresh(now))
+    }
+
+    func testUnfetchedStationIsNotAFreshEmptyList() {
+        let now = at(2026, 10, 14, 14, 0)
+        let board = WidgetDeparture(id: "d1", planned: at(2026, 10, 14, 14, 30), lineName: "R 51", modeSymbol: "tram.fill")
+        let cache = WidgetDepartureCache(fetchedAt: now, stations: ["home": [board]])
+        let missing = WidgetSelection.departures(cache, stationID: "other", consent: .granted, now: now)
+        XCTAssertEqual(missing.state, .empty)
+        XCTAssertEqual(missing.items, [])
+        XCTAssertEqual(WidgetSelection.departures(cache, stationID: "home", consent: .granted, now: now).items.map(\.id), ["d1"])
+    }
+
     // MARK: Codable
 
     func testConnectionCacheRoundTripsThroughJSON() throws {

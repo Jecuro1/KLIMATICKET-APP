@@ -47,19 +47,27 @@ public enum WidgetLiveState: Equatable, Sendable {
 
 /// Picks what one widget entry shows from the cache, for one moment. Pure: the timeline builder calls it for each entry.
 public enum WidgetSelection {
-    /// The next connections of one favourite route (`routeID` = the favourite's id as `uuidString`).
+    /// The next connections of one favourite route (`routeID` = the favourite's id as `uuidString`). A route the cache holds
+    /// no list for was never fetched (not granted, failed, or not asked for): that is `.off` or `.empty`, never a fresh
+    /// "no connection", because the cache's time stamp only covers the routes it holds.
     public static func connections(_ cache: WidgetConnectionCache?, routeID: String?, consent: WidgetConsent, now: Date,
                                    limit: Int = 3) -> (state: WidgetLiveState, items: [WidgetConnection]) {
+        guard let routeID, let list = cache?.routes[routeID] else {
+            return (WidgetLiveState.make(consent: consent, fetchedAt: nil, now: now), [])
+        }
         let state = WidgetLiveState.make(consent: consent, fetchedAt: cache?.fetchedAt, now: now)
-        guard state.hasTimes, let routeID, let list = cache?.routes[routeID] else { return (state, []) }
+        guard state.hasTimes else { return (state, []) }
         return (state, WidgetFilter.upcoming(list, now: now, limit: limit))
     }
 
-    /// The next departures of one station.
+    /// The next departures of one station. A station without a board in the cache is `.off` or `.empty`, as for connections.
     public static func departures(_ cache: WidgetDepartureCache?, stationID: String?, consent: WidgetConsent, now: Date,
                                   limit: Int = 5) -> (state: WidgetLiveState, items: [WidgetDeparture]) {
+        guard let stationID, let list = cache?.stations[stationID] else {
+            return (WidgetLiveState.make(consent: consent, fetchedAt: nil, now: now), [])
+        }
         let state = WidgetLiveState.make(consent: consent, fetchedAt: cache?.fetchedAt, now: now)
-        guard state.hasTimes, let stationID, let list = cache?.stations[stationID] else { return (state, []) }
+        guard state.hasTimes else { return (state, []) }
         return (state, WidgetFilter.upcoming(list, now: now, limit: limit))
     }
 

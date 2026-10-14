@@ -31,20 +31,36 @@ enum WidgetCacheSync {
 
     // MARK: Stations (offline data: no consent needed)
 
-    /// Writes the stations the widgets can choose from: the home station first, then the stations of the favourites (at most
-    /// `WidgetStationList.maxCount`), with the equipment the place data delivers. Reloads the departures only when it changed.
-    static func stationsDidChange(favorites: [FavoriteRouteEntity], homeStationID: String?, stations: StationIndex) {
+    /// The stations whose boards are fetched and offered to the Abfahrten widget: the home station, then the departure
+    /// stations of the favourites, at most `boardLimit`. The station list and the fetch use this one list, so every station
+    /// the user can choose has a board (the widget shows "noch keine Abfrage" for one the fetch did not reach).
+    static func boardStationIDs(favorites: [FavoriteRouteEntity], homeStationID: String?) -> [String] {
         var ids: [String] = []
-        for id in [homeStationID].compactMap({ $0 }) + favorites.flatMap({ [$0.fromStationID, $0.toStationID] }).compactMap({ $0 }) {
-            if !ids.contains(id) { ids.append(id) }
+        for id in [homeStationID].compactMap({ $0 }) + favorites.compactMap(\.fromStationID) where !ids.contains(id) {
+            ids.append(id)
         }
+        return Array(ids.prefix(boardLimit))
+    }
+
+    /// Writes the stations the widgets can choose from (`boardStationIDs`), with the equipment the place data and OpenStreetMap
+    /// deliver. Reloads the departures only when it changed.
+    static func stationsDidChange(favorites: [FavoriteRouteEntity], homeStationID: String?, stations: StationIndex) {
+        let ids = boardStationIDs(favorites: favorites, homeStationID: homeStationID)
         let index = PlaceIndexLoader.shared.current
+        if index == nil {
+            // The place index is still loading: write the list again once it is ready, not at the next activation.
+            Task {
+                if (try? await PlaceIndexLoader.shared.load()) != nil {
+                    stationsDidChange(favorites: favorites, homeStationID: homeStationID, stations: stations)
+                }
+            }
+        }
         let list: [WidgetStation] = ids.compactMap { id in
             guard let station = stations.station(id: id) else { return nil }
             var marks: [StopMark] = []
             if let tags = index?.details(for: id)?.tags { marks = PlaceMarkSelection.detailMarks(tags: tags) }
             return WidgetStation(id: id, name: station.name, isHome: id == homeStationID,
-                                 facilities: WidgetCacheBuilder.facilities(marks))
+                                 facilities: WidgetCacheBuilder.facilities(marks, equipment: index?.facilities(for: id) ?? []))
         }
         let value = WidgetStationList(updatedAt: Date(), stations: list)
         let previous = WidgetCache.stations
@@ -82,7 +98,7 @@ enum WidgetCacheSync {
             writeRoutes(pairs: pairs, results: results, now: now, lines: &lines)
         }
         await refreshDepartures(timetable: timetable, live: live, stations: stations, homeStationID: homeStationID,
-                                favorites: Array(routes), now: now)
+                                favorites: favorites, now: now)
         await refreshDisruptions(timetable: timetable, lines: lines, now: now)
     }
 
@@ -104,17 +120,13 @@ enum WidgetCacheSync {
         let previous = WidgetCache.connections
         let changed = previous?.routes != routes
         WidgetCache.write(WidgetConnectionCache(fetchedAt: now, routes: routes), key: WidgetCacheKey.connections)
-        if changed { WidgetCenter.shared.reloadTimelines(ofKind: WidKind.nextConnection) }
+        reloadIfDue(WidKind.nextConnection, changed: changed, now: now)
     }
 
     private static func refreshDepartures(timetable: any TimetableService, live: LiveDataService, stations: StationIndex,
                                           homeStationID: String?, favorites: [FavoriteRouteEntity], now: Date) async {
-        var ids: [String] = []
-        for id in [homeStationID].compactMap({ $0 }) + favorites.compactMap(\.fromStationID) where !ids.contains(id) {
-            ids.append(id)
-        }
         var boards: [String: [WidgetDeparture]] = [:]
-        for id in ids.prefix(boardLimit) {
+        for id in boardStationIDs(favorites: favorites, homeStationID: homeStationID) {
             guard let station = stations.station(id: id),
                   let location = try? await live.linker.hafasLocation(for: station),
                   let board = try? await timetable.board(BoardQuery(station: location, kind: .departures, date: now,
@@ -122,12 +134,12 @@ enum WidgetCacheSync {
             boards[id] = WidgetCacheBuilder.departures(from: board, now: now, limit: 8)
         }
         guard !boards.isEmpty else { return }
+        // Only the boards fetched now are written. The cache has one time stamp for all of them, so a board kept from an
+        // earlier refresh would read as fresh; a station that was not reached reads as "noch keine Abfrage" instead.
         let previous = WidgetCache.departures
-        // Stations that were not asked this time keep their last list.
-        let merged = (previous?.stations ?? [:]).merging(boards) { _, new in new }
-        let changed = previous?.stations != merged
-        WidgetCache.write(WidgetDepartureCache(fetchedAt: now, stations: merged), key: WidgetCacheKey.departures)
-        if changed { WidgetCenter.shared.reloadTimelines(ofKind: WidKind.departures) }
+        let changed = previous?.stations != boards
+        WidgetCache.write(WidgetDepartureCache(fetchedAt: now, stations: boards), key: WidgetCacheKey.departures)
+        reloadIfDue(WidKind.departures, changed: changed, now: now)
     }
 
     private static func refreshDisruptions(timetable: any TimetableService, lines: [String], now: Date) async {
@@ -142,7 +154,20 @@ enum WidgetCacheSync {
         let previous = WidgetCache.disruptions
         let changed = previous?.items != items || previous?.lines != lines
         WidgetCache.write(WidgetDisruptionCache(fetchedAt: now, lines: lines, items: items), key: WidgetCacheKey.disruptions)
-        if changed { WidgetCenter.shared.reloadTimelines(ofKind: WidKind.disruptions) }
+        reloadIfDue(WidKind.disruptions, changed: changed, now: now)
+    }
+
+    /// Live widgets reload when their content changed, and at least hourly while live data keeps arriving. Each timeline
+    /// carries the "Stand" time and the two-hour freshness limit, so an unchanged cache must still be read again now and
+    /// then; the hour stays well inside the limit and inside WidgetKit's reload budget.
+    private static var lastLiveReload: [String: Date] = [:]
+    static let liveReloadInterval: TimeInterval = 60 * 60
+
+    private static func reloadIfDue(_ kind: String, changed: Bool, now: Date) {
+        let due = lastLiveReload[kind].map { now.timeIntervalSince($0) >= liveReloadInterval } ?? true
+        guard changed || due else { return }
+        lastLiveReload[kind] = now
+        WidgetCenter.shared.reloadTimelines(ofKind: kind)
     }
 
     // MARK: Live follow (Live verfolgen control)

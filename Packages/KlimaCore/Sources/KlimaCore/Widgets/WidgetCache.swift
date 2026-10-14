@@ -183,8 +183,8 @@ public struct WidgetDisruptionCache: Codable, Sendable, Equatable {
     }
 }
 
-/// A station the Abfahrten widget can show. `facilities`: Bike+Ride, Park+Ride and barrier-free access from the place data.
-/// Lifts and toilets are not in the data and are therefore not listed (docs/WIDGETS.md §3.1).
+/// A station the Abfahrten widget can show. `facilities`: Bike+Ride, Park+Ride, barrier-free access (place data) and the
+/// elevator, toilets and bicycle stands that OpenStreetMap states for the stop (docs/WIDGETS.md §3.1).
 public struct WidgetStation: Codable, Sendable, Hashable, Identifiable {
     public var id: String
     public var name: String
