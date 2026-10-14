@@ -259,6 +259,8 @@ private struct TrainRunCard: View {
                 .disabled(run.followTarget == nil)
                 Button(action: onMap) {
                     Label("Auf der Karte zeigen", systemImage: "map")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)

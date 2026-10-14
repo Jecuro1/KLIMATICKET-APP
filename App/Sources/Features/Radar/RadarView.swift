@@ -579,12 +579,9 @@ struct RadarView: View {
             if layers.isOn(.disruptions) {
                 Button { showsDisruptions = true } label: {
                     Label("Störungen ansehen", systemImage: "exclamationmark.triangle")
+                        .lineLimit(1)
                 }
                 .buttonStyle(.bordered)
-                Text("Störungen haben keine Position. Sie stehen in einer Liste.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
             }
             if layers.isOn(.routes) {
                 if !routeSketches.isEmpty {
@@ -595,7 +592,8 @@ struct RadarView: View {
                 }
                 if routesWithoutPlace > 0 {
                     Button { showsRoutes = true } label: {
-                        Label("\(routesWithoutPlace) ohne bekannten Ort: Liste öffnen", systemImage: "list.bullet")
+                        Label("\(routesWithoutPlace) ohne Ort: Liste", systemImage: "list.bullet")
+                            .lineLimit(1)
                     }
                     .buttonStyle(.bordered)
                 }
