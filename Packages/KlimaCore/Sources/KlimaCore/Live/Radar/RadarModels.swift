@@ -20,6 +20,11 @@ public struct RadarBox: Sendable, Hashable, Codable {
     /// Austria with a small margin (the initial map region).
     public static let austria = RadarBox(north: 49.10, west: 9.45, south: 46.30, east: 17.25)
 
+    /// Inclusive: a point on the edge is inside. Used by the map layers (stations in view).
+    public func contains(_ point: GeoPoint) -> Bool {
+        point.latitude <= north && point.latitude >= south && point.longitude >= west && point.longitude <= east
+    }
+
     /// Finite, in range and non-degenerate (HAFAS rejects north == south and east == west).
     public var isValid: Bool {
         [north, west, south, east].allSatisfy(\.isFinite)

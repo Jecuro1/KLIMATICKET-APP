@@ -2626,3 +2626,26 @@ Geblieben: Envelope (`err`, `ext`, `ver`, `lang`), Dienst (`meth`, `err`), `comm
 
 **Offen:** Die Anfrage mit Datum (`date`/`time`) ist nicht live geprüft (der Test stoppt nach dem ersten Treffer, Budget bleibt ungenutzt). Ob „Live verfolgen“ für eine
 Fahrt aus dem Fahrplanzeitraum (`JourneyDetails` mit dieser Fahrt-ID) Echtzeit liefert, ist ebenfalls nicht geprüft.
+
+## R10 Karte wie Scotty: Ebenen auf dem Zug-Radar (2026-10-14)
+
+Owner-Auftrag: „Karte wie man sie von der ÖBB Scotty App kennt“. Die Karte ist der Zug-Radar (§R7) mit Ebenen, die in einer
+Glasleiste an- und ausgeschaltet werden. Die Basiskarte ist unverändert MapKit; ob sie später getauscht wird, ist eine offene
+Entscheidung des Owners. Jede Ebene liegt über der Basiskarte und hängt nicht von ihr ab.
+
+- **Stationen:** Marker aus dem gebündelten Stationsindex (kein Netz). Sie erscheinen erst ab etwa 180 km Kartenbreite
+  (`MapStations.maxLatitudeSpan` 1,6°), höchstens 250 je Ausschnitt, nach Name geordnet. Gruppen (Cluster) hängen vom Zoom ab.
+  Ein Tipp auf eine Station öffnet ihre Abfahrten in der Fahrplan-Ansicht (`showBoard(stationID:)`).
+  - **Nicht gebaut:** die Zahl der nächsten Abfahrten je Station. Dafür gibt es keinen Abfahrts-Cache, und eine Anfrage je
+    Station würde das Budget (§2) sprengen. Der Pin zeigt den Namen, keine erfundene Zahl.
+- **Züge:** der Zug-Radar aus §R7, nur solange die Ebene an ist. Ist „Züge“ aus, werden keine Anfragen gesendet.
+- **Störungen:** HIM-Meldungen haben keine Position (§R4). Die Ebene ist deshalb eine Liste („Störungen ansehen“), keine Pins.
+- **Meine Routen:** gespeicherte Routen als **Luftlinie** zwischen Start- und Zielstation (gestrichelt, mit Hinweis
+  „nicht die Strecke“). Zwischenhalte werden nicht gezeichnet. Routen ohne bekannte Station stehen in der Liste (`SavedRoutesView`).
+- **Auswahl:** je Gerät gespeichert (`@AppStorage("map.layers")`, Format „stations,trains“). Standard: Stationen und Züge.
+  Unbekannte Wörter werden verworfen.
+- **Demo und Screenshots:** `-KBDemo` und der Host `mapLayers` (alle Ebenen, Wien, kein Netz).
+
+**Code:** `Live/Map/MapLayers.swift` (`MapLayer`, `MapLayerSelection`, `MapStationPin`, `MapStations`, `MapClustering`,
+`MapRouteSketch`), `Live/Radar/RadarModels.swift` (`RadarBox.contains`, bisher nur in der App), App `Features/Radar/RadarView.swift`
+(Ebenen, Stations- und Routen-Schicht), `Features/Radar/MapLayerBar.swift` (Leiste, Marker). Tests: `MapLayersTests` (13).
