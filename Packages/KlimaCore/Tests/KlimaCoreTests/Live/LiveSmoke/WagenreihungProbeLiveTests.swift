@@ -1,5 +1,7 @@
 // Opt-in research probe for docs/OEBB_LIVE.md §R6 (Wagenreihung check). Never part of CI.
-//   KB_LIVE_TESTS=1 swift test --package-path Packages/KlimaCore --no-parallel --filter WagenreihungProbeLiveTests
+//   KB_LIVE_TESTS=1 KB_WAGEN_PROBE=1 swift test --package-path Packages/KlimaCore --no-parallel --filter WagenreihungProbeLiveTests
+// Two switches on purpose: this batch of 6 requests must not run with the LiveSmoke filter (budget ≤ 20 per run, §D3),
+// and it needs the owner's explicit go (§2.1: single, user-initiated queries). KB_WAGEN_PROBE=1 is that second switch.
 // Hard budget: at most 6 requests to ÖBB. ProbeTransport counts every attempt before it leaves and refuses the 7th.
 //   R1 JourneyGeoPos (Zug-Radar, Austria, now): trip ids of several train types in one answer.
 //   R2 JourneyDetails, long distance (RJX/RJ/ICE). Not in the answer: TripSearch Wien Hbf → Innsbruck Hbf (now) first.
@@ -41,18 +43,24 @@ final class ProbeTransport: HTTPTransport, @unchecked Sendable {
     }
 
     func send(_ request: HTTPRequest) async throws -> HTTPResponse {
-        lock.lock()
-        if attemptCount >= Self.cap {
-            lock.unlock()
-            throw ProbeError.budget
-        }
-        attemptCount += 1
-        lock.unlock()
+        try reserveAttempt()
         let response = try await base.send(request)
-        lock.lock()
-        stored.append(Exchange(status: response.status, body: response.body))
-        lock.unlock()
+        store(Exchange(status: response.status, body: response.body))
         return response
+    }
+
+    // NSLock is used only from these synchronous helpers (Swift 6 mode rejects lock calls in async contexts).
+    private func reserveAttempt() throws {
+        lock.lock()
+        defer { lock.unlock() }
+        if attemptCount >= Self.cap { throw ProbeError.budget }
+        attemptCount += 1
+    }
+
+    private func store(_ exchange: Exchange) {
+        lock.lock()
+        defer { lock.unlock() }
+        stored.append(exchange)
     }
 }
 
@@ -122,6 +130,7 @@ private struct Need {
 final class WagenreihungProbeLiveTests: XCTestCase {
     static let wien = Location.station(extId: "8100003", name: "Wien Hbf")
     static let pauseNanos: UInt64 = 8_000_000_000
+    static let probeEnabled = ProcessInfo.processInfo.environment["KB_WAGEN_PROBE"] == "1"
 
     private func pause() async {
         _ = try? await Task.sleep(nanoseconds: Self.pauseNanos)
@@ -174,7 +183,9 @@ final class WagenreihungProbeLiveTests: XCTestCase {
     }
 
     func testWagenreihungProbe() async throws {
-        guard HafasLiveTests.enabled else { throw XCTSkip("KB_LIVE_TESTS=1 not set") }
+        guard HafasLiveTests.enabled, Self.probeEnabled else {
+            throw XCTSkip("KB_LIVE_TESTS=1 and KB_WAGEN_PROBE=1 not set (6-request research batch, §R6)")
+        }
         let probe = ProbeTransport(URLSessionTransport())
         let client = HafasClient(config: .default, transport: probe, throttle: RequestThrottle(),
                                  health: LiveHealth(), appVersion: "live-test")

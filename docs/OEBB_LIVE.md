@@ -2439,11 +2439,19 @@ Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
 Die Nummer „§R3“ ist auf main bereits für „Live verfolgen“ belegt, deshalb steht diese Prüfung als §R6.
 
 **Frage:** Liefern ÖBB-HAFAS-Antworten Wagenreihung (Wagen-/Sektordaten) für mehrere Zugtypen?
-**Ergebnis: keine Wagen- oder Sektordaten** in 6 Live-Antworten (dazu die 2 früheren aus §R2, also 8 ÖBB-Antworten insgesamt).
+**Ergebnis: keine Wagen- oder Sektordaten** in 6 Live-Antworten. Dazu kommen die 2 früheren aus §R2 (insgesamt 8 ÖBB-Antworten).
+**Vorbehalt zu den 2 früheren Antworten:** Sie wurden nur mit einer Präfix-Prüfung (`"formation…` in Anführungszeichen) ausgewertet.
+Die erfasst Schlüssel wie `WagenNr` oder `txtFormation` nicht. Die Antworten sind nicht gespeichert und lassen sich nicht
+nachprüfen. Seit 2026-10-14 werten `FormationLiveTests` und `JourneyDetailsFormationLiveTests` mit derselben Schlüsselsuche
+wie §R6 aus. Die 6 neuen Antworten sind damit vollständig geprüft. Für die 2 alten gilt „kein Treffer, eingeschränkt geprüft“.
 
 **Methode (so gelaufen):**
 - Test: `Tests/KlimaCoreTests/Live/LiveSmoke/WagenreihungProbeLiveTests.swift`, Lauf mit
-  `KB_LIVE_TESTS=1 swift test --package-path Packages/KlimaCore --no-parallel --filter WagenreihungProbeLiveTests`.
+  `KB_LIVE_TESTS=1 KB_WAGEN_PROBE=1 swift test --package-path Packages/KlimaCore --no-parallel --filter WagenreihungProbeLiveTests`.
+  Der zweite Schalter `KB_WAGEN_PROBE=1` ist Absicht: Ein Lauf mit `--filter LiveSmoke` (§D3, Budget ≤ 20 pro Lauf) startet den
+  Probe nicht.
+- **Freigabe:** Für diesen 6-Anfragen-Lauf ist im Dokument **keine Owner-Freigabe festgehalten**. Freigegeben ist in §R2 nur der
+  eine JourneyDetails-Request. Der Lauf ist nachträglich vom Owner zu bestätigen. Weitere Läufe nur nach ausdrücklicher Freigabe.
 - **Budget:** hart 6 Anfragen. `ProbeTransport` zählt jeden Versuch vor dem Versand und verweigert die 7. Anfrage.
   Verbraucht: genau 6, alle HTTP 200, keine Wiederholungen.
 - **Ein Radar-Request statt mehrerer TripSearch-Anfragen.** Eine JourneyGeoPos-Antwort (Österreich, jetzt) liefert Fahrt-IDs
@@ -2475,7 +2483,7 @@ Die Nummer „§R3“ ist auf main bereits für „Live verfolgen“ belegt, des
 - **Nightjet** war um 17:00 nicht im Radar. Die Stichprobe kommt aus einer Suche um 21:00 (Wien Hbf → Innsbruck Hbf).
 - **Kein Retry** nach einer Antwort ohne Treffer. Jede Zelle ist ein einzelner Versuch.
 
-**Dokumentierte Formation-Endpunkte in den Research-Unterlagen** (`scratchpad/oebb`, Suche nach Schlüsseln und Endpunkten):
+**Dokumentierte Formation-Endpunkte in den Research-Unterlagen** (lokales Research-Verzeichnis, nicht im Repo; Suche nach Schlüsseln und Endpunkten):
 - **Keiner.** Die dokumentierten HAFAS-Methoden sind TripSearch, LocMatch, StationBoard, JourneyDetails, ServerInfo,
   Reconstruction, LocGeoPos, HimSearch, JourneyMatch und JourneyGeoPos (Radar, Referenz `format/radar-req.js`).
 - Keine Fundstelle mit einem Formation-Schlüssel. Die Treffer für „Wagen“ stammen aus WESTbahn-Oberflächentexten

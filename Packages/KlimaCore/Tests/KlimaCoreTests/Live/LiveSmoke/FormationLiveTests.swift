@@ -7,9 +7,6 @@ import XCTest
 @testable import KlimaCore
 
 final class FormationLiveTests: XCTestCase {
-    // JSON keys only (quoted): plain substrings hit German words such as "Informationen".
-    static let keywords = ["formation", "sector", "coach", "wagon", "waggon", "carsequence", "prognosedcoach"]
-
     func testTripSearchFormationKeywords() async throws {
         guard HafasLiveTests.enabled else { throw XCTSkip("KB_LIVE_TESTS=1 not set") }
         let wien = Location(lid: "A=1@L=8100003@", kind: .station, extId: "8100003", name: "Wien Hbf")
@@ -22,20 +19,13 @@ final class FormationLiveTests: XCTestCase {
             print("FORMATION_LIVE outcome=\(error)")
             throw XCTSkip("TripSearch failed: \(error)")
         }
+        // Same key-NAME scan as §R6 (KeyScan, recursive, case-insensitive, "information" keys excluded).
+        // Prints key names and counts only: no values, no text, no body excerpts.
         let body = HafasLiveTests.recorder.last?.1.body ?? Data()
-        let text = String(decoding: body, as: UTF8.self)
-        let lower = text.lowercased()
-        let hits = Self.keywords.filter { lower.contains("\"" + $0) }
-        var samples: [String] = []
-        for k in hits.prefix(3) {
-            if let r = lower.range(of: k) {
-                let start = lower.index(r.lowerBound, offsetBy: -60, limitedBy: lower.startIndex) ?? lower.startIndex
-                let end = lower.index(r.upperBound, offsetBy: 60, limitedBy: lower.endIndex) ?? lower.endIndex
-                samples.append(String(lower[start..<end]).replacingOccurrences(of: "\n", with: " "))
-            }
-        }
+        let scan = KeyScan.run(body)
         let rideIDs = page.journeys.flatMap(\.rideLegs).compactMap(\.tripID)
         print("FORMATION_LIVE outcome=ok bytes=\(body.count) journeys=\(page.journeys.count) rideTripIDs=\(rideIDs.count) " +
-              "keywordHits=\(hits) samples=\(samples)")
+              "jsonOK=\(scan.isJSON) distinctKeys=\(scan.distinctKeys) formationKeyHits=\(scan.matched) " +
+              "excludedInformationKeys=\(scan.excludedInformation)")
     }
 }

@@ -7,8 +7,6 @@ import XCTest
 @testable import KlimaCore
 
 final class JourneyDetailsFormationLiveTests: XCTestCase {
-    static let keys = ["formation", "sector", "coach", "wagon", "waggon", "carsequence", "prognosedcoach"]
-
     func testJourneyDetailsFormationKeys() async throws {
         guard HafasLiveTests.enabled else { throw XCTSkip("KB_LIVE_TESTS=1 not set") }
         let wien = Location(lid: "A=1@L=8100003@", kind: .station, extId: "8100003", name: "Wien Hbf")
@@ -27,8 +25,11 @@ final class JourneyDetailsFormationLiveTests: XCTestCase {
             print("FORMATION_JD outcome=\(error)")
             throw XCTSkip("JourneyDetails failed: \(error)")
         }
-        let body = String(decoding: HafasLiveTests.recorder.last?.1.body ?? Data(), as: UTF8.self).lowercased()
-        let hits = Self.keys.filter { body.contains("\"" + $0) }
-        print("FORMATION_JD outcome=ok bytes=\(body.utf8.count) line=\(longDistance?.line?.name ?? "?") keyHits=\(hits)")
+        // Same key-NAME scan as §R6 (KeyScan): key names and counts only, no values or body excerpts.
+        let body = HafasLiveTests.recorder.last?.1.body ?? Data()
+        let scan = KeyScan.run(body)
+        print("FORMATION_JD outcome=ok bytes=\(body.count) line=\(longDistance?.line?.name ?? "?") " +
+              "jsonOK=\(scan.isJSON) distinctKeys=\(scan.distinctKeys) formationKeyHits=\(scan.matched) " +
+              "excludedInformationKeys=\(scan.excludedInformation)")
     }
 }
