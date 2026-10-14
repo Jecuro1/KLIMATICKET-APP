@@ -135,6 +135,11 @@ struct RootView: View {
                 }
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
+                // MARK: widgets – the station list (offline) and, with consent and at most every 15 min, the live caches
+                let favorites = Repository(context: context, app: app).liveFavorites()
+                WidgetCacheSync.stationsDidChange(favorites: favorites, homeStationID: app.settings.homeStationID, stations: app.stations)
+                Task { await WidgetCacheSync.refreshLive(live: app.live, favorites: favorites, stations: app.stations,
+                                                         homeStationID: app.settings.homeStationID) }
                 guard returnedFromBackground else { return }
                 returnedFromBackground = false
                 Task { await refreshAfterReturn() }
@@ -208,6 +213,7 @@ struct RootView: View {
         if added > 0 {
             app.showToast("checkmark.circle.fill", added == 1 ? "Fahrt erfasst" : "\(added) Fahrten erfasst", "über Widget oder Siri")
         }
+        WidgetCacheSync.consumeLiveFollowRequest(app: app)   // MARK: widgets – Live verfolgen on / off from the control
         if AppGroup.defaults.bool(forKey: OpenAddTripIntent.pendingKey) {
             AppGroup.defaults.removeObject(forKey: OpenAddTripIntent.pendingKey)
             app.presentAddTripFromOutside()
@@ -217,6 +223,7 @@ struct RootView: View {
     /// klimabilanz://add · klimabilanz://add?from=<stationID>&to=<stationID>
     /// klimabilanz://log?favorite=<uuid> · klimabilanz://tab/<overview|trips|stats|ticket|planner> · klimabilanz://update
     /// klimabilanz://plan?from=…&to=…&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<stationID>   // MARK: planner
+    /// klimabilanz://radar – the Zug-Radar   // MARK: widgets
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -244,6 +251,10 @@ struct RootView: View {
         case "board":
             app.selectedTab = .planner
             if let station = value("station") { app.planner.showBoard(stationID: station) }
+        // MARK: widgets – the Zug-Radar (widget and control; PlannerRootView presents it)
+        case "radar":
+            app.selectedTab = .planner
+            app.planner.radarRequested = true
         case "update":
             Task { await app.updates.checkIfDue(force: true) }
         default:
@@ -444,6 +455,11 @@ struct ScreenshotRouter: View {
         // MARK: scotty – Zug-Radar, Störungen, Live verfolgen (demo data, no network)
         case let scottyScreen where ScottyScreenshotHost.screens.contains(scottyScreen):
             ScottyScreenshotHost(screen: scottyScreen)
+        // MARK: widgets – the widget track at widget sizes (DEBUG preview: same views, demo data, no network)
+        #if DEBUG
+        case let widgetScreen where WidgetPreviewHost.screens.contains(widgetScreen):
+            WidgetPreviewHost(screen: widgetScreen)
+        #endif
         case "liveActivityPreview":  // MARK: live
             NavigationStack { RideActivityPreviewView() }
         case "dashboardLive":  // MARK: live

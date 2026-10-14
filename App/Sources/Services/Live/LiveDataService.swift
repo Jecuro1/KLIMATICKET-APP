@@ -90,6 +90,7 @@ final class LiveDataService {
     func setConsent(_ newValue: Consent) {
         guard settings.liveConsentRaw != newValue.rawValue else { return }
         settings.liveConsentRaw = newValue.rawValue
+        WidgetCacheSync.consentDidChange(newValue)   // MARK: widgets – the widgets mirror the consent; withdrawn = caches emptied
         switchesChanged()
         if newValue == .granted {
             beginMonitoring()
@@ -261,6 +262,7 @@ final class LiveDataService {
 
     /// Settings „Live-Cache leeren“.
     func resetCaches() async {
+        WidgetCacheSync.liveCachesDidReset()   // MARK: widgets – the widgets' live caches go too
         guard let stack = stackStorage else { return }
         await stack.prices.clearCache()
         await stack.health.reset()

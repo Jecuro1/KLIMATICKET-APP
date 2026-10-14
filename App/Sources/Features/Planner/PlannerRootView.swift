@@ -91,6 +91,12 @@ struct PlannerHomeView: View {
         .ambientBackground(.standard, glow: 0.45)
         .toolbarVisibility(.hidden, for: .navigationBar)
         .fullScreenCover(isPresented: $showsRadar) { RadarView() }          // MARK: scotty – Zug-Radar
+        // MARK: widgets – klimabilanz://radar and the Live-verfolgen control open the radar
+        .onChange(of: model.radarRequested, initial: true) { _, requested in
+            guard requested else { return }
+            model.radarRequested = false
+            showsRadar = true
+        }
         .sheet(isPresented: $showsDisruptions) { DisruptionsView() }        // MARK: scotty – Störungen
         .motionAnimation(Motion.snappy, value: isSearching)
         .onChange(of: isSearching) { _, searching in

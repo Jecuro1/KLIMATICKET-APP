@@ -270,6 +270,9 @@ final class PlannerModel {
         if hasBoth, path.contains(.results) { restartSearch() }
     }
 
+    /// Set by `klimabilanz://radar` and the Live-verfolgen control: the Zug-Radar opens over the Fahrplan (PlannerRootView).
+    var radarRequested = false   // MARK: widgets
+
     /// `klimabilanz://board?station=<stationID>`
     func showBoard(stationID: String) {
         guard let station = place(for: stationID) else { return }

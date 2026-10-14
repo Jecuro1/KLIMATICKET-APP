@@ -55,6 +55,8 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
     var sparkline: [Double]
     /// Optional, so snapshots written before it existed still decode.
     var recentLog: RecentLog? = nil
+    /// Trips per day for the last twelve weeks (84 values, oldest first; `WidgetHeatmap`). Optional for older snapshots.
+    var heat: [Int]? = nil
 
     /// Favourites carried for Siri, Shortcuts, Spotlight and the favourite control (the widgets show up to 4).
     static let maxFavorites = 24

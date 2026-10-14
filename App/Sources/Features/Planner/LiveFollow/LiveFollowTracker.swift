@@ -36,6 +36,7 @@ final class LiveFollowTracker {
         lastNotice = nil
         updatedAt = nil
         status = .following
+        WidgetCacheSync.liveFollowDidChange(active: true)   // MARK: widgets – the Live-verfolgen control
         if live.isDemo {
             fetch = { id in
                 guard let trip = DemoFollow.trip(id, now: Date()) else { throw LiveError.noConnection }
@@ -59,6 +60,7 @@ final class LiveFollowTracker {
         snapshot = nil
         lastNotice = nil
         fetch = nil
+        WidgetCacheSync.liveFollowDidChange(active: false)   // MARK: widgets – the Live-verfolgen control
     }
 
     private func run() async {

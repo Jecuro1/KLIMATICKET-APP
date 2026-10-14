@@ -439,6 +439,8 @@ struct Repository {
     /// Writes the widget snapshot and reloads the widget timelines – only when the snapshot really changed.
     func refreshWidgets() {
         Diagnostics.measure("Widgets.refresh") { writeWidgetSnapshot() } // MARK: Diagnostics
+        // MARK: widgets – the station list the Abfahrten widget chooses from (offline data; written only when it changed)
+        WidgetCacheSync.stationsDidChange(favorites: liveFavorites(), homeStationID: app.settings.homeStationID, stations: app.stations)
     }
 
     private func writeWidgetSnapshot() {
@@ -511,7 +513,8 @@ enum WidgetSnapshotBuilder {
                                         fromName: fav.fromName, toName: fav.toName,
                                         via: fav.viaRaw.isEmpty ? nil : fav.via.map(\.name))   // MARK: via
             },
-            sparkline: sparkline
+            sparkline: sparkline,
+            heat: WidgetHeatmap.counts(tripDates: trips.filter { $0.deletedAt == nil }.map(\.date), today: Date())   // MARK: widgets – heatmap
         )
     }
 }
