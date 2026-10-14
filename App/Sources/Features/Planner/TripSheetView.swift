@@ -82,10 +82,10 @@ struct TripSheetView: View {
         .frostedCard(cornerRadius: Theme.Radius.card)
     }
 
-    /// The stop of the board: the same station id when both have one, else the same name (exact, not a prefix: „Wien Mitte“
-    /// must not mark „Wien Mitterndorf“).
+    /// The stop of the board: the same station id, else the same name (exact, not a prefix: „Wien Mitte“ must not mark
+    /// „Wien Mitterndorf“). A different id does not end the check: the name still decides when the two id schemes differ.
     private func marksBoardStop(_ location: Location) -> Bool {
-        if let boardID = boardExtID, let stopID = location.extId { return stopID == boardID }
+        if let boardID = boardExtID, let stopID = location.extId, stopID == boardID { return true }
         guard let title = station?.title else { return false }
         return StationIndex.normalize(DisplayNames.name(location.name)) == StationIndex.normalize(title)
     }
