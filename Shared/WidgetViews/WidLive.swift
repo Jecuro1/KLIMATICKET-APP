@@ -13,9 +13,9 @@ extension View {
 }
 
 extension WidFormat {
-    /// "08:12" (24-hour clock, German).
+    /// "08:12" (24-hour clock). Europe/Vienna, like the departures themselves: a phone abroad must not shift the times.
     static func clock(_ date: Date) -> String {
-        date.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits).locale(locale))
+        RealtimePresentation.time(date)
     }
 
     /// "+4", "−2" – a delay in minutes, nil when on time.

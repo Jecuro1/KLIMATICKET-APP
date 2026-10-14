@@ -482,6 +482,11 @@ struct ScreenshotRouter: View {
         case "hero":
             DesignSystemPreview()
         // MARK: planner – the Fahrplan with the demo timetable (PlannerScreenshotScene)
+        // MARK: review-departures – the trip sheet of the first demo board row; the board at the largest text size (AX5)
+        case "departuresTrip":
+            DeparturesTripScreenshot()
+        case "departuresAX5":
+            PlannerScreenshotScene(screen: "departures").dynamicTypeSize(.accessibility5)
         case let plannerScreen where PlannerScreenshotScene.screens.contains(plannerScreen):
             PlannerScreenshotScene(screen: plannerScreen)
         case "motionGallery", "motionGallery2", "motionGallery3", "motionCelebration": // MARK: motion – DEBUG builds only

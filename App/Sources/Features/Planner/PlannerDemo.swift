@@ -367,12 +367,40 @@ enum DemoBoards {
 
 // MARK: - Screenshot scenes
 
+/// CI screenshot (`-KBScreenshot departuresTrip`, RootView › ScreenshotRouter, `// MARK: review-departures`): the trip sheet
+/// of the first row of the demo board, as the screen itself (the sheet's content, the same view the row opens).
+struct DeparturesTripScreenshot: View {
+    @Environment(AppState.self) private var app
+    @State private var row: BoardRow?
+    @State private var tripID = ""
+
+    var body: some View {
+        Group {
+            if let row {
+                TripSheetView(row: row, tripID: tripID, station: app.planner.boardStation, isArrival: false)
+            } else {
+                Color.clear.ambientBackground()
+            }
+        }
+        .task {
+            let model = app.planner
+            app.selectedTab = .planner
+            model.mode = .departures
+            if let innsbruck = app.stations.station(named: "Innsbruck Hbf") { model.boardStation = .station(innsbruck) }
+            await model.loadBoard()
+            guard let first = model.boardRows.first else { return }
+            tripID = model.tripID(forBoardRow: first.id) ?? ""
+            row = first
+        }
+    }
+}
+
 /// CI screenshots of the Fahrplan (`-KBScreenshot planner | plannerResults | plannerVia | connection | connectionPartial |
 /// departures | plannerConsent | plannerStates | plannerOptions`): the real tab with the demo timetable – no network.
 struct PlannerScreenshotScene: View {
     static let screens: Set<String> = ["planner", "plannerResults", "plannerVia", "connection", "departures", "plannerConsent",
                                        "plannerStates", "plannerOptions", "plannerSearch", "plannerAdvanced", "plannerDetail",
-                                       "plannerSort", "plannerViaEdit", "plannerShare"]
+                                       "plannerSort", "plannerViaEdit", "plannerShare", "departuresArrivals"]
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -455,8 +483,9 @@ struct PlannerScreenshotScene: View {
             model.options = options
             try? await Task.sleep(for: .milliseconds(500))
             model.showsOptions = true
-        case "departures":
+        case "departures", "departuresArrivals": // MARK: review-departures – the arrivals board of the same station
             model.mode = .departures
+            model.boardKind = screen == "departuresArrivals" ? .arrivals : .departures
             if let innsbruck { model.boardStation = .station(innsbruck) }
             await model.loadBoard()
         case "plannerViaEdit":
