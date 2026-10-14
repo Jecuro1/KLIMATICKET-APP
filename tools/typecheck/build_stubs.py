@@ -60,6 +60,7 @@ MODULES = [
     ("ActivityKit", ["Combine", "FoundationShim"]),
     ("WidgetKit", ["AppIntents", "_AppIntents_SwiftUI", "SwiftUI", "DeveloperToolsSupport", "ActivityKit"]),
     ("UserNotifications", ["FoundationShim", "CoreLocation"]),
+    ("BackgroundTasks", ["FoundationShim"]),  # hand-written (Stubs/BackgroundTasks): app refresh for "Live verfolgen"
     ("CoreMotion", ["FoundationShim"]),
     ("MetricKit", ["FoundationShim"]),
     ("ImageIO", ["CoreGraphics", "FoundationShim"]),

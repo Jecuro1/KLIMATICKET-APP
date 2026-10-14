@@ -106,6 +106,8 @@ struct RootView: View {
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
+            // MARK: follow – a saved "Live verfolgen" comes back (only with consent and not in demo/screenshot runs)
+            if !LaunchMode.isSandboxed { LiveFollowTracker.shared.restoreIfNeeded(live: app.live) }
             // All Austrian stops + localities (places.bin): built once off the main thread, then every station
             // search (StationIndex façade) covers all ~40.000 stops.
             PlaceIndexLoader.shared.preload()
@@ -462,6 +464,8 @@ struct ScreenshotRouter: View {
         #endif
         case "liveActivityPreview":  // MARK: live
             NavigationStack { RideActivityPreviewView() }
+        case let followScreen where FollowScreenshotHost.screens.contains(followScreen):  // MARK: follow – Live verfolgen states, Live Activity, notice settings
+            FollowScreenshotHost(screen: followScreen)
         case "dashboardLive":  // MARK: live
             MainTabView().onAppear { RideActivityController.shared.showScreenshotRide(context: context, app: app) }
         // MARK: icons – Einstellungen › Darstellung › App-Symbol

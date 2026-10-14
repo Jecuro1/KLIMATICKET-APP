@@ -237,10 +237,9 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    /// All categories are registered together (NotificationCategories): a second `setNotificationCategories` would drop the first.
     private func registerNotificationCategory() {
-        let confirm = UNNotificationAction(identifier: Self.confirmAction, title: "Erfassen", options: [])
-        let category = UNNotificationCategory(identifier: Self.notificationCategory, actions: [confirm], intentIdentifiers: [])
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        NotificationCategories.registerAll()
     }
 
     private func notify(_ s: TripSuggestion) {

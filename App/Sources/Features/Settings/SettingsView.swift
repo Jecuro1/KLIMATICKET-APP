@@ -30,6 +30,7 @@ struct SettingsView: View {
                 SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen", condense: condense))
                 SetFareSection()
                 SetLiveDataSection() // MARK: planner
+                SetFollowNoticesSection() // MARK: follow – „Live-Mitteilungen“ for „Live verfolgen“ (off until switched on)
                 WorkSettingsSection() // MARK: work – "Arbeit & Steuer", "Auto-Vergleich"
                 PerkSettingsSection() // MARK: benefits
                 SetCaptureSection()

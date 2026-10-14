@@ -323,6 +323,9 @@ final class AppSettings {
     var liveTimetableEnabled: Bool { didSet { defaults.set(liveTimetableEnabled, forKey: "liveTimetableEnabled") } }
     /// „Live-Ticketpreise“ (effective only with consent).
     var livePricesEnabled: Bool { didSet { defaults.set(livePricesEnabled, forKey: "livePricesEnabled") } }
+    /// „Live-Mitteilungen“ for „Live verfolgen“ (docs/OEBB_LIVE.md §R8). Off by default; stored by FollowNoticeStore so
+    /// the background refresh reads the same switches.
+    var followNotices: FollowNoticeSettings { didSet { FollowNoticeStore.save(followNotices, defaults: defaults) } }
 
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
@@ -347,5 +350,6 @@ final class AppSettings {
         liveConsentRaw = defaults.string(forKey: "liveConsent") ?? "undecided"   // MARK: planner
         liveTimetableEnabled = defaults.object(forKey: "liveTimetableEnabled") as? Bool ?? true
         livePricesEnabled = defaults.object(forKey: "livePricesEnabled") as? Bool ?? true
+        followNotices = FollowNoticeStore.load(defaults)
     }
 }

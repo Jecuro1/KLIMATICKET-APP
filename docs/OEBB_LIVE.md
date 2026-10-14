@@ -2423,8 +2423,8 @@ Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
 - Hinweise (nur bei Änderung, nie bei der ersten Antwort): Verspätung ≥ 5 Min (Schwelle oder Zuwachs um 5 Min), „wieder pünktlich“,
   Gleiswechsel, Ausfall, Ankunft.
 - Abfrage: `JourneyDetails` alle 10 Min (Abfahrt > 30 Min), 2 Min (nahe Abfahrt), 1 Min (unterwegs); Stopp bei Ankunft/Ausfall.
-- **Keine Hintergrundabfrage.** Änderungen werden nur bemerkt, während die App läuft. Lokale Mitteilungen gehen nur dann raus.
-  Live Activity nicht angebunden (Seam `RideActivityControlling` passt nicht ohne Umbau des Planner-Snapshots).
+- **Stand 2026-10-14: überholt durch §R8.** Hintergrund-Aktualisierung, Live Activity und Mitteilungen sind gebaut.
+  Die ursprüngliche Aussage „keine Hintergrundabfrage“ gilt nicht mehr. Die Regel aus §2.3 bleibt: nur eine aktive Fahrt.
 
 ### R4 Störungen (HimSearch, KlimaCore `Live/Disruptions/DisruptionFeed.swift`)
 - Abfragefenster: jetzt bis +2 Tage. Verkehrsmittel gehen an den Server (`himFltrL`). Linie, Bundesland und „nur aktuelle“ im Gerät.
@@ -2519,3 +2519,41 @@ des Systems), alles darüber ist unser: Marker, Cluster, Route, Filter, Suche, S
 - **Demo und Screenshots:** `-KBDemo` und die Hosts `radar`, `radarTrip`, `radarFilter`, `radarSearch`, `radarCluster` (kein Netz).
 - **Nicht gebaut:** Hintergrund-Mitteilungen zu Zügen (würde Abfragen ohne Sichtbarkeit bedeuten, dafür fehlt die Freigabe nach
   §2). Live Activity für einen Radar-Zug (der Planner-Snapshot passt nicht ohne Umbau, siehe §R3). Wagenreihung (§R6: keine Daten).
+
+## R8 Live verfolgen: Stufen, Mitteilungen, Live Activity, Hintergrund (2026-10-14)
+
+Owner-Auftrag 2026-10-14: Hintergrund-Mitteilungen, Live-Verfolgung und Live-Aktivitäten. Dieser Abschnitt ist der Stand.
+
+**Was gebaut ist**
+- **KlimaCore** (`Live/Follow/`, rein, Uhr injiziert, 54 Tests unter Linux): Stufen `beforeDeparture`, `boarding` (10 Min vor Abfahrt),
+  `riding`, `transfer` (Umstieg steht noch aus), `arrived`, `cancelled`. Mitteilungen: Verspätung ab 3, 5 oder 10 Min (Standard 5),
+  Verspätung wieder klein, Gleisänderung, Ausfall, Abfahrt, Ankunft in etwa 10 Min, knapper Umstieg (unter 5 Min), Ankunft.
+  Jede Mitteilung höchstens einmal je Fahrt (`FollowNoticeLedger`, wird gespeichert). Ruhezeit 22 bis 7 Uhr (Ortszeit des Geräts),
+  in der Ruhezeit werden Mitteilungen verworfen und nicht nachgeholt. Schalter je Art.
+- **Live Activity** (`Shared/FollowActivityAttributes.swift`, `Shared/WidgetViews/FollowActivityViews.swift`,
+  `Widgets/Sources/FollowLiveActivity.swift`): Sperrbildschirm, Dynamic Island kompakt, minimal und erweitert. Inhalt: nächster Halt,
+  Verspätung, Gleis, Fortschritt, Umstieg. `staleDate` ist die Ankunft plus 10 Min. Start mit `Activity.request(…, pushType: nil)`.
+  Beendet wird bei Ankunft (5 Min sichtbar) oder beim Stoppen (sofort). Ohne Live-Aktivitäten-Erlaubnis startet nichts.
+- **Hintergrund** (`App/Sources/Services/Live/FollowBackgroundRefresh.swift`): `BGAppRefreshTask` mit der Kennung
+  `com.knitelarlberg.klimabilanz.follow-refresh` (Info-Plist-Eintrag `BGTaskSchedulerPermittedIdentifiers`, Modus `fetch`).
+  Die App sendet nur „frühestens“-Zeiten (`earliestBeginDate`). Ein Lauf fragt ÖBB einmal für die gespeicherte Fahrt ab.
+  Er läuft nur, wenn der Schalter an ist und Live-Daten zugestimmt sind.
+- **Benachrichtigungen** (`NotificationCategories.swift`): Kategorie `live.follow` mit „Details öffnen“, „Fahrt erfassen“ und
+  „Nicht mehr verfolgen“. Alle Kategorien werden in einem Aufruf registriert, weil `setNotificationCategories` die ganze Menge ersetzt.
+  Die Vorschlags-Kategorie der Ortserkennung bleibt unverändert.
+- **Einstellungen › Live-Mitteilungen** (`SetFollowNoticesSection.swift`): Hauptschalter (aus), Erlaubnis-Status, Live-Aktivitäten,
+  Hintergrund-Aktualisierung, Verspätungsschwelle, Schalter je Art, Ruhezeit. Die Erlaubnis wird erst beim Einschalten erfragt.
+
+**Zustimmung und Schalter (§2)**: ohne Zustimmung zu Live-Daten keine Anfrage, auch nicht im Hintergrund. Ohne Hauptschalter keine
+Mitteilungserlaubnis, keine Live-Aktivität und keine Hintergrund-Aktualisierung für Fahrten. Demo-Läufe (`-KBDemo`, Screenshots) nutzen
+kein Netz und starten keine Live-Aktivität.
+
+**Ehrliche Grenzen**
+- iOS entscheidet, ob und wann die Hintergrund-Aktualisierung läuft. Ein Lauf kann ausbleiben. Die App verspricht keine Minute.
+- Live-Aktivitäten lassen sich nur im Vordergrund starten. Ein Hintergrundlauf, der eine neue Aktivität bräuchte, scheitert still
+  und wird beim nächsten Abruf in der App erneut versucht.
+- Remote-Updates per Push sind nicht gebaut (kein APNs ohne bezahlten Developer-Account). Die Schnittstelle steht in `docs/LIVE_PUSH.md`.
+- Eine Fahrt aus einer **gespeicherten** Fahrt zu verfolgen braucht eine Zuordnung zur HAFAS-Fahrt-ID. Gespeicherte Fahrten haben keine ID.
+  Nicht gebaut.
+- Wagenreihung: keine Daten (§R6). Nicht gebaut, damit keine Wagen erfunden werden.
+- Umstiegszeit ohne Fußweg: der Fußweg zwischen zwei Bahnhöfen wird nicht abgezogen. Die Warnung ist ein Hinweis, kein Fahrplan.

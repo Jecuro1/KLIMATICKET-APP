@@ -119,6 +119,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        NotificationCategories.registerAll()   // all categories at once (trip suggestions, Live verfolgen)
+        FollowBackgroundRefresh.register()     // must happen before launch finishes (docs/OEBB_LIVE.md §R8)
         return true
     }
 
@@ -131,9 +133,24 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let identifier = response.notification.request.identifier
         let action = response.actionIdentifier
         await MainActor.run {
+            // "Nicht mehr verfolgen" works even when the store is not open yet: it only ends the follow.
+            if category == NotificationCategories.followNotice, action == NotificationCategories.followStop {
+                LiveFollowTracker.shared.stop()
+                return
+            }
             // A response right after the first unlock can arrive before the scene retried opening the store.
             AppDelegate.launch?.store.retryIfNeeded()
             guard let app = AppDelegate.appState, let container = AppDelegate.container else { return }
+            if category == NotificationCategories.followNotice {
+                switch action {
+                case NotificationCategories.followLog:
+                    app.presentAddTripFromOutside()        // "Fahrt erfassen"
+                default:
+                    app.selectedTab = .planner             // "Details öffnen" and a tap on the notice
+                    if action == NotificationCategories.followDetails { LiveFollowTracker.shared.requestDetail() }
+                }
+                return
+            }
             if category == TripDetectionService.notificationCategory {
                 if action == TripDetectionService.confirmAction {
                     app.detection.handleNotificationResponse(identifier: identifier,

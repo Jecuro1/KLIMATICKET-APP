@@ -38,34 +38,18 @@ struct LiveFollowAccessory: View {
             }
             .buttonStyle(.plain)
             .sheet(isPresented: $showsDetail) { LiveFollowDetailSheet(tracker: tracker) }
+            // A notification's "Details öffnen" opens the stop list.
+            .onChange(of: tracker.detailRequest) { _, _ in showsDetail = true }
             .accessibilityElement(children: .combine)
             .accessibilityHint("Zeigt alle Halte")
         }
     }
 
+    /// The stage line, shared with the Live Activity and the notifications (FollowStageCopy).
     private var headline: String {
         if case .paused(let message) = tracker.status { return message }
         guard let s = tracker.snapshot else { return "Lade Fahrt …" }
-        switch s.phase {
-        case .upcoming:
-            return "Abfahrt \(s.boarding?.location.name ?? "") \(time(s.boarding?.departure))" + platformSuffix(s.boardingPlatform)
-        case .underway:
-            guard let next = s.nextStops(limit: 1).first else { return "Unterwegs" }
-            return "Nächster Halt \(next.location.name) \(time(next.arrival ?? next.departure))"
-        case .arrived:
-            return "Angekommen in \(s.alighting?.location.name ?? "")"
-        case .cancelled:
-            return "Fällt aus"
-        }
-    }
-
-    private func time(_ event: StopEvent?) -> String {
-        guard let event else { return "" }
-        return RealtimePresentation.label(event).text ?? RealtimePresentation.time(event.effective ?? Date())
-    }
-
-    private func platformSuffix(_ platform: String?) -> String {
-        platform.map { " · Gleis \($0)" } ?? ""
+        return FollowStageCopy.headline(FollowLiveState.make(from: s, now: Date()))
     }
 
     @ViewBuilder private var delayBadge: some View {

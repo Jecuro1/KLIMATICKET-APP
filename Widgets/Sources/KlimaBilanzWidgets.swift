@@ -25,5 +25,6 @@ struct KlimaBilanzWidgetsBundle: WidgetBundle {
         SearchControl()
         LiveFollowControl()
         RideLiveActivity()  // MARK: live
+        FollowLiveActivity()  // MARK: follow – "Live verfolgen" (docs/OEBB_LIVE.md §R8)
     }
 }

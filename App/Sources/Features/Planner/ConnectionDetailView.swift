@@ -808,8 +808,16 @@ extension ConnectionDetailView {
     /// The first ride leg as a follow target; nil without live data or without a trip id.
     fileprivate func followTarget(_ row: ConnectionRow) -> LiveFollowTarget? {
         guard app.live.timetable != nil, let leg = row.journey.rideLegs.first, let tripID = leg.tripID else { return nil }
+        // The next ride leg: the user changes trains after this one (docs/OEBB_LIVE.md §R8). Walking time between two
+        // stations is not subtracted from the spare time, so a tight-transfer notice is a warning, not a timetable.
+        let transfer = row.journey.rideLegs.dropFirst().first.flatMap { next -> FollowTransfer? in
+            guard let planned = next.departure.planned else { return nil }
+            return FollowTransfer(stationName: next.origin.name, plannedDeparture: planned,
+                                  lineName: next.line.map { LinePresentation.title($0) })
+        }
         return LiveFollowTarget(tripID: tripID, lineName: leg.line.map { LinePresentation.title($0) } ?? "Verbindung",
                                 boardingStop: leg.origin, alightStop: leg.destination,
-                                plannedDeparture: leg.departure.planned, plannedArrival: leg.arrival.planned)
+                                plannedDeparture: leg.departure.planned, plannedArrival: leg.arrival.planned,
+                                transfer: transfer)
     }
 }

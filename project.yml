@@ -58,7 +58,12 @@ targets:
         NSLocationAlwaysAndWhenInUseUsageDescription: "Für die automatische Fahrterkennung bemerkt KlimaBilanz, wenn du an deinen Lieblingsbahnhöfen ankommst oder abfährst – und schlägt dir die Fahrt zum Erfassen vor. Dein Standort verlässt dein iPhone nie."
         NSUserActivityTypes:
           - com.knitelarlberg.klimabilanz.addTrip
-        NSSupportsLiveActivities: true  # live: "Unterwegs" Live Activity
+        NSSupportsLiveActivities: true  # live: "Unterwegs" and "Live verfolgen" Live Activities
+        # MARK: follow – background refresh of an active "Live verfolgen" (docs/OEBB_LIVE.md §R8). iOS decides when it runs.
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.knitelarlberg.klimabilanz.follow-refresh
         LSApplicationQueriesSchemes:
           - altstore
           - sidestore
