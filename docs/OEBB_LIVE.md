@@ -2415,7 +2415,7 @@ Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
   Antwort 21 552 Byte, **keine** Formations-Schlüssel (`formation`, `sector`, `coach`, `wagon`, `waggon`, `carSequence`,
   `prognosedCoach`).
 - **Ergebnis:** Keine Wagenreihung in den getesteten ÖBB-Antworten (TripSearch und JourneyDetails). Es gibt keine Wagen-Anzeige,
-  kein Feature-Flag und keine erfundenen Daten. Ein Test mit anderem Zugtyp oder einer Zugbildung-Anfrage ist offen.
+  kein Feature-Flag und keine erfundenen Daten. Die Prüfung mit weiteren Zugtypen ist in **§R6** erledigt (ebenfalls kein Treffer).
 
 ### R3 Live verfolgen (KlimaCore `Live/Follow/LiveFollow.swift`, rein, Uhr injiziert)
 - Ziel: Fahrt-ID + Ein-/Ausstieg. Zustand: `upcoming` · `underway` · `arrived` · `cancelled`. Letzter passierter Halt, nächste Halte,
@@ -2433,3 +2433,61 @@ Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
 
 ### R5 Demo und CI
 - `-KBDemo`/Screenshots: alles aus `App/Sources/Features/Radar/ScottyDemo.swift`, kein Netz (synthetische Fahrten, Meldungen).
+
+## R6 Wagenreihung check (Nachtrag zu §R2, 2026-10-14)
+
+Die Nummer „§R3“ ist auf main bereits für „Live verfolgen“ belegt, deshalb steht diese Prüfung als §R6.
+
+**Frage:** Liefern ÖBB-HAFAS-Antworten Wagenreihung (Wagen-/Sektordaten) für mehrere Zugtypen?
+**Ergebnis: keine Wagen- oder Sektordaten** in 6 Live-Antworten (dazu die 2 früheren aus §R2, also 8 ÖBB-Antworten insgesamt).
+
+**Methode (so gelaufen):**
+- Test: `Tests/KlimaCoreTests/Live/LiveSmoke/WagenreihungProbeLiveTests.swift`, Lauf mit
+  `KB_LIVE_TESTS=1 swift test --package-path Packages/KlimaCore --no-parallel --filter WagenreihungProbeLiveTests`.
+- **Budget:** hart 6 Anfragen. `ProbeTransport` zählt jeden Versuch vor dem Versand und verweigert die 7. Anfrage.
+  Verbraucht: genau 6, alle HTTP 200, keine Wiederholungen.
+- **Ein Radar-Request statt mehrerer TripSearch-Anfragen.** Eine JourneyGeoPos-Antwort (Österreich, jetzt) liefert Fahrt-IDs
+  für alle Zugtypen gleichzeitig. Die JourneyDetails liefen auf diese IDs (`HafasClient.trip`, `getPolyline: false`).
+  Eine TripSearch gab es nur für den Nightjet (siehe R5a).
+- **Kein neuer Anfrage-Typ.** Dieselben Requests wie der bestehende Client (`HafasRequests.journeyGeoPos`, `journeyDetails`).
+  Keine zusätzlichen oder undokumentierten Flags (§2: nur die Spezifikation).
+- **Auswertung nur über JSON-Schlüsselnamen**, rekursiv, case-insensitiv. Treffer: Schlüssel enthält `formation`, `sector`,
+  `coach`, `wagon`, `waggon`, `carSequence`, `prognosedCoach`, `formationL`, `sectorL` oder `Wagen`.
+  Schlüssel mit „information“ werden getrennt gezählt und nicht als Treffer gewertet.
+  Werte, Texte und Antwortkörper werden weder ausgegeben noch gespeichert (kein `recorder.record`, keine Fixture).
+- **Scanner-Selbsttest (offline, läuft in CI):** `Tests/KlimaCoreTests/Live/LiveSmoke/WagenreihungKeyScanTests.swift`.
+  Er findet `formationL`, `sectorL` und `WagenNr`, ignoriert „informationen“ und Textwerte. Ohne Live-Schalter läuft er durch.
+
+**Ergebnisse** (Schlüsselnamen gezählt, keine Werte):
+
+| # | Anfrage (`meth`) | Zugtyp (Radar-Kategorie) | HTTP | Bytes | Verschiedene JSON-Schlüssel | Formation-Treffer | Ergebnis |
+|---|---|---|---|---|---|---|---|
+| R1 | JourneyGeoPos, Österreich, rail, 17:00 MESZ | alle | 200 | 571 752 | 99 | **0** | 256 Fahrzeuge (Serverlimit). Kategorien: CJX 3, D 3, DRB 14, DRE 19, EC 15, IC 6, ICE 15, IR 9, Os 7, P 1, R 18, RB 9, RE 22, REX 42, RJ 8, RJX 17, S 31, Sp 2, WB 15. **Kein NJ.** |
+| R2 | JourneyDetails | RJX (ein Fahrzeug aus R1) | 200 | 12 407 | 151 | **0** | ok |
+| R3 | JourneyDetails | EC (ein Fahrzeug aus R1, irgendwo in AT) | 200 | 15 472 | 129 | **0** | ok |
+| R4 | JourneyDetails | REX (Kontrolle, Regionalzug) | 200 | 18 891 | 150 | **0** | ok |
+| R5a | TripSearch Wien Hbf → Innsbruck Hbf, heute 21:00, rail | (Suche, Nightjet-Suche) | 200 | 150 918 | 217 | **0** | 7 Verbindungen, 19 Fahrt-IDs, darunter NJ |
+| R5 | JourneyDetails | NJ (Nightjet, aus R5a) | 200 | 18 290 | 147 | **0** | ok |
+
+**Nicht getestet bzw. abweichend vom Auftrag:**
+- **ICE und RJ** nicht einzeln: aus der Gruppe RJX/RJ/ICE wurde nur der erste RJX-Treffer abgefragt.
+- **EC/IC** nicht als Strecke Innsbruck → Bregenz: der EC ist ein Radar-Fahrzeug in Österreich. Strecke und Richtung sind nicht geprüft.
+- **Nightjet** war um 17:00 nicht im Radar. Die Stichprobe kommt aus einer Suche um 21:00 (Wien Hbf → Innsbruck Hbf).
+- **Kein Retry** nach einer Antwort ohne Treffer. Jede Zelle ist ein einzelner Versuch.
+
+**Dokumentierte Formation-Endpunkte in den Research-Unterlagen** (`scratchpad/oebb`, Suche nach Schlüsseln und Endpunkten):
+- **Keiner.** Die dokumentierten HAFAS-Methoden sind TripSearch, LocMatch, StationBoard, JourneyDetails, ServerInfo,
+  Reconstruction, LocGeoPos, HimSearch, JourneyMatch und JourneyGeoPos (Radar, Referenz `format/radar-req.js`).
+- Keine Fundstelle mit einem Formation-Schlüssel. Die Treffer für „Wagen“ stammen aus WESTbahn-Oberflächentexten
+  (`prices/raw/westbahn_home.html`). „Umgekehrte Reihung“ steht als Wert von `head` in Fixtures, ist aber ein Richtungstext.
+  „Coach“ in `journey-planner/client.py` meint Fernbus. Die Fixture-Notiz „reversed formation“ (`journey-planner/fixtures/INDEX.json`)
+  ist ein Beschreibungstext. Übrige Treffer sind Wortteile wie „Informationen“ oder „Transformation“ in Web-Skripten und einer AGB-PDF.
+
+**Verdict:** **NO DATA.** Kein Formation-Feld in den ÖBB-HAFAS-Antworten für Railjet/RJX, EC, REX oder Nightjet.
+Keine Fixture gespeichert, weil nichts gefunden wurde.
+
+**Offene Punkte:**
+- Ein negatives Ergebnis beweist nicht, dass ÖBB keine Wagenreihung hat. Sie könnte über einen anderen Endpunkt oder einen
+  Request-Parameter kommen, der nicht in der Spezifikation steht. Den suchen wir nicht ohne Freigabe (§2).
+- Ohne solche Quelle bleibt die Wagenreihung im App-Plan ungebaut. Eine Anzeige ohne Daten wäre erfunden.
+- Nächster Schritt, falls der Owner es will: Quelle und Nutzungsbedingungen klären, bevor irgendein Endpunkt getestet wird.
