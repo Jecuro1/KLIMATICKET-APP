@@ -6,7 +6,7 @@ import Foundation
 /// `health.record…`. At most one automatic retry (timeout, HTTP 502/503/504, network) after 1.5 s. When the primary
 /// profile answers top-level AUTH/HAMM/PARSE the same call is retried once with `config.hafasFallback`; if that works the
 /// fallback is used for 6 h. Blocks are never evaded: no user-agent rotation, honest User-Agent, no further retries.
-public actor HafasClient: TimetableService, RadarService {
+public actor HafasClient: TimetableService, RadarService, TrainSearchService {
     static let perMinute = 40
     static let fallbackHold: TimeInterval = 6 * 3600
     static let retryDelay: TimeInterval = 1.5
@@ -143,6 +143,12 @@ public actor HafasClient: TimetableService, RadarService {
 
     public func remarks(_ query: RemarksQuery) async throws -> [Remark] {
         try HafasCodec.remarks(from: try await send([HafasRequests.himSearch(query)]))
+    }
+
+    /// Zugsuche (JourneyMatch). One request; the gate is the timetable gate (consent, switch, kill switch) via `send`.
+    public func trainRuns(_ query: TrainSearchQuery) async throws -> TrainSearchResult {
+        try ensureEnabled()
+        return try HafasCodec.trainSearch(from: try await send([HafasRequests.journeyMatch(query)]))
     }
 
     // MARK: - Transport pipeline

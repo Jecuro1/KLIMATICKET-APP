@@ -1,0 +1,771 @@
+{
+ "err": "OK",
+ "ext": "OEBB.14",
+ "ver": "1.88",
+ "lang": "deu",
+ "svcResL": [
+  {
+   "meth": "JourneyMatch",
+   "err": "OK",
+   "res": {
+    "common": {
+     "locL": [
+      {
+       "countryCodeL": [
+        "hu"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 19085070,
+        "y": 47500386
+       },
+       "globalIdL": [
+        {
+         "id": "5510017",
+         "type": "U"
+        },
+        {
+         "id": "55BU KT",
+         "type": "B"
+        }
+       ],
+       "chgTime": "000700",
+       "extId": "5500003",
+       "icoX": 2,
+       "lid": "A=1@O=Budapest-Keleti@X=19085070@Y=47500386@U=81@L=5500003@",
+       "name": "Budapest-Keleti",
+       "pCls": 29,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "de"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 11558339,
+        "y": 48140229
+       },
+       "globalIdL": [
+        {
+         "id": "8020347",
+         "type": "U"
+        },
+        {
+         "id": "80MH",
+         "type": "B"
+        }
+       ],
+       "chgTime": "000800",
+       "extId": "8000261",
+       "icoX": 2,
+       "lid": "A=1@O=München Hbf@X=11558339@Y=48140229@U=81@L=8000261@",
+       "name": "München Hbf",
+       "pCls": 4159,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 9814890,
+        "y": 47154723
+       },
+       "globalIdL": [
+        {
+         "id": "8101230",
+         "type": "U"
+        },
+        {
+         "id": "B",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        },
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 2,
+         "sort": 572260352,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000500",
+       "entry": true,
+       "extId": "8100067",
+       "icoX": 2,
+       "lid": "A=1@O=Bludenz Bahnhof@X=9814890@Y=47154714@U=81@L=8100067@",
+       "name": "Bludenz Bahnhof",
+       "pCls": 4157,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 9739776,
+        "y": 47503019
+       },
+       "globalIdL": [
+        {
+         "id": "8102336",
+         "type": "U"
+        },
+        {
+         "id": "Bg",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000500",
+       "entry": true,
+       "extId": "8100090",
+       "icoX": 2,
+       "lid": "A=1@O=Bregenz Bahnhof@X=9739776@Y=47503019@U=81@L=8100090@",
+       "name": "Bregenz Bahnhof",
+       "pCls": 4157,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 16377950,
+        "y": 48184986
+       },
+       "globalIdL": [
+        {
+         "id": "8101003",
+         "type": "U"
+        },
+        {
+         "id": "Wbf",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        },
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 2,
+         "sort": 572260352,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000600",
+       "entry": true,
+       "extId": "8103000",
+       "icoX": 2,
+       "lid": "A=1@O=Wien Hbf (Bahnsteige 3-12)@X=16377950@Y=48184986@U=81@L=8103000@",
+       "name": "Wien Hbf (Bahnsteige 3-12)",
+       "pCls": 4157,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 13045856,
+        "y": 47813057
+       },
+       "globalIdL": [
+        {
+         "id": "8101114",
+         "type": "U"
+        },
+        {
+         "id": "Sb",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        },
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 2,
+         "sort": 572260352,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000700",
+       "extId": "8100002",
+       "icoX": 2,
+       "lid": "A=1@O=Salzburg Hbf@X=13045856@Y=47813057@U=81@L=8100002@",
+       "name": "Salzburg Hbf",
+       "pCls": 4159,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 11401019,
+        "y": 47263043
+       },
+       "globalIdL": [
+        {
+         "id": "8101187",
+         "type": "U"
+        },
+        {
+         "id": "I",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        },
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 2,
+         "sort": 572260352,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000500",
+       "extId": "8100108",
+       "icoX": 2,
+       "lid": "A=1@O=Innsbruck Hbf@X=11401019@Y=47263043@U=81@L=8100108@",
+       "name": "Innsbruck Hbf",
+       "pCls": 4157,
+       "state": "F",
+       "type": "S"
+      },
+      {
+       "countryCodeL": [
+        "at"
+       ],
+       "crd": {
+        "floor": 0,
+        "x": 16562832,
+        "y": 48120821
+       },
+       "globalIdL": [
+        {
+         "id": "8102924",
+         "type": "U"
+        },
+        {
+         "id": "Fws",
+         "type": "B"
+        }
+       ],
+       "msgL": [
+        {
+         "tagL": [
+          "RES_LOC_H3"
+         ],
+         "remX": 1,
+         "sort": 569638912,
+         "sty": "I",
+         "type": "REM"
+        }
+       ],
+       "chgTime": "000500",
+       "entry": true,
+       "extId": "8100353",
+       "icoX": 2,
+       "lid": "A=1@O=Flughafen Wien Bahnhof@X=16562832@Y=48120821@U=81@L=8100353@",
+       "name": "Flughafen Wien Bahnhof",
+       "pCls": 61,
+       "state": "F",
+       "type": "S"
+      }
+     ],
+     "prodL": [
+      {
+       "prodCtx": {
+        "admin": "55____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "66",
+        "name": "RJX 66  ",
+        "num": "66"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 66",
+       "nameS": "RJX 66",
+       "number": "66",
+       "oprX": 0
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "660",
+        "name": "RJX 660 ",
+        "num": "660"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 660",
+       "nameS": "RJX 660",
+       "number": "660",
+       "oprX": 1
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "661",
+        "name": "RJX 661 ",
+        "num": "661"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 661",
+       "nameS": "RJX 661",
+       "number": "661",
+       "oprX": 1
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "662",
+        "name": "RJX 662 ",
+        "num": "662"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 662",
+       "nameS": "RJX 662",
+       "number": "662",
+       "oprX": 1
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "663",
+        "name": "RJX 663 ",
+        "num": "663"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 663",
+       "nameS": "RJX 663",
+       "number": "663",
+       "oprX": 1
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "664",
+        "name": "RJX 664 ",
+        "num": "664"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 664",
+       "nameS": "RJX 664",
+       "number": "664",
+       "oprX": 1
+      },
+      {
+       "prodCtx": {
+        "admin": "81____",
+        "catCode": "0",
+        "catIn": "RJX",
+        "catOut": "RJX",
+        "catOutL": "railjet xpress",
+        "catOutS": "RJX",
+        "matchId": "669",
+        "name": "RJX 669 ",
+        "num": "669"
+       },
+       "cls": 1,
+       "icoX": 1,
+       "name": "RJX 669",
+       "nameS": "RJX 669",
+       "number": "669",
+       "oprX": 1
+      }
+     ],
+     "opL": [
+      {
+       "icoX": 0,
+       "id": "EFZ:55____:",
+       "matchId": "MAV",
+       "name": "MAV"
+      },
+      {
+       "icoX": 4,
+       "matchId": "Nahreisezug",
+       "name": "Nahreisezug"
+      }
+     ]
+    },
+    "jnyL": [
+     {
+      "stopL": [
+       {
+        "dTZOffset": 120,
+        "dTimeS": "133000",
+        "locX": 0
+       },
+       {
+        "aTZOffset": 120,
+        "aTimeS": "204700",
+        "locX": 1
+       }
+      ],
+      "date": "20260811",
+      "durS": "071700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#308843#TA#0#DA#110826#1S#5500003#1T#1330#LS#8000261#LT#2047#PU#81#RT#1#CA#RJX#ZE#66#ZB#RJX 66  #PC#0#FR#5500003#FT#1330#TO#8000261#TT#2047#",
+      "prodX": 0
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 120,
+        "dTimeS": "133000",
+        "locX": 0
+       },
+       {
+        "aTZOffset": 120,
+        "aTimeS": "204700",
+        "locX": 1
+       }
+      ],
+      "date": "20260912",
+      "durS": "071700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#308844#TA#0#DA#120926#1S#5500003#1T#1330#LS#8000261#LT#2047#PU#81#RT#1#CA#RJX#ZE#66#ZB#RJX 66  #PC#0#FR#5500003#FT#1330#TO#8000261#TT#2047#",
+      "prodX": 0
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 120,
+        "dTimeS": "133000",
+        "locX": 0
+       },
+       {
+        "aTZOffset": 120,
+        "aTimeS": "204700",
+        "locX": 1
+       }
+      ],
+      "date": "20261003",
+      "durS": "071700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#308845#TA#0#DA#31026#1S#5500003#1T#1330#LS#8000261#LT#2047#PU#81#RT#1#CA#RJX#ZE#66#ZB#RJX 66  #PC#0#FR#5500003#FT#1330#TO#8000261#TT#2047#",
+      "prodX": 0
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "133000",
+        "locX": 0
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "203100",
+        "locX": 1
+       }
+      ],
+      "date": "20261213",
+      "durS": "070100",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316777#TA#1#DA#131226#1S#5500003#1T#1330#LS#8000261#LT#2031#PU#81#RT#1#CA#RJX#ZE#66#ZB#RJX 66  #PC#0#FR#5500003#FT#1330#TO#8000261#TT#2031#",
+      "prodX": 0
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "130500",
+        "locX": 2
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "134700",
+        "locX": 3
+       }
+      ],
+      "date": "20261118",
+      "durS": "004200",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#293184#TA#0#DA#181126#1S#8100067#1T#1305#LS#8100090#LT#1347#PU#81#RT#1#CA#RJX#ZE#660#ZB#RJX 660 #PC#0#FR#8100067#FT#1305#TO#8100090#TT#1347#",
+      "prodX": 1
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "062800",
+        "locX": 4
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "131800",
+        "locX": 3
+       }
+      ],
+      "date": "20261213",
+      "durS": "065000",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316874#TA#0#DA#131226#1S#8103000#1T#628#LS#8100090#LT#1318#PU#81#RT#1#CA#RJX#ZE#660#ZB#RJX 660 #PC#0#FR#8103000#FT#628#TO#8100090#TT#1318#",
+      "prodX": 1
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "141100",
+        "locX": 3
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "145800",
+        "locX": 2
+       }
+      ],
+      "date": "20261118",
+      "durS": "004700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#293194#TA#0#DA#181126#1S#8100090#1T#1411#LS#8100067#LT#1458#PU#81#RT#1#CA#RJX#ZE#661#ZB#RJX 661 #PC#0#FR#8100090#FT#1411#TO#8100067#TT#1458#",
+      "prodX": 2
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "143900",
+        "locX": 3
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "213200",
+        "locX": 4
+       }
+      ],
+      "date": "20261213",
+      "durS": "065300",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316882#TA#0#DA#131226#1S#8100090#1T#1439#LS#8103000#LT#2132#PU#81#RT#1#CA#RJX#ZE#661#ZB#RJX 661 #PC#0#FR#8100090#FT#1439#TO#8103000#TT#2132#",
+      "prodX": 2
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "150500",
+        "locX": 2
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "154700",
+        "locX": 3
+       }
+      ],
+      "date": "20261118",
+      "durS": "004200",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#293184#TA#1#DA#181126#1S#8100067#1T#1505#LS#8100090#LT#1547#PU#81#RT#1#CA#RJX#ZE#662#ZB#RJX 662 #PC#0#FR#8100067#FT#1505#TO#8100090#TT#1547#",
+      "prodX": 3
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "082800",
+        "locX": 4
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "151800",
+        "locX": 3
+       }
+      ],
+      "date": "20261213",
+      "durS": "065000",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316874#TA#1#DA#131226#1S#8103000#1T#828#LS#8100090#LT#1518#PU#81#RT#1#CA#RJX#ZE#662#ZB#RJX 662 #PC#0#FR#8103000#FT#828#TO#8100090#TT#1518#",
+      "prodX": 3
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "161100",
+        "locX": 3
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "165800",
+        "locX": 2
+       }
+      ],
+      "date": "20261118",
+      "durS": "004700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#293195#TA#0#DA#181126#1S#8100090#1T#1611#LS#8100067#LT#1658#PU#81#RT#1#CA#RJX#ZE#663#ZB#RJX 663 #PC#0#FR#8100090#FT#1611#TO#8100067#TT#1658#",
+      "prodX": 4
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "163900",
+        "locX": 3
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "233200",
+        "locX": 4
+       }
+      ],
+      "date": "20261213",
+      "durS": "065300",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316886#TA#0#DA#131226#1S#8100090#1T#1639#LS#8103000#LT#2332#PU#81#RT#1#CA#RJX#ZE#663#ZB#RJX 663 #PC#0#FR#8100090#FT#1639#TO#8103000#TT#2332#",
+      "prodX": 4
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 120,
+        "dTimeS": "202800",
+        "locX": 4
+       },
+       {
+        "aTZOffset": 120,
+        "aTimeS": "225900",
+        "locX": 5
+       }
+      ],
+      "date": "20260811",
+      "durS": "023100",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#293197#TA#0#DA#110826#1S#8103000#1T#2028#LS#8100002#LT#2259#PU#81#RT#1#CA#RJX#ZE#664#ZB#RJX 664 #PC#0#FR#8103000#FT#2028#TO#8100002#TT#2259#",
+      "prodX": 5
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "202800",
+        "locX": 4
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "225900",
+        "locX": 5
+       }
+      ],
+      "date": "20261213",
+      "durS": "023100",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316889#TA#0#DA#131226#1S#8103000#1T#2028#LS#8100002#LT#2259#PU#81#RT#1#CA#RJX#ZE#664#ZB#RJX 664 #PC#0#FR#8103000#FT#2028#TO#8100002#TT#2259#",
+      "prodX": 5
+     },
+     {
+      "stopL": [
+       {
+        "dTZOffset": 60,
+        "dTimeS": "051000",
+        "locX": 6
+       },
+       {
+        "aTZOffset": 60,
+        "aTimeS": "095700",
+        "locX": 7
+       }
+      ],
+      "date": "20261213",
+      "durS": "044700",
+      "jid": "2|#VN#1#ST#1791802820#PI#0#ZI#316896#TA#0#DA#131226#1S#8100108#1T#510#LS#8100353#LT#957#PU#81#RT#1#CA#RJX#ZE#669#ZB#RJX 669 #PC#0#FR#8100108#FT#510#TO#8100353#TT#957#",
+      "prodX": 6
+     }
+    ],
+    "fpB": "20260811",
+    "fpE": "20271211",
+    "planrtTS": "1792014173"
+   }
+  }
+ ]
+}

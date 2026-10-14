@@ -86,6 +86,32 @@ public enum HafasCodec {
         return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS))
     }
 
+    /// JourneyMatch (Zugsuche). `res.jnyL` holds the runs; each run's first and last stop come from `stopL` by `idx`
+    /// (reference `parse/trip.js`). `NO_MATCH` is an empty result, not an error: no run has that name in the period.
+    /// Runs without a stop list are kept (origin and destination nil). Duplicate trip ids keep their first occurrence.
+    public static func trainSearch(from data: Data, serviceIndex: Int = 0) throws -> TrainSearchResult {
+        let raw = try envelope(from: data)
+        let list = raw.svcResL ?? []
+        guard list.indices.contains(serviceIndex) else { throw LiveError.decoding("svcResL[\(serviceIndex)] fehlt") }
+        let svc = list[serviceIndex]
+        if svc.err == "NO_MATCH" { return .empty }
+        let res = try checked(svc)
+        let ctx = Context(res.common)
+        var seen = Set<String>()
+        let runs: [TrainRun] = (res.jnyL ?? []).compactMap { j in
+            guard let tripID = j.jid, !tripID.isEmpty, seen.insert(tripID).inserted else { return nil }
+            let stops = (j.stopL ?? []).filter { $0.locX != nil }.enumerated().sorted { a, b in
+                let x = a.element.idx ?? a.offset, y = b.element.idx ?? b.offset
+                return x != y ? x < y : a.offset < b.offset
+            }.map(\.element)
+            let origin = stops.first.map { ctx.stopover($0, base: j.date) }
+            let destination = stops.count > 1 ? stops.last.map { ctx.stopover($0, base: j.date) } : nil
+            return TrainRun(tripID: tripID, line: ctx.line(at: j.prodX), direction: ctx.direction(j), origin: origin,
+                            destination: destination, isCancelled: j.isCncl == true)
+        }
+        return TrainSearchResult(source: .journeyMatch, runs: runs, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS))
+    }
+
     /// Envelope-level error (HTTP 200 with top-level `err`), nil when OK. Non-JSON → `.decoding`.
     public static func envelopeError(_ data: Data) -> LiveError? {
         envelopeError(data, provider: .oebbHafas)

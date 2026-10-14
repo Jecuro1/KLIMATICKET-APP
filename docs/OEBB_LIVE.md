@@ -2584,3 +2584,45 @@ kein Netz und starten keine Live-Aktivität.
   Nicht gebaut.
 - Wagenreihung: keine Daten (§R6). Nicht gebaut, damit keine Wagen erfunden werden.
 - Umstiegszeit ohne Fußweg: der Fußweg zwischen zwei Bahnhöfen wird nicht abgezogen. Die Warnung ist ein Hinweis, kein Fahrplan.
+
+## R9 Zugsuche („Züge suchen“, JourneyMatch) [LIVE 2026-10-14 · eine Anfrage]
+
+Owner-Auftrag: „Züge suchen“ wie in der ÖBB-Scotty-App. Eine Zugnummer eingeben, alle Fahrten dieses Zugs sehen. Die Nummer heißt
+hier §R9, weil §R7 schon der Zug-Radar ist.
+
+**Anfrage** (`HafasRequests.journeyMatch`, Referenz `refs/hafas-client` `tripsByName`): `meth` JourneyMatch, `cfg {polyEnc: GPA}`,
+`req` mit `input` („RJX 66“ oder „66“), `onlyCR` (nur fahrende Züge; aus), `jnyFltrL` mit PROD/INC (Standard: Schiene, 4157).
+`date`/`time` nur, wenn ein Tag gesetzt ist. Kein Schlüssel mit `null`.
+
+**Live-Ergebnis (`JourneyMatchLiveTests`, `KB_LIVE_TESTS=1`, Budget 3 Anfragen):**
+- Versuch 1: `input` „RJX 66“, Filter Hochgeschwindigkeit (PROD 1). **HTTP 200, 15 639 Byte, `svcResL[0].err` OK, 15 Fahrten.**
+  Der Test hört hier auf (erster Versuch mit Fahrten). **Verbraucht: 1 von 3.** Versuch 2 („RJX66“) und 3 („66“, Schiene) wurden nicht gesendet.
+- Schlüssel (nur Namen, keine Werte): oberste Ebene `err, ext, graph, id, lang, subGraph, svcResL, ver, view`; Service `meth, res, err`;
+  `res` `common, jnyL, fpB, fpE, planrtTS`; `common` `icoL, lDrawStyleL, locL, opL, prodL, remL`;
+  Fahrt `date, durS, jid, msgL, pos, prodX, resLDrawStyleX, sDaysL, stopL, sumLDrawStyleX`; Halt `locX, dTimeS, dTZOffset` (Abfahrt) und `locX, aTimeS, aTZOffset` (Ankunft).
+- **Nicht im Ergebnis:** `idx` (die Reihenfolge von `stopL` ist die Fahrtrichtung), `dirTxt` (die Richtung wird aus dem letzten Halt
+  genommen), `dTimeR`/`aTimeR` (keine Echtzeit in dieser Antwort; die App zeigt „Fahrplan“).
+- **Zeitraum:** Die Antwort enthält die Fahrten über den ganzen Fahrplanzeitraum (eine je Verkehrstagsmuster, Datum 11.08. bis 13.12.2026),
+  nicht nur heute. Die App sortiert nach geplantem Datum.
+- **Namenspräfix:** Die Suche „RJX 66“ liefert auch „RJX 660“ bis „RJX 669“. Die App zeigt nur genau die gesuchte Nummer
+  (`TrainSearchResult.runs(for:)`) und sagt, wie viele ähnliche ausgeblendet wurden.
+- **Ein Fehlerfall ist nicht live geprüft:** NO_MATCH (keine Fahrt mit diesem Namen). Der Code behandelt ihn als leeres Ergebnis
+  (nicht als Fehler). Die Referenz-Fixture `error-no-match.json` zeigt NO_MATCH mit einem internen Fehlertext; der wird nicht angezeigt.
+- **Konsequenz:** ÖBB beantwortet JourneyMatch. Der Fallback über die Abfahrten großer Bahnhöfe ist **nicht gebaut** (nicht nötig).
+
+**Fixture:** `Fixtures/OEBB/hafas/journeymatch_rjx66_highspeed.response.json` (Antwort, 17 KB, aus dem Live-Lauf gekürzt).
+Entfernt: die Sitzungs-ID `id`, `graph`, `subGraph`, `view`; je Fahrt `pos` (Fahrzeugposition im Moment der Abfrage), `msgL` (Meldungen),
+`sDaysL` (Verkehrstage als Bitfeld), `resLDrawStyleX`, `sumLDrawStyleX`; in `common` `icoL`, `lDrawStyleL`, `remL` (Icons, Zeichenstile, Meldungen).
+Geblieben: Envelope (`err`, `ext`, `ver`, `lang`), Dienst (`meth`, `err`), `common` `locL`, `prodL`, `opL`, `jnyL` (`jid`, `date`, `prodX`, `durS`, `stopL`),
+`fpB`, `fpE`, `planrtTS`. Keine personenbezogenen Daten: Fahrt-IDs und Halte sind öffentlicher Fahrplan.
+
+**Code:** `Live/TrainSearch/TrainSearchModels.swift` (`TrainName`, `TrainSearchQuery`, `TrainRun`, `TrainSearchResult`, `TrainSearchService`,
+`TrainSearchSuggestions`, `TrainRun.followTarget`, `TrainRun.isActive(on:)`), `Live/HAFAS/HafasCodec.swift` `trainSearch(from:)`,
+`HafasClient.trainRuns` (gleiche Pipeline: Kill-Switch, Drosselung 40/min, Ehrlicher User-Agent). Die App bekommt den Dienst über
+`LiveDataService.trainSearch` (gleiches Gate wie der Fahrplan: Zustimmung, Schalter, Kill-Switch, Verbindung).
+- Namensregeln: „RJX 66“, „rjx66“, „RJX-66“ und „66“ werden erkannt. Wörter wie „Wien“ werden **nicht** als Zugnummer gesucht.
+- Bedingung: „Live verfolgen“ und „Auf der Karte zeigen“ gibt es nur für eine Fahrt, die heute (Wiener Zeit) abfährt oder ankommt.
+- Demo: `-KBDemo` und Screenshot-Hosts `trainSearch`, `trainResult` (`DemoTrainSearchService`, kein Netz).
+
+**Offen:** Die Anfrage mit Datum (`date`/`time`) ist nicht live geprüft (der Test stoppt nach dem ersten Treffer, Budget bleibt ungenutzt). Ob „Live verfolgen“ für eine
+Fahrt aus dem Fahrplanzeitraum (`JourneyDetails` mit dieser Fahrt-ID) Echtzeit liefert, ist ebenfalls nicht geprüft.

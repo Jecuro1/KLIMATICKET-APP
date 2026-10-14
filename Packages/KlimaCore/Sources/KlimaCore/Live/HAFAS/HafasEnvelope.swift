@@ -172,9 +172,26 @@ enum HafasRequests {
         var trainPosMode: String
     }
 
+    /// `JourneyMatch` (Zugsuche by name, reference `tripsByName`). Exactly these keys; `date`/`time` only when a day is set.
+    struct JourneyMatch: Encodable {
+        var input: String
+        var onlyCR: Bool
+        var jnyFltrL: [HafasFilter]
+        var date: String?
+        var time: String?
+    }
+
     struct ServerInfo: Encodable { var getVersionInfo: Bool; var getClientFilter: Bool; var getServerDateTime: Bool }
 
     // Builders
+
+    /// Zugsuche: `cfg.polyEnc` GPA like the reference, `onlyCR` false (the run for the number, not only trains running now).
+    static func journeyMatch(_ q: TrainSearchQuery) -> HafasServiceRequest<JourneyMatch> {
+        HafasServiceRequest(meth: "JourneyMatch", cfg: .gpa, req: JourneyMatch(
+            input: q.input, onlyCR: q.onlyRunning, jnyFltrL: [.products(q.products)],
+            date: q.date.map(HafasTime.dateString), time: q.date.map(HafasTime.timeString)))
+    }
+
 
     static func locMatch(_ query: String, types: LocationTypes, maxResults: Int) -> HafasServiceRequest<LocMatch> {
         let name = query.trimmingCharacters(in: .whitespacesAndNewlines)
