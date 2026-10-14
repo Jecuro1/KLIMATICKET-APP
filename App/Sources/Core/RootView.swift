@@ -465,6 +465,9 @@ struct ScreenshotRouter: View {
         // MARK: ai – on-device assistant: Settings › KI (available, unavailable), Suche in Worten, Warum lohnt sich mein Ticket (demo, no model call)
         case let aiScreen where AIScreenshotHost.screens.contains(aiScreen):
             AIScreenshotHost(screen: aiScreen)
+        // MARK: map – the Scotty-style map with every layer on, zoomed to Wien (demo data, no network)
+        case "mapLayers":
+            RadarView(preset: .layers)
         // MARK: trainsearch – Züge suchen: the field with suggestions, and the runs of RJX 66 (demo data, no network)
         case let trainScreen where TrainSearchScreenshotHost.screens.contains(trainScreen):
             TrainSearchScreenshotHost(screen: trainScreen)

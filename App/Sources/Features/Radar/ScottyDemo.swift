@@ -18,12 +18,6 @@ struct DemoRadarService: RadarService {
     }
 }
 
-extension RadarBox {
-    func contains(_ p: GeoPoint) -> Bool {
-        p.latitude <= north && p.latitude >= south && p.longitude >= west && p.longitude <= east
-    }
-}
-
 enum DemoScotty {
     /// (name, lat, lon) of the demo stations.
     static let stations: [String: (Double, Double)] = [

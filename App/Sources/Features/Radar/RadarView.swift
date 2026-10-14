@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import SwiftData
 import KlimaCore
 
 // Zug-Radar (docs/OEBB_LIVE.md §R, §R7): an own full-screen view with its own train layer. The base map is MapKit, the
@@ -75,7 +76,7 @@ enum RadarMapStyle: String, CaseIterable, Identifiable {
 
 /// Screenshot presets (CI): the same view with the filter sheet, a search or a zoomed-out map already open.
 enum RadarPreset: String, Sendable {
-    case live, filter, search, cluster
+    case live, filter, search, cluster, layers
 }
 
 /// Live copy for failures (Du-Form, no technical codes).
@@ -286,6 +287,14 @@ struct RadarView: View {
     @AppStorage("radar.mapStyle") private var styleRaw = RadarMapStyle.standard.rawValue
     @FocusState private var searchFocused: Bool
     @State private var focusDone = false
+    // MARK: map – the layers of the Scotty-style map (docs/OEBB_LIVE.md §R10); the choice is per device
+    @AppStorage("map.layers") private var layersRaw = MapLayerSelection.initial.storageValue
+    @State private var allStations: [MapStationPin] = []
+    @State private var stationPins: [MapStationPin] = []
+    @State private var showsDisruptions = false
+    @State private var showsRoutes = false
+    @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
+    private var favorites: [FavoriteRouteEntity]
 
     private static var austriaRegion: MKCoordinateRegion {
         MKCoordinateRegion(center: RadarBox.austria.center.clCoordinate, span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 9.0))
@@ -301,7 +310,7 @@ struct RadarView: View {
     private var mapStyle: RadarMapStyle { RadarMapStyle(rawValue: styleRaw) ?? .standard }
 
     private var isRunning: Bool {
-        scenePhase == .active && app.live.timetableUnavailable == nil
+        scenePhase == .active && app.live.timetableUnavailable == nil && layers.isOn(.trains)
     }
 
     /// The visible rectangle at 0.01° resolution, so small camera moves do not restart the loop.
@@ -359,6 +368,12 @@ struct RadarView: View {
                     .presentationDetents([.fraction(0.32), .medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             }
+            .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
+            .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
+            .task {
+                if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
+                refreshStations(box: model.box, span: model.spanDegrees)
+            }
             .onAppear(perform: applyPreset)
         }
     }
@@ -367,6 +382,7 @@ struct RadarView: View {
 
     private var mapLayer: some View {
         Map(position: $camera) {
+            if layers.isOn(.trains) {
             ForEach(clusters) { cluster in
                 if cluster.isSingle, let id = cluster.tripIDs.first, let pin = pinsByID[id] {
                     Annotation(pin.vehicle.line.map { LinePresentation.title($0) } ?? "Zug",
@@ -383,6 +399,13 @@ struct RadarView: View {
                     }
                 }
             }
+            }
+            if layers.isOn(.stations), MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
+                stationLayer
+            }
+            if layers.isOn(.routes) {
+                routeLayer
+            }
             if model.routeTripID == model.selectedTripID, model.route.count > 1 {
                 MapPolyline(coordinates: model.route.map(\.clCoordinate))
                     .stroke(Theme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
@@ -396,11 +419,12 @@ struct RadarView: View {
         }
         .onMapCameraChange(frequency: .onEnd) { context in
             let r = context.region
-            model.setView(box: RadarBox(north: r.center.latitude + r.span.latitudeDelta / 2,
-                                        west: r.center.longitude - r.span.longitudeDelta / 2,
-                                        south: r.center.latitude - r.span.latitudeDelta / 2,
-                                        east: r.center.longitude + r.span.longitudeDelta / 2).clamped,
-                          span: r.span.latitudeDelta)
+            let box = RadarBox(north: r.center.latitude + r.span.latitudeDelta / 2,
+                               west: r.center.longitude - r.span.longitudeDelta / 2,
+                               south: r.center.latitude - r.span.latitudeDelta / 2,
+                               east: r.center.longitude + r.span.longitudeDelta / 2).clamped
+            model.setView(box: box, span: r.span.latitudeDelta)
+            refreshStations(box: box, span: r.span.latitudeDelta)
         }
         .accessibilityLabel("Zug-Radar, \(model.summary)")
         .ignoresSafeArea(edges: .bottom)
@@ -460,6 +484,123 @@ struct RadarView: View {
         case .cluster:
             camera = .region(MKCoordinateRegion(center: RadarBox.austria.center.clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 8.5, longitudeDelta: 16)))
+        case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
+            layersRaw = MapLayerSelection.all.storageValue
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.20, longitude: 16.37).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 0.9, longitudeDelta: 1.3)))
+        }
+    }
+
+    // MARK: Layers (docs/OEBB_LIVE.md §R10)
+
+    private var layers: MapLayerSelection { MapLayerSelection(storageValue: layersRaw) }
+
+    private func toggleLayer(_ layer: MapLayer) {
+        var next = layers
+        next.toggle(layer)
+        layersRaw = next.storageValue
+    }
+
+    private func stationPin(_ station: Station) -> MapStationPin {
+        MapStationPin(id: station.id, name: station.name, coordinate: GeoPoint(latitude: station.lat, longitude: station.lon))
+    }
+
+    /// Stations in the box, only when the view is close enough. Computed from the bundled index: no request.
+    private func refreshStations(box: RadarBox, span: Double) {
+        stationPins = MapStations.isDrawn(latitudeSpan: span) ? MapStations.visible(allStations, in: box) : []
+    }
+
+    private var stationClusters: [MapCluster] {
+        MapClustering.group(stationPins, cellDegrees: RadarClustering.cellSize(forLatitudeSpan: model.spanDegrees))
+    }
+
+    private var stationsByID: [String: MapStationPin] {
+        Dictionary(stationPins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// The straight-line sketch of each saved route whose places are known, and the number of routes without a place.
+    private var routeSketches: [[GeoPoint]] {
+        favorites.compactMap { route in
+            MapRouteSketch.points([place(route.fromStationID), place(route.toStationID)])
+        }
+    }
+
+    private var routesWithoutPlace: Int { favorites.count - routeSketches.count }
+
+    private func place(_ stationID: String?) -> GeoPoint? {
+        guard let stationID, let station = app.stations.station(id: stationID) else { return nil }
+        return GeoPoint(latitude: station.lat, longitude: station.lon)
+    }
+
+    @MapContentBuilder private var stationLayer: some MapContent {
+        ForEach(stationClusters) { cluster in
+            if cluster.isSingle, let id = cluster.memberIDs.first, let station = stationsByID[id] {
+                Annotation(station.name, coordinate: station.coordinate.clCoordinate, anchor: .bottom) {
+                    Button { openDepartures(stationID: id) } label: { StationMapMarker(name: station.name) }
+                        .buttonStyle(.plain)
+                }
+            } else {
+                Annotation("\(cluster.count) Stationen", coordinate: cluster.center.clCoordinate, anchor: .center) {
+                    Button { zoom(toStations: cluster.center) } label: { StationClusterBubble(count: cluster.count) }
+                        .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @MapContentBuilder private var routeLayer: some MapContent {
+        ForEach(Array(routeSketches.enumerated()), id: \.offset) { _, points in
+            MapPolyline(coordinates: points.map(\.clCoordinate))
+                .stroke(Theme.accent.opacity(0.85), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round, dash: [7, 6]))
+        }
+    }
+
+    /// Station → its departures in the Fahrplan, the same way the trip sheet opens a stop.
+    private func openDepartures(stationID: String) {
+        dismiss()
+        app.selectedTab = .planner
+        app.planner.showBoard(stationID: stationID)
+    }
+
+    private func zoom(toStations center: GeoPoint) {
+        let span = max(model.spanDegrees / 3, 0.02)
+        camera = .region(MKCoordinateRegion(center: center.clCoordinate,
+                                            span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span * 1.4)))
+    }
+
+    /// The layer bar with what each layer needs: the zoom hint, the disruption list, the routes without a place.
+    private var mapLayerPanel: some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            if layers.isOn(.stations), !MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
+                Text("Zoom näher heran, dann erscheinen die Stationen.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            if layers.isOn(.disruptions) {
+                Button { showsDisruptions = true } label: {
+                    Label("Störungen ansehen", systemImage: "exclamationmark.triangle")
+                }
+                .buttonStyle(.bordered)
+                Text("Störungen haben keine Position. Sie stehen in einer Liste.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            if layers.isOn(.routes) {
+                if !routeSketches.isEmpty {
+                    Text("Luftlinie zwischen den Haltestellen, nicht die Strecke.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                if routesWithoutPlace > 0 {
+                    Button { showsRoutes = true } label: {
+                        Label("\(routesWithoutPlace) ohne bekannten Ort: Liste öffnen", systemImage: "list.bullet")
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            MapLayerBar(selection: layers, onToggle: toggleLayer)
         }
     }
 
@@ -583,6 +724,7 @@ struct RadarView: View {
 
     private var statusBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
+            mapLayerPanel
             if model.lowPower {
                 PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
                                   message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
