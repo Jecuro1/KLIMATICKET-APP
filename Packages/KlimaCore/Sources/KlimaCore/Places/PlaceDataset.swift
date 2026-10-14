@@ -467,6 +467,9 @@ struct PlaceLayer: Sendable {
             if tag == "STRS", let strings { s[tag] = strings; continue }
             if let bytes = try c.section(tag) { s[tag] = bytes }
         }
+        // EQUI (facilities, ENRICH_SPEC §1.11) is optional and independent: a corrupt section only switches the
+        // facilities off, never the rest of the layer.
+        if let bytes = try? c.section("EQUI") { s["EQUI"] = bytes }
         sections = s
     }
 

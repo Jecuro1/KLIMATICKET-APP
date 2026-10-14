@@ -60,6 +60,10 @@ struct StopDetailView: View {
                         .reveal(.rise, order: 0)
                         StopDeparturesSection(state: model.departures)
                         StopLinesSection(ctx: ctx).id("lines").reveal(.rise, order: 1)
+                        if !details.facilities.isEmpty {
+                            StopFacilitiesSection(facilities: details.facilities, buildDate: model.index?.dataInfo.buildDate)
+                                .id("facilities").reveal(.rise, order: 2)
+                        }
                         StopSkiSection(ctx: ctx, onWebsite: showBrand).id("ski").reveal(.rise, order: 2)
                         StopKlimaTicketCard(ctx: ctx, tripCount: tripStats.count, tripValue: tripStats.value, onTrips: showTrips)
                             .id("ticket").reveal(.rise, order: 3)
@@ -118,6 +122,7 @@ struct StopDetailView: View {
         if screen.hasSuffix("Mid") { target = ("ski", .top) }
         else if screen.hasSuffix("End") { target = ("footer", .bottom) }
         else if screen.hasSuffix("Lines") { target = ("lines", .top) }
+        else if screen.hasSuffix("Facilities") { target = ("facilities", .top) }
         else { target = nil }
         guard let target else { return }
         try? await Task.sleep(for: .milliseconds(900))

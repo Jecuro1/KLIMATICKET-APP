@@ -9,6 +9,7 @@ extension Copy {
     static let placeDataSources: [(title: String, detail: String)] = [
         ("Linien", "ÖBB-Personenverkehr AG Soll-Fahrplan GTFS 2026 (CC BY 4.0) · Stadt Wien – data.wien.gv.at, Wiener Linien Fahrplandaten (CC BY 4.0) · Land Steiermark – data.steiermark.gv.at, Haltestellen und Linienverkehr des Verkehrsverbundes Steiermark (CC BY 4.0) · Linien je Haltestelle: ÖV-Güteklassen 2025 (ÖROK/BMIMI/AustriaTech; Daten der Mobilitätsverbünde Österreich OG), verändert (zusammengeführt)."),
         ("Linienverläufe, Skigebiete, Lifte, Barrierefreiheit, Orte", "© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright)"),
+        ("Ausstattung an Haltestellen", PlaceCopy.facilitySource),
         ("Gemeinden und Bezirke", "Statistik Austria, Gemeinden 01.01.2026 (CC BY 4.0)"),
         ("Zeichen, Logos und Wappen", PlaceCopy.marksNote),
     ]
@@ -20,6 +21,10 @@ enum PlaceCopy {
 
     /// Names only (no official logos or Wappen on screen).
     static let namesNote = "Skigebiets-, Regions-, Verbund- und Betreibernamen dienen nur der Ortsangabe; es besteht keine Verbindung zu den Betreibern. Farben und Symbole sind eigene Gestaltung."
+
+    /// Ausstattung (Aufzug, WC, Fahrradständer, Fahrkartenautomat, Wartehäuschen, Sitzbank, Blindenleitsystem,
+    /// Abfahrtstafel, Barrierefreiheit): ODbL attribution (ENRICH_SPEC §1.10.2) and the reading rule of the grid.
+    static let facilitySource = "© OpenStreetMap-Mitwirkende, ODbL 1.0 (openstreetmap.org/copyright). Die Angaben sind freiwillige Einträge in OpenStreetMap. „nicht erfasst“ heißt nur, dass OpenStreetMap dazu nichts sagt, nicht dass etwas fehlt."
 
     static let outdatedLines = "Liniendaten veraltet – App aktualisieren"
     static let noLines = "Kein regelmäßiger Linienverkehr bekannt"

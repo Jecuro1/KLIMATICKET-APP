@@ -486,12 +486,14 @@ public struct StopDetails: Sendable {
     public var attribution: [String]
     /// META `build.gtfsValidity` (MVO rule: hide lines after it).
     public var dataValidUntil: Date?
+    /// Facilities from OpenStreetMap (one entry per kind; empty without facility data).
+    public var facilities: [StopFacility] = []
 
     public init(place: Place, lines: [StopLine] = [], compactLines: [LineRef] = [], tags: PlaceTags = .empty,
                 skiArea: SkiArea? = nil, regions: [Region] = [], bezirkName: String? = nil, wienBezirkName: String? = nil,
                 neighbours: [(place: Place, distanceMeters: Double)] = [],
                 klimaTicketProducts: [(id: String, name: String)] = [], attribution: [String] = [],
-                dataValidUntil: Date? = nil) {
+                dataValidUntil: Date? = nil, facilities: [StopFacility] = []) {
         self.place = place
         self.lines = lines
         self.compactLines = compactLines
@@ -504,6 +506,7 @@ public struct StopDetails: Sendable {
         self.klimaTicketProducts = klimaTicketProducts
         self.attribution = attribution
         self.dataValidUntil = dataValidUntil
+        self.facilities = facilities
     }
 }
 

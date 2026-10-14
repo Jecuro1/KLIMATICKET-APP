@@ -541,8 +541,9 @@ private struct ScreenshotStationSearch: View {
     }
 }
 
-/// MARK: stops – CI screenshots of the stop detail: `stopDetailWarth`, `…StAnton`, `…Floridsdorf`, `…Lech`, with the
-/// suffixes `Mid` / `End` / `Lines` (scrolled) and `Logos` (the synthetic demo pack, DEBUG only).
+/// MARK: stops – CI screenshots of the stop detail: `stopDetailWarth`, `…StAnton`, `…Floridsdorf`, `…Lech`,
+/// `stopDetailFacilities` (Innsbruck Hbf), with the suffixes `Mid` / `End` / `Lines` / `Facilities` (scrolled) and
+/// `Logos` (the synthetic demo pack, DEBUG only).
 private struct ScreenshotStopDetail: View {
     let screen: String
     @State private var placeID: String?
@@ -562,6 +563,7 @@ private struct ScreenshotStopDetail: View {
             guard let index = try? await PlaceIndexLoader.shared.load() else { return }
             if screen.contains("StAnton") { placeID = "at:47:1222" }
             else if screen.contains("Floridsdorf") { placeID = "at:49:334" }
+            else if screen.hasPrefix("stopDetailFacilities") { placeID = "at:47:1187" }   // Innsbruck Hbf: facilities
             else if screen.contains("Lech") {
                 placeID = index.search("lech am arlberg post", context: .planner, limit: 10)
                     .first { $0.kind == .stop && $0.state == "V" }?.id ?? "at:48:344"

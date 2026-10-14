@@ -194,10 +194,11 @@ struct StopMetaRow: View {
 
     var body: some View {
         let model = StopSuggestionRowModel(place: place, index: index, maxPlates: 3)
+        let facilities = index?.facilities(for: place.id) ?? []
         HStack(spacing: 5) {
             ViewThatFits(in: .horizontal) {
-                metaChips(model, full: true)
-                metaChips(model, full: false)
+                metaChips(model, facilities: facilities, full: true)
+                metaChips(model, facilities: facilities, full: false)
             }
             Spacer(minLength: 6)
             LinePlateRow(badges: model.plates, size: .xs, maxCount: 3, extra: model.overflow)
@@ -208,12 +209,13 @@ struct StopMetaRow: View {
     }
 
     @ViewBuilder
-    private func metaChips(_ m: StopSuggestionRowModel, full: Bool) -> some View {
+    private func metaChips(_ m: StopSuggestionRowModel, facilities: [StopFacility], full: Bool) -> some View {
         HStack(spacing: 5) {
             Text(m.kindLabel).font(.footnote).foregroundStyle(Theme.textSecondary).lineLimit(1)
             if let state = m.state { StateMarkW(state: state, style: .compact) }
             AreaChip(area: m.area, full: full)
             if full, let mark = m.placeMark { PlaceMarkChip(mark: mark, size: .row) }
+            if full { FacilityRouteChips(facilities: facilities) }
         }
         .fixedSize()
     }

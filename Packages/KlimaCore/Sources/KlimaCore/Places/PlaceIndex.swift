@@ -254,6 +254,21 @@ extension PlaceIndex {
     /// Every line of a stop for the detail (M3–M7: deduped, superseded lines shown as their successor, rail
     /// categories as plates), display-sorted. `placeID` = place id or a legacy station id; a town gives the lines of
     /// its main stop; unknown ids and stops without lines give `[]`.
+    /// Facilities of a stop as OpenStreetMap records them (ENRICH_SPEC §1.11): one entry per kind, `.notRecorded`
+    /// where OSM says nothing. Empty for an unknown place or without facility data in the loaded layers.
+    public func facilities(for placeID: String) -> [StopFacility] {
+        guard let ri = recordIndex(placeID) else { return [] }
+        return facilities(record: ri)
+    }
+
+    /// True when the loaded layers carry facility statements (stops_osm.bin with a valid EQUI section).
+    public var hasFacilityData: Bool { enrichment?.equipment != nil }
+
+    func facilities(record ri: Int) -> [StopFacility] {
+        guard let e = enrichment?.equipment, ri < enrichIndex.count, enrichIndex[ri] >= 0 else { return [] }
+        return e.facilities(stop: Int(enrichIndex[ri]))
+    }
+
     public func stopLines(for placeID: String) -> [StopLine] {
         guard let ri = recordIndex(placeID) else { return [] }
         if let e = enrichment, enrichIndex[ri] >= 0 { return e.stopLines(Int(enrichIndex[ri])) }

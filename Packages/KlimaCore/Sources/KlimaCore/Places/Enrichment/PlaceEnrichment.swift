@@ -18,6 +18,8 @@ final class PlaceEnrichment: @unchecked Sendable {
     let catalog: SkiAreaCatalog
     let lines: LineCatalog
     let hasOSMLayer: Bool
+    /// Facilities per stop from the EQUI section; nil without an OSM layer or with a missing or inconsistent section.
+    let equipment: PlaceEquipment?
 
     /// Stop → lines of each layer, with the layer's LNAM headsign table.
     private let lstp: [(section: PerStopSection, names: [String])]
@@ -75,6 +77,7 @@ final class PlaceEnrichment: @unchecked Sendable {
         let lineCatalog = LineCatalog(official: official, osm: osm, meta: cat, stopIDs: ids, stopNames: names)
         lines = lineCatalog
         hasOSMLayer = osm != nil
+        equipment = osm.flatMap { PlaceEquipment(section: $0.section("EQUI"), meta: $0.metaJSON, stopCount: n) }
         /// Dedupe id of a key outside the catalogue: the catalogue's, else a negative id unique in `local`.
         func outsideID(_ key: String, _ local: inout [String: Int32]) -> Int32 {
             if let x = lineCatalog.dedupeIDs[key] { return x }

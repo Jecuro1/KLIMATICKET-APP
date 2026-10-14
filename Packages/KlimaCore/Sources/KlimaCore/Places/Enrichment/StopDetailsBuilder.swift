@@ -43,7 +43,8 @@ enum StopDetailsBuilder {
                            regions: regions, bezirkName: catalog.bezirkName(tags.bezirk),
                            wienBezirkName: catalog.wienBezirkName(tags.wienBezirk), neighbours: neighbours,
                            klimaTicketProducts: e == nil ? [] : catalog.products(for: tags.klimaTicket),
-                           attribution: attribution, dataValidUntil: catalog.validUntil)
+                           attribution: attribution, dataValidUntil: catalog.validUntil,
+                           facilities: index.facilities(record: ri))
     }
 }
 

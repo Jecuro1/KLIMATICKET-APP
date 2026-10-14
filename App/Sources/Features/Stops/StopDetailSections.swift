@@ -436,7 +436,7 @@ struct StopFactsSection: View {
                             }
                         }
                     }
-                    fact("Ausstattung") { facilities }
+                    fact("Anschlüsse") { facilities }
                     fact("Haltestellen-ID", divider: false) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(ctx.place.id).font(.system(.footnote, design: .monospaced)).foregroundStyle(Theme.textPrimary)
