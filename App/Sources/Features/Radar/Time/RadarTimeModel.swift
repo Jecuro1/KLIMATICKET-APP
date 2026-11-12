@@ -122,7 +122,12 @@ final class RadarTimeModel {
             backToNow()
             return
         }
-        set(target: RadarTimeAxis.target(base: RadarTimeAxis.base(now: Date()), offset: snapped), moving: true)
+        let newTarget = RadarTimeAxis.target(base: RadarTimeAxis.base(now: Date()), offset: snapped)
+        if newTarget == target {   // a drag reports many positions on the same step
+            scheduler.setMoving(true, now: Date())
+            return
+        }
+        set(target: newTarget, moving: true)
     }
 
     /// The finger was lifted: the rest timer for the minute's own snapshot starts.

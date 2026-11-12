@@ -2732,7 +2732,7 @@ auch 1000 in einer Großstadt nicht; dort muss die Teilung bis in feine Kacheln 
 **(e) Doppelte Fahrten und Zeitparameter.** 2 von 770 Einträgen kamen in zwei Nachbarblättern vor (Grenze 48,40° N): 0,26 %. Die Entdopplung
 nach Fahrt-ID bleibt nötig, ändert aber kaum etwas. Ein `time` 60 Minuten in der Zukunft wird angenommen (HTTP 200): 171 Fahrzeuge in
 dem Viertel, in dem jetzt 173 fahren, davon 50 mit derselben Fahrt-ID. Der Server rechnet also Positionen für die spätere Zeit.
-**Nur notiert, nicht gebaut** (Zeitreise wäre ein eigener Auftrag).
+**Nur notiert, nicht gebaut** (Zeitreise wäre ein eigener Auftrag). Inzwischen gebaut und gemessen: `docs/RADAR_TIMETRAVEL.md` (R12).
 
 ### R11.2 Verfahren (seit 2026-11-12)
 
@@ -2825,6 +2825,8 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 `RadarSchedulerTests` (Budget über 10 simulierte Minuten, auch beim Wandern der Karte), `RadarFrameTests`, `RadarStatusTextTests`.
 
 **Pünktlichkeit (Verspätungs-Heatmap):** Die Ebene „Pünktlichkeit“ lädt über denselben Scheduler und dasselbe Budget ganz Österreich (zwei Kacheln der Stufe 0, 6 Anfragen je Minute) und färbt ein Sechseckraster nach der mittleren Verspätung: `docs/RADAR_HEATMAP.md`.
+
+**Zeitreise (Regler, wo die Züge in 1 oder 2 Stunden sind):** Ein Uhr-Chip auf dem Radar klappt zu einem Regler von −30 Min bis +3 Std auf. Die Positionen werden aus dem Fahrplan, den Verspätungen von jetzt und Momentaufnahmen der Auskunft für andere Zeiten berechnet; die Anfragen laufen durch dasselbe Budget von 24 je Minute (R12: Messung, was eine Antwort für andere Zeiten enthält): `docs/RADAR_TIMETRAVEL.md`.
 
 **Nicht geprüft:** das Zeitlimit des Clients (`hafas.timeout`, 20 s) gegen die langsamste gemessene Antwort (21,5 s, erste Anfrage; die Messung lief über einen
 anderen Weg, ob so eine Antwort auf einem iPhone vorkommt, ist offen: ein Fehlschlag wird einmal wiederholt, die Kachel dann mit Backoff neu versucht); alle
