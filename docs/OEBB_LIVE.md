@@ -2804,11 +2804,13 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 - **Reihenfolge der Marker:** Die Reihenfolge im Code (Stationen zuerst, Züge zuletzt) bestimmt nicht, was oben liegt. MapKit ordnet Annotationen
   selbst (die weiter südliche liegt über der weiter nördlichen), und SwiftUIs `Map` hat keinen z-Index für Annotationen. Der CI-Screenshot
   `radarAllZoom` (Wien, Lauf 1 dieser Überprüfung) zeigte es: Die Stationsblase „30“ lag über der Zugblase „27“. Deshalb haben Züge Vorrang über
-  eine Kollisionsregel (`MapDeclutter`, KlimaCore): Ein Stationsmarker oder eine Stationsblase, deren Punkt weniger als 48 pt (waagerecht) und
-  36 pt (senkrecht) von einem Zugmarker entfernt läge, wird weggelassen. Gerechnet wird in Bildschirmpunkten aus dem sichtbaren Rechteck und
+  eine Kollisionsregel (`MapDeclutter`, KlimaCore): Ein Stationsmarker oder eine Stationsblase, die den Raum eines Zugmarkers (Linienschild mit
+  Pfeil oder Zugblase, halbe Breite 36 pt, halbe Höhe 17 pt) berührte, wird weggelassen. Eine Stationsblase nimmt 34 × 34 pt, eine einzelne Station
+  ihre Namenskapsel (etwa 6,2 pt je Zeichen plus Rand, 32 pt über dem Punkt) und den Punkt. Gerechnet wird in Bildschirmpunkten aus dem sichtbaren Rechteck und
   der Kartengröße, mit der Kamera neu, wenn die Kamera stillsteht, und mit den Zugmarkern. Die Folge: In dichten Gegenden verschwinden
   Stationen unter Zügen und kommen wieder, wenn der Zug weiterfährt; beim Heranzoomen lösen sich die Zugmarker, und die Stationen kehren
-  zurück. Nicht gelöst: Die Namenskapsel einer Station ist breiter als ihr Punkt und kann einen Zugmarker daneben weiter überdecken.
+  zurück. Nicht gelöst: Die Breite der Kapsel ist geschätzt (aus der Zeichenzahl, nicht gemessen): Bei sehr großer Schrift (Dynamic Type) ist sie breiter, als
+  die Regel annimmt, und kann einen Zugmarker daneben noch berühren. Die Namensanzeige der Karte selbst (Apple Karten) ist davon unabhängig.
 - **„Jetzt aktualisieren“ / „Erneut versuchen“:** machen alle sichtbaren Kacheln fällig (Backoff und Pause werden gelöscht) und setzen ein Zeichen; die
   laufende Schleife schickt sie im Takt des Budgets, auch im Stromspar-Modus, bis keine mehr fällig ist. Es gibt keine zweite Schleife und keine
   Aufgabe, die das Ausblenden der Ansicht überlebt.

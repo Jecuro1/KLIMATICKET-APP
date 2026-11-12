@@ -103,15 +103,37 @@ public struct MapCluster: Sendable, Hashable, Identifiable {
 /// south over the one further north), so declaring the trains last did not keep a station bubble from covering a train
 /// (docs/OEBB_LIVE.md §R11). The decision is made here, in screen points, from the visible rectangle and the size of the map.
 public enum MapDeclutter {
-    /// Half the width and height (points) of the space a train marker and a station marker take together: a station whose
-    /// position is closer than this to a train in both directions would overlap it.
-    public static let clearanceX = 48.0
-    public static let clearanceY = 36.0
+    /// The space a station marker takes around its point, in points: half its width, and how far it reaches above and below the
+    /// point (screen y grows downwards).
+    public struct Footprint: Sendable, Equatable {
+        public var halfWidth: Double
+        public var above: Double
+        public var below: Double
+
+        public init(halfWidth: Double, above: Double, below: Double) {
+            self.halfWidth = halfWidth
+            self.above = above
+            self.below = below
+        }
+
+        /// A station bubble (a 34 pt circle centred on its point).
+        public static let bubble = Footprint(halfWidth: 17, above: 17, below: 17)
+
+        /// A single station: its name on a capsule above a dot, the dot at the point. The capsule is as wide as its name (caption2
+        /// semibold: about 6 pt a character plus its padding) and about 32 pt tall.
+        public static func capsule(nameLength: Int) -> Footprint {
+            Footprint(halfWidth: (Double(max(nameLength, 1)) * 6.2 + 20) / 2, above: 32, below: 2)
+        }
+    }
+
+    /// Half the width and height (points) of a train marker (a line plate with its direction arrow, or a cluster bubble).
+    public static let trainHalfWidth = 36.0
+    public static let trainHalfHeight = 17.0
 
     /// The stations that do not sit under a train, in their order. Unchanged without trains, without a valid rectangle or a size.
     public static func stations(_ stations: [MapCluster], awayFromTrains trains: [GeoPoint], in box: RadarBox,
                                 widthPoints: Double, heightPoints: Double,
-                                clearanceX: Double = MapDeclutter.clearanceX, clearanceY: Double = MapDeclutter.clearanceY) -> [MapCluster] {
+                                footprint: (MapCluster) -> Footprint = { _ in .bubble }) -> [MapCluster] {
         guard !trains.isEmpty, !stations.isEmpty, box.isValid, widthPoints > 0, heightPoints > 0,
               widthPoints.isFinite, heightPoints.isFinite else { return stations }
         let lonSpan = box.east - box.west, latSpan = box.north - box.south
@@ -121,7 +143,11 @@ public enum MapDeclutter {
         let trainPoints = trains.map(point)
         return stations.filter { station in
             let at = point(station.center)
-            return !trainPoints.contains { abs($0.x - at.x) < clearanceX && abs($0.y - at.y) < clearanceY }
+            let space = footprint(station)
+            return !trainPoints.contains { train in
+                abs(train.x - at.x) < space.halfWidth + trainHalfWidth
+                    && train.y > at.y - space.above - trainHalfHeight && train.y < at.y + space.below + trainHalfHeight
+            }
         }
     }
 }

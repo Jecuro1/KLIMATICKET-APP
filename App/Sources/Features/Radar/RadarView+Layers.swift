@@ -68,7 +68,11 @@ extension RadarView {
     private var visibleStationClusters: [MapCluster] {
         guard trainsOn else { return stationClusters }
         return MapDeclutter.stations(stationClusters, awayFromTrains: model.clusters.map(\.center), in: model.box,
-                                     widthPoints: Double(model.mapSize.width), heightPoints: Double(model.mapSize.height))
+                                     widthPoints: Double(model.mapSize.width), heightPoints: Double(model.mapSize.height)) { cluster in
+            // A single station is a name on a capsule over a dot; a group is a bubble.
+            guard cluster.isSingle, let id = cluster.memberIDs.first, let name = stationIndex[id]?.name else { return .bubble }
+            return .capsule(nameLength: name.count)
+        }
     }
 
     @MapContentBuilder var stationLayer: some MapContent {
