@@ -14,6 +14,8 @@ import KlimaCore
 /// - `lettersInstallments` / `lettersInstallmentsList`: the Raten-Übersicht (summary, and the timeline of 12 installments)
 /// - `lettersEntry` / `lettersCancelEntry`: the entries in the Ticket-Ratgeber
 /// - `lettersAX5` / `lettersAX5Preview`: the Widerspruchsbrief at the largest accessibility text size
+/// - `lettersSuggestion`: the deadline picker shows only a suggestion (not taken over yet): nothing in the letter, the bar says what is missing
+/// - `lettersOlderAGB`: a ticket that began before 1.1.2026 – the hint block says an earlier version of the AGB may apply
 /// - `lettersPDF` / `lettersPDFExtra`: the PDF of the Widerspruchsbrief and of the longest cancellation letter, drawn by
 ///   `LetterPDF`, read back with PDFKit (pages, extractable text, title) and page 1 shown – proof that it is a real document
 struct TicketLettersScreenshotHost: View {
@@ -21,7 +23,7 @@ struct TicketLettersScreenshotHost: View {
         "lettersObjection", "lettersObjectionPreview", "lettersReminder", "lettersEmptyAddress", "lettersCancellation",
         "lettersCancellationPreview", "lettersExtraordinary", "lettersCancellationEarly", "lettersInstallments",
         "lettersInstallmentsList", "lettersEntry", "lettersCancelEntry", "lettersAX5", "lettersAX5Preview", "lettersPDF",
-        "lettersPDFExtra",
+        "lettersPDFExtra", "lettersSuggestion", "lettersOlderAGB",
     ]
 
     let screen: String
@@ -93,6 +95,11 @@ struct TicketLettersScreenshotHost: View {
             ObjectionLetterView(context: context, preset: ObjectionPreset(form: filledForm(context), deadline: day(40),
                                                                          reminderDates: LetterDeadline(day: day(40)).reminders().map(\.fireDate)),
                                 screenshotAnchor: .reminder)
+        case "lettersSuggestion":
+            ObjectionLetterView(context: context, preset: ObjectionPreset(form: filledForm(context), deadline: nil, showsDeadlineSuggestion: true))
+        case "lettersOlderAGB":
+            ObjectionLetterView(context: olderContext(context), preset: ObjectionPreset(form: filledForm(context), deadline: day(40)),
+                                screenshotAnchor: .preview)
         case "lettersEmptyAddress":
             ObjectionLetterView(context: context, preset: ObjectionPreset(form: emptyForm(context), deadline: nil))
         case "lettersCancellation":
@@ -137,6 +144,15 @@ struct TicketLettersScreenshotHost: View {
         early.ticket.start = start
         early.ticket.end = TicketPeriod.standardEnd(for: start)
         return early
+    }
+
+    /// The demo ticket moved to a start in 2025: it was bought under an earlier version of the AGB.
+    private func olderContext(_ context: TicketLetterContext) -> TicketLetterContext {
+        var older = context
+        let start = Calendar.vienna.date(from: DateComponents(year: 2025, month: 12, day: 1)) ?? today
+        older.ticket.start = start
+        older.ticket.end = TicketPeriod.standardEnd(for: start)
+        return older
     }
 
     private func tripValue(for ticket: TicketEntity) -> Double {

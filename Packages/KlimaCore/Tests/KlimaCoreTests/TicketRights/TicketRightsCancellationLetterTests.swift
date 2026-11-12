@@ -79,8 +79,9 @@ final class TicketRightsCancellationLetterTests: XCTestCase {
     }
 
     func testAnExtraordinaryLetterIsPossibleInTheFirstMonthsAndNeverSaysOrdinary() throws {
-        let letter = try XCTUnwrap(CancellationLetter.make(
-            TR.cancellation(.extraordinary(.movedAbroad, since: TR.date(2026, 5, 20))), now: TR.date(2026, 5, 28)))
+        var input = TR.cancellation(.extraordinary(.movedAbroad, since: TR.date(2026, 5, 20)))
+        input.letterDate = TR.date(2026, 5, 28)   // dated on the day it is written
+        let letter = try XCTUnwrap(CancellationLetter.make(input, now: TR.date(2026, 5, 28)))
         XCTAssertTrue(letter.isReady)
         XCTAssertTrue(letter.subject.hasPrefix("Außerordentliche Kündigung"))
         XCTAssertFalse(letter.plainText.contains("ohne Angabe von Gründen"))
@@ -94,7 +95,7 @@ final class TicketRightsCancellationLetterTests: XCTestCase {
         let text = letter.plainText
         XCTAssertTrue(text.contains("Punkt 17.1"))
         XCTAssertTrue(text.contains("ohne Angabe von Gründen"))
-        XCTAssertTrue(text.contains("(€ 116,70, ein Zwölftel des Kaufpreises, Punkt 17.1)"), "the fee line")
+        XCTAssertTrue(text.contains("(€ 116,70, ein Zwölftel des Kaufpreises, Punkt 17.1 und Anhang 4)"), "the fee line")
         XCTAssertTrue(text.contains("Kündigungsformular"))
         XCTAssertTrue(text.contains("Servicestelle"), "returns the card at a Servicestelle")
         XCTAssertTrue(text.contains("KT-2026-48 31 07"))
@@ -184,6 +185,17 @@ final class TicketRightsCancellationLetterTests: XCTestCase {
 
         let future = try XCTUnwrap(CancellationLetter.make(TR.cancellation(.extraordinary(.illness, since: TR.date(2026, 11, 20))), now: now))
         XCTAssertEqual(future.issues, [.reasonInFuture])
+    }
+
+    func testALetterDatedAfterTheFilingWindowIsBlocked() throws {
+        // Reason since 20 Oct: the last day is 17 Nov. Today is 12 Nov (open), but the letter is dated 18 Nov.
+        var input = TR.cancellation(.extraordinary(.illness, since: TR.date(2026, 10, 20)))
+        input.letterDate = TR.date(2026, 11, 18)
+        let late = try XCTUnwrap(CancellationLetter.make(input, now: TR.date(2026, 11, 12)))
+        XCTAssertEqual(late.issues, [.letterDateAfterDeadline])
+        XCTAssertFalse(late.isReady)
+        input.letterDate = TR.date(2026, 11, 17)
+        XCTAssertTrue(try XCTUnwrap(CancellationLetter.make(input, now: TR.date(2026, 11, 12))).isReady, "the last day itself still counts")
     }
 
     func testExtraordinaryPaymentVariants() throws {

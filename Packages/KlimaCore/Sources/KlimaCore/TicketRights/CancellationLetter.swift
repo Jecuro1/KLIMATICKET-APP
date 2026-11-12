@@ -190,7 +190,7 @@ public enum CancellationLetter {
             if status.isKennenlern {
                 blocks.append(.paragraph("Ein Kündigungsentgelt fällt dabei nicht an."))
             } else {
-                blocks.append(.paragraph("Das Kündigungsentgelt von einem Monatsbetrag (\(LetterFormat.euro(status.fee)), ein Zwölftel des Kaufpreises, Punkt \(ordinaryClause)) ist mir bekannt."))
+                blocks.append(.paragraph("Das Kündigungsentgelt von einem Monatsbetrag (\(LetterFormat.euro(status.fee)), ein Zwölftel des Kaufpreises, Punkt \(ordinaryClause) und Anhang 4) ist mir bekannt."))
             }
             if ticket.isMonthlyPayment {
                 blocks.append(.paragraph(status.isKennenlern
@@ -219,7 +219,9 @@ public enum CancellationLetter {
                 switch window.status(now: now) {
                 case .notYet: issues.append(.reasonInFuture)
                 case .closed: issues.append(.filingWindowClosed)
-                case .open: break
+                case .open:
+                    // The letter promises to hand everything in by `lastDay`: it must not be dated after it.
+                    if calendar.startOfDay(for: input.letterDate) > window.lastDay { issues.append(.letterDateAfterDeadline) }
                 }
             } else {
                 facts.append(.init("Grund liegt vor seit", LetterFormat.blank))

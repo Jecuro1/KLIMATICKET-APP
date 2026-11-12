@@ -212,6 +212,106 @@ struct LetterRememberSection: View {
     }
 }
 
+// MARK: - A date only the holder knows
+
+/// A required date the app cannot know: the deadline in the renewal letter, the day a reason for cancelling arose. It starts
+/// empty; the button shows a *suggestion* in the picker, and the date only counts once the holder has changed it or taken it
+/// over. A guessed day never lands in a letter as if it were a fact.
+struct LetterDateChoice<Accessory: View>: View {
+    var title: String
+    var pickerLabel: String
+    /// The confirmed date: nil until the holder chose or confirmed one.
+    @Binding var date: Date?
+    var suggestion: Date
+    /// The latest day the picker allows (the day a reason arose cannot lie in the future).
+    var upperBound: Date?
+    var suggestionHint: String
+    var trailing: (Date) -> Accessory
+
+    @State private var draft: Date?
+
+    /// `startsWithSuggestion` shows the suggestion at once (CI screenshot of that state).
+    init(title: String, pickerLabel: String, date: Binding<Date?>, suggestion: Date, upperBound: Date? = nil, suggestionHint: String,
+         startsWithSuggestion: Bool = false, @ViewBuilder trailing: @escaping (Date) -> Accessory) {
+        _draft = State(initialValue: startsWithSuggestion ? suggestion : nil)
+        self.title = title
+        self.pickerLabel = pickerLabel
+        _date = date
+        self.suggestion = suggestion
+        self.upperBound = upperBound
+        self.suggestionHint = suggestionHint
+        self.trailing = trailing
+    }
+
+    private var isShowingPicker: Bool { date != nil || draft != nil }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if isShowingPicker {
+                HStack(spacing: Theme.Spacing.s) {
+                    picker
+                    Spacer(minLength: Theme.Spacing.xs)
+                    if let date { trailing(date) }
+                }
+                if date == nil {
+                    suggestionRow
+                        .motionTransition(.rise)
+                }
+            } else {
+                Button {
+                    withMotion(Motion.snappy) { draft = suggestion }
+                } label: {
+                    Label(title, systemImage: "calendar.badge.plus")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                        .frame(minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .motionAnimation(Motion.smooth, value: isShowingPicker)
+        .motionAnimation(Motion.smooth, value: date == nil)
+    }
+
+    /// One picker for the suggestion and for the confirmed date (so it is not rebuilt, and a popover stays open, when it is taken over).
+    @ViewBuilder
+    private var picker: some View {
+        let selection = Binding<Date>(get: { date ?? draft ?? suggestion }, set: { date = $0; draft = nil })
+        if let upperBound {
+            DatePicker(pickerLabel, selection: selection, in: ...upperBound, displayedComponents: .date)
+                .labelsHidden()
+        } else {
+            DatePicker(pickerLabel, selection: selection, displayedComponents: .date)
+                .labelsHidden()
+        }
+    }
+
+    private var suggestionRow: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+            Label("Nur ein Vorschlag", systemImage: "questionmark.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.summitText)
+            Text(suggestionHint)
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                withMotion(Motion.snappy) {
+                    date = draft ?? suggestion
+                    draft = nil
+                }
+            } label: {
+                Label("Datum übernehmen", systemImage: "checkmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
 // MARK: - Preview
 
 /// The A4 page with its „Bereit“ stamp and a button that opens it large.

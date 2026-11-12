@@ -62,6 +62,7 @@ struct CancellationLetterView: View {
             }
         }
         .environment(\.locale, Format.locale)
+        .environment(\.timeZone, Calendar.vienna.timeZone)   // the pickers show the same days as the letter (Vienna)
     }
 
     // MARK: Letter
@@ -146,12 +147,13 @@ struct CancellationLetterView: View {
     }
 
     private var hint: [String] {
+        let older = [TicketRights.earlierVersionNote(ticketStart: context.ticket.start)].compactMap { $0 }
         if mode == .ordinary {
             return ["Laut AGB (Stand \(TicketRights.agbStandShort), Punkt 17.1) braucht eine wirksame Kündigung das Kündigungsformular mit deiner eigenhändigen Unterschrift und die nachweisliche Rückgabe deiner Karte bei einer Servicestelle. Dieses Schreiben legst du dazu – es ersetzt das Formular nicht.",
-                    "Frag beim Kundenservice oder in einer Servicestelle nach dem Kündigungsformular."]
+                    "Frag beim Kundenservice oder in einer Servicestelle nach dem Kündigungsformular."] + older
         }
         return ["Laut AGB (Stand \(TicketRights.agbStandShort), Punkt 17.2) gibst du Karte, unterschriebenes Kündigungsformular und Nachweis innerhalb von vier Wochen nach Eintritt des Grundes bei einer Servicestelle ab. Das Kündigungsentgelt entfällt. Dieses Schreiben legst du dazu – es ersetzt das Formular nicht.",
-                "Frag beim Kundenservice oder in einer Servicestelle nach dem Kündigungsformular."]
+                "Frag beim Kundenservice oder in einer Servicestelle nach dem Kündigungsformular."] + older
     }
 
     // MARK: Mode
@@ -249,24 +251,13 @@ struct CancellationLetterView: View {
                 Text(reason.sinceHint)
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
+                LetterDateChoice(title: "Datum wählen", pickerLabel: reason.sinceHint, date: $reasonDate,
+                                 suggestion: Calendar.vienna.startOfDay(for: Date()), upperBound: Date(),
+                                 suggestionHint: "Vorgeschlagen ist heute. Setz den Tag ein, an dem der Grund vorlag, und übernimm ihn – davon hängt die Frist von vier Wochen ab.") { _ in
+                    EmptyView()
+                }
                 if let reasonDate {
-                    HStack(spacing: Theme.Spacing.s) {
-                        DatePicker(reason.sinceHint, selection: Binding(get: { reasonDate }, set: { self.reasonDate = $0 }),
-                                   in: ...Date(), displayedComponents: .date)
-                            .labelsHidden()
-                        Spacer(minLength: Theme.Spacing.xs)
-                    }
                     windowLine(since: reasonDate)
-                } else {
-                    Button {
-                        withMotion(Motion.snappy) { reasonDate = Calendar.vienna.startOfDay(for: Date()) }
-                    } label: {
-                        Label("Datum wählen", systemImage: "calendar.badge.plus")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.accentText)
-                            .frame(minHeight: 44, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
                 }
             }
             .motionAnimation(Motion.smooth, value: reasonDate != nil)

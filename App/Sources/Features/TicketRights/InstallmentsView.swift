@@ -89,7 +89,7 @@ struct InstallmentsView: View {
                 factRow("Noch offen", value: Format.euroPrecise(plan.openAmount),
                         detail: plan.openCount == 1 ? "1 Rate" : "\(plan.openCount) Raten")
                 if let next = plan.next {
-                    factRow("Nächste Abbuchung", value: Format.monthYear(next.month), detail: "rund um den Monatsanfang")
+                    factRow("Nächste Abbuchung (erwartet)", value: Format.monthYear(next.month), detail: "rund um den Monatsanfang")
                 } else {
                     Label("Alle 12 Raten sind bezahlt.", systemImage: "checkmark.seal.fill")
                         .font(.subheadline.weight(.semibold))
@@ -218,6 +218,9 @@ struct InstallmentsView: View {
                     text: "Grundlage: AGB KlimaTicket Ö (Stand \(TicketRights.agbStandShort)), Punkt 15.2 – die ersten zwei Raten mit der Bestellung, die übrigen zehn in den ersten fünf Werktagen eines Monats. Bei einer automatischen Verlängerung buchen sie alle zwölf monatlich ab (Punkt 15.6).")
             AdvNote(symbol: "banknote",
                     text: "Wann deine Bank genau bucht, wissen wir nicht, und auf den Cent können einzelne Raten abweichen. Als bezahlt zählt eine Rate erst nach den ersten fünf Werktagen des Monats. Dein Kontoauszug gilt.")
+            if let older = TicketRights.earlierVersionNote(ticketStart: context.ticket.start) {
+                AdvNote(symbol: "exclamationmark.circle", text: older)
+            }
             if context.ticket.employerContribution > 0 {
                 AdvNote(symbol: "briefcase",
                         text: "Ein Zuschuss deines Arbeitgebers ist hier nicht abgezogen: Die Raten gehen über den vollen Ticketpreis.")

@@ -83,6 +83,17 @@ final class TicketRightsObjectionLetterTests: XCTestCase {
         XCTAssertTrue(letter.isReady)
     }
 
+    func testALetterDatedAfterTheDeadlineIsBlocked() {
+        // The deadline (15 Jan 2027) is still ahead today, but the letter is dated the day after it.
+        var input = TR.objection()
+        input.letterDate = TR.date(2027, 1, 16)
+        let late = RenewalObjectionLetter.make(input, now: now)
+        XCTAssertEqual(late.issues, [.letterDateAfterDeadline])
+        XCTAssertFalse(late.isReady)
+        input.letterDate = TR.date(2027, 1, 15, 20)
+        XCTAssertTrue(RenewalObjectionLetter.make(input, now: now).isReady, "dated on the deadline day: still within it")
+    }
+
     func testAnEditedRecipientIsPrinted() {
         let recipient = LetterRecipient.parse("Beispiel Kundenservice GmbH\n\n Musterstraße 5 \n1030 Wien")
         let letter = RenewalObjectionLetter.make(TR.objection(recipient: recipient), now: now)
@@ -135,5 +146,15 @@ final class TicketRightsObjectionLetterTests: XCTestCase {
         XCTAssertEqual(LetterFormat.euro(1400), "€ 1.400,00")
         XCTAssertEqual(LetterFormat.euro(0.05), "€ 0,05")
         XCTAssertEqual(LetterFormat.euro(1_234_567.8), "€ 1.234.567,80")
+        // A broken value must not crash the letter (Int(.nan) traps).
+        XCTAssertEqual(LetterFormat.euro(.nan), "€ –")
+        XCTAssertEqual(LetterFormat.euro(.infinity), "€ –")
+    }
+
+    func testAnEarlierAGBVersionIsMentionedForTicketsThatBeganBefore2026() {
+        XCTAssertNotNil(TicketRights.earlierVersionNote(ticketStart: TR.date(2025, 12, 31, 23)))
+        XCTAssertTrue(TicketRights.earlierVersionNote(ticketStart: TR.date(2025, 6, 1))?.contains("1.1.2026") == true)
+        XCTAssertNil(TicketRights.earlierVersionNote(ticketStart: TR.date(2026, 1, 1, 0)))
+        XCTAssertNil(TicketRights.earlierVersionNote(ticketStart: TR.date(2026, 3, 1)))
     }
 }

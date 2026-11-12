@@ -114,6 +114,8 @@ final class TicketRightsInstallmentPlanTests: XCTestCase {
     func testNoPlanWithoutAPrice() {
         XCTAssertNil(InstallmentPlan.make(price: 0, start: start))
         XCTAssertNil(InstallmentPlan.make(price: -5, start: start))
+        XCTAssertNil(InstallmentPlan.make(price: .nan, start: start), "a broken price must not crash")
+        XCTAssertNil(InstallmentPlan.make(price: .infinity, start: start))
     }
 
     func testWorkingDaysSkipWeekends() {

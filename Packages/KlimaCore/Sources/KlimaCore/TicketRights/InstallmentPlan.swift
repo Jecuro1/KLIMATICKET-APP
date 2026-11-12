@@ -66,6 +66,7 @@ public struct InstallmentPlan: Equatable, Sendable {
 
     /// Builds the plan for a ticket price and the first day of validity; nil without a positive price.
     public static func make(price: Double, start: Date, now: Date = Date(), calendar: Calendar = .vienna) -> InstallmentPlan? {
+        guard price.isFinite, price > 0, price < 1_000_000 else { return nil }   // `Int(.nan)` would trap
         let priceCents = Int((price * 100).rounded())
         guard priceCents > 0 else { return nil }
         let base = Int((Double(priceCents) / Double(count)).rounded())

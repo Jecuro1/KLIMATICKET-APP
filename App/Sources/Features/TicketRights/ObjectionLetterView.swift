@@ -20,6 +20,7 @@ struct ObjectionLetterView: View {
     @State private var reminderDates: [Date]
     @State private var reminderState: ReminderState = .idle
     @State private var reminderTrigger = 0
+    private let showsDeadlineSuggestion: Bool
 
     private enum ReminderState: Equatable {
         case idle, working, denied
@@ -29,6 +30,7 @@ struct ObjectionLetterView: View {
     init(context: TicketLetterContext, preset: ObjectionPreset? = nil, screenshotAnchor: LetterAnchor? = nil) {
         self.context = context
         self.screenshotAnchor = screenshotAnchor
+        showsDeadlineSuggestion = preset?.showsDeadlineSuggestion ?? false
         let remembered = preset == nil ? LetterStore.loadSender() : nil
         _form = State(initialValue: preset?.form ?? LetterForm.initial(for: context, remembered: remembered))
         _deadline = State(initialValue: preset == nil ? LetterStore.deadline(for: context.id) : preset?.deadline)
@@ -56,6 +58,7 @@ struct ObjectionLetterView: View {
             }
         }
         .environment(\.locale, Format.locale)
+        .environment(\.timeZone, Calendar.vienna.timeZone)   // the pickers show the same days as the letter (Vienna)
     }
 
     // MARK: Letter
@@ -96,7 +99,8 @@ struct ObjectionLetterView: View {
                     LetterPreviewCard(content: letter)
                         .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: Theme.Spacing.m, bottom: Theme.Spacing.s, trailing: Theme.Spacing.m))
                         .id(LetterAnchor.preview)
-                    LetterHintBlock(title: "So kommt der Brief an", paragraphs: [RenewalObjectionLetter.deliveryHint, RenewalObjectionLetter.alternativeWaysHint])
+                    LetterHintBlock(title: "So kommt der Brief an", paragraphs: [RenewalObjectionLetter.deliveryHint, RenewalObjectionLetter.alternativeWaysHint]
+                                    + [TicketRights.earlierVersionNote(ticketStart: context.ticket.start)].compactMap { $0 })
                         .listRowInsets(EdgeInsets())
                 } header: {
                     Text("Vorschau")
@@ -145,26 +149,11 @@ struct ObjectionLetterView: View {
                 Text("Frist laut deinem Brief")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
-                if let deadline {
-                    HStack(spacing: Theme.Spacing.s) {
-                        DatePicker("Frist laut deinem Brief", selection: Binding(get: { deadline }, set: { self.deadline = $0 }),
-                                   displayedComponents: .date)
-                            .labelsHidden()
-                        Spacer(minLength: Theme.Spacing.xs)
-                        deadlinePill(deadline)
-                    }
-                } else {
-                    Button {
-                        withMotion(Motion.snappy) {
-                            deadline = Calendar.vienna.date(byAdding: .day, value: 14, to: Calendar.vienna.startOfDay(for: Date()))
-                        }
-                    } label: {
-                        Label("Datum aus deinem Brief wählen", systemImage: "calendar.badge.plus")
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.accentText)
-                            .frame(minHeight: 44, alignment: .leading)
-                    }
-                    .buttonStyle(.plain)
+                LetterDateChoice(title: "Datum aus deinem Brief wählen", pickerLabel: "Frist laut deinem Brief", date: $deadline,
+                                 suggestion: Calendar.vienna.date(byAdding: .day, value: 14, to: Calendar.vienna.startOfDay(for: Date())) ?? Date(),
+                                 suggestionHint: "Die AGB binden die Frist an deinen Verlängerungsbrief, wir kennen sie nicht. Setz das Datum aus dem Brief ein und übernimm es – erst dann steht es im Schreiben.",
+                                 startsWithSuggestion: showsDeadlineSuggestion) { date in
+                    deadlinePill(date)
                 }
             }
             .motionAnimation(Motion.smooth, value: deadline != nil)
@@ -359,4 +348,6 @@ struct ObjectionPreset {
     var deadline: Date?
     var remembers = false
     var reminderDates: [Date] = []
+    /// The deadline picker shows its suggestion, not yet taken over.
+    var showsDeadlineSuggestion = false
 }

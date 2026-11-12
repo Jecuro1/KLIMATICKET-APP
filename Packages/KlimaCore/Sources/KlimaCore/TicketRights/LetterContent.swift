@@ -20,6 +20,14 @@ public enum TicketRights {
     /// (Bundesheer / Zivildienst / Freiwilligendienst, the closed KlimaTicket Ö 18, the 2021 pre-sale, a Jobticket).
     private static let otherConditions = ["oe-bundesheer", "oe-zivildienst", "oe-freiwilligendienst", "oe-18", "oe-fruehbucher", "oe-jobticket"]
 
+    /// The AGB above are from 1 January 2026. A ticket whose validity began earlier was bought under an earlier version, which may
+    /// word a clause differently – the letters say so instead of presenting the 2026 text as the holder's contract.
+    public static func earlierVersionNote(ticketStart: Date, calendar: Calendar = .vienna) -> String? {
+        guard let cutoff = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1)),
+              calendar.startOfDay(for: ticketStart) < cutoff else { return nil }
+        return "Dein Ticket hat vor dem \(agbStandShort) begonnen. Für dich kann noch eine frühere Fassung der AGB gelten – lies die genannten Punkte in deinen Unterlagen nach, bevor du unterschreibst."
+    }
+
     /// True for the KlimaTicket Ö (Klassik, Jugend, Senior, Spezial, Familie) the AGB above apply to.
     public static func appliesAGB(to ticket: AdvisorTicket) -> Bool {
         guard ticket.family == .oe else { return false }
@@ -56,6 +64,8 @@ public enum LetterIssue: Equatable, Sendable {
     case reasonInFuture
     /// More than four weeks since the reason arose (AGB 17.2).
     case filingWindowClosed
+    /// The date printed on the letter lies after the deadline the letter says it keeps.
+    case letterDateAfterDeadline
 
     /// Quiet German explanation (du-form, it is addressed to the holder).
     public var message: String {
@@ -64,6 +74,7 @@ public enum LetterIssue: Equatable, Sendable {
         case .deadlinePassed: "Die Frist ist schon vorbei. Stimmt das Datum nicht, ändere es – sonst frag beim Kundenservice nach."
         case .reasonInFuture: "Der Grund kann erst ab heute zählen – wähle ein Datum bis heute."
         case .filingWindowClosed: "Seit dem Grund sind mehr als vier Wochen vergangen. Frag beim Kundenservice, ob eine Ausnahme möglich ist."
+        case .letterDateAfterDeadline: "Das Datum des Briefs liegt nach der Frist. Wähle ein Datum bis zum Fristende."
         }
     }
 }
@@ -172,6 +183,7 @@ public enum LetterFormat {
 
     /// "€ 116,70", "€ 1.400,00" (always two decimals, point as thousands separator).
     public static func euro(_ value: Double) -> String {
+        guard value.isFinite, abs(value) < 100_000_000 else { return "€ –" }   // `Int(.nan)` would trap
         let cents = Int((value * 100).rounded())
         let absolute = abs(cents)
         let whole = String(absolute / 100)

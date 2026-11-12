@@ -205,7 +205,9 @@ struct SetDataSection: View {
         let notifications = app.notifications
         Task {
             for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) }
+            await LetterStore.forget(ticketIDs: ticketIDs)   // MARK: ticketletters – deadlines and their reminders
         }
+        LetterStore.eraseAll()   // MARK: ticketletters – name and address in the Keychain, the switch
         DemoDataStore.forget()
         WhatIfStore.clear()   // MARK: whatif – saved scenarios hold the user's routes
         let repo = Repository(context: context, app: app)

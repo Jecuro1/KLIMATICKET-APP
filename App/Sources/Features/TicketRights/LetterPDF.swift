@@ -97,7 +97,7 @@ private struct LetterPage {
         let indent = LetterLayout.factIndent
         let labelWidth = LetterLayout.factLabelWidth
         let valueWidth = LetterLayout.textWidth - indent - labelWidth
-        let heights = facts.map { max(measure("\($0.label):", size: LetterLayout.bodySize, width: labelWidth),
+        let heights = facts.map { max(measure("\($0.label):", size: LetterLayout.bodySize, weight: .semibold, width: labelWidth),
                                       measure($0.value, size: LetterLayout.bodySize, width: valueWidth)) }
         ensureRoom(heights.reduce(0, +))
         for (fact, height) in zip(facts, heights) {

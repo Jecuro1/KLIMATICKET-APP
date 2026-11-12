@@ -68,7 +68,12 @@ public enum RenewalObjectionLetter {
         let deadlineText: String
         if let deadline = input.deadline {
             deadlineText = LetterFormat.date(deadline, calendar: calendar)
-            if LetterDeadline(day: deadline, calendar: calendar).isPassed(now: now) { issues.append(.deadlinePassed) }
+            let letterDeadline = LetterDeadline(day: deadline, calendar: calendar)
+            if letterDeadline.isPassed(now: now) {
+                issues.append(.deadlinePassed)
+            } else if letterDeadline.isPassed(now: input.letterDate) {
+                issues.append(.letterDateAfterDeadline)   // the letter claims to be within the deadline but is dated after it
+            }
         } else {
             deadlineText = LetterFormat.blank
             issues.append(.missing(.deadline))

@@ -31,6 +31,8 @@ enum LetterReminders {
     static func schedule(ticketID: UUID, ticketName: String, deadline: Date) async -> Outcome {
         let letterDeadline = LetterDeadline(day: deadline)
         let reminders = letterDeadline.reminders()
+        // A new deadline replaces the old reminders – also when none is left for it (otherwise the old ones would still ring).
+        await cancelNow(ticketID: ticketID)
         guard !reminders.isEmpty else { return .tooLate }
 
         var status = await center.notificationSettings().authorizationStatus
@@ -40,7 +42,6 @@ enum LetterReminders {
         }
         guard status == .authorized || status == .provisional || status == .ephemeral else { return .denied }
 
-        await cancelNow(ticketID: ticketID)
         var scheduled: [Date] = []
         for reminder in reminders {
             let content = UNMutableNotificationContent()

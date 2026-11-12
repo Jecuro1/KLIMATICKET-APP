@@ -33,7 +33,13 @@ den Punkten 17.4 und 20.1 (Stand 1.1.2026); dass er innerhalb der Frist des Einl
 
 - Einmalzahlung: der Screen sagt „Du musst nichts tun – ohne Zahlung verlängert sich das Ticket nicht.“
 - Regionales oder eigenes Ticket: „Für dein Ticket gelten die Bedingungen des Verkehrsverbunds – dieses Schreiben passt nicht.“
-- Eine **vergangene Frist** blockiert den Brief (er würde behaupten, fristgerecht zu sein); PDF/Druck sind erst möglich, wenn nichts fehlt.
+- Eine **vergangene Frist** blockiert den Brief (er würde behaupten, fristgerecht zu sein); ebenso ein Brief, der **nach der Frist datiert** ist
+  (`LetterIssue.letterDateAfterDeadline`). PDF/Druck sind erst möglich, wenn nichts fehlt.
+- Die Frist (und beim Kündigungsschreiben der Tag, an dem der Grund vorlag) kennt die App nicht. „Datum wählen“ zeigt nur einen **Vorschlag**
+  (Frist: heute + 14 Tage, Grund: heute); er zählt erst, wenn du das Datum änderst oder mit „Datum übernehmen“ bestätigst (`LetterDateChoice`).
+  Vorher fehlt das Datum im Brief und in der Fortschrittsanzeige, es wird nicht gemerkt und keine Erinnerung darauf gesetzt.
+- Die AGB sind Stand 1.1.2026. Begann das Ticket **vor** diesem Datum, nennen Hinweisblock und Raten-Übersicht, dass für dich noch eine frühere Fassung
+  gelten kann (`TicketRights.earlierVersionNote`).
 
 ### Das Kündigungsschreiben
 
@@ -57,7 +63,8 @@ Zeigt **Bezahlt bis heute € X (n Raten)**, **Noch offen € Z** und daneben **
 dazu eine ehrliche Aussage, ob die Fahrten die Raten schon decken. Die Zahlenlogik (`InstallmentPlan`) ist getestet: 12 Raten, Summe = Ticketpreis auf den Cent
 (elf Raten auf den Cent gerundet, die zwölfte gleicht aus), zwei mit der Bestellung im Monat 1.
 
-Annahmen, die im Screen stehen: als bezahlt zählt eine Rate erst **nach** den ersten fünf Werktagen ihres Monats (Mo–Fr, Feiertage nicht berücksichtigt);
+Die Monate der Abbuchung sind ein Modell (Rate n im Kalendermonat, in dem der n-te Gültigkeitsmonat beginnt); die AGB sagen nur „innerhalb der ersten fünf
+Werktage jedes Kalendermonats“. Darum heißt die Zeile „Nächste Abbuchung (erwartet)“. Annahmen, die im Screen stehen: als bezahlt zählt eine Rate erst **nach** den ersten fünf Werktagen ihres Monats (Mo–Fr, Feiertage nicht berücksichtigt);
 bei einer automatischen Verlängerung buchen sie alle zwölf monatlich (AGB 15.6) – der Unterschied liegt nur im ersten Gültigkeitsmonat und ist nicht abgebildet;
 ein Zuschuss des Arbeitgebers ist nicht abgezogen.
 
@@ -93,7 +100,7 @@ Adresse, nimm diese (Platzhalter bei leerem Feld: „Adresse laut deinem Verlän
 
 „Erinnerung setzen“ plant zwei lokale Mitteilungen **5 Tage und 1 Tag vor der Frist, 9:00 Uhr (Wien)**, Kennungen `letter.<ticket-id>.d5` / `.d1`
 (`LetterDeadline`, `LetterReminders`). Die Erlaubnis für Mitteilungen wird erst beim Tippen gefragt. Vergangene Zeitpunkte werden übersprungen
-(Frist in 3 Tagen: nur die 1-Tage-Erinnerung; Frist heute oder vorbei: keine). Ändert sich die Frist, ziehen die Erinnerungen mit; „Erinnerung entfernen“ nimmt sie zurück.
+(Frist in 3 Tagen: nur die 1-Tage-Erinnerung; Frist heute oder vorbei: keine). Ändert sich die Frist, ziehen die Erinnerungen mit (auch wenn für die neue Frist keine mehr übrig ist: die alten werden dann entfernt, nicht vergessen); „Erinnerung entfernen“ nimmt sie zurück.
 `AlarmIdentifier.letterPrefix = "letter."` gehört zur Art `objectionLetter`; beide Erinnerungen sind **eine Zeile** unter Einstellungen › Alarme. Ein Tipp auf die Mitteilung öffnet den Ticket-Tab.
 
 ## 4. PDF

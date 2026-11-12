@@ -69,8 +69,8 @@ struct LetterForm: Equatable {
 ///   `KeychainStore`, `…ThisDeviceOnly` – not synchronised, not restored from a backup onto another device.
 /// CI screenshot and performance runs keep nothing.
 enum LetterStore {
-    private static let deadlinesKey = "letters.deadlines.v1"
-    private static let rememberKey = "letters.rememberSender"
+    fileprivate static let deadlinesKey = "letters.deadlines.v1"
+    fileprivate static let rememberKey = "letters.rememberSender"
     private static let senderKey = "letters.sender.v1"
 
     // MARK: Deadline
@@ -115,6 +115,28 @@ enum LetterStore {
     static func forgetSender() {
         guard !LaunchMode.isSandboxed else { return }
         KeychainStore().delete(senderKey)
+    }
+}
+
+// MARK: - Forgetting
+
+extension LetterStore {
+    /// Tickets are gone (deleted, or „Alle Daten löschen“): their deadline and their pending deadline reminders go with them – a
+    /// reminder must not ring for a ticket that no longer exists.
+    @MainActor
+    static func forget(ticketIDs: [UUID]) async {
+        for id in ticketIDs {
+            await LetterReminders.cancelNow(ticketID: id)
+            setDeadline(nil, for: id)
+        }
+    }
+
+    /// „Alle Daten löschen“: also the name and address in the Keychain, the switch and every remembered deadline.
+    static func eraseAll() {
+        guard !LaunchMode.isSandboxed else { return }
+        forgetSender()
+        UserDefaults.standard.removeObject(forKey: rememberKey)
+        UserDefaults.standard.removeObject(forKey: deadlinesKey)
     }
 }
 

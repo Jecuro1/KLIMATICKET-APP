@@ -263,6 +263,7 @@ struct Repository {
         commit()
         let id = ticket.id
         Task { await app.notifications.cancelRenewalReminders(ticketID: id) }
+        Task { await LetterStore.forget(ticketIDs: [id]) }   // MARK: ticketletters – the letter's deadline and its reminders
     }
 
     /// Creates the follow-up ticket (starts the day after `ticket` ends) with the catalog price for that start date.
@@ -359,6 +360,7 @@ struct Repository {
         commit()
         let notifications = app.notifications
         Task { for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) } }
+        Task { await LetterStore.forget(ticketIDs: ticketIDs) }   // MARK: ticketletters
         return removed
     }
 
