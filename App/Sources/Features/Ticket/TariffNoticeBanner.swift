@@ -149,24 +149,29 @@ struct TariffNoticeBanner: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsDetails = false
     @State private var wiggle = 0
+    /// The notice as it was when the details were opened: „Jetzt prüfen“ in the sheet may bring newer prices and end the
+    /// notice – the card (which presents the sheet) stays until the sheet is closed, the sheet itself shows the new state.
+    @State private var pinned: TariffNoticeCopy?
 
     var body: some View {
         // Reading the scene phase re-evaluates the notice whenever the app comes back to the foreground – the day may have
         // changed (1 December, 1 January) since the tab was last drawn.
         let _ = scenePhase
         let input = injected ?? app.tariffNoticeInput()
-        let copy = TariffNoticeCopy(input)
+        let live = TariffNoticeCopy(input)
+        let shown: TariffNoticeCopy? = showsDetails ? (pinned ?? live) : (live.state.isCurrent ? nil : live)
         Group {
-            if !copy.state.isCurrent {
-                banner(copy, input: input)
+            if let shown {
+                banner(shown, input: input)
                     .motionTransition(.rise)
             }
         }
-        .motionAnimation(Motion.smooth, value: copy.state)
+        .motionAnimation(Motion.smooth, value: shown?.state)
     }
 
     private func banner(_ copy: TariffNoticeCopy, input: TariffNoticeInput) -> some View {
         Button {
+            pinned = copy
             showsDetails = true
         } label: {
             GlassCard(padding: 0, cornerRadius: Theme.Radius.formGroup, tint: Theme.dawn) {
@@ -180,7 +185,7 @@ struct TariffNoticeBanner: View {
         .accessibilityLabel(copy.spoken)
         .accessibilityHint("Doppeltippen für Details")
         .accessibilityAddTraits(.isButton)
-        .sheet(isPresented: $showsDetails) {
+        .sheet(isPresented: $showsDetails, onDismiss: { pinned = nil }) {
             TariffNoticeSheet(input: input)
         }
         .task {

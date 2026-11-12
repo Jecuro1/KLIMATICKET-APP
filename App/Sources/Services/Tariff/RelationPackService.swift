@@ -39,6 +39,12 @@ final class RelationsHolder: @unchecked Sendable {
     /// The highest data version available (bundled or installed pack) – a download must beat it.
     var versionInUse: Int { max(bundled.value.version, installedPack()?.version ?? 0) }
 
+    /// The bundled table and the version in use, read off the main thread: at launch the build and the cache check may still
+    /// be running, and the first refresh must not make the main actor wait for them.
+    func snapshot() async -> (bundled: RelationPriceTable, versionInUse: Int) {
+        await Task.detached(priority: .utility) { (self.bundledTable, self.versionInUse) }.value
+    }
+
     /// A pack that was just validated and written.
     func install(_ table: RelationPriceTable) {
         lock.lock()

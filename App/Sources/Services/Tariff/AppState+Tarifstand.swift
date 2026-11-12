@@ -118,9 +118,9 @@ extension AppState {
     /// than the table in use), validated, installed atomically, then used with the next estimate.
     @discardableResult
     func refreshRelationPack(force: Bool) async -> RelationPackUpdater.Outcome {
+        let (bundled, versionInUse) = await relationsHolder.snapshot()
         let result = await relationPacks.refresh(catalog: catalog, tariffsURL: tariffs.tariffsURL(manifestHint: updates.manifest),
-                                                 bundled: relationsHolder.bundledTable, versionInUse: relationsHolder.versionInUse,
-                                                 force: force)
+                                                 bundled: bundled, versionInUse: versionInUse, force: force)
         if let table = result.table {
             relationsHolder.install(table)
             reloadCatalog()   // estimates and the live price chain pick the new table up
