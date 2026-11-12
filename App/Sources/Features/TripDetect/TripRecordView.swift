@@ -424,7 +424,7 @@ struct RecordMapCard: View {
                         let isRail = StationMatcher.isRailLike(station)
                         context.fill(dot, with: .color(station.id == current ? Theme.pine : (isRail ? Theme.textSecondary : Theme.textTertiary)))
                     }
-                    // A name goes where it covers neither another name, nor a dot, nor the line: four places around its dot, else none
+                    // A name goes where it covers neither another name, nor a dot, nor the line: eight places around its dot, else none
                     // (the current station is named in the card below, too).
                     let line = track.compactMap { projection.point(for: $0) }
                     var obstacles: [CGRect] = []
@@ -456,8 +456,11 @@ struct RecordMapCard: View {
                         let width = label.measure(in: size).width
                         let r = radius(station)
                         let right = point.x + r + 4, left = point.x - r - 4 - width
+                        // Nearest places first; the farther rows (about one name higher or lower) only when the near ones are taken.
                         let candidates = [CGPoint(x: right, y: point.y - 14), CGPoint(x: right, y: point.y + 2),
-                                          CGPoint(x: left, y: point.y - 14), CGPoint(x: left, y: point.y + 2)]
+                                          CGPoint(x: left, y: point.y - 14), CGPoint(x: left, y: point.y + 2),
+                                          CGPoint(x: right, y: point.y - 25), CGPoint(x: right, y: point.y + 13),
+                                          CGPoint(x: left, y: point.y - 25), CGPoint(x: left, y: point.y + 13)]
                         for origin in candidates {
                             let rect = CGRect(x: origin.x, y: origin.y, width: width, height: 12).insetBy(dx: -3, dy: -2)
                             guard bounds.contains(rect),
