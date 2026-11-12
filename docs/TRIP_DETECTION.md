@@ -314,6 +314,10 @@ Vorher: Standort und Mitteilungen für KlimaBilanz erlauben; Live-Aktivitäten a
     wissen nicht, ob iOS die Ereignisse nachliefert – bitte notieren.)
 34. Berechtigung in den iOS-Einstellungen auf „Nie“ stellen, App öffnen: kein Systemdialog von selbst; Einstellungen › Fahrten
     erkennen zeigt „Standort ist aus“.
+35. Live-Aktivitäten in den iOS-Einstellungen aus: die Aufzeichnung läuft trotzdem (blaue Anzeige), nur ohne Sperrbildschirm-Anzeige –
+    und ohne Fehlermeldung.
+36. Stromsparmodus an: läuft die Aufzeichnung bei gesperrtem Bildschirm eine Stunde lang weiter, ohne Lücke? Akku-Verbrauch der Stunde
+    mit und ohne Stromsparmodus notieren (Einstellungen › Batterie).
 
 ## 12. Was in CI geprüft ist
 

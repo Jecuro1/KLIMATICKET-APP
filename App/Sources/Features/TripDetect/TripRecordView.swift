@@ -87,10 +87,12 @@ struct TripRecordView: View {
 
     @ViewBuilder
     private var statusLine: some View {
-        let lost = (recorder.snapshot?.secondsSinceFix ?? 0) > 20
+        // "Genauer Standort" off: the recording runs but sees nothing usable – it must not say "läuft" in green.
+        let blind = recorder.accuracyIsReduced
+        let lost = blind || (recorder.snapshot?.secondsSinceFix ?? 0) > 20
         HStack(spacing: 5) {
             Circle().fill(lost ? Theme.summit : Theme.pine).frame(width: 7, height: 7)
-            Text(lost ? "GPS-Signal schwach" : "Aufzeichnung läuft")
+            Text(blind ? "Kein genauer Standort" : (lost ? "GPS-Signal schwach" : "Aufzeichnung läuft"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(lost ? Theme.summitText : Theme.positiveText)
         }
@@ -261,7 +263,7 @@ struct TripRecordView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Label("Letzte Aufzeichnung unterbrochen", systemImage: "exclamationmark.triangle.fill").font(.headline).foregroundStyle(Theme.summitText)
-                Text("Die Aufzeichnung von \(Format.relativeDay(started)), \(Format.time(started)) Uhr endete, ohne dass du sie beendet hast – iOS oder du habt die App geschlossen. Die Strecke lag nur im Arbeitsspeicher und ist weg.")
+                Text("Die Aufzeichnung (\(Format.relativeDay(started)), \(Format.time(started)) Uhr) endete, ohne dass du sie beendet hast – iOS oder du habt die App geschlossen. Die Strecke lag nur im Arbeitsspeicher und ist weg.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

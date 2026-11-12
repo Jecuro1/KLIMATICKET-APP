@@ -130,9 +130,11 @@ struct TripDetectSettingsView: View {
 
     @ViewBuilder
     private func activeRows(_ state: TripDetectSettingsState) -> some View {
-        SetRowLabel(title: "Aktiv",
+        // With only an approximate location the feature runs but cannot match a station: "Aktiv" would promise too much.
+        SetRowLabel(title: state.isReducedAccuracy ? "Eingeschränkt" : "Aktiv",
                     subtitle: pendingCount == 0 ? "Vorschläge erscheinen in der Übersicht" : "\(SetFormat.count(pendingCount, "Vorschlag wartet", "Vorschläge warten")) in der Übersicht",
-                    symbol: "checkmark.circle.fill", tint: Theme.pine)
+                    symbol: state.isReducedAccuracy ? "exclamationmark.circle.fill" : "checkmark.circle.fill",
+                    tint: state.isReducedAccuracy ? Theme.dawn : Theme.pine)
             .motionAnimation(Motion.snappy, value: pendingCount)
         SetRowLabel(title: "Gespeichert auf diesem iPhone", subtitle: bufferText(state), symbol: "internaldrive.fill", tint: Theme.dusk)
     }
