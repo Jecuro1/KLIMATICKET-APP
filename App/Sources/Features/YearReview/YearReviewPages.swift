@@ -155,7 +155,7 @@ struct YearReviewSavingsPage: View {
     private func headline(_ verdict: YearReviewText.Verdict) -> String {
         switch verdict {
         case .profit(let amount): amount >= 1 ? "Dein Ticket hat sich gelohnt" : "Dein Ticket hat sich bezahlt"
-        case .remaining: savings.costIsPartial ? "Dein Stand im Zeitraum" : "Dein Weg zum Break-even"
+        case .remaining: "Dein Stand"
         case .valueOnly: "Der Wert deiner Fahrten"
         }
     }
