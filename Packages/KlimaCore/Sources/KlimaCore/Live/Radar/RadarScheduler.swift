@@ -241,11 +241,7 @@ public struct RadarScheduler: Sendable {
         guard let best else { return .wait(until: earliest ?? now.addingTimeInterval(1)) }
 
         // The budget: spacing between two requests, at most `burst` in any `burstWindow` and `perMinute` in any minute.
-        var free = now
-        if let last = sentAt.last { free = max(free, last.addingTimeInterval(config.minGap)) }
-        let recent = sentAt.filter { now.timeIntervalSince($0) < config.burstWindow }
-        if recent.count >= config.burst { free = max(free, recent[recent.count - config.burst].addingTimeInterval(config.burstWindow)) }
-        if sentAt.count >= config.perMinute { free = max(free, sentAt[sentAt.count - config.perMinute].addingTimeInterval(60)) }
+        let free = budgetFreeAt(now: now)
         guard free <= now else { return .wait(until: free) }
 
         sentAt.append(now)
@@ -255,6 +251,35 @@ public struct RadarScheduler: Sendable {
         state.isInFlight = true
         states[best.key] = state
         return .request(best.key)
+    }
+
+    /// When the budget allows the next request: `now` when it does, else the time it will. Spacing between two requests, at most `burst`
+    /// in any `burstWindow` and `perMinute` in any minute. `sentAt` holds only the last minute (the caller prunes it).
+    private func budgetFreeAt(now: Date) -> Date {
+        var free = now
+        if let last = sentAt.last { free = max(free, last.addingTimeInterval(config.minGap)) }
+        let recent = sentAt.filter { now.timeIntervalSince($0) < config.burstWindow }
+        if recent.count >= config.burst { free = max(free, recent[recent.count - config.burst].addingTimeInterval(config.burstWindow)) }
+        if sentAt.count >= config.perMinute { free = max(free, sentAt[sentAt.count - config.perMinute].addingTimeInterval(60)) }
+        return free
+    }
+
+    /// One slot of the radar's budget for a request that is not a tile: the Zeitreise's snapshots (docs/RADAR_TIMETRAVEL.md). nil: the slot
+    /// is taken and the caller sends now; else the time the budget frees one. Counted like a tile request, so the live loop and the
+    /// Zeitreise together never exceed 24 a minute, 4 in 10 seconds and one per second. A pause (rate limit, open circuit) holds this too.
+    public mutating func claimSlot(now: Date) -> Date? {
+        pullBackFutureTimestamps(now: now)
+        sentAt.removeAll { now.timeIntervalSince($0) >= 60 }
+        if let pausedUntil, pausedUntil > now { return pausedUntil }
+        let free = budgetFreeAt(now: now)
+        guard free <= now else { return free }
+        sentAt.append(now)
+        return nil
+    }
+
+    /// The whole radar waits until `time` (a rate limit or an open circuit that a Zeitreise request ran into).
+    public mutating func pause(until time: Date) {
+        pausedUntil = max(pausedUntil ?? .distantPast, time)
     }
 
     /// True when `next(now:)` would send a request now (ignoring the budget). The manual refresh uses it to know when it is done.
