@@ -325,9 +325,11 @@ struct TripCandidateCard: View {
         "\(Format.relativeDay(candidate.departedAt)), \(Format.time(candidate.departedAt))–\(Format.time(candidate.arrivedAt))"
     }
 
-    /// "Zug · 63 km" – the mode's name next to the distance, so the line never starts with a dot.
+    /// "Zug · 38 km" – the mode's name next to the distance the ride will be saved with (the editor's), so the card, the edit sheet and
+    /// the Fahrten list say the same number. Until the stations are resolved only the straight line is known, and says so.
     private var modeText: String {
-        candidate.straightKm > 0 ? "\(candidate.mode.displayName) · \(Format.km(candidate.straightKm))" : candidate.mode.displayName
+        if let facts { return "\(candidate.mode.displayName) · \(Format.km(facts.distanceKm))" }
+        return candidate.straightKm > 0 ? "\(candidate.mode.displayName) · \(Format.km(candidate.straightKm)) Luftlinie" : candidate.mode.displayName
     }
 
     // MARK: Value

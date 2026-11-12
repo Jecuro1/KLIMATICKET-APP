@@ -323,7 +323,12 @@ struct TripRecordView: View {
         let center = DetectionGeo.lerp(first, last, 0.5)
         let reach = max(2, min(40, max(first.distanceKm(to: last), 1) / 2 + 2))
         let hits = app.stations.nearest(to: center, limit: 150, maxKm: reach)
-        nearby = Array(hits.map(\.station).filter(StationMatcher.isRailLike).prefix(24))
+        // Only the stations along the ride (within 3 km of the line so far): a branch line ten kilometres to the north is noise on this
+        // map. The stations ahead appear as the line reaches them.
+        let samples = Array(stride(from: 0, to: track.count, by: max(1, track.count / 60)).map { track[$0] }) + [last]
+        let corridor = 3.0
+        nearby = Array(hits.map(\.station).filter(StationMatcher.isRailLike)
+            .filter { station in samples.contains { $0.distanceKm(to: station.location) <= corridor } }.prefix(24))
     }
 
     // MARK: Formatting
@@ -402,31 +407,67 @@ struct RecordMapCard: View {
             ZStack {
                 grid
                 Canvas { context, size in
-                    // Important stations first, so their names win where labels would overlap.
+                    // Important stations first, so their names win where labels would compete.
                     let ordered = stations.sorted { a, b in
                         if (a.id == current) != (b.id == current) { return a.id == current }
                         return a.importance > b.importance
                     }
+                    let projected: [(station: Station, point: CGPoint)] = ordered.compactMap { station in
+                        projection.point(for: station.location).map { (station, $0) }
+                    }
+                    func radius(_ station: Station) -> CGFloat {
+                        station.id == current ? 6 : (StationMatcher.isRailLike(station) ? 4.5 : 2.5)
+                    }
+                    for (station, point) in projected {
+                        let r = radius(station)
+                        let dot = Path(ellipseIn: CGRect(x: point.x - r, y: point.y - r, width: r * 2, height: r * 2))
+                        let isRail = StationMatcher.isRailLike(station)
+                        context.fill(dot, with: .color(station.id == current ? Theme.pine : (isRail ? Theme.textSecondary : Theme.textTertiary)))
+                    }
+                    // A name goes where it covers neither another name, nor a dot, nor the line: four places around its dot, else none
+                    // (the current station is named in the card below, too).
+                    let line = track.compactMap { projection.point(for: $0) }
+                    var obstacles: [CGRect] = []
+                    for (index, p) in line.enumerated() {
+                        obstacles.append(CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6))
+                        guard index > 0 else { continue }
+                        let q = line[index - 1]
+                        let steps = Int(hypot(p.x - q.x, p.y - q.y) / 5)
+                        guard steps > 1 else { continue }
+                        for k in 1..<steps {
+                            let t = CGFloat(k) / CGFloat(steps)
+                            obstacles.append(CGRect(x: q.x + (p.x - q.x) * t - 3, y: q.y + (p.y - q.y) * t - 3, width: 6, height: 6))
+                        }
+                    }
+                    // The start dot and the pulsing head are bigger than the line.
+                    for end in [line.first, line.last].compactMap({ $0 }) {
+                        obstacles.append(CGRect(x: end.x - 10, y: end.y - 10, width: 20, height: 20))
+                    }
+                    var dots: [(id: String, rect: CGRect)] = []
+                    for (station, point) in projected {
+                        let reach = radius(station) + 1
+                        dots.append((station.id, CGRect(x: point.x - reach, y: point.y - reach, width: reach * 2, height: reach * 2)))
+                    }
+                    let bounds = CGRect(origin: .zero, size: size).insetBy(dx: 4, dy: 3)
                     var placed: [CGRect] = []
-                    for station in ordered {
-                        guard let point = projection.point(for: station.location) else { continue }
-                        let rail = StationMatcher.isRailLike(station)
-                        let isCurrent = station.id == current
-                        let radius: CGFloat = isCurrent ? 6 : (rail ? 4.5 : 2.5)
-                        let dot = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
-                        context.fill(dot, with: .color(isCurrent ? Theme.pine : (rail ? Theme.textSecondary : Theme.textTertiary)))
-                        // At most eight names, none on top of another: the important ones (and the current one) win.
-                        guard rail, placed.count < 8 else { continue }
+                    for (station, point) in projected where StationMatcher.isRailLike(station) && placed.count < 8 {
                         let name = station.name.count > 20 ? String(station.name.prefix(19)) + "…" : station.name
                         let label = context.resolve(Text(name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
                         let width = label.measure(in: size).width
-                        // A name that would run off the card goes to the left of its dot.
-                        let fitsRight = point.x + radius + 4 + width < size.width - 6
-                        let x = fitsRight ? point.x + radius + 4 : point.x - radius - 4 - width
-                        let rect = CGRect(x: x, y: point.y - 14, width: width, height: 13).insetBy(dx: -5, dy: -3)
-                        guard !placed.contains(where: { $0.intersects(rect) }) else { continue }
-                        placed.append(rect)
-                        context.draw(label, at: CGPoint(x: x, y: point.y - 7.5), anchor: .leading)
+                        let r = radius(station)
+                        let right = point.x + r + 4, left = point.x - r - 4 - width
+                        let candidates = [CGPoint(x: right, y: point.y - 14), CGPoint(x: right, y: point.y + 2),
+                                          CGPoint(x: left, y: point.y - 14), CGPoint(x: left, y: point.y + 2)]
+                        for origin in candidates {
+                            let rect = CGRect(x: origin.x, y: origin.y, width: width, height: 12).insetBy(dx: -3, dy: -2)
+                            guard bounds.contains(rect),
+                                  !placed.contains(where: { $0.intersects(rect) }),
+                                  !dots.contains(where: { $0.id != station.id && $0.rect.intersects(rect) }),
+                                  !obstacles.contains(where: { $0.intersects(rect) }) else { continue }
+                            placed.append(rect)
+                            context.draw(label, at: CGPoint(x: origin.x, y: origin.y + 6), anchor: .leading)
+                            break
+                        }
                     }
                 }
                 SketchLine(points: track.compactMap { projection.point(for: $0) })
@@ -452,7 +493,7 @@ struct RecordMapCard: View {
                 }
             }
         }
-        .frame(height: 300)
+        .frame(height: 250)
         .clipShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(colorScheme == .dark ? Color.black.opacity(0.28) : Color.white.opacity(0.55))
