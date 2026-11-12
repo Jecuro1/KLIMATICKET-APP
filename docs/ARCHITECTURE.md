@@ -135,6 +135,11 @@ Commit-Nachricht oder der Eingabe `screens` eines manuellen Laufs begrenzt die L
   eine Go-Datei) mit `/usr/bin/sample` (1 ms), `scripts/perf_profile.py` nennt die Hauptthread-Hotspots je Phase
   (xctrace war im CI-Simulator unbrauchbar: `--launch` mehrdeutig, Aufnahmen endeten nicht). Alles →
   `$GITHUB_STEP_SUMMARY` und Artefakt `perf-<run>` (`perf-summary.md/.json` = Baseline, `scripts/perf_summary.py`).
+  Die Bildschirme hinter dem Scotty-Ersatz (Fahrplan, Verbindungen, Verbindungsdetail, Zug-Radar, Karte mit Ebenen, Atlas,
+  Meine Routen, Haltestelle) öffnet die App selbst (`-KBPerfPresent <name>`, `PerfFeature` in `PerfFeatureScreens.swift`, nur
+  Demo-Daten und Demo-Fahrplan, kein ÖBB-Zugriff; `FeaturePerfTests` wischen über das Fenster, Karten-Drags sieht ein
+  passiver Pan-Beobachter des Monitors). Zahlen, Messgröße und Bewertungsband: [PERF_BASELINE.md](PERF_BASELINE.md);
+  zwei Läufe nebeneinander: `python3 scripts/perf_compare.py <vorher>.json <nachher>.json`.
 
 ## Updates
 

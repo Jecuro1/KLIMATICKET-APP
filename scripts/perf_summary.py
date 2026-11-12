@@ -78,13 +78,21 @@ def screen_label(test):
     return f"{label} (+1 500 Fahrten)" if heavy else label
 
 
+# Hitch time ratio bands of the CI runner (docs/PERF_BASELINE.md §2). Apple's absolute bands (< 5 good, 5–10 noticeable,
+# ≥ 10 critical ms/s) are meant for a device; on the CI simulator (software rendering, shared VM) even the quietest screen
+# measures 14–37 ms/s, so every row would be "critical". These two limits sit in the gaps of the measured distribution
+# (run 387: nothing between 60.1 and 93.8, nothing between 216.3 and 291.1) and rank the screens on this runner only.
+BAND_GOOD = 60.0
+BAND_CRITICAL = 250.0
+
+
 def rating(ratio):
-    """Apple's guidance for hitch time ratios: < 5 ms/s good, 5–10 noticeable, ≥ 10 critical."""
+    """gut up to BAND_GOOD ms/s, spürbar up to BAND_CRITICAL, kritisch above (relative to the CI runner, see above)."""
     if ratio is None:
         return "–"
-    if ratio < 5:
+    if ratio <= BAND_GOOD:
         return "gut"
-    if ratio < 10:
+    if ratio <= BAND_CRITICAL:
         return "spürbar"
     return "kritisch"
 
@@ -329,7 +337,7 @@ def in_app_markdown(app, trace=None):
             marks = " → ".join(f"{name} {ms:.0f}" for name, ms in sorted(data["marks"].items(), key=lambda kv: kv[1] or 0) if ms is not None)
             lines += [f"LaunchTrace `{run}` ({data['launches']} Starts, Median ms seit App.init): {marks}", ""]
     if app["scroll"]:
-        lines += ["### Scrollen (von der App gemessen: Hitch Time Ratio = ms Ruckeln pro s Scrollen; < 5 gut, 5–10 spürbar, ≥ 10 kritisch)", "",
+        lines += ["### Scrollen (von der App gemessen: Hitch Time Ratio = ms Ruckeln pro s Scrollen; Band dieses Runners: ≤ 60 gut, bis 250 spürbar, darüber kritisch, docs/PERF_BASELINE.md §2)", "",
                   "| Bildschirm | Daten | Quelle | Hitch-Ratio | Hitches (≥ 3 Frames) | längster Frame | Bildrate | Scrollzeit | Bewertung |",
                   "|---|---|---|---:|---:|---:|---:|---:|---|"]
         for r in app["scroll"]:
@@ -377,7 +385,7 @@ def markdown(summary, diag=None):
     if has_app:
         lines += in_app_markdown(app, (diag or {}).get("launchTrace"))
     if any(s["hitchRatio"] is not None for s in summary["scroll"]):
-        lines += ["### Scrollen laut XCTest (Hitch Time Ratio, ms Ruckeln pro s Scrollen; < 5 gut, 5–10 spürbar, ≥ 10 kritisch)", "",
+        lines += ["### Scrollen laut XCTest (Hitch Time Ratio, ms Ruckeln pro s Scrollen; Band dieses Runners: ≤ 60 gut, bis 250 spürbar, darüber kritisch)", "",
                   "| Bildschirm | Ziehen + Auslaufen | nur Auslaufen | Hitches | Hitch-Dauer | Bildrate | Bewertung |",
                   "|---|---:|---:|---:|---:|---:|---|"]
         for s in summary["scroll"]:

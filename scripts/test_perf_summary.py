@@ -30,7 +30,7 @@ class PerfSummaryTests(unittest.TestCase):
         self.assertAlmostEqual(trips["hitchRatio"], 12.5)
         self.assertAlmostEqual(trips["decelerationHitchRatio"], 3.0)
         self.assertAlmostEqual(trips["frameRate"], 58.0)
-        self.assertEqual(trips["rating"], "kritisch")
+        self.assertEqual(trips["rating"], "gut")   # 12.5 ms/s: far below the CI runner's 60 ms/s limit
         heavy = next(s for s in summary["scroll"] if s["test"] == "testScrollStatisticsHeavy")
         self.assertEqual(heavy["screen"], "Statistik (+1 500 Fahrten)")
         self.assertEqual(heavy["rating"], "gut")
@@ -45,6 +45,17 @@ class PerfSummaryTests(unittest.TestCase):
         self.assertIn("| Fahrten | 12.5 ms/s", text)
         self.assertIn("Statistik (+1 500 Fahrten)", text)
         self.assertIn("Fehlgeschlagen", text)
+
+    def test_rating_uses_the_ci_runner_band(self):
+        # docs/PERF_BASELINE.md §2: Apple's device bands (5 / 10 ms/s) would call every simulator row critical.
+        self.assertEqual(perf_summary.rating(None), "–")
+        self.assertEqual(perf_summary.rating(13.7), "gut")
+        self.assertEqual(perf_summary.rating(60.0), "gut")
+        self.assertEqual(perf_summary.rating(60.1), "spürbar")
+        self.assertEqual(perf_summary.rating(216.3), "spürbar")
+        self.assertEqual(perf_summary.rating(250.0), "spürbar")
+        self.assertEqual(perf_summary.rating(291.1), "kritisch")
+        self.assertEqual((perf_summary.BAND_GOOD, perf_summary.BAND_CRITICAL), (60.0, 250.0))
 
     def test_feature_screens_are_listed_with_clock_and_memory(self):
         log = ("Test Case '-[KlimaBilanzPerfTests.RadarPerfTests testFeatureRadar]' measured [Clock Monotonic Time, s] average: 9.250, "
@@ -115,7 +126,7 @@ class PerfSummaryTests(unittest.TestCase):
         row = app["scroll"][0]
         self.assertEqual(row["variant"], "+1 500 Fahrten")
         self.assertAlmostEqual(row["hitchRatio"], 12.0)
-        self.assertEqual(row["rating"], "kritisch")
+        self.assertEqual(row["rating"], "gut")
         self.assertEqual(app["transitions"][0]["firstFrameMs"], 2400)
         self.assertEqual(app["launch"][0]["processToFirstFrameMs"], 1400)
         self.assertEqual(app["hangs"][0]["variant"], "+1 500 Fahrten")

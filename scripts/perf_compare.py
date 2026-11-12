@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Screen-by-screen comparison of two perf runs (perf-summary.json of the CI job "perf", scripts/perf_summary.py).
 
-Usage: perf_compare.py <before perf-summary.json> <after perf-summary.json> [--tolerance 0.15] [--fail-on-regress]
+Usage: perf_compare.py <before perf-summary.json> <after perf-summary.json> [--tolerance 0.5] [--fail-on-regress]
 
 Prints Markdown (for docs/PERF_BASELINE.md): hitch time ratio of every screen and source, the time to the first frame
 when a screen opens, the longest frame, the launch and the memory peak – before, after, difference and a verdict.
 
-Verdict rules (the simulator is noisy, a run differs from the next one): a figure counts as *worse* / *better* only when it
-moved by more than the tolerance (default 15 %) AND by more than a floor in absolute terms (hitch ratio 1 ms/s, frame times
-20 ms, memory 5 MB); everything else is *gleich*. A screen that is only in one of the runs is listed as new / entfernt.
+Verdict rules: the CI simulator is noisy – two runs of the same code (runs 383 and 387, docs/PERF_BASELINE.md §8) differed by
+up to 50 % on the same screen. A figure therefore counts as *worse* / *better* only when it moved by more than the tolerance
+(default 0.5 = 50 %) AND by more than a floor in absolute terms (hitch ratio 1 ms/s, frame times 20 ms, memory 5 MB);
+everything else is *gleich*. Smaller effects need several runs or a device. A screen that is only in one of the runs is listed as new / entfernt.
 --fail-on-regress exits 1 when any figure is worse (the acceptance rule: no screen worse than the baseline).
 """
 import argparse
@@ -77,7 +78,10 @@ def table(title, header, rows, digits=1, unit=""):
     return lines
 
 
-def compare(before, after, tolerance=0.15):
+DEFAULT_TOLERANCE = 0.5
+
+
+def compare(before, after, tolerance=DEFAULT_TOLERANCE):
     """Markdown lines and the list of worse figures."""
     lines = []
     worse = []
@@ -113,7 +117,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("before")
     parser.add_argument("after")
-    parser.add_argument("--tolerance", type=float, default=0.15)
+    parser.add_argument("--tolerance", type=float, default=DEFAULT_TOLERANCE)
     parser.add_argument("--fail-on-regress", action="store_true")
     args = parser.parse_args(argv)
     lines, worse = compare(load(args.before), load(args.after), args.tolerance)

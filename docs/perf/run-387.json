@@ -1,0 +1,1180 @@
+{
+ "meta": {
+  "what": "Second perf run (the new feature-screen coverage, commit 9601e35), trimmed like baseline-383.json",
+  "run": "https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/43239296214",
+  "commit": "9601e352a30b46c5e067fc4b0f687e598f3ffed9",
+  "date": "2026-11-12",
+  "runner": "macos-26 (GitHub-hosted, arm64 VM)",
+  "xcode": "26.6",
+  "simulator": "iPhone 17 Pro, iOS 26.5",
+  "configuration": "Release (scheme KlimaBilanzPerf)"
+ },
+ "summary": {
+  "launch": {
+   "test": "testLaunch",
+   "seconds": 4.402,
+   "rsd": 0.218,
+   "values": [
+    4.390114,
+    4.40168,
+    4.399507,
+    4.416813
+   ]
+  },
+  "scroll": [
+   {
+    "test": "testScrollGipfelbuch",
+    "screen": "Gipfelbuch",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollOverviewHeavy",
+    "screen": "Übersicht (+1 500 Fahrten)",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollStatisticsHeavy",
+    "screen": "Statistik (+1 500 Fahrten)",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollTicketHeavy",
+    "screen": "Ticket (+1 500 Fahrten)",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollTripsHeavy",
+    "screen": "Fahrten (+1 500 Fahrten)",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollOverview",
+    "screen": "Übersicht",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollStatistics",
+    "screen": "Statistik",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollTicket",
+    "screen": "Ticket",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   },
+   {
+    "test": "testScrollTrips",
+    "screen": "Fahrten",
+    "hitchRatio": null,
+    "hitchRatioRSD": null,
+    "decelerationHitchRatio": null,
+    "hitches": null,
+    "hitchesTotalMs": null,
+    "frameRate": null,
+    "rating": "–"
+   }
+  ],
+  "tabTour": [
+   {
+    "test": "testTabSwitchingHeavy",
+    "label": "+1 500 Fahrten",
+    "clockSeconds": 17.823,
+    "cpuSeconds": 10.584,
+    "peakMemoryMB": 458.699390625,
+    "memoryDeltaMB": 1.99596875
+   },
+   {
+    "test": "testTabSwitching",
+    "label": "Demo-Jahr",
+    "clockSeconds": 14.393,
+    "cpuSeconds": 7.413,
+    "peakMemoryMB": 369.4711875,
+    "memoryDeltaMB": 2.475984375
+   }
+  ],
+  "features": [
+   {
+    "test": "testFeatureAtlas",
+    "screen": "Atlas",
+    "clockSeconds": 17.049,
+    "peakMemoryMB": 301.1748125,
+    "status": "passed"
+   },
+   {
+    "test": "testFeaturePlannerDetail",
+    "screen": "Verbindungsdetail",
+    "clockSeconds": 21.901,
+    "peakMemoryMB": 197.2188125,
+    "status": "passed"
+   },
+   {
+    "test": "testFeaturePlanner",
+    "screen": "Fahrplan",
+    "clockSeconds": 19.06,
+    "peakMemoryMB": 137.1704375,
+    "status": "passed"
+   },
+   {
+    "test": "testFeaturePlannerResults",
+    "screen": "Verbindungen",
+    "clockSeconds": 48.406,
+    "peakMemoryMB": 195.706625,
+    "status": "passed"
+   },
+   {
+    "test": "testFeatureRadarLayers",
+    "screen": "Karte mit Ebenen",
+    "clockSeconds": 16.196,
+    "peakMemoryMB": 292.3468125,
+    "status": "passed"
+   },
+   {
+    "test": "testFeatureRadar",
+    "screen": "Zug-Radar",
+    "clockSeconds": 14.5,
+    "peakMemoryMB": 288.2148125,
+    "status": "passed"
+   },
+   {
+    "test": "testFeatureRoutes",
+    "screen": "Meine Routen",
+    "clockSeconds": 23.87,
+    "peakMemoryMB": 131.578375,
+    "status": "passed"
+   },
+   {
+    "test": "testFeatureStop",
+    "screen": "Haltestelle",
+    "clockSeconds": 35.258,
+    "peakMemoryMB": 205.9865625,
+    "status": "passed"
+   }
+  ],
+  "failed": [],
+  "testCount": 20
+ },
+ "appDiagnostics": {
+  "timings": {
+   "Analytics.compute": {
+    "count": 25,
+    "totalMs": 192.43162100000004,
+    "maxMs": 35.991416
+   },
+   "Analytics.make": {
+    "count": 151,
+    "totalMs": 1194.1410839999996,
+    "maxMs": 93.717625
+   }
+  },
+  "inApp": {
+   "scroll": [
+    {
+     "screen": "Atlas",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 368.01877656995833,
+     "rating": "kritisch",
+     "fps": 37.46418739225852,
+     "segments": 13,
+     "frames": 187,
+     "seconds": 4.991433500000085,
+     "hitches": 73,
+     "hitchMs": 1836.9412500003364,
+     "severeHitches": 16,
+     "longestFrameMs": 82.00345833347455,
+     "distancePt": 2835.086750702197
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 93.83671911786368,
+     "rating": "kritisch",
+     "fps": 54.36979685294054,
+     "segments": 2,
+     "frames": 20,
+     "seconds": 0.3678512916665113,
+     "hitches": 1,
+     "hitchMs": 34.51795833325377,
+     "severeHitches": 1,
+     "longestFrameMs": 51.18462499990528,
+     "distancePt": 868.6666666666666
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 160.20783156380816,
+     "rating": "kritisch",
+     "fps": 50.31575403665726,
+     "segments": 56,
+     "frames": 1479,
+     "seconds": 29.39437216666738,
+     "hitches": 219,
+     "hitchMs": 4709.208625001338,
+     "severeHitches": 22,
+     "longestFrameMs": 58.00704166676951,
+     "distancePt": 16937.999999999996
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "+1 500 Fahrten",
+     "source": "touch",
+     "hitchRatio": 139.13232086414263,
+     "rating": "kritisch",
+     "fps": 51.41690490471625,
+     "segments": 29,
+     "frames": 3107,
+     "seconds": 60.4275968333327,
+     "hitches": 348,
+     "hitchMs": 8407.431791664294,
+     "severeHitches": 37,
+     "longestFrameMs": 184.89904166654014,
+     "distancePt": 19374.333333333343
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 556.1599386466085,
+     "rating": "kritisch",
+     "fps": 26.241849364937366,
+     "segments": 6,
+     "frames": 366,
+     "seconds": 13.947187750000012,
+     "hitches": 215,
+     "hitchMs": 7756.867083332736,
+     "severeHitches": 100,
+     "longestFrameMs": 137.16491666673392,
+     "distancePt": 34063.0
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 172.64561522613013,
+     "rating": "kritisch",
+     "fps": 49.5418782377271,
+     "segments": 29,
+     "frames": 3044,
+     "seconds": 61.442967208335176,
+     "hitches": 447,
+     "hitchMs": 10607.858875001966,
+     "severeHitches": 53,
+     "longestFrameMs": 224.94604166695353,
+     "distancePt": 19740.999999999996
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 30.706868686849123,
+     "rating": "kritisch",
+     "fps": 58.18181818180696,
+     "segments": 5,
+     "frames": 96,
+     "seconds": 1.6500000000003183,
+     "hitches": 3,
+     "hitchMs": 50.66633333331083,
+     "severeHitches": 0,
+     "longestFrameMs": 39.14341666677501,
+     "distancePt": 4021.666666666667
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 13.656478060031388,
+     "rating": "kritisch",
+     "fps": 59.13394919168613,
+     "segments": 19,
+     "frames": 1707,
+     "seconds": 28.86666666666656,
+     "hitches": 18,
+     "hitchMs": 394.21699999957127,
+     "severeHitches": 2,
+     "longestFrameMs": 75.00445833352387,
+     "distancePt": 10277.666666666666
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 60.1083077824532,
+     "rating": "kritisch",
+     "fps": 56.33074023039414,
+     "segments": 6,
+     "frames": 531,
+     "seconds": 9.426469416666578,
+     "hitches": 25,
+     "hitchMs": 566.6091249988767,
+     "severeHitches": 5,
+     "longestFrameMs": 78.8569583332901,
+     "distancePt": 23336.0
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 49.13365736697359,
+     "rating": "kritisch",
+     "fps": 57.0323529133345,
+     "segments": 79,
+     "frames": 4464,
+     "seconds": 78.27136304166561,
+     "hitches": 213,
+     "hitchMs": 3845.7583333351977,
+     "severeHitches": 0,
+     "longestFrameMs": 48.4387083333786,
+     "distancePt": 26313.333333333336
+    },
+    {
+     "screen": "Karte mit Ebenen",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 291.09804123426045,
+     "rating": "kritisch",
+     "fps": 42.258271566969924,
+     "segments": 15,
+     "frames": 249,
+     "seconds": 5.89233754166662,
+     "hitches": 64,
+     "hitchMs": 1715.2479166702506,
+     "severeHitches": 18,
+     "longestFrameMs": 114.69045833337077,
+     "distancePt": 3298.470781794109
+    },
+    {
+     "screen": "Meine Routen",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 93.8586939177976,
+     "rating": "kritisch",
+     "fps": 54.07302564404453,
+     "segments": 57,
+     "frames": 1770,
+     "seconds": 32.733511375000035,
+     "hitches": 137,
+     "hitchMs": 3072.324625000874,
+     "severeHitches": 14,
+     "longestFrameMs": 62.98395833346149,
+     "distancePt": 19990.333333333332
+    },
+    {
+     "screen": "Statistik",
+     "variant": "+1 500 Fahrten",
+     "source": "touch",
+     "hitchRatio": 345.178738804566,
+     "rating": "kritisch",
+     "fps": 38.92550189815883,
+     "segments": 19,
+     "frames": 1724,
+     "seconds": 44.28973079166758,
+     "hitches": 612,
+     "hitchMs": 15287.873416661569,
+     "severeHitches": 105,
+     "longestFrameMs": 294.3590416666666,
+     "distancePt": 13081.666666666664
+    },
+    {
+     "screen": "Statistik",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 329.6653315365979,
+     "rating": "kritisch",
+     "fps": 40.04152209521503,
+     "segments": 6,
+     "frames": 582,
+     "seconds": 14.53491199999985,
+     "hitches": 163,
+     "hitchMs": 4791.656583335225,
+     "severeHitches": 37,
+     "longestFrameMs": 227.0507916666702,
+     "distancePt": 35270.0
+    },
+    {
+     "screen": "Statistik",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 311.62480909906424,
+     "rating": "kritisch",
+     "fps": 40.9995875183903,
+     "segments": 18,
+     "frames": 1703,
+     "seconds": 41.53700324999909,
+     "hitches": 572,
+     "hitchMs": 12943.960708328177,
+     "severeHitches": 87,
+     "longestFrameMs": 84.44120833337365,
+     "distancePt": 12327.999999999996
+    },
+    {
+     "screen": "Ticket",
+     "variant": "+1 500 Fahrten",
+     "source": "touch",
+     "hitchRatio": 174.67421514014336,
+     "rating": "kritisch",
+     "fps": 49.458322929988505,
+     "segments": 19,
+     "frames": 1986,
+     "seconds": 40.155021083333395,
+     "hitches": 298,
+     "hitchMs": 7014.04679166717,
+     "severeHitches": 31,
+     "longestFrameMs": 151.5048333330924,
+     "distancePt": 12565.333333333336
+    },
+    {
+     "screen": "Ticket",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 118.29176859509113,
+     "rating": "kritisch",
+     "fps": 52.99011519164139,
+     "segments": 6,
+     "frames": 197,
+     "seconds": 3.7176744999994753,
+     "hitches": 22,
+     "hitchMs": 439.77029166580905,
+     "severeHitches": 2,
+     "longestFrameMs": 51.45937499992215,
+     "distancePt": 9814.0
+    },
+    {
+     "screen": "Ticket",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 216.31655057604092,
+     "rating": "kritisch",
+     "fps": 46.949601107164256,
+     "segments": 19,
+     "frames": 1968,
+     "seconds": 41.91728904166757,
+     "hitches": 352,
+     "hitchMs": 9067.40337499241,
+     "severeHitches": 55,
+     "longestFrameMs": 167.01862500030984,
+     "distancePt": 12688.000000000002
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 100.63300788059307,
+     "rating": "kritisch",
+     "fps": 54.24671873865932,
+     "segments": 6,
+     "frames": 96,
+     "seconds": 1.769692291666388,
+     "hitches": 10,
+     "hitchMs": 178.08945833348844,
+     "severeHitches": 0,
+     "longestFrameMs": 37.80733333337594,
+     "distancePt": 4344.0
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 188.41987162999072,
+     "rating": "kritisch",
+     "fps": 48.60754904306344,
+     "segments": 65,
+     "frames": 2203,
+     "seconds": 45.32217820833284,
+     "hitches": 279,
+     "hitchMs": 8539.599000005637,
+     "severeHitches": 52,
+     "longestFrameMs": 169.0585416668,
+     "distancePt": 23644.666666666675
+    },
+    {
+     "screen": "Verbindungsdetail",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 19.7145915032781,
+     "rating": "kritisch",
+     "fps": 58.823529411771,
+     "segments": 6,
+     "frames": 150,
+     "seconds": 2.549999999999727,
+     "hitches": 2,
+     "hitchMs": 50.272208333353774,
+     "severeHitches": 1,
+     "longestFrameMs": 50.272208333353774,
+     "distancePt": 6459.999999999999
+    },
+    {
+     "screen": "Verbindungsdetail",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 149.92716115864522,
+     "rating": "kritisch",
+     "fps": 50.858202143494864,
+     "segments": 53,
+     "frames": 1899,
+     "seconds": 37.33910991666653,
+     "hitches": 219,
+     "hitchMs": 5598.146749996431,
+     "severeHitches": 29,
+     "longestFrameMs": 166.04687500012005,
+     "distancePt": 17534.999999999993
+    },
+    {
+     "screen": "Zug-Radar",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 370.3536717683491,
+     "rating": "kritisch",
+     "fps": 37.193361291259045,
+     "segments": 29,
+     "frames": 419,
+     "seconds": 11.265451291665613,
+     "hitches": 144,
+     "hitchMs": 4172.201249995851,
+     "severeHitches": 52,
+     "longestFrameMs": 92.32999999994718,
+     "distancePt": 6326.936004772977
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "+1 500 Fahrten",
+     "source": "touch",
+     "hitchRatio": 179.77458000339047,
+     "rating": "kritisch",
+     "fps": 49.06005083027443,
+     "segments": 19,
+     "frames": 1570,
+     "seconds": 32.001597500000344,
+     "hitches": 255,
+     "hitchMs": 5753.073750000112,
+     "severeHitches": 23,
+     "longestFrameMs": 147.10079166661671,
+     "distancePt": 11419.33333333333
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "+1 500 Fahrten",
+     "source": "tour",
+     "hitchRatio": 190.74548295005016,
+     "rating": "kritisch",
+     "fps": 48.165760538258226,
+     "segments": 6,
+     "frames": 100,
+     "seconds": 2.076163625000163,
+     "hitches": 16,
+     "hitchMs": 396.0188333339829,
+     "severeHitches": 1,
+     "longestFrameMs": 95.72558333343295,
+     "distancePt": 5074.0
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "Demo-Jahr",
+     "source": "touch",
+     "hitchRatio": 188.59617221965155,
+     "rating": "kritisch",
+     "fps": 48.704593178438955,
+     "segments": 19,
+     "frames": 1527,
+     "seconds": 31.352279125000223,
+     "hitches": 253,
+     "hitchMs": 5912.919833337128,
+     "severeHitches": 29,
+     "longestFrameMs": 167.3375833333921,
+     "distancePt": 11734.66666666666
+    }
+   ],
+   "transitions": [
+    {
+     "to": "Atlas",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 2267.1522916666618,
+     "firstFrameMaxMs": 2267.1522916666618,
+     "longestFrameMs": 389.60024999983034,
+     "hitchMs": 1367.4468750000415
+    },
+    {
+     "to": "Atlas",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 1729.8173750000387,
+     "firstFrameMaxMs": 1729.8173750000387,
+     "longestFrameMs": 542.2294583333951,
+     "hitchMs": 1380.90491666685
+    },
+    {
+     "to": "Fahrplan",
+     "variant": "+1 500 Fahrten",
+     "count": 3,
+     "firstFrameMs": 866.3036250000005,
+     "firstFrameMaxMs": 1420.9864583333456,
+     "longestFrameMs": 97.11508333316488,
+     "hitchMs": 345.13654166676133
+    },
+    {
+     "to": "Fahrplan",
+     "variant": "Demo-Jahr",
+     "count": 3,
+     "firstFrameMs": 1036.5339583336208,
+     "firstFrameMaxMs": 1248.1196250000721,
+     "longestFrameMs": 653.5024166669245,
+     "hitchMs": 157.76362500037067
+    },
+    {
+     "to": "Fahrten",
+     "variant": "+1 500 Fahrten",
+     "count": 7,
+     "firstFrameMs": 1617.356749999999,
+     "firstFrameMaxMs": 2564.02545833339,
+     "longestFrameMs": 129.11645833355578,
+     "hitchMs": 183.60620833300345
+    },
+    {
+     "to": "Fahrten",
+     "variant": "Demo-Jahr",
+     "count": 6,
+     "firstFrameMs": 752.9302291666227,
+     "firstFrameMaxMs": 1976.8247083334245,
+     "longestFrameMs": 227.85654166682434,
+     "hitchMs": 143.3429791668459
+    },
+    {
+     "to": "Gipfelbuch",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 945.2774166666131,
+     "firstFrameMaxMs": 945.2774166666131,
+     "longestFrameMs": 146.88500000011118,
+     "hitchMs": 741.4137499995377
+    },
+    {
+     "to": "Gipfelbuch",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 1216.7836666667426,
+     "firstFrameMaxMs": 1216.7836666667426,
+     "longestFrameMs": 1450.051250000115,
+     "hitchMs": 1677.9537500001425
+    },
+    {
+     "to": "Haltestelle",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 3668.970791666652,
+     "firstFrameMaxMs": 3668.970791666652,
+     "longestFrameMs": 1397.6506249998693,
+     "hitchMs": 1507.6142916666413
+    },
+    {
+     "to": "Haltestelle",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 1031.8182916666956,
+     "firstFrameMaxMs": 1031.8182916666956,
+     "longestFrameMs": 171.69504166668048,
+     "hitchMs": 827.7577083326833
+    },
+    {
+     "to": "Karte mit Ebenen",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 941.9845833333511,
+     "firstFrameMaxMs": 941.9845833333511,
+     "longestFrameMs": 764.1113749998567,
+     "hitchMs": 1366.7699999998604
+    },
+    {
+     "to": "Karte mit Ebenen",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 862.688041666388,
+     "firstFrameMaxMs": 862.688041666388,
+     "longestFrameMs": 986.9957916666863,
+     "hitchMs": 1429.3988750005155
+    },
+    {
+     "to": "Meine Routen",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 346.8605416665014,
+     "firstFrameMaxMs": 346.8605416665014,
+     "longestFrameMs": 28.34129166672028,
+     "hitchMs": 11.674625000068772
+    },
+    {
+     "to": "Meine Routen",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 546.3706666669168,
+     "firstFrameMaxMs": 546.3706666669168,
+     "longestFrameMs": 194.90741666641043,
+     "hitchMs": 239.04729166497418
+    },
+    {
+     "to": "Statistik",
+     "variant": "+1 500 Fahrten",
+     "count": 7,
+     "firstFrameMs": 2478.358124999886,
+     "firstFrameMaxMs": 7928.946708333342,
+     "longestFrameMs": 1070.9078750001026,
+     "hitchMs": 506.874791667542
+    },
+    {
+     "to": "Statistik",
+     "variant": "Demo-Jahr",
+     "count": 6,
+     "firstFrameMs": 1572.6277083335845,
+     "firstFrameMaxMs": 5000.399125000058,
+     "longestFrameMs": 359.3405833335055,
+     "hitchMs": 426.8136041669095
+    },
+    {
+     "to": "Ticket",
+     "variant": "+1 500 Fahrten",
+     "count": 7,
+     "firstFrameMs": 1773.041208333325,
+     "firstFrameMaxMs": 3590.049041666589,
+     "longestFrameMs": 766.0135000000992,
+     "hitchMs": 783.333333333303
+    },
+    {
+     "to": "Ticket",
+     "variant": "Demo-Jahr",
+     "count": 6,
+     "firstFrameMs": 914.43047916664,
+     "firstFrameMaxMs": 2452.681875000053,
+     "longestFrameMs": 747.8024166666728,
+     "hitchMs": 686.3911874997939
+    },
+    {
+     "to": "Verbindungen",
+     "variant": "+1 500 Fahrten",
+     "count": 2,
+     "firstFrameMs": 631.6007083332806,
+     "firstFrameMaxMs": 692.5292083333261,
+     "longestFrameMs": 1101.8926250001186,
+     "hitchMs": 1031.1972083333103
+    },
+    {
+     "to": "Verbindungen",
+     "variant": "Demo-Jahr",
+     "count": 2,
+     "firstFrameMs": 375.77168749999146,
+     "firstFrameMaxMs": 751.3376249999055,
+     "longestFrameMs": 1530.4145833333678,
+     "hitchMs": 1184.0553750000709
+    },
+    {
+     "to": "Verbindungsdetail",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 1540.7964583332614,
+     "firstFrameMaxMs": 1540.7964583332614,
+     "longestFrameMs": 888.3377083332107,
+     "hitchMs": 1328.9741666667396
+    },
+    {
+     "to": "Verbindungsdetail",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 894.7728333332634,
+     "firstFrameMaxMs": 894.7728333332634,
+     "longestFrameMs": 262.1258750000379,
+     "hitchMs": 839.8880416661996
+    },
+    {
+     "to": "Zug-Radar",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "firstFrameMs": 5809.369916666583,
+     "firstFrameMaxMs": 5809.369916666583,
+     "longestFrameMs": 257.77387500011173,
+     "hitchMs": 1062.4004583330589
+    },
+    {
+     "to": "Zug-Radar",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "firstFrameMs": 764.9953750001259,
+     "firstFrameMaxMs": 764.9953750001259,
+     "longestFrameMs": 1225.2292499997566,
+     "hitchMs": 1423.6042083330176
+    },
+    {
+     "to": "Übersicht",
+     "variant": "+1 500 Fahrten",
+     "count": 5,
+     "firstFrameMs": 1439.8047916665746,
+     "firstFrameMaxMs": 1574.6053749999191,
+     "longestFrameMs": 226.24508333319682,
+     "hitchMs": 301.36716666766006
+    },
+    {
+     "to": "Übersicht",
+     "variant": "Demo-Jahr",
+     "count": 4,
+     "firstFrameMs": 575.298312500081,
+     "firstFrameMaxMs": 934.8378333329492,
+     "longestFrameMs": 262.42987499972514,
+     "hitchMs": 299.21389583455493
+    }
+   ],
+   "launch": [
+    {
+     "variant": "+1 500 Fahrten",
+     "count": 5,
+     "processToFirstFrameMs": 2655.3421020507812,
+     "initToFirstFrameMs": 1072.911625,
+     "longestFrameAfterMs": 575.0296666669783,
+     "hitchAfterMs": 1052.8671666666014
+    },
+    {
+     "variant": "Demo-Jahr",
+     "count": 19,
+     "processToFirstFrameMs": 2215.3059244155884,
+     "initToFirstFrameMs": 727.435542,
+     "longestFrameAfterMs": 607.0397499997853,
+     "hitchAfterMs": 888.5307499990631
+    }
+   ],
+   "memory": [
+    {
+     "screen": "Atlas",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 217.5845947265625
+    },
+    {
+     "screen": "Atlas",
+     "variant": "Demo-Jahr",
+     "peakMB": 295.02227783203125
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 149.81878662109375
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "Demo-Jahr",
+     "peakMB": 147.47503662109375
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 367.67901611328125
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "Demo-Jahr",
+     "peakMB": 288.16326904296875
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 170.3812255859375
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "Demo-Jahr",
+     "peakMB": 223.4595947265625
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 206.20953369140625
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "Demo-Jahr",
+     "peakMB": 210.25640869140625
+    },
+    {
+     "screen": "Karte mit Ebenen",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 237.27215576171875
+    },
+    {
+     "screen": "Karte mit Ebenen",
+     "variant": "Demo-Jahr",
+     "peakMB": 292.24102783203125
+    },
+    {
+     "screen": "Meine Routen",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 136.6468505859375
+    },
+    {
+     "screen": "Meine Routen",
+     "variant": "Demo-Jahr",
+     "peakMB": 133.8343505859375
+    },
+    {
+     "screen": "Statistik",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 443.88214111328125
+    },
+    {
+     "screen": "Statistik",
+     "variant": "Demo-Jahr",
+     "peakMB": 342.91326904296875
+    },
+    {
+     "screen": "Ticket",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 443.33526611328125
+    },
+    {
+     "screen": "Ticket",
+     "variant": "Demo-Jahr",
+     "peakMB": 364.14764404296875
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 163.16259765625
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "Demo-Jahr",
+     "peakMB": 204.6939697265625
+    },
+    {
+     "screen": "Verbindungsdetail",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 235.94415283203125
+    },
+    {
+     "screen": "Verbindungsdetail",
+     "variant": "Demo-Jahr",
+     "peakMB": 241.9910888671875
+    },
+    {
+     "screen": "Zug-Radar",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 192.16265869140625
+    },
+    {
+     "screen": "Zug-Radar",
+     "variant": "Demo-Jahr",
+     "peakMB": 285.50665283203125
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "+1 500 Fahrten",
+     "peakMB": 385.97589111328125
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "Demo-Jahr",
+     "peakMB": 306.66326904296875
+    }
+   ],
+   "hangs": [
+    {
+     "screen": "Statistik",
+     "variant": "+1 500 Fahrten",
+     "count": 10,
+     "longestMs": 7571.503875,
+     "totalMs": 25070.780916999996
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "+1 500 Fahrten",
+     "count": 7,
+     "longestMs": 2325.448084,
+     "totalMs": 13769.397002000002
+    },
+    {
+     "screen": "Statistik",
+     "variant": "Demo-Jahr",
+     "count": 6,
+     "longestMs": 4489.037333,
+     "totalMs": 11874.647167
+    },
+    {
+     "screen": "Ticket",
+     "variant": "+1 500 Fahrten",
+     "count": 10,
+     "longestMs": 2490.469917,
+     "totalMs": 11286.840540000001
+    },
+    {
+     "screen": "Ticket",
+     "variant": "Demo-Jahr",
+     "count": 6,
+     "longestMs": 3358.20675,
+     "totalMs": 8212.407251
+    },
+    {
+     "screen": "Zug-Radar",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "longestMs": 5745.119666,
+     "totalMs": 5745.119666
+    },
+    {
+     "screen": "Übersicht",
+     "variant": "+1 500 Fahrten",
+     "count": 4,
+     "longestMs": 1576.664542,
+     "totalMs": 5420.293209
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "+1 500 Fahrten",
+     "count": 2,
+     "longestMs": 3303.246167,
+     "totalMs": 3941.241208
+    },
+    {
+     "screen": "Fahrten",
+     "variant": "Demo-Jahr",
+     "count": 3,
+     "longestMs": 1842.20475,
+     "totalMs": 3289.879
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "Demo-Jahr",
+     "count": 5,
+     "longestMs": 960.592208,
+     "totalMs": 3203.234292
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "+1 500 Fahrten",
+     "count": 2,
+     "longestMs": 2238.221167,
+     "totalMs": 2734.9245
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "Demo-Jahr",
+     "count": 4,
+     "longestMs": 721.421916,
+     "totalMs": 2541.188416
+    },
+    {
+     "screen": "Atlas",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "longestMs": 1320.725083,
+     "totalMs": 1320.725083
+    },
+    {
+     "screen": "Gipfelbuch",
+     "variant": "Demo-Jahr",
+     "count": 2,
+     "longestMs": 703.598583,
+     "totalMs": 1280.247999
+    },
+    {
+     "screen": "Fahrplan",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "longestMs": 1138.213959,
+     "totalMs": 1138.213959
+    },
+    {
+     "screen": "Verbindungsdetail",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "longestMs": 1078.956333,
+     "totalMs": 1078.956333
+    },
+    {
+     "screen": "Zug-Radar",
+     "variant": "Demo-Jahr",
+     "count": 2,
+     "longestMs": 632.238583,
+     "totalMs": 1024.924208
+    },
+    {
+     "screen": "Verbindungen",
+     "variant": "+1 500 Fahrten",
+     "count": 2,
+     "longestMs": 552.605041,
+     "totalMs": 1013.482916
+    },
+    {
+     "screen": "Atlas",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "longestMs": 991.643333,
+     "totalMs": 991.643333
+    },
+    {
+     "screen": "Haltestelle",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "longestMs": 621.257583,
+     "totalMs": 621.257583
+    },
+    {
+     "screen": "Karte mit Ebenen",
+     "variant": "Demo-Jahr",
+     "count": 1,
+     "longestMs": 537.57725,
+     "totalMs": 537.57725
+    },
+    {
+     "screen": "Karte mit Ebenen",
+     "variant": "+1 500 Fahrten",
+     "count": 1,
+     "longestMs": 504.823458,
+     "totalMs": 504.823458
+    }
+   ]
+  }
+ }
+}

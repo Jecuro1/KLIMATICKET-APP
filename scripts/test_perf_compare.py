@@ -34,9 +34,16 @@ class PerfCompareTests(unittest.TestCase):
         self.assertIn("| Demo-Jahr | 900 ms | 900 ms | +0 | gleich |", text)
 
     def test_regression_is_reported(self):
-        lines, worse = perf_compare.compare(run(4.0), run(9.0, mem=260.0))
+        lines, worse = perf_compare.compare(run(4.0), run(9.0, mem=400.0))
         self.assertEqual(worse, ["Scrollen: Hitch Time Ratio (ms Ruckeln pro s Scrollen, kleiner ist besser): Fahrten · Demo-Jahr · touch",
                                  "Speicher: Spitze je Bildschirm: Fahrten · Demo-Jahr"])
+
+    def test_run_to_run_noise_is_not_a_verdict(self):
+        # Runs 383 and 387 of the same code: Übersicht 315 → 189 ms/s. Inside the 50 % default tolerance: "gleich".
+        lines, worse = perf_compare.compare(run(315.0), run(189.0))
+        self.assertIn("| Fahrten · Demo-Jahr · touch | 315.0 ms/s | 189.0 ms/s | -126.0 | gleich |", "\n".join(lines))
+        self.assertEqual(worse, [])
+        self.assertEqual(perf_compare.DEFAULT_TOLERANCE, 0.5)
 
     def test_new_and_removed_screens(self):
         before, after = run(5.0), run(5.0)
