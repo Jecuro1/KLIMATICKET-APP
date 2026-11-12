@@ -97,6 +97,31 @@ struct FollowProgressBar: View {
     }
 }
 
+/// "Aussteigen in 4 Min" while an Aussteige-Wecker is armed (docs/EXIT_ALARM.md §4). The count runs by itself, so the line stays
+/// right between two updates of the Live Activity.
+struct FollowExitAlarmLine: View {
+    let info: FollowExitAlarmInfo
+    var compact = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "bell.badge.fill").font(compact ? .caption2 : .caption)
+            Text("\(info.isTransfer ? "Umsteigen" : "Aussteigen") in")
+            Text(info.arrival, style: .relative).monospacedDigit()
+        }
+        .font((compact ? Font.caption2 : Font.caption).weight(.semibold))
+        .foregroundStyle(info.isApproaching ? Theme.summitText : Theme.accentText)
+        .lineLimit(1)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Wecker für \(info.stopName): \(info.isTransfer ? "Umsteigen" : "Aussteigen") in \(Self.spoken(info.arrival))")
+    }
+
+    private static func spoken(_ arrival: Date) -> String {
+        let minutes = max(Int((arrival.timeIntervalSinceNow / 60).rounded(.up)), 0)
+        return minutes <= 1 ? "weniger als einer Minute" : "\(minutes) Minuten"
+    }
+}
+
 /// Lock Screen and banner layout of a followed ride.
 struct FollowLockScreenView: View {
     let attributes: FollowActivityAttributes
@@ -123,6 +148,9 @@ struct FollowLockScreenView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.accentText)
                 .lineLimit(1)
+            if let alarm = state.exitAlarm, state.stage != .arrived, state.stage != .cancelled {
+                FollowExitAlarmLine(info: alarm)   // MARK: exitalarm
+            }
             FollowProgressBar(progress: state.progress)
             HStack(alignment: .firstTextBaseline) {
                 if let platform = FollowStageCopy.platform(state.platform) {
@@ -145,6 +173,7 @@ struct FollowLockScreenView: View {
         var parts = ["\(attributes.lineName), \(attributes.routeTitle)", FollowStageCopy.headline(state)]
         if state.stage != .arrived, state.stage != .cancelled { parts.append(FollowStageCopy.spokenDelay(state.delayMinutes)) }
         if let platform = FollowStageCopy.platform(state.platform) { parts.append(platform) }
+        if let alarm = state.exitAlarm { parts.append("Wecker für \(alarm.stopName) ist scharf") }   // MARK: exitalarm
         parts.append("Fortschritt \(Int((state.progress * 100).rounded())) Prozent")
         if isStale { parts.append("keine aktuellen Daten") }
         return parts.joined(separator: ", ")
@@ -217,6 +246,9 @@ struct FollowIslandExpandedBottom: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            if let alarm = state.exitAlarm, state.stage != .arrived, state.stage != .cancelled {
+                FollowExitAlarmLine(info: alarm, compact: true)   // MARK: exitalarm
+            }
             FollowProgressBar(progress: state.progress)
             HStack {
                 if let platform = FollowStageCopy.platform(state.platform) {

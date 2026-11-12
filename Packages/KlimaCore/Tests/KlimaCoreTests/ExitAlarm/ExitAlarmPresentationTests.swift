@@ -103,6 +103,20 @@ final class ExitAlarmPresentationTests: XCTestCase {
         XCTAssertEqual(options.first?.isTransfer, false)
     }
 
+    func testStopsThatTheTrainHasReachedAreNotOffered() {
+        let stopovers = F.stops.enumerated().map { index, stop in
+            Stopover(location: Location(lid: "lid-\(index)", name: stop.name, coordinate: stop.point),
+                     arrival: StopEvent(planned: F.arrival(at: index)), departure: StopEvent(planned: F.arrival(at: index)), index: index)
+        }
+        let target = LiveFollowTarget(tripID: "trip-1", lineName: "RJX 66", boardingStop: stopovers[0].location, alightStop: stopovers[4].location)
+        let legs = ExitAlarmStops.legIndices(target: target, stopovers: stopovers)
+        XCTAssertEqual(legs.boarding, 0)
+        XCTAssertEqual(legs.end, 4)
+        let now = F.arrival(at: 2).addingTimeInterval(60)   // Linz is behind the train
+        let options = ExitAlarmStops.options(stopovers: stopovers, boardingIndex: legs.boarding, endIndex: legs.end, transferAtEnd: false, now: now)
+        XCTAssertEqual(options.map(\.name), ["Amstetten", "St. Pölten Hbf"])
+    }
+
     func testSpecFromAFollowedRun() {
         let stopovers = F.stops.enumerated().map { index, stop in
             Stopover(location: Location(lid: "lid-\(index)", name: stop.name, coordinate: stop.point),

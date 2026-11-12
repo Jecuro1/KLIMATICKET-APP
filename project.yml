@@ -54,14 +54,19 @@ targets:
           - CFBundleURLName: com.knitelarlberg.klimabilanz
             CFBundleURLSchemes:
               - klimabilanz
-        NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor und zeigt Abfahrten in deiner Nähe. Für Live-Abfahrten wird ein auf rund 100 m gerundeter Standort an die ÖBB-Fahrplanauskunft gesendet."
-        NSLocationAlwaysAndWhenInUseUsageDescription: "Für die automatische Fahrterkennung bemerkt KlimaBilanz, wenn du an deinen Lieblingsbahnhöfen ankommst oder abfährst – und schlägt dir die Fahrt zum Erfassen vor. Dein Standort verlässt dein iPhone nie."
+        NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor und zeigt Abfahrten in deiner Nähe. Für Live-Abfahrten wird ein auf rund 100 m gerundeter Standort an die ÖBB-Fahrplanauskunft gesendet. Der Aussteige-Wecker nutzt deinen Standort nur auf dem iPhone, solange ein Wecker scharf ist, um dich kurz vor deiner Haltestelle zu wecken – er wird nicht gespeichert und nicht gesendet."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Für die automatische Fahrterkennung bemerkt KlimaBilanz, wenn du an deinen Lieblingsbahnhöfen ankommst oder abfährst – und schlägt dir die Fahrt zum Erfassen vor. Der Aussteige-Wecker braucht „Immer“, damit er dich bei gesperrtem iPhone vor deiner Haltestelle weckt: Er nutzt den Standort nur während einer Fahrt mit scharfem Wecker. Dein Standort verlässt dein iPhone nie und wird nicht gespeichert."
         NSUserActivityTypes:
           - com.knitelarlberg.klimabilanz.addTrip
         NSSupportsLiveActivities: true  # live: "Unterwegs" and "Live verfolgen" Live Activities
         # MARK: follow – background refresh of an active "Live verfolgen" (docs/OEBB_LIVE.md §R8). iOS decides when it runs.
+        # MARK: exitalarm – "location" keeps the app alive in the background (blue status pill) while an Aussteige-Wecker is armed
+        # and a trip runs (docs/EXIT_ALARM.md). No entitlement is needed for this mode; the user's permission is.
         UIBackgroundModes:
           - fetch
+          - location
+        # MARK: exitalarm – the system alarm of the Aussteige-Wecker (iOS 26 AlarmKit). Needs no entitlement, only this text.
+        NSAlarmKitUsageDescription: "Der Aussteige-Wecker klingelt kurz vor deiner Haltestelle, auch wenn dein iPhone lautlos gestellt ist. KlimaBilanz stellt den Wecker nur, wenn du ihn für eine Fahrt einschaltest."
         BGTaskSchedulerPermittedIdentifiers:
           - com.knitelarlberg.klimabilanz.follow-refresh
         LSApplicationQueriesSchemes:

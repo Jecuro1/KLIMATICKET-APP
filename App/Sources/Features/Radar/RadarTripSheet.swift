@@ -44,6 +44,7 @@ struct RadarTripSheet: View {
     @Environment(AppState.self) private var app
     @State private var details: TripDetails?
     @State private var loadFailed = false
+    @State private var alarmInput: ExitAlarmSheetInput?   // MARK: exitalarm
 
     /// The live run when the details are in, else the run the map already has.
     private var run: RadarVehicle {
@@ -76,6 +77,7 @@ struct RadarTripSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Schließen") { dismiss() } } }
             .task(id: vehicle.tripID) { await loadDetails() }
+            .sheet(item: $alarmInput) { ExitAlarmSheet(input: $0) }   // MARK: exitalarm
         }
     }
 
@@ -127,6 +129,13 @@ struct RadarTripSheet: View {
             .buttonStyle(.primary)
             .disabled(vehicle.stopovers.count < 2)
 
+            // MARK: exitalarm – „Wecker für diesen Zug“: a thin button, the shared sheet picks the stop
+            Button { openAlarm() } label: {
+                Label("Wecker für diesen Zug", systemImage: "bell.badge").frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .disabled(vehicle.stopovers.count < 2)
+
             HStack(spacing: Theme.Spacing.s) {
                 Button { onCenter(); dismiss() } label: {
                     Label("Auf Karte zentrieren", systemImage: "scope").frame(maxWidth: .infinity, minHeight: 44)
@@ -171,6 +180,12 @@ struct RadarTripSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: exitalarm
+    private func openAlarm() {
+        guard let target = vehicle.followTarget else { return }
+        alarmInput = ExitAlarmSheetInput(target: target, stopovers: run.stopovers)
     }
 
     private func startFollowing() {

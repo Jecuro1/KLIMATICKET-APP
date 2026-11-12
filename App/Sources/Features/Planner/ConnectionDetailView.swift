@@ -25,6 +25,7 @@ struct ConnectionDetailView: View {
     @State var calendarFile: URL?
     @State var reminderFire: Date?
     @State private var showsShare = false
+    @State private var alarmInput: ExitAlarmSheetInput?   // MARK: exitalarm – the Aussteige-Wecker sheet
 
     var body: some View {
         let model = app.planner
@@ -74,6 +75,11 @@ struct ConnectionDetailView: View {
                         Image(systemName: "location.fill")
                     }
                     .accessibilityLabel("Live verfolgen")
+                    // MARK: exitalarm – a thin button: the shared sheet does the rest
+                    Button { alarmInput = ExitAlarmSheetInput(target: target) } label: {
+                        Image(systemName: "bell.badge")
+                    }
+                    .accessibilityLabel("Aussteige-Wecker")
                 }
                 Button { showsShare = true } label: { Image(systemName: "square.and.arrow.up") }
                     .accessibilityLabel("Teilen")
@@ -84,6 +90,7 @@ struct ConnectionDetailView: View {
             }
         }
         .sheet(isPresented: $showsMap) { ConnectionMapSheet(route: mapRoute(row)) }
+        .sheet(item: $alarmInput) { ExitAlarmSheet(input: $0) }   // MARK: exitalarm
         .sheet(isPresented: $showsShare) {
             PlannerShareSheet(journey: row.journey, link: PlannerShare.link(for: row.journey, vias: model.queriedVias))
         }

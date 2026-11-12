@@ -53,6 +53,8 @@ final class LiveFollowTracker {
     func start(_ target: LiveFollowTarget, live: LiveDataService) {
         loop?.cancel()
         endActivityNow()
+        // MARK: exitalarm – the alarms belong to the follow of their run: another run ends them.
+        if let previous = self.target, previous.tripID != target.tripID { ExitAlarmService.shared.followEnded(tripID: previous.tripID) }
         self.target = target
         snapshot = nil
         lastNotice = nil
@@ -77,6 +79,7 @@ final class LiveFollowTracker {
         loop?.cancel()
         loop = nil
         endActivityNow()
+        if let previous = target { ExitAlarmService.shared.followEnded(tripID: previous.tripID) }   // MARK: exitalarm
         target = nil
         snapshot = nil
         lastNotice = nil
@@ -155,6 +158,8 @@ final class LiveFollowTracker {
             snapshot = next
             updatedAt = now
             status = next.stage.isFinished ? .finished : .following
+            // MARK: exitalarm – every alarm of this run takes the new arrival and delay of its stop
+            ExitAlarmService.shared.followUpdated(tripID: target.tripID, stopovers: next.stopovers)
             await syncActivity(target: target, snapshot: next, now: now, settings: settings)
             persist()
             if settings.isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(
@@ -167,7 +172,10 @@ final class LiveFollowTracker {
             guard !Task.isCancelled, self.target?.tripID == target.tripID else { return }
             status = .paused(LiveMessage.text(for: error))
             // Live data switched off or withdrawn: nothing was asked, so no background request is booked for it.
-            if case .disabled? = error as? LiveError { return }
+            if case .disabled? = error as? LiveError {
+                ExitAlarmService.shared.liveDataOff()   // MARK: exitalarm – the alarms need the live timetable: they end
+                return
+            }
             // A failed background answer must not end the chain of background requests: the next one is asked for as usual.
             if FollowNoticeStore.load().isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(
                 stage: snapshot?.stage ?? .beforeDeparture, plannedDeparture: target.plannedDeparture, now: Date()) {
@@ -182,7 +190,8 @@ final class LiveFollowTracker {
         // Demo runs and switches that are off never start or keep a Live Activity.
         guard !isDemoRun, !LaunchMode.isSandboxed else { return }
         let controller = FollowActivityController.shared
-        let state = FollowLiveState.make(from: snapshot, now: now)
+        // MARK: exitalarm – "Aussteigen in 4 Min" while an alarm is armed
+        let state = FollowLiveState.make(from: snapshot, now: now).with(exitAlarm: ExitAlarmService.shared.activityInfo(now: now))
         let staleDate = FollowRefreshPlan.staleDate(arrival: snapshot.arrivalEstimate, now: now)
 
         if !settings.isEnabled {

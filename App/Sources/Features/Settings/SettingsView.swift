@@ -31,6 +31,7 @@ struct SettingsView: View {
                 SetFareSection()
                 SetLiveDataSection() // MARK: planner
                 SetFollowNoticesSection() // MARK: follow – „Live-Mitteilungen“ for „Live verfolgen“ (off until switched on)
+                SetExitAlarmSection() // MARK: exitalarm – „Aussteige-Wecker“ (docs/EXIT_ALARM.md)
                 WorkSettingsSection() // MARK: work – "Arbeit & Steuer", "Auto-Vergleich"
                 PerkSettingsSection() // MARK: benefits
                 SetCaptureSection()

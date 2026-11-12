@@ -121,6 +121,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         UNUserNotificationCenter.current().delegate = self
         NotificationCategories.registerAll()   // all categories at once (trip suggestions, Live verfolgen)
         FollowBackgroundRefresh.register()     // must happen before launch finishes (docs/OEBB_LIVE.md §R8)
+        // MARK: exitalarm – saved alarms come back before anything else: a relaunch for a geofence entry (launchOptions .location)
+        // must find the engine ready to receive the region event. Nothing is asked here; nothing runs without an armed alarm.
+        MainActor.assumeIsolated { ExitAlarmService.shared.restoreIfNeeded() }
         return true
     }
 
@@ -139,6 +142,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             // "Nicht mehr verfolgen" works even when the store is not open yet: it only ends the follow.
             if category == NotificationCategories.followNotice, action == NotificationCategories.followStop {
                 LiveFollowTracker.shared.stop()
+                return
+            }
+            // MARK: exitalarm – "Quittieren" and "5 Min später" work without the store; a tap on the notice shows the full-screen moment.
+            if category == NotificationCategories.exitAlarm {
+                ExitAlarmService.shared.handleNotification(action: action, userInfo: response.notification.request.content.userInfo)
+                ExitAlarmWindow.shared.update()
                 return
             }
             // A response right after the first unlock can arrive before the scene retried opening the store.

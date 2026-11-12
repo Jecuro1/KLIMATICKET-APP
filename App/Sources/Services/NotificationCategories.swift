@@ -8,6 +8,10 @@ enum NotificationCategories {
     static let followDetails = "live.follow.details"
     static let followLog = "live.follow.log"
     static let followStop = "live.follow.stop"
+    /// MARK: exitalarm – the Aussteige-Wecker notifications (docs/EXIT_ALARM.md §3). Actions: acknowledge, snooze.
+    static let exitAlarm = "exitalarm"
+    static let exitAlarmAcknowledge = "exitalarm.ack"
+    static let exitAlarmSnooze = "exitalarm.snooze"
 
     static func registerAll() {
         // The location suggestion of TripDetectionService keeps its "Erfassen" action.
@@ -23,6 +27,14 @@ enum NotificationCategories {
                 UNNotificationAction(identifier: followStop, title: "Nicht mehr verfolgen", options: [.destructive]),
             ],
             intentIdentifiers: [])
-        UNUserNotificationCenter.current().setNotificationCategories([suggestion, follow])
+        // MARK: exitalarm – "Quittieren" works without opening the app; "5 Min später" too (no .foreground option).
+        let exitAlarmCategory = UNNotificationCategory(
+            identifier: exitAlarm,
+            actions: [
+                UNNotificationAction(identifier: exitAlarmAcknowledge, title: "Quittieren", options: []),
+                UNNotificationAction(identifier: exitAlarmSnooze, title: "5 Min später", options: []),
+            ],
+            intentIdentifiers: [])
+        UNUserNotificationCenter.current().setNotificationCategories([suggestion, follow, exitAlarmCategory])
     }
 }

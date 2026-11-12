@@ -546,6 +546,25 @@ final class ExitAlarmPlannerTests: XCTestCase {
         XCTAssertNotNil(h.location.regions[F.spec(stop: 2).id], "the circle is set when the permission arrives")
     }
 
+    func testThePermissionIsAskedInTwoStepsAndOnlyOnRequest() {
+        let h = ExitAlarmHarness(authorization: .notDetermined)
+        h.engine.arm(F.spec(stop: 2), arrival: F.arrival(at: 2))
+        XCTAssertTrue(h.location.requests.isEmpty, "arming asks for nothing: only the pre-prompt screen does")
+        h.engine.requestLocation(always: true)
+        XCTAssertEqual(h.location.requests, ["whenInUse"], "the system's first prompt")
+        h.location.changeAuthorization(.whenInUse)
+        XCTAssertEqual(h.location.requests, ["whenInUse", "always"], "then the upgrade to Immer")
+        h.location.changeAuthorization(.always)
+        XCTAssertEqual(h.location.requests.count, 2, "nothing more once answered")
+    }
+
+    func testDecliningTheFirstPromptDoesNotAskForTheUpgrade() {
+        let h = ExitAlarmHarness(authorization: .notDetermined)
+        h.engine.requestLocation(always: true)
+        h.location.changeAuthorization(.denied)
+        XCTAssertEqual(h.location.requests, ["whenInUse"])
+    }
+
     // MARK: Test alarm
 
     func testTestAlarmRingsInTenSecondsAndIsNotPartOfTheBook() {

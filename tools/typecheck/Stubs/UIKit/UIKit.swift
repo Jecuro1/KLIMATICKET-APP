@@ -581,6 +581,21 @@ open class UIWindow: UIView {
     open var rootViewController: UIViewController?
     open var isKeyWindow: Bool { _uiStub() }
     open func makeKeyAndVisible() { _uiStub() }
+    /// UIWindow.h: `@property(nonatomic) UIWindowLevel windowLevel;` (UIWindowLevel is an NS_TYPED_EXTENSIBLE_ENUM over CGFloat).
+    open var windowLevel: UIWindow.Level = .normal
+}
+
+extension UIWindow {
+    /// `UIWindowLevel`: imported as a struct `UIWindow.Level`; the UIKit overlay adds `+` and `-` with a CGFloat.
+    public struct Level: Hashable, Equatable, RawRepresentable, @unchecked Sendable {
+        public var rawValue: CGFloat
+        public init(rawValue: CGFloat) { self.rawValue = rawValue }
+        public static let normal = Level(rawValue: 0)
+        public static let statusBar = Level(rawValue: 1000)
+        public static let alert = Level(rawValue: 2000)
+        public static func + (lhs: Level, rhs: CGFloat) -> Level { Level(rawValue: lhs.rawValue + rhs) }
+        public static func - (lhs: Level, rhs: CGFloat) -> Level { Level(rawValue: lhs.rawValue - rhs) }
+    }
 }
 
 @MainActor @preconcurrency

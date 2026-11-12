@@ -3,6 +3,24 @@ import Foundation
 // Live verfolgen, the state shown in the Live Activity (docs/OEBB_LIVE.md §R8). Pure and small: ActivityKit caps the
 // content state at 4 KB, so this carries only what the Dynamic Island and the Lock Screen show.
 
+/// The Aussteige-Wecker as the Live Activity shows it: "Aussteigen in 4 Min" while an alarm is armed (docs/EXIT_ALARM.md §4).
+public struct FollowExitAlarmInfo: Codable, Hashable, Sendable {
+    public var stopName: String
+    /// The arrival the alarm counts down to (the card's estimate).
+    public var arrival: Date
+    /// The user changes trains at that stop ("Umsteigen" instead of "Aussteigen").
+    public var isTransfer: Bool
+    /// The moment is close: the Live Activity marks it.
+    public var isApproaching: Bool
+
+    public init(stopName: String, arrival: Date, isTransfer: Bool = false, isApproaching: Bool = false) {
+        self.stopName = stopName
+        self.arrival = arrival
+        self.isTransfer = isTransfer
+        self.isApproaching = isApproaching
+    }
+}
+
 public struct FollowLiveState: Codable, Hashable, Sendable {
     public var stage: FollowStage
     /// The next stop: the boarding stop before departure, the next stop while riding. Nil at the end.
@@ -21,10 +39,12 @@ public struct FollowLiveState: Codable, Hashable, Sendable {
     public var transferDeparture: Date?
     /// Time of the last answer that this state is built from.
     public var updatedAt: Date?
+    /// The armed Aussteige-Wecker of this follow, if any. Optional with a default: states saved before it decode as nil.
+    public var exitAlarm: FollowExitAlarmInfo?
 
     public init(stage: FollowStage, nextStopName: String? = nil, nextStopTime: Date? = nil, delayMinutes: Int? = nil,
                 platform: String? = nil, progress: Double = 0, transferStation: String? = nil,
-                transferDeparture: Date? = nil, updatedAt: Date? = nil) {
+                transferDeparture: Date? = nil, updatedAt: Date? = nil, exitAlarm: FollowExitAlarmInfo? = nil) {
         self.stage = stage
         self.nextStopName = nextStopName
         self.nextStopTime = nextStopTime
@@ -34,6 +54,14 @@ public struct FollowLiveState: Codable, Hashable, Sendable {
         self.transferStation = transferStation
         self.transferDeparture = transferDeparture
         self.updatedAt = updatedAt
+        self.exitAlarm = exitAlarm
+    }
+
+    /// The same state with the armed alarm attached.
+    public func with(exitAlarm: FollowExitAlarmInfo?) -> FollowLiveState {
+        var copy = self
+        copy.exitAlarm = exitAlarm
+        return copy
     }
 
     /// The state for `snapshot` at `now`. `stage` is the snapshot's own stage, which is derived at the same time.

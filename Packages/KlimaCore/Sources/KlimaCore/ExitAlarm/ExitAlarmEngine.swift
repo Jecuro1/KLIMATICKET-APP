@@ -103,6 +103,8 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
     private var regions: Set<String> = []
     /// Geofences the system refused: not asked again.
     private var failedRegions: Set<String> = []
+    /// The user agreed to "Immer" in the pre-prompt: ask for the upgrade when "Beim Verwenden" has been answered.
+    private var wantsAlways = false
 
     public static let testID = "exitalarm-test"
 
@@ -233,9 +235,18 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
 
     // MARK: Location authorization
 
+    /// The two-step permission: "Beim Verwenden" first, then (when `always`) the system's upgrade to "Immer". The engine
+    /// asks for the second step itself once the first one is answered. Called only after the pre-prompt screen.
     public func requestLocation(always: Bool) {
-        location.requestWhenInUse()
-        if always { location.requestAlways() }
+        switch location.authorization {
+        case .notDetermined:
+            wantsAlways = always
+            location.requestWhenInUse()
+        case .whenInUse:
+            if always { location.requestAlways() }
+        default:
+            break
+        }
     }
 
     // MARK: ExitAlarmLocationHandler
@@ -254,6 +265,12 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
     }
 
     public func locationProviderDidChangeAuthorization() {
+        if wantsAlways, location.authorization == .whenInUse {
+            wantsAlways = false
+            location.requestAlways()
+        } else if location.authorization != .notDetermined {
+            wantsAlways = false
+        }
         syncLocation()
         onChange?()
     }

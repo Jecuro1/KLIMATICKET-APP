@@ -21,9 +21,16 @@ public struct ExitAlarmStopOption: Hashable, Sendable, Identifiable {
 }
 
 public enum ExitAlarmStops {
+    /// Where the followed leg starts and ends in the run's stopovers (by location id, then extId). Nil when a stop is not part of the run.
+    public static func legIndices(target: LiveFollowTarget, stopovers: [Stopover]) -> (boarding: Int?, end: Int?) {
+        (LiveFollow.index(of: target.boardingStop, in: stopovers), LiveFollow.index(of: target.alightStop, in: stopovers))
+    }
+
     /// The stops from the one after boarding through the end of the leg. The end of the leg is a transfer when the
-    /// connection goes on (`transferAtEnd`). Stops the train passes without stopping are left out.
-    public static func options(stopovers: [Stopover], boardingIndex: Int?, endIndex: Int?, transferAtEnd: Bool) -> [ExitAlarmStopOption] {
+    /// connection goes on (`transferAtEnd`). Stops the train passes without stopping are left out, and so are stops the train
+    /// has already reached (with `now`).
+    public static func options(stopovers: [Stopover], boardingIndex: Int?, endIndex: Int?, transferAtEnd: Bool,
+                               now: Date? = nil) -> [ExitAlarmStopOption] {
         guard !stopovers.isEmpty else { return [] }
         let first = min((boardingIndex ?? 0) + 1, stopovers.count - 1)
         let last = min(max(endIndex ?? stopovers.count - 1, first), stopovers.count - 1)
@@ -32,6 +39,7 @@ public enum ExitAlarmStops {
             let stop = stopovers[index]
             guard !stop.passesWithoutStop || index == last else { return nil }
             let arrival = stop.arrival ?? stop.departure
+            if let now, let effective = arrival?.effective, effective < now.addingTimeInterval(-30) { return nil }
             let isEnd = index == last
             return ExitAlarmStopOption(lid: stop.location.lid, name: stop.location.name, coordinate: stop.location.coordinate,
                                        plannedArrival: arrival?.planned, effectiveArrival: arrival?.effective,

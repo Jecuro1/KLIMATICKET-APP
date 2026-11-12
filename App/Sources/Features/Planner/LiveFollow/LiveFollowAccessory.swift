@@ -69,11 +69,18 @@ struct LiveFollowAccessory: View {
 struct LiveFollowDetailSheet: View {
     let tracker: LiveFollowTracker
     @Environment(\.dismiss) private var dismiss
+    @State private var alarmInput: ExitAlarmSheetInput?   // MARK: exitalarm
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    // MARK: exitalarm – the armed alarms of this run and a thin button into the shared sheet
+                    if let target = tracker.target {
+                        ExitAlarmFollowSection(target: target, snapshot: tracker.snapshot) {
+                            alarmInput = ExitAlarmSheetInput(target: target, stopovers: tracker.snapshot?.stopovers)
+                        }
+                    }
                     if let snapshot = tracker.snapshot {
                         GlassCard(padding: Theme.Spacing.m) {
                             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -106,6 +113,7 @@ struct LiveFollowDetailSheet: View {
             .navigationTitle(tracker.target?.lineName ?? "Live")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Fertig") { dismiss() } } }
+            .sheet(item: $alarmInput) { ExitAlarmSheet(input: $0) }   // MARK: exitalarm
         }
     }
 

@@ -142,6 +142,7 @@ struct RootView: View {
                 }
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
+                ExitAlarmService.shared.sceneBecameActive()   // MARK: exitalarm – the clock ran while the app slept
                 // MARK: routes – reminders of routes that are gone (deleted here or on another device) do not fire
                 Task { await SavedRouteReminders.reconcile(context: context) }
                 // MARK: ai – the Sunday recap text is written here, in the foreground (docs/LOCAL_AI.md §3)
@@ -572,6 +573,9 @@ struct ScreenshotRouter: View {
             RoutesScreenshotHost(screen: routesScreen)
         case let alarmsScreen where AlarmsScreenshotHost.screens.contains(alarmsScreen):
             AlarmsScreenshotHost(screen: alarmsScreen)
+        // MARK: exitalarm – „Aussteige-Wecker“: sheet, location explanation, armed, approaching, fired, passed, settings (demo, no network)
+        case let exitAlarmScreen where ExitAlarmScreenshotHost.screens.contains(exitAlarmScreen):
+            ExitAlarmScreenshotHost(screen: exitAlarmScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

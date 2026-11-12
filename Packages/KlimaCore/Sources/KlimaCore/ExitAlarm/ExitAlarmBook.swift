@@ -91,6 +91,20 @@ public struct ExitAlarmBook: Codable, Hashable, Sendable {
         alarms.removeAll { $0.id == id }
     }
 
+    /// The alarm the Live Activity shows: the armed one whose moment comes first.
+    public func activityInfo(now: Date, config: ExitAlarmConfig = .standard) -> FollowExitAlarmInfo? {
+        active.filter { $0.phase == .armed || $0.phase == .approaching }
+            .compactMap { state -> (ExitAlarmState, Date)? in
+                guard let arrival = ExitAlarmPresentation.estimate(state, now: now, config: config).remainingSeconds else { return nil }
+                return (state, now.addingTimeInterval(arrival))
+            }
+            .min { $0.1 < $1.1 }
+            .map { state, arrival in
+                FollowExitAlarmInfo(stopName: state.spec.stopName, arrival: arrival, isTransfer: state.spec.isTransfer,
+                                    isApproaching: state.phase == .approaching)
+            }
+    }
+
     /// The most location any active alarm needs.
     public func locationNeed(now: Date, config: ExitAlarmConfig = .standard) -> ExitAlarmLocationNeed {
         active.map { ExitAlarmPlanner.locationNeed($0, now: now, config: config) }.max() ?? .none
