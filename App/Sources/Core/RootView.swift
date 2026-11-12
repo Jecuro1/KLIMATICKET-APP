@@ -11,6 +11,7 @@ struct RootView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @State private var showsAccountSwitch = false
+    @State private var showsWhatIf = false   // MARK: whatif – klimabilanz://whatif
     /// The scene was in the background since the last activation. A plain .inactive → .active (Control Center,
     /// Notification Center, a system alert, the app switcher, the launch itself) is no return to the app.
     @State private var returnedFromBackground = false
@@ -54,6 +55,7 @@ struct RootView: View {
             UpdateSheet()
                 .interactiveDismissDisabled(app.updates.isRequired)
         }
+        .sheet(isPresented: $showsWhatIf) { WhatIfSheet() }   // MARK: whatif
         .yearReviewHost()   // MARK: yearreview – the year story's full-screen cover (docs/YEAR_REVIEW.md)
         .overlay(alignment: .top) {
             ToastOverlay()
@@ -237,6 +239,7 @@ struct RootView: View {
     /// klimabilanz://plan?from=…&to=…&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<stationID>   // MARK: planner
     /// klimabilanz://radar – the Zug-Radar   // MARK: widgets
     /// klimabilanz://year[/2026] – the year story   // MARK: yearreview
+    /// klimabilanz://whatif – „Was wäre wenn?“   // MARK: whatif
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -270,6 +273,8 @@ struct RootView: View {
             app.planner.radarRequested = true
         case "update":
             Task { await app.updates.checkIfDue(force: true) }
+        case "whatif":   // MARK: whatif
+            showsWhatIf = true
         // MARK: yearreview – klimabilanz://year · klimabilanz://year/2026 (Jahresrückblick; also the widget's tap)
         case "year":
             app.handleYearReviewLink(url)
@@ -546,6 +551,9 @@ struct ScreenshotRouter: View {
         case "advisor", "advisorRenewal", "advisorCancel", "advisorCancelChart", "advisorExtras", "advisorFamily",
              "advisorJob", "ticketEdit", "ticketAdvisor":
             AdvScreenshotHost(screen: screen)
+        // MARK: whatif – „Was wäre wenn?“: real data, assumptions, empty, extreme, AX5 (demo data, no network)
+        case let whatIfScreen where WhatIfScreenshotHost.screens.contains(whatIfScreen):
+            WhatIfScreenshotHost(screen: whatIfScreen)
         // MARK: routes – „Meine Routen“ (list, detail, editor) and „Alarme“ (list, history), demo data, no network
         case let routesScreen where RoutesScreenshotHost.screens.contains(routesScreen):
             RoutesScreenshotHost(screen: routesScreen)

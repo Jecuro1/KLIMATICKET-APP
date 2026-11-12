@@ -25,6 +25,7 @@ struct StatsTicketComparisonCard: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                WhatIfInlineLink(title: "Was wäre, wenn du mehr oder weniger fährst?")   // MARK: whatif
             }
         }
     }

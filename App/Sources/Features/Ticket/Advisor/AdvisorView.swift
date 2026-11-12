@@ -34,6 +34,10 @@ struct AdvisorView: View {
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                     .padding(.top, Theme.Spacing.m)
                     .reveal(order: 1)
+                    WhatIfEntryRow()   // MARK: whatif – „Was wäre wenn?“
+                        .padding(.horizontal, Theme.Spacing.cardGutter)
+                        .padding(.top, AdvStyle.cardSpacing)
+                        .reveal(order: 2)
                     sections(advice)
                     footer
                         .padding(.horizontal, Theme.Spacing.screen)

@@ -207,6 +207,8 @@ struct TicketView: View {
                 }
                 .frostedCard()
                 .padding(.horizontal, Theme.Spacing.cardGutter)
+                WhatIfInlineLink(title: "Erst durchrechnen, welches Ticket sich lohnt")   // MARK: whatif
+                    .padding(.horizontal, Theme.Spacing.screen)
             }
             .padding(.top, Theme.Spacing.xxs)
         }

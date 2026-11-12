@@ -62,8 +62,9 @@ open class AXDataPointValue: NSObject, NSCopying, @unchecked Sendable {
 }
 
 open class AXDataPoint: NSObject, NSCopying, @unchecked Sendable {
-    public convenience init(x xValue: String, y yValue: Double?, additionalValues: [AXDataPointValue] = [], label: String? = nil) { _axStub() }
-    public convenience init(x xValue: Double, y yValue: Double?, additionalValues: [AXDataPointValue] = [], label: String? = nil) { _axStub() }
+    // The Objective-C `initWithX:y:additionalValues:label:` is NS_REFINED_FOR_SWIFT: the public initializers are the
+    // `AXDataPoint(x:y:additionalValues:label:)` of the Swift overlay (generated Accessibility stub, with
+    // `AXDataPoint.Value`). Declaring them here as well made every `AXDataPoint(x:y:)` call ambiguous.
     open func copy(with zone: NSZone? = nil) -> Any { _axStub() }
     open var label: String?
 }

@@ -22,6 +22,14 @@ struct OnbTicketStep: View {
             ZStack(alignment: .top) {
                 scopeContent
             }
+            // MARK: whatif – before the purchase: calculate first which ticket pays off
+            WhatIfSheetLink {
+                Label("Erst durchrechnen", systemImage: "slider.horizontal.3")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.glass)
+            .onbReveal(.fade, order: 12)
         }
         .haptic(.selection, trigger: model.selectedProductID)
     }
