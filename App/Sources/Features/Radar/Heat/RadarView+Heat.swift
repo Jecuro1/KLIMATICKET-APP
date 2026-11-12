@@ -19,33 +19,45 @@ extension RadarView {
     /// The base map's appearance as the cells see it (the "Dunkel" map style forces the dark palette).
     private var heatScheme: ColorScheme { mapStyle == .dark ? .dark : colorScheme }
 
+    /// How wide a cell is on the screen now, in points (0.12° of latitude between two centres).
+    private var heatCellPoints: Double {
+        HeatGrid.spacingDegrees / max(model.spanDegrees, 0.001) * Double(model.mapSize.height)
+    }
+
     // MARK: Map content
 
     /// The cells, the hot spot numbers and the outline of the selected cell.
     @MapContentBuilder var heatContent: some MapContent {
         let palette = HeatPalette(scheme: heatScheme)
+        let detailed = heatCellPoints >= 28
         ForEach(model.heat.shown) { cell in
             if cell.isNeutral {
-                // Too few trains for a colour: faint grey, a dashed edge and diagonal hatching.
+                // Too few trains for a colour: faint grey. Close enough to read the pattern (a cell about 28 points wide) it has a dashed
+                // edge and diagonal hatching; on the country view, where a cell is 18 points, it is a faint outline (the pattern would
+                // only be noise).
                 MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 0.9).map(\.clCoordinate))
                     .foregroundStyle(palette.neutralFill)
-                    .stroke(palette.neutralLine, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .stroke(palette.neutralLine.opacity(detailed ? 1 : 0.55),
+                            style: detailed ? StrokeStyle(lineWidth: 1, dash: [3, 3]) : StrokeStyle(lineWidth: 0.75))
                     .mapOverlayLevel(level: .aboveRoads)
-                MapPolyline(coordinates: HeatGrid.hatchPath(of: cell.id).map(\.clCoordinate))
-                    .stroke(palette.neutralLine, lineWidth: 1)
-                    .mapOverlayLevel(level: .aboveRoads)
+                if detailed {
+                    MapPolyline(coordinates: HeatGrid.hatchPath(of: cell.id).map(\.clCoordinate))
+                        .stroke(palette.neutralLine, lineWidth: 1)
+                        .mapOverlayLevel(level: .aboveRoads)
+                }
             } else {
-                // A wide glow, a halo and the body: three nested hexagons of one colour with growing opacity make the soft edge.
+                // Three nested hexagons: a scrim (the cell's ground and bezel), the colour as a wide faint halo (the soft edge), and the
+                // body with its crisp line. The strength of the cell (how many trains it rests on) scales every opacity.
                 let colour = palette.color(cell.blend)
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.5).map(\.clCoordinate))
-                    .foregroundStyle(colour.opacity(palette.glowOpacity * cell.strength))
+                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.12).map(\.clCoordinate))
+                    .foregroundStyle(palette.scrim.opacity(palette.scrimOpacity * cell.strength))
                     .mapOverlayLevel(level: .aboveRoads)
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.18).map(\.clCoordinate))
+                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.45).map(\.clCoordinate))
                     .foregroundStyle(colour.opacity(palette.haloOpacity * cell.strength))
                     .mapOverlayLevel(level: .aboveRoads)
                 MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 0.92).map(\.clCoordinate))
                     .foregroundStyle(colour.opacity(palette.bodyOpacity * cell.strength))
-                    .stroke(colour.opacity(palette.bodyLine * cell.strength), lineWidth: 1)
+                    .stroke(colour.opacity(palette.bodyLine * cell.strength), lineWidth: 1.2)
                     .mapOverlayLevel(level: .aboveRoads)
             }
         }
@@ -147,9 +159,9 @@ extension RadarView {
             .presentationDetents([.fraction(0.32), .medium, .large])
     }
 
-    /// The bottom panel takes more room when the heat panel is open: up to 60 % of the map.
+    /// The bottom area takes more room while the heat panel is up: the card (at most 52 % of the map, scrolling inside) and the layer bar.
     var statusMaxHeight: CGFloat {
-        heatOn && model.heat.isExpanded ? max(360, model.mapSize.height * 0.6) : 360
+        heatOn ? max(360, model.mapSize.height * 0.78) : 360
     }
 
     // MARK: Presets

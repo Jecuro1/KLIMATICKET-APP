@@ -70,7 +70,7 @@ public struct HeatDrawCell: Sendable, Hashable, Identifiable {
         self.trainCount = trainCount
     }
 
-    /// Map overlays one cell costs: coloured, a wide glow, a halo and the body; neutral, a body and its hatching.
+    /// Map overlays one cell costs: coloured, a scrim, a halo and the body; neutral, a body and its hatching.
     public var overlayCount: Int { isNeutral ? 2 : 3 }
 }
 

@@ -47,24 +47,24 @@ struct HeatTrainDot: View {
     }
 }
 
-/// Several trains in one spot of the grid, as a small count. The ring is the worst state inside. A tap zooms in.
+/// Several trains in one spot of the grid, as a small ring: the heat under it already says how late they are and how many there
+/// are, a number would only cover it. The ring is the worst state inside; its size follows the group. A tap zooms in; the count is
+/// in the spoken label.
 struct HeatClusterDot: View {
     var cluster: RadarCluster
     var noun = "Züge"
 
+    private var diameter: CGFloat { cluster.count >= 10 ? 17 : 14 }
+
     var body: some View {
         let worst: HeatBucket = cluster.cancelledCount > 0 ? .cancelled : (cluster.lateCount > 0 ? .delayed : .onTime)
-        Text("\(cluster.count)")
-            .font(.system(size: 10, weight: .bold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(Theme.textPrimary)
-            .frame(minWidth: 20, minHeight: 20)
-            .padding(.horizontal, 2)
-            .background(Theme.sheetBackground.opacity(0.92), in: .capsule)
-            .overlay(Capsule().strokeBorder(worst.tint, lineWidth: 2))
-            .shadow(color: .black.opacity(0.28), radius: 2, y: 0.5)
-            .frame(minWidth: 28, minHeight: 28)
-            .contentShape(.rect)
+        Circle()
+            .fill(Theme.sheetBackground)
+            .overlay(Circle().strokeBorder(worst.tint, lineWidth: 3.5))
+            .frame(width: diameter, height: diameter)
+            .shadow(color: .black.opacity(0.3), radius: 1.5, y: 0.5)
+            .frame(width: 28, height: 28)
+            .contentShape(.circle)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(cluster.count) \(noun) an dieser Stelle, \(cluster.lateCount) verspätet")
             .accessibilityHint("Tippen zum Heranzoomen")

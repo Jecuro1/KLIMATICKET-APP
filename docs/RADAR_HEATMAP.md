@@ -91,8 +91,10 @@ Züge ohne Echtzeit-Daten zählen nie als pünktlich.
 
 ## 4. Darstellung
 
-- **Überlagerung.** Jedes Feld ist ein paar `MapPolygon`: farbig drei verschachtelte Sechsecke (Glühen 1,5×, Hof 1,18×, Körper 0,92×) mit steigender Deckkraft, das ergibt
-  den weichen Rand; neutral ein gestricheltes Sechseck und ein Zickzack aus drei Diagonalen als eine `MapPolyline`. Die Überlagerungen liegen über den Straßen
+- **Überlagerung.** Jedes Feld ist ein paar `MapPolygon`: farbig drei verschachtelte Sechsecke: ein **Untergrund** (1,12×, weiß auf der hellen, Nachtblau auf der dunklen Karte), der Farbe auch auf
+  dem grünen Land und den braunen Hügeln der Basiskarte lesbar macht und dem Feld einen schmalen Rand gibt (die ersten Screenshots zeigten grüne Felder auf grünem Land kaum), die Farbe als breiter blasser
+  **Hof** (1,45×, der weiche Rand) und der **Körper** (0,92×, mit scharfer Linie); neutral ein Sechseck mit Rand. Ab etwa 28 pt Feldbreite (nah genug, dass man das Muster lesen kann) ist der Rand
+  gestrichelt und ein Zickzack aus drei Diagonalen, eine `MapPolyline`, schraffiert ihn; auf dem Österreich-Zoom (18 pt) ist ein neutrales Feld ein blasser Umriss, das Muster wäre dort nur Rauschen. Die Überlagerungen liegen über den Straßen
   und unter den Beschriftungen der Karte (`mapOverlayLevel(.aboveRoads)`). Es gibt keine View je Zug und keine je Feld.
 - **Obergrenze.** Höchstens `HeatLayer.maxDrawnCells` = **300** Felder, höchstens **900** Überlagerungen im Ruhezustand (farbig 3, neutral 2); gewählt werden zuerst die farbigen
   Felder mit den meisten Verspätungsminuten, dann die neutralen mit den meisten Zügen. Sortiert wird nach Id, die Zeichenreihenfolge ändert sich nicht. Ein Test
@@ -104,16 +106,17 @@ Züge ohne Echtzeit-Daten zählen nie als pünktlich.
 - **Überblendung.** Kommt eine Antwort, laufen die Farben in vier Schritten (alle 90 ms, gut eine Drittelsekunde) vom alten zum neuen Stand; neue Felder blenden ein, weggefallene aus.
   MapKit-Überlagerungen kann SwiftUI nicht animieren, deshalb Schritte statt einer Feder. Mit „Bewegung reduzieren“ und in Screenshots erscheint der neue Stand sofort.
 - **Züge als Punkte.** Mit der Ebene sind die Zugmarker kleine Punkte (grün, orange, rot nach Klasse; die Größe wächst mit der Verspätung, ausgefallene und Züge ohne Echtzeit sind
-  offene Ringe), Gruppen eine kleine Zahl. Ein Tippen auf einen Punkt öffnet das Fahrt-Blatt wie vorher. Die Zahl der Marker bleibt die des Radars (höchstens etwa 130).
+  offene Ringe), Gruppen ein kleiner Ring in der Farbe des schlechtesten Zuges **ohne Zahl** (eine Zahl wie „265“ über Wien deckte die Felder zu; die Anzahl steht im gesprochenen Text, ein Tippen zoomt). Ein Tippen auf einen Punkt öffnet das Fahrt-Blatt wie vorher. Die Zahl der Marker bleibt die des Radars (höchstens etwa 130).
 - **Brennpunkte** haben eine Nummer auf der Karte (1 bis 3).
 - **Tippen auf ein Feld.** Ein Tippen auf die Karte sucht das Feld unter dem Finger, sonst das nächste mit Zügen innerhalb einer Fingerbreite (24 pt), mindestens ein Feld; es öffnet ein Blatt:
   Ort, mittlere Verspätung (oder warum das Feld keine Farbe hat), worauf es beruht und alle Züge im Feld, der späteste zuerst. Ein Zug öffnet das Fahrt-Blatt darüber. Das Feld hat einen Rahmen.
 
 ## 5. Panel, Bedienung, Zugänglichkeit
 
-Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. **Zu:** Überschrift „Pünktlich (unter 5 Min)“ mit der großen Zahl, der gestapelte Balken, „412 Züge mit Echtzeit-Daten, 38 ohne“ und
-„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, Ø Verspätung, Verlauf, Größte Verspätungen jetzt (fünf Zeilen), Brennpunkte
-(drei Zeilen) und die Hinweise.
+Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. Es ist so hoch wie sein Inhalt, höchstens 38 % (zu) oder 52 % (auf) der Karte; was darüber hinausgeht, scrollt in der Karte. Das ist
+nötig: In der größten Textgröße ist der Inhalt mehrere Bildschirme hoch, und eine so hohe Glasfläche wird gar nicht gezeichnet (Screenshots `radarHeatAX5`, Lauf 1: der Text lag ohne Karte auf der Karte). **Zu:** Überschrift „Pünktlich (unter 5 Min)“ mit der großen Zahl, der gestapelte Balken, „412 Züge mit Echtzeit-Daten, 38 ohne“ und
+„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, der Satz zu grau schraffierten Feldern und „Farbe in 95 von 154 Feldern mit Zügen“, Ø Verspätung, Verlauf, Größte Verspätungen jetzt (fünf Zeilen), Brennpunkte
+(drei Zeilen), „Pünktlichkeitskarte teilen“ und die Hinweise.
 
 - **VoiceOver.** Das Panel liest sich als eine Zusammenfassung (Prozent, Basis, Ø, Teile des Balkens, Stand). Balken und Legende sind für VoiceOver aus (sie würden nur doppeln). Die Zeilen der größten Verspätungen und
   der Brennpunkte sind eigene Schaltflächen („RJX 66 nach Wien Hbf, 18 Minuten verspätet“, „Fahrt öffnen“): So erreicht man Züge und Felder, ohne die Karte zu berühren. Die Felder der Karte sind **keine**
@@ -170,7 +173,8 @@ Folge der Regel „mindestens 3 Züge“ bei 13-km-Feldern, nicht ein Fehler. Da
 
 ## 8. Demo-Szenen, Tests, CI
 
-`-KBDemo`, kein Netz (`RadarHeatDemo.swift`): etwa 940 **erfundene** Fahrzeuge auf den erfundenen Korridoren des Radar-Demos (`ScottyDemoDense.swift`), Verspätungen für die Szene gemacht: ein Verspätungs-Cluster über Tirol
+`-KBDemo`, kein Netz (`RadarHeatDemo.swift`): etwa 940 **erfundene** Fahrzeuge auf den erfundenen Korridoren des Radar-Demos (`ScottyDemoDense.swift`) und 46 dazu entlang des Inntals (das Demo hat dort wenige Züge, ohne sie bliebe der
+Cluster grau), Verspätungen für die Szene gemacht: ein Verspätungs-Cluster über Tirol
 (zwischen Arlberg und Kufstein 11 bis 36 Minuten, einige 4 bis 10), der Rest ruhig (fast alles pünktlich, wenige verstreute Verspätungen, einige ohne Echtzeit, einer ausgefallen). Kein echter Zug, keine echte Verspätung, keine echte Position.
 
 | Szene | Zeigt |

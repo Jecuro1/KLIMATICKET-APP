@@ -13,12 +13,40 @@ struct RadarHeatPanel: View {
     var onHotspot: (HeatHotspot) -> Void
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @State private var contentHeight: CGFloat = 0
 
     private var heat: RadarHeatModel { model.heat }
+
+    /// The card is as tall as its content, at most this much of the map: closed 38 %, open 52 %. Beyond that the content scrolls inside
+    /// the card. A card of any height would do on a small text size; at the largest ones the content is several screens tall, and a
+    /// glass shape that tall is not drawn at all (CI screenshot radarHeatAX5, run 1: the text lay straight on the map).
+    private var maxHeight: CGFloat {
+        CGFloat(max(Double(model.mapSize.height), 600) * (heat.isExpanded ? 0.52 : 0.38))
+    }
 
     var body: some View {
         let snapshot = heat.snapshot
         let summary = snapshot.summary
+        ScrollView {
+            content(snapshot, summary)
+                .padding(Theme.Spacing.m)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    contentHeight = height
+                }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .scrollIndicators(.hidden)
+        .frame(maxHeight: contentHeight > 0 ? min(contentHeight, maxHeight) : maxHeight)
+        .clipShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
+        .glassEffect(.regular, in: .rect(cornerRadius: Theme.Radius.card))
+        .motionAnimation(Motion.smooth, value: heat.isExpanded)
+        .haptic(.tap, trigger: heat.isExpanded)
+    }
+
+    private func content(_ snapshot: HeatSnapshot, _ summary: HeatSummary) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Button { toggle() } label: { header(summary) }
                 .buttonStyle(.plain)
@@ -40,11 +68,6 @@ struct RadarHeatPanel: View {
             }
             RadarHeatAge(model: model)
         }
-        .padding(Theme.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: Theme.Radius.card))
-        .motionAnimation(Motion.smooth, value: heat.isExpanded)
-        .haptic(.tap, trigger: heat.isExpanded)
     }
 
     private func toggle() {
