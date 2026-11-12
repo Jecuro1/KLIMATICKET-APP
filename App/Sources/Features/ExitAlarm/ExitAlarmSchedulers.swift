@@ -19,9 +19,14 @@ import KlimaCore
 
 final class AlarmKitExitScheduler {
     private let manager = AlarmManager.shared
-    /// The AlarmKit id of each engine alarm that was scheduled in this process (derived, so it survives a relaunch).
+    /// Watches the alarms of AlarmKit while the app runs (started with the first alarm that is scheduled).
     private var observer: Task<Void, Never>?
+    /// `alerting` and `ownEnds` are touched by the observer task and by the calls of the scheduler's chain: one lock for both.
+    private let lock = NSLock()
     private var alerting: Set<UUID> = []
+    /// Alarms that left the alerting state because the app cancelled, stopped or replaced them. AlarmKit reports that like a stop
+    /// by the user; the app must not hear it as one (a snooze would turn into an acknowledgement).
+    private var ownEnds: Set<UUID> = []
     var onEvent: ((ExitAlarmSchedulerEvent) -> Void)?
 
     var authorization: AlarmManager.AuthorizationState { manager.authorizationState }
@@ -46,11 +51,34 @@ final class AlarmKitExitScheduler {
     }
 
     func cancel(id: String) {
-        try? manager.cancel(id: ExitAlarmUUID.make(from: id))
+        let uuid = ExitAlarmUUID.make(from: id)
+        markOwnEnd(uuid)
+        try? manager.cancel(id: uuid)
     }
 
     func stop(id: String) {
-        try? manager.stop(id: ExitAlarmUUID.make(from: id))
+        let uuid = ExitAlarmUUID.make(from: id)
+        markOwnEnd(uuid)
+        try? manager.stop(id: uuid)
+    }
+
+    /// Only an alarm that rings can produce the echo; marking an idle one would swallow a later stop by the user.
+    private func markOwnEnd(_ uuid: UUID) {
+        lock.lock()
+        defer { lock.unlock() }
+        if alerting.contains(uuid) { ownEnds.insert(uuid) }
+    }
+
+    /// What changed in the set of ringing alarms: the ones that started, and the ones the user ended.
+    private func diff(_ now: Set<UUID>) -> (started: Set<UUID>, ended: Set<UUID>) {
+        lock.lock()
+        defer { lock.unlock() }
+        let started = now.subtracting(alerting)
+        var ended = alerting.subtracting(now)
+        alerting = now
+        for uuid in started { ownEnds.remove(uuid) }
+        for uuid in ended where ownEnds.remove(uuid) != nil { ended.remove(uuid) }
+        return (started, ended)
     }
 
     /// The alarm the system shows. The title is the one line the Lock Screen reads; the "Öffnen" button opens the app.
@@ -72,10 +100,7 @@ final class AlarmKitExitScheduler {
             guard let manager = self?.manager else { return }
             for await alarms in manager.alarmUpdates {
                 guard let self else { return }
-                let now = Set(alarms.filter { $0.state == .alerting }.map(\.id))
-                let started = now.subtracting(self.alerting)
-                let ended = self.alerting.subtracting(now)
-                self.alerting = now
+                let (started, ended) = self.diff(Set(alarms.filter { $0.state == .alerting }.map(\.id)))
                 await MainActor.run {
                     for uuid in started { self.report(.rang, uuid: uuid) }
                     for uuid in ended { self.report(.stopped, uuid: uuid) }

@@ -7,7 +7,8 @@ import KlimaCore
 struct ExitAlarmFollowSection: View {
     let target: LiveFollowTarget
     let snapshot: LiveFollowSnapshot?
-    let onOpen: () -> Void
+    /// Opens the shared sheet; with a stop id the sheet starts on that alarm ("Ändern"), with nil on a new one.
+    let onOpen: (String?) -> Void
     private let service = ExitAlarmService.shared
 
     var body: some View {
@@ -17,12 +18,12 @@ struct ExitAlarmFollowSection: View {
                 TimelineView(.periodic(from: .now, by: 10)) { context in
                     ExitAlarmCard(state: state, now: context.date, kind: service.alarmKind,
                                   locationAuthorization: service.locationAuthorization, showsActions: true,
-                                  onEdit: onOpen, onCancel: { service.cancel(state.id) })
+                                  onEdit: { onOpen(state.spec.stopID) }, onCancel: { service.cancel(state.id) })
                 }
                 .motionTransition(.rise)
             }
             if alarms.count < ExitAlarmBook.capacity {
-                Button(action: onOpen) {
+                Button { onOpen(nil) } label: {
                     GlassCard(padding: Theme.Spacing.m) {
                         HStack(spacing: Theme.Spacing.s) {
                             SetIconTile(symbol: "bell.badge.fill", tint: Theme.dawn, size: 36)

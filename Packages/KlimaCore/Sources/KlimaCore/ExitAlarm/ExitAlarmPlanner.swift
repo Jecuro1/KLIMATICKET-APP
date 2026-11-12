@@ -134,6 +134,8 @@ public enum ExitAlarmPlanner {
 
         case .timeAlarmRang:
             guard state.phase == .armed || state.phase == .approaching || state.phase == .snoozed else { break }
+            // A late report of the alarm that rang before the snooze is not the snooze alarm: that one rings at `snoozedUntil`.
+            if state.phase == .snoozed, let until = state.snoozedUntil, now < until.addingTimeInterval(-5) { break }
             return fire(&state, source: state.phase == .snoozed ? .snooze : .timetable, now: now, ring: false)
 
         case .timeAlarmUnavailable:
@@ -271,9 +273,12 @@ public enum ExitAlarmPlanner {
     private static func passedCheck(_ state: inout ExitAlarmState, now: Date, config: ExitAlarmConfig) -> [ExitAlarmEffect] {
         guard state.passedAt == nil, state.phase != .acknowledged, state.phase != .ended else { return [] }
         var passed = false
+        // A stop cannot be passed before the alarm's moment: while the alarm still waits and the timetable knows the arrival, the
+        // distance that grows is a curve at the start of a short ride, not an overshoot.
+        let stillWaiting = (state.phase == .armed || state.phase == .approaching) && state.timetableArrival != nil
         if state.motion.isFresh(at: now, config: config) {
             // GPS: the closest approach was near, the distance has grown since, over several fixes, at travelling speed.
-            if let closest = state.closestMeters, let last = state.lastDistance, closest <= config.passedNearDistance,
+            if !stillWaiting, let closest = state.closestMeters, let last = state.lastDistance, closest <= config.passedNearDistance,
                last >= closest + config.passedGrowth, state.growingFixes >= config.passedGrowingFixes,
                let speed = state.motion.smoothedSpeed, speed >= config.minTravelSpeed {
                 passed = true

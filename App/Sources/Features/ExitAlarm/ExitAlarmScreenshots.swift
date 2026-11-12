@@ -92,7 +92,7 @@ private enum ExitAlarmBookHolder {
 
 struct ExitAlarmScreenshotHost: View {
     static let screens: Set<String> = ["exitAlarmSheet", "exitAlarmSheetHow", "exitAlarmLocation", "exitAlarmArmed", "exitAlarmApproaching",
-                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings"]
+                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings", "exitAlarmFiredAX5", "exitAlarmApproachingAX5"]
 
     let screen: String
     private let now = Date()
@@ -113,6 +113,13 @@ struct ExitAlarmScreenshotHost: View {
             ExitAlarmFiredView(state: ExitAlarmDemo.state(.fired, now: now), now: now)
         case "exitAlarmPassed":
             ExitAlarmFiredView(state: ExitAlarmDemo.state(.passed, now: now), now: now)
+        // Accessibility text sizes: the full-screen moment scrolls, the buttons stay pinned; the card keeps all its facts.
+        case "exitAlarmFiredAX5":
+            ExitAlarmFiredView(state: ExitAlarmDemo.state(.fired, now: now), now: now)
+                .dynamicTypeSize(.accessibility5)
+        case "exitAlarmApproachingAX5":
+            ExitAlarmCardScene(state: ExitAlarmDemo.state(.approaching, now: now), now: now)
+                .dynamicTypeSize(.accessibility5)
         default:
             NavigationStack {
                 List { SetExitAlarmSection() }

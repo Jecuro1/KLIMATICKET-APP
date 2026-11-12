@@ -90,6 +90,30 @@ final class ExitAlarmPresentationTests: XCTestCase {
         XCTAssertEqual(ExitAlarmPresentation.ringContent(now, kind: .arrival).body, "Linz Hbf gleich · Gleis 4")
     }
 
+    func testTheReminderAfterASnoozeDoesNotPromiseMinutesAnyMore() {
+        let spec = F.spec(stop: 2)
+        let content = ExitAlarmPresentation.ringContent(spec, kind: .snoozed)
+        XCTAssertEqual(content.title, "Aussteigen!")
+        XCTAssertEqual(content.body, "Deine Erinnerung für Linz Hbf · Gleis 4")
+        XCTAssertFalse(content.body.contains("Min"), "the lead is used up after a snooze")
+        var transfer = spec
+        transfer.isTransfer = true
+        XCTAssertEqual(ExitAlarmPresentation.ringContent(transfer, kind: .snoozed).title, "Umsteigen!")
+    }
+
+    func testDistanceNearAKilometreIsNeverShownAsAThousandMetres() {
+        XCTAssertEqual(ExitAlarmPresentation.distanceText(994), "990 m")
+        XCTAssertEqual(ExitAlarmPresentation.distanceText(996), "1,0 km")
+        XCTAssertEqual(ExitAlarmPresentation.distanceText(0), "0 m")
+    }
+
+    func testTimeIsShownInViennaTimeAcrossTheClockChange() {
+        // 2026-10-25: summer time ends at 01:00 UTC. 00:30 UTC is 02:30 CEST, 01:30 UTC is 02:30 CET again, 02:30 UTC is 03:30 CET.
+        XCTAssertEqual(ExitAlarmPresentation.timeText(Date(timeIntervalSince1970: 1_792_888_200)), "02:30")
+        XCTAssertEqual(ExitAlarmPresentation.timeText(Date(timeIntervalSince1970: 1_792_891_800)), "02:30")
+        XCTAssertEqual(ExitAlarmPresentation.timeText(Date(timeIntervalSince1970: 1_792_895_400)), "03:30")
+    }
+
     func testStopOptionsAreTheStopsFromBoardingToTheEnd() {
         let stopovers = F.stops.enumerated().map { index, stop in
             Stopover(location: Location(lid: "lid-\(index)", name: stop.name, coordinate: stop.point),

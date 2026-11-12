@@ -8,7 +8,7 @@ import Foundation
 public final class ScriptedLocationProvider: ExitAlarmLocationProviding {
     public var authorization: ExitAlarmLocationAuthorization
     public var isRegionMonitoringAvailable = true
-    public var handler: ExitAlarmLocationHandler?
+    public weak var handler: ExitAlarmLocationHandler?
     public private(set) var isUpdating = false
     public private(set) var regions: [String: (center: GeoPoint, radius: Double)] = [:]
     public private(set) var requests: [String] = []
@@ -57,6 +57,9 @@ public final class FakeAlarmScheduler: ExitAlarmScheduling {
     public private(set) var rings: [ExitAlarmRingContent] = []
     /// The scheduler refuses every alarm (no permission, too many alarms): it reports `.failed` instead of keeping it.
     public var rejectsScheduling = false
+    /// Like AlarmKit: an alarm that leaves the ringing state because the engine stopped, cancelled or replaced it is reported as
+    /// `.stopped`, the same event as a stop by the user on the Lock Screen. The engine must tell the two apart.
+    public var echoesStops = false
 
     public init(kind: ExitAlarmKind = .alarmKit) {
         self.kind = kind
@@ -77,17 +80,25 @@ public final class FakeAlarmScheduler: ExitAlarmScheduling {
         scheduled[id] = nil
         scheduledContent[id] = nil
         log.append("cancel \(id)")
+        endRinging(id)
     }
 
     public func ringNow(_ content: ExitAlarmRingContent) {
+        endRinging(content.id)   // an alarm of the same id that rings is replaced
         ringing[content.id] = content
         rings.append(content)
         log.append("ring \(content.id)")
     }
 
     public func stopRinging(id: String) {
-        ringing[id] = nil
         log.append("stop \(id)")
+        endRinging(id)
+    }
+
+    private func endRinging(_ id: String) {
+        guard ringing[id] != nil else { return }
+        ringing[id] = nil
+        if echoesStops { onEvent?(.stopped(id)) }
     }
 
     /// The system alarm of `id` goes off (a test or a demo advances time and calls this).

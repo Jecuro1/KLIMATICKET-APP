@@ -77,8 +77,8 @@ struct LiveFollowDetailSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     // MARK: exitalarm – the armed alarms of this run and a thin button into the shared sheet
                     if let target = tracker.target {
-                        ExitAlarmFollowSection(target: target, snapshot: tracker.snapshot) {
-                            alarmInput = ExitAlarmSheetInput(target: target, stopovers: tracker.snapshot?.stopovers)
+                        ExitAlarmFollowSection(target: target, snapshot: tracker.snapshot) { stopID in
+                            alarmInput = ExitAlarmSheetInput(target: target, stopovers: tracker.snapshot?.stopovers, preselectedStopID: stopID)
                         }
                     }
                     if let snapshot = tracker.snapshot {

@@ -41,6 +41,8 @@ struct ExitAlarmSheet: View {
     @State private var lead: ExitAlarmLead = ExitAlarmPrefs.shared.defaultLead
     @State private var showsExplainer = false
     @State private var isArming = false
+    /// The leg ends at a transfer and Settings says "Auch für Umstiege" is off: nothing is preselected, the user picks the stop.
+    @State private var needsChoice = false
     @State private var armedTick = 0
 
     private var now: Date { input.now ?? Date() }
@@ -53,7 +55,7 @@ struct ExitAlarmSheet: View {
     }
 
     private var selected: ExitAlarmStopOption? {
-        options.first { $0.lid == selectedStopID } ?? options.last
+        options.first { $0.lid == selectedStopID } ?? (needsChoice ? nil : options.last)
     }
 
     /// The alarm that exists for the selected stop, if any (the sheet then changes or removes it).
@@ -142,6 +144,12 @@ struct ExitAlarmSheet: View {
                         .foregroundStyle(Theme.textSecondary)
                 }
             } else {
+                if selected == nil {
+                    Text("Hier steigst du um. Wähle den Halt, an dem dich der Wecker wecken soll.")
+                        .font(.footnote)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 GlassCard(padding: Theme.Spacing.s) {
                     VStack(spacing: 0) {
                         ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
@@ -316,8 +324,12 @@ struct ExitAlarmSheet: View {
             if service.alarmKind == .notifications {
                 Text("Ohne Wecker-Erlaubnis kommen drei Mitteilungen im Abstand von 20 Sekunden. Lautlos-Schalter und Fokus können sie stumm schalten.")
             }
-            if !app.live.isDemo, app.live.timetable == nil {
-                Text("Ohne Live-Daten kennt der Wecker nur den Fahrplan, keine Verspätung.")
+            if let reason = app.live.timetableUnavailable {
+                // Offline is a passing state: the alarm is set by the timetable and catches up with the delay when the net is back.
+                // Live-Daten that are off are not: the follow cannot ask, and the alarms of a follow end with it.
+                Text(reason == .offline
+                     ? "Gerade ohne Netz: Der Wecker richtet sich nach dem Fahrplan und holt die Verspätung nach, sobald wieder Netz da ist."
+                     : "Live-Daten sind aus. Der Wecker braucht sie, um deine Fahrt zu verfolgen.")
             }
             Text("Dein Standort wird nur auf dem iPhone genutzt, solange ein Wecker scharf ist. Er wird weder gespeichert noch gesendet.")
         }
@@ -368,14 +380,29 @@ struct ExitAlarmSheet: View {
         }
         if selectedStopID == nil {
             let preferred = input.preselectedStopID.flatMap { id in options.first { $0.lid == id } }
-            // The end of the leg is the default; a transfer only when Settings says "Alarm auch für Umstiege".
+            // The end of the leg is the default. A transfer is preselected only when Settings says "Auch für Umstiege"; otherwise
+            // nothing is, and the user picks. (The stop before the transfer would wake them at a stop they never chose.)
             let end = options.last
-            selectedStopID = preferred?.lid ?? ((end?.isTransfer == true && !prefs.alsoForTransfers) ? options.dropLast().last?.lid : end?.lid)
+            if let preferred {
+                selectedStopID = preferred.lid
+            } else if end?.isTransfer == true, !prefs.alsoForTransfers {
+                needsChoice = true
+            } else {
+                selectedStopID = end?.lid
+            }
+            // "Ändern" shows the alarm as it is set.
+            if let existing { lead = existing.spec.lead }
         }
     }
 
     private func arm() async {
         guard let selected, let stopovers else { return }
+        // Live-Daten off (switch, kill switch, no consent): the follow cannot ask and would end the alarm at once. Say so now
+        // instead of "Wecker gestellt". Offline is different: the alarm is set and the delay is caught up later.
+        if let reason = app.live.timetableUnavailable, reason != .offline {
+            app.showToast("exclamationmark.triangle.fill", "Live-Daten sind aus", "Der Wecker braucht sie. Schalte sie in den Einstellungen ein.")
+            return
+        }
         isArming = true
         defer { isArming = false }
         await service.prepare(askForPermissions: true)
@@ -391,7 +418,10 @@ struct ExitAlarmSheet: View {
         switch result {
         case .armed, .replaced:
             armedTick += 1
-            app.showToast("bell.badge.fill", "Wecker gestellt", "\(selected.name) · \(lead.title)")
+            // Nothing allowed (no alarm, no notifications): it only rings while the app is open, and the toast must not hide that.
+            app.showToast("bell.badge.fill", "Wecker gestellt",
+                          service.alarmKind == .none ? "Klingelt nur bei geöffneter App, erlaube Wecker oder Mitteilungen"
+                                                     : "\(selected.name) · \(lead.title)")
             dismiss()
         case .full:
             app.showToast("exclamationmark.triangle.fill", "Schon drei Wecker aktiv", "Schalte einen aus, bevor du einen neuen stellst")

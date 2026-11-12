@@ -105,6 +105,10 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
     private var failedRegions: Set<String> = []
     /// The user agreed to "Immer" in the pre-prompt: ask for the upgrade when "Beim Verwenden" has been answered.
     private var wantsAlways = false
+    /// Alarm id → until when a `.stopped` report is the echo of the engine's own ring (a ringing alarm of that id was replaced),
+    /// not a stop by the user. The system alarm that replaces it cannot ring before `ringDelay`, so nobody can stop it earlier.
+    private var echoGuard: [String: Date] = [:]
+    private static let echoWindow: TimeInterval = 2
 
     public static let testID = "exitalarm-test"
 
@@ -131,7 +135,7 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
         book = saved
         for state in book.active {
             if let scheduled = state.scheduledTimeAlarm, scheduled > now {
-                scheduler.schedule(ExitAlarmPresentation.ringContent(state.spec, kind: .arrival, now: now), at: scheduled)
+                scheduler.schedule(ExitAlarmPresentation.ringContent(state.spec, kind: state.phase == .snoozed ? .snoozed : .arrival, now: now), at: scheduled)
             }
             if state.phase != .fired, let radius = state.geofenceRadius, let center = state.spec.stopCoordinate ?? state.spec.path.last {
                 location.startMonitoring(regionID: state.id, center: center, radius: radius)
@@ -307,6 +311,11 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
                 acknowledgeTest()
                 return
             }
+            if let until = echoGuard[id], now < until { return }
+            // Only a ringing alarm can be stopped by the user. The system also reports the end of an alarm that the engine
+            // itself stopped or replaced (snooze, acknowledge in the app, "vorbeigefahren" over a ringing alarm): that echo is
+            // no user action and must not turn a snooze into an acknowledgement.
+            guard book.state(id: id)?.phase == .fired else { return }
             run(book.apply(.acknowledge, to: id, now: now, config: config), now: now)
         case .failed(let id):
             run(book.apply(.timeAlarmUnavailable, to: id, now: now, config: config), now: now)
@@ -323,12 +332,14 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
             let spec = state.spec
             switch command.effect {
             case .scheduleTimeAlarm(let date):
-                scheduler.schedule(ExitAlarmPresentation.ringContent(spec, kind: .arrival, now: now), at: date)
+                scheduler.schedule(ExitAlarmPresentation.ringContent(spec, kind: state.phase == .snoozed ? .snoozed : .arrival, now: now), at: date)
             case .cancelTimeAlarm:
                 scheduler.cancel(id: spec.id)
-            case .ring:
-                scheduler.ringNow(ExitAlarmPresentation.ringContent(spec, kind: .arrival, now: now))
+            case .ring(let source):
+                echoGuard[spec.id] = now.addingTimeInterval(Self.echoWindow)
+                scheduler.ringNow(ExitAlarmPresentation.ringContent(spec, kind: source == .snooze ? .snoozed : .arrival, now: now))
             case .ringPassed:
+                echoGuard[spec.id] = now.addingTimeInterval(Self.echoWindow)
                 scheduler.ringNow(ExitAlarmPresentation.ringContent(spec, kind: .passed, now: now))
             case .stopRinging:
                 scheduler.stopRinging(id: spec.id)

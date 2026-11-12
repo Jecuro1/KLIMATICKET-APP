@@ -79,7 +79,7 @@ public enum ExitAlarmPresentation {
 
     /// "850 m", "4,2 km", "18 km" (German decimal comma).
     public static func distanceText(_ meters: Double) -> String {
-        if meters < 1000 { return "\(Int((meters / 10).rounded()) * 10) m" }
+        if meters < 995 { return "\(Int((meters / 10).rounded()) * 10) m" }
         let km = meters / 1000
         if km < 10 { return String(format: "%.1f km", km).replacingOccurrences(of: ".", with: ",") }
         return "\(Int(km.rounded())) km"
@@ -87,12 +87,21 @@ public enum ExitAlarmPresentation {
 
     /// "17:42" in Vienna time.
     public static func timeText(_ date: Date) -> String {
+        timeFormatterLock.lock()
+        defer { timeFormatterLock.unlock() }
+        return timeFormatter.string(from: date)
+    }
+
+    // One formatter for the whole app: the card asks on every redraw. DateFormatter is thread-safe for reading since iOS 7, the
+    // lock only keeps the strict-concurrency checker and Linux's Foundation calm.
+    private static let timeFormatterLock = NSLock()
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "de_AT")
         formatter.timeZone = TimeZone(identifier: "Europe/Vienna") ?? .current
         formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
-    }
+        return formatter
+    }()
 
     /// The card's title.
     public static func title(_ state: ExitAlarmState) -> String {
@@ -166,6 +175,12 @@ public enum ExitAlarmPresentation {
             return ExitAlarmRingContent(id: spec.id, kind: kind, title: "\(verb)!",
                                         body: "\(spec.stopName) \(when)\(platform)", stopName: spec.stopName,
                                         lineName: spec.lineName, soundKey: spec.soundKey)
+        case .snoozed:
+            // After "5 Min später" the lead is used up: the text must not promise "in etwa 5 Min" any more.
+            let verb = spec.isTransfer ? "Umsteigen" : "Aussteigen"
+            return ExitAlarmRingContent(id: spec.id, kind: kind, title: "\(verb)!",
+                                        body: "Deine Erinnerung für \(spec.stopName)\(platform)", stopName: spec.stopName,
+                                        lineName: spec.lineName, soundKey: spec.soundKey)
         case .passed:
             return ExitAlarmRingContent(id: spec.id, kind: kind, title: "Vorbeigefahren",
                                         body: "Du bist an \(spec.stopName) vorbeigefahren.", stopName: spec.stopName,
@@ -180,7 +195,7 @@ public enum ExitAlarmPresentation {
 
 /// What a scheduler needs to ring: title, body and the sound.
 public struct ExitAlarmRingContent: Hashable, Sendable {
-    public enum Kind: String, Sendable, Hashable { case arrival, passed, test }
+    public enum Kind: String, Sendable, Hashable { case arrival, snoozed, passed, test }
     public var id: String
     public var kind: Kind
     public var title: String

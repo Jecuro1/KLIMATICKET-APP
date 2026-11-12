@@ -24,36 +24,27 @@ struct ExitAlarmFiredView: View {
     var body: some View {
         ZStack {
             background
-            VStack(spacing: Theme.Spacing.l) {
-                Spacer(minLength: Theme.Spacing.xl)
-                bell
-                VStack(spacing: Theme.Spacing.xs) {
-                    Text(title.uppercased(with: Format.locale))
-                        .font(.system(size: 15, weight: .heavy, design: .rounded))
-                        .tracking(3)
-                        .foregroundStyle(.white.opacity(0.78))
-                    Text(stopName)
-                        .font(.system(size: 52, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(3)
-                        .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
-                    if isPassed {
-                        Text("Du bist an \(stopName) vorbeigefahren.")
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 2)
+            // The content scrolls when it does not fit (accessibility text sizes, small iPhones); the two buttons stay pinned below.
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(spacing: Theme.Spacing.l) {
+                        Spacer(minLength: Theme.Spacing.m)
+                        bell
+                        heading.reveal(.focus)
+                        details
+                        Spacer(minLength: Theme.Spacing.m)
                     }
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+                    .padding(.horizontal, Theme.Spacing.screen)
                 }
-                .reveal(.focus)
-                details
-                Spacer(minLength: Theme.Spacing.m)
-                actions
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(.horizontal, Theme.Spacing.screen)
-            .padding(.bottom, Theme.Spacing.l)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            actions
+                .padding(.horizontal, Theme.Spacing.screen)
+                .padding(.top, Theme.Spacing.s)
+                .padding(.bottom, Theme.Spacing.l)
         }
         .preferredColorScheme(.dark)
         .haptic(.warning, trigger: pulse)
@@ -65,6 +56,40 @@ struct ExitAlarmFiredView: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+    }
+
+    private var heading: some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            Text(title.uppercased(with: Format.locale))
+                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .tracking(3)
+                .foregroundStyle(.white.opacity(0.78))
+            Text(stopName)
+                .font(.system(size: 52, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.5)
+                .lineLimit(3)
+                .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
+            if isPassed {
+                Text("Du bist an \(stopName) vorbeigefahren.")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 2)
+            }
+        }
+        // One sentence for VoiceOver instead of letter-spaced capitals and a stop name in two pieces.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spokenHeading)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private var spokenHeading: String {
+        if isPassed { return "Vorbeigefahren. Du bist an \(stopName) vorbeigefahren." }
+        if isTest { return "Test. So klingt dein Aussteige-Wecker." }
+        return "\(title) \(stopName)"
     }
 
     private var background: some View {
@@ -197,6 +222,8 @@ final class ExitAlarmWindow {
         window.rootViewController = host
         window.makeKeyAndVisible()
         self.window = window
+        // VoiceOver moves to the new screen: a ringing alarm must not be found by swiping through the app underneath.
+        UIAccessibility.post(notification: .screenChanged, argument: host.view)
     }
 
     private func hide() {

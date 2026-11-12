@@ -333,6 +333,20 @@ final class ExitAlarmPlannerTests: XCTestCase {
         XCTAssertNil(h.state(spec.id)?.passedAt)
     }
 
+    func testACurveAtTheStartOfAShortRideIsNotAnOvershoot() {
+        // The target is 2 km away and the train first moves away from it (a loop out of the station) while the alarm still waits.
+        var state = ExitAlarmPlanner.arm(F.spec(stop: 2, lead: .atArrival), arrival: F.t0.addingTimeInterval(3600), now: F.t0).state
+        let path = GeoPath(F.path(to: 2))
+        var now = F.t0
+        for distance in [2000.0, 2300, 2600, 2900, 3200] {
+            now = now.addingTimeInterval(5)
+            let fix = LocationFix(time: now, coordinate: path.point(at: path.length - distance)!, speed: 20, horizontalAccuracy: 15)
+            ExitAlarmPlanner.apply(.fix(fix), to: &state, now: now)
+        }
+        XCTAssertNil(state.passedAt, "nothing was passed: the alarm has not even rung")
+        XCTAssertNotEqual(state.phase, .fired)
+    }
+
     func testUserWalkingAwayFromTheStationIsNotPassed() {
         let h = ExitAlarmHarness()
         let spec = F.spec(stop: 2)
@@ -639,6 +653,83 @@ final class ExitAlarmPlannerTests: XCTestCase {
         h.play(F.fixes(toStop: 2))
         XCTAssertEqual(h.state(spec.id)?.phase, .fired)
         XCTAssertEqual(h.ringCount, 1)
+    }
+
+    // MARK: The system's echo of the engine's own stops (AlarmKit reports every alarm that leaves the ringing state)
+
+    private func echoing(authorization: ExitAlarmLocationAuthorization = .always) -> ExitAlarmHarness {
+        let h = ExitAlarmHarness(authorization: authorization)
+        h.scheduler.echoesStops = true
+        return h
+    }
+
+    func testSnoozeSurvivesTheEchoOfItsOwnStop() {
+        let h = echoing()
+        let spec = F.spec(stop: 2)
+        h.engine.arm(spec, arrival: F.arrival(at: 2))
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(-299))   // the system alarm rang
+        XCTAssertEqual(h.state(spec.id)?.phase, .fired)
+        h.engine.snooze(id: spec.id, minutes: 5)
+        // The system reported the end of the alarm that the engine stopped: that is no acknowledgement.
+        XCTAssertEqual(h.state(spec.id)?.phase, .snoozed, "the snooze is not turned into an acknowledgement")
+        let until = h.now.addingTimeInterval(300)
+        XCTAssertEqual(h.scheduler.scheduled[spec.id], until, "the snooze alarm is still scheduled")
+        h.advance(to: until.addingTimeInterval(1))
+        XCTAssertEqual(h.state(spec.id)?.phase, .fired)
+        XCTAssertEqual(h.state(spec.id)?.firedBy, .snooze)
+        XCTAssertEqual(h.scheduler.ringing[spec.id]?.kind, .snoozed, "the second ring says it is a reminder")
+    }
+
+    func testPassedAlertIsNotSilencedByTheEchoOfTheAlarmItReplaces() {
+        let h = echoing(authorization: .denied)
+        let spec = F.spec(stop: 2)
+        h.engine.arm(spec, arrival: F.arrival(at: 2), departure: F.arrival(at: 2).addingTimeInterval(120))
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(-299))   // rings, nobody stops it
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(120 + 100))
+        let state = h.state(spec.id)!
+        XCTAssertNotNil(state.passedAt)
+        XCTAssertEqual(state.phase, .fired, "the passed alert waits for the user, it is not acknowledged by itself")
+        XCTAssertEqual(h.scheduler.ringing[spec.id]?.kind, .passed)
+    }
+
+    func testAnAcknowledgementInTheAppIsNotCountedTwice() {
+        let h = echoing()
+        let spec = F.spec(stop: 2)
+        h.engine.arm(spec, arrival: F.arrival(at: 2))
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(-299))
+        h.engine.acknowledge(id: spec.id)
+        let acknowledgedAt = h.state(spec.id)?.acknowledgedAt
+        h.now = h.now.addingTimeInterval(30)
+        h.scheduler.onEvent?(.stopped(spec.id))   // a late echo
+        XCTAssertEqual(h.state(spec.id)?.phase, .acknowledged)
+        XCTAssertEqual(h.state(spec.id)?.acknowledgedAt, acknowledgedAt)
+    }
+
+    func testAStopReportOfAnAlarmThatDoesNotRingIsNoAcknowledgement() {
+        let (h, spec) = armed()
+        h.advance(to: F.t0)
+        h.scheduler.onEvent?(.stopped(spec.id))
+        XCTAssertEqual(h.state(spec.id)?.phase == .armed || h.state(spec.id)?.phase == .approaching, true)
+        XCTAssertNotNil(h.scheduler.scheduled[spec.id], "the alarm is still scheduled")
+    }
+
+    func testALateRangReportDuringTheSnoozeIsIgnored() {
+        let (h, spec) = armed()
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(-299))
+        h.engine.snooze(id: spec.id, minutes: 5)
+        h.scheduler.onEvent?(.rang(spec.id))   // the report of the alarm that rang before the snooze
+        XCTAssertEqual(h.state(spec.id)?.phase, .snoozed)
+        XCTAssertEqual(h.ringCount, 1)
+    }
+
+    func testTheUsersStopOfTheRingingSystemAlarmStillAcknowledges() {
+        let h = echoing()
+        let spec = F.spec(stop: 2)
+        h.engine.arm(spec, arrival: F.arrival(at: 2))
+        h.advance(to: F.arrival(at: 2).addingTimeInterval(-299))
+        h.now = h.now.addingTimeInterval(20)
+        h.scheduler.onEvent?(.stopped(spec.id))   // Stopp on the Lock Screen
+        XCTAssertEqual(h.state(spec.id)?.phase, .acknowledged)
     }
 
     // MARK: Helpers

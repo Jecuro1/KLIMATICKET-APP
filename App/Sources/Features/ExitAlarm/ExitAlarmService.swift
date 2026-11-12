@@ -170,9 +170,26 @@ final class ExitAlarmService {
 
     /// Live-Daten went off (kill switch, withdrawn consent): the alarms depend on live timetable data and end.
     func liveDataOff() {
-        guard !book.active.isEmpty else { return }
+        let affected = book.active
+        guard !affected.isEmpty else { return }
         engine.liveDataOff()
         updateTicker()
+        postSwitchedOffNotice(affected)
+    }
+
+    /// The alarms ended without the user's doing. Nobody may sleep on believing that an alarm is armed, so the app says it once
+    /// (a normal notification; it is dropped silently when notifications are not allowed).
+    private func postSwitchedOffNotice(_ alarms: [ExitAlarmState]) {
+        guard !isSimulated else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "Aussteige-Wecker ist aus"
+        content.body = alarms.count == 1
+            ? "Für \(alarms[0].spec.stopName) klingelt nichts mehr, weil Live-Daten ausgeschaltet sind. Stell den Wecker neu, wenn sie wieder an sind."
+            : "Es klingelt nichts mehr, weil Live-Daten ausgeschaltet sind. Stell die Wecker neu, wenn sie wieder an sind."
+        content.sound = .default
+        content.interruptionLevel = .active
+        let request = UNNotificationRequest(identifier: "exitalarm.switchedoff", content: content, trigger: nil)
+        Task { try? await UNUserNotificationCenter.current().add(request) }
     }
 
     /// What the Live Activity shows while an alarm is armed.

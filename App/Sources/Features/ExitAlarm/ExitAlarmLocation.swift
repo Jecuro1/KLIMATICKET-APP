@@ -8,7 +8,10 @@ import KlimaCore
 
 final class CLExitAlarmLocation: NSObject, ExitAlarmLocationProviding, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
-    var handler: ExitAlarmLocationHandler?
+    /// The engine owns this provider, so the way back is weak: no retain cycle between the two.
+    weak var handler: ExitAlarmLocationHandler?
+    /// The circles of the app are shared with the trip detection: ours carry this prefix and nobody else touches them.
+    static let regionPrefix = "exitalarm."
 
     override init() {
         super.init()
@@ -53,16 +56,27 @@ final class CLExitAlarmLocation: NSObject, ExitAlarmLocationProviding, CLLocatio
     }
 
     func startMonitoring(regionID: String, center: GeoPoint, radius: Double) {
+        let identifier = Self.regionPrefix + regionID
         let capped = min(radius, manager.maximumRegionMonitoringDistance)
-        let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude),
-                                      radius: capped, identifier: regionID)
+        let coordinate = CLLocationCoordinate2D(latitude: center.latitude, longitude: center.longitude)
+        // iOS keeps the circles across launches. Setting the same circle again after a relaunch for its entry could reset its
+        // state and swallow the pending event, so an identical circle is left alone.
+        if let known = manager.monitoredRegions.first(where: { $0.identifier == identifier }) as? CLCircularRegion,
+           abs(known.radius - capped) < 1, abs(known.center.latitude - coordinate.latitude) < 1e-6,
+           abs(known.center.longitude - coordinate.longitude) < 1e-6 {
+            return
+        }
+        let region = CLCircularRegion(center: coordinate, radius: capped, identifier: identifier)
         region.notifyOnEntry = true
         region.notifyOnExit = false
         manager.startMonitoring(for: region)
     }
 
     func stopMonitoring(regionID: String) {
-        for region in manager.monitoredRegions where region.identifier == regionID { manager.stopMonitoring(for: region) }
+        // The bare id is how an earlier build named its circles: stop those too, so none is left behind.
+        for region in manager.monitoredRegions where region.identifier == Self.regionPrefix + regionID || region.identifier == regionID {
+            manager.stopMonitoring(for: region)
+        }
     }
 
     // MARK: CLLocationManagerDelegate
@@ -80,15 +94,16 @@ final class CLExitAlarmLocation: NSObject, ExitAlarmLocationProviding, CLLocatio
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        let id = region.identifier
+        // The trip detection's circles come through here too (every manager of the app hears every circle): not ours, not handled.
+        guard region.identifier.hasPrefix(Self.regionPrefix) else { return }
+        let id = String(region.identifier.dropFirst(Self.regionPrefix.count))
         Task { @MainActor in self.handler?.locationProvider(didEnterRegion: id) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        let id = region?.identifier
-        Task { @MainActor in
-            if let id { self.handler?.locationProvider(regionMonitoringFailed: id) }
-        }
+        guard let identifier = region?.identifier, identifier.hasPrefix(Self.regionPrefix) else { return }
+        let id = String(identifier.dropFirst(Self.regionPrefix.count))
+        Task { @MainActor in self.handler?.locationProvider(regionMonitoringFailed: id) }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

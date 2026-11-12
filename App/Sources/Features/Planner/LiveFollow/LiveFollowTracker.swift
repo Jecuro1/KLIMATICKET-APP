@@ -238,7 +238,13 @@ final class LiveFollowTracker {
             }
         }
         return { [weak live] id in
-            guard let service = live?.timetable else { throw LiveError.disabled(.oebbHafas) }
+            guard let service = live?.timetable else {
+                // MARK: exitalarm – "no network" is not "Live-Daten aus": in a tunnel or a dead spot the timetable service is nil as
+                // well, and `.disabled` ends the Aussteige-Wecker. Offline is an ordinary failed poll: the follow and its alarms
+                // carry on and the next poll tries again.
+                if live?.timetableUnavailable == .offline { throw LiveError.offline }
+                throw LiveError.disabled(.oebbHafas)
+            }
             return try await service.trip(id, includePolyline: false)
         }
     }
