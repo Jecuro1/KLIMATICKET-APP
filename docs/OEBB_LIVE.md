@@ -2771,6 +2771,10 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
   frei, nicht den Platz im Budget.
 - **Status:** „923 Züge · vor 12 s“ (Zahl im Ausschnitt nach Filter; Alter der ältesten Antwort unter den sichtbaren Kacheln) plus die
   Hinweise oben. Der Hinweis „Zoom hinein für alle Züge“ ist weg. Kein Hinweis, wenn alles im Rhythmus von 25 s oder schneller läuft.
+  Zeile und Hinweise sind **eine** Glaskarte (Text direkt auf der Karte war zwischen den Markern nicht lesbar), der Platz unter dem Marker ist
+  leer: Die Titel unter Zug- und Gruppen-Markern sind ausgeblendet (sie trugen schon Linie oder Zahl). Das Panel unten misst seine Inhaltshöhe,
+  und die Karte rahmt den Bereich über dem Panel, damit das Land nicht darunter liegt (CI-Screenshots 2026-11-12: vorher lag Österreich zur Hälfte
+  hinter dem Panel und darunter blieb eine Lücke).
 - **Darstellung:** Das Gitter der Gruppen (`RadarClustering`) folgt jetzt dem Bildschirm statt der Breitenspanne: Eine Zelle ist etwa so groß wie
   ein Marker (56 pt), mit höchstens 150 Zellen je Bildschirm (große Bildschirme bekommen ein gröberes Gitter). Ein Hochformat-iPhone zeigt beim
   Österreich-Zoom etwa 13° Breite; nach der Breitenspanne allein wäre eine Zelle 1,9° groß und ganz Österreich nur eine Handvoll Blasen. Die
