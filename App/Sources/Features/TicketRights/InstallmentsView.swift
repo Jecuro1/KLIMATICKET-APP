@@ -102,6 +102,7 @@ struct InstallmentsView: View {
     private func paidColumn(_ plan: InstallmentPlan) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Bezahlt bis heute")
+                .lineLimit(2, reservesSpace: true)
             CountUpText(value: plan.paidAmount) { Format.euroPrecise($0) }
                 .font(Theme.Typography.numberMedium)
                 .foregroundStyle(Theme.textPrimary)
@@ -118,6 +119,7 @@ struct InstallmentsView: View {
     private func valueColumn(_ balance: InstallmentPlan.Balance) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Nutzen der Fahrten bis heute")
+                .lineLimit(2, reservesSpace: true)
             CountUpText(value: balance.value) { Format.euro($0) }
                 .font(Theme.Typography.numberMedium)
                 .foregroundStyle(Theme.textPrimary)
@@ -164,8 +166,9 @@ struct InstallmentsView: View {
                     Text("\(Format.euroPrecise(plan.typicalAmount)) im Monat")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.textPrimary)
-                    Text(plan.lastDiffers ? "zusammen \(Format.euroPrecise(plan.price)) – die letzte Rate gleicht den Cent aus"
-                                          : "zusammen \(Format.euroPrecise(plan.price))")
+                    Text((plan.lastDiffers ? "zusammen \(Format.euroPrecise(plan.price)), die letzte Rate gleicht den Cent aus"
+                                           : "zusammen \(Format.euroPrecise(plan.price))")
+                         + ". Abgebucht wird jeweils rund um den Monatsanfang, die ersten zwei Raten gleich mit der Bestellung.")
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -284,7 +287,7 @@ private struct InstallmentRow: View {
     }
 
     private var detail: String {
-        item.timing == .withOrder ? "Rate \(item.number)" : "Rate \(item.number) · rund um den Monatsanfang"
+        "Rate \(item.number) von \(InstallmentPlan.count)"
     }
 
     private var stateText: String {

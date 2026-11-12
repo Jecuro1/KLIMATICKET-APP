@@ -103,7 +103,6 @@ struct ObjectionLetterView: View {
                 }
                 .listRowBackground(Color.clear)
                 reminderSection
-                    .id(LetterAnchor.reminder)
                 LetterInlineActions(content: letter, fileName: Self.fileName, printJobName: letter.documentTitle)
                 Section {
                     Text(LetterText.notLegalAdvice)
@@ -212,6 +211,7 @@ struct ObjectionLetterView: View {
                 }
                 reminderButton
             }
+            .id(LetterAnchor.reminder)   // on the row, not the section: every row of a section would share the id
             .motionAnimation(Motion.smooth, value: reminderDates)
             .motionAnimation(Motion.smooth, value: reminderState)
             .haptic(.success, trigger: reminderTrigger)

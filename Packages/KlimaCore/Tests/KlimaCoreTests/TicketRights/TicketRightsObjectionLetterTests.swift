@@ -84,9 +84,9 @@ final class TicketRightsObjectionLetterTests: XCTestCase {
     }
 
     func testAnEditedRecipientIsPrinted() {
-        let recipient = LetterRecipient.parse("One Mobility Ticketing GmbH\n\n Musterstraße 5 \n1030 Wien")
+        let recipient = LetterRecipient.parse("Beispiel Kundenservice GmbH\n\n Musterstraße 5 \n1030 Wien")
         let letter = RenewalObjectionLetter.make(TR.objection(recipient: recipient), now: now)
-        XCTAssertEqual(letter.recipientLines, ["One Mobility Ticketing GmbH", "Musterstraße 5", "1030 Wien"])
+        XCTAssertEqual(letter.recipientLines, ["Beispiel Kundenservice GmbH", "Musterstraße 5", "1030 Wien"])
         XCTAssertTrue(letter.isReady)
     }
 
