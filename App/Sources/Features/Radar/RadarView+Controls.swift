@@ -145,20 +145,9 @@ extension RadarView {
                         Task { if let s = radarService { await model.refreshNow(s) } }
                     }
                 }
-                // What is true about the tiles: a cut-off tile, a partial failure, a refresh slower than 25 s (§R11).
-                ForEach(model.notes, id: \.self) { note in
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Theme.Spacing.l)
-                }
                 if focusMissing {
                     Text("Dieser Zug ist gerade nicht auf der Karte. Zoom heraus oder probier es später noch einmal.")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, Theme.Spacing.l)
+                        .radarHint()
                 }
                 statusPill
             }
@@ -176,10 +165,12 @@ extension RadarView {
         .motionAnimation(Motion.smooth, value: model.load)
     }
 
-    /// "923 Züge · vor 12 s": the vehicles in the visible area and the age of the oldest answer behind them.
+    /// "923 Züge · vor 12 s": the vehicles in the visible area and the age of the oldest answer behind them, and under it what is
+    /// true about the tiles (a cut-off tile, a partial failure, a refresh slower than 25 s: docs/OEBB_LIVE.md §R11). One glass
+    /// card: text straight on the map would not be legible between the markers.
     private var statusPill: some View {
         let text: String
-        let spoken: String
+        var spoken: String
         if let pill = model.pillText {
             text = pill
             let age = model.status.oldestAnswerAge.map { ", aktualisiert \(RadarStatusText.spokenAge($0))" } ?? ""
@@ -188,17 +179,40 @@ extension RadarView {
             text = model.load == .loading ? "Lade Fahrzeuge …" : "Noch keine Positionen"
             spoken = text
         }
-        return HStack(spacing: Theme.Spacing.xs) {
-            Image(systemName: "dot.radiowaves.left.and.right")
-            Text(text).monospacedDigit()   // the age ticks every second: the pill keeps its width
+        let notes = model.notes
+        if !notes.isEmpty { spoken += ". " + notes.joined(separator: " ") }
+        return VStack(spacing: 2) {
+            HStack(spacing: Theme.Spacing.xs) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                Text(text).monospacedDigit()   // the age ticks every second: the card keeps its width
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
+            ForEach(notes, id: \.self) { note in
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
         }
-        .font(.footnote.weight(.semibold))
-        .foregroundStyle(Theme.textPrimary)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .glassEffect(.regular, in: .capsule)
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
         .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
+extension View {
+    /// A short hint over the map: caption text on a glass capsule, so it stays legible between markers and labels.
+    func radarHint() -> some View {
+        self
+            .font(.caption)
+            .foregroundStyle(Theme.textSecondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
+            .glassEffect(.regular, in: .rect(cornerRadius: 14))
     }
 }

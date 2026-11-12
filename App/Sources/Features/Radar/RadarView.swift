@@ -27,6 +27,7 @@ struct RadarView: View {
     @State var query = ""
     @State var showsFilter = false
     @State var sheetVehicle: RadarVehicle?
+    @State private var statusHeight: CGFloat = 0
     @AppStorage("radar.mapStyle") var styleRaw = RadarMapStyle.standard.rawValue
     @FocusState var searchFocused: Bool
     @State private var focusDone = false
@@ -67,11 +68,18 @@ struct RadarView: View {
             }
             .safeAreaInset(edge: .top, spacing: Theme.Spacing.xs) { topBar }
             .safeAreaInset(edge: .bottom, spacing: Theme.Spacing.xs) {
-                // Large text sizes scroll the panel instead of covering the map: it takes its content's height, up to a cap.
-                ScrollView { statusBar }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxHeight: 360)
+                // Large text sizes scroll the panel instead of covering the map: it takes exactly its content's height (measured),
+                // up to a cap. A scroll view that is only asked to fit its content stays at the cap and leaves a gap under the panel.
+                ScrollView {
+                    statusBar
+                        .onGeometryChange(for: CGFloat.self) { proxy in
+                            proxy.size.height
+                        } action: { height in
+                            statusHeight = height
+                        }
+                }
+                .scrollBounceBehavior(.basedOnSize)
+                .frame(maxHeight: statusHeight > 0 ? min(statusHeight, 360) : 360)
             }
             // The loop only restarts when the view becomes (in)active. A new map area or mode goes to the scheduler directly:
             // it settles for a moment, so a series of moves costs one round of requests.
@@ -126,11 +134,13 @@ struct RadarView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    .annotationTitles(.hidden)   // the marker carries its plate; a caption under each would be a wall of text
                 } else {
                     Annotation("\(cluster.count) \(vehicleNoun)", coordinate: cluster.center.clCoordinate, anchor: .center) {
                         Button { zoom(to: cluster) } label: { RadarClusterBubble(cluster: cluster, noun: vehicleNoun) }
                             .buttonStyle(.plain)
                     }
+                    .annotationTitles(.hidden)   // the bubble carries its count
                 }
             }
             }
@@ -166,7 +176,6 @@ struct RadarView: View {
             model.setMapSize(size)
         }
         .accessibilityLabel("Zug-Radar, \(model.summary)")
-        .ignoresSafeArea(edges: .bottom)
         .haptic(.selection, trigger: model.selectedTripID)
     }
 
@@ -229,9 +238,9 @@ struct RadarView: View {
                                                 span: MKCoordinateSpan(latitudeDelta: 8.5, longitudeDelta: 16)))
         case .allTrains:   // MARK: radarall – about 1500 synthetic trains, Austria-wide view: clusters with counts
             break
-        case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to eastern Austria: single trains and small clusters
-            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.05, longitude: 15.75).clCoordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 1.1, longitudeDelta: 1.5)))
+        case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to Wien and its S-Bahn: single trains and small clusters
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.17, longitude: 16.30).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection.all.storageValue
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.20, longitude: 16.37).clCoordinate,

@@ -75,11 +75,13 @@ extension RadarView {
                     Button { openDepartures(stationID: id) } label: { StationMapMarker(name: station.name) }
                         .buttonStyle(.plain)
                 }
+                .annotationTitles(.hidden)   // the marker has its name on a capsule
             } else {
                 Annotation("\(cluster.count) Stationen", coordinate: cluster.center.clCoordinate, anchor: .center) {
                     Button { zoom(toStations: cluster.center) } label: { StationClusterBubble(count: cluster.count) }
                         .buttonStyle(.plain)
                 }
+                .annotationTitles(.hidden)
             }
         }
     }
@@ -120,8 +122,7 @@ extension RadarView {
         VStack(spacing: Theme.Spacing.xs) {
             if layers.isOn(.stations), !MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
                 Text("Zoom näher heran, dann erscheinen die Stationen.")
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
+                    .radarHint()
             }
             if layers.isOn(.disruptions) {
                 Button { showsDisruptions = true } label: {

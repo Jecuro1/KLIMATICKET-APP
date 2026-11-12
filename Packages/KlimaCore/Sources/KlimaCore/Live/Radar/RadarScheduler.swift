@@ -24,8 +24,9 @@ public struct RadarSchedulerConfig: Sendable, Equatable {
     /// Refresh interval of a quiet tile in a wide view.
     public var quietInterval: TimeInterval = 45
     public var denseCount = 150
-    /// Latitude span (degrees) up to which the view counts as zoomed in: about 165 km.
-    public var zoomedInSpan = 1.5
+    /// Latitude span (degrees) up to which the view counts as zoomed in: about 330 km from top to bottom of the map, which on
+    /// a phone held upright is a region of two Bundesländer, 150 km wide.
+    public var zoomedInSpan = 3.0
     /// A new view settles for this long before its tiles are asked for the first time (a series of moves costs one round).
     public var settleDelay: TimeInterval = 0.8
     /// Retention = this factor × the tile's actual refresh period, never below `RadarTiling.frameRetention`.

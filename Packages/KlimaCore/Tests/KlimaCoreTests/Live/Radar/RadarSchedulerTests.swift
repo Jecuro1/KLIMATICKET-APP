@@ -151,6 +151,10 @@ final class RadarSchedulerTests: XCTestCase {
         XCTAssertEqual(scheduler.interval(for: oneTile), 20, "a quiet tile in a zoomed-in view")
         scheduler.setViewport(.austria, latitudeSpan: 4.2, now: t0)
         XCTAssertEqual(scheduler.interval(for: oneTile), 45, "the same tile in a country view")
+        scheduler.setViewport(oneTileView, latitudeSpan: 2.9, now: t0)
+        XCTAssertEqual(scheduler.interval(for: oneTile), 20, "a view two Bundesländer tall is still zoomed in")
+        scheduler.setViewport(oneTileView, latitudeSpan: 3.1, now: t0)
+        XCTAssertEqual(scheduler.interval(for: oneTile), 45)
     }
 
     // MARK: Budget

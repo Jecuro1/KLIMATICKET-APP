@@ -22,7 +22,7 @@ struct ScottyScreenshotHost: View {
             RadarView(preset: .cluster)
         case "radarAll":      // MARK: radarall – about 1500 synthetic trains, Austria-wide: clusters with counts
             RadarView(preset: .allTrains)
-        case "radarAllZoom":  // MARK: radarall – the same trains zoomed to eastern Austria: single trains and small clusters
+        case "radarAllZoom":  // MARK: radarall – the same trains zoomed to Wien: single trains and small clusters
             RadarView(preset: .allTrainsZoom)
         case "radarTrip":
             RadarTripSheet(vehicle: DemoScotty.vehicles(now: Date())[0])
