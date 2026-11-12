@@ -323,7 +323,7 @@ public struct TripDetector: Sendable {
     }
 
     func evaluate(_ a: Stay, _ b: Stay, via: [Stay] = [], track: CoarseTrack, stays: [Stay], history: PairHistory, now: Date) -> Evaluation {
-        let departure = a.departure ?? a.lastSeen
+        let departure = leaveTime(of: a, track: track)
         let arrival = b.arrival
         guard arrival > departure else { return .rejected(nil) }
         let duration = arrival.timeIntervalSince(departure)
@@ -393,6 +393,16 @@ public struct TripDetector: Sendable {
             mode: TripModeGuess.mode(from: from.station, to: to.station), evidence: evidence, rank: rank, sketch: sketch,
             evidenceStart: a.arrival, evidenceEnd: b.departure ?? b.arrival)
         return .candidate(candidate)
+    }
+
+    /// When the person left a stay. A stay without a recorded departure (a missed geofence exit, a visit iOS never closed) ended
+    /// at the first fix clearly away from it – or counts as not left.
+    private func leaveTime(of stay: Stay, track: CoarseTrack) -> Date {
+        if let departure = stay.departure { return departure }
+        let away = track.points.filter {
+            $0.isValid && $0.time > stay.arrival && DetectionGeo.meters($0.geo, stay.center) > config.stayRadiusMeters * 2
+        }.map(\.time).min()
+        return min(stay.lastSeen, away ?? stay.lastSeen)
     }
 
     private func nearestKm(_ point: GeoPoint) -> Double? {

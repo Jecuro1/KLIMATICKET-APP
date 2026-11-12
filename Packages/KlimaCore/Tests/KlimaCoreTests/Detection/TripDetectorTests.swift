@@ -345,6 +345,23 @@ final class TripDetectorTests: XCTestCase {
         XCTAssertEqual(F.detector().detect(CoarseTrack(), now: F.nov12("09:00")), DetectionOutcome.empty)
     }
 
+    /// The geofence exit at the start station was never delivered: the ride starts at the first fix clearly away from it.
+    func testStayWithoutRecordedDepartureEndsAtTheFirstFixAwayFromIt() throws {
+        let dep = F.nov12("08:05"), arr = F.nov12("09:10")
+        let track = CoarseTrack(
+            points: ScriptedTrack.coarseLine(from: F.innsbruck.location, to: F.landeck.location, start: dep, end: arr, count: 5),
+            visits: [F.visit(F.innsbruck, arrival: F.nov12("07:50"), departure: nil, observed: F.nov12("07:50")),
+                     F.visit(F.landeck, arrival: arr, departure: nil, observed: F.nov12("09:22"))])
+        let c = try F.detector().detect(track, now: F.nov12("09:30")).onlyCandidate()
+        XCTAssertEqual(c.from.station.id, F.innsbruck.id)
+        XCTAssertEqual(c.to.station.id, F.landeck.id)
+        // The first cell fix (1/6 of the way, 10 km from the station) is the earliest evidence of leaving.
+        XCTAssertEqual(c.departure, dep.addingTimeInterval(65.0 * 60 / 6))
+        // Without any fix away from it the person has not left: no ride.
+        let still = CoarseTrack(points: [], visits: track.visits)
+        XCTAssertTrue(F.detector().detect(still, now: F.nov12("09:30")).candidates.isEmpty)
+    }
+
     func testVisitWithoutArrivalCanStartButNeverEndARide() throws {
         let dep = F.nov12("08:05"), arr = F.nov12("09:10")
         let track = CoarseTrack(

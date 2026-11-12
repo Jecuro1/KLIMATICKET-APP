@@ -54,8 +54,9 @@ struct TripRecordView: View {
     private var topBar: some View {
         HStack {
             Button {
+                // A finished recording is already in the inbox (pending) or decided: nothing is lost by closing.
+                if recorder.phase == .finished { recorder.reset() }
                 dismiss()
-                if recorder.phase == .finished, reviewing?.isPending != true { recorder.reset() }
             } label: {
                 Image(systemName: "xmark").font(.body.weight(.semibold)).frame(width: 40, height: 40)
             }
