@@ -20,7 +20,7 @@ final class RadarTests: XCTestCase {
         // Exactly the reference key set (format/radar-req.js); the /gate parser rejects anything else.
         XCTAssertEqual(Set(body.keys), ["maxJny", "onlyRT", "date", "time", "rect", "perSize", "perStep", "ageOfReport",
                                         "jnyFltrL", "trainPosMode"])
-        XCTAssertEqual(body["maxJny"] as? Int, 256)
+        XCTAssertEqual(body["maxJny"] as? Int, 1000, "the request cap measured in docs/OEBB_LIVE.md §R11")
         XCTAssertEqual(body["onlyRT"] as? Bool, false)
         XCTAssertEqual(body["ageOfReport"] as? Bool, true)
         XCTAssertEqual(body["trainPosMode"] as? String, "CALC")
@@ -50,8 +50,10 @@ final class RadarTests: XCTestCase {
     func testMaxVehiclesIsClampedAndFramesNeverDivideByZero() throws {
         let req = try encodedRequest(RadarQuery(when: when, maxVehicles: 9_999, durationSeconds: 60, frames: 0))
         let body = try XCTUnwrap(req["req"] as? [String: Any])
-        XCTAssertEqual(body["maxJny"] as? Int, 256)
+        XCTAssertEqual(body["maxJny"] as? Int, 1000)
         XCTAssertEqual(body["perStep"] as? Int, 60_000)
+        let small = try encodedRequest(RadarQuery(when: when, maxVehicles: 300))
+        XCTAssertEqual((small["req"] as? [String: Any])?["maxJny"] as? Int, 300, "a smaller request is passed on as asked")
     }
 
     func testParserKeepsPositionedUniqueVehicles() throws {

@@ -5,6 +5,7 @@ import KlimaCore
 
 struct ScottyScreenshotHost: View {
     static let screens: Set<String> = ["radar", "radarTrip", "radarFilter", "radarSearch", "radarCluster",
+                                       "radarAll", "radarAllZoom",   // MARK: radarall
                                        "disruptions", "disruptionDetail", "liveFollow"]
 
     let screen: String
@@ -19,6 +20,10 @@ struct ScottyScreenshotHost: View {
             RadarView(preset: .search)
         case "radarCluster":  // MARK: radar – zoomed out: clusters with counts
             RadarView(preset: .cluster)
+        case "radarAll":      // MARK: radarall – about 1500 synthetic trains, Austria-wide: clusters with counts
+            RadarView(preset: .allTrains)
+        case "radarAllZoom":  // MARK: radarall – the same trains zoomed to eastern Austria: single trains and small clusters
+            RadarView(preset: .allTrainsZoom)
         case "radarTrip":
             RadarTripSheet(vehicle: DemoScotty.vehicles(now: Date())[0])
         case "disruptions":

@@ -41,6 +41,7 @@ FEATURES = {
     "PlannerDetail": "Verbindungsdetail",
     "Radar": "Zug-Radar",
     "RadarLayers": "Karte mit Ebenen",
+    "RadarAll": "Zug-Radar, alle Züge",
     "Atlas": "Atlas",
     "Routes": "Meine Routen",
     "Stop": "Haltestelle",

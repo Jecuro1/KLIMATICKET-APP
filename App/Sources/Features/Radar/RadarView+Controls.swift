@@ -136,17 +136,18 @@ extension RadarView {
                     PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
                                       message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
                                       actionTitle: "Jetzt aktualisieren") {
-                        Task { if let s = app.live.radar { await model.refresh(s) } }
+                        Task { if let s = radarService { await model.refreshNow(s) } }
                     }
                 }
                 if case .failed(let message) = model.load {
                     PlannerNoticeCard(symbol: "wifi.exclamationmark", title: "Radar pausiert", message: message,
                                       actionTitle: "Erneut versuchen") {
-                        Task { if let s = app.live.radar { await model.refresh(s) } }
+                        Task { if let s = radarService { await model.refreshNow(s) } }
                     }
                 }
-                if model.cutOff {
-                    Text("Zoom hinein für alle Züge. Gerade sind nur die ersten \(RadarTiling.serverCap) Fahrzeuge je Abfrage zu sehen.")
+                // What is true about the tiles: a cut-off tile, a partial failure, a refresh slower than 25 s (§R11).
+                ForEach(model.notes, id: \.self) { note in
+                    Text(note)
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -175,16 +176,21 @@ extension RadarView {
         .motionAnimation(Motion.smooth, value: model.load)
     }
 
+    /// "923 Züge · vor 12 s": the vehicles in the visible area and the age of the oldest answer behind them.
     private var statusPill: some View {
         let text: String
-        if let updatedAt = model.updatedAt {
-            text = "Stand \(Format.time(updatedAt)) · \(model.summary)"
+        let spoken: String
+        if let pill = model.pillText {
+            text = pill
+            let age = model.status.oldestAnswerAge.map { ", aktualisiert \(RadarStatusText.spokenAge($0))" } ?? ""
+            spoken = model.summary + age
         } else {
             text = model.load == .loading ? "Lade Fahrzeuge …" : "Noch keine Positionen"
+            spoken = text
         }
         return HStack(spacing: Theme.Spacing.xs) {
             Image(systemName: "dot.radiowaves.left.and.right")
-            Text(text)
+            Text(text).monospacedDigit()   // the age ticks every second: the pill keeps its width
         }
         .font(.footnote.weight(.semibold))
         .foregroundStyle(Theme.textPrimary)
@@ -192,7 +198,7 @@ extension RadarView {
         .padding(.vertical, 8)
         .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(text)
+        .accessibilityLabel(spoken)
         .accessibilityAddTraits(.updatesFrequently)
     }
 }

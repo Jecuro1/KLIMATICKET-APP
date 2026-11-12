@@ -72,6 +72,11 @@ enum RadarMapStyle: String, CaseIterable, Identifiable {
 /// Screenshot presets (CI): the same view with the filter sheet, a search or a zoomed-out map already open.
 enum RadarPreset: String, Sendable {
     case live, filter, search, cluster, layers
+    // MARK: radarall – about 1500 synthetic trains (demo only): the Austria-wide view and a zoomed one
+    case allTrains, allTrainsZoom
+
+    /// The synthetic dense demo (`DemoRadarService(dense: true)`), only ever used by the CI screenshot hosts.
+    var isDenseDemo: Bool { self == .allTrains || self == .allTrainsZoom }
 }
 
 /// Live copy for failures (Du-Form, no technical codes).

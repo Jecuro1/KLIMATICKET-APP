@@ -1,27 +1,22 @@
 import Foundation
 
-// Zug-Radar, pure logic for the map (docs/OEBB_LIVE.md §R7). No UI, no network, no clock: every function takes `now`.
-// Covers: viewport tiling past the server cap, frame retention (60 s), estimates between two answers, the delay tint,
-// the filter sheet, the search with suggestions, the clusters and the summary line.
+// Zug-Radar, pure logic for the map (docs/OEBB_LIVE.md §R7, §R11). No UI, no network, no clock: every function takes `now`.
+// Covers: the request cap, frame retention per vehicle, estimates between two answers, the delay tint, the filter sheet,
+// the search with suggestions, the clusters and the summary line. The tile grid is `RadarTiles.swift`, the request
+// scheduler `RadarScheduler.swift`.
 
-// MARK: - Tiling and frame retention
+// MARK: - Request cap and frame retention
 
 public enum RadarTiling {
-    /// HAFAS answers at most this many vehicles per JourneyGeoPos request (`maxJny`).
-    public static let serverCap = 256
-    /// Most rectangles per refresh (one request each; the caller keeps the 40 requests/min throttle).
-    public static let maxTiles = 4
-    /// A vehicle stays on the map this long after the last answer that contained it.
+    /// `maxJny` of every request. Measured 2026-11-12 (docs/OEBB_LIVE.md §R11): the server answers 923 rail vehicles for all
+    /// of Austria with `maxJny` 1000, so 256 is not a hard limit. The value 1000 is the largest one measured.
+    public static let requestCap = 1000
+    /// A vehicle stays on the map this long after the last answer that contained it, at least. A tile that refreshes more
+    /// slowly keeps its vehicles longer (`RadarScheduler.retention(for:)`).
     public static let frameRetention: TimeInterval = 60
 
-    /// True when one answer was cut off at the server cap: the view then has to be split.
-    public static func isTruncated(count: Int) -> Bool { count >= serverCap }
-
-    /// The rectangles to request for `box`. One rectangle normally; after a truncated answer the four quadrants.
-    public static func tiles(for box: RadarBox, split: Bool) -> [RadarBox] {
-        guard box.isValid else { return [] }
-        return split ? quadrants(of: box) : [box]
-    }
+    /// True when one answer was cut off at the request cap: the tile then has to be split.
+    public static func isTruncated(count: Int) -> Bool { count >= requestCap }
 
     /// The four quadrants of a valid box (north-west, north-east, south-west, south-east).
     public static func quadrants(of box: RadarBox) -> [RadarBox] {
@@ -38,8 +33,9 @@ public enum RadarTiling {
 }
 
 /// Vehicles of the last answers, merged across tiles. A vehicle that is missing from one answer (a tile that was not
-/// asked, a failed refresh) stays for `retention` seconds, so the map does not flicker. Each entry keeps the previous
-/// server position, which is what the estimate between two answers interpolates from.
+/// asked, a failed refresh) stays until its own retention ends, so the map does not flicker. A vehicle that two tiles
+/// answer is one entry: the newest answer wins. Each entry keeps the previous server position, which is what the estimate
+/// between two answers interpolates from.
 public struct RadarFrameStore: Sendable {
     public struct Entry: Sendable, Hashable {
         public var vehicle: RadarVehicle
@@ -48,6 +44,8 @@ public struct RadarFrameStore: Sendable {
         /// The position of the answer before the latest one, and when that answer was received.
         public var previousCoordinate: GeoPoint?
         public var previousSeenAt: Date?
+        /// Seconds after `seenAt` that the entry stays; the tile's refresh interval decides (`RadarScheduler.retention(for:)`).
+        public var retention: TimeInterval
     }
 
     public let retention: TimeInterval
@@ -57,23 +55,33 @@ public struct RadarFrameStore: Sendable {
         self.retention = retention
     }
 
-    /// Merges one answer (one tile or several tiles of the same refresh). The previous point is always the position of the
-    /// answer before this one, so a vehicle that stands still interpolates from its own position and stays there.
-    public mutating func merge(_ vehicles: [RadarVehicle], at now: Date) {
+    /// Merges one answer (one tile). The previous point is always the position of the answer before this one, so a vehicle
+    /// that stands still interpolates from its own position and stays there. `retention` overrides the store's default for
+    /// the vehicles of this answer: a quiet tile that refreshes every 45 s must not lose its trains between two refreshes.
+    public mutating func merge(_ vehicles: [RadarVehicle], at now: Date, retention override: TimeInterval? = nil) {
+        let keep = max(override ?? retention, retention)
         for vehicle in vehicles {
             if let old = entries[vehicle.tripID] {
+                // An older answer never replaces a newer one (tiles answer out of order when a request was slow).
+                guard now >= old.seenAt else { continue }
                 entries[vehicle.tripID] = Entry(
                     vehicle: vehicle, seenAt: now,
-                    previousCoordinate: old.vehicle.coordinate, previousSeenAt: old.seenAt)
+                    previousCoordinate: old.vehicle.coordinate, previousSeenAt: old.seenAt, retention: keep)
             } else {
-                entries[vehicle.tripID] = Entry(vehicle: vehicle, seenAt: now, previousCoordinate: nil, previousSeenAt: nil)
+                entries[vehicle.tripID] = Entry(vehicle: vehicle, seenAt: now, previousCoordinate: nil, previousSeenAt: nil,
+                                                retention: keep)
             }
         }
     }
 
-    /// Drops vehicles that were not seen for longer than `retention`.
+    /// Drops vehicles that were not seen for longer than their retention.
     public mutating func prune(now: Date) {
-        entries = entries.filter { now.timeIntervalSince($0.value.seenAt) <= retention }
+        entries = entries.filter { now.timeIntervalSince($0.value.seenAt) <= $0.value.retention }
+    }
+
+    /// Removes everything the predicate matches (the transport mode was switched off: its vehicles go at once).
+    public mutating func removeAll(where shouldRemove: (RadarVehicle) -> Bool) {
+        entries = entries.filter { !shouldRemove($0.value.vehicle) }
     }
 
     /// The vehicles to draw at `now`, after pruning, ordered by trip id (stable for tests and cluster ids).
@@ -86,14 +94,23 @@ public struct RadarFrameStore: Sendable {
 // MARK: - Estimates between two answers
 
 public enum RadarEstimate {
-    /// The map draws every train this long behind the clock. The refresh runs every 20 s: the latest answer is always in
-    /// the past, so without the lag the interpolation between two answers would never run and the marker would jump.
+    /// The map draws every train this long behind the clock, at least. The refresh runs every 20 s: the latest answer is
+    /// always in the past, so without the lag the interpolation between two answers would never run and the marker would jump.
     /// With the lag the marker moves from the previous answer to the latest one over one interval and then holds there.
     public static let displayLag: TimeInterval = 20
+    /// The lag never grows past this, however long a tile went without an answer.
+    public static let maxLag: TimeInterval = 120
 
-    /// The position drawn at `now`: `position(of:at:)` at `now` minus `displayLag`.
+    /// The lag of one entry: the interval between its last two answers (20 s tiles: 20 s, 45 s tiles: 45 s), never less than
+    /// `displayLag`. A fixed 20 s would make the marker of a 45 s tile jump backwards when its answer arrives.
+    public static func lag(of entry: RadarFrameStore.Entry) -> TimeInterval {
+        guard let previous = entry.previousSeenAt, entry.seenAt > previous else { return displayLag }
+        return min(max(entry.seenAt.timeIntervalSince(previous), displayLag), maxLag)
+    }
+
+    /// The position drawn at `now`: `position(of:at:)` at `now` minus the entry's lag.
     public static func shown(_ entry: RadarFrameStore.Entry, now: Date) -> (coordinate: GeoPoint, isEstimate: Bool) {
-        position(of: entry, at: now.addingTimeInterval(-displayLag))
+        position(of: entry, at: now.addingTimeInterval(-lag(of: entry)))
     }
 
     /// Position at `at`. Between two answers the position moves linearly from the previous server position to the
@@ -343,6 +360,22 @@ public enum RadarClustering {
     public static func cellSize(forLatitudeSpan span: Double) -> Double {
         guard span.isFinite, span > 0 else { return 0.01 }
         return max(span / 7, 0.005)
+    }
+
+    /// Grid cell in degrees from what is on the screen: a cell is about one marker wide and tall (`markerPitch` points), so the
+    /// markers of two cells never overlap, whatever the zoom and whatever the shape of the screen. A phone held upright shows
+    /// about 13 degrees of latitude at the Austria zoom: a cell that follows the latitude alone would be 1.9 degrees and fold the
+    /// whole country into a handful of bubbles. The number of cells on the screen is capped at `maxCells` (large screens get a
+    /// coarser grid), so the number of markers stays bounded however many vehicles there are. Without a screen size (previews,
+    /// tests) the grid follows the latitude span as before.
+    public static func cellSize(latitudeSpan: Double, longitudeSpan: Double, widthPoints: Double, heightPoints: Double,
+                                markerPitch: Double = 56, maxCells: Double = 150) -> Double {
+        guard widthPoints > 0, heightPoints > 0, widthPoints.isFinite, heightPoints.isFinite,
+              longitudeSpan.isFinite, longitudeSpan > 0 else {
+            return cellSize(forLatitudeSpan: latitudeSpan)
+        }
+        let pitch = max(markerPitch, (widthPoints * heightPoints / max(maxCells, 1)).squareRoot())
+        return max(pitch * longitudeSpan / widthPoints, 0.005)
     }
 
     /// Groups points by grid cell. Output is ordered by cell key, so the same input always gives the same ids.

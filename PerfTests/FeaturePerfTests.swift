@@ -8,21 +8,21 @@ import XCTest
 /// the tests flick or drag over the window. `PerfFrameMonitor` records what happens under the name of the screen
 /// (hitch time ratio of the scroll or pan, first frame and hitches of the presentation, memory).
 enum PerfFeatureScreen: String {
-    case planner, plannerResults, plannerDetail, radar, radarLayers, atlas, routes, stop
+    case planner, plannerResults, plannerDetail, radar, radarLayers, radarAll, atlas, routes, stop
 
     /// Seconds from the launch until the screen is built, and a map's tiles and pins are in.
     var settle: TimeInterval {
         switch self {
         case .planner: 4
         case .plannerResults, .plannerDetail: 10
-        case .radar, .radarLayers, .atlas: 9
+        case .radar, .radarLayers, .radarAll, .atlas: 9
         case .routes: 6
         case .stop: 10
         }
     }
 
     /// Maps pan; everything else scrolls.
-    var isMap: Bool { self == .radar || self == .radarLayers || self == .atlas }
+    var isMap: Bool { self == .radar || self == .radarLayers || self == .radarAll || self == .atlas }
 }
 
 class FeaturePerfTestCase: PerfTestCase {
@@ -104,6 +104,15 @@ final class RadarLayersPerfTests: FeaturePerfTestCase {
 
     @MainActor
     func testFeatureRadarLayers() {
+        measureFeature()
+    }
+}
+
+final class RadarAllPerfTests: FeaturePerfTestCase {
+    override var screen: PerfFeatureScreen { .radarAll }
+
+    @MainActor
+    func testFeatureRadarAll() {
         measureFeature()
     }
 }

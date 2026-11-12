@@ -58,14 +58,15 @@ public struct RadarQuery: Sendable, Hashable {
     public var when: Date
     /// Product filter (`jnyFltrL` PROD). Default: rail only, the radar's first view.
     public var products: ProductMask
-    /// `maxJny`; HAFAS answers at most 256 vehicles.
+    /// `maxJny`. Measured 2026-11-12 (docs/OEBB_LIVE.md §R11): the server honours 1000 (923 rail vehicles for all of Austria in
+    /// one answer); 256 was only the reference client's habit, not a hard limit. An answer with this many vehicles is cut off.
     public var maxVehicles: Int
     /// `perSize` in seconds: how far ahead the frames reach.
     public var durationSeconds: Int
     /// Number of interpolated frames (`perStep` = duration / frames).
     public var frames: Int
 
-    public init(box: RadarBox = .austria, when: Date, products: ProductMask = .rail, maxVehicles: Int = 256,
+    public init(box: RadarBox = .austria, when: Date, products: ProductMask = .rail, maxVehicles: Int = RadarTiling.requestCap,
                 durationSeconds: Int = 30, frames: Int = 3) {
         self.box = box
         self.when = when

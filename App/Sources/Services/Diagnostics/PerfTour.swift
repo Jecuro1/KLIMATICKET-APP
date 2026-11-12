@@ -7,7 +7,7 @@ import os
 ///
 /// 4 s after the first frame it opens the screen (`overview`, `trips`, `stats`, `ticket`, `gipfelbuch`; `all` visits
 /// them in turn, `launch` only waits; the feature screens of `PerfFeature` – `planner`, `plannerResults`, `plannerDetail`,
-/// `radar`, `radarLayers`, `atlas`, `routes`, `stop` – one per tour, they stay open), lets it settle for 2.5 s and then scrolls its main scroll view to the end and
+/// `radar`, `radarLayers`, `radarAll`, `atlas`, `routes`, `stop` – one per tour, they stay open), lets it settle for 2.5 s and then scrolls its main scroll view to the end and
 /// back, three times, at a constant 2 400 pt/s – a display link moves `contentOffset`, the same rendering path as a
 /// flick, measured by `PerfFrameMonitor` as source `tour`. Every phase is a signpost interval (category
 /// PointsOfInterest) and is listed in `Diagnostics/perf-tour.json` in seconds since process start. The app stays

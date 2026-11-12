@@ -4,12 +4,15 @@ import KlimaCore
 // Demo data for Zug-Radar, Störungen and Live verfolgen (-KBDemo and CI screenshots). Generated locally from the
 // clock: no network, no real train. Times are relative to "now", so the map always shows trains mid-journey.
 
-/// Radar stub: positions interpolated along the demo runs.
+/// Radar stub: positions interpolated along the demo runs. `dense` adds about 1500 synthetic vehicles (CI screenshots of the
+/// Austria-wide view, `ScottyDemoDense.swift`).
 struct DemoRadarService: RadarService {
     var now: @Sendable () -> Date = { Date() }
+    var dense = false
 
     func radar(_ query: RadarQuery) async throws -> RadarSnapshot {
         let t = now()
+        if dense { return RadarSnapshot(vehicles: denseVehicles(for: query, at: t), realtimeUpdatedAt: t) }
         let vehicles = DemoScotty.vehicles(now: t).filter { v in
             guard let line = v.line else { return false }
             return !line.product.intersection(query.products).isEmpty && query.box.contains(v.coordinate)

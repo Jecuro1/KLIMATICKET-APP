@@ -5,9 +5,10 @@ import KlimaCore
 
 // Zug-Radar (docs/OEBB_LIVE.md §R, §R7): an own full-screen view with its own train layer. The base map is MapKit, the
 // system map underneath; markers, clusters, route, filter, search and status are ours. Nothing is handed to the Apple
-// Maps app. Budget: one request per tile every 20 s, only while the view is visible and active, never in Low Power
-// Mode and never in the background. A map move refreshes once when it ends. A truncated answer splits the view into
-// quadrants (up to four requests), and the view says so when even that is cut off.
+// Maps app. Every train in the visible area is on the map at every zoom (docs/OEBB_LIVE.md §R11): the view is covered by
+// tiles of a fixed grid, a tile that is cut off at the request cap is split into four, and a scheduler keeps the radar's
+// requests within 24 a minute. Requests only while the view is visible and active, never in Low Power Mode and never in the
+// background.
 
 struct RadarView: View {
     var preset: RadarPreset = .live
@@ -42,13 +43,6 @@ struct RadarView: View {
         MKCoordinateRegion(center: RadarBox.austria.center.clCoordinate, span: MKCoordinateSpan(latitudeDelta: 4.2, longitudeDelta: 9.0))
     }
 
-    /// Restarts the refresh loop when the modes, the visible area or the activity change.
-    private struct RunKey: Hashable {
-        var products: ProductMask
-        var box: [Int]
-        var active: Bool
-    }
-
     var mapStyle: RadarMapStyle { RadarMapStyle(rawValue: styleRaw) ?? .standard }
 
     /// The train layer is on and the live data is allowed. Without it no train request is sent, and the map still shows
@@ -59,11 +53,6 @@ struct RadarView: View {
 
     private var isRunning: Bool {
         scenePhase == .active && trainsOn
-    }
-
-    /// The visible rectangle at 0.01° resolution, so small camera moves do not restart the loop.
-    private var boxKey: [Int] {
-        [model.box.north, model.box.west, model.box.south, model.box.east].map { Int(($0 * 100).rounded()) }
     }
 
     var body: some View {
@@ -84,9 +73,11 @@ struct RadarView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxHeight: 360)
             }
-            .task(id: RunKey(products: model.products, box: boxKey, active: isRunning)) {
-                guard isRunning, let service = app.live.radar else { return }
-                await model.run(service, interval: .seconds(20))
+            // The loop only restarts when the view becomes (in)active. A new map area or mode goes to the scheduler directly:
+            // it settles for a moment, so a series of moves costs one round of requests.
+            .task(id: isRunning) {
+                guard isRunning, let service = radarService else { return }
+                await model.run(service)
             }
             .onChange(of: model.pins.count) { _, _ in centerOnFocusedTrip() }
             .sheet(isPresented: $showsFilter) {
@@ -126,8 +117,8 @@ struct RadarView: View {
     private var mapLayer: some View {
         Map(position: $camera) {
             if trainsOn {
-            ForEach(clusters) { cluster in
-                if cluster.isSingle, let id = cluster.tripIDs.first, let pin = pinsByID[id] {
+            ForEach(model.clusters) { cluster in
+                if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] {
                     Annotation(pin.vehicle.line.map { LinePresentation.title($0) } ?? "Zug",
                                coordinate: pin.coordinate.clCoordinate, anchor: .center) {
                         Button { select(pin) } label: {
@@ -169,6 +160,11 @@ struct RadarView: View {
             model.setView(box: box, span: r.span.latitudeDelta)
             refreshStations(box: box, span: r.span.latitudeDelta)
         }
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { size in
+            model.setMapSize(size)
+        }
         .accessibilityLabel("Zug-Radar, \(model.summary)")
         .ignoresSafeArea(edges: .bottom)
         .haptic(.selection, trigger: model.selectedTripID)
@@ -177,14 +173,9 @@ struct RadarView: View {
     /// The noun of the summary and the clusters: "Züge" when only rail is on, else "Fahrzeuge" (as the status line says).
     private var vehicleNoun: String { model.isRailOnly ? "Züge" : "Fahrzeuge" }
 
-    private var pinsByID: [String: RadarPin] {
-        Dictionary(model.pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-    }
-
-    /// Markers merge into clusters only when they would overlap at the current zoom.
-    private var clusters: [RadarCluster] {
-        RadarClustering.group(model.pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) },
-                              cellDegrees: RadarClustering.cellSize(forLatitudeSpan: model.spanDegrees))
+    /// The radar service. The dense demo scenes bring their own (synthetic, no network); everything else goes through the gate.
+    var radarService: (any RadarService)? {
+        preset.isDenseDemo ? DemoRadarService(dense: true) : app.live.radar
     }
 
     private func select(_ pin: RadarPin) {
@@ -203,14 +194,14 @@ struct RadarView: View {
     }
 
     func center(on tripID: String) {
-        guard let pin = pinsByID[tripID] else { return }
+        guard let pin = model.pinsByID[tripID] else { return }
         camera = .region(MKCoordinateRegion(center: pin.coordinate.clCoordinate,
                                             span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.5)))
     }
 
     /// Once, when the focused trip first appears among the pins.
     private func centerOnFocusedTrip() {
-        guard !focusDone, let focusTripID, pinsByID[focusTripID] != nil else { return }
+        guard !focusDone, let focusTripID, model.pinsByID[focusTripID] != nil else { return }
         focusDone = true
         center(on: focusTripID)
     }
@@ -219,7 +210,7 @@ struct RadarView: View {
     /// area, instead of a map that silently stays where it is.
     var focusMissing: Bool {
         guard let focusTripID, !focusDone, trainsOn, model.load == .loaded else { return false }
-        return pinsByID[focusTripID] == nil
+        return model.pinsByID[focusTripID] == nil
     }
 
     private func applyPreset() {
@@ -236,6 +227,11 @@ struct RadarView: View {
         case .cluster:
             camera = .region(MKCoordinateRegion(center: RadarBox.austria.center.clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 8.5, longitudeDelta: 16)))
+        case .allTrains:   // MARK: radarall – about 1500 synthetic trains, Austria-wide view: clusters with counts
+            break
+        case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to eastern Austria: single trains and small clusters
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.05, longitude: 15.75).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 1.1, longitudeDelta: 1.5)))
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection.all.storageValue
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.20, longitude: 16.37).clCoordinate,

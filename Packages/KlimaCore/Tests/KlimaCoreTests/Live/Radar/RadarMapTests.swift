@@ -19,17 +19,20 @@ final class RadarMapTests: XCTestCase {
                      isCancelled: cancelled)
     }
 
-    // MARK: Tiling
+    // MARK: Request cap
 
-    func testTruncationAtServerCap() {
-        XCTAssertFalse(RadarTiling.isTruncated(count: 255))
-        XCTAssertTrue(RadarTiling.isTruncated(count: 256))
+    func testTruncationAtTheRequestCap() {
+        // 1000 is the value measured on 2026-11-12 (docs/OEBB_LIVE.md §R11); 256 was the old assumption and is no limit.
+        XCTAssertEqual(RadarTiling.requestCap, 1000)
+        XCTAssertFalse(RadarTiling.isTruncated(count: 256))
+        XCTAssertFalse(RadarTiling.isTruncated(count: 999))
+        XCTAssertTrue(RadarTiling.isTruncated(count: 1000))
     }
 
     func testQuadrantsCoverTheBoxWithoutLeavingIt() {
         let box = RadarBox(north: 48, west: 13, south: 46, east: 17)
-        let tiles = RadarTiling.tiles(for: box, split: true)
-        XCTAssertEqual(tiles.count, RadarTiling.maxTiles)
+        let tiles = RadarTiling.quadrants(of: box)
+        XCTAssertEqual(tiles.count, 4)
         XCTAssertTrue(tiles.allSatisfy { $0.isValid })
         XCTAssertTrue(tiles.allSatisfy { $0.north <= box.north && $0.south >= box.south && $0.west >= box.west && $0.east <= box.east })
         // Each quadrant is a quarter of the area and they touch at the centre.
@@ -37,13 +40,7 @@ final class RadarMapTests: XCTestCase {
         XCTAssertEqual(area, (box.north - box.south) * (box.east - box.west), accuracy: 1e-9)
         XCTAssertEqual(tiles.map(\.north).max() ?? 0, box.north, accuracy: 1e-12)
         XCTAssertEqual(tiles.map(\.east).max() ?? 0, box.east, accuracy: 1e-12)
-    }
-
-    func testNoSplitKeepsOneRectangleAndInvalidBoxAsksNothing() {
-        let box = RadarBox.austria
-        XCTAssertEqual(RadarTiling.tiles(for: box, split: false), [box])
         let flat = RadarBox(north: 47, west: 13, south: 47, east: 14)
-        XCTAssertTrue(RadarTiling.tiles(for: flat, split: true).isEmpty)
         XCTAssertTrue(RadarTiling.quadrants(of: flat).isEmpty)
     }
 

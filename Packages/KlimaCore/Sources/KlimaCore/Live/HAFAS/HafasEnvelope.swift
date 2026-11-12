@@ -257,7 +257,7 @@ enum HafasRequests {
         func micro(_ degrees: Double) -> Int { Int((degrees * 1_000_000).rounded()) }
         let frames = max(q.frames, 1)
         return HafasServiceRequest(meth: "JourneyGeoPos", req: JourneyGeoPos(
-            maxJny: min(max(q.maxVehicles, 1), 256), onlyRT: false,
+            maxJny: min(max(q.maxVehicles, 1), RadarTiling.requestCap), onlyRT: false,
             date: HafasTime.dateString(q.when), time: HafasTime.timeString(q.when),
             rect: Rect(llCrd: Coord(x: micro(q.box.west), y: micro(q.box.south)),
                        urCrd: Coord(x: micro(q.box.east), y: micro(q.box.north))),

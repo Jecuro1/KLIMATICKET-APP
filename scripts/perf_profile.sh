@@ -4,7 +4,7 @@
 # Usage: perf_profile.sh <simulator udid> <path to the built KlimaBilanz.app> <out dir> [tour ...]
 #
 # For every tour (default: launch overview trips stats ticket gipfelbuch, then the feature screens planner plannerResults
-# plannerDetail radar radarLayers atlas routes stop – PerfFeature in PerfFeatureScreens.swift) the app is launched in perf mode with
+# plannerDetail radar radarLayers radarAll atlas routes stop – PerfFeature in PerfFeatureScreens.swift) the app is launched in perf mode with
 # +1 500 trips, `-KBPerfTour <tour> -KBPerfTourGate YES` (App/Sources/Services/Diagnostics/PerfTour.swift). Each
 # phase of the tour waits for a go file, so the sampler runs exactly around it:
 #   open   – switching to the screen (its first build), 8 s window
@@ -21,7 +21,7 @@ UDID=$1
 APP=$2
 OUT=$3
 shift 3
-TOURS=${*:-launch overview trips stats ticket gipfelbuch planner plannerResults plannerDetail radar radarLayers atlas routes stop}
+TOURS=${*:-launch overview trips stats ticket gipfelbuch planner plannerResults plannerDetail radar radarLayers radarAll atlas routes stop}
 BUNDLE_ID=com.knitelarlberg.klimabilanz
 TRIPS=${PERF_PROFILE_TRIPS:-1500}
 HERE=$(cd "$(dirname "$0")" && pwd)
