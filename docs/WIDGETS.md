@@ -9,7 +9,7 @@ Entscheidungen des Owners in §8.
 - **Widgets machen nie einen Netzaufruf.** Sie lesen nur den Cache in der App Group (`AppGroup.defaults`). Die Prüfung
   liegt in `scripts/check_integration.py` und läuft in `ios.yml` vor dem Build: `URLSession`, `URLRequest`, `HafasClient` und
   `LiveDataService` dürfen weder in `Widgets/` noch in `Shared/` vorkommen (`Shared/` wird auch in die Extension kompiliert).
-  Kommentare und Zeichenketten zählen nicht; eine Ausnahmeliste (`NETWORK_ALLOW`) gibt es, sie ist leer. Tests:
+  Kommentare und der Text von Zeichenketten zählen nicht (Code in einer `\(…)`-Interpolation schon); eine Ausnahmeliste (`NETWORK_ALLOW`) gibt es, sie ist leer. Tests:
   `scripts/test_check_integration.py`.
 - **Die App schreibt den Live-Cache nur mit Einwilligung** (`LiveDataService.consent == .granted`). Der Einwilligungsstand wird
   nach `widgets.consent.v1` gespiegelt. Widerruf leert alle Live-Caches sofort und lädt die Widgets neu.

@@ -5,8 +5,8 @@
  - obviously unbalanced braces per file
  - the widget extension and the code it shares with the app never reach the network: no URLSession, URLRequest,
    HafasClient or LiveDataService in Widgets/ or Shared/ (docs/WIDGETS.md §1 – widgets only read the App Group cache;
-   Shared/ is compiled into the extension too, so a network call there would run inside it). Comments and string
-   literals do not count. A file that genuinely needs one of these names goes into NETWORK_ALLOW with a reason."""
+   Shared/ is compiled into the extension too, so a network call there would run inside it). Comments and the text of string
+   literals do not count (code inside a \\( ) interpolation does). A file that genuinely needs one of these names goes into NETWORK_ALLOW with a reason."""
 import os, re, sys, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
