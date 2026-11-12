@@ -43,6 +43,8 @@ public enum AlarmIdentifier {
     public static let routePrefix = "route."
     public static let renewalPrefix = "renewal."
     public static let objectionPrefix = "advisor.renewal."
+    /// MARK: ticketletters – the two reminders before the deadline of a written objection ("letter.<ticket>.d5", "….d1").
+    public static let letterPrefix = "letter."
     public static let passengerRightsPrefix = "perk.passengerRights."
     public static let weeklySummary = "weekly.summary"
 
@@ -51,7 +53,7 @@ public enum AlarmIdentifier {
         if identifier.hasPrefix(liveFollowPrefix) { return .liveFollow }
         if identifier.hasPrefix(departurePrefix) { return .departure }
         if identifier.hasPrefix(routePrefix) { return .routeReminder }
-        if identifier.hasPrefix(objectionPrefix) { return .objectionLetter }
+        if identifier.hasPrefix(objectionPrefix) || identifier.hasPrefix(letterPrefix) { return .objectionLetter }
         if identifier.hasPrefix(renewalPrefix) { return .ticketRenewal }
         if identifier.hasPrefix(passengerRightsPrefix) { return .passengerRights }
         if identifier == weeklySummary { return .weeklySummary }
@@ -69,12 +71,15 @@ public enum AlarmIdentifier {
     }
 
     /// The row an identifier belongs to on the Alarms screen: all weekday reminders of one saved route ("route.<id>"), all
-    /// expiry reminders of one ticket ("renewal.<uuid>"), anything else on its own.
+    /// expiry reminders of one ticket ("renewal.<uuid>"), both deadline reminders of one letter ("letter.<uuid>"), anything else on its own.
     public static func groupKey(of identifier: String) -> String {
         switch kind(of: identifier) {
         case .routeReminder:
             return routeID(of: identifier).map { routePrefix + $0 } ?? identifier
         case .ticketRenewal:
+            guard let dot = identifier.lastIndex(of: ".") else { return identifier }
+            return String(identifier[..<dot])
+        case .objectionLetter where identifier.hasPrefix(letterPrefix):   // MARK: ticketletters – both reminders are one row
             guard let dot = identifier.lastIndex(of: ".") else { return identifier }
             return String(identifier[..<dot])
         default:
