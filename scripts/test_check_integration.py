@@ -97,6 +97,21 @@ enum Notes {
 ''')
         self.assertEqual(self.problems(), [])
 
+    def test_code_inside_a_string_interpolation_counts(self):
+        # "\(URLSession.shared)" runs the network call: only the text of a string is blanked, never its interpolations.
+        self.write("Shared/Interp.swift", 'enum I {\n    static let a = "x \\(URLSession.shared) y"\n'
+                   '    static let b = """\n        \\(LiveDataService.shared)\n        """\n'
+                   '    static let c = #"raw \\#(HafasClient())"#\n    static let d = "ok \\(f(")", URLRequest(url: u))"\n}\n')
+        found = self.problems()
+        self.assertEqual(len(found), 4, found)
+        for name, line in (("URLSession", 2), ("LiveDataService", 4), ("HafasClient", 6), ("URLRequest", 7)):
+            self.assertTrue(any(f"Shared/Interp.swift:{line}: {name}" in item for item in found), (name, found))
+
+    def test_text_next_to_an_interpolation_does_not_count(self):
+        self.write("Shared/Text.swift", 'enum T {\n    static func a(_ n: Int) -> String { "\\(n) URLSession \\(n)" }\n'
+                   '    static let b = #"\\(HafasClient()) is text in a raw string"#\n}\n')
+        self.assertEqual(self.problems(), [])
+
     def test_code_after_a_string_with_a_slash_pair_still_counts(self):
         self.write("Shared/Url.swift", 'enum U {\n    static let a = "https://example.org"; static let s = URLSession.shared\n}\n')
         found = self.problems()

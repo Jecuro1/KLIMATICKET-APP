@@ -3,9 +3,11 @@ import importlib.util
 import io
 import json
 import os
+import struct
 import sys
 import tempfile
 import unittest
+import zlib
 from contextlib import redirect_stdout
 
 sys.dont_write_bytecode = True
@@ -29,17 +31,37 @@ class DocNumbersTests(unittest.TestCase):
         self.assertGreater(values["stops"], 30_000)
         self.assertGreater(values["localities"], 10_000)
         self.assertEqual(values["legacy_stations"], 1487)   # frozen list, docs/DATA_SOURCES.md
-        self.assertGreater(values["relation_pairs"], values["relation_origins"])
+        self.assertGreater(values["relation_pairs"], values["relation_points"])
+        self.assertGreater(values["relation_pairs"], 100_000)   # the bundled table, not the 33 origins of data/oebb_relation_prices.json
         self.assertGreater(values["ticket_products"], 10)
         self.assertGreaterEqual(values["achievements"], 10)
         self.assertRegex(values["relation_valid_from"], r"^\d{4}-\d{2}-\d{2}$")
+
+    def test_relation_pairs_are_counted_in_the_bundled_table(self):
+        # relations.bin is raw-DEFLATE compressed (pointA, pointB, price) UInt16 triples; the count is what the app loads.
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "App/Resources"))
+            blob = b"".join(struct.pack("<HHH", a, b, 100 + a) for a, b in [(0, 1), (0, 2), (1, 2), (2, 3)])
+            compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
+            with open(os.path.join(tmp, "App/Resources/relations.bin"), "wb") as f:
+                f.write(compressor.compress(blob) + compressor.flush())
+            with open(os.path.join(tmp, "App/Resources/relations-points.json"), "w", encoding="utf-8") as f:
+                json.dump({"validFrom": "2025-12-14", "points": [{"name": "A", "stationID": "a"}] * 4}, f)
+            pairs, points = tool._relations(tmp)
+            self.assertEqual((pairs, len(points["points"]), points["validFrom"]), (4, 4, "2025-12-14"))
+            for broken in (b"", b"12345"):   # an empty table or a cut file is an error, never a quiet 0
+                cut = zlib.compressobj(9, zlib.DEFLATED, -15)
+                with open(os.path.join(tmp, "App/Resources/relations.bin"), "wb") as f:
+                    f.write(cut.compress(broken) + cut.flush())
+                with self.assertRaises(ValueError):
+                    tool._relations(tmp)
 
     def test_json_output(self):
         out = io.StringIO()
         with redirect_stdout(out):
             self.assertEqual(tool.main(["--json"]), 0)
         data = json.loads(out.getvalue())
-        self.assertEqual(set(data), {"stops", "localities", "legacy_stations", "relation_pairs", "relation_origins",
+        self.assertEqual(set(data), {"stops", "localities", "legacy_stations", "relation_pairs", "relation_points",
                                      "relation_valid_from", "ticket_products", "achievements"})
 
     def test_missing_names_the_figures_no_text_quotes(self):

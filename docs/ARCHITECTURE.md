@@ -77,17 +77,21 @@ Fünf Tabs (`AppTab`, `MainTabView` in `Core/RootView.swift`); der letzte ist de
 Vom Fahrplan aus erreichbar: **Zug-Radar** (`Features/Radar/`, Vollbild, MapKit mit eigener Zuglage, Kartenebenen für Stationen,
 Störungen und gespeicherte Routen), **Störungen** (`Disruptions/`), **Meine Routen** (`Routes/`), **Haltestellen-Detail**
 (`Stops/`, Ausstattung, Linien, Abfahrten), „Live verfolgen“ samt Live Activity (`LiveActivity/`). **Alarme** (`Alarms/`) liegen in
-den Einstellungen und sammeln Mitteilungen, Erinnerungen und Verfolgungen mit Verlauf. **Einstellungen** (`Settings/`) hat Konto (Anmelde-Buttons in `Account/`),
+den Einstellungen und sammeln Mitteilungen, Erinnerungen und Verfolgungen mit Verlauf. Der **Aussteige-Wecker** (`ExitAlarm/`, `docs/EXIT_ALARM.md`) hängt an
+Verbindungsdetail, Live verfolgen und Zug-Radar; **Fahrten erkennen** (`TripDetect/`, `docs/TRIP_DETECTION.md`: Vorschläge, „Fahrt aufzeichnen“,
+Erklärung, Einstellungen) schlägt Fahrten in der Übersicht vor. **Einstellungen** (`Settings/`) hat Konto (Anmelde-Buttons in `Account/`),
 Live-Daten (Einwilligung), Tarif, Widgets (`Widgets/` = Galerie), KI (`Assistant/`), Auto/Arbeit (`Work/`), App-Symbol
 (`AppIcon/`), Updates (`Updates/`, manuell oder per Sheet), Diagnose. `Onboarding/` richtet beim ersten Start das Ticket ein.
 
 Live-Daten (Fahrplan, Radar, Zugsuche, Verfolgen, Preise, Widget-Cache) gibt es nur mit der Einwilligung aus den Einstellungen,
-im Vordergrund und über die `RequestThrottle` (40 Anfragen pro Minute, ehrlicher User-Agent; `docs/OEBB_LIVE.md` §2).
+im Vordergrund und über die `RequestThrottle` (40 Anfragen pro Minute, ehrlicher User-Agent; `docs/OEBB_LIVE.md` §2). Die einzige
+Ausnahme vom Vordergrund ist eine aktive Verfolgung mit eingeschalteten Live-Mitteilungen: Ihr Hintergrundabruf (`FollowBackgroundRefresh`)
+fragt höchstens einmal je Lauf nach, wenn iOS ihn zulässt (`docs/OEBB_LIVE.md` §2.3, §R8).
 Widgets machen nie einen Netzaufruf: Die App schreibt den Cache in die App Group, die Widgets lesen ihn (`docs/WIDGETS.md`).
 
 ## Daten und Zahlen
 
-Aus den Datendateien gelesen (`python3 scripts/doc_numbers.py`, Stand dieses Commits): 39.711 Haltestellen (`places.bin`) und 21.050 Orte (`localities.bin`, OSM, ODbL); 1.487 alte Stationen in `stations.json` (eingefroren, jede ID ist in `places.bin` als `legacy`-ID hinterlegt); 29.883 ÖBB-Relationspreise von 33 Ausgangsorten (Tarif ab 14.12.2025); 80 KlimaTicket-Produkte in `tariffs.json`; 17 Abzeichen im Gipfelbuch.
+Aus den Datendateien gelesen (`python3 scripts/doc_numbers.py`, Stand dieses Commits): 39.711 Haltestellen (`places.bin`) und 21.050 Orte (`localities.bin`, OSM, ODbL); 1.487 alte Stationen in `stations.json` (eingefroren, jede ID ist in `places.bin` als `legacy`-ID hinterlegt); 178.013 ÖBB-Relationspreise zwischen 979 Tarifpunkten (`relations.bin`, mitgeliefert, Tarif ab 14.12.2025; `data/oebb_relation_prices.json` ist nur der Auszug der 33 großen Ausgangsorte, aus dem die Tabelle gebaut wird); 80 KlimaTicket-Produkte in `tariffs.json`; 17 Abzeichen im Gipfelbuch.
 
 ## Regeln für den App-Code
 

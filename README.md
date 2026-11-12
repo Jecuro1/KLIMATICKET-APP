@@ -16,13 +16,14 @@ Bedienung, Frost-Karten für Inhalte.
 - **Übersicht** – riesige Amortisations-Anzeige mit „Gipfel“-Grafik, Break-even-Prognose, Kennzahlen, Schnellerfassung
 - **Fahrten erfassen in Sekunden** – 39.711 Haltestellen und 21.050 Orte (ÖBB-, Verbund- und Wiener-Linien-Fahrplandaten, OSM) mit
   Offline-Suche, Lieblingsfahrten, „Nochmal fahren“, Hin & Retour, Via-Halte, Mitfahrende, Notizen
-- **Fahrplan wie in der ÖBB-App** – Verbindungen und Abfahrtstafeln mit Echtzeit, Preis und „Deckt dein KlimaTicket die Fahrt?“,
+- **Fahrplan** – Verbindungen und Abfahrtstafeln mit Echtzeit, Preis und „Deckt dein KlimaTicket die Fahrt?“,
   Zugsuche nach Zugnummer, **Live verfolgen** mit Live Activity, **Zug-Radar** und Karte mit Ebenen, Störungen,
-  Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme** (Live-Daten nur mit deiner Einwilligung, nur bei geöffneter App)
-- **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (29.883 Verbindungen von 33 Ausgangsorten, Tarif ab 14.12.2025),
+  Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme**. Live-Daten gibt es nur mit deiner Einwilligung und bei geöffneter
+  App; im Hintergrund fragt die App höchstens für eine Verfolgung nach, für die du Live-Mitteilungen eingeschaltet hast
+- **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (178.013 Relationen zwischen 979 Tarifpunkten, Tarif ab 14.12.2025),
   sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
-- **Alle KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
-  und alle regionalen Tickets aller Bundesländer (80 Produkte)
+- **KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
+  und die regionalen Tickets der Bundesländer (80 Tarifvarianten im Katalog; der Tarifstand zeigt, wie aktuell er ist)
 - **Statistik** – Ersparnis-Verlauf mit Prognose, Monatsbilanz, Verkehrsmittel, Wochentage, Reise-Kalender,
   Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, **Was wäre wenn?**, Öffis vs. Auto, CO₂-Bilanz, Österreich-Karte, Jahresbericht als PDF
 - **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen

@@ -49,9 +49,62 @@ def top_level_decls(path):
     return out, src
 
 
+RAW_START = re.compile(r'#+"')
+
+
+def _scan_string(src, i):
+    """`src[i]` starts a string literal (single-line, triple-quoted, or either one behind `#`s). Returns the index after
+    the literal and its code: what sits inside an interpolation is code (an interpolation with URLSession.shared in it
+    uses the network), the rest is text. Newlines are kept in both, so line numbers stay."""
+    n = len(src)
+    hashes = 0
+    while src[i] == "#":
+        hashes += 1
+        i += 1
+    multiline = src.startswith('"""', i)
+    quote = '"""' if multiline else '"'
+    end = quote + "#" * hashes
+    marker = "\\" + "#" * hashes   # the backslash of an escape or interpolation (`\#(` in a raw string)
+    i += len(quote)
+    code = []
+    while i < n and not src.startswith(end, i):
+        if src.startswith(marker + "(", i):
+            start = i + len(marker)   # at the "("
+            k, depth = start, 0
+            while k < n:
+                ch = src[k]
+                if ch == '"' or (ch == "#" and RAW_START.match(src, k)):
+                    k = _scan_string(src, k)[0]
+                    continue
+                k += 1
+                if ch == "(":
+                    depth += 1
+                elif ch == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+            code.append(" " + code_only(src[start + 1:k - 1] if depth == 0 else src[start + 1:k]) + " ")
+            i = k
+            continue
+        if src.startswith(marker, i) and i + len(marker) < n:   # an escape: the next character is not the end
+            if src[i + len(marker)] == "\n":
+                code.append("\n")
+            i += len(marker) + 1
+            continue
+        if src[i] == "\n":
+            if not multiline:
+                break   # an unterminated single-line string: stop at the line end
+            code.append("\n")
+        i += 1
+    if src.startswith(end, i):
+        i += len(end)
+    return i, "".join(code)
+
+
 def code_only(src):
-    """`src` with comments and string literals blanked out (newlines kept, so line numbers stay): what is left is code
-    a compiler would act on. Handles //, nested /* */, "…" with escapes, raw #"…"# and multi-line triple-quoted strings."""
+    """`src` with comments and the text of string literals blanked out (newlines kept, so line numbers stay): what is left
+    is code a compiler would act on, including the code inside string interpolations. Handles //, nested /* */, "…" with
+    escapes, raw #"…"# and multi-line triple-quoted strings."""
     out = []
     i, n = 0, len(src)
     while i < n:
@@ -73,36 +126,9 @@ def code_only(src):
                 else:
                     out.append("\n" if src[i] == "\n" else " ")
                     i += 1
-        elif c == '"' or (c == "#" and re.match(r'#+"', src[i:])):
-            hashes = 0
-            while src[i] == "#":
-                hashes += 1
-                i += 1
-            multiline = src[i:i + 3] == '"""'
-            quote = '"""' if multiline else '"'
-            end = quote + "#" * hashes
-            i += len(quote)
-            while i < n and src[i:i + len(end)] != end:
-                if src[i] == "\\" and hashes == 0:
-                    i += 1
-                    if src[i:i + 1] == "(":   # interpolation: skip to the matching parenthesis
-                        depth = 0
-                        while i < n:
-                            depth += {"(": 1, ")": -1}.get(src[i], 0)
-                            if src[i] == "\n":
-                                out.append("\n")
-                            i += 1
-                            if depth == 0:
-                                break
-                        continue
-                if i < n:
-                    if src[i] == "\n":
-                        if not multiline:
-                            break   # an unterminated single-line string: stop at the line end
-                        out.append("\n")
-                    i += 1
-            i += len(end) if src[i:i + len(end)] == end else 0
-            out.append(" ")
+        elif c == '"' or (c == "#" and RAW_START.match(src, i)):
+            i, inner = _scan_string(src, i)
+            out.append(" " + inner)
         else:
             out.append(c)
             i += 1

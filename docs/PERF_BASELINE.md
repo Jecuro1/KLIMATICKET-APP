@@ -9,7 +9,7 @@ diesem Dokument wird nichts optimiert.
 | | |
 |---|---|
 | Lauf 1 (Baseline, bestehende fünf Bildschirme) | [Lauf 383](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/43234095971), Commit `d5b5df1`, 12.11.2026 |
-| Lauf 2 (neue Bildschirme dazu, sonst derselbe Code) | [Lauf 387](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/43239296214), Commit `9601e35`, 12.11.2026 |
+| Lauf 2 (neue Bildschirme dazu; App-Code sonst nur durch die Dateiaufteilungen und die Ticket-Tab-Änderungen des Briefe-Pakets verändert) | [Lauf 387](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/43239296214), Commit `9601e35`, 12.11.2026 |
 | Runner | GitHub-gehosteter `macos-26`, arm64-VM (geteilt, ohne echte GPU) |
 | Xcode / Simulator | 26.6 / iPhone 17 Pro, iOS 26.5 |
 | Konfiguration | Schema `KlimaBilanzPerf`, Release, `-KBPerf YES -KBDemo YES` (Demo-Jahr, 79 Fahrten) und `-KBPerfTrips 1500` (+1 500 Fahrten) |
@@ -277,7 +277,7 @@ Eigenschaften für den Schlüssel), beim Demo-Jahr Ø 3,7 ms. Das Memo-Verfahren
 
 ## 6. Was die Messung nicht hergibt (Störgrößen)
 
-- **Der Runner schwankt stark.** Lauf 1 und 2 haben denselben App-Code auf den bestehenden Bildschirmen; die Hitch-Ratio unterschied
+- **Der Runner schwankt stark.** Lauf 1 und 2 haben auf den bestehenden Bildschirmen fast denselben App-Code (dazwischen liegen nur die Dateiaufteilungen ohne Verhaltensänderung und die Ratenkarte auf dem Ticket-Tab, `TktStatusCards`); die Hitch-Ratio unterschied
   sich um bis zu 50 % (Übersicht Wischen 315 → 189, Ticket +1 500 Fahrten Wischen 326 → 175, Gipfelbuch 31 → 14), der XCTest-Start um 38 %
   (7,10 → 4,40 s), der Prozessstart bis zum ersten Bild um 44 % (3 932 → 2 215 ms). Ein einzelner Vergleich zeigt Änderungen unter
   50 % nicht verlässlich; `scripts/perf_compare.py` verwendet deshalb 50 % als Toleranz.
@@ -294,9 +294,9 @@ Eigenschaften für den Schlüssel), beim Demo-Jahr Ø 3,7 ms. Das Memo-Verfahren
 Folge für den Vergleich vorher/nachher: Die Hitch-Ratio taugt für Unterschiede ab etwa Faktor 2 (und für die Rangfolge der
 Bildschirme). Für kleinere Änderungen braucht es mehrere Läufe oder ein Gerät.
 
-## 7. Lauf 1 gegen Lauf 2 (derselbe Code, nur der Messaufbau ist erweitert)
+## 7. Lauf 1 gegen Lauf 2 (fast derselbe Code, der Messaufbau ist erweitert)
 
-Das ist der zweite `[perf]`-Lauf. Er sagt, wie weit zwei Läufe ohne Codeänderung auseinanderliegen. Toleranz 50 %, nur Bildschirme aus
+Das ist der zweite `[perf]`-Lauf. Er sagt, wie weit zwei Läufe ohne Leistungsänderung am Code auseinanderliegen; die Ratenkarte der Ticket-Zeilen liegt in diesem Rauschen und ist nicht herauszurechnen. Toleranz 50 %, nur Bildschirme aus
 beiden Läufen:
 
 ### Scrollen: Hitch Time Ratio (ms Ruckeln pro s Scrollen, kleiner ist besser)

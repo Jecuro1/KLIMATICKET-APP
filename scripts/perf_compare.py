@@ -6,7 +6,7 @@ Usage: perf_compare.py <before perf-summary.json> <after perf-summary.json> [--t
 Prints Markdown (for docs/PERF_BASELINE.md): hitch time ratio of every screen and source, the time to the first frame
 when a screen opens, the longest frame, the launch and the memory peak – before, after, difference and a verdict.
 
-Verdict rules: the CI simulator is noisy – two runs of the same code (runs 383 and 387, docs/PERF_BASELINE.md §8) differed by
+Verdict rules: the CI simulator is noisy – two runs of the same code (runs 383 and 387, docs/PERF_BASELINE.md §6 and §7) differed by
 up to 50 % on the same screen. A figure therefore counts as *worse* / *better* only when it moved by more than the tolerance
 (default 0.5 = 50 %) AND by more than a floor in absolute terms (hitch ratio 1 ms/s, frame times 20 ms, memory 5 MB);
 everything else is *gleich*. Smaller effects need several runs or a device. A screen that is only in one of the runs is listed as new / entfernt.

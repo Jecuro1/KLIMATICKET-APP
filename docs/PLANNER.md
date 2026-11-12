@@ -124,11 +124,13 @@ both parameters, not as a spoken phrase with two stations.
 
 ## 11. Not built, and why
 
-**Built since this section was first written:** the widget „Nächste Verbindung“ (`nextConnection`, docs/WIDGETS.md §4). It
+Built since this section was first written: the widget „Nächste Verbindung“ (`nextConnection`, docs/WIDGETS.md §4). It
 shows only the cache in the App Group, which the app fills with consent, while the app is visible and at most every 15
-minutes (`WidgetCacheSync`); there is still no background request (OEBB_LIVE §2.3). It covers direct favourite routes; via
-routes are not asked for.
+minutes (`WidgetCacheSync`); the widget makes no request itself and nothing refreshes that cache in the background
+(OEBB_LIVE §2.3; the one background request of the app belongs to an active „Live verfolgen“, §R8). It covers direct favourite
+routes; via routes are not asked for.
 
+Still not built:
 
 - **Wagenreihung**: not in the ÖBB responses that were checked (OEBB_LIVE §R6, „NO DATA“). Nothing is shown without data.
 - **Leg-level „Fahrt erfassen“** (choose the legs to log): not built in this round. The price of a partly logged connection

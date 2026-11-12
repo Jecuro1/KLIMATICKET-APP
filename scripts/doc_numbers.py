@@ -8,9 +8,11 @@ Prints one line per figure: `<key> = <value>  (<de-AT>)  – <source>`.
   stops               places.bin (KBPL v2 header)          every Austrian stop the place search covers
   localities          localities.bin (header)              OSM places (ODbL) next to the stops
   legacy_stations     App/Resources/stations.json          the frozen list old trips refer to
-  relation_pairs      data/oebb_relation_prices.json        origin → destination prices of the ÖBB Relationspreise
-  relation_origins    data/oebb_relation_prices.json
-  relation_valid_from data/oebb_relation_prices.json        tariff date of that table
+  relation_pairs      App/Resources/relations.bin           the ÖBB Relationspreise the app ships: one price per pair of tariff points
+                                                            (NOT data/oebb_relation_prices.json: that file holds only the 33 big origins,
+                                                            the bundled table is built from it plus the full parsed table)
+  relation_points     App/Resources/relations-points.json   the tariff points those pairs connect
+  relation_valid_from App/Resources/relations-points.json   tariff date of the bundled table
   ticket_products     App/Resources/tariffs.json            KlimaTicket products (Ö + regional)
   achievements        KlimaCore Achievements.swift          badges in the Gipfelbuch
 
@@ -24,7 +26,9 @@ import importlib.util
 import json
 import os
 import re
+import struct
 import sys
+import zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHECKED = ("stops", "localities", "relation_pairs")
@@ -47,6 +51,17 @@ def _container(root):
     return module.Container
 
 
+def _relations(root):
+    """(number of price pairs in the bundled relations.bin, relations-points.json): the file is raw-DEFLATE compressed
+    little-endian UInt16 triples (pointA, pointB, price in 10-cent units), see scripts/build_relations.py."""
+    with open(os.path.join(root, "App/Resources/relations.bin"), "rb") as f:
+        packed = f.read()
+    blob = zlib.decompressobj(-15).decompress(packed)
+    if not blob or len(blob) % struct.calcsize("<HHH"):
+        raise ValueError("App/Resources/relations.bin: empty, or its size is not a multiple of 6 bytes")
+    return len(blob) // struct.calcsize("<HHH"), _load_json(root, "App/Resources/relations-points.json")
+
+
 def numbers(root=ROOT):
     """{key: (value, source)} in print order."""
     out = {}
@@ -54,11 +69,10 @@ def numbers(root=ROOT):
     out["stops"] = (container(os.path.join(root, "App/Resources/places.bin")).n_stops, "App/Resources/places.bin")
     out["localities"] = (container(os.path.join(root, "App/Resources/localities.bin")).n_records, "App/Resources/localities.bin")
     out["legacy_stations"] = (len(_load_json(root, "App/Resources/stations.json")), "App/Resources/stations.json")
-    relations = _load_json(root, "data/oebb_relation_prices.json")
-    source = "data/oebb_relation_prices.json"
-    out["relation_pairs"] = (sum(len(destinations) for destinations in relations["relations"].values()), source)
-    out["relation_origins"] = (len(relations["relations"]), source)
-    out["relation_valid_from"] = (relations["valid_from"], source)
+    pairs, points = _relations(root)
+    out["relation_pairs"] = (pairs, "App/Resources/relations.bin")
+    out["relation_points"] = (len(points["points"]), "App/Resources/relations-points.json")
+    out["relation_valid_from"] = (points["validFrom"], "App/Resources/relations-points.json")
     out["ticket_products"] = (len(_load_json(root, "App/Resources/tariffs.json")["products"]), "App/Resources/tariffs.json")
     with open(os.path.join(root, "Packages/KlimaCore/Sources/KlimaCore/Achievements.swift"), encoding="utf-8") as f:
         out["achievements"] = (len(re.findall(r'^\s+make\("[a-z0-9-]+"', f.read(), re.M)), "Packages/KlimaCore/Sources/KlimaCore/Achievements.swift")

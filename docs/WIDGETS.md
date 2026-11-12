@@ -28,7 +28,7 @@ Entscheidungen des Owners in §8.
 | `widgets.connections.v1` | `WidgetConnectionCache` | App, bei Abruf | nächste Verbindungen je Favorit (`uuidString`) |
 | `widgets.departures.v1` | `WidgetDepartureCache` | App, bei Abruf | nächste Abfahrten je Station |
 | `widgets.disruptions.v1` | `WidgetDisruptionCache` | App, bei Abruf | Störungen der Linien, die der Nutzer fährt |
-| `widgets.stations.v1` | `WidgetStationList` | App, bei Änderung | Heimat-Station und Favoriten-Stationen, höchstens 10, mit Ausstattung |
+| `widgets.stations.v1` | `WidgetStationList` | App, bei Änderung | Heimat-Station und Favoriten-Stationen, höchstens 4 (`WidgetCacheSync.boardLimit`), mit Ausstattung |
 | `widgets.liveFollow.active.v1` | Bool | App (Live verfolgen) | ob ein Zug verfolgt wird |
 | `widgets.liveFollow.request.v1` | Bool | Control | Auftrag an die App: an / aus |
 | `widgetSnapshot.v1` | `WidgetSnapshot` | App | Ticket-Snapshot; neu: `heat` (84 Tageszahlen) |
@@ -53,7 +53,7 @@ Alle Caches sind versioniert, neue Felder sind optional. Schreiben nur bei Ände
 
 Es gibt nur positive Angaben: Eine Station ohne Aufzug in OSM zeigt keinen Aufzug, und „nicht erfasst“ wird nie als „fehlt“
 gezeigt. Bike+Ride sagt Fahrradständer schon, deshalb kommt kein zweiter Eintrag. Die App schreibt die Liste mit
-`widgets.stations.v1` in die App Group (höchstens zehn Stationen).
+`widgets.stations.v1` in die App Group (höchstens vier Stationen, `WidgetCacheSync.boardLimit`: die Heimat-Station, dann die Abfahrtsstationen der Favoriten).
 
 ## 4. Widgets
 
