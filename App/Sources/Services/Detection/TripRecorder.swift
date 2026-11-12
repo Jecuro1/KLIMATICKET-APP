@@ -48,11 +48,11 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
         manager.showsBackgroundLocationIndicator = false
     }
 
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         onAuthorization?(manager.authorizationStatus)
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         for location in locations where location.horizontalAccuracy >= 0 {
             continuation?.yield(CoarsePoint(time: location.timestamp, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
                                             accuracyMeters: location.horizontalAccuracy, speedMetersPerSecond: location.speed >= 0 ? location.speed : nil,
@@ -60,7 +60,7 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
 }
 
 @Observable

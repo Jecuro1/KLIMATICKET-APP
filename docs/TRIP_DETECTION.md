@@ -101,7 +101,10 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 - **Übernehmen** legt über das Repository die normale Fahrt an: Von/Nach (Haltestelle, ID), Verkehrsmittel, **Normalpreis aus
   derselben Berechnung wie im Fahrt-Editor** (`FareEstimator.estimate(from:via:to:…)` mit deiner Standard-Klasse und -Vorteilscard
   am Tag der Fahrt, Bundesländer der Halte, Preisquelle der Methode). Ein Test (`CandidateValuation`) prüft, dass Betrag,
-  Kilometer und Bundesländer **identisch** zur manuellen Berechnung sind. Danach: Toast mit „Rückgängig“, Haptik, ein kleiner
+  Kilometer und Bundesländer **identisch** zur manuellen Berechnung sind. Eine Einschränkung: Der Vorschlag nimmt immer den
+  Tabellenpreis (offline, kein Netzaufruf, Preisquelle „Tabelle“); der Fahrt-Editor kann mit Zustimmung zu Live-Daten den
+  Live-Preis des Tages einsetzen. Ohne Live-Preis – oder wenn er mit der Tabelle übereinstimmt, was der Editor selbst anzeigt –
+  ist der Betrag derselbe. Danach: Toast mit „Rückgängig“, Haptik, ein kleiner
   Pop samt Konfetti-Burst auf der Bilanz-Karte (Reduce Motion: nur Aufblitzen).
 - **Bearbeiten**: Von, Nach und Verkehrsmittel (Zug, Bus, Bim, U-Bahn, oder das erkannte) ändern; der Wert folgt sofort.
 - **Verwerfen**: bleibt als kleiner Eintrag (Paar, Zeit, ohne Punkte) für 90 Tage.
