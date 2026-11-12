@@ -1,0 +1,377 @@
+import SwiftUI
+import KlimaCore
+
+// The Zeitreise's controls on the radar (docs/RADAR_TIMETRAVEL.md §5): a clock chip at the bottom that expands into a glass card with a big
+// time, the scrubber, "Zurück zu Jetzt", a time-lapse button with speed, and what is true about the picture (calculated from the timetable and
+// the delays known now, how old they are, what was loaded). The banner at the top says it again while away from now.
+
+struct RadarTimePanel: View {
+    var travel: RadarTimeModel
+
+    var body: some View {
+        GlassMorphGroup(spacing: Theme.Spacing.s) { ns in
+            if travel.isOpen {
+                RadarTimeCard(travel: travel)
+                    .morphingGlass(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous), id: "time", namespace: ns)
+            } else {
+                HStack(spacing: Theme.Spacing.xs) {
+                    RadarTimeChip(travel: travel)
+                        .morphingGlass(travel.isAway ? .regular.tint(Theme.dusk.opacity(0.28)).interactive() : .regular.interactive(),
+                                       in: .capsule, id: "time", namespace: ns)
+                    if travel.isAway {
+                        Button { travel.backToNow() } label: {
+                            Image(systemName: "arrow.uturn.backward")
+                                .font(.body.weight(.semibold))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Theme.textPrimary)
+                        .morphingGlass(in: .circle, id: "back", namespace: ns)
+                        .accessibilityLabel("Zurück zu Jetzt")
+                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .motionAnimation(Motion.smooth, value: travel.isOpen)
+        .motionAnimation(Motion.smooth, value: travel.isAway)
+    }
+}
+
+/// The closed state: "Jetzt", or the time the map shows.
+struct RadarTimeChip: View {
+    var travel: RadarTimeModel
+
+    var body: some View {
+        Button {
+            withMotion(Motion.smooth) { travel.toggleOpen() }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(travel.isAway ? Theme.dusk : Theme.accentText)
+                if travel.isAway {
+                    Text(travel.clockText).font(.subheadline.weight(.bold)).monospacedDigit()
+                    Text(travel.offsetTitle).font(.footnote).foregroundStyle(Theme.textSecondary)
+                } else {
+                    Text("Jetzt").font(.subheadline.weight(.semibold))
+                }
+                Image(systemName: "chevron.up")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .foregroundStyle(Theme.textPrimary)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(travel.isAway ? "Zeitreise, \(travel.spokenValue)" : "Zeitreise, jetzt")
+        .accessibilityHint("Öffnet den Zeitregler")
+    }
+}
+
+/// The open state.
+struct RadarTimeCard: View {
+    var travel: RadarTimeModel
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            header
+            RadarTimeScrubber(travel: travel)
+            controls
+            if travel.isMetered, travel.profile == .coarse, travel.isAway { meteredNotice }
+            if travel.isAway { status }
+        }
+        .padding(Theme.Spacing.m)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.s) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("ZEITREISE")
+                    .font(Theme.Typography.kicker)
+                    .tracking(1.06)
+                    .foregroundStyle(Theme.textSecondary)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(travel.clockText)
+                        .font(.system(size: 46, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .contentTransition(.numericText())
+                        .motionAnimation(Motion.number, value: travel.clockText)
+                    if let note = travel.dayNote {
+                        Text(note).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 0)
+            Button {
+                withMotion(Motion.smooth) { travel.close() }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(width: 44, height: 44)
+                    .background(Theme.surfaceSecondary, in: .circle)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Zeitregler schließen")
+        }
+    }
+
+    private var subtitle: String {
+        guard travel.isAway else { return "Wo sind die Züge später? Zieh den Regler." }
+        return travel.isPlaying ? "\(travel.offsetTitle) · Zeitraffer läuft" : travel.offsetTitle
+    }
+
+    // MARK: Controls
+
+    private var controls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.s) {
+                backButton
+                Spacer(minLength: 0)
+                speedPicker
+                playButton
+            }
+            VStack(spacing: Theme.Spacing.s) {
+                HStack(spacing: Theme.Spacing.s) {
+                    speedPicker
+                    Spacer(minLength: 0)
+                    playButton
+                }
+                backButton
+            }
+        }
+    }
+
+    private var backButton: some View {
+        Button { travel.backToNow() } label: {
+            Label("Zurück zu Jetzt", systemImage: "arrow.uturn.backward")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
+                .background(Theme.surfaceSecondary, in: .capsule)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.textPrimary)
+        .opacity(travel.isAway ? 1 : 0.4)
+        .disabled(!travel.isAway)
+    }
+
+    private var speedPicker: some View {
+        HStack(spacing: 2) {
+            ForEach(RadarPlaybackSpeed.allCases, id: \.self) { speed in
+                Button {
+                    withMotion(Motion.snappy) { travel.speed = speed }
+                } label: {
+                    Text(speed.title)
+                        .font(.subheadline.weight(.bold))
+                        .monospacedDigit()
+                        .frame(minWidth: 40, minHeight: 40)
+                        .background(travel.speed == speed ? Theme.accent.opacity(0.18) : .clear, in: .capsule)
+                        .foregroundStyle(travel.speed == speed ? Theme.accentText : Theme.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(speed == .x1 ? "Einfache Geschwindigkeit" : "Doppelte Geschwindigkeit")
+                .accessibilityAddTraits(travel.speed == speed ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Theme.surfaceSecondary, in: .capsule)
+        .haptic(.selection, trigger: travel.speed)
+    }
+
+    private var playButton: some View {
+        Button { travel.togglePlay() } label: {
+            Image(systemName: travel.isPlaying ? "pause.fill" : "play.fill")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Theme.onAccent)
+                .symbolReplaceTransition()
+                .frame(width: 56, height: 56)
+                .background(Theme.ctaGradient, in: .circle)
+                .shadow(color: Theme.accent.opacity(0.35), radius: 10, y: 4)
+        }
+        .buttonStyle(.pressable(scale: 0.92))
+        .haptic(travel.isPlaying ? .start : .stop, trigger: travel.isPlaying)
+        .accessibilityLabel(travel.isPlaying ? "Zeitraffer anhalten" : "Zeitraffer abspielen")
+        .accessibilityHint("Eine Sekunde sind fünf Minuten Fahrplan.")
+    }
+
+    // MARK: What is true
+
+    private var meteredNotice: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Mobilfunk: grobe Zeitreise, ein Zeitpunkt je Stunde.", systemImage: "antenna.radiowaves.left.and.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("So bleibt die Datenmenge klein. Für genau diese Minute lädst du mit \"Genau laden\".")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+            HStack(spacing: Theme.Spacing.xs) {
+                smallButton("Fein laden", symbol: "square.stack.3d.up") { travel.useFine() }
+                smallButton("Genau laden", symbol: "scope") { travel.refreshExactNow() }
+            }
+        }
+        .padding(Theme.Spacing.s)
+        .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+    }
+
+    private func smallButton(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 36)
+                .background(Theme.accent.opacity(0.16), in: .capsule)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.accentText)
+    }
+
+    /// The picture's own numbers: how many, for when; how old the delays are; what is still loading; what the path is; what it cost.
+    private var status: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(travel.pill)
+                        .font(.footnote.weight(.semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textPrimary)
+                    if let age = travel.delayAge(at: context.date) {
+                        Text(RadarTimeText.delayAge(age))
+                            .font(.footnote)
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(statusSpoken(at: context.date))
+                .accessibilityAddTraits(.updatesFrequently)
+            }
+            if travel.isLoading {
+                loadingRow
+            } else if let failure = travel.failure {
+                Label(failure, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.summitText)
+            } else if travel.isRefreshingExact {
+                Label("Genau diese Minute wird geladen.", systemImage: "scope")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            } else if travel.hasSnapshotHere {
+                Label("Für diese Minute hat die Auskunft die Positionen selbst berechnet.", systemImage: "checkmark.seal")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.positiveText)
+            }
+            Text(RadarTimeText.honesty(for: travel.offset))
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            DisclosureGroup("Wie das berechnet wird") {
+                VStack(alignment: .leading, spacing: 6) {
+                    if travel.hasStraightPins {
+                        Text(RadarTimeText.straightLine)
+                    }
+                    Text("Zu jedem Zug kennt die App nur vier Halte: Start, den letzten, den nächsten und das Ziel. Dazwischen rechnet sie zwischen den geladenen Zeitpunkten. Je näher ein geladener Zeitpunkt, desto genauer.")
+                    Text(travel.volumeNote)
+                }
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+            }
+            .font(.footnote.weight(.semibold))
+            .tint(Theme.textSecondary)
+        }
+    }
+
+    private var loadingRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(travel.loadingText)
+                .font(.footnote.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(Theme.accentText)
+            GeometryReader { proxy in
+                let share = travel.progress.total > 0 ? Double(travel.progress.loaded) / Double(travel.progress.total) : 0
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Theme.surfaceSecondary)
+                    Capsule().fill(Theme.routeGradient).frame(width: max(proxy.size.width * share, 6))
+                }
+                .motionAnimation(Motion.smooth, value: travel.progress.loaded)
+            }
+            .frame(height: 6)
+            .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(travel.loadingText)
+    }
+
+    private func statusSpoken(at date: Date) -> String {
+        var text = travel.summary
+        if let age = travel.delayAge(at: date) { text += ". " + RadarTimeText.spokenDelayAge(age) }
+        return text
+    }
+}
+
+// MARK: - Banner, tint, trail
+
+/// "Zeitreise · Prognose aus dem Fahrplan": at the top of the map while the picture is not now.
+struct RadarTimeBanner: View {
+    var travel: RadarTimeModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.footnote.weight(.bold))
+                .symbolEffect(.pulse, isActive: travel.isPlaying)
+                .symbolEffectsRemoved(reduceMotion || MotionPolicy.isStatic)
+            Text(travel.banner)
+                .font(.footnote.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(Theme.textPrimary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .glassEffect(.regular.tint(Theme.dusk.opacity(0.30)), in: .rect(cornerRadius: 18))
+        .padding(.horizontal, Theme.Spacing.cardGutter)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(travel.banner)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// The time of day on the map: a soft violet tint at night, a warm one at dusk and dawn. Decoration (`RadarDaylight`), never a statement.
+struct RadarSkyTint: View {
+    var travel: RadarTimeModel
+
+    var body: some View {
+        let sky = travel.sky
+        ZStack {
+            Rectangle().fill(Theme.dusk.opacity(0.30 * sky.night))
+            LinearGradient(colors: [Theme.dawn.opacity(0.26 * sky.twilight), .clear], startPoint: .bottom, endPoint: .center)
+        }
+        .blendMode(.multiply)
+        .opacity(travel.isAway ? 1 : 0)
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .motionAnimation(Motion.gentle, value: travel.isAway)
+        .motionAnimation(Motion.gentle, value: Int(sky.night * 20))
+    }
+}

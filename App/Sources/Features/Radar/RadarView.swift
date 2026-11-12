@@ -23,6 +23,7 @@ struct RadarView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) var colorScheme   // MARK: radarheat – read by the Pünktlichkeit layer (RadarView+Heat.swift)
     @State var model = RadarModel()
+    @State var travel = RadarTimeModel()   // MARK: radartime – the time scrubber (docs/RADAR_TIMETRAVEL.md)
     @State var camera: MapCameraPosition = .region(RadarView.austriaRegion)
     @State var query = ""
     @State var showsFilter = false
@@ -56,12 +57,13 @@ struct RadarView: View {
     }
 
     private var isRunning: Bool {
-        scenePhase == .active && loadsRadar   // MARK: radarheat – trains or the Pünktlichkeit layer
+        scenePhase == .active && loadsRadar && !travel.isAway   // MARK: radarheat – trains or the Pünktlichkeit layer; radartime – paused while away from now
     }
 
     var body: some View {
         NavigationStack {
             mapLayer
+            .overlay { RadarSkyTint(travel: travel) }   // MARK: radartime
             .navigationTitle("Zug-Radar")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -116,6 +118,7 @@ struct RadarView: View {
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
+            .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, available: timeAvailable, sceneActive: scenePhase == .active))   // MARK: radartime
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
                 refreshStations(box: model.box, span: model.spanDegrees)
@@ -147,8 +150,9 @@ struct RadarView: View {
             // radarAllZoom, run 1: a station bubble over a train bubble). So trains have priority by collision: a station marker
             // that would sit under a train marker is left out (`MapDeclutter`, `visibleStationClusters`).
             if trainsOn {
-            ForEach(model.clusters) { cluster in
-                if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] {
+            if travel.isAway { timeTrailLayer }   // MARK: radartime
+            ForEach(shownClusters) { cluster in   // MARK: radartime – the Zeitreise's pins while away from now
+                if cluster.isSingle, let id = cluster.tripIDs.first, let pin = shownPin(id) {
                     Annotation(pin.vehicle.line.map { LinePresentation.title($0) } ?? "Zug",
                                coordinate: pin.coordinate.clCoordinate, anchor: .center) {
                         Button { select(pin) } label: {
@@ -187,7 +191,7 @@ struct RadarView: View {
         } action: { size in
             model.setMapSize(size)
         }
-        .accessibilityLabel("Zug-Radar, \(model.summary)")
+        .accessibilityLabel("Zug-Radar, \(travel.isAway ? travel.summary : model.summary)")   // MARK: radartime
         .haptic(.selection, trigger: model.selectedTripID)
         .simultaneousGesture(SpatialTapGesture().onEnded { handleMapTap(at: $0.location, proxy: proxy) })   // MARK: radarheat
         }
@@ -198,7 +202,7 @@ struct RadarView: View {
 
     /// The radar service. The dense demo scenes bring their own (synthetic, no network); everything else goes through the gate.
     var radarService: (any RadarService)? {
-        preset.isDenseDemo ? DemoRadarService(dense: true) : (preset.isHeatDemo ? DemoRadarService(heat: true) : app.live.radar)   // MARK: radarheat
+        preset.isTimeDemo ? RadarTimeDemoService() : (preset.isDenseDemo ? DemoRadarService(dense: true) : (preset.isHeatDemo ? DemoRadarService(heat: true) : app.live.radar))   // MARK: radarheat, radartime
     }
 
     private func select(_ pin: RadarPin) {
@@ -217,7 +221,7 @@ struct RadarView: View {
     }
 
     func center(on tripID: String) {
-        guard let pin = model.pinsByID[tripID] else { return }
+        guard let pin = shownPin(tripID) else { return }   // MARK: radartime
         camera = .region(MKCoordinateRegion(center: pin.coordinate.clCoordinate,
                                             span: MKCoordinateSpan(latitudeDelta: 0.35, longitudeDelta: 0.5)))
     }
@@ -256,6 +260,8 @@ struct RadarView: View {
         case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to Wien and its S-Bahn: single trains and small clusters
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.17, longitude: 16.30).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
+        case .timeTravel, .timeTravelPlaying, .timeTravelLoading:   // MARK: radartime
+            applyTimePreset(preset)
         case .heat, .heatPanel, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)

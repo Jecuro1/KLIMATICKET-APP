@@ -73,6 +73,8 @@ public struct RadarTimeline: Sendable {
         public var vehicleFetchedAt: Date
         /// Sorted by time.
         public var observations: [Observation]
+        /// The whole stop list of a run (JourneyDetails of the selected train), when it was loaded: every stop instead of the four of an answer.
+        public var details: (schedule: RadarSchedule, fetchedAt: Date)?
         /// All observations merged: what the timeline asks.
         public var run: RadarRunPath
         /// The end of the run (the destination's arrival with its delay), or the last answer's time when the run has no path.
@@ -88,7 +90,9 @@ public struct RadarTimeline: Sendable {
         }
 
         mutating func rebuild() {
-            let schedule = RadarSchedule.merged(observations.map { ($0.schedule, $0.fetchedAt) })
+            var parts = observations.map { ($0.schedule, $0.fetchedAt) }
+            if let details { parts.append(details) }
+            let schedule = RadarSchedule.merged(parts)
             run = RadarRunPath(schedule: schedule, anchors: observations.compactMap(\.anchor))
             endsAt = run.lastTime ?? observations.last?.time ?? .distantPast
         }
@@ -148,6 +152,17 @@ public struct RadarTimeline: Sendable {
         }
         record(RadarTimeFrame(time: time, fetchedAt: fetchedAt, vehicleCount: vehicles.count, isComplete: isComplete))
         enforceTripLimit()
+    }
+
+    /// The whole stop list of one trip (JourneyDetails, loaded for the selected train): every stop is a waypoint then, and the stops of the
+    /// radar's answers (four each) are only a subset of it. Nothing happens for a trip the timeline does not know.
+    public mutating func addDetails(_ vehicle: RadarVehicle, fetchedAt: Date) {
+        guard var trip = trips[vehicle.tripID] else { return }
+        let schedule = RadarSchedule(vehicle)
+        guard schedule.isProjectable else { return }
+        trip.details = (schedule, fetchedAt)
+        trip.rebuild()
+        trips[vehicle.tripID] = trip
     }
 
     /// The vehicles of the live radar at the moment the Zeitreise starts: each with the time of its own answer.

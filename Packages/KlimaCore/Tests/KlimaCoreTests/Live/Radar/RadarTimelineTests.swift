@@ -134,6 +134,24 @@ final class RadarTimelineTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(three.pin(for: "w", at: F.at(35))).distanceToAnswer, 0)
     }
 
+    func testTheWholeStopListOfTheSelectedTrainMakesItsPathExact() throws {
+        var timeline = RadarTimeline()
+        timeline.addFrame([window(15, last: 1)], time: F.at(15), fetchedAt: F.at(15))
+        let truth = RadarSchedule(F.vehicle("w", stops: longRun))
+        func worstError() throws -> Double {
+            try stride(from: 20.0, through: 60, by: 2).map { minute -> Double in
+                let real = try XCTUnwrap(RadarProjection.position(of: truth, anchor: nil, at: F.at(minute))).coordinate
+                return try XCTUnwrap(timeline.pin(for: "w", at: F.at(minute))).coordinate.distanceKm(to: real)
+            }.max() ?? 0
+        }
+        XCTAssertGreaterThan(try worstError(), 3, "four stops: a straight line from the next stop to the destination")
+        timeline.addDetails(F.vehicle("w", stops: longRun), fetchedAt: F.at(16))
+        XCTAssertEqual(timeline.trips["w"]?.run.stops.count, 8, "every stop of the run")
+        XCTAssertLessThan(try worstError(), 1.5, "all stops known: only the minute standing at each is off")
+        timeline.addDetails(F.vehicle("unknown", stops: longRun), fetchedAt: F.at(16))
+        XCTAssertNil(timeline.trips["unknown"], "a trip the timeline does not know stays unknown")
+    }
+
     func testAReportedDelayBeatsACarriedOneWhateverTheOrder() throws {
         var timeline = RadarTimeline()
         let reported = F.vehicle("d", stops: [F.Stop(lon: 14, arr: nil, dep: 0, depDelay: 4), F.Stop(lon: 15, arr: 30, dep: 32, arrDelay: 4, depDelay: 4),

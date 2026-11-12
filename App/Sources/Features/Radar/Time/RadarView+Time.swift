@@ -1,0 +1,82 @@
+import SwiftUI
+import MapKit
+import KlimaCore
+
+// MARK: radartime – the Zeitreise on the radar's map (docs/RADAR_TIMETRAVEL.md). The scrubber, the card, the banner, the trail and the tint live in
+// this folder; the radar view needs a few small hooks for them (`RadarView.swift`, `RadarView+Controls.swift`). While the scrubber is away from now the
+// map draws the Zeitreise's pins instead of the live ones, and the live loop is paused.
+
+extension RadarView {
+    /// The Zeitreise is offered: trains are on and allowed, only trains (the snapshots are of rail vehicles), and the Pünktlichkeit layer
+    /// (about now) is off.
+    var timeAvailable: Bool { trainsOn && !heatOn && model.isRailOnly }
+
+    /// The groups the map draws: the Zeitreise's while away from now, the live radar's otherwise.
+    var shownClusters: [RadarCluster] { travel.isAway ? travel.clusters : model.clusters }
+
+    func shownPin(_ id: String) -> RadarPin? { travel.isAway ? travel.pinsByID[id] : model.pinsByID[id] }
+
+    /// What answers the Zeitreise's requests: the real radar through the gate, or the synthetic fleet in every demo.
+    var timeService: (any RadarService)? {
+        if preset.isTimeDemo { return RadarTimeDemoService(stallAfter: preset == .timeTravelLoading ? 3 : nil) }
+        if app.live.isDemo || preset.isDenseDemo || preset.isHeatDemo { return RadarTimeDemoService() }
+        return radarService
+    }
+
+    /// The last ten minutes of the selected train's projected path: ten short pieces, the oldest faint and thin, the newest strong.
+    @MapContentBuilder var timeTrailLayer: some MapContent {
+        let points = travel.trail.map(\.clCoordinate)
+        if points.count > 1 {
+            ForEach(0..<(points.count - 1), id: \.self) { index in
+                let fade = Double(index + 1) / Double(points.count - 1)
+                MapPolyline(coordinates: [points[index], points[index + 1]])
+                    .stroke(Theme.dusk.opacity(0.18 + 0.82 * fade), style: StrokeStyle(lineWidth: 2 + 4 * fade, lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+
+    /// The CI scenes (`RadarTimeScreenshotHost`): synthetic trains, the scrubber open at +45 minutes; playing, zoomed to the Westbahn with one train
+    /// selected; loading, stuck at three snapshots.
+    func applyTimePreset(_ preset: RadarPreset) {
+        layersRaw = MapLayerSelection(layers: [.stations, .trains]).storageValue
+        travel.demo = true
+        switch preset {
+        case .timeTravelPlaying:
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.12, longitude: 15.45).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 1.5, longitudeDelta: 2.1)))
+            travel.applyDemo(minutes: 80, playing: false, featuredLine: "RJX 60")
+        case .timeTravelLoading:
+            travel.applyDemo(minutes: 45, playing: false)
+        default:
+            travel.applyDemo(minutes: 45, playing: false)
+        }
+    }
+}
+
+/// The hooks the radar view needs for the Zeitreise in one modifier: the loop, and what changes under the picture.
+struct RadarTimeHooks: ViewModifier {
+    var travel: RadarTimeModel
+    var model: RadarModel
+    var service: (any RadarService)?
+    var available: Bool
+    var sceneActive: Bool
+
+    private var runs: Bool { available && sceneActive && travel.isActive }
+
+    func body(content: Content) -> some View {
+        content
+            // The loop runs while the Zeitreise is open or away from now and the radar is visible; leaving the radar or the layer ends it
+            // together with every request on its way.
+            .task(id: runs) {
+                guard runs, let service else { return }
+                await travel.run(service: service, live: model)
+            }
+            .onChange(of: available) { _, on in if !on { travel.reset() } }
+            .onChange(of: model.filter) { _, _ in travel.filterChanged() }
+            .onChange(of: model.box) { _, _ in travel.viewChanged() }
+            .onChange(of: model.mapSize) { _, _ in travel.viewChanged() }
+            .onChange(of: model.selectedTripID) { _, _ in travel.selectionChanged() }
+            .onChange(of: model.routeTripID) { _, id in if let id { travel.noteDetails(tripID: id) } }
+            .onChange(of: model.route.count) { _, _ in if let id = model.routeTripID { travel.noteDetails(tripID: id) } }
+    }
+}

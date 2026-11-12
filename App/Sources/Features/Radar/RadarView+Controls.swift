@@ -34,7 +34,11 @@ extension RadarView {
         VStack(spacing: Theme.Spacing.xs) {
             searchField
             modeChips
+            if travel.isAway {   // MARK: radartime – "Zeitreise · Prognose aus dem Fahrplan"
+                RadarTimeBanner(travel: travel).motionTransition(.drop)
+            }
         }
+        .motionAnimation(Motion.smooth, value: travel.isAway)
     }
 
     private var searchField: some View {
@@ -132,7 +136,7 @@ extension RadarView {
                 trainsOffNotice(reason)
             }
             // The train status is only shown while trains are on: with the layer off no request is sent and nothing is pending.
-            if loadsRadar {   // MARK: radarheat – trains or the Pünktlichkeit layer
+            if loadsRadar && !travel.isAway {   // MARK: radarheat – trains or the Pünktlichkeit layer; radartime – the Zeitreise has its own status
                 if model.lowPower {
                     PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
                                       message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
@@ -160,6 +164,7 @@ extension RadarView {
                 .font(.footnote.weight(.semibold))
                 .buttonStyle(.bordered)
             }
+            if timeAvailable { RadarTimePanel(travel: travel) }   // MARK: radartime – the clock chip, expanding to the scrubber
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .frame(maxWidth: .infinity)

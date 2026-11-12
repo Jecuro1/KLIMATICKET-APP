@@ -74,11 +74,15 @@ enum RadarPreset: String, Sendable {
     case live, filter, search, cluster, layers
     // MARK: radarall – about 1500 synthetic trains (demo only): the Austria-wide view and a zoomed one
     case allTrains, allTrainsZoom
+    // MARK: radartime – the Zeitreise on synthetic trains (demo only): the scrubber at +45 minutes, the time-lapse playing, the snapshots loading
+    case timeTravel, timeTravelPlaying, timeTravelLoading
     // MARK: radarheat – the Pünktlichkeit layer on synthetic trains (demo only): the map, the open panel, a cell, the panel at the largest text size
     case heat, heatPanel, heatCell, heatAX5
 
     /// The synthetic dense demo (`DemoRadarService(dense: true)`), only ever used by the CI screenshot hosts.
     var isDenseDemo: Bool { self == .allTrains || self == .allTrainsZoom }
+    // MARK: radartime – the synthetic fleet with timetables (`Time/RadarTimeDemo.swift`).
+    var isTimeDemo: Bool { self == .timeTravel || self == .timeTravelPlaying || self == .timeTravelLoading }
     // MARK: radarheat – the synthetic trains with a delay cluster over Tirol (`RadarHeatDemo.swift`).
     var isHeatDemo: Bool { self == .heat || self == .heatPanel || self == .heatCell || self == .heatAX5 }
 }
