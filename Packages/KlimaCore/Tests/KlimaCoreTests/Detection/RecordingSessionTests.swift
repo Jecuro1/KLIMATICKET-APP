@@ -135,7 +135,7 @@ final class RecordingSessionTests: XCTestCase {
     /// The recorder reads its fixes from any provider: here the scripted one, as the demo scenes and CI do.
     func testRecordingFromAScriptedProvider() async throws {
         let start = F.nov12("08:00")
-        let provider = ScriptedLocationProvider(script: ScriptedTrack.ride(waypoints: [F.innsbruck, F.landeck].map(\.location), start: start,
+        let provider = ScriptedTrackProvider(script: ScriptedTrack.ride(waypoints: [F.innsbruck, F.landeck].map(\.location), start: start,
                                                                            cruiseKmh: 80, interval: 10))
         var s = session(at: start)
         var last = start

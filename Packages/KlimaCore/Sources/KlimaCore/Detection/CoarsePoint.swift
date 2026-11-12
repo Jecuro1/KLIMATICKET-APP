@@ -133,7 +133,7 @@ public protocol LocationProviding: AnyObject, Sendable {
 }
 
 /// Plays a prepared track: instantly (tests, scenes) or paced like the clock (`pace` seconds between fixes).
-public final class ScriptedLocationProvider: LocationProviding, @unchecked Sendable {
+public final class ScriptedTrackProvider: LocationProviding, @unchecked Sendable {
     private let script: [CoarsePoint]
     private let pace: Double?
     private let lock = NSLock()

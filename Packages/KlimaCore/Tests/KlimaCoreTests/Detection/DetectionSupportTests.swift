@@ -13,7 +13,7 @@ final class DetectionSupportTests: XCTestCase {
                                          knownRelation: F.relations.contains(PairHistory.key(from.id, to.id)))
         return DetectedCandidate(id: UUID(), source: .background, from: a, to: b, via: [], departure: F.nov12(dep), arrival: F.nov12(arr),
                                  straightKm: km, pathKm: nil, averageSpeedKmh: speed, dwellAtStart: 900, dwellAtEnd: 900, mode: .train,
-                                 rank: CandidateRanking.rank(evidence), sketch: RouteSketch.make(from: from.location, to: to.location, track: []),
+                                 evidence: evidence, rank: CandidateRanking.rank(evidence), sketch: RouteSketch.make(from: from.location, to: to.location, track: []),
                                  evidenceStart: F.nov12("07:50"), evidenceEnd: F.nov12(arr))
     }
 
@@ -200,6 +200,18 @@ final class DetectionSupportTests: XCTestCase {
         XCTAssertEqual(rank(.confirmed(connection), farther).confidence, .wahrscheinlich)
     }
 
+    func testTimetableAnswerReRanksACandidate() {
+        let base = candidate(fromDistance: 60, toDistance: 80)
+        XCTAssertEqual(base.confidence, .wahrscheinlich)
+        let connection = TimetableConnection(departure: F.nov12("08:07"), arrival: F.nov12("09:12"), line: "REX 5429")
+        let confirmed = base.ranked(with: .confirmed(connection))
+        XCTAssertEqual(confirmed.confidence, .sicher)
+        XCTAssertEqual(confirmed.rank.score, base.rank.score + 0.35, accuracy: 0.0001)
+        XCTAssertEqual(confirmed.id, base.id)
+        XCTAssertLessThan(base.ranked(with: .noMatch).rank.score, base.rank.score)
+        XCTAssertEqual(base.ranked(with: .unavailable).rank.score, base.rank.score, accuracy: 0.0001)
+    }
+
     func testConfidenceOrderingAndLabels() {
         XCTAssertLessThan(DetectionConfidence.vielleicht, .wahrscheinlich)
         XCTAssertLessThan(DetectionConfidence.wahrscheinlich, .sicher)
@@ -326,7 +338,7 @@ final class DetectionSupportTests: XCTestCase {
 
     func testScriptedProviderDeliversThePointsInOrder() async {
         let points = ScriptedTrack.coarseLine(from: F.innsbruck.location, to: F.landeck.location, start: F.nov12("08:00"), end: F.nov12("09:00"), count: 5)
-        let provider = ScriptedLocationProvider(script: points.reversed())
+        let provider = ScriptedTrackProvider(script: points.reversed())
         var received: [CoarsePoint] = []
         for await point in provider.positions() { received.append(point) }
         XCTAssertEqual(received, points)
@@ -334,7 +346,7 @@ final class DetectionSupportTests: XCTestCase {
 
     func testScriptedProviderStops() async {
         let points = ScriptedTrack.stay(at: F.hall.location, from: F.nov12("08:00"), to: F.nov12("12:00"))
-        let provider = ScriptedLocationProvider(script: points, pace: 0.01)
+        let provider = ScriptedTrackProvider(script: points, pace: 0.01)
         var count = 0
         for await _ in provider.positions() {
             count += 1

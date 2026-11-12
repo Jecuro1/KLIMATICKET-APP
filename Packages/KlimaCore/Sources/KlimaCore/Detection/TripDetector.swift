@@ -54,6 +54,8 @@ public struct DetectedCandidate: Hashable, Sendable, Identifiable {
     public var dwellAtStart: TimeInterval?
     public var dwellAtEnd: TimeInterval?
     public var mode: TransportMode
+    /// The facts the rank was computed from – kept so the optional timetable lookup can re-rank without starting over.
+    public var evidence: CandidateEvidence
     public var rank: CandidateRank
     public var sketch: RouteSketch
     /// The raw points and visits that led to this candidate – deleted when it is confirmed or dismissed.
@@ -62,6 +64,14 @@ public struct DetectedCandidate: Hashable, Sendable, Identifiable {
 
     public var duration: TimeInterval { arrival.timeIntervalSince(departure) }
     public var confidence: DetectionConfidence { rank.confidence }
+
+    /// The same ride with the timetable's answer taken into account.
+    public func ranked(with verdict: TimetableVerdict) -> DetectedCandidate {
+        var copy = self
+        copy.evidence.timetable = verdict
+        copy.rank = CandidateRanking.rank(copy.evidence)
+        return copy
+    }
 }
 
 /// Why a movement between two stays was not proposed – the "Erkennungs-Protokoll" shows these (names and times only).
@@ -369,7 +379,7 @@ public struct TripDetector: Sendable {
         let candidate = DetectedCandidate(
             id: UUID(), source: .background, from: from, to: to, via: Array(viaStations.prefix(TripVia.maxCount)), departure: departure,
             arrival: arrival, straightKm: straightKm, pathKm: pathKm, averageSpeedKmh: speed, dwellAtStart: a.dwell, dwellAtEnd: b.dwell,
-            mode: TripModeGuess.mode(from: from.station, to: to.station), rank: rank, sketch: sketch,
+            mode: TripModeGuess.mode(from: from.station, to: to.station), evidence: evidence, rank: rank, sketch: sketch,
             evidenceStart: a.arrival, evidenceEnd: b.departure ?? b.arrival)
         return .candidate(candidate)
     }
