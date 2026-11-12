@@ -48,7 +48,6 @@ struct TripDetectSettingsView: View {
     var body: some View {
         let state = state
         List {
-            SetScreenHeader(kicker: "Fahrten", title: "Fahrten erkennen")
             recordSection
             backgroundSection(state)
             timetableSection(state)
@@ -63,7 +62,7 @@ struct TripDetectSettingsView: View {
         .tint(Theme.accent)
         .revealScope()
         .navigationTitle("Fahrten erkennen")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showsExplain) {
             TripDetectExplainView(onEnable: { enable() }, onCancel: { showsExplain = false })
                 .presentationBackground(Theme.sheetBackground)
@@ -153,7 +152,7 @@ struct TripDetectSettingsView: View {
 
     private func timetableSection(_ state: TripDetectSettingsState) -> some View {
         Section {
-            Toggle(isOn: Binding(get: { state.timetableLookup }, set: { app.detection.timetableLookupEnabled = $0 })) {
+            Toggle(isOn: Binding(get: { state.timetableLookup && state.liveConsentGranted }, set: { app.detection.timetableLookupEnabled = $0 })) {
                 SetRowLabel(title: "Fahrplan zum Abgleich nutzen", subtitle: "Einmal je Vorschlag nachsehen, ob ein Zug fuhr", symbol: "clock.badge.checkmark.fill", tint: Theme.glacier)
             }
             .disabled(!state.liveConsentGranted || preview != nil)
@@ -270,7 +269,6 @@ struct TripDetectLogView: View {
 
     var body: some View {
         List {
-            SetScreenHeader(kicker: "Fahrten erkennen", title: "Protokoll")
             if entries.isEmpty {
                 Section {
                     Text("Noch nichts protokolliert. Sobald die Erkennung eine Bewegung ausgewertet hat, steht hier, ob und warum sie vorgeschlagen wurde.")
@@ -305,7 +303,7 @@ struct TripDetectLogView: View {
         .background { SetBackdrop() }
         .tint(Theme.accent)
         .navigationTitle("Erkennungs-Protokoll")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .confirmationDialog("Protokoll leeren?", isPresented: $confirmsClear, titleVisibility: .visible) {
             Button("Leeren", role: .destructive) { withMotion(Motion.smooth) { app.detection.clearLog() } }
             Button("Abbrechen", role: .cancel) {}

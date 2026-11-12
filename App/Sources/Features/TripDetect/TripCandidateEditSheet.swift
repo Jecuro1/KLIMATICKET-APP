@@ -102,17 +102,14 @@ struct TripCandidateEditSheet: View {
         GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Text("Verkehrsmittel").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textSecondary)
-                ScrollView(.horizontal) {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        ForEach(modes) { option in
-                            Chip(title: option.displayName, symbol: option.symbolName, isSelected: mode == option, tint: Theme.modeColor(option)) {
-                                withMotion(Motion.snappy) { mode = option }
-                            }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: Theme.Spacing.xs, alignment: .leading)],
+                          alignment: .leading, spacing: Theme.Spacing.xs) {
+                    ForEach(modes) { option in
+                        Chip(title: option.displayName, symbol: option.symbolName, isSelected: mode == option, tint: Theme.modeColor(option)) {
+                            withMotion(Motion.snappy) { mode = option }
                         }
                     }
-                    .padding(.vertical, 2)
                 }
-                .scrollIndicators(.hidden)
             }
         }
         .haptic(.selection, trigger: mode)

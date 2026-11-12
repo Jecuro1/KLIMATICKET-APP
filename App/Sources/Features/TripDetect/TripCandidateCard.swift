@@ -65,8 +65,9 @@ struct ConfidenceChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: symbol).font(.caption.weight(.bold))
-            Text(confidence.label).font(.caption.weight(.bold))
+            Text(confidence.label).font(.caption.weight(.bold)).lineLimit(1)
         }
+        .fixedSize()
         .foregroundStyle(tint)
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
@@ -107,6 +108,7 @@ struct TripCandidateCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var stations = CandidateStations()
     @State private var facts: CandidateTripFacts?
     @State private var showsReasons = false
@@ -133,49 +135,70 @@ struct TripCandidateCard: View {
     // MARK: Parts
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Kicker(text: candidate.source == .recording ? "Aufgezeichnete Fahrt" : "Erkannte Fahrt", color: Theme.accentText)
-            Spacer(minLength: Theme.Spacing.xs)
-            if candidate.source != .recording { ConfidenceChip(confidence: candidate.confidence) }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                kicker
+                Spacer(minLength: Theme.Spacing.xs)
+                chip
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                kicker
+                chip
+            }
         }
     }
 
+    private var kicker: some View {
+        Kicker(text: candidate.source == .recording ? "Aufgezeichnete Fahrt" : "Erkannte Fahrt", color: Theme.accentText)
+    }
+
+    @ViewBuilder
+    private var chip: some View {
+        if candidate.source != .recording { ConfidenceChip(confidence: candidate.confidence) }
+    }
+
+    /// Left to right (sketch, text, value) – at accessibility sizes the three stack, so no word breaks per letter.
     private var summary: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.s) {
-            RouteSketchTile(sketch: candidate.sketch, mode: candidate.mode)
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+                                                  : AnyLayout(HStackLayout(alignment: .center, spacing: Theme.Spacing.s))
+        return layout {
+            RouteSketchTile(sketch: candidate.sketch, mode: candidate.mode,
+                            size: typeSize.isAccessibilitySize ? CGSize(width: 120, height: 84) : CGSize(width: 84, height: 72))
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(detail)
+                Text(whenText)
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 5) {
                     Image(systemName: candidate.mode.symbolName).font(.caption.weight(.semibold))
-                    Text(candidate.mode.displayName).font(.caption.weight(.semibold))
+                    Text(modeText).font(.caption.weight(.semibold))
                 }
                 .foregroundStyle(Theme.modeColor(candidate.mode))
             }
-            Spacer(minLength: Theme.Spacing.xs)
-            VStack(alignment: .trailing, spacing: 2) {
-                if let facts {
-                    Text(Format.euroPrecise(facts.fareEUR))
-                        .font(Theme.Typography.numberSmall)
-                        .foregroundStyle(Theme.textPrimary)
-                        .numericValue(facts.fareEUR)
-                    Text("Wert")
-                        .font(.caption2)
-                        .foregroundStyle(Theme.textTertiary)
-                } else {
-                    Text(stations.isComplete || candidate.isComplete ? "…" : "Ziel wählen")
-                        .font(.caption)
-                        .foregroundStyle(Theme.textTertiary)
-                }
-            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.xxs) }
+            valueView
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var valueView: some View {
+        VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 2) {
+            if let facts {
+                Text(Format.euroPrecise(facts.fareEUR))
+                    .font(Theme.Typography.numberSmall)
+                    .foregroundStyle(Theme.textPrimary)
+                    .numericValue(facts.fareEUR)
+                Text("Wert").font(.caption2).foregroundStyle(Theme.textTertiary)
+            } else {
+                Text(stations.isComplete || candidate.isComplete ? "…" : "Ziel wählen")
+                    .font(.caption)
+                    .foregroundStyle(Theme.textTertiary)
+            }
+        }
     }
 
     /// The honest sentence under the route: a car is not excluded unless the timetable agrees with the track.
@@ -237,28 +260,32 @@ struct TripCandidateCard: View {
         }
     }
 
+    /// "Übernehmen" on its own line, "Bearbeiten" and "Verwerfen" side by side below it (one under the other when they do not fit).
     private var actions: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.xs) { buttons }
-            VStack(spacing: Theme.Spacing.xs) { buttons }
+        VStack(spacing: Theme.Spacing.xs) {
+            Button {
+                if stations.isComplete { TripCandidateActions(app: app, context: context).accept(candidate, stations: stations) } else { showsEditor = true }
+            } label: {
+                Label("Übernehmen", systemImage: "checkmark")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(Theme.prominentTint)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Spacing.xs) { secondaryButtons }
+                VStack(spacing: Theme.Spacing.xs) { secondaryButtons }
+            }
         }
         .controlSize(.large)
     }
 
     @ViewBuilder
-    private var buttons: some View {
-        Button {
-            if stations.isComplete { TripCandidateActions(app: app, context: context).accept(candidate, stations: stations) } else { showsEditor = true }
-        } label: {
-            Label("Übernehmen", systemImage: "checkmark")
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.glassProminent)
-        .tint(Theme.prominentTint)
+    private var secondaryButtons: some View {
         Button { showsEditor = true } label: {
             Label("Bearbeiten", systemImage: "slider.horizontal.3")
                 .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
@@ -268,6 +295,7 @@ struct TripCandidateCard: View {
         } label: {
             Label("Verwerfen", systemImage: "xmark")
                 .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
@@ -281,11 +309,14 @@ struct TripCandidateCard: View {
         return "\(from) → \(to)"
     }
 
-    private var detail: String {
-        let times = "\(Format.time(candidate.departedAt))–\(Format.time(candidate.arrivedAt))"
-        var parts = ["\(Format.relativeDay(candidate.departedAt)), \(times)"]
-        if candidate.straightKm > 0 { parts.append(Format.km(candidate.straightKm)) }
-        return parts.joined(separator: " · ")
+    /// "Heute, 07:48–08:55"
+    private var whenText: String {
+        "\(Format.relativeDay(candidate.departedAt)), \(Format.time(candidate.departedAt))–\(Format.time(candidate.arrivedAt))"
+    }
+
+    /// "Zug · 63 km" – the mode's name next to the distance, so the line never starts with a dot.
+    private var modeText: String {
+        candidate.straightKm > 0 ? "\(candidate.mode.displayName) · \(Format.km(candidate.straightKm))" : candidate.mode.displayName
     }
 
     // MARK: Value

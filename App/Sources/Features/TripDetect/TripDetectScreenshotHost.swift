@@ -95,7 +95,8 @@ struct TripDetectScreenshotHost: View {
         let all = TripDetectDemo.candidates(now: Date())
         switch screen {
         case "tripDetectInbox", "tripDetectInboxAX5": candidates = all
-        case "tripDetectReview", "tripDetectEdit": candidates = [all[1]]
+        case "tripDetectReview": candidates = [TripDetectDemo.recordedCandidate(now: Date())]
+        case "tripDetectEdit": candidates = [all[1]]
         default: break
         }
         if screen == "tripDetectRecord" || screen == "tripDetectReview" { recorder = TripDetectDemo.recorder(lookup: app.stations, finished: screen == "tripDetectReview") }
@@ -157,6 +158,22 @@ enum TripDetectDemo {
         let third = entity(wi, sp, at(-2, 12, 5), at(-2, 12, 50), km: km3,
                            rank: rank(from: wi, to: sp, fromMeters: 430, toMeters: 470, km: km3, speed: 78, relation: true), track: [])
         return [first, second, third]
+    }
+
+    /// The proposal of a finished recording (no label: nobody asks whether a recorded ride was a ride).
+    @MainActor
+    static func recordedCandidate(now: Date) -> TripCandidateEntity {
+        let ibk = Station(id: innsbruck, name: "Innsbruck Hauptbahnhof", lat: 47.26353, lon: 11.40028, state: "T")
+        let lan = Station(id: landeck, name: "Landeck-Zams", lat: 47.14842, lon: 10.57828, state: "T")
+        let track = (1...5).map { i -> GeoPoint in
+            let t = Double(i) / 6
+            let p = DetectionGeo.lerp(ibk.location, lan.location, t)
+            return GeoPoint(latitude: p.latitude + sin(t * .pi) * 0.04, longitude: p.longitude)
+        }
+        return TripCandidateEntity(source: .recording, fromName: ibk.name, toName: lan.name, fromStationID: ibk.id, toStationID: lan.id, mode: .train,
+                                   departedAt: now.addingTimeInterval(-62 * 60), arrivedAt: now.addingTimeInterval(-2 * 60),
+                                   straightKm: ibk.location.distanceKm(to: lan.location), confidence: .sicher,
+                                   sketch: RouteSketch.make(from: ibk.location, to: lan.location, track: track), carNotExcluded: false)
     }
 
     /// A recording of the Inntalbahn Innsbruck → Landeck (invented speeds), taken in at once up to 55 %.

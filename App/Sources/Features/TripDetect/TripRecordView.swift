@@ -309,10 +309,13 @@ struct TripRecordView: View {
         withMotion(Motion.smooth) { reviewing = candidate }
     }
 
+    /// The rail stations around the ride so far (the map labels them; bus stops would only be noise at this scale).
     private func refreshNearby(_ snapshot: RecordingSnapshot?) async {
-        guard let head = snapshot?.track.last else { return }
-        let hits = app.stations.nearest(to: head, limit: 16, maxKm: 4)
-        nearby = hits.map(\.station)
+        guard let track = snapshot?.track, let first = track.first, let last = track.last else { return }
+        let center = DetectionGeo.lerp(first, last, 0.5)
+        let reach = max(2, min(40, max(first.distanceKm(to: last), 1) / 2 + 2))
+        let hits = app.stations.nearest(to: center, limit: 150, maxKm: reach)
+        nearby = Array(hits.map(\.station).filter(StationMatcher.isRailLike).prefix(40))
     }
 
     // MARK: Formatting
@@ -391,17 +394,23 @@ struct RecordMapCard: View {
             ZStack {
                 grid
                 Canvas { context, _ in
-                    for station in stations {
+                    // Important stations first, so their names win where labels would overlap.
+                    let ordered = stations.sorted { a, b in
+                        if (a.id == current) != (b.id == current) { return a.id == current }
+                        return a.importance > b.importance
+                    }
+                    var labelled: [CGPoint] = []
+                    for station in ordered {
                         guard let point = projection.point(for: station.location) else { continue }
                         let rail = StationMatcher.isRailLike(station)
                         let isCurrent = station.id == current
                         let radius: CGFloat = isCurrent ? 6 : (rail ? 4.5 : 2.5)
                         let dot = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
                         context.fill(dot, with: .color(isCurrent ? Theme.pine : (rail ? Theme.textSecondary : Theme.textTertiary)))
-                        if rail {
-                            let label = context.resolve(Text(station.name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
-                            context.draw(label, at: CGPoint(x: point.x + radius + 4, y: point.y), anchor: .leading)
-                        }
+                        guard rail, !labelled.contains(where: { abs($0.x - point.x) < 86 && abs($0.y - point.y) < 14 }) else { continue }
+                        labelled.append(point)
+                        let label = context.resolve(Text(station.name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
+                        context.draw(label, at: CGPoint(x: point.x + radius + 4, y: point.y - 7), anchor: .leading)
                     }
                 }
                 SketchLine(points: track.compactMap { projection.point(for: $0) })
