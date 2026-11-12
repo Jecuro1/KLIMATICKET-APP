@@ -399,7 +399,7 @@ struct RecordMapCard: View {
                         if (a.id == current) != (b.id == current) { return a.id == current }
                         return a.importance > b.importance
                     }
-                    var labelled: [CGPoint] = []
+                    var placed: [CGRect] = []
                     for station in ordered {
                         guard let point = projection.point(for: station.location) else { continue }
                         let rail = StationMatcher.isRailLike(station)
@@ -407,13 +407,18 @@ struct RecordMapCard: View {
                         let radius: CGFloat = isCurrent ? 6 : (rail ? 4.5 : 2.5)
                         let dot = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
                         context.fill(dot, with: .color(isCurrent ? Theme.pine : (rail ? Theme.textSecondary : Theme.textTertiary)))
-                        guard rail, !labelled.contains(where: { abs($0.x - point.x) < 86 && abs($0.y - point.y) < 14 }) else { continue }
-                        labelled.append(point)
-                        let label = context.resolve(Text(station.name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
+                        // At most eight names, none on top of another: the important ones (and the current one) win.
+                        guard rail, placed.count < 8 else { continue }
+                        let name = station.name.count > 20 ? String(station.name.prefix(19)) + "…" : station.name
+                        let label = context.resolve(Text(name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
+                        let width = label.measure(in: size).width
                         // A name that would run off the card goes to the left of its dot.
-                        let fitsRight = point.x + radius + 4 + label.measure(in: size).width < size.width - 6
-                        context.draw(label, at: CGPoint(x: point.x + (fitsRight ? radius + 4 : -(radius + 4)), y: point.y - 7),
-                                     anchor: fitsRight ? .leading : .trailing)
+                        let fitsRight = point.x + radius + 4 + width < size.width - 6
+                        let x = fitsRight ? point.x + radius + 4 : point.x - radius - 4 - width
+                        let rect = CGRect(x: x, y: point.y - 14, width: width, height: 13).insetBy(dx: -5, dy: -3)
+                        guard !placed.contains(where: { $0.intersects(rect) }) else { continue }
+                        placed.append(rect)
+                        context.draw(label, at: CGPoint(x: x, y: point.y - 7.5), anchor: .leading)
                     }
                 }
                 SketchLine(points: track.compactMap { projection.point(for: $0) })
