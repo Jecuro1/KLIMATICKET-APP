@@ -123,6 +123,8 @@ extension InstallmentPlan {
         public var coversPayments: Bool { value + 0.005 >= paid }
         /// How far apart the two are (always ≥ 0).
         public var difference: Double { abs(value - paid) }
+        /// Equal to the cent – only then may the screen say „genau“ (the figures next to it show cents).
+        public var isExact: Bool { difference < 0.005 }
     }
 
     /// Paid so far against `tripValue` (the value of the trips of this ticket year so far, from `Analytics`).

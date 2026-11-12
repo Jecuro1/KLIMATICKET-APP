@@ -132,5 +132,9 @@ final class TicketRightsInstallmentPlanTests: XCTestCase {
         XCTAssertTrue(p.balance(tripValue: 1050).coversPayments)
         XCTAssertTrue(p.balance(tripValue: p.paidAmount).coversPayments)
         XCTAssertEqual(p.balance(tripValue: -3).value, 0)
+        // „genau“ only to the cent: 7 cent more is more, not exact.
+        XCTAssertTrue(p.balance(tripValue: p.paidAmount).isExact)
+        XCTAssertFalse(p.balance(tripValue: p.paidAmount + 0.07).isExact)
+        XCTAssertTrue(p.balance(tripValue: p.paidAmount + 0.07).coversPayments)
     }
 }

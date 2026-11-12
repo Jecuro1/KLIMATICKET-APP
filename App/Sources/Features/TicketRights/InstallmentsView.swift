@@ -139,7 +139,7 @@ struct InstallmentsView: View {
         return AdvPanel(tint: (covers ? Theme.positive : Theme.dawn).opacity(0.12)) {
             Label {
                 Text(covers
-                     ? (balance.difference < 0.5 ? "Deine Fahrten decken genau die bisherigen Raten."
+                     ? (balance.isExact ? "Deine Fahrten decken genau die bisherigen Raten."
                                                  : "Deine Fahrten sind \(Format.euroPrecise(balance.difference)) mehr wert, als du bisher bezahlt hast.")
                      : "Deine Fahrten decken die bisherigen Raten noch nicht: \(Format.euroPrecise(balance.difference)) fehlen.")
                     .fixedSize(horizontal: false, vertical: true)
