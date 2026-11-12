@@ -117,6 +117,9 @@ Vor jeder Fahrt, auf die du dich verlässt, einmal durchgehen. Notiere Gerät, i
 12. **Tunnel:** durch einen langen Tunnel fahren: klingelt der Wecker trotzdem zur Fahrplanzeit?
 13. **Live Activity:** zeigt der Sperrbildschirm „Aussteigen in N Min“, während der Wecker scharf ist, und verschwindet die Zeile nach dem Klingeln?
 14. **Profil nach 7 Tagen:** nach einer Neuinstallation (neues Profil) sind die Erlaubnisse (Wecker, Standort) noch da? Gestellte Wecker bleiben erhalten (UserDefaults), AlarmKit-Wecker werden beim Start neu gestellt.
+15. **Aufschub mit AlarmKit (Echo):** klingelt der Wecker, „5 Min später“ in der App tippen. Klingelt er nach 5 Minuten wirklich noch einmal, mit dem Text „Deine Erinnerung für …“? (Das System meldet das Ende des gestoppten Weckers; die App darf es nicht als Quittieren verstehen. Auf dem Gerät nie gesehen: Verhalten von `alarmUpdates` nach `stop`.)
+16. **Funkloch:** Flugmodus mitten in der Fahrt an und wieder aus. Bleibt der Wecker scharf (Karte, Alarme-Bildschirm), und klingelt er? Danach Live-Daten in den Einstellungen ausschalten: Kommt die Mitteilung „Aussteige-Wecker ist aus“?
+17. **Kreis nach Neustart der App:** Wecker mit „Immer“ stellen, App aus dem App-Wechsler wischen, zum Halt fahren. Startet iOS die App für den Kreis (blauer Streifen kurz, Wecker klingelt)? Das Nicht-neu-Setzen eines unveränderten Kreises beim Start ist ungeprüft.
 
 ## 10. Bewusst nicht gebaut
 

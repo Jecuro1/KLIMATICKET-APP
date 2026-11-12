@@ -72,11 +72,19 @@ struct ExitAlarmRing: View {
 struct ExitAlarmFlowLayout: Layout {
     var spacing: CGFloat = 8
 
+    /// The natural size of a child; one that is wider than the row is asked again with the row's width, so its text wraps
+    /// (accessibility text sizes) instead of running out of the card.
+    private func measure(_ view: LayoutSubview, maxWidth: CGFloat) -> CGSize {
+        let natural = view.sizeThatFits(.unspecified)
+        guard maxWidth.isFinite, natural.width > maxWidth else { return natural }
+        return view.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let maxWidth = proposal.width ?? .infinity
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, width: CGFloat = 0
         for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
+            let size = measure(view, maxWidth: maxWidth)
             if x > 0, x + size.width > maxWidth {
                 x = 0
                 y += rowHeight + spacing
@@ -86,13 +94,13 @@ struct ExitAlarmFlowLayout: Layout {
             rowHeight = max(rowHeight, size.height)
             width = max(width, x - spacing)
         }
-        return CGSize(width: width, height: y + rowHeight)
+        return CGSize(width: min(width, maxWidth), height: y + rowHeight)
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
         for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
+            let size = measure(view, maxWidth: bounds.width)
             if x > bounds.minX, x + size.width > bounds.maxX {
                 x = bounds.minX
                 y += rowHeight + spacing
@@ -116,12 +124,18 @@ struct ExitAlarmCard: View {
     var onEdit: () -> Void = {}
     var onCancel: () -> Void = {}
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         let estimate = ExitAlarmPresentation.estimate(state, now: now)
         let approaching = state.phase == .approaching
+        // Ring beside the text; at accessibility text sizes the ring sits above it (the text needs the whole width).
+        let header = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.m))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: Theme.Spacing.m))
         GlassCard(padding: Theme.Spacing.m, tint: approaching ? Theme.summit : nil) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                HStack(alignment: .center, spacing: Theme.Spacing.m) {
+                header {
                     ExitAlarmRing(progress: estimate.progress, remainingSeconds: estimate.remainingSeconds,
                                   isApproaching: approaching, isFired: state.phase == .fired)
                     VStack(alignment: .leading, spacing: 4) {
@@ -145,36 +159,51 @@ struct ExitAlarmCard: View {
                     }
                 }
                 if let line = ExitAlarmPresentation.remainingLine(estimate), state.phase != .ended {
-                    HStack(spacing: Theme.Spacing.xs) {
-                        Text(line)
-                            .font(.subheadline.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.textPrimary)
-                        Text(ExitAlarmPresentation.estimateTag(estimate))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(estimate.isEstimate ? Theme.summitText : Theme.textSecondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background((estimate.isEstimate ? Theme.summit : Theme.textTertiary).opacity(0.14), in: .capsule)
-                        Spacer(minLength: 0)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            remaining(line, estimate: estimate)
+                            Spacer(minLength: 0)
+                        }
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xs) { remaining(line, estimate: estimate) }
                     }
                 }
                 ExitAlarmFacts(lead: state.spec.lead, kind: kind, locationAuthorization: locationAuthorization)
                 if showsActions, state.isActive {
-                    HStack(spacing: Theme.Spacing.s) {
-                        Button(action: onEdit) {
-                            Label("Ändern", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity, minHeight: 40)
-                        }
-                        .buttonStyle(.bordered)
-                        Button(role: .destructive, action: onCancel) {
-                            Label("Abbrechen", systemImage: "xmark").frame(maxWidth: .infinity, minHeight: 40)
-                        }
-                        .buttonStyle(.bordered)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: Theme.Spacing.s) { actionButtons }
+                        VStack(spacing: Theme.Spacing.s) { actionButtons }
                     }
                 }
             }
         }
         .accessibilityElement(children: .contain)
+    }
+
+    /// "noch 12 Min · ca. 18 km" and its honest tag.
+    @ViewBuilder private func remaining(_ line: String, estimate: ExitAlarmEstimate) -> some View {
+        Text(line)
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(Theme.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+        Text(ExitAlarmPresentation.estimateTag(estimate))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(estimate.isEstimate ? Theme.summitText : Theme.textSecondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background((estimate.isEstimate ? Theme.summit : Theme.textTertiary).opacity(0.14), in: .capsule)
+            .fixedSize()
+    }
+
+    @ViewBuilder private var actionButtons: some View {
+        Button(action: onEdit) {
+            Label("Ändern", systemImage: "slider.horizontal.3").frame(maxWidth: .infinity, minHeight: 40)
+        }
+        .buttonStyle(.bordered)
+        Button(role: .destructive, action: onCancel) {
+            Label("Abbrechen", systemImage: "xmark").frame(maxWidth: .infinity, minHeight: 40)
+        }
+        .buttonStyle(.bordered)
     }
 }
 
@@ -226,8 +255,7 @@ struct ExitAlarmFacts: View {
         Label(text, systemImage: symbol)
             .font(.caption.weight(.semibold))
             .foregroundStyle(Theme.textSecondary)
-            .lineLimit(1)
-            .fixedSize()
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(Theme.surfaceSecondary, in: .capsule)

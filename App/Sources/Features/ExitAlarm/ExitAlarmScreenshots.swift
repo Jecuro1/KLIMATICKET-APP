@@ -92,7 +92,7 @@ private enum ExitAlarmBookHolder {
 
 struct ExitAlarmScreenshotHost: View {
     static let screens: Set<String> = ["exitAlarmSheet", "exitAlarmSheetHow", "exitAlarmLocation", "exitAlarmArmed", "exitAlarmApproaching",
-                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings", "exitAlarmFiredAX5", "exitAlarmApproachingAX5"]
+                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings", "exitAlarmFiredAX5", "exitAlarmApproachingAX5", "exitAlarmSheetAX5"]
 
     let screen: String
     private let now = Date()
@@ -117,6 +117,8 @@ struct ExitAlarmScreenshotHost: View {
         case "exitAlarmFiredAX5":
             ExitAlarmFiredView(state: ExitAlarmDemo.state(.fired, now: now), now: now)
                 .dynamicTypeSize(.accessibility5)
+        case "exitAlarmSheetAX5":
+            ExitAlarmSheet(input: ExitAlarmDemo.input(now: now)).dynamicTypeSize(.accessibility5)
         case "exitAlarmApproachingAX5":
             ExitAlarmCardScene(state: ExitAlarmDemo.state(.approaching, now: now), now: now)
                 .dynamicTypeSize(.accessibility5)

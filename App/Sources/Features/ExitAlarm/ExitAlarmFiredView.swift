@@ -118,11 +118,10 @@ struct ExitAlarmFiredView: View {
     @ViewBuilder private var details: some View {
         VStack(spacing: Theme.Spacing.s) {
             if let state, !isPassed {
-                HStack(spacing: Theme.Spacing.s) {
-                    if let platform = state.spec.platform, !platform.isEmpty {
-                        capsule("Gleis \(platform)", symbol: "signpost.right.fill")
-                    }
-                    capsule(state.spec.lineName, symbol: "tram.fill")
+                // Side by side while they fit, one under the other at accessibility text sizes (never broken letter by letter).
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.s) { capsules(state, fixed: true) }
+                    VStack(spacing: Theme.Spacing.s) { capsules(state, fixed: false) }
                 }
                 if let arrival = state.timetableArrival {
                     let delay = state.delaySeconds.map { Int((Double($0) / 60).rounded()) } ?? 0
@@ -130,23 +129,34 @@ struct ExitAlarmFiredView: View {
                         .font(.subheadline.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(.white.opacity(0.82))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } else if isTest {
                 Text("So klingt und sieht dein Aussteige-Wecker aus.")
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.82))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    private func capsule(_ text: String, symbol: String) -> some View {
-        Label(text, systemImage: symbol)
+    @ViewBuilder private func capsules(_ state: ExitAlarmState, fixed: Bool) -> some View {
+        if let platform = state.spec.platform, !platform.isEmpty {
+            capsule("Gleis \(platform)", symbol: "signpost.right.fill", fixed: fixed)
+        }
+        capsule(state.spec.lineName, symbol: "tram.fill", fixed: fixed)
+    }
+
+    @ViewBuilder private func capsule(_ text: String, symbol: String, fixed: Bool) -> some View {
+        let label = Label(text, systemImage: symbol)
             .font(.headline)
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(.white.opacity(0.16), in: .capsule)
+        if fixed { label.fixedSize() } else { label.fixedSize(horizontal: false, vertical: true) }
     }
 
     private var actions: some View {
@@ -166,6 +176,8 @@ struct ExitAlarmFiredView: View {
                 .buttonStyle(.glass)
             }
         }
+        // The pinned buttons stop growing at the second accessibility size: the stop name above must stay visible and scrollable.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 }
 
