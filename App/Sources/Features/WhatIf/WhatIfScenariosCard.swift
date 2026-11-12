@@ -5,6 +5,8 @@ import KlimaCore
 struct WhatIfScenariosCard: View {
     @Bindable var model: WhatIfModel
     let result: WhatIfResult
+    /// What „Meine Fahrten“ is based on (the share text says it).
+    var basis: String? = nil
 
     @State private var isNaming = false
     @State private var draftName = ""
@@ -83,6 +85,11 @@ struct WhatIfScenariosCard: View {
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
                         }
+                        // The headline is what the calculation gave when it was saved; opening the scenario calculates again.
+                        Text("Gerechnet am \(Format.date(scenario.createdAt))")
+                            .font(.caption2)
+                            .foregroundStyle(Theme.textSecondary)
+                            .lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -132,7 +139,8 @@ struct WhatIfScenariosCard: View {
         .buttonStyle(.glass)
         .disabled(result.state == .needsRoutes)
         ShareLink(item: WhatIfText.share(result, title: model.mode == .history ? "Meine Fahrten" : "Eigene Annahmen",
-                                         usesHistory: model.mode == .history)) {
+                                         usesHistory: model.mode == .history, basis: basis,
+                                         adjustments: WhatIfText.historyAdjustments(model.history))) {
             Label("Teilen", systemImage: "square.and.arrow.up")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 44)

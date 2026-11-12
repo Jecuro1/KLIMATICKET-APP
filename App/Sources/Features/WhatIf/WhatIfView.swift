@@ -167,8 +167,9 @@ struct WhatIfScreen: View {
         if result.state == .ready {
             WhatIfRankingCard(result: result)
         }
-        WhatIfScenariosCard(model: model, result: result)
-        WhatIfFootnote(result: result)
+        WhatIfScenariosCard(model: model, result: result,
+                            basis: WhatIfText.historyBasis(baseline: source.baseline, tripCount: source.tripCount))
+        WhatIfFootnote(result: result, usesHistory: model.mode == .history)
             .padding(.horizontal, Theme.Spacing.xxs)
             .padding(.top, Theme.Spacing.xxs)
     }

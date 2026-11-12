@@ -111,20 +111,25 @@ public struct WhatIfHistory: Sendable {
     public var isRichEnough: Bool { trips.count >= WhatIfLimits.minHistoryTrips }
 }
 
-/// Which trips are „the last 12 months“ and whether they have to be scaled to a year – the same rule as the
-/// Ticket-Vergleich in Statistik (`StatsCalc.ticketComparison`): only when less than a quarter of the year has been
-/// observed, the trips are scaled up (× year ÷ observed days), otherwise they count as they are.
+/// Which trips are „the last 12 months“ and whether they have to be scaled to a year.
+///
+/// The screen speaks of „pro Jahr“, so a window shorter than a year is always projected to a full year (× 365 ÷ observed
+/// days). Without that, 225 days of trips would be compared with a full year's ticket price and „kaum ein Unterschied“ would
+/// hide a saving of a few hundred euros. (The Ticket-Vergleich in Statistik answers a different question – „bisher“ – and
+/// scales only below a quarter of the year; the two therefore agree for a full year and differ, on purpose, in between.)
 public struct WhatIfBaseline: Hashable, Sendable {
     /// First day of the window.
     public var windowStart: Date
     /// Days from `windowStart` to today, inclusive (1…365).
     public var observedDays: Int
-    /// 1 when at least a quarter of the year is observed, else year ÷ observed days (never more than the cap).
+    /// 1 for (nearly) a full year, else year ÷ observed days (never more than the cap).
     public var annualizationFactor: Double
 
     public static let yearDays = 365
     /// One observed day would otherwise mean „× 365“: the window counts as at least a month.
     public static let minimumObservedDays = 30
+    /// A factor below this (a window of 348 days or more) counts as a full year: „× 1,02“ is noise.
+    public static let fullYearFactor = 1.05
 
     /// - Parameter firstActivity: the earliest of the first ticket start and the first trip; nil = a full window.
     public static func make(now: Date, firstActivity: Date?, calendar: Calendar = .vienna) -> WhatIfBaseline {
@@ -135,9 +140,8 @@ public struct WhatIfBaseline: Hashable, Sendable {
         let span = (calendar.dateComponents([.day], from: start, to: today).day ?? 0) + 1
         let observed = min(max(span, 1), yearDays)
         let effective = Double(max(observed, minimumObservedDays))
-        let share = Double(observed) / Double(yearDays)
-        let factor = share < 0.25 ? Double(yearDays) / effective : 1
-        return WhatIfBaseline(windowStart: start, observedDays: observed, annualizationFactor: max(factor, 1))
+        let raw = Double(yearDays) / effective
+        return WhatIfBaseline(windowStart: start, observedDays: observed, annualizationFactor: raw < fullYearFactor ? 1 : raw)
     }
 
     /// Whether the figures are scaled up to a year (then the screen says so).

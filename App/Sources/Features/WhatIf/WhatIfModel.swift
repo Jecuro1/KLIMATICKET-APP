@@ -178,8 +178,10 @@ final class WhatIfModel {
             mode = .history
         } else {
             assumptions = scenario.input
-            startOffset = 0
-            assumptions.startDate = now
+            // The saved start month, as far as it still lies ahead (a start in the past means "this month").
+            let firstOfThisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
+            let firstOfSaved = calendar.date(from: calendar.dateComponents([.year, .month], from: scenario.input.startDate)) ?? firstOfThisMonth
+            startOffset = calendar.dateComponents([.month], from: firstOfThisMonth, to: firstOfSaved).month ?? 0
             mode = .assumptions
         }
         scenarioNotice = nil
@@ -205,5 +207,10 @@ enum WhatIfStore {
     static func save(_ book: WhatIfScenarioBook, to defaults: UserDefaults = .standard) {
         guard let data = book.encoded() else { return }
         defaults.set(data, forKey: key)
+    }
+
+    /// „Alle Daten löschen“ in the settings: the saved routes go with everything else.
+    static func clear(_ defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: key)
     }
 }

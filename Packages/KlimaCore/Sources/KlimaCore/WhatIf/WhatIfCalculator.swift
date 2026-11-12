@@ -54,6 +54,9 @@ public struct WhatIfOption: Hashable, Sendable, Identifiable {
     /// From this many trips per month on the ticket is cheaper than single tickets (the mix of routes stays the same);
     /// nil for single tickets, when it covers none of the trips or when there are no trips.
     public var breakEvenTripsPerMonth: Int?
+    /// The same break-even before rounding up (9,3 trips per month). The screen shows it when the user's own volume already
+    /// lies above it, so „ab 10“ never sits next to „du sparst schon bei 9,5“.
+    public var breakEvenExact: Double?
 
     public var yearlyCost: Double { ticketPrice + uncoveredYearly }
 }
@@ -292,7 +295,7 @@ public struct WhatIfCalculator: Sendable {
         let singleYearly = singleCumulative[monthCount]
         let single = WhatIfOption(id: "single", name: "Einzeltickets", isSingle: true, isCurrent: false, family: nil, states: [],
                                   ticketPrice: 0, upgradePrice: 0, uncoveredYearly: singleYearly,
-                                  coveredShare: 0, cumulative: singleCumulative, breakEvenTripsPerMonth: nil)
+                                  coveredShare: 0, cumulative: singleCumulative, breakEvenTripsPerMonth: nil, breakEvenExact: nil)
 
         var options = [single]
         for product in catalog.products where (product.variant == input.variant && product.isLocal != true) || product.id == input.currentProductID {
@@ -306,16 +309,20 @@ public struct WhatIfCalculator: Sendable {
             // year) is the share of the current volume that is needed, times the current volume.
             let coveredYearly = singleYearly - points[monthCount] + price
             var breakEven: Int?
+            var exact: Double?
             if tripsPerMonth > 0, coveredYearly > 0.005, price.isFinite {
                 let needed = price / coveredYearly * tripsPerMonth
-                if needed.isFinite, needed < 1_000_000 { breakEven = max(Int((needed - 1e-9).rounded(.up)), 1) }
+                if needed.isFinite, needed < 1_000_000 {
+                    breakEven = max(Int((needed - 1e-9).rounded(.up)), 1)
+                    exact = needed
+                }
             }
             options.append(WhatIfOption(id: product.id, name: product.name, isSingle: false,
                                         isCurrent: product.id == input.currentProductID, family: product.family,
                                         states: product.states, ticketPrice: price, upgradePrice: upgrade,
                                         uncoveredYearly: points[monthCount] - price,
                                         coveredShare: yearlyTrips > 0 ? coveredCount / yearlyTrips : 0,
-                                        cumulative: points, breakEvenTripsPerMonth: breakEven))
+                                        cumulative: points, breakEvenTripsPerMonth: breakEven, breakEvenExact: exact))
         }
         options.sort(by: Self.rankedBefore)
         let single0 = options.first { $0.isSingle } ?? single
@@ -341,7 +348,10 @@ public struct WhatIfCalculator: Sendable {
         return a.id < b.id
     }
 
-    private static func cents(_ value: Double) -> Int { value.isFinite ? Int((value * 100).rounded()) : Int.max }
+    /// Whole cents; non-finite and absurdly large values are clamped (a huge hand-edited fare must not trap the conversion).
+    private static func cents(_ value: Double) -> Int {
+        value.isFinite ? Int(min(max(value * 100, -1e15), 1e15).rounded()) : Int.max
+    }
 
     /// Where the ticket line meets the single-ticket line: the interpolated position and the first month at whose end the
     /// ticket is not more expensive.

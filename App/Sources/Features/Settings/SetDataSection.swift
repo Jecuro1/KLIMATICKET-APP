@@ -207,6 +207,7 @@ struct SetDataSection: View {
             for id in ticketIDs { await notifications.cancelRenewalReminders(ticketID: id) }
         }
         DemoDataStore.forget()
+        WhatIfStore.clear()   // MARK: whatif – saved scenarios hold the user's routes
         let repo = Repository(context: context, app: app)
         Task {
             let ok = await repo.deleteAllDataEverywhere()

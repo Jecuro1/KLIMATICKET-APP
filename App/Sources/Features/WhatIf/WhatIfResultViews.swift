@@ -58,10 +58,11 @@ struct WhatIfResultCard: View {
 
     /// The break-even number is set in the accent colour; every other state is one plain sentence.
     private var heroText: Text {
-        guard result.state == .ready, let best = result.bestTicket, !result.isTie, let breakEven = result.breakEvenTripsPerMonth else {
+        guard result.state == .ready, let best = result.bestTicket, !result.isTie,
+              let breakEven = WhatIfText.breakEvenLabel(best, result: result) else {
             return Text(WhatIfText.headline(result, usesHistory: usesHistory))
         }
-        let number = Text(WhatIfText.trips(breakEven)).foregroundStyle(Theme.accentText)
+        let number = Text(breakEven).foregroundStyle(Theme.accentText)
         let name = WhatIfText.withArticle(best.name)
         if result.ticketIsCheaper {
             return Text("Ab \(number) pro Monat lohnt sich \(name)")
@@ -210,17 +211,20 @@ struct WhatIfOptionRow: View {
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if !option.isSingle, let breakEven = option.breakEvenTripsPerMonth {
-                Text("Lohnt sich ab \(WhatIfText.trips(breakEven)) pro Monat")
+            if !option.isSingle, let breakEven = breakEvenText {
+                Text("Lohnt sich ab \(breakEven) pro Monat")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
-        .accessibilityValue("\(cost) pro Jahr. \(detail)" + (option.breakEvenTripsPerMonth.flatMap { be in
-            option.isSingle ? nil : ". Lohnt sich ab \(WhatIfText.trips(be)) pro Monat"
-        } ?? ""))
+        .accessibilityValue("\(cost) pro Jahr. \(detail)" + (breakEvenText.map { ". Lohnt sich ab \($0) pro Monat" } ?? ""))
+    }
+
+    /// "10 Fahrten" / "ca. 9,3 Fahrten"; nil for single tickets.
+    private var breakEvenText: String? {
+        option.isSingle ? nil : WhatIfText.breakEvenLabel(option, result: result)
     }
 
     private func bar(color: Color) -> some View {
@@ -363,10 +367,11 @@ struct WhatIfNoHistoryCard: View {
 /// The honest line: a calculation aid, what the prices are, the tariff date.
 struct WhatIfFootnote: View {
     let result: WhatIfResult
+    var usesHistory = false
 
     var body: some View {
         Label {
-            Text(WhatIfText.footnote(result))
+            Text(WhatIfText.footnote(result, usesHistory: usesHistory))
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
             Image(systemName: "checkmark.shield")

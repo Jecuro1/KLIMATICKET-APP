@@ -9,8 +9,20 @@ enum WhatIfText {
 
     static func trips(_ count: Int) -> String { count == 1 ? "1 Fahrt" : "\(Format.number(Double(count))) Fahrten" }
 
+    /// The break-even of an option: "10 Fahrten" (rounded up) – or, when the ticket is already cheaper at the user's own
+    /// volume although the rounded number lies above it (9,5 trips a month against „ab 10“), the exact "ca. 9,3 Fahrten".
+    static func breakEvenLabel(_ option: WhatIfOption, result: WhatIfResult) -> String? {
+        guard let whole = option.breakEvenTripsPerMonth else { return nil }
+        if let exact = option.breakEvenExact, exact.isFinite, exact < Double(whole) - 0.05,
+           option.yearlyCost < result.single.yearlyCost - 0.005, Double(whole) > result.tripsPerMonth + 1e-9 {
+            return "ca. \(Format.number(exact, decimals: 1)) Fahrten"
+        }
+        return trips(whole)
+    }
+
     /// "12 Fahrten pro Monat" (whole numbers) or "ca. 8,3 Fahrten pro Monat".
     static func perMonth(_ value: Double) -> String {
+        guard value.isFinite else { return "0 Fahrten pro Monat" }
         let rounded = value.rounded()
         if abs(value - rounded) < 0.05 {
             return "\(trips(Int(rounded))) pro Monat"
@@ -42,13 +54,13 @@ enum WhatIfText {
         guard let best = result.bestTicket else { return "Kein KlimaTicket deckt genug deiner Fahrten ab" }
         if result.isTie { return "\(best.name) kostet so viel wie Einzeltickets" }
         let name = withArticle(best.name)
-        let breakEven = result.breakEvenTripsPerMonth
+        let breakEven = breakEvenLabel(best, result: result)
         if result.ticketIsCheaper {
             guard let breakEven else { return "\(name.prefix(1).uppercased())\(name.dropFirst()) ist günstiger als Einzeltickets" }
-            return "Ab \(trips(breakEven)) pro Monat lohnt sich \(name)"
+            return "Ab \(breakEven) pro Monat lohnt sich \(name)"
         }
         guard let breakEven else { return "Einzeltickets sind günstiger" }
-        return "Einzeltickets sind günstiger – \(name) lohnt sich ab \(trips(breakEven)) pro Monat"
+        return "Einzeltickets sind günstiger – \(name) lohnt sich ab \(breakEven) pro Monat"
     }
 
     /// The one sentence under the hero: what the volume is.
@@ -163,14 +175,17 @@ enum WhatIfText {
     // MARK: Share
 
     /// Plain text for the share sheet. Numbers only, no link, no purchase hint.
-    static func share(_ result: WhatIfResult, title: String, usesHistory: Bool) -> String {
+    static func share(_ result: WhatIfResult, title: String, usesHistory: Bool, basis: String? = nil,
+                      adjustments: String? = nil) -> String {
         var lines = ["KlimaBilanz · Was wäre wenn?", title]
         lines.append(headline(result, usesHistory: usesHistory))
         if let delta = delta(result) { lines.append(delta.sentence) }
         if result.state == .ready {
             lines.append("Pro Jahr: Einzeltickets \(Format.euro(result.single.yearlyCost.rounded(), decimals: 0))"
                          + (result.bestTicket.map { ", \($0.name) \(Format.euro($0.yearlyCost.rounded(), decimals: 0))" } ?? ""))
-            lines.append(usesHistory ? "Grundlage: meine Fahrten der letzten 12 Monate" : "Grundlage: meine Annahmen (\(perMonth(result.tripsPerMonth)))")
+            lines.append(usesHistory ? "Grundlage: \(basis ?? "meine Fahrten der letzten 12 Monate")"
+                         : "Grundlage: meine Annahmen (\(perMonth(result.tripsPerMonth)))")
+            if usesHistory, let adjustments { lines.append("Angepasst: \(adjustments)") }
         }
         lines.append("Rechenhilfe, keine Beratung · Tarifstand \(tariffDate(result.tariffDate))")
         return lines.joined(separator: "\n")
@@ -185,15 +200,41 @@ enum WhatIfText {
         return "\(parts[2]). \(StatsNames.monthShort[parts[1] - 1]). \(parts[0])"
     }
 
+    /// "79 Fahrten seit 4. Mär., aufs Jahr hochgerechnet (×1,6)" / "79 Fahrten der letzten 12 Monate" – what „Meine Fahrten“ is
+    /// based on, honest about the window and about the scaling to a year.
+    static func historyBasis(baseline: WhatIfBaseline, tripCount: Int) -> String {
+        var text = trips(tripCount)
+        if baseline.isAnnualized {
+            text += " seit \(Format.dayMonth(baseline.windowStart)), aufs Jahr hochgerechnet (\(factor(baseline.annualizationFactor)))"
+        } else {
+            text += " der letzten 12 Monate"
+        }
+        return text
+    }
+
+    /// What the user changed in „Meine Fahrten“ ("×1,5 Fahrten, ohne Juli und August, nur Tirol, 1. Klasse"); nil when nothing.
+    static func historyAdjustments(_ input: WhatIfInput) -> String? {
+        var parts: [String] = []
+        if abs(input.clampedVolume - 1) > 0.001 { parts.append("\(factor(input.clampedVolume)) Fahrten") }
+        if input.validExcludedMonths.isSuperset(of: [7, 8]) { parts.append("ohne Juli und August") }
+        if let code = input.regionFilter, let state = FederalState(rawValue: code) { parts.append("nur \(state.displayName)") }
+        if input.useFirstClass { parts.append("1. Klasse") }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+    }
+
     /// The one honest line under the ranking.
-    static func footnote(_ result: WhatIfResult) -> String {
-        "Rechenhilfe, keine Beratung · Preise: reguläre Einzeltickets (ÖBB-Standardticket, ohne Sparschiene, Vorteilscard oder Aktionen) · Tarifstand \(tariffDate(result.tariffDate))"
+    static func footnote(_ result: WhatIfResult, usesHistory: Bool = false) -> String {
+        let prices = usesHistory
+            ? "Normalpreise deiner erfassten Fahrten (ohne Sparschiene, Vorteilscard oder Aktionen)"
+            : "reguläre Einzeltickets (ÖBB-Standardticket, ohne Sparschiene, Vorteilscard oder Aktionen)"
+        return "Rechenhilfe, keine Beratung · Preise: \(prices) · Tarifstand \(tariffDate(result.tariffDate))"
     }
 
     static let explanation = """
     Eine Fahrt ist eine Strecke in eine Richtung: Pendeln hin und zurück sind zwei Fahrten am Tag. \
     Einzeltickets sind mit den offiziellen ÖBB-Relationspreisen gerechnet, wo es die Strecke gibt, sonst mit einem Modell nach Entfernung. \
     Ein KlimaTicket kostet den Preis seines Starttermins und deckt alle Fahrten seines Gebiets ab; Fahrten außerhalb zahlst du zusätzlich. \
+    Bei „Meine Fahrten“ werden deine bisherigen Fahrten aufs Jahr hochgerechnet, solange du weniger als ein Jahr Fahrten erfasst hast. \
     Regionale Tickets gelten nur, wenn Start und Ziel im selben Bundesland liegen. Das Ergebnis ist ein Modell, kein Angebot und keine Beratung – \
     im Ticketshop können die Preise abweichen.
     """

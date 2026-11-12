@@ -172,30 +172,85 @@ final class WhatIfHistoryTests: XCTestCase {
 
     // MARK: Baseline
 
-    func testBaselineFollowsTheStatisticsRule() {
+    /// The screen says „pro Jahr“: any window shorter than a year is projected to a year (the demo's 225 days are × 1,62), so
+    /// 225 days of trips are not set against a full year's ticket price.
+    func testBaselineProjectsEveryWindowUnderAYear() {
         let now = F.date(2026, 11, 12)
-        // The demo: ticket started 225 days ago – 62 % of the year: no scaling.
-        let demo = WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -224, to: now))
+        func baseline(daysAgo: Int) -> WhatIfBaseline {
+            WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -daysAgo, to: now))
+        }
+        // The demo: ticket started 225 days ago.
+        let demo = baseline(daysAgo: 224)
         XCTAssertEqual(demo.observedDays, 225)
-        XCTAssertEqual(demo.annualizationFactor, 1)
-        XCTAssertFalse(demo.isAnnualized)
-        // A ticket from 60 days ago (16 %): × 365 ÷ 60.
-        let young = WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -59, to: now))
+        XCTAssertEqual(demo.annualizationFactor, 365.0 / 225.0, accuracy: 1e-9)
+        XCTAssertTrue(demo.isAnnualized)
+        // A ticket from 60 days ago: × 365 ÷ 60.
+        let young = baseline(daysAgo: 59)
         XCTAssertEqual(young.observedDays, 60)
         XCTAssertEqual(young.annualizationFactor, 365.0 / 60.0, accuracy: 1e-9)
-        XCTAssertTrue(young.isAnnualized)
         // Three days of data are treated as a month, not as × 122.
-        let tiny = WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -2, to: now))
+        let tiny = baseline(daysAgo: 2)
         XCTAssertEqual(tiny.observedDays, 3)
         XCTAssertEqual(tiny.annualizationFactor, 365.0 / 30.0, accuracy: 1e-9)
         // More than a year of history: the last 12 months, no scaling. Unknown start: the same.
         let old = WhatIfBaseline.make(now: now, firstActivity: F.date(2020, 1, 1))
         XCTAssertEqual(old.observedDays, 365)
         XCTAssertEqual(old.annualizationFactor, 1)
+        XCTAssertFalse(old.isAnnualized)
         XCTAssertEqual(WhatIfBaseline.make(now: now, firstActivity: nil).annualizationFactor, 1)
         XCTAssertEqual(F.cal.component(.year, from: old.windowStart), 2025)
-        // Statistik's boundary at a quarter of the year: 92 days (25,2 %) are not scaled, 90 days (24,7 %) are.
-        XCTAssertEqual(WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -91, to: now)).annualizationFactor, 1)
-        XCTAssertGreaterThan(WhatIfBaseline.make(now: now, firstActivity: F.cal.date(byAdding: .day, value: -89, to: now)).annualizationFactor, 1)
+        // Nearly a year (348 days and more) is a year: „× 1,02“ is noise. 347 days are scaled by × 1,05.
+        XCTAssertEqual(baseline(daysAgo: 347).annualizationFactor, 1)
+        XCTAssertEqual(baseline(daysAgo: 346).annualizationFactor, 365.0 / 347.0, accuracy: 1e-9)
+        // Three months are scaled too (Statistik leaves 92 days alone; its card says „bisher“, this screen says „pro Jahr“).
+        XCTAssertEqual(baseline(daysAgo: 91).annualizationFactor, 365.0 / 92.0, accuracy: 1e-9)
+        // The factor never falls below 1 and never exceeds the cap.
+        for days in stride(from: 0, through: 500, by: 7) {
+            let factor = baseline(daysAgo: days).annualizationFactor
+            XCTAssertGreaterThanOrEqual(factor, 1)
+            XCTAssertLessThanOrEqual(factor, 365.0 / 30.0 + 1e-9)
+        }
+    }
+
+    /// 79 trips in 225 days are about 8,2 a month on a straight average, not 79 ÷ 12 = 6,6: the volume line and the yearly
+    /// figures follow the projection, and the break-even (a property of the ticket and the mix) does not change.
+    func testProjectedWindowScalesVolumeAndYearlyCostButNotBreakEven() {
+        let trips = Self.demoYear()
+        let legs = trips.reduce(0) { $0 + $1.legs }
+        let factor = 365.0 / 225.0
+        let calc = F.calculator()
+        let plain = calc.evaluate(input(), history: WhatIfHistory(trips: trips))
+        let projected = calc.evaluate(input(), history: WhatIfHistory(trips: trips, annualizationFactor: factor))
+        XCTAssertEqual(plain.tripsPerMonth, Double(legs) / 12, accuracy: 1e-9)
+        XCTAssertEqual(projected.tripsPerMonth, Double(legs) * factor / 12, accuracy: 1e-9)
+        XCTAssertEqual(projected.single.yearlyCost, plain.single.yearlyCost * factor, accuracy: 1e-6)
+        for id in ["oe-klassik", "tirol-klassik"] {
+            XCTAssertEqual(F.option(projected, id).breakEvenTripsPerMonth, F.option(plain, id).breakEvenTripsPerMonth, id)
+            XCTAssertEqual(F.option(projected, id).ticketPrice, F.option(plain, id).ticketPrice, accuracy: 1e-9, id)
+        }
+    }
+
+    /// The exact break-even sits at most one below the rounded-up number, and a ticket that is already cheaper at the
+    /// user's own volume has an exact break-even at or below that volume.
+    func testExactBreakEvenBelongsToTheRoundedOne() {
+        let trips = Self.demoYear()
+        let result = F.calculator().evaluate(input { $0.volumeFactor = 1.35 }, history: WhatIfHistory(trips: trips, annualizationFactor: 1.62))
+        for option in result.options where !option.isSingle {
+            guard let whole = option.breakEvenTripsPerMonth, let exact = option.breakEvenExact else { continue }
+            XCTAssertLessThanOrEqual(exact, Double(whole) + 1e-9, option.id)
+            XCTAssertGreaterThan(exact, Double(whole) - 1 - 1e-9, option.id)
+            if option.yearlyCost < result.single.yearlyCost - 0.005 {
+                XCTAssertLessThanOrEqual(exact, result.tripsPerMonth + 1e-6, "\(option.id): cheaper ⇒ the volume is past the break-even")
+            }
+        }
+    }
+
+    /// A hand-edited fare that is finite but absurd must not trap the cent conversion of the ranking.
+    func testAbsurdFaresDoNotTrap() {
+        let trips = [TripRecord(date: F.date(2026, 5, 4), fromName: "a", toName: "b", mode: .train, distanceKm: 1, fareEUR: 1e30, states: ["T"]),
+                     TripRecord(date: F.date(2026, 5, 5), fromName: "a", toName: "b", mode: .train, distanceKm: 1, fareEUR: 12, states: ["T"])]
+        let result = F.calculator().evaluate(input(), history: WhatIfHistory(trips: trips))
+        XCTAssertTrue(result.options.allSatisfy { !$0.yearlyCost.isNaN })
+        XCTAssertEqual(result.options.first?.isSingle, false, "a ticket is cheaper than 1e30 euros of single tickets")
     }
 }

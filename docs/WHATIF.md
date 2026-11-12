@@ -63,12 +63,18 @@ Kreuzungsmonat stimmen auf einen Monat überein (Test `testBreakEvenSentenceMatc
 regionale Tickets gelten nur in der 2. Klasse, die Fahrten zählen dann als nicht abgedeckt. Das ist ein Modell – ob ein
 Klassenwechsel am Schalter anders kostet, rechnen wir nicht.
 
-**Meine Fahrten – Zeitraum.** Die Fahrten der letzten 12 Monate. Wie der Ticket-Vergleich der Statistik werden sie aufs Jahr
-hochgerechnet (× 365 ÷ beobachtete Tage), wenn weniger als ein Viertel des Jahres beobachtet ist (ab erstem Ticketstart oder erster
-Fahrt); dann sagt der Bildschirm „aufs Jahr hochgerechnet (×6,1)“. Abweichung bewusst: weniger als 30 Tage Beobachtung zählen als 30
-(höchstens × 12,2), nicht × 365. Bei Faktor 1 sind die Zahlen die des Ticket-Vergleichs in der Statistik (Test
-`testFactorOneEqualsTicketComparatorForTheDemoYear`). Der Schieber ×0,5 bis ×2 skaliert die Fahrtwerte (`TicketComparator` selbst
-klemmt Faktoren unter 1 auf 1, deshalb rechnet der Rechner mit skalierten Preisen); der Ticketpreis skaliert nicht.
+**Meine Fahrten – Zeitraum.** Die Fahrten der letzten 12 Monate, gezählt ab dem ersten Ticketstart oder der ersten Fahrt. Der Bildschirm
+spricht von „pro Jahr“, deshalb werden Fahrten, die weniger als ein Jahr umfassen, immer aufs Jahr hochgerechnet (× 365 ÷ beobachtete
+Tage; weniger als 30 Tage Beobachtung zählen als 30, höchstens × 12,2; ab 348 Tagen gilt das Fenster als ganzes Jahr). Der Bildschirm
+sagt es: „Grundlage: 79 Fahrten seit 2. Mär., aufs Jahr hochgerechnet (×1,6)“. **Bewusste Abweichung von der Statistik:** der
+Ticket-Vergleich dort beantwortet „bisher“ und rechnet erst unter einem Viertel des Jahres hoch; er stellt bei 225 beobachteten
+Tagen die Fahrten von 225 Tagen dem Preis eines ganzen Ticketjahres gegenüber („kaum ein Unterschied“, wo die Jahreshochrechnung
+mehrere hundert Euro Ersparnis zeigt). Bei einem vollen Jahr Fahrten (Faktor 1) sind die Zahlen die des Ticket-Vergleichs (Test
+`testFactorOneEqualsTicketComparatorForTheDemoYear`; die Hochrechnung selbst: `testAnnualizationFactorIsTheComparatorsFactor`).
+Der Schieber ×0,5 bis ×2 skaliert die Fahrtwerte (`TicketComparator` selbst klemmt Faktoren unter 1 auf 1, deshalb rechnet der
+Rechner mit skalierten Preisen); der Ticketpreis skaliert nicht. Der Break-even „ab N Fahrten“ hängt weder vom Schieber noch von
+der Hochrechnung ab. Liegt die eigene Fahrtenzahl schon über dem Break-even, obwohl die aufgerundete Zahl darüber liegt (9,5
+Fahrten im Monat, „ab 10“), steht die genaue Schwelle („ab ca. 9,3 Fahrten“).
 
 **Ränge.** Günstigste Gesamtkosten zuerst; bei gleichen Kosten (auf den Cent) das günstigere Ticket, dann die ID – die Reihenfolge
 flackert nie. Gezeigt werden Einzeltickets, das eigene Ticket und die besten vier Tickets, die mindestens ein Zehntel der Fahrten abdecken (ein
@@ -83,6 +89,10 @@ fallen weg, Fahrtwerte, die nicht endlich oder negativ sind, werden ignoriert.
 - Die Preise sind **Modellwerte für reguläre Einzeltickets** (ÖBB-Standardticket, ohne Sparschiene, Vorteilscard und Aktionen). Der
   Bildschirm sagt das in einer Zeile mit „Tarifstand `<Datum>`“ (`TariffCatalog.updatedAt`).
 - Kein Kauflink, kein Shop-Deep-Link, kein `URLSession` im Ordner `Features/WhatIf` (Prüfung per `grep`).
+- Bei „Meine Fahrten“ sagt die Fußzeile „Normalpreise deiner erfassten Fahrten“, bei „Eigene Annahmen“ „reguläre Einzeltickets“.
+  Ein späterer Startmonat bekommt den Ticketpreis des Tarifstands; der Bildschirm sagt, dass Preisänderungen, die dort nicht
+  stehen, nicht eingerechnet sind. Jugend- und Senior-Tickets tragen den Hinweis, dass es sie nur für bestimmte Altersgruppen gibt.
+- Ein gespeichertes Szenario zeigt, wann es gerechnet wurde („Gerechnet am 12. Nov. 2026“); beim Öffnen wird neu gerechnet.
 - Zahlen nur über `Format.*` (de-AT), Farben und Abstände über `Theme`, Bewegung über `Motion`/`MotionPolicy`.
 
 ## 5. Plausibilität der Preise (Stichprobe, 12.11.2026)
@@ -106,7 +116,8 @@ Tabelle rechnet über das Deutsche Eck, das Modell nach Entfernung). Der Bildsch
 ## 6. Daten, Speicher, Rechte
 
 Kein SwiftData-Feld, keine Migration. Gespeicherte Szenarien: `UserDefaults`, Schlüssel `kb.whatif.scenarios.v1`, versioniertes JSON
-(`WhatIfScenarioBook`), höchstens fünf, **nicht synchronisiert**; gespeichert werden die Eingaben, nicht die Zahlen. Eine beschädigte
+(`WhatIfScenarioBook`), höchstens fünf, **nicht synchronisiert**; gespeichert werden die Eingaben, nicht die Zahlen. „Alle Daten löschen“ (Einstellungen) entfernt auch die
+gespeicherten Szenarien (`WhatIfStore.clear()`). Eine beschädigte
 oder neuere Speicherung ergibt ein leeres Buch, nie einen Absturz. Keine neue Berechtigung, kein Entitlement, kein Netzwerk.
 
 ## 7. Tests und Screenshots

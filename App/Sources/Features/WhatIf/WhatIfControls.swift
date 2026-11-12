@@ -39,7 +39,16 @@ struct WhatIfAssumptionsControls: View {
                 .accessibilityHint("Noch \(WhatIfLimits.maxRoutes - model.assumptions.routes.count) möglich")
             }
             WhatIfTicketKindCard(variant: $model.assumptions.variant, ownVariant: nil) {
-                startMonthMenu
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    startMonthMenu
+                    if model.startOffset > 0 {
+                        // A later start gets the price of the Tarifstand – a price change decided since then is not in it.
+                        Text("Ticketpreise laut Tarifstand \(WhatIfText.tariffDate(result.tariffDate)) – spätere Preisänderungen sind nur eingerechnet, wenn sie dort stehen.")
+                            .font(.caption)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
         }
     }
@@ -380,14 +389,9 @@ struct WhatIfHistoryControls: View {
         }
     }
 
-    /// "Grundlage: 79 Fahrten seit 4. Mär." – honest about the window and about scaling to a year.
+    /// "Grundlage: 79 Fahrten seit 4. Mär., aufs Jahr hochgerechnet (×1,6)" – honest about the window and about the scaling.
     private var basisText: String {
-        let baseline = source.baseline
-        var text = "Grundlage: \(WhatIfText.trips(source.tripCount))"
-        text += baseline.observedDays >= 360 ? " der letzten 12 Monate" : " seit \(Format.dayMonth(baseline.windowStart))"
-        if baseline.isAnnualized {
-            text += ", aufs Jahr hochgerechnet (\(WhatIfText.factor(baseline.annualizationFactor)))"
-        }
+        var text = "Grundlage: \(WhatIfText.historyBasis(baseline: source.baseline, tripCount: source.tripCount))"
         if source.tripCount < WhatIfLimits.minHistoryTrips {
             text += ". Nur wenige Fahrten – die Rechnung ist grob."
         }
@@ -515,6 +519,12 @@ struct WhatIfTicketKindCard<Extra: View>: View {
                 }
                 .scrollIndicators(.hidden)
                 .scrollClipDisabled()
+                if variants.contains(where: { $0 != .klassik }) {
+                    Text("Jugend- und Senior-Tickets gibt es nur für bestimmte Altersgruppen.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 extra
             }
         }
