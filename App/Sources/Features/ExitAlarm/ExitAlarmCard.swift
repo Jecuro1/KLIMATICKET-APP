@@ -68,6 +68,43 @@ struct ExitAlarmRing: View {
     }
 }
 
+/// Lays its children out in rows that wrap, each at its natural size (chips of different lengths, no truncation).
+struct ExitAlarmFlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, width: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+            width = max(width, x - spacing)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > bounds.minX, x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+    }
+}
+
 /// One alarm as a card: ring, stop, when it wakes you, what is left, and the honest "geschätzt" tag.
 struct ExitAlarmCard: View {
     let state: ExitAlarmState
@@ -92,7 +129,7 @@ struct ExitAlarmCard: View {
                             Image(systemName: "bell.badge.waveform.fill")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(approaching ? Theme.summitText : Theme.accentText)
-                            Kicker(text: "Aussteige-Wecker", color: approaching ? Theme.summitText : Theme.textSecondary)
+                            Kicker(text: "Wecker", color: approaching ? Theme.summitText : Theme.textSecondary)
                             Spacer(minLength: 4)
                             ExitAlarmPhasePill(phase: state.phase, isPassed: state.passedAt != nil)
                         }
@@ -176,10 +213,7 @@ struct ExitAlarmFacts: View {
     let locationAuthorization: ExitAlarmLocationAuthorization
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) { chips }
-            VStack(alignment: .leading, spacing: 6) { chips }
-        }
+        ExitAlarmFlowLayout(spacing: 6) { chips }
     }
 
     @ViewBuilder private var chips: some View {
@@ -193,6 +227,7 @@ struct ExitAlarmFacts: View {
             .font(.caption.weight(.semibold))
             .foregroundStyle(Theme.textSecondary)
             .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(Theme.surfaceSecondary, in: .capsule)

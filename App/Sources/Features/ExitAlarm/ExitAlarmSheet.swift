@@ -21,6 +21,8 @@ struct ExitAlarmSheetInput: Identifiable {
     }
     /// A fixed clock for CI screenshots.
     var now: Date?
+    /// CI screenshots: scroll to this part ("how") when the sheet opens.
+    var screenshotScroll: String?
 }
 
 struct ExitAlarmSheet: View {
@@ -63,16 +65,22 @@ struct ExitAlarmSheet: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     header.reveal(order: 0)
                     stopsSection.reveal(order: 1)
                     leadSection.reveal(order: 2)
-                    howSection.reveal(order: 3)
+                    howSection.reveal(order: 3).id("how")
                     footer.reveal(order: 4)
                 }
                 .padding(Theme.Spacing.cardGutter)
                 .padding(.bottom, 96)
+            }
+            .task {
+                guard let target = input.screenshotScroll else { return }
+                try? await Task.sleep(for: .milliseconds(500))
+                proxy.scrollTo(target, anchor: .top)
             }
             .revealScope()
             .ambientBackground(.standard, glow: 0.3)
@@ -94,6 +102,7 @@ struct ExitAlarmSheet: View {
                 if phase == .active { Task { await service.prepare(askForPermissions: false) } }
             }
             .haptic(.success, trigger: armedTick)
+            }
         }
     }
 
@@ -200,12 +209,7 @@ struct ExitAlarmSheet: View {
             SectionHeader(title: "Wann soll er klingeln?")
             GlassCard(padding: Theme.Spacing.m) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: Theme.Spacing.xs) { leadChips }
-                        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                            HStack(spacing: Theme.Spacing.xs) { leadChips }
-                        }
-                    }
+                    ExitAlarmFlowLayout(spacing: Theme.Spacing.xs) { leadChips }
                     if let selected, let arrival = selected.effectiveArrival {
                         let moment = arrival.addingTimeInterval(-lead.seconds)
                         Label(moment > now.addingTimeInterval(5)
@@ -226,6 +230,7 @@ struct ExitAlarmSheet: View {
             Chip(title: value == .atArrival ? "Bei Ankunft" : "\(value.minutes) Min", isSelected: lead == value) {
                 withMotion(Motion.snappy) { lead = value }
             }
+            .fixedSize()
         }
     }
 
@@ -421,9 +426,9 @@ struct ExitAlarmLocationExplainer: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                 ZStack {
-                    Circle().fill(Theme.pine.opacity(0.16)).frame(width: 96, height: 96)
+                    Circle().fill(Theme.pine.opacity(0.16)).frame(width: 84, height: 84)
                     Image(systemName: "location.viewfinder")
-                        .font(.system(size: 44, weight: .semibold))
+                        .font(.system(size: 38, weight: .semibold))
                         .foregroundStyle(Theme.pine)
                         .symbolRenderingMode(.hierarchical)
                 }
@@ -435,31 +440,36 @@ struct ExitAlarmLocationExplainer: View {
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     point("lock.iphone", "Warum „Immer“?",
-                          "Nur mit „Immer“ kann iOS KlimaBilanz wecken, wenn du dich der Haltestelle näherst und das iPhone gesperrt in der Tasche liegt. Mit „Beim Verwenden“ klappt es nur, solange die App läuft; dann zeigt iOS den blauen Streifen oben.")
-                    point("clock.arrow.circlepath", "Fahrplan bleibt der Sockel",
-                          "Auch ohne Standort klingelt der Wecker zur erwarteten Ankunft. Der Standort macht ihn früher und genauer, wenn du schneller bist als geplant, und ersetzt den Fahrplan nie.")
+                          "Nur mit „Immer“ kann iOS dich wecken, wenn du dich der Haltestelle näherst und das iPhone gesperrt in der Tasche liegt. Mit „Beim Verwenden“ klappt es nur, solange die App läuft; iOS zeigt dann den blauen Streifen oben.")
+                    point("clock.arrow.circlepath", "Der Fahrplan bleibt die Grundlage",
+                          "Auch ohne Standort klingelt der Wecker zur erwarteten Ankunft. Der Standort macht ihn früher und genauer, wenn du schneller bist als geplant.")
                     point("eye.slash.fill", "Nichts wird gespeichert oder gesendet",
-                          "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher. Nichts geht an KlimaBilanz oder die ÖBB.")
+                          "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher.")
                     point("hand.raised.fill", "Du behältst die Kontrolle",
-                          "iOS fragt dich gleich in zwei Schritten. Du kannst „Immer“ später in den Einstellungen wieder zurücknehmen; der Wecker nach Fahrplan funktioniert weiter.")
+                          "iOS fragt dich gleich in zwei Schritten. „Immer“ kannst du später in den Einstellungen zurücknehmen.")
                 }
                 .reveal(order: 1)
-                VStack(spacing: Theme.Spacing.s) {
-                    Button(action: onContinue) { Text("Weiter").frame(maxWidth: .infinity, minHeight: 56) }
-                        .buttonStyle(.primary)
-                    Button("Nur mit Fahrplan wecken", action: onSkip)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.accentText)
-                        .frame(minHeight: 44)
-                }
-                .reveal(order: 2)
             }
             .padding(Theme.Spacing.screen)
+            .padding(.bottom, 120)
         }
         .revealScope()
         .ambientBackground(.standard, glow: 0.3)
         .navigationTitle("Standort")
         .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: Theme.Spacing.xs) {
+                Button(action: onContinue) { Text("Weiter").frame(maxWidth: .infinity, minHeight: 56) }
+                    .buttonStyle(.primary)
+                Button("Nur mit Fahrplan wecken", action: onSkip)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(minHeight: 40)
+            }
+            .padding(.horizontal, Theme.Spacing.screen)
+            .padding(.top, Theme.Spacing.xs)
+            .background(.bar)
+        }
     }
 
     private func point(_ symbol: String, _ title: String, _ text: String) -> some View {

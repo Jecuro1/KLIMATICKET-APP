@@ -20,9 +20,10 @@ enum ExitAlarmDemo {
                                 plannedDeparture: stops[0].departure?.planned, plannedArrival: stops[stops.count - 1].arrival?.planned)
     }
 
-    static func input(now: Date) -> ExitAlarmSheetInput {
+    static func input(now: Date, scrollTo: String? = nil) -> ExitAlarmSheetInput {
         let stops = stopovers(now: now)
-        return ExitAlarmSheetInput(target: target(now: now), stopovers: stops, preselectedStopID: stops[linzIndex].location.lid, now: now)
+        return ExitAlarmSheetInput(target: target(now: now), stopovers: stops, preselectedStopID: stops[linzIndex].location.lid, now: now,
+                                   screenshotScroll: scrollTo)
     }
 
     static func spec(now: Date, lead: ExitAlarmLead = .fiveMinutes) -> ExitAlarmSpec {
@@ -90,7 +91,7 @@ private enum ExitAlarmBookHolder {
 }
 
 struct ExitAlarmScreenshotHost: View {
-    static let screens: Set<String> = ["exitAlarmSheet", "exitAlarmLocation", "exitAlarmArmed", "exitAlarmApproaching",
+    static let screens: Set<String> = ["exitAlarmSheet", "exitAlarmSheetHow", "exitAlarmLocation", "exitAlarmArmed", "exitAlarmApproaching",
                                        "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings"]
 
     let screen: String
@@ -100,6 +101,8 @@ struct ExitAlarmScreenshotHost: View {
         switch screen {
         case "exitAlarmSheet":
             ExitAlarmSheet(input: ExitAlarmDemo.input(now: now))
+        case "exitAlarmSheetHow":
+            ExitAlarmSheet(input: ExitAlarmDemo.input(now: now, scrollTo: "how"))
         case "exitAlarmLocation":
             NavigationStack { ExitAlarmLocationExplainer(onContinue: {}, onSkip: {}) }
         case "exitAlarmArmed":

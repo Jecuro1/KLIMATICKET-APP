@@ -16,7 +16,7 @@ struct SetExitAlarmSection: View {
                 Picker(selection: $prefs.defaultLead) {
                     ForEach(ExitAlarmLead.allCases, id: \.self) { Text($0.title).tag($0) }
                 } label: {
-                    SetRowLabel(title: "Klingeln", subtitle: "So früh weckt dich der Wecker, wenn du nichts änderst",
+                    SetRowLabel(title: "Klingeln", subtitle: "Voreinstellung für neue Wecker",
                                 symbol: "bell.badge.fill", tint: Theme.dawn)
                 }
 

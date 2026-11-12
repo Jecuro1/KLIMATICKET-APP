@@ -70,8 +70,8 @@ struct ExitAlarmFiredView: View {
     private var background: some View {
         ZStack {
             Theme.fernTile
-            RadialGradient(colors: [Theme.dawn.opacity(0.55), Theme.alpenglow.opacity(0.18), .clear],
-                           center: .init(x: 0.5, y: 0.28), startRadius: 10, endRadius: 420)
+            RadialGradient(colors: [Theme.dawn.opacity(0.8), Theme.alpenglow.opacity(0.3), .clear],
+                           center: .init(x: 0.5, y: 0.3), startRadius: 10, endRadius: 520)
             LinearGradient(colors: [.clear, .black.opacity(0.35)], startPoint: .center, endPoint: .bottom)
         }
         .ignoresSafeArea()
