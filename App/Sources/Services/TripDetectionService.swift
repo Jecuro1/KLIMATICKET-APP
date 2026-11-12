@@ -56,6 +56,8 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     @ObservationIgnored private var scheduled: Task<Void, Never>?
     @ObservationIgnored private var askedAlways = false
     @ObservationIgnored private var monitoredStations: [String: Station] = [:]
+    /// The timetable's answer per ride (this launch): a ride that is not proposed comes back at every run, but is asked about once.
+    @ObservationIgnored private var timetableAnswers: [String: TimetableVerdict] = [:]
 
     static let notificationCategory = "TRIP_SUGGESTION"
     /// Region identifiers of this feature. Regions are shared by every location manager of the app (the Aussteige-Wecker has its own),
@@ -264,9 +266,25 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         var candidates = triage.fresh
         var lines: [UUID: String] = [:]
         for (i, candidate) in candidates.enumerated() {
-            let verdict = await timetableVerdict(for: candidate, index: index)
+            let key = "\(PairHistory.key(candidate.from.station.id, candidate.to.station.id))|\(Int(candidate.departure.timeIntervalSince1970 / 600))"
+            let verdict: TimetableVerdict
+            if let known = timetableAnswers[key] {
+                verdict = known
+            } else {
+                verdict = await timetableVerdict(for: candidate, index: index)
+                if verdict != .unavailable {
+                    if timetableAnswers.count >= 60 { timetableAnswers.removeAll() }
+                    timetableAnswers[key] = verdict
+                }
+            }
             if case .confirmed(let connection) = verdict { lines[candidate.id] = connection.summary }
             if verdict != .unavailable { candidates[i] = candidate.ranked(with: verdict) }
+        }
+        // A ride the timetable made unlikely is not proposed – and the log says why.
+        for dropped in candidates where !dropped.rank.isProposable {
+            log.add(.rejected(DetectionRejection(reason: .tooUncertain(score: dropped.rank.score), departure: dropped.departure, arrival: dropped.arrival,
+                                                 fromName: dropped.from.station.name, toName: dropped.to.station.name, straightKm: dropped.straightKm,
+                                                 averageSpeedKmh: dropped.averageSpeedKmh), at: now), now: now)
         }
         candidates = candidates.filter { $0.rank.isProposable }
         let result = repository.insert(candidates, timetableLines: lines)

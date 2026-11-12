@@ -136,7 +136,7 @@ public struct DetectionRejection: Hashable, Sendable {
         case .tooFast(let kmh): "Mit \(Int(kmh.rounded())) km/h zu schnell für den Boden"
         case .tooLong(let h): "Dauer \(Format1.km(h)) Stunden – zu lang für eine Fahrt"
         case .winding: "Weg verläuft hin und her, keine Fahrt von A nach B"
-        case .tooUncertain: "Zu unsicher (kein Bahnhof direkt am Ziel, Auto möglich)"
+        case .tooUncertain: "Zu unsicher (Haltestellen nicht direkt am Bahnhof, Auto möglich oder kein passender Fahrplan)"
         }
     }
 

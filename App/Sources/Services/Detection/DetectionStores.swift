@@ -9,17 +9,21 @@ import KlimaCore
 enum DetectionFiles {
     private static let folder = "TripDetection"
 
+    /// The folder (not created by reading: a person who never switched anything on gets no folder).
     static var directory: URL {
-        let base = URL.applicationSupportDirectory.appending(path: folder, directoryHint: .isDirectory)
-        if !FileManager.default.fileExists(atPath: base.path) {
-            try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true,
-                                                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
-            var values = URLResourceValues()
-            values.isExcludedFromBackup = true
-            var url = base
-            try? url.setResourceValues(values)
-        }
-        return base
+        URL.applicationSupportDirectory.appending(path: folder, directoryHint: .isDirectory)
+    }
+
+    /// Creates the folder on the first write: excluded from backups, readable after the first unlock.
+    private static func ensureDirectory() {
+        let base = directory
+        guard !FileManager.default.fileExists(atPath: base.path) else { return }
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true,
+                                                 attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var url = base
+        try? url.setResourceValues(values)
     }
 
     static func url(_ name: String) -> URL { directory.appending(path: name) }
@@ -32,6 +36,7 @@ enum DetectionFiles {
 
     static func save<T: Encodable>(_ value: T, to name: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
+        ensureDirectory()
         var url = self.url(name)
         // Readable in the background after the first unlock (a region or visit event can relaunch the app while locked).
         try? data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])

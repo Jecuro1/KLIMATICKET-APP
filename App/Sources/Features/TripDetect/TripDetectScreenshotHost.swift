@@ -8,12 +8,12 @@ import KlimaCore
 // - `tripDetectRecord`: a recording in progress (map line, time, distance, speed, station) · `tripDetectRecordIdle`: before the start
 // - `tripDetectReview`: the proposal after "Beenden" · `tripDetectExplain`: the explanation screen
 // - `tripDetectSettings` / `tripDetectSettingsOff`: Einstellungen › Fahrten erkennen · `tripDetectLog`: the Erkennungs-Protokoll
-// - `tripDetectEdit`: "Bearbeiten" of a proposal
+// - `tripDetectEdit`: "Bearbeiten" of a proposal · `tripDetectActivity`: the Live Activity "Aufzeichnung läuft" (Sperrbildschirm und Dynamic Island)
 
 struct TripDetectScreenshotHost: View {
     static let screens: Set<String> = [
         "tripDetectInbox", "tripDetectInboxAX5", "tripDetectRecord", "tripDetectRecordIdle", "tripDetectReview", "tripDetectExplain",
-        "tripDetectSettings", "tripDetectSettingsOff", "tripDetectLog", "tripDetectEdit",
+        "tripDetectSettings", "tripDetectSettingsOff", "tripDetectLog", "tripDetectEdit", "tripDetectActivity",
     ]
 
     let screen: String
@@ -43,6 +43,8 @@ struct TripDetectScreenshotHost: View {
                 NavigationStack { TripDetectLogView(preview: TripDetectDemo.logEntries(now: Date())) }
             case "tripDetectEdit":
                 edit
+            case "tripDetectActivity":
+                activity
             default:
                 Color.clear.ambientBackground()
             }
@@ -78,6 +80,45 @@ struct TripDetectScreenshotHost: View {
             TripRecordView(recorder: recorder, previewReview: candidate)
         } else {
             Color.clear.ambientBackground()
+        }
+    }
+
+    /// The Live Activity of a recording at lock-screen size, with the compact and expanded Dynamic Island below it.
+    private var activity: some View {
+        let attributes = RecordingActivityAttributes(startedAt: Date().addingTimeInterval(-(23 * 60 + 10)))
+        let state = RecordingActivityAttributes.ContentState(distanceKm: 34.2, speedKmh: 92, stationName: "Stams", isAtStation: false)
+        return ZStack {
+            Color.clear.ambientBackground()
+            VStack(spacing: Theme.Spacing.l) {
+                RecordingLockScreenView(attributes: attributes, state: state)
+                    .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                VStack(spacing: Theme.Spacing.xs) {
+                    HStack {
+                        RecordingIslandLeading()
+                        Spacer()
+                        RecordingIslandTimer(attributes: attributes)
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(width: 170, height: 38)
+                    .background(.black, in: .capsule)
+                    .foregroundStyle(.white)
+                    VStack(spacing: 8) {
+                        HStack {
+                            RecordingIslandLeading()
+                            Spacer()
+                            Text("Aufzeichnung läuft").font(.headline)
+                            Spacer()
+                            RecordingIslandTimer(attributes: attributes)
+                        }
+                        RecordingIslandBottom(state: state)
+                    }
+                    .padding(18)
+                    .frame(width: 340)
+                    .background(.black, in: .rect(cornerRadius: 36, style: .continuous))
+                    .foregroundStyle(.white)
+                }
+            }
         }
     }
 
