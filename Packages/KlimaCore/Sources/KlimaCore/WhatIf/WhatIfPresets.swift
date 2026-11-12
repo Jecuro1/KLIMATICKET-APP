@@ -11,7 +11,7 @@ public struct WhatIfPreset: Identifiable, Hashable, Sendable {
 
     public var id: String
     public var title: String
-    /// One line below the title ("Wiener Neustadt ⇄ Wien · 40 Fahrten im Monat").
+    /// One line below the title ("Wiener Neustadt ⇄ Wien · 40 pro Monat").
     public var subtitle: String
     public var symbol: String
     public var routes: [RouteSpec]
@@ -32,13 +32,13 @@ public struct WhatIfPreset: Identifiable, Hashable, Sendable {
 
     /// Täglich pendeln · Wochenend-Heimfahrt · Gelegentlich.
     public static let all: [WhatIfPreset] = [
-        WhatIfPreset(id: "commute", title: "Täglich pendeln", subtitle: "Wiener Neustadt ⇄ Wien · 40 Fahrten im Monat",
+        WhatIfPreset(id: "commute", title: "Täglich pendeln", subtitle: "Wiener Neustadt ⇄ Wien · 40 pro Monat",
                      symbol: "briefcase.fill",
                      routes: [RouteSpec(fromStationID: wienerNeustadt, toStationID: wien, tripsPerMonth: 40)]),
-        WhatIfPreset(id: "weekend", title: "Wochenend-Heimfahrt", subtitle: "Graz ⇄ Wien · 4 Fahrten im Monat",
+        WhatIfPreset(id: "weekend", title: "Wochenend-Heimfahrt", subtitle: "Graz ⇄ Wien · 4 pro Monat",
                      symbol: "house.fill",
                      routes: [RouteSpec(fromStationID: graz, toStationID: wien, tripsPerMonth: 4)]),
-        WhatIfPreset(id: "occasional", title: "Gelegentlich", subtitle: "Salzburg ⇄ Innsbruck · 2 Fahrten im Monat",
+        WhatIfPreset(id: "occasional", title: "Gelegentlich", subtitle: "Salzburg ⇄ Innsbruck · 2 pro Monat",
                      symbol: "mountain.2.fill",
                      routes: [RouteSpec(fromStationID: salzburg, toStationID: innsbruck, tripsPerMonth: 2)]),
     ]

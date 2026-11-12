@@ -74,9 +74,15 @@ struct WhatIfResultCard: View {
     @ViewBuilder
     private var deltaView: some View {
         if let delta = WhatIfText.delta(result) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) { deltaParts(delta) }
-                VStack(alignment: .leading, spacing: 2) { deltaParts(delta) }
+            VStack(alignment: .leading, spacing: 2) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) { deltaParts(delta) }
+                    VStack(alignment: .leading, spacing: 2) { deltaParts(delta) }
+                }
+                Text(delta.caption)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(delta.sentence)
@@ -100,8 +106,8 @@ struct WhatIfResultCard: View {
                 .numericValue(abs(result.yearlyDelta).rounded())
         }
         Text(delta.suffix)
-            .font(delta.amount.isEmpty ? .title3.weight(.semibold) : .subheadline)
-            .foregroundStyle(delta.amount.isEmpty ? Theme.textPrimary : Theme.textSecondary)
+            .font(delta.amount.isEmpty ? .title3.weight(.semibold) : .title3.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
     }
 
     // MARK: Legend

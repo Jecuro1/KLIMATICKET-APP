@@ -72,7 +72,8 @@ public struct WhatIfResult: Hashable, Sendable {
     /// Single tickets and every compared product, cheapest first (ties: cheaper ticket, then id).
     public var options: [WhatIfOption]
     public var single: WhatIfOption
-    /// The cheapest ticket that covers at least one trip; nil when there are no trips or no ticket covers any.
+    /// The cheapest ticket that covers at least a tenth of the trips (`minimumShownCoverage`); nil when there are no trips or
+    /// no ticket covers enough of them.
     public var bestTicket: WhatIfOption?
     /// Average trips per month over the 12 months (one trip = one direction).
     public var tripsPerMonth: Double
@@ -99,7 +100,11 @@ public struct WhatIfResult: Hashable, Sendable {
     /// The best ticket costs as much as single tickets (to the cent).
     public var isTie: Bool { bestTicket != nil && abs(yearlyDelta) <= 0.005 }
 
-    /// The ranking for display: the cheapest `limit` options that matter (a ticket that covers none of the trips is
+    /// A ticket that covers less than this share of the trips is not part of the display ranking ("ab 45 Fahrten pro Monat" for
+    /// a ticket of another federal state is noise).
+    public static let minimumShownCoverage = 0.1
+
+    /// The ranking for display: the cheapest `limit` options that matter (a ticket that covers hardly any of the trips is
     /// pointless), always including single tickets and the user's own ticket.
     public func displayOptions(limit: Int = 4) -> [WhatIfOption] {
         var tickets = 0
@@ -109,7 +114,7 @@ public struct WhatIfResult: Hashable, Sendable {
                 shown.append(option)
                 continue
             }
-            guard option.coveredShare > 0, tickets < limit else { continue }
+            guard option.coveredShare >= WhatIfResult.minimumShownCoverage, tickets < limit else { continue }
             tickets += 1
             shown.append(option)
         }
@@ -316,7 +321,7 @@ public struct WhatIfCalculator: Sendable {
         let single0 = options.first { $0.isSingle } ?? single
 
         let state: WhatIfResult.State = !hasPricedRoute ? .needsRoutes : (yearlyTrips <= 0 ? .noTrips : .ready)
-        let best = state == .ready ? options.first { !$0.isSingle && $0.coveredShare > 0 } : nil
+        let best = state == .ready ? options.first { !$0.isSingle && $0.coveredShare >= WhatIfResult.minimumShownCoverage } : nil
         var crossing: Double?
         var crossingMonth: Int?
         if let best { (crossing, crossingMonth) = Self.crossing(single: single0.cumulative, ticket: best.cumulative) }

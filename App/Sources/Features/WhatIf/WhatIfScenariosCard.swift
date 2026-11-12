@@ -86,6 +86,7 @@ struct WhatIfScenariosCard: View {
                     }
                     Spacer(minLength: 0)
                 }
+                .padding(.vertical, 6)
                 .frame(minHeight: 52)
                 .contentShape(Rectangle())
             }
@@ -124,7 +125,7 @@ struct WhatIfScenariosCard: View {
                 withMotion(Motion.smooth) { model.saveScenario(named: "", headline: "") }
             }
         } label: {
-            Label("Szenario speichern", systemImage: "square.and.arrow.down")
+            Label("Speichern", systemImage: "square.and.arrow.down")
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: 44)
         }

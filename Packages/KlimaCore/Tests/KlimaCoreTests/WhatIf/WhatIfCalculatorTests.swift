@@ -328,3 +328,21 @@ final class WhatIfCalculatorTests: XCTestCase {
         }
     }
 }
+
+// MARK: - Display ranking
+
+extension WhatIfCalculatorTests {
+    /// A ticket that covers hardly any trip (a tenth or less) is neither the best ticket nor part of the display ranking.
+    func testTicketsThatCoverHardlyAnythingAreLeftOut() {
+        // 1 Tirol trip and 19 Wien–Salzburg trips a month: Tirol covers 5 %.
+        let result = F.calculator().evaluate(F.input([F.tirol(1), F.westbahn(19)]))
+        XCTAssertEqual(F.option(result, "tirol-klassik").coveredShare, 0.05, accuracy: 1e-9)
+        XCTAssertEqual(result.bestTicket?.id, "oe-klassik", "Tirol is cheaper than Ö per year but covers 5 % of the trips")
+        XCTAssertFalse(result.displayOptions().contains { $0.id == "tirol-klassik" })
+        XCTAssertTrue(result.displayOptions().contains { $0.id == "oe-klassik" })
+        // Exactly a tenth is still shown.
+        let tenth = F.calculator().evaluate(F.input([F.tirol(1), F.westbahn(9)]))
+        XCTAssertEqual(F.option(tenth, "tirol-klassik").coveredShare, 0.1, accuracy: 1e-9)
+        XCTAssertTrue(tenth.displayOptions().contains { $0.id == "tirol-klassik" })
+    }
+}

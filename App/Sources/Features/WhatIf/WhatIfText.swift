@@ -39,7 +39,7 @@ enum WhatIfText {
         case .noTrips: return usesHistory ? "Mit diesen Einstellungen bleibt keine Fahrt übrig" : "Dann lohnt sich kein Ticket"
         case .ready: break
         }
-        guard let best = result.bestTicket else { return "Kein KlimaTicket deckt diese Fahrten ab" }
+        guard let best = result.bestTicket else { return "Kein KlimaTicket deckt genug deiner Fahrten ab" }
         if result.isTie { return "\(best.name) kostet so viel wie Einzeltickets" }
         let name = withArticle(best.name)
         let breakEven = result.breakEvenTripsPerMonth
@@ -64,26 +64,45 @@ enum WhatIfText {
         }
     }
 
-    /// "€ 312 weniger im Jahr" / "kostet € 85 mehr im Jahr" split into its words and the amount (the amount is set large).
+    /// "€ 312 weniger im Jahr" / "kostet € 85 mehr im Jahr" split into its words and the amount (the amount is set large),
+    /// plus what it is compared with.
     struct Delta {
         var prefix: String
         var amount: String
         var suffix: String
+        /// "als mit Einzeltickets" – the second line under the amount.
+        var caption: String
         var isSaving: Bool
         /// The same as one sentence (VoiceOver, share text).
-        var sentence: String { [prefix, amount, suffix].filter { !$0.isEmpty }.joined(separator: " ") }
+        var sentence: String
+        /// Without the comparison ("€ 312 weniger im Jahr"): the line under a saved scenario.
+        var shortSentence: String
     }
+
+    /// A difference below this many euros a year is not worth a big number.
+    static let negligibleDelta = 10.0
 
     static func delta(_ result: WhatIfResult) -> Delta? {
         guard result.state == .ready, result.bestTicket != nil else { return nil }
-        let amount = Format.euro(abs(result.yearlyDelta).rounded(), decimals: 0)
-        if result.isTie || amount == Format.euro(0, decimals: 0) {
-            return Delta(prefix: "", amount: "", suffix: "kein Unterschied zu Einzeltickets", isSaving: true)
+        let rounded = abs(result.yearlyDelta).rounded()
+        let amount = Format.euro(rounded, decimals: 0)
+        if result.isTie || rounded < 1 {
+            return Delta(prefix: "", amount: "", suffix: "kein Unterschied", caption: "zu Einzeltickets", isSaving: true,
+                         sentence: "kein Unterschied zu Einzeltickets", shortSentence: "kein Unterschied")
+        }
+        let direction = result.ticketIsCheaper ? "weniger" : "mehr"
+        if rounded < negligibleDelta {
+            return Delta(prefix: "", amount: "", suffix: "kaum ein Unterschied",
+                         caption: "\(amount) \(direction) im Jahr als mit Einzeltickets", isSaving: result.ticketIsCheaper,
+                         sentence: "kaum ein Unterschied: \(amount) \(direction) im Jahr als mit Einzeltickets",
+                         shortSentence: "kaum ein Unterschied")
         }
         if result.ticketIsCheaper {
-            return Delta(prefix: "", amount: amount, suffix: "weniger im Jahr als mit Einzeltickets", isSaving: true)
+            return Delta(prefix: "", amount: amount, suffix: "weniger im Jahr", caption: "als mit Einzeltickets", isSaving: true,
+                         sentence: "\(amount) weniger im Jahr als mit Einzeltickets", shortSentence: "\(amount) weniger im Jahr")
         }
-        return Delta(prefix: "kostet", amount: amount, suffix: "mehr im Jahr als Einzeltickets", isSaving: false)
+        return Delta(prefix: "kostet", amount: amount, suffix: "mehr im Jahr", caption: "als Einzeltickets", isSaving: false,
+                     sentence: "kostet \(amount) mehr im Jahr als Einzeltickets", shortSentence: "kostet \(amount) mehr im Jahr")
     }
 
     // MARK: Chart
@@ -137,7 +156,7 @@ enum WhatIfText {
         guard result.state == .ready else { return headline(result) }
         var parts: [String] = []
         if let best = result.bestTicket { parts.append(best.name) }
-        if let delta = delta(result) { parts.append(delta.sentence) }
+        if let delta = delta(result) { parts.append(delta.shortSentence) }
         return parts.isEmpty ? headline(result) : parts.joined(separator: " · ")
     }
 

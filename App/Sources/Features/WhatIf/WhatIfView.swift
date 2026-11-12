@@ -49,8 +49,7 @@ struct WhatIfScreen: View {
                 header
                     .padding(.horizontal, Theme.Spacing.screen - Theme.Spacing.cardGutter)
                     .reveal(order: 0)
-                GlassSegmentedPicker(selection: $model.mode, options: WhatIfModel.Mode.allCases) { Text($0.title) }
-                    .accessibilityLabel("Rechnen mit")
+                modePicker(selection: $model.mode)
                     .reveal(order: 1)
                 content(result: result)
                     .reveal(order: 2)
@@ -98,6 +97,38 @@ struct WhatIfScreen: View {
             try? await Task.sleep(for: .milliseconds(900))
             guard !Task.isCancelled else { return }
             AccessibilityNotification.Announcement(announcement(result)).post()
+        }
+    }
+
+    // MARK: Mode
+
+    /// The glass segments; at the accessibility text sizes two full-width buttons (the titles do not fit side by side).
+    @ViewBuilder
+    private func modePicker(selection: Binding<WhatIfModel.Mode>) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(spacing: Theme.Spacing.xs) {
+                ForEach(WhatIfModel.Mode.allCases) { mode in
+                    let isSelected = selection.wrappedValue == mode
+                    Button {
+                        withMotion(Motion.snappy) { selection.wrappedValue = mode }
+                    } label: {
+                        Text(mode.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                            .padding(.horizontal, Theme.Spacing.s)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(isSelected ? .regular.tint(Theme.accent.opacity(0.25)).interactive() : .regular.interactive(),
+                                 in: .rect(cornerRadius: 28, style: .continuous))
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .haptic(.selection, trigger: selection.wrappedValue)
+        } else {
+            GlassSegmentedPicker(selection: selection, options: WhatIfModel.Mode.allCases) { Text($0.title) }
+                .accessibilityLabel("Rechnen mit")
         }
     }
 

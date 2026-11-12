@@ -38,8 +38,8 @@ Monat lohnt sich das KlimaTicket Ö“, der Unterschied pro Jahr („€ 312 wen
 diesem Gerät) und „Teilen“ (reiner Text).
 
 Leerzustände: keine Strecke → Einladung mit den drei Beispielen; 0 Fahrten pro Monat → „Dann lohnt sich kein Ticket“; „Meine
-Fahrten“ ohne Fahrten → Hinweis mit Wechsel zu „Eigene Annahmen“; kein Ticket deckt die Strecke ab → „Kein KlimaTicket deckt diese
-Fahrten ab“. Der Katalog ist gebündelt – es gibt keinen Ladezustand.
+Fahrten“ ohne Fahrten → Hinweis mit Wechsel zu „Eigene Annahmen“; kein Ticket deckt mindestens ein Zehntel der Fahrten ab → „Kein KlimaTicket deckt genug deiner Fahrten ab“; ein Unterschied unter 10 € im
+Jahr heißt „kaum ein Unterschied“ (statt einer großen Zahl). Der Katalog ist gebündelt – es gibt keinen Ladezustand.
 
 ## 3. Wie gerechnet wird
 
@@ -71,7 +71,9 @@ Fahrt); dann sagt der Bildschirm „aufs Jahr hochgerechnet (×6,1)“. Abweichu
 klemmt Faktoren unter 1 auf 1, deshalb rechnet der Rechner mit skalierten Preisen); der Ticketpreis skaliert nicht.
 
 **Ränge.** Günstigste Gesamtkosten zuerst; bei gleichen Kosten (auf den Cent) das günstigere Ticket, dann die ID – die Reihenfolge
-flackert nie. Gezeigt werden Einzeltickets, das eigene Ticket und die besten vier Tickets, die mindestens eine Fahrt abdecken.
+flackert nie. Gezeigt werden Einzeltickets, das eigene Ticket und die besten vier Tickets, die mindestens ein Zehntel der Fahrten abdecken (ein
+Ticket eines anderen Bundeslands, das 3 % der Fahrten trifft, ist Rauschen); dieselbe Schwelle gilt für „das beste Ticket“ im
+Satz oben.
 
 **Eingaben werden geklemmt:** Fahrten pro Monat 0 bis 60, höchstens drei Strecken, Schieber 0,5 bis 2 (NaN = 1), ungültige Monate
 fallen weg, Fahrtwerte, die nicht endlich oder negativ sind, werden ignoriert.

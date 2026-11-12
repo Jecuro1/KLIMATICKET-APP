@@ -15,8 +15,11 @@ struct WhatIfChart: View {
 
     private var maxY: Double {
         let top = max(result.single.cumulative.max() ?? 0, best?.cumulative.max() ?? 0)
-        return max(top * 1.12, 10)
+        return max(top * 1.16, 10)
     }
+
+    /// Top of the flag pole.
+    private var flagY: Double { maxY * 0.95 }
 
     var body: some View {
         Chart {
@@ -32,17 +35,14 @@ struct WhatIfChart: View {
                         .foregroundStyle(Theme.glacier)
                 }
                 if let crossing = result.crossing {
-                    RuleMark(x: .value("Break-even", crossing), yStart: .value("Kosten", 0.0), yEnd: .value("Kosten", valueAt(crossing, in: best.cumulative)))
+                    // A flag pole from the axis to the top of the plot, the flag hanging on it beside the lines (the lines are
+                    // empty up there), and the marker where the two lines meet.
+                    RuleMark(x: .value("Break-even", crossing), yStart: .value("Kosten", 0.0), yEnd: .value("Kosten", flagY))
                         .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
                         .foregroundStyle(Theme.positive.opacity(0.6))
-                    PointMark(x: .value("Break-even", crossing), y: .value("Kosten", valueAt(crossing, in: best.cumulative)))
-                        .symbol {
-                            Circle()
-                                .fill(Theme.onAccent)
-                                .frame(width: 12, height: 12)
-                                .overlay(Circle().stroke(Theme.positive, lineWidth: 3))
-                        }
-                        .annotation(position: crossing > 7 ? .topLeading : .topTrailing, spacing: 6) {
+                    PointMark(x: .value("Break-even", crossing), y: .value("Kosten", flagY))
+                        .opacity(0)
+                        .annotation(position: crossing > 6 ? .leading : .trailing, spacing: 3) {
                             Label(WhatIfText.crossingTitle(crossing), systemImage: "flag.fill")
                                 .font(.caption2.weight(.bold))
                                 .foregroundStyle(Theme.positiveText)
@@ -50,10 +50,17 @@ struct WhatIfChart: View {
                                 .lineLimit(1)
                                 .fixedSize()
                         }
+                    PointMark(x: .value("Break-even", crossing), y: .value("Kosten", valueAt(crossing, in: best.cumulative)))
+                        .symbol {
+                            Circle()
+                                .fill(Theme.onAccent)
+                                .frame(width: 12, height: 12)
+                                .overlay(Circle().stroke(Theme.positive, lineWidth: 3))
+                        }
                 }
             }
         }
-        .chartXScale(domain: 0.0...12.0)
+        .chartXScale(domain: 0.0...12.0, range: .plotDimension(startPadding: 2, endPadding: 10))
         .chartYScale(domain: 0...maxY)
         .chartXAxis { xAxis }
         .chartYAxis { yAxis }

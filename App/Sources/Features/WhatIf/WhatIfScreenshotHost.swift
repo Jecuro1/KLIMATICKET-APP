@@ -10,13 +10,15 @@ import KlimaCore
 /// - `whatIfOccasional`: „Eigene Annahmen“ with „Gelegentlich“ (single tickets are cheaper)
 /// - `whatIfEmpty`: „Eigene Annahmen“ without a route (the inviting card)
 /// - `whatIfExtreme`: two routes at 60 trips a month
-/// - `whatIfAX5` / `whatIfAX5Bottom`: „Eigene Annahmen“ at the largest accessibility text size
+/// - `whatIfRoutes` / `whatIfControls`: the middle of „Eigene Annahmen“ (route card, ticket kind) and of „Meine Fahrten“ (slider, toggles)
+/// - `whatIfAX5` / `whatIfAX5Mid` / `whatIfAX5Bottom`: „Eigene Annahmen“ at the largest accessibility text size
 /// - `whatIfSaved`: three saved scenarios in the list
 /// - `whatIfSheet`: the sheet as it opens from onboarding / the empty Ticket tab (own navigation bar)
 struct WhatIfScreenshotHost: View {
     static let screens: Set<String> = [
         "whatIf", "whatIfBottom", "whatIfFilters", "whatIfFiltersBottom", "whatIfPrePurchase", "whatIfPreBottom", "whatIfWeekend",
-        "whatIfOccasional", "whatIfEmpty", "whatIfExtreme", "whatIfAX5", "whatIfAX5Bottom", "whatIfSaved", "whatIfSheet",
+        "whatIfOccasional", "whatIfEmpty", "whatIfExtreme", "whatIfAX5", "whatIfAX5Mid", "whatIfAX5Bottom", "whatIfSaved", "whatIfSheet",
+        "whatIfRoutes", "whatIfControls",
     ]
 
     let screen: String
@@ -54,6 +56,15 @@ struct WhatIfScreenshotHost: View {
             NavigationStack { WhatIfView(launch: .extreme, scenarios: []) }
         case "whatIfAX5":
             NavigationStack { WhatIfView(launch: .preset("commute"), scenarios: []) }
+        case "whatIfAX5Mid":
+            NavigationStack { WhatIfView(launch: .preset("commute"), scenarios: []) }
+                .defaultScrollAnchor(.center)
+        case "whatIfRoutes":
+            NavigationStack { WhatIfView(launch: .preset("commute"), scenarios: []) }
+                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.42))
+        case "whatIfControls":
+            NavigationStack { WhatIfView(launch: .automatic, scenarios: []) }
+                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.5))
         case "whatIfAX5Bottom":
             NavigationStack { WhatIfView(launch: .preset("commute"), scenarios: []) }
                 .defaultScrollAnchor(.bottom)
