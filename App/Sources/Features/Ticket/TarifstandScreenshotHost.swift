@@ -10,7 +10,7 @@ import KlimaCore
 //   tarifNoticeStale     12 November 2026 with a fare index from September 2025 (more than 13 months)
 //   tarifSettingsRow     Preisberechnung with the Tarifstand row, the three dates and a finished check (Aktuell)
 //   tarifSheet           the details sheet of the upcoming-change notice
-//   tarifNoticeAX5       the banner at the largest text size · tarifSettingsRowAX5 the row (Kein Netz) at the largest size
+//   tarifNoticeAX5       the banner at the largest text size · tarifSettingsRowAX5 the two rows (Kein Netz) at the largest size
 struct TarifstandScreenshotHost: View {
     static let screens: Set<String> = [
         "tarifNoticeUpcoming", "tarifNoticeNewYear", "tarifNoticeStale", "tarifSettingsRow", "tarifSheet",
@@ -53,8 +53,17 @@ struct TarifstandScreenshotHost: View {
     @ViewBuilder
     private var content: some View {
         switch screen {
-        case "tarifNoticeUpcoming", "tarifNoticeAX5":
+        case "tarifNoticeUpcoming":
             ticketTab(upcoming)
+        case "tarifNoticeAX5":
+            // The whole Ticket tab does not fit at this size (its own layout), so the banner is shown on its own.
+            ScrollView {
+                TariffNoticeBanner()
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    .padding(.top, Theme.Spacing.xxl)
+            }
+            .ambientBackground()
+            .environment(\.tariffNoticeInput, upcoming)
         case "tarifNoticeNewYear":
             ticketTab(newYear)
         case "tarifNoticeStale":
@@ -62,7 +71,7 @@ struct TarifstandScreenshotHost: View {
         case "tarifSettingsRow":
             settingsSection(input(Self.vienna(2026, 11, 12, 10, 0)), check: .finished(.current))
         case "tarifSettingsRowAX5":
-            settingsSection(upcoming, check: .finished(.offline))
+            settingsSection(upcoming, check: .finished(.offline), onlyTarifstand: true)
         case "tarifSheet":
             Color.clear
                 .ambientBackground()
@@ -81,10 +90,20 @@ struct TarifstandScreenshotHost: View {
     }
 
     /// The Preisberechnung section as in Einstellungen (same list style and backdrop).
-    private func settingsSection(_ input: TariffNoticeInput, check: TarifCheck.Phase) -> some View {
+    private func settingsSection(_ input: TariffNoticeInput, check: TarifCheck.Phase, onlyTarifstand: Bool = false) -> some View {
         NavigationStack {
             List {
-                SetFareSection()
+                if onlyTarifstand {
+                    // At the largest size the two new rows would sit below the fold: show just them under the section header.
+                    Section {
+                        SetTarifstandRows()
+                            .listRowBackground(Theme.surface)
+                    } header: {
+                        SetSectionHeader(title: "Preisberechnung")
+                    }
+                } else {
+                    SetFareSection()
+                }
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(Theme.Spacing.l)

@@ -266,7 +266,7 @@ struct TariffNoticeSheet: View {
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                         ForEach(Array(copy.explanation.enumerated()), id: \.offset) { _, paragraph in
                             Text(paragraph)
-                                .font(.body)
+                                .font(.subheadline)
                                 .foregroundStyle(Theme.textPrimary)
                                 .lineSpacing(3)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -354,11 +354,12 @@ struct TariffNoticeSheet: View {
             }
         }
         .padding(.horizontal, Theme.Spacing.screen)
-        .padding(.top, Theme.Spacing.m)
+        .padding(.top, Theme.Spacing.xl)
         .padding(.bottom, showsClose ? 0 : Theme.Spacing.s)
         .background {
+            // Fades in over the first 20 pt, then is solid: nothing of the cards shows through the button and its result.
             LinearGradient(stops: [.init(color: Theme.sheetBackground.opacity(0), location: 0),
-                                   .init(color: Theme.sheetBackground.opacity(0.94), location: 0.28),
+                                   .init(color: Theme.sheetBackground, location: 0.2),
                                    .init(color: Theme.sheetBackground, location: 1)],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()

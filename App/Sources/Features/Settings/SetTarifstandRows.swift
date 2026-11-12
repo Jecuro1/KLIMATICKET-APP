@@ -10,6 +10,7 @@ struct SetTarifstandRows: View {
     @Environment(AppState.self) private var app
     @Environment(\.tariffNoticeInput) private var injected
     @Environment(\.tarifCheckPreset) private var preset
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var check: TarifCheck
 
     init() {
@@ -24,9 +25,10 @@ struct SetTarifstandRows: View {
                 .navigationTitle("Tarifstand")
                 .navigationBarTitleDisplayMode(.inline)
         } label: {
-            HStack(spacing: Theme.Spacing.s) {
+            // At accessibility sizes the pill goes under the label instead of squeezing it.
+            rowLayout {
                 SetRowLabel(title: "Tarifstand", subtitle: summary(input), symbol: "calendar.badge.clock", tint: Theme.dawn)
-                Spacer(minLength: Theme.Spacing.xs)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.xs) }
                 if !state.isCurrent {
                     SetPill(text: "Hinweis", symbol: "exclamationmark.circle.fill", tint: Theme.summitText)
                         .motionTransition(.pop)
@@ -35,6 +37,11 @@ struct SetTarifstandRows: View {
             .motionAnimation(Motion.smooth, value: state)
         }
         checkRow(input)
+    }
+
+    private var rowLayout: AnyLayout {
+        typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
     }
 
     private func summary(_ input: TariffNoticeInput) -> String {
@@ -52,11 +59,11 @@ struct SetTarifstandRows: View {
         Button {
             Task { await check.run(app: app) }
         } label: {
-            HStack(spacing: Theme.Spacing.s) {
+            rowLayout {
                 SetRowLabel(title: "Jetzt prüfen",
                             subtitle: hasSource || LaunchMode.isScreenshot ? nil : "Keine Online-Quelle eingerichtet",
                             symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier, isBusy: check.isChecking)
-                Spacer(minLength: Theme.Spacing.xs)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.xs) }
                 SetBusyIndicator(isBusy: check.isChecking)
                 if case .finished(let result) = check.phase {
                     SetPill(text: result.title, symbol: result.symbol, tint: result.isSuccess ? Theme.positiveText : Theme.summitText)
