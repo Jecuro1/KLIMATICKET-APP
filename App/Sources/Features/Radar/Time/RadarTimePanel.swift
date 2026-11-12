@@ -74,46 +74,41 @@ struct RadarTimeChip: View {
 /// The open state.
 struct RadarTimeCard: View {
     var travel: RadarTimeModel
-    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var timeSize: CGFloat = 40
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             header
             RadarTimeScrubber(travel: travel)
             controls
             if travel.isMetered, travel.profile == .coarse, travel.isAway { meteredNotice }
             if travel.isAway { status }
         }
-        .padding(Theme.Spacing.m)
+        .padding(.horizontal, Theme.Spacing.m)
+        .padding(.vertical, Theme.Spacing.s)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: Header
 
+    /// The time, how far from now, and the close button on one line: the card takes as little of the map as it can.
     private var header: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.s) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ZEITREISE")
-                    .font(Theme.Typography.kicker)
-                    .tracking(1.06)
-                    .foregroundStyle(Theme.textSecondary)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(travel.clockText)
-                        .font(.system(size: 46, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .minimumScaleFactor(0.5)
-                        .lineLimit(1)
-                        .contentTransition(.numericText())
-                        .motionAnimation(Motion.number, value: travel.clockText)
-                    if let note = travel.dayNote {
-                        Text(note).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textSecondary)
-                    }
-                }
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+            Text(travel.clockText)
+                .font(.system(size: timeSize, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .contentTransition(.numericText())
+                .motionAnimation(Motion.number, value: travel.clockText)
+            VStack(alignment: .leading, spacing: 0) {
                 Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(Theme.textSecondary)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                if let note = travel.dayNote {
+                    Text(note).font(.footnote).foregroundStyle(Theme.textSecondary)
+                }
             }
-            .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
             Button {
                 withMotion(Motion.smooth) { travel.close() }
@@ -121,17 +116,18 @@ struct RadarTimeCard: View {
                 Image(systemName: "chevron.down")
                     .font(.body.weight(.bold))
                     .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
                     .background(Theme.surfaceSecondary, in: .circle)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Zeitregler schließen")
         }
+        .accessibilityElement(children: .contain)
     }
 
     private var subtitle: String {
-        guard travel.isAway else { return "Wo sind die Züge später? Zieh den Regler." }
-        return travel.isPlaying ? "\(travel.offsetTitle) · Zeitraffer läuft" : travel.offsetTitle
+        guard travel.isAway else { return "Zieh den Regler" }
+        return travel.isPlaying ? "\(travel.offsetTitle) · läuft" : travel.offsetTitle
     }
 
     // MARK: Controls
@@ -200,7 +196,7 @@ struct RadarTimeCard: View {
                 .font(.title3.weight(.bold))
                 .foregroundStyle(Theme.onAccent)
                 .symbolReplaceTransition()
-                .frame(width: 56, height: 56)
+                .frame(width: 52, height: 52)
                 .background(Theme.ctaGradient, in: .circle)
                 .shadow(color: Theme.accent.opacity(0.35), radius: 10, y: 4)
         }
@@ -242,21 +238,21 @@ struct RadarTimeCard: View {
         .foregroundStyle(Theme.accentText)
     }
 
-    /// The picture's own numbers: how many, for when; how old the delays are; what is still loading; what the path is; what it cost.
+    /// The picture's own numbers: how many, for when; how old the delays are and that nothing later is predicted; what is still loading; what the path
+    /// is; what it cost.
     private var status: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 3) {
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text(travel.pill)
                         .font(.footnote.weight(.semibold))
                         .monospacedDigit()
                         .foregroundStyle(Theme.textPrimary)
-                    if let age = travel.delayAge(at: context.date) {
-                        Text(RadarTimeText.delayAge(age))
-                            .font(.footnote)
-                            .monospacedDigit()
-                            .foregroundStyle(Theme.textSecondary)
-                    }
+                    Text(RadarTimeText.statusCaption(age: travel.delayAge(at: context.date), offset: travel.offset))
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(statusSpoken(at: context.date))
@@ -266,23 +262,20 @@ struct RadarTimeCard: View {
                 loadingRow
             } else if let failure = travel.failure {
                 Label(failure, systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(Theme.summitText)
             } else if travel.isRefreshingExact {
                 Label("Genau diese Minute wird geladen.", systemImage: "scope")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
             } else if travel.hasSnapshotHere {
                 Label("Für diese Minute hat die Auskunft die Positionen selbst berechnet.", systemImage: "checkmark.seal")
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundStyle(Theme.positiveText)
             }
-            Text(RadarTimeText.honesty(for: travel.offset))
-                .font(.footnote)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
             DisclosureGroup("Wie das berechnet wird") {
                 VStack(alignment: .leading, spacing: 6) {
+                    Text(RadarTimeText.honesty(for: travel.offset))
                     if travel.hasStraightPins {
                         Text(RadarTimeText.straightLine)
                     }

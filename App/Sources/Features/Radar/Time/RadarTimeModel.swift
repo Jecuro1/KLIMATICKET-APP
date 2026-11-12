@@ -322,6 +322,7 @@ final class RadarTimeModel {
         timeline.prune(now: now)
         scheduler.begin(now: now, profile: profile, includeNow: !live.holdsAllOfAustria)
         if let target { scheduler.setTarget(target, now: now) }
+        if isPlaying { scheduler.setMoving(true, now: now) }
         needsRebuild = true
     }
 

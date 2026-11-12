@@ -174,6 +174,14 @@ public enum RadarTimeText {
         "Stand der Verspätungen: \(RadarStatusText.age(seconds))"
     }
 
+    /// The caption under the picture: how old the delays are and that nothing later is predicted ("Stand der Verspätungen: vor 42 s. Spätere
+    /// Verspätungen sind nicht vorhergesagt."). For the past: that it is no recording.
+    public static func statusCaption(age: TimeInterval?, offset: TimeInterval) -> String {
+        let second = offset < 0 ? "Das ist keine Aufzeichnung." : "Spätere Verspätungen sind nicht vorhergesagt."
+        guard let age else { return second }
+        return "\(delayAge(age)). \(second)"
+    }
+
     public static func spokenDelayAge(_ seconds: TimeInterval) -> String {
         "Stand der Verspätungen: \(RadarStatusText.spokenAge(seconds))"
     }

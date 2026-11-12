@@ -131,7 +131,7 @@ extension RadarView {
     var statusBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
             if heatOn { heatPanel }   // MARK: radarheat – the summary panel, above the layer bar
-            mapLayerPanel
+            if !travel.isOpen { mapLayerPanel }   // MARK: radartime – the open scrubber card leaves the map room: the layer bar waits
             if layers.isOn(.trains), let reason = app.live.timetableUnavailable {
                 trainsOffNotice(reason)
             }
