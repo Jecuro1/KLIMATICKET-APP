@@ -7,7 +7,10 @@ Entscheidungen des Owners in §8.
 ## 1. Grundregeln
 
 - **Widgets machen nie einen Netzaufruf.** Sie lesen nur den Cache in der App Group (`AppGroup.defaults`). Die Prüfung
-  liegt in `scripts/check_integration.py` (Widget-Target ohne `URLSession`, `HafasClient`, `LiveDataService`).
+  liegt in `scripts/check_integration.py` und läuft in `ios.yml` vor dem Build: `URLSession`, `URLRequest`, `HafasClient` und
+  `LiveDataService` dürfen weder in `Widgets/` noch in `Shared/` vorkommen (`Shared/` wird auch in die Extension kompiliert).
+  Kommentare und Zeichenketten zählen nicht; eine Ausnahmeliste (`NETWORK_ALLOW`) gibt es, sie ist leer. Tests:
+  `scripts/test_check_integration.py`.
 - **Die App schreibt den Live-Cache nur mit Einwilligung** (`LiveDataService.consent == .granted`). Der Einwilligungsstand wird
   nach `widgets.consent.v1` gespiegelt. Widerruf leert alle Live-Caches sofort und lädt die Widgets neu.
 - **Abrufe nur bei sichtbarer App**, höchstens alle 15 Minuten (`WidgetCacheSync.minimumInterval`), nie aus
@@ -37,11 +40,20 @@ Alle Caches sind versioniert, neue Felder sind optional. Schreiben nur bei Ände
 
 - **Zugausstattung** (je Fahrt, aus den Remarks Typ A): WLAN, Bordrestaurant, Ruhezone, Familienzone, Rollstuhl,
   WC rollstuhltauglich (`OC`, `OG`), Fahrradmitnahme, Businessabteil. Das Widget beschriftet sie als „im Zug“.
-- **Stationsausstattung** aus den Ortsdaten: Bike+Ride (B+R), Park+Ride (P+R) und Barrierefreiheit (ganz oder teilweise).
-  **Aufzüge und WC an Haltestellen** sind in den Ortsdaten nicht enthalten. Sie werden deshalb nicht angezeigt. Die
-  Erweiterung der OSM-Extraktion ist ein eigenes Paket (ODbL, Quellenvermerk in `stops_osm.bin`).
+- **Stationsausstattung**: siehe §3.1.
 - **Störungen** werden über die Linien zugeordnet, die in den Ergebnissen der Lieblingsfahrten vorkommen. Die Meldungen
   haben keine Position; die Anzeige nennt die Linien.
+
+### 3.1 Stationsausstattung
+
+`WidgetFacility` (KlimaCore, `WidgetCacheBuilder.facilities`) kennt sieben Merkmale einer Station:
+
+- aus den Ortsdaten (`places.bin`): Bike+Ride, Park+Ride, Barrierefreiheit (ganz oder teilweise);
+- aus OpenStreetMap (Abschnitt `EQUI` in `stops_osm.bin`, ODbL, Quellenvermerk dort): Aufzug, WC und Fahrradständer.
+
+Es gibt nur positive Angaben: Eine Station ohne Aufzug in OSM zeigt keinen Aufzug, und „nicht erfasst“ wird nie als „fehlt“
+gezeigt. Bike+Ride sagt Fahrradständer schon, deshalb kommt kein zweiter Eintrag. Die App schreibt die Liste mit
+`widgets.stations.v1` in die App Group (höchstens zehn Stationen).
 
 ## 4. Widgets
 
@@ -86,7 +98,8 @@ ohne Netz. WidgetKit lässt sich im Simulator nicht aufnehmen; die Vorschau erse
 1. Gipfel-Fortschritt: als eigenes Widget für Sperrbildschirm und StandBy gebaut; in der Amortisation bleibt er auch.
 2. Heimat-Station ist Standard für „Abfahrten“.
 3. Strecken und Ziele am gesperrten Gerät: derzeit sichtbar. Ein Schalter „Auf dem Sperrbildschirm ausblenden“ fehlt.
-4. Stationsausstattung: nur B+R, P+R und Barrierefreiheit, weil mehr nicht in den Daten steht.
+4. Stationsausstattung: B+R, P+R und Barrierefreiheit aus den Ortsdaten, Aufzug, WC und Fahrradständer aus OpenStreetMap,
+   soweit dort erfasst (§3.1).
 5. Inline-Zeile der Amortisation: unverändert (Prozent); die Widersprüche zwischen `DESIGN_FINAL_SYNTHESIS.md` §9.10 und `DESIGN.md` §5.9
    sind nicht entschieden.
 6. WC in der Planner-Ansicht: `OEBB_LIVE.md` §C3.4 ordnet `OC` dem Rollstuhl-Symbol zu (Goldens in `Fixtures/OEBB/ux`). Das
@@ -95,6 +108,5 @@ ohne Netz. WidgetKit lässt sich im Simulator nicht aufnehmen; die Vorschau erse
 
 ## 9. Nicht gebaut
 
-- Watch-Komplikationen: kein watchOS-Target im Projekt.
-- Stationsausstattung Aufzug und WC: Pipeline-Erweiterung, eigenes Paket.
+- Watch-Komplikationen: kein watchOS-Target im Projekt (mit einer kostenlosen Apple-ID ist ein zweites Target nicht vorgesehen).
 - Via-Favoriten in „Nächste Verbindung“: werden nicht abgefragt (der Cache hätte die Zwischenhalte nicht).

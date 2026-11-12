@@ -14,20 +14,27 @@ Bedienung, Frost-Karten für Inhalte.
 ## Funktionen
 
 - **Übersicht** – riesige Amortisations-Anzeige mit „Gipfel“-Grafik, Break-even-Prognose, Kennzahlen, Schnellerfassung
-- **Fahrten erfassen in Sekunden** – 1.487 Haltestellen (ÖBB-Fahrplandaten, OSM, Wiener Linien), Lieblingsfahrten,
-  „Nochmal fahren“, Hin & Retour, Mitfahrende, Notizen
-- **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (26.000+ Verbindungen, Tarif ab 14.12.2025), sonst
-  kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse
+- **Fahrten erfassen in Sekunden** – 39.711 Haltestellen und 21.050 Orte (ÖBB-, Verbund- und Wiener-Linien-Fahrplandaten, OSM) mit
+  Offline-Suche, Lieblingsfahrten, „Nochmal fahren“, Hin & Retour, Via-Halte, Mitfahrende, Notizen
+- **Fahrplan wie in der ÖBB-App** – Verbindungen und Abfahrtstafeln mit Echtzeit, Preis und „Deckt dein KlimaTicket die Fahrt?“,
+  Zugsuche nach Zugnummer, **Live verfolgen** mit Live Activity, **Zug-Radar** und Karte mit Ebenen, Störungen,
+  Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme** (Live-Daten nur mit deiner Einwilligung, nur bei geöffneter App)
+- **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (29.883 Verbindungen von 33 Ausgangsorten, Tarif ab 14.12.2025),
+  sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
 - **Alle KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
-  und alle regionalen Tickets aller Bundesländer
+  und alle regionalen Tickets aller Bundesländer (80 Produkte)
 - **Statistik** – Ersparnis-Verlauf mit Prognose, Monatsbilanz, Verkehrsmittel, Wochentage, Reise-Kalender,
-  Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, Auto-Vergleich, CO₂-Bilanz
-- **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre
+  Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, **Was wäre wenn?**, Öffis vs. Auto, CO₂-Bilanz, Österreich-Karte, Jahresbericht als PDF
+- **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen
+- **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
+  Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
 - **Automatische Fahrterkennung** (optional) – erkennt Fahrten zwischen deinen Stamm-Bahnhöfen und schlägt sie vor
-- **Widgets, Sperrbildschirm, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung
-- **Konten** – Anmeldung mit Apple, Google oder Microsoft, Cloud-Sync zwischen Geräten über ein eigenes, kostenloses
-  Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
+- **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
+  einen Cache und machen nie einen Netzaufruf
+- **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick
+- **Konten** – Anmeldung mit Google, Microsoft oder Apple (je nachdem, was dein Backend eingerichtet hat) und Cloud-Sync zwischen Geräten
+  über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
 - **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
 - **Datenschutz** – ohne Konto bleibt alles auf dem iPhone; kein Tracking, keine Werbung
 

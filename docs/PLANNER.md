@@ -124,9 +124,12 @@ both parameters, not as a spoken phrase with two stations.
 
 ## 11. Not built, and why
 
-- **Widget „Nächste Verbindung“**: a widget needs live data in the background (refresh of the timetable). OEBB_LIVE §2.3
-  allows no background requests except an active „Live verfolgen“ journey. A widget that shows only the last connection
-  from the device cache is possible; it is the next step if the owner wants it.
+**Built since this section was first written:** the widget „Nächste Verbindung“ (`nextConnection`, docs/WIDGETS.md §4). It
+shows only the cache in the App Group, which the app fills with consent, while the app is visible and at most every 15
+minutes (`WidgetCacheSync`); there is still no background request (OEBB_LIVE §2.3). It covers direct favourite routes; via
+routes are not asked for.
+
+
 - **Wagenreihung**: not in the ÖBB responses that were checked (OEBB_LIVE §R6, „NO DATA“). Nothing is shown without data.
 - **Leg-level „Fahrt erfassen“** (choose the legs to log): not built in this round. The price of a partly logged connection
   would need its own distance share of the quote and a coverage rule for the cut; both need a device check first.
