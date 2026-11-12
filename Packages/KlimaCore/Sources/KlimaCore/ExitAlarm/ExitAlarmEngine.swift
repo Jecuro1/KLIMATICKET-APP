@@ -172,7 +172,15 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
         let now = clock()
         let commands = book.apply(.tick, now: now, config: config)
         book.prune(now: now)
-        if let testAt, !testRang, now >= testAt { testRang = true }
+        if let testAt {
+            // A test that nobody looked at for two minutes is dropped instead of appearing late.
+            if now > testAt.addingTimeInterval(120) {
+                self.testAt = nil
+                testRang = false
+            } else if !testRang, now >= testAt {
+                testRang = true
+            }
+        }
         run(commands, now: now)
         changed()
     }

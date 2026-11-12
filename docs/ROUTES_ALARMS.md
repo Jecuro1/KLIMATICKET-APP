@@ -78,6 +78,7 @@ Hinweis auslösen kann.
 | Art | Kennung | Quelle |
 |---|---|---|
 | Live verfolgen | `livefollow-…` (sofort, nicht ausstehend) | `FollowRecordStore` (laufende Verfolgung) |
+| Aussteige-Wecker | Zeile `exitAlarm\|<Fahrt>\|<Halt>`; Ersatz-Mitteilungen `exitalarm.<UUID>.<0…2>` (ohne eigene Zeile) | `ExitAlarmService` (Buch der Wecker, `docs/EXIT_ALARM.md`) |
 | Abfahrtserinnerung | `planner.reminder.<Verbindung>` | `PlannerReminders` |
 | Route mit Zeitplan | `route.<Route-UUID>.<Wochentag>` | `SavedRouteReminders` |
 | Ticket läuft ab | `renewal.<Ticket-UUID>.<Tage>` | `NotificationService` |

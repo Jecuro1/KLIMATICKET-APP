@@ -161,6 +161,10 @@ final class SystemExitAlarmScheduler: ExitAlarmScheduling {
     private let notifications = NotificationExitScheduler()
     private var notificationsAllowed = false
     private var ids: [UUID: String] = [:]
+    /// The last AlarmKit attempt failed (the system said no): `kind` then says what really rings, the notifications.
+    private(set) var alarmKitFailed = false
+    /// Called on the main actor when what `kind` says may have changed (a permission answered, an attempt failed or worked).
+    var onStatusChange: (() -> Void)?
     var onEvent: ((ExitAlarmSchedulerEvent) -> Void)? {
         didSet { alarmKit.onEvent = onEvent }
     }
@@ -171,7 +175,7 @@ final class SystemExitAlarmScheduler: ExitAlarmScheduling {
     }
 
     var kind: ExitAlarmKind {
-        if alarmKit.isAuthorized { return .alarmKit }
+        if alarmKit.isAuthorized, !alarmKitFailed { return .alarmKit }
         return notificationsAllowed ? .notifications : .none
     }
 
@@ -230,9 +234,17 @@ final class SystemExitAlarmScheduler: ExitAlarmScheduling {
             alarmKit.cancel(id: content.id)   // an alarm of the same id is replaced, not stacked
             do {
                 try await alarmKit.schedule(content, at: date)
+                await MainActor.run {
+                    alarmKitFailed = false
+                    onStatusChange?()
+                }
                 return
             } catch {
-                // Too many alarms or the system said no: the notifications take over below.
+                // Too many alarms or the system said no: the notifications take over below, and the status says so.
+                await MainActor.run {
+                    alarmKitFailed = true
+                    onStatusChange?()
+                }
             }
         }
         if await notifications.schedule(content, at: date) { return }

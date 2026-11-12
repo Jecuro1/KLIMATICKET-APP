@@ -70,6 +70,7 @@ final class ExitAlarmService {
             locationAuthorization = engine.location.authorization
             alarmKind = scheduler.kind
         }
+        system?.onStatusChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
         engine.onChange = { [weak self] in
             // Engine callbacks arrive on the main thread (location, timers, notification responses).
             MainActor.assumeIsolated { self?.engineChanged() }

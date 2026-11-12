@@ -103,6 +103,13 @@ final class ExitAlarmPresentationTests: XCTestCase {
         XCTAssertEqual(options.first?.isTransfer, false)
     }
 
+    func testTheFallbackNotificationsBelongToTheExitAlarmKind() {
+        let identifier = "exitalarm.\(ExitAlarmUUID.make(from: "trip|stop").uuidString).1"
+        XCTAssertEqual(AlarmIdentifier.kind(of: identifier), .exitAlarm)
+        XCTAssertEqual(AlarmIdentifier.kind(of: "exit.alarm.x"), .other)
+        XCTAssertTrue(AlarmKind.allCases.contains(.exitAlarm))
+    }
+
     func testStopsThatTheTrainHasReachedAreNotOffered() {
         let stopovers = F.stops.enumerated().map { index, stop in
             Stopover(location: Location(lid: "lid-\(index)", name: stop.name, coordinate: stop.point),

@@ -42,7 +42,7 @@ final class AlarmsModel {
         // Only the kinds that have a row of their own; the weekly summary is read from the settings below.
         let listed = pending.filter { request in
             let kind = AlarmIdentifier.kind(of: request.identifier)
-            return kind != .other && kind != .weeklySummary && kind != .liveFollow
+            return kind != .other && kind != .weeklySummary && kind != .liveFollow && kind != .exitAlarm   // MARK: exitalarm – its rows come from the book
         }
         let groups = Dictionary(grouping: listed) { AlarmIdentifier.groupKey(of: $0.identifier) }
         var rows: [AlarmItem] = []
@@ -51,6 +51,7 @@ final class AlarmsModel {
         }
         rows += pausedRows(pendingKeys: Set(groups.keys), titles: titles, now: now)
         if let record = FollowRecordStore.load() { rows.append(liveFollowRow(record, now: now)) }
+        rows += exitAlarmRows(now: now)   // MARK: exitalarm
         rows.append(weeklyRow(enabled: app.settings.weeklySummaryEnabled, now: now))
         items = AlarmSorting.sorted(rows)
 
@@ -105,6 +106,19 @@ final class AlarmsModel {
                          detail: "\(target.boardingStop.name) → \(target.alightStop.name)", nextDate: departure, isOn: true)
     }
 
+    // MARK: exitalarm – the armed Aussteige-Wecker (docs/EXIT_ALARM.md). Their ring is an AlarmKit alarm or three notifications; the
+    // row comes from the app's own book, so it shows what the app will do, with the moment it computed.
+    private static let exitRowPrefix = "exitAlarm|"
+
+    private func exitAlarmRows(now: Date) -> [AlarmItem] {
+        ExitAlarmService.shared.book.active.map { state in
+            AlarmItem(id: Self.exitRowPrefix + state.id, kind: .exitAlarm, title: ExitAlarmPresentation.title(state),
+                      detail: "\(state.spec.lineName) · \(ExitAlarmPresentation.statusLine(state, now: now))",
+                      nextDate: ExitAlarmPlanner.triggerMoment(state, now: now),
+                      scheduleText: state.spec.lead.title, isOn: true)
+        }
+    }
+
     private func weeklyRow(enabled: Bool, now: Date) -> AlarmItem {
         var components = DateComponents()
         components.weekday = 1
@@ -131,6 +145,8 @@ final class AlarmsModel {
         switch item.kind {
         case .liveFollow:
             if !on { LiveFollowTracker.shared.stop() }
+        case .exitAlarm:
+            if !on { ExitAlarmService.shared.cancel(String(item.id.dropFirst(Self.exitRowPrefix.count))) }   // MARK: exitalarm
         case .weeklySummary:
             app.settings.weeklySummaryEnabled = on
             await NotificationService().setWeeklySummary(enabled: on)
@@ -156,6 +172,8 @@ final class AlarmsModel {
         switch item.kind {
         case .liveFollow:
             LiveFollowTracker.shared.stop()
+        case .exitAlarm:
+            ExitAlarmService.shared.cancel(String(item.id.dropFirst(Self.exitRowPrefix.count)))   // MARK: exitalarm
         case .weeklySummary:
             app.settings.weeklySummaryEnabled = false
             await NotificationService().setWeeklySummary(enabled: false)

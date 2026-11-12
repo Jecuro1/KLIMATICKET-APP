@@ -567,6 +567,15 @@ final class ExitAlarmPlannerTests: XCTestCase {
 
     // MARK: Test alarm
 
+    func testAnOldTestAlarmIsDroppedNotShownLate() {
+        let h = ExitAlarmHarness()
+        h.engine.scheduleTest(after: 10, soundKey: "standard")
+        h.now = h.now.addingTimeInterval(200)
+        h.engine.tick()
+        XCTAssertFalse(h.engine.testRang)
+        XCTAssertNil(h.engine.testAt)
+    }
+
     func testTestAlarmRingsInTenSecondsAndIsNotPartOfTheBook() {
         let h = ExitAlarmHarness()
         h.engine.scheduleTest(after: 10, soundKey: "standard")

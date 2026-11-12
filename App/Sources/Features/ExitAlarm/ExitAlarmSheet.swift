@@ -305,6 +305,9 @@ struct ExitAlarmSheet: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            if let running = LiveFollowTracker.shared.target, running.tripID != input.target.tripID {
+                Text("Dafür endet die Verfolgung von \(running.lineName), und mit ihr ihre Wecker.")
+            }
             if service.alarmKind == .notifications {
                 Text("Ohne Wecker-Erlaubnis kommen drei Mitteilungen im Abstand von 20 Sekunden. Lautlos-Schalter und Fokus können sie stumm schalten.")
             }

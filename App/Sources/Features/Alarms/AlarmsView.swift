@@ -155,6 +155,7 @@ struct AlarmsView: View {
         switch item.kind {
         case .routeReminder: "Die Erinnerungen dieser Route und ihr Zeitplan werden entfernt. Die Route bleibt erhalten."
         case .liveFollow: "Die Live-Verfolgung endet."
+        case .exitAlarm: "Der Aussteige-Wecker wird ausgeschaltet. Die Verfolgung läuft weiter."
         case .weeklySummary: "Der Wochenrückblick ist danach aus."
         default: "Diese Erinnerung wird entfernt."
         }
@@ -298,6 +299,7 @@ extension AlarmKind {
     var symbol: String {
         switch self {
         case .liveFollow: "dot.radiowaves.left.and.right"
+        case .exitAlarm: "bell.badge.waveform.fill"
         case .departure: "bell.fill"
         case .routeReminder: "bookmark.fill"
         case .ticketRenewal: "ticket.fill"
@@ -311,6 +313,7 @@ extension AlarmKind {
     var tint: Color {
         switch self {
         case .liveFollow, .departure: Theme.glacier
+        case .exitAlarm: Theme.dawn
         case .routeReminder, .weeklySummary: Theme.dusk
         case .ticketRenewal: Theme.gold
         case .objectionLetter: Theme.dawn

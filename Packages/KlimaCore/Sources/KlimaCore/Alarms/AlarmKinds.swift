@@ -19,6 +19,8 @@ public enum AlarmKind: String, CaseIterable, Codable, Sendable, Hashable {
     case passengerRights
     /// Sunday's week review.
     case weeklySummary
+    /// MARK: exitalarm – an armed Aussteige-Wecker (docs/EXIT_ALARM.md). Its notifications are the fallback ring, not rows of their own.
+    case exitAlarm
     /// Notices that have no alarm of their own (break-even, trip suggestion, …): history only.
     case other
 
@@ -26,13 +28,14 @@ public enum AlarmKind: String, CaseIterable, Codable, Sendable, Hashable {
     public var sortRank: Int {
         switch self {
         case .liveFollow: 0
-        case .departure: 1
-        case .routeReminder: 2
-        case .ticketRenewal: 3
-        case .objectionLetter: 4
-        case .passengerRights: 5
-        case .weeklySummary: 6
-        case .other: 7
+        case .exitAlarm: 1
+        case .departure: 2
+        case .routeReminder: 3
+        case .ticketRenewal: 4
+        case .objectionLetter: 5
+        case .passengerRights: 6
+        case .weeklySummary: 7
+        case .other: 8
         }
     }
 }
@@ -47,6 +50,8 @@ public enum AlarmIdentifier {
     public static let letterPrefix = "letter."
     public static let passengerRightsPrefix = "perk.passengerRights."
     public static let weeklySummary = "weekly.summary"
+    /// MARK: exitalarm – "exitalarm.<UUID>.<0…2>": the three notifications of one Aussteige-Wecker (the fallback ring).
+    public static let exitAlarmPrefix = "exitalarm."
 
     /// The kind an identifier belongs to. `.other` for anything the Alarms screen does not manage on its own.
     public static func kind(of identifier: String) -> AlarmKind {
@@ -57,6 +62,7 @@ public enum AlarmIdentifier {
         if identifier.hasPrefix(renewalPrefix) { return .ticketRenewal }
         if identifier.hasPrefix(passengerRightsPrefix) { return .passengerRights }
         if identifier == weeklySummary { return .weeklySummary }
+        if identifier.hasPrefix(exitAlarmPrefix) { return .exitAlarm }
         return .other
     }
 

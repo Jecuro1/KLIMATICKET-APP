@@ -84,10 +84,13 @@ Die App wird mit kostenloser Apple-ID neu signiert (AltStore, SideStore). Eine F
 
 - Der Fahrplan-Wecker folgt Verspätungen nur, wenn die App Daten bekommt (offen, im Hintergrund durch die Standort-Updates, oder durch den Hintergrundlauf der Verfolgung, den iOS nach eigenem Ermessen startet). Ohne Daten klingelt er zur zuletzt bekannten Ankunft.
 - Die GPS-Schätzung nimmt die jetzige Geschwindigkeit. Ein Zug, der vor dem Halt bremst, kommt später als geschätzt; der Wecker klingelt dann etwas früher, nicht später. Mit Vorlauf „bei Ankunft“ ist der Kreis 1,5 km groß, das sind je nach Tempo 1 bis 2 Minuten vor dem Halt.
+- „Vorbeigefahren“ misst die Luftlinie zum Halt. Auf Schleifen und Serpentinen (Arlberg, Tauern) kann die Luftlinie wachsen, bevor der Zug den Halt erreicht; ein nicht quittierter Wecker könnte dort zu früh „vorbeigefahren“ melden. Quittieren verhindert es.
+- Die Art des Weckers in den Einstellungen zeigt den Stand des **letzten Versuchs**: Scheitert AlarmKit beim Stellen, steht dort „Mitteilung, lautlos möglich“, bis ein Versuch wieder klappt.
 - Die Verfolgung deckt die **erste Fahrt-Teilstrecke** einer Verbindung ab (`docs/OEBB_LIVE.md` §R8). Weckt der Nutzer für einen späteren Zug, muss er diese Fahrt verfolgen (Zug-Radar) oder die Verfolgung wechseln; ein Wecker einer anderen Fahrt endet, wenn die Verfolgung wechselt.
 - Das Vollbild erscheint, wenn die App läuft. Ist sie beendet, klingelt der Fahrplan-Wecker (System) und eine Standort-Weckung startet die App im Hintergrund; das Vollbild folgt, sobald das Gerät entsperrt und die App aktiv ist.
+- Ob iOS einen Kreis auch bei „Beim Verwenden“ meldet, wenn die App im Hintergrund läuft, ist **ungeprüft**; die Weckung der beendeten App braucht in jedem Fall „Immer“.
 - Der Kreis wird beim Start der Fahrt nicht ausgelöst, wenn der Nutzer schon darin einsteigt (iOS meldet nur das Betreten). Dann tragen die GPS-Updates und der Fahrplan.
-- Im Alarme-Bildschirm (`docs/ROUTES_ALARMS.md`) erscheinen die Aussteige-Wecker **noch nicht** als eigene Zeile (Stretch, nicht gebaut). Die Karte steht im Detail der Verfolgung.
+- Der Alarme-Bildschirm (`docs/ROUTES_ALARMS.md` §2) listet jeden scharfen Aussteige-Wecker als Zeile (Art `exitAlarm`, aus dem Buch der App, mit dem Moment, den der Planner errechnet hat). „Aus“ und „Löschen“ schalten den Wecker aus; die Verfolgung läuft weiter. Die drei Ersatz-Mitteilungen (`exitalarm.…`) haben keine eigene Zeile.
 
 ## 9. GERÄTE-CHECKLISTE (nur ein echtes iPhone kann das beweisen)
 
@@ -110,7 +113,6 @@ Vor jeder Fahrt, auf die du dich verlässt, einmal durchgehen. Notiere Gerät, i
 
 ## 10. Bewusst nicht gebaut
 
-- Aussteige-Wecker als Zeile im Alarme-Bildschirm (`docs/ROUTES_ALARMS.md`): Die AlarmKit-Wecker sind keine ausstehenden Mitteilungen; die Zeile bräuchte eine eigene Quelle. Offen.
 - Eigene Anfragen des Weckers für eine Fahrt ohne Verfolgung (Rechtsrahmen: 40 Anfragen je Minute für die ganze App): Der Wecker nutzt die Anfragen der Verfolgung.
 - Hintergrund-Wecken per Push (kein APNs ohne bezahlten Account, `docs/LIVE_PUSH.md`).
 - Wecker für mehrere Fahrten gleichzeitig mit eigenem Polling: bis zu drei Wecker, aber nur für die verfolgte Fahrt.
