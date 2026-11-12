@@ -75,6 +75,7 @@ struct RadarTimeChip: View {
 struct RadarTimeCard: View {
     var travel: RadarTimeModel
     @ScaledMetric(relativeTo: .largeTitle) private var timeSize: CGFloat = 40
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -93,7 +94,9 @@ struct RadarTimeCard: View {
 
     /// The time, how far from now, and the close button on one line: the card takes as little of the map as it can.
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+                                                  : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs))
+        return layout {
             Text(travel.clockText)
                 .font(.system(size: timeSize, weight: .semibold, design: .rounded))
                 .monospacedDigit()
@@ -109,20 +112,30 @@ struct RadarTimeCard: View {
                     Text(note).font(.footnote).foregroundStyle(Theme.textSecondary)
                 }
             }
-            Spacer(minLength: 0)
-            Button {
-                withMotion(Motion.smooth) { travel.close() }
-            } label: {
-                Image(systemName: "chevron.down")
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(width: 40, height: 40)
-                    .background(Theme.surfaceSecondary, in: .circle)
+            .fixedSize(horizontal: false, vertical: true)
+            if !typeSize.isAccessibilitySize {
+                Spacer(minLength: 0)
+                closeButton
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Zeitregler schließen")
         }
-        .accessibilityElement(children: .contain)
+        .overlay(alignment: .topTrailing) {
+            // At accessibility sizes the header stacks; the close button stays in the corner.
+            if typeSize.isAccessibilitySize { closeButton }
+        }
+    }
+
+    private var closeButton: some View {
+        Button {
+            withMotion(Motion.smooth) { travel.close() }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.body.weight(.bold))
+                .foregroundStyle(Theme.textSecondary)
+                .frame(width: 44, height: 44)
+                .background(Theme.surfaceSecondary, in: .circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Zeitregler schließen")
     }
 
     private var subtitle: String {
@@ -157,7 +170,7 @@ struct RadarTimeCard: View {
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, 12)
                 .frame(minHeight: 44)
                 .background(Theme.surfaceSecondary, in: .capsule)
         }
@@ -176,7 +189,7 @@ struct RadarTimeCard: View {
                     Text(speed.title)
                         .font(.subheadline.weight(.bold))
                         .monospacedDigit()
-                        .frame(minWidth: 40, minHeight: 40)
+                        .frame(minWidth: 36, minHeight: 40)
                         .background(travel.speed == speed ? Theme.accent.opacity(0.18) : .clear, in: .capsule)
                         .foregroundStyle(travel.speed == speed ? Theme.accentText : Theme.textSecondary)
                 }
@@ -196,7 +209,7 @@ struct RadarTimeCard: View {
                 .font(.title3.weight(.bold))
                 .foregroundStyle(Theme.onAccent)
                 .symbolReplaceTransition()
-                .frame(width: 52, height: 52)
+                .frame(width: 50, height: 50)
                 .background(Theme.ctaGradient, in: .circle)
                 .shadow(color: Theme.accent.opacity(0.35), radius: 10, y: 4)
         }
@@ -341,6 +354,7 @@ struct RadarTimeBanner: View {
         .foregroundStyle(Theme.textPrimary)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)   // a banner, not a page: it grows with the text up to this size
         .glassEffect(.regular.tint(Theme.dusk.opacity(0.30)), in: .rect(cornerRadius: 18))
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .accessibilityElement(children: .ignore)

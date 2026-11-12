@@ -161,7 +161,8 @@ extension RadarView {
 
     /// The bottom area takes more room while the heat panel is up: the card (at most 52 % of the map, scrolling inside) and the layer bar.
     var statusMaxHeight: CGFloat {
-        heatOn ? max(360, model.mapSize.height * 0.78) : 360
+        if travel.isOpen { return max(360, model.mapSize.height * 0.58) }   // MARK: radartime – the open scrubber card
+        return heatOn ? max(360, model.mapSize.height * 0.78) : 360
     }
 
     // MARK: Presets

@@ -56,7 +56,7 @@ final class RadarTimeModel {
     @ObservationIgnored private var userChoseFine = false
     /// Synthetic trains, no network: no budget to keep (the demo service is local).
     @ObservationIgnored var demo = false
-    @ObservationIgnored private var demoFeaturedLine: String?
+    @ObservationIgnored private var demoFeatured: (line: String, near: GeoPoint)?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var needsRebuild = false
     @ObservationIgnored private var lastRebuild = Date.distantPast
@@ -248,9 +248,9 @@ final class RadarTimeModel {
     // MARK: Demo
 
     /// The CI scenes: the scrubber open at `minutes` from now, optionally playing. Demo data only.
-    func applyDemo(minutes: Double, playing: Bool, featuredLine: String? = nil) {
+    func applyDemo(minutes: Double, playing: Bool, featured: (line: String, near: GeoPoint)? = nil) {
         demo = true
-        demoFeaturedLine = featuredLine
+        demoFeatured = featured
         isOpen = true
         let base = RadarTimeAxis.base(now: Date())
         playBase = base
@@ -431,10 +431,13 @@ final class RadarTimeModel {
             cellDegrees: RadarClustering.cellSize(latitudeSpan: live.spanDegrees, longitudeSpan: box.east - box.west,
                                                   widthPoints: Double(live.mapSize.width), heightPoints: Double(live.mapSize.height)))
         if straight != hasStraightPins { hasStraightPins = straight }
-        // The CI scene selects one train so the trail shows (the same tap a user does, by line name).
-        if let featured = demoFeaturedLine, live.selectedTripID == nil, let pin = built.first(where: { $0.vehicle.line?.name == featured }) {
-            live.selectedTripID = pin.id
-            demoFeaturedLine = nil
+        // The CI scene selects one train so the trail shows (the same tap a user does): the one of this line nearest to a point.
+        if let featured = demoFeatured, live.selectedTripID == nil, !built.isEmpty {
+            let candidates = built.filter { $0.vehicle.line?.name == featured.line }
+            if let pin = candidates.min(by: { $0.coordinate.distanceKm(to: featured.near) < $1.coordinate.distanceKm(to: featured.near) }) {
+                live.selectedTripID = pin.id
+                demoFeatured = nil
+            }
         }
         trail = live.selectedTripID.map { timeline.trail(for: $0, endingAt: shown, route: routes[$0]) } ?? []
         delayReference = timeline.delayDataAge(at: shown, now: now).map { ($0, now) }

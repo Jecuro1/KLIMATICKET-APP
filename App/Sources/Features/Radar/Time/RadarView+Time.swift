@@ -38,13 +38,13 @@ extension RadarView {
     /// The CI scenes (`RadarTimeScreenshotHost`): synthetic trains, the scrubber open at +45 minutes; playing from +30 minutes, zoomed to the Westbahn with
     /// one train selected; loading, stuck at three snapshots.
     func applyTimePreset(_ preset: RadarPreset) {
-        layersRaw = MapLayerSelection(layers: [.stations, .trains]).storageValue
+        layersRaw = MapLayerSelection(layers: [.trains]).storageValue   // only the trains: the scene is about them
         travel.demo = true
         switch preset {
         case .timeTravelPlaying:
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.12, longitude: 15.45).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 1.5, longitudeDelta: 2.1)))
-            travel.applyDemo(minutes: 30, playing: true, featuredLine: "RJX 60")
+            travel.applyDemo(minutes: 30, playing: true, featured: ("RJX 60", GeoPoint(latitude: 48.2, longitude: 15.6)))
         case .timeTravelLoading:
             travel.applyDemo(minutes: 45, playing: false)
         default:
