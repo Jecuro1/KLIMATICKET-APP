@@ -70,10 +70,11 @@ struct RadarHeatShareCard: View {
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 3) {
-                Text("Stand \(Format.date(date)), \(Format.time(date)) Uhr · Radar-Bereich Österreich")
+                Text("Stand \(Format.date(date)), \(Format.time(date)) Uhr")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
-                Text("Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet. Züge ohne Echtzeit-Daten zählen nie als pünktlich. Grau schraffiert: zu wenige Züge für eine Farbe. KlimaBilanz ist eine unabhängige App.")
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Radar-Bereich Österreich und Grenzgebiete. Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet. Züge ohne Echtzeit-Daten zählen nie als pünktlich. Grau schraffiert: zu wenige Züge für eine Farbe. KlimaBilanz ist eine unabhängige App.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

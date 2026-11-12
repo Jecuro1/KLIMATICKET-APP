@@ -103,7 +103,8 @@ extension RadarView {
     /// A tap on the map: the cell with trains under the finger (or the nearest within a finger's width) opens its sheet; a tap on
     /// nothing closes it. A train or a number is a button of its own and never gets here.
     func handleMapTap(at point: CGPoint, proxy: MapProxy) {
-        guard heatOn, let coordinate = proxy.convert(point, from: .local) else { return }
+        // A trip sheet that is up (the map stays touchable behind it) keeps its place: a second sheet cannot be shown over it.
+        guard heatOn, sheetVehicle == nil, let coordinate = proxy.convert(point, from: .local) else { return }
         let tap = GeoPoint(latitude: coordinate.latitude, longitude: coordinate.longitude)
         // A finger is about 24 points wide: that many kilometres at this zoom, never less than one cell.
         let height = max(Double(model.mapSize.height), 1)

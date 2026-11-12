@@ -194,7 +194,15 @@ Rangfolge der Brennpunkte, leere und Teil-Antworten, Doppelte und fehlerhafte Po
 
 **Perf-Fall.** `radarHeat` in `PerfFeature` (`PerfFeatureScreens.swift`), `RadarHeatPerfTests` (`PerfTests/FeaturePerfTests.swift`) und die Tour-Liste in `scripts/perf_profile.sh`: dieselbe Karte mit der Ebene an (Demo-Szene `heat`), gepannt wie die anderen Karten. Der CI-Job `perf` läuft nur mit `[perf]` oder von Hand und dauert 55 bis 95 Minuten; er wurde für diese Arbeit **nicht** ausgelöst, es gibt also **keine Messung** und keine Baseline. `scripts/perf_compare.py` führt einen Bildschirm, der nur in einem Lauf vorkommt, als „neu“.
 
-## 9. Was nur auf einem iPhone zu prüfen ist
+## 9. Geprüft und nicht geprüft
+
+**Gesehen** (CI-Screenshots im Simulator, drei Läufe, hell und dunkel, Demo-Züge): die Ebene über Österreich, das geschlossene und das offene Panel, die gescrollten Listen, das Blatt eines Feldes mit Rahmen und Brennpunkt-Nummern,
+das Panel in der größten Textgröße (`accessibility5`) und das Teilen-Bild. Der erste Lauf zeigte vier Fehler, die behoben sind: grüne Felder auf grünem Land (kaum zu sehen, auf der dunklen Karte gar nicht: jetzt Untergrund und Rand), Zahlen-Blasen über
+den Feldern (jetzt kleine Ringe), ein Panel ohne Glasfläche in der größten Textgröße (jetzt begrenzte, scrollende Karte) und ein Demo-Hash, der ganze Reihen von Zügen auf einmal ausfallen ließ. Gelegentlich lädt die Basiskarte beim Aufnehmen nicht (beiger Raster ohne Kacheln);
+dann fehlen auch die Felder, weil MapKit Überlagerungen kachelweise zeichnet (zweimal gesehen: `light-radarHeatPanel` in Lauf 2 und `light-radarHeatCell` in Lauf 3, jeweils nicht im Code begründet). Nicht gesehen: die Überblendung (Screenshots sind statisch),
+der Verlauf (er braucht drei Punkte über eine Minute), das Teilen-Blatt selbst (nur das Bild), VoiceOver, Reduce Motion.
+
+## 9a. Was nur auf einem iPhone zu prüfen ist
 
 - Wie flüssig die Karte mit bis zu 900 Überlagerungen schiebt und zoomt (die CI-Screenshots zeigen den Stand, nicht die Bildrate); ob die vier Schritte der Überblendung flackern.
 - Ob das Tippen auf die Karte das Zoomen mit zwei Fingern oder das Doppeltippen stört (die Geste läuft gleichzeitig mit denen der Karte).
