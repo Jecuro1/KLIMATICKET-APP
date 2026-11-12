@@ -8,7 +8,6 @@ import KlimaCore
 struct RadarTimeScrubber: View {
     var travel: RadarTimeModel
     @State private var isDragging = false
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     private let thumb: CGFloat = 30
     private let trackHeight: CGFloat = 8
@@ -116,7 +115,8 @@ struct RadarTimeScrubber: View {
                 label("+3 Std", at: 10_800, width: width)
             }
         }
-        .frame(height: typeSize.isAccessibilitySize ? 26 : 16)
+        .frame(height: 18)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // tick labels are decoration: VoiceOver speaks the value, the big time says it
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }

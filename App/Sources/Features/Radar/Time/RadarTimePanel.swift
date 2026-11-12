@@ -97,6 +97,7 @@ struct RadarTimeCard: View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
                                                   : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs))
         return layout {
+            if typeSize.isAccessibilitySize { closeButton.frame(maxWidth: .infinity, alignment: .trailing) }
             Text(travel.clockText)
                 .font(.system(size: timeSize, weight: .semibold, design: .rounded))
                 .monospacedDigit()
@@ -117,10 +118,6 @@ struct RadarTimeCard: View {
                 Spacer(minLength: 0)
                 closeButton
             }
-        }
-        .overlay(alignment: .topTrailing) {
-            // At accessibility sizes the header stacks; the close button stays in the corner.
-            if typeSize.isAccessibilitySize { closeButton }
         }
     }
 
@@ -168,8 +165,8 @@ struct RadarTimeCard: View {
         Button { travel.backToNow() } label: {
             Label("Zurück zu Jetzt", systemImage: "arrow.uturn.backward")
                 .font(.subheadline.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                .minimumScaleFactor(typeSize.isAccessibilitySize ? 1 : 0.8)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
                 .background(Theme.surfaceSecondary, in: .capsule)
@@ -189,6 +186,7 @@ struct RadarTimeCard: View {
                     Text(speed.title)
                         .font(.subheadline.weight(.bold))
                         .monospacedDigit()
+                        .padding(.horizontal, 10)
                         .frame(minWidth: 36, minHeight: 40)
                         .background(travel.speed == speed ? Theme.accent.opacity(0.18) : .clear, in: .capsule)
                         .foregroundStyle(travel.speed == speed ? Theme.accentText : Theme.textSecondary)
@@ -200,6 +198,7 @@ struct RadarTimeCard: View {
         }
         .padding(3)
         .background(Theme.surfaceSecondary, in: .capsule)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)   // two short labels: they grow with the text, but not past a pair of fingers
         .haptic(.selection, trigger: travel.speed)
     }
 
@@ -207,6 +206,7 @@ struct RadarTimeCard: View {
         Button { travel.togglePlay() } label: {
             Image(systemName: travel.isPlaying ? "pause.fill" : "play.fill")
                 .font(.title3.weight(.bold))
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // the icon stays inside its circle
                 .foregroundStyle(Theme.onAccent)
                 .symbolReplaceTransition()
                 .frame(width: 50, height: 50)

@@ -260,7 +260,7 @@ struct RadarView: View {
         case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to Wien and its S-Bahn: single trains and small clusters
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.17, longitude: 16.30).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
-        case .timeTravel, .timeTravelPlaying, .timeTravelLoading:   // MARK: radartime
+        case .timeTravel, .timeTravelPlaying, .timeTravelLoading, .timeTravelChip:   // MARK: radartime
             applyTimePreset(preset)
         case .heat, .heatPanel, .heatLists, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)

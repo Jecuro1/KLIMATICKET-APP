@@ -42,11 +42,14 @@ extension RadarView {
         travel.demo = true
         switch preset {
         case .timeTravelPlaying:
-            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.12, longitude: 15.45).clCoordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 1.5, longitudeDelta: 2.1)))
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2, longitude: 15.6).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)))
             travel.applyDemo(minutes: 30, playing: true, featured: ("RJX 60", GeoPoint(latitude: 48.2, longitude: 15.6)))
         case .timeTravelLoading:
             travel.applyDemo(minutes: 45, playing: false)
+        case .timeTravelChip:   // the past, with the card folded to its chip: "Rückblick" in the banner, the time and the way back in the chip
+            travel.applyDemo(minutes: -15, playing: false)
+            travel.close()
         default:
             travel.applyDemo(minutes: 45, playing: false)
         }

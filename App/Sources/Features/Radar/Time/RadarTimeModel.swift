@@ -431,12 +431,13 @@ final class RadarTimeModel {
             cellDegrees: RadarClustering.cellSize(latitudeSpan: live.spanDegrees, longitudeSpan: box.east - box.west,
                                                   widthPoints: Double(live.mapSize.width), heightPoints: Double(live.mapSize.height)))
         if straight != hasStraightPins { hasStraightPins = straight }
-        // The CI scene selects one train so the trail shows (the same tap a user does): the one of this line nearest to a point.
-        if let featured = demoFeatured, live.selectedTripID == nil, !built.isEmpty {
+        // The CI scene keeps one train selected so the trail shows (the same tap a user does): the one of this line nearest to a point, so the
+        // selection follows the time-lapse and stays in the picture.
+        if let featured = demoFeatured, !built.isEmpty {
             let candidates = built.filter { $0.vehicle.line?.name == featured.line }
-            if let pin = candidates.min(by: { $0.coordinate.distanceKm(to: featured.near) < $1.coordinate.distanceKm(to: featured.near) }) {
+            if let pin = candidates.min(by: { $0.coordinate.distanceKm(to: featured.near) < $1.coordinate.distanceKm(to: featured.near) }),
+               live.selectedTripID != pin.id {
                 live.selectedTripID = pin.id
-                demoFeatured = nil
             }
         }
         trail = live.selectedTripID.map { timeline.trail(for: $0, endingAt: shown, route: routes[$0]) } ?? []

@@ -198,9 +198,9 @@ struct RadarTimeDemoService: RadarService {
 
 // MARK: - Screenshot host
 
-/// CI scenes: the Zeitreise open at +45 minutes, playing, loading, and at the largest text size (synthetic trains, no network).
+/// CI scenes: the Zeitreise open at +45 minutes, playing, loading, at the largest text size, and folded to its chip in the past (synthetic trains, no network).
 struct RadarTimeScreenshotHost: View {
-    static let screens: Set<String> = ["radarTime", "radarTimePlaying", "radarTimeLoading", "radarTimeAX5"]
+    static let screens: Set<String> = ["radarTime", "radarTimePlaying", "radarTimeLoading", "radarTimeAX5", "radarTimeChip"]
 
     let screen: String
 
@@ -210,6 +210,8 @@ struct RadarTimeScreenshotHost: View {
             RadarView(preset: .timeTravelPlaying)
         case "radarTimeLoading":
             RadarView(preset: .timeTravelLoading)
+        case "radarTimeChip":
+            RadarView(preset: .timeTravelChip)
         case "radarTimeAX5":
             RadarView(preset: .timeTravel).dynamicTypeSize(.accessibility5)
         default:
