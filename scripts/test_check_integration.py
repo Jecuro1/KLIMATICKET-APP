@@ -137,6 +137,111 @@ enum Notes {
         # Nothing in Widgets/ or Shared/ may use the network today; a new entry needs a reviewed reason.
         self.assertEqual(check.NETWORK_ALLOW, {})
 
+    # --- sideload compatibility ----------------------------------------------------------------------------
+
+    YML = """targets:
+  KlimaBilanz:
+    info:
+      properties:
+        NSLocationWhenInUseUsageDescription: "Text"
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Text"
+        NSAlarmKitUsageDescription: "Text"
+        # a comment between the key and its modes
+        UIBackgroundModes:
+          - fetch
+          # - voip (commented out)
+          - location
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.example.refresh
+"""
+
+    @staticmethod
+    def entitlements(*keys):
+        rows = "".join(f"\t<key>{k}</key>\n\t<true/>\n" for k in keys)
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+                '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n' + rows + '</dict>\n</plist>\n')
+
+    def sideload_tree(self, yml=None, entitlements=("com.apple.security.application-groups",)):
+        self.write("project.yml", self.YML if yml is None else yml)
+        self.write("App/Supporting/KlimaBilanz-Sideload.entitlements", self.entitlements(*entitlements))
+
+    def test_a_tree_without_project_yml_is_not_checked(self):
+        self.assertEqual(check.sideload_problems(self.repo), [])
+
+    def test_the_reviewed_sideload_setup_passes(self):
+        self.sideload_tree()
+        self.write("App/Sources/Alarm.swift", "import AlarmKit\nimport CoreLocation\nstruct Alarmer {\n    let m = CLLocationManager()\n"
+                   "    func a() { m.requestAlwaysAuthorization(); m.allowsBackgroundLocationUpdates = true }\n}\n")
+        self.assertEqual(self.problems(), [])
+
+    def test_an_entitlement_that_needs_a_paid_account_fails(self):
+        for key in ("com.apple.developer.applesignin", "aps-environment", "com.apple.developer.usernotifications.time-sensitive",
+                    "com.apple.developer.usernotifications.critical-alerts", "com.apple.developer.associated-domains"):
+            with self.subTest(key=key):
+                self.sideload_tree(entitlements=("com.apple.security.application-groups", key))
+                found = self.problems()
+                self.assertEqual(len(found), 1, found)
+                self.assertIn(f"[sideload] App/Supporting/KlimaBilanz-Sideload.entitlements: entitlement {key}", found[0])
+
+    def test_only_the_sideload_entitlements_count(self):
+        # The generated KlimaBilanz.entitlements of the Xcode project carries Sign in with Apple for signed builds; CI never signs with it.
+        self.sideload_tree()
+        self.write("App/Supporting/KlimaBilanz.entitlements", self.entitlements("com.apple.developer.applesignin"))
+        self.assertEqual(self.problems(), [])
+
+    def test_a_broken_entitlements_file_is_reported(self):
+        self.sideload_tree()
+        self.write("App/Supporting/KlimaBilanz-Sideload.entitlements", "not a plist")
+        found = self.problems()
+        self.assertEqual(len(found), 1)
+        self.assertIn("not a property list", found[0])
+
+    def test_a_background_mode_off_the_list_fails(self):
+        for mode in ("audio", "voip", "remote-notification", "processing", "bluetooth-central"):
+            with self.subTest(mode=mode):
+                self.sideload_tree(yml=self.YML.replace("          - location\n", f"          - location\n          - {mode}\n"))
+                found = self.problems()
+                self.assertEqual(len(found), 1, found)
+                self.assertIn(f"UIBackgroundModes {mode}", found[0])
+
+    def test_a_commented_out_mode_does_not_count(self):
+        self.sideload_tree()
+        self.assertEqual(check._background_modes(self.YML), ["fetch", "location"])
+
+    def test_each_framework_needs_its_usage_string(self):
+        cases = [("import AlarmKit\nenum A {}\n", "NSAlarmKitUsageDescription"),
+                 ("import CoreLocation\nstruct L {\n    let m = CLLocationManager()\n}\n", "NSLocationWhenInUseUsageDescription"),
+                 ("struct L {\n    func f(_ m: Int) { m.requestAlwaysAuthorization() }\n}\n", "NSLocationAlwaysAndWhenInUseUsageDescription")]
+        for source, key in cases:
+            with self.subTest(key=key):
+                self.sideload_tree(yml=self.YML.replace(f"        {key}:", "        Unrelated:"))
+                self.write("App/Sources/Use.swift", source)
+                found = self.problems()
+                self.assertEqual(len(found), 1, found)
+                self.assertIn(f"project.yml: {key} is missing", found[0])
+                self.write("App/Sources/Use.swift", "struct Use {\n}\n")
+
+    def test_background_location_needs_the_location_mode(self):
+        self.sideload_tree(yml=self.YML.replace("          - location\n", ""))
+        self.write("App/Sources/Use.swift", "struct Use {\n    func f(_ m: Int) { m.allowsBackgroundLocationUpdates = true }\n}\n")
+        found = self.problems()
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("lacks location", found[0])
+
+    def test_names_in_comments_and_strings_do_not_ask_for_a_usage_string(self):
+        self.sideload_tree(yml=self.YML.replace("        NSAlarmKitUsageDescription:", "        Unrelated:"))
+        self.write("App/Sources/Notes.swift", '// import AlarmKit\nenum Notes {\n    static let text = "import AlarmKit and CLLocationManager"\n}\n')
+        self.assertEqual(self.problems(), [])
+
+    def test_the_shipped_lists_stay_short(self):
+        # A new entitlement or background mode is a decision of the owner: it goes on the list together with its reason.
+        self.assertEqual(sorted(check.ALLOWED_SIDELOAD_ENTITLEMENTS), ["com.apple.security.application-groups"])
+        self.assertEqual(sorted(check.ALLOWED_BACKGROUND_MODES), ["fetch", "location"])
+        self.assertTrue(all(reason for reason in {**check.ALLOWED_SIDELOAD_ENTITLEMENTS, **check.ALLOWED_BACKGROUND_MODES}.values()))
+
+    def test_the_repository_is_sideload_compatible(self):
+        self.assertEqual(check.sideload_problems(ROOT), [])
+
     # --- the real repository -------------------------------------------------------------------------------
 
     def test_the_repository_passes(self):
