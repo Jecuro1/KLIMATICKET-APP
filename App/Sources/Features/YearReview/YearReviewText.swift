@@ -61,7 +61,7 @@ enum YearReviewText {
         return "\(Format.number((factor * 100).rounded())) % der Strecke \(route)"
     }
 
-    /// "Luftlinie Bregenz – Wien: 530 km" – the great-circle distance the comparison is based on.
+    /// "Luftlinie Bregenz – Wien: 501 km" – the great-circle distance the comparison is based on.
     static func referenceNote(_ reference: ReferenceComparison) -> String {
         "Luftlinie \(reference.fromLabel) – \(reference.toLabel): \(Format.number(reference.referenceKm)) km"
     }

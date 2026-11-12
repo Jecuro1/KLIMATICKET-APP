@@ -44,8 +44,8 @@ final class ReferenceDistancesTests: XCTestCase {
         let to = try XCTUnwrap(Self.stations.station(id: pair.toID))
         let km = try XCTUnwrap(ReferenceDistances.distanceKm(pair, stations: lookup))
         XCTAssertEqual(km, from.location.distanceKm(to: to.location), accuracy: 1e-9)
-        // Great circle, not rail: Bregenz–Wien is about 530 km as the crow flies.
-        XCTAssertEqual(km, 530, accuracy: 25)
+        // Great circle, not rail: Bregenz–Wien is about 500 km as the crow flies (the rail line is longer).
+        XCTAssertEqual(km, 500, accuracy: 20)
     }
 
     func testAMissingStationSkipsThePair() {
