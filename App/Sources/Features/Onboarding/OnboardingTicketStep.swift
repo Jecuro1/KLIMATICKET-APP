@@ -18,10 +18,6 @@ struct OnbTicketStep: View {
                 Text(Self.title(for: scope))
             }
             .onbReveal(order: 1)
-            // Outgoing and incoming content share the space while they cross-fade – nothing below jumps.
-            ZStack(alignment: .top) {
-                scopeContent
-            }
             // MARK: whatif – before the purchase: calculate first which ticket pays off
             WhatIfSheetLink {
                 Label("Erst durchrechnen", systemImage: "slider.horizontal.3")
@@ -29,7 +25,11 @@ struct OnbTicketStep: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.glass)
-            .onbReveal(.fade, order: 12)
+            .onbReveal(.fade, order: 2)
+            // Outgoing and incoming content share the space while they cross-fade – nothing below jumps.
+            ZStack(alignment: .top) {
+                scopeContent
+            }
         }
         .haptic(.selection, trigger: model.selectedProductID)
     }

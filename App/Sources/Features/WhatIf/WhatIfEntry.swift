@@ -51,7 +51,7 @@ struct WhatIfEntryRow: View {
                         Text("Was wäre wenn?")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Mehr oder weniger fahren, andere Strecken – welches Ticket lohnt sich?")
+                        Text("Mehr oder weniger fahren – welches Ticket lohnt sich?")
                             .font(.subheadline)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)

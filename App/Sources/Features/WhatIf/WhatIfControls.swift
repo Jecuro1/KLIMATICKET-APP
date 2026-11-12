@@ -279,7 +279,7 @@ struct WhatIfRouteCard: View {
                 tripsBinding.wrappedValue = trips - 1
             } label: {
                 Image(systemName: "minus")
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .frame(width: 56, height: 44)
                     .contentShape(Rectangle())
             }
@@ -291,7 +291,7 @@ struct WhatIfRouteCard: View {
                 tripsBinding.wrappedValue = trips + 1
             } label: {
                 Image(systemName: "plus")
-                    .font(.body.weight(.semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .frame(width: 56, height: 44)
                     .contentShape(Rectangle())
             }
