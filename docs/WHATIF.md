@@ -12,7 +12,7 @@ Code: `Packages/KlimaCore/Sources/KlimaCore/WhatIf/` (Rechenkern, Linux-Tests) u
 | Einstieg | Wie |
 |---|---|
 | Ticket-Ratgeber | Zeile „Was wäre wenn?“ direkt unter „Auf einen Blick“ (Push) |
-| Onboarding, Schritt „Welches Ticket hast du?“ | zweiter Knopf „Erst durchrechnen“ (Sheet) |
+| Onboarding, Schritt „Welches Ticket hast du?“ | Knopf „Erst durchrechnen“ unter der Wahl Österreich / Bundesland / Eigenes (Sheet) |
 | Ticket-Tab ohne Ticket | Link „Erst durchrechnen, welches Ticket sich lohnt“ (Sheet) |
 | Statistik › „Welches Ticket lohnt sich?“ | Link am Ende der Karte (Sheet) |
 | Deep Link | `klimabilanz://whatif` (Sheet) |
@@ -22,7 +22,7 @@ Code: `Packages/KlimaCore/Sources/KlimaCore/WhatIf/` (Rechenkern, Linux-Tests) u
 Schalter oben: **Meine Fahrten** (Standard, wenn in den letzten 12 Monaten mindestens 5 Fahrten erfasst sind) und **Eigene
 Annahmen** (Standard sonst, und immer vor dem Kauf).
 
-**Eigene Annahmen** – bis zu drei Strecken (Stationssuche wie beim Fahrt erfassen), je mit Stepper und Schieber „Fahrten pro
+**Eigene Annahmen** – bis zu drei Strecken (Stationssuche wie beim Fahrt erfassen), je mit Stepper (− und +, je mindestens 44 × 44 pt) und Schieber „Fahrten pro
 Monat“ (0 bis 60), Klasse (2./1.), dazu Ticketart (Klassik, Jugend, Senior) und Startmonat. Drei Beispiele füllen die Strecken aus
 den gebündelten Stationen: Täglich pendeln (Wiener Neustadt ⇄ Wien, 40), Wochenend-Heimfahrt (Graz ⇄ Wien, 4), Gelegentlich
 (Salzburg ⇄ Innsbruck, 2). **Eine Fahrt ist eine Strecke in eine Richtung** – Pendeln hin und zurück sind zwei am Tag; das steht
@@ -116,8 +116,9 @@ oder neuere Speicherung ergibt ein leeres Buch, nie einen Absturz. Keine neue Be
   deterministischer Gleichstand, 0/negativ/riesig geklemmt, Stationen ohne Preis, Gleichheit mit `TicketComparator` für das Demo-Jahr
   (Faktor 1, Hochrechnung, Schieber, Juli/August, Bundesland, 1. Klasse), Beispiele auf den echten Katalog, Szenario-Buch.
 - CI-Screenshots (`-KBScreenshot`, Demo-Daten, kein Netzwerk): `whatIf`, `whatIfBottom`, `whatIfFilters`, `whatIfFiltersBottom`,
-  `whatIfPrePurchase`, `whatIfPreBottom`, `whatIfWeekend`, `whatIfOccasional`, `whatIfEmpty`, `whatIfExtreme`, `whatIfAX5`,
-  `whatIfAX5Bottom`, `whatIfSaved`, `whatIfSheet` – hell und dunkel.
+  `whatIfControls`, `whatIfPrePurchase`, `whatIfPreBottom`, `whatIfRoutes`, `whatIfWeekend`, `whatIfOccasional`, `whatIfEmpty`,
+  `whatIfExtreme`, `whatIfAX5`, `whatIfAX5Mid`, `whatIfAX5Bottom`, `whatIfSaved`, `whatIfSheet` – hell und dunkel. Bei
+  Accessibility-Schriftgrößen stapeln sich Moduswahl und Klassenwahl als volle Knöpfe, die Zeilen brechen um.
 
 ## 8. Nur auf dem Gerät prüfbar / nicht verifiziert
 
