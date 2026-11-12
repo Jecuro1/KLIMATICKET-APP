@@ -172,7 +172,13 @@ enum TripDetectDemo {
             recorder.stop(now: track.last?.time ?? Date())
             return recorder
         }
-        return TripRecorder.demo(lookup: lookup, track: track, startedAt: start, until: Int(Double(track.count) * 0.5))
+        // Mid-ride, after the second stop: the train is moving at cruising speed and the last station is behind it.
+        var stops = 0, until = Int(Double(track.count) * 0.5)
+        for index in track.indices.dropFirst() where (track[index - 1].speedMetersPerSecond ?? 0) == 0 && (track[index].speedMetersPerSecond ?? 0) > 10 {
+            stops += 1
+            if stops == 3 { until = min(track.count, index + 12); break }
+        }
+        return TripRecorder.demo(lookup: lookup, track: track, startedAt: start, until: until)
     }
 
     @MainActor

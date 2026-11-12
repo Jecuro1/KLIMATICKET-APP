@@ -43,7 +43,7 @@ Der **Wert** kommt nicht aus der aufgezeichneten Strecke, sondern genau wie bei 
 ### Quellen (`TripDetectionService`)
 - **Bedeutende Ortswechsel** (`startMonitoringSignificantLocationChanges`): grobe Punkte, wenige pro Fahrt.
 - **Aufenthalte** (`CLVisit`): iOS meldet, wo und von wann bis wann du geblieben bist.
-- **Geofences** an deinen bis zu 20 häufigsten Bahnhöfen (250 m): Betreten und Verlassen ergeben Aufenthalte mit genauer Zeit –
+- **Geofences** an deinen bis zu 15 häufigsten Bahnhöfen (250 m; iOS erlaubt 20 je App, der Rest bleibt dem Aussteige-Wecker): Betreten und Verlassen ergeben Aufenthalte mit genauer Zeit –
   die beste Quelle für den Halt am Bahnsteig.
 
 Alles landet im **rollenden Puffer** (§6). Nach jedem Ereignis (und beim Öffnen der App) läuft der reine Detektor
@@ -159,9 +159,9 @@ Erkennung zu deinem Alltag passt.
 ## 9. Grenzen
 
 - Mindestens ein **Aufenthalt von 3 Minuten an einem Bahnhof** an beiden Enden (Betreten und Verlassen des 250-m-Kreises um einen
-  deiner 20 häufigsten Bahnhöfe, oder ein von iOS gemeldeter Aufenthalt). Wer vom Zug direkt durch die Sperre geht und keinen
+  deiner 15 häufigsten Bahnhöfe, oder ein von iOS gemeldeter Aufenthalt). Wer vom Zug direkt durch die Sperre geht und keinen
   Aufenthalt hat, wird nicht erkannt – dafür gibt es Modus A.
-- Neue Bahnhöfe außerhalb der 20 häufigsten brauchen einen iOS-Aufenthalt; wann iOS diesen meldet, entscheidet iOS.
+- Neue Bahnhöfe außerhalb der 15 häufigsten brauchen einen iOS-Aufenthalt; wann iOS diesen meldet, entscheidet iOS.
 - Bus, Bim und U-Bahn: im Hintergrund nur, wenn die Regeln halten (selten, Mindeststrecke 5 km); sonst per Aufzeichnung.
 - iOS entscheidet, wann die App im Hintergrund aufwacht. Es gibt keine Zusage für eine bestimmte Minute, und nach einem
   beendeten App-Prozess (Wischen im App-Umschalter) kommen nur noch iOS-Ereignisse, die die App neu starten.

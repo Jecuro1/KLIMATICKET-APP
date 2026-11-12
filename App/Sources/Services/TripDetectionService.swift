@@ -58,6 +58,11 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     @ObservationIgnored private var monitoredStations: [String: Station] = [:]
 
     static let notificationCategory = "TRIP_SUGGESTION"
+    /// Region identifiers of this feature. Regions are shared by every location manager of the app (the Aussteige-Wecker has its own),
+    /// so each side only touches – and only listens to – its own.
+    private static let regionPrefix = "tripdetect.station."
+    /// iOS allows 20 monitored regions per app; the rest is left to the Aussteige-Wecker.
+    private static let maxRegions = 15
 
     var isAvailable: Bool {
         CLLocationManager.significantLocationChangeMonitoringAvailable() || CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self)
@@ -148,10 +153,10 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
 
     // MARK: Sources
 
-    /// Stations whose enter/exit marks a stay at a station – the ones used most, at most 20 (iOS allows 20 regions per app).
+    /// Stations whose enter/exit marks a stay at a station – the ones used most, at most 15.
     /// Called at launch and after trips or favourites changed.
     func configure(stations index: StationIndex, frequentStationIDs: [String]) {
-        let selected = frequentStationIDs.compactMap(index.station(id:)).prefix(20)
+        let selected = frequentStationIDs.compactMap(index.station(id:)).prefix(Self.maxRegions)
         monitoredStations = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
         guard isEnabled, isAuthorizedAlways, !LaunchMode.isSandboxed else { return }
         syncRegions()
@@ -166,18 +171,18 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     private func stopSources() {
         manager.stopMonitoringSignificantLocationChanges()
         manager.stopMonitoringVisits()
-        for region in manager.monitoredRegions { manager.stopMonitoring(for: region) }
+        for region in manager.monitoredRegions where region.identifier.hasPrefix(Self.regionPrefix) { manager.stopMonitoring(for: region) }
     }
 
     private func syncRegions() {
         guard CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) else { return }
-        let wanted = Set(monitoredStations.keys)
-        for region in manager.monitoredRegions where !wanted.contains(region.identifier) {
-            manager.stopMonitoring(for: region)
-        }
-        let existing = Set(manager.monitoredRegions.map(\.identifier))
-        for (id, station) in monitoredStations where !existing.contains(id) {
-            let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), radius: 250, identifier: id)
+        let wanted = Set(monitoredStations.keys.map { Self.regionPrefix + $0 })
+        let mine = manager.monitoredRegions.filter { $0.identifier.hasPrefix(Self.regionPrefix) }
+        for region in mine where !wanted.contains(region.identifier) { manager.stopMonitoring(for: region) }
+        let existing = Set(mine.map(\.identifier))
+        for (id, station) in monitoredStations where !existing.contains(Self.regionPrefix + id) {
+            let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), radius: 250,
+                                          identifier: Self.regionPrefix + id)
             region.notifyOnEntry = true
             region.notifyOnExit = true
             manager.startMonitoring(for: region)
@@ -338,7 +343,10 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
             repository.saveCandidates()
         }
         if !LaunchMode.isSandboxed {
-            for region in manager.monitoredRegions { manager.stopMonitoring(for: region) }
+            // The earlier version named its regions by station id ("at:47:1187"); an alarm's region is a UUID and ours has the prefix.
+            for region in manager.monitoredRegions where region.identifier.contains(":") && !region.identifier.hasPrefix(Self.regionPrefix) {
+                manager.stopMonitoring(for: region)
+            }
         }
         for key in [DetectionDefaults.legacySuggestions, DetectionDefaults.legacyLastExit, DetectionDefaults.legacyLastArrival, DetectionDefaults.legacyEnabled] {
             defaults.removeObject(forKey: key)
@@ -413,13 +421,13 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        guard let circle = region as? CLCircularRegion else { return }
+        guard let circle = region as? CLCircularRegion, circle.identifier.hasPrefix(Self.regionPrefix) else { return }
         let center = GeoPoint(latitude: circle.center.latitude, longitude: circle.center.longitude), date = Date()
         Task { @MainActor in self.regionEvent(center: center, entered: true, at: date) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        guard let circle = region as? CLCircularRegion else { return }
+        guard let circle = region as? CLCircularRegion, circle.identifier.hasPrefix(Self.regionPrefix) else { return }
         let center = GeoPoint(latitude: circle.center.latitude, longitude: circle.center.longitude), date = Date()
         Task { @MainActor in self.regionEvent(center: center, entered: false, at: date) }
     }
