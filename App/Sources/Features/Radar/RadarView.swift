@@ -21,7 +21,7 @@ struct RadarView: View {
     @Environment(AppState.self) var app
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorScheme) var colorScheme   // MARK: radarheat – read by the Pünktlichkeit layer (RadarView+Heat.swift)
     @State var model = RadarModel()
     @State var camera: MapCameraPosition = .region(RadarView.austriaRegion)
     @State var query = ""
@@ -56,7 +56,7 @@ struct RadarView: View {
     }
 
     private var isRunning: Bool {
-        scenePhase == .active && trainsOn
+        scenePhase == .active && loadsRadar   // MARK: radarheat – trains or the Pünktlichkeit layer
     }
 
     var body: some View {
@@ -82,7 +82,7 @@ struct RadarView: View {
                         }
                 }
                 .scrollBounceBehavior(.basedOnSize)
-                .frame(maxHeight: statusHeight > 0 ? min(statusHeight, 360) : 360)
+                .frame(maxHeight: statusHeight > 0 ? min(statusHeight, statusMaxHeight) : statusMaxHeight)   // MARK: radarheat
             }
             // The loop only restarts when the view becomes (in)active. A new map area or mode goes to the scheduler directly:
             // it settles for a moment, so a series of moves costs one round of requests.
@@ -115,6 +115,7 @@ struct RadarView: View {
             }
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
+            .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
                 refreshStations(box: model.box, span: model.spanDegrees)
@@ -126,7 +127,11 @@ struct RadarView: View {
     // MARK: Map and train layer
 
     private var mapLayer: some View {
+        MapReader { proxy in   // MARK: radarheat – a tap on the map finds the cell under the finger
         Map(position: $camera) {
+            if heatOn {   // MARK: radarheat
+                heatContent
+            }
             if layers.isOn(.stations), MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
                 stationLayer
             }
@@ -147,14 +152,14 @@ struct RadarView: View {
                     Annotation(pin.vehicle.line.map { LinePresentation.title($0) } ?? "Zug",
                                coordinate: pin.coordinate.clCoordinate, anchor: .center) {
                         Button { select(pin) } label: {
-                            RadarMarker(pin: pin, isSelected: model.selectedTripID == pin.id)
+                            pinLabel(pin)   // MARK: radarheat – the marker, or a dot while the Pünktlichkeit layer is on
                         }
                         .buttonStyle(.plain)
                     }
                     .annotationTitles(.hidden)   // the marker carries its plate; a caption under each would be a wall of text
                 } else {
                     Annotation("\(cluster.count) \(vehicleNoun)", coordinate: cluster.center.clCoordinate, anchor: .center) {
-                        Button { zoom(to: cluster) } label: { RadarClusterBubble(cluster: cluster, noun: vehicleNoun) }
+                        Button { zoom(to: cluster) } label: { clusterLabel(cluster, noun: vehicleNoun) }   // MARK: radarheat
                             .buttonStyle(.plain)
                     }
                     .annotationTitles(.hidden)   // the bubble carries its count
@@ -184,6 +189,8 @@ struct RadarView: View {
         }
         .accessibilityLabel("Zug-Radar, \(model.summary)")
         .haptic(.selection, trigger: model.selectedTripID)
+        .simultaneousGesture(SpatialTapGesture().onEnded { handleMapTap(at: $0.location, proxy: proxy) })   // MARK: radarheat
+        }
     }
 
     /// The noun of the summary and the clusters: "Züge" when only rail is on, else "Fahrzeuge" (as the status line says).
@@ -191,7 +198,7 @@ struct RadarView: View {
 
     /// The radar service. The dense demo scenes bring their own (synthetic, no network); everything else goes through the gate.
     var radarService: (any RadarService)? {
-        preset.isDenseDemo ? DemoRadarService(dense: true) : app.live.radar
+        preset.isDenseDemo ? DemoRadarService(dense: true) : (preset.isHeatDemo ? DemoRadarService(heat: true) : app.live.radar)   // MARK: radarheat
     }
 
     private func select(_ pin: RadarPin) {
@@ -200,7 +207,7 @@ struct RadarView: View {
             model.routeTripID = nil
         }
         model.selectedTripID = pin.id
-        sheetVehicle = pin.vehicle
+        if model.heat.selectedCell != nil { model.heat.trainSheet = pin.vehicle } else { sheetVehicle = pin.vehicle }   // MARK: radarheat – on top of the cell sheet when that is up
     }
 
     func zoom(to cluster: RadarCluster) {
@@ -248,8 +255,10 @@ struct RadarView: View {
         case .allTrainsZoom:   // MARK: radarall – the same trains, zoomed to Wien and its S-Bahn: single trains and small clusters
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.17, longitude: 16.30).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
+        case .heat, .heatPanel, .heatCell, .heatAX5:   // MARK: radarheat
+            applyHeatPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
-            layersRaw = MapLayerSelection.all.storageValue
+            layersRaw = MapLayerSelection(layers: [.stations, .trains, .disruptions, .routes]).storageValue   // radarheat: not the Pünktlichkeit layer
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.20, longitude: 16.37).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 0.9, longitudeDelta: 1.3)))
         }

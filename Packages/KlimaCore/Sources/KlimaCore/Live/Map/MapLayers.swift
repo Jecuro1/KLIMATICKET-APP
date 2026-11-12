@@ -6,12 +6,14 @@ import Foundation
 
 /// The layers of the map, in the order of the glass bar.
 public enum MapLayer: String, CaseIterable, Sendable, Hashable {
-    case stations, trains, disruptions, routes
+    // MARK: radarheat – "Pünktlichkeit": the delay heat map (docs/RADAR_HEATMAP.md), off until the user switches it on
+    case stations, trains, punctuality, disruptions, routes
 
     public var title: String {
         switch self {
         case .stations: "Stationen"
         case .trains: "Züge"
+        case .punctuality: "Pünktlichkeit"
         case .disruptions: "Störungen"
         case .routes: "Meine Routen"
         }

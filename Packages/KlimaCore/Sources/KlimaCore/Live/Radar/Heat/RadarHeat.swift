@@ -183,6 +183,10 @@ public struct HeatSnapshot: Sendable, Equatable {
 
     public var isEmpty: Bool { summary.total == 0 }
 
+    /// Cells with at least one train, and those among them that have a colour (`RadarHeat.minimumSample` trains with a delay).
+    public var populatedCellCount: Int { cells.count }
+    public var colouredCellCount: Int { cells.filter { !$0.isNeutral }.count }
+
     public func sample(_ tripID: String) -> HeatSample? { samples[tripID] }
 
     public func cell(_ id: HeatCellID) -> HeatCell? {

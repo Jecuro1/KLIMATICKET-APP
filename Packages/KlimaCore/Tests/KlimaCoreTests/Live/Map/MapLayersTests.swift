@@ -15,6 +15,7 @@ final class MapLayersTests: XCTestCase {
         XCTAssertEqual(MapLayerSelection.initial.layers, [.stations, .trains])
         XCTAssertFalse(MapLayerSelection.initial.isOn(.disruptions))
         XCTAssertFalse(MapLayerSelection.initial.isOn(.routes))
+        XCTAssertFalse(MapLayerSelection.initial.isOn(.punctuality), "the heat map is opt-in: it loads all of Austria")
     }
 
     func testToggleAddsAndRemoves() {
@@ -28,15 +29,17 @@ final class MapLayersTests: XCTestCase {
 
     func testStorageRoundTripKeepsOrderAndDropsUnknownWords() {
         let all = MapLayerSelection.all
-        XCTAssertEqual(all.storageValue, "stations,trains,disruptions,routes")
+        XCTAssertEqual(all.storageValue, "stations,trains,punctuality,disruptions,routes")
         XCTAssertEqual(MapLayerSelection(storageValue: all.storageValue), all)
         XCTAssertEqual(MapLayerSelection(storageValue: "routes,unbekannt,trains").layers, [.trains, .routes])
         XCTAssertEqual(MapLayerSelection(storageValue: "").layers, [], "an empty value means every layer is off")
         XCTAssertEqual(MapLayerSelection(storageValue: "nonsense").layers, [])
+        // A value stored before the layer existed still reads the same: the new layer is simply off.
+        XCTAssertEqual(MapLayerSelection(storageValue: "stations,trains,disruptions,routes").layers, [.stations, .trains, .disruptions, .routes])
     }
 
     func testLayerTitlesAreGerman() {
-        XCTAssertEqual(MapLayer.allCases.map(\.title), ["Stationen", "Züge", "Störungen", "Meine Routen"])
+        XCTAssertEqual(MapLayer.allCases.map(\.title), ["Stationen", "Züge", "Pünktlichkeit", "Störungen", "Meine Routen"])
     }
 
     // MARK: - Stations in view

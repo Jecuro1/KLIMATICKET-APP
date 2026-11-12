@@ -32,7 +32,7 @@ public enum HeatGrid {
     public static let originLatitude = 47.7
     public static let originLongitude = 13.35
 
-    static let kmPerDegreeLatitude = 111.2
+    public static let kmPerDegreeLatitude = 111.2
     /// One degree of longitude in km at the origin's latitude. The whole grid uses this one value, so the cells are regular in km
     /// at 47.7° and a few percent off in the north and south of Austria (46.3° to 49.1°), which nobody sees.
     static let kmPerDegreeLongitude = 111.2 * cos(47.7 * Double.pi / 180)

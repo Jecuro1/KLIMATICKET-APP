@@ -2824,6 +2824,8 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 `RadarMap.swift` (Aufbewahrung je Antwort, Verzögerung, Gruppen), App `Features/Radar/RadarModel.swift`. Tests (Linux): `RadarTilesTests`,
 `RadarSchedulerTests` (Budget über 10 simulierte Minuten, auch beim Wandern der Karte), `RadarFrameTests`, `RadarStatusTextTests`.
 
+**Pünktlichkeit (Verspätungs-Heatmap):** Die Ebene „Pünktlichkeit“ lädt über denselben Scheduler und dasselbe Budget ganz Österreich (zwei Kacheln der Stufe 0, 6 Anfragen je Minute) und färbt ein Sechseckraster nach der mittleren Verspätung: `docs/RADAR_HEATMAP.md`.
+
 **Nicht geprüft:** das Zeitlimit des Clients (`hafas.timeout`, 20 s) gegen die langsamste gemessene Antwort (21,5 s, erste Anfrage; die Messung lief über einen
 anderen Weg, ob so eine Antwort auf einem iPhone vorkommt, ist offen: ein Fehlschlag wird einmal wiederholt, die Kachel dann mit Backoff neu versucht); alle
 Produkte zusammen: bei Bussen und Bims in einer Großstadt teilt sich der Baum bis Stufe 6 und braucht viele Anfragen je Runde (das Budget dehnt sie, der Status

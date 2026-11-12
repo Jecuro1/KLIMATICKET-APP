@@ -34,9 +34,11 @@ final class RadarModel {
     /// Route of the selected trip (JourneyDetails polyline); drawn only while `routeTripID` is the selection.
     var route: [GeoPoint] = []
     var routeTripID: String?
+    // MARK: radarheat – the Pünktlichkeit layer (docs/RADAR_HEATMAP.md): numbers, cells and panel state. `RadarModel+Heat.swift`.
+    let heat = RadarHeatModel()
 
-    @ObservationIgnored private var store = RadarFrameStore()
-    @ObservationIgnored private var scheduler = RadarScheduler()
+    @ObservationIgnored var store = RadarFrameStore()
+    @ObservationIgnored var scheduler = RadarScheduler()
     @ObservationIgnored private var lastError: Error?
     @ObservationIgnored private var lastRebuild = Date.distantPast
     @ObservationIgnored private var lastPinRebuild = Date.distantPast
@@ -91,7 +93,8 @@ final class RadarModel {
             guard let line = vehicle.line, line.productClass != 0 else { return false }
             return line.productClass & mask.rawValue == 0
         }
-        scheduler.setViewport(box, latitudeSpan: spanDegrees, now: Date())
+        applyViewport()   // MARK: radarheat – the map's view, or all of Austria while the Pünktlichkeit layer is on
+        heat.noteAnswer()
         rebuildPins(at: Date())
     }
 
@@ -107,7 +110,7 @@ final class RadarModel {
         spanDegrees = span
         guard newBox != box else { return }
         box = newBox
-        scheduler.setViewport(newBox, latitudeSpan: span, now: Date())
+        applyViewport()   // MARK: radarheat
         rebuildPins(at: Date())
     }
 
@@ -118,7 +121,7 @@ final class RadarModel {
     /// pauses the requests (the clock still runs, so the pins stay where the last answer put them). The requests end with the
     /// task: cancelling it cancels every request on its way, and each gives its tile back to the scheduler.
     func run(_ service: any RadarService) async {
-        scheduler.setViewport(box, latitudeSpan: spanDegrees, now: Date())
+        applyViewport()   // MARK: radarheat
         await withTaskGroup(of: Void.self) { group in
             while !Task.isCancelled {
                 let now = Date()
@@ -163,6 +166,7 @@ final class RadarModel {
             // is what shows an answer cut off at the request cap.
             scheduler.recordAnswer(tile, count: snapshot.answeredCount, at: requestedAt)
             store.merge(snapshot.vehicles, at: requestedAt, retention: scheduler.retention(for: tile))
+            heat.noteAnswer()   // MARK: radarheat
             lastError = nil
         } catch is CancellationError {
             scheduler.recordCancelled(tile)
@@ -223,5 +227,6 @@ final class RadarModel {
             cellDegrees: RadarClustering.cellSize(latitudeSpan: spanDegrees, longitudeSpan: box.east - box.west,
                                                   widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height)))
         updateStatus(at: now)
+        refreshHeat(at: now)   // MARK: radarheat – only when an answer came in or ten seconds went by
     }
 }

@@ -74,6 +74,19 @@ final class RadarHeatTextTests: XCTestCase {
         XCTAssertEqual(RadarHeatText.cellBase(coloured), "5 Züge · 2 mit Verspätungswert · 1 ausgefallen · 2 ohne Echtzeit")
     }
 
+    func testTheCoverageLineSaysHowMuchOfTheMapHasAColour() {
+        XCTAssertNil(RadarHeatText.coverageLine(.empty))
+        let few = HeatSample(tripID: "a", coordinate: HeatGrid.center(of: HeatCellID(q: 0, r: 0)), delaySeconds: 60)
+        XCTAssertEqual(RadarHeatText.coverageLine(RadarHeat.snapshot([few])), "Farbe in 0 von 1 Feld mit Zügen")
+        var input = (0..<4).map { HeatSample(tripID: "c\($0)", coordinate: HeatGrid.center(of: HeatCellID(q: 5, r: 0)), delaySeconds: 700) }
+        input.append(few)
+        let snapshot = RadarHeat.snapshot(input)
+        XCTAssertEqual(snapshot.populatedCellCount, 2)
+        XCTAssertEqual(snapshot.colouredCellCount, 1)
+        XCTAssertEqual(RadarHeatText.coverageLine(snapshot), "Farbe in 1 von 2 Feldern mit Zügen")
+        XCTAssertTrue(RadarHeatText.neutralLegend.contains("weniger als 3"))
+    }
+
     func testHotspotWords() {
         XCTAssertEqual(RadarHeatText.place("Jenbach"), "Raum Jenbach")
         XCTAssertEqual(RadarHeatText.place(nil), "Gebiet ohne Haltestelle")

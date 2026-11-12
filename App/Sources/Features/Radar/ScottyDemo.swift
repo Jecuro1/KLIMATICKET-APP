@@ -9,10 +9,13 @@ import KlimaCore
 struct DemoRadarService: RadarService {
     var now: @Sendable () -> Date = { Date() }
     var dense = false
+    // MARK: radarheat – about 900 synthetic vehicles with a delay cluster over Tirol and a quiet rest (`RadarHeatDemo.swift`).
+    var heat = false
 
     func radar(_ query: RadarQuery) async throws -> RadarSnapshot {
         let t = now()
         if dense { return RadarSnapshot(vehicles: denseVehicles(for: query, at: t), realtimeUpdatedAt: t) }
+        if heat { return RadarSnapshot(vehicles: heatVehicles(for: query, at: t), realtimeUpdatedAt: t) }   // MARK: radarheat
         let vehicles = DemoScotty.vehicles(now: t).filter { v in
             guard let line = v.line else { return false }
             return !line.product.intersection(query.products).isEmpty && query.box.contains(v.coordinate)

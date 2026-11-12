@@ -126,12 +126,13 @@ extension RadarView {
 
     var statusBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
+            if heatOn { heatPanel }   // MARK: radarheat – the summary panel, above the layer bar
             mapLayerPanel
             if layers.isOn(.trains), let reason = app.live.timetableUnavailable {
                 trainsOffNotice(reason)
             }
             // The train status is only shown while trains are on: with the layer off no request is sent and nothing is pending.
-            if trainsOn {
+            if loadsRadar {   // MARK: radarheat – trains or the Pünktlichkeit layer
                 if model.lowPower {
                     PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
                                       message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
@@ -149,7 +150,7 @@ extension RadarView {
                     Text("Dieser Zug ist gerade nicht auf der Karte. Zoom heraus oder probier es später noch einmal.")
                         .radarHint()
                 }
-                RadarStatusCard(model: model)
+                if !heatOn { RadarStatusCard(model: model) }   // MARK: radarheat – the panel has its own age and notes
             }
             if !model.route.isEmpty {
                 Button("Route ausblenden") {

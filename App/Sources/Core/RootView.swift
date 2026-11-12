@@ -499,6 +499,9 @@ struct ScreenshotRouter: View {
         // MARK: trainsearch – Züge suchen: the field with suggestions, and the runs of RJX 66 (demo data, no network)
         case let trainScreen where TrainSearchScreenshotHost.screens.contains(trainScreen):
             TrainSearchScreenshotHost(screen: trainScreen)
+        // MARK: radarheat – the Pünktlichkeit layer: the map, the open panel, a cell, the panel at AX5 (demo trains, no network)
+        case let heatScreen where RadarHeatScreenshotHost.screens.contains(heatScreen):
+            RadarHeatScreenshotHost(screen: heatScreen)
         // MARK: scotty – Zug-Radar, Störungen, Live verfolgen (demo data, no network)
         case let scottyScreen where ScottyScreenshotHost.screens.contains(scottyScreen):
             ScottyScreenshotHost(screen: scottyScreen)

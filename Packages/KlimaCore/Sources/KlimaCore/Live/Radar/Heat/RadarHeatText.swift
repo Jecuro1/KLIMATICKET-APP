@@ -107,6 +107,17 @@ public enum RadarHeatText {
 
     // MARK: Cells and rows
 
+    /// What a cell without colour looks like and why: said once in the legend.
+    public static let neutralLegend = "Grau schraffiert: weniger als \(RadarHeat.minimumSample) Züge mit Echtzeit-Daten, keine Farbe."
+
+    /// "Farbe in 46 von 298 Feldern mit Zügen": how much of the map the rule "mindestens 3 Züge" colours. Nil without trains.
+    public static func coverageLine(_ snapshot: HeatSnapshot) -> String? {
+        let populated = snapshot.populatedCellCount
+        guard populated > 0 else { return nil }
+        let noun = populated == 1 ? "Feld" : "Feldern"
+        return "Farbe in \(snapshot.colouredCellCount) von \(populated) \(noun) mit Zügen"
+    }
+
     /// "Ø 12 Min Verspätung" for a coloured cell; the reason for the missing colour otherwise.
     public static func cellTitle(_ cell: HeatCell) -> String {
         guard let median = cell.medianDelaySeconds else {
