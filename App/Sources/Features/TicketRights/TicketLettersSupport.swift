@@ -24,7 +24,7 @@ struct TicketLetterContext: Equatable {
 
 /// Scroll targets inside the letter sheets (CI screenshot routes).
 enum LetterAnchor: Hashable {
-    case preview, reminder, bottom
+    case preview, hint, reminder, bottom
 }
 
 // MARK: - Form

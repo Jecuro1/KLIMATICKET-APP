@@ -99,7 +99,7 @@ struct TicketLettersScreenshotHost: View {
             ObjectionLetterView(context: context, preset: ObjectionPreset(form: filledForm(context), deadline: nil, showsDeadlineSuggestion: true))
         case "lettersOlderAGB":
             ObjectionLetterView(context: olderContext(context), preset: ObjectionPreset(form: filledForm(context), deadline: day(40)),
-                                screenshotAnchor: .preview)
+                                screenshotAnchor: .hint)
         case "lettersEmptyAddress":
             ObjectionLetterView(context: context, preset: ObjectionPreset(form: emptyForm(context), deadline: nil))
         case "lettersCancellation":

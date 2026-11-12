@@ -82,14 +82,14 @@ struct InstallmentsView: View {
                     AdvCompareBar(label: "Bezahlt", symbol: "eurosign.circle.fill", value: balance.paid, maxValue: max(balance.paid, balance.value, 1),
                                   color: Theme.dawn, valueText: Format.euroPrecise(balance.paid))
                     AdvCompareBar(label: "Fahrten", symbol: "tram.fill", value: balance.value, maxValue: max(balance.paid, balance.value, 1),
-                                  color: Theme.glacier, valueText: Format.euro(balance.value))
+                                  color: Theme.glacier, valueText: Format.euroPrecise(balance.value))
                 }
                 verdict(balance)
                 TktHairline()
                 factRow("Noch offen", value: Format.euroPrecise(plan.openAmount),
                         detail: plan.openCount == 1 ? "1 Rate" : "\(plan.openCount) Raten")
                 if let next = plan.next {
-                    factRow("Nächste Abbuchung (erwartet)", value: Format.monthYear(next.month), detail: "rund um den Monatsanfang")
+                    factRow("Nächste Abbuchung", value: Format.monthYear(next.month), detail: "erwartet, rund um den Monatsanfang")
                 } else {
                     Label("Alle 12 Raten sind bezahlt.", systemImage: "checkmark.seal.fill")
                         .font(.subheadline.weight(.semibold))
@@ -120,7 +120,7 @@ struct InstallmentsView: View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Nutzen der Fahrten bis heute")
                 .lineLimit(2, reservesSpace: true)
-            CountUpText(value: balance.value) { Format.euro($0) }
+            CountUpText(value: balance.value) { Format.euroPrecise($0) }
                 .font(Theme.Typography.numberMedium)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)

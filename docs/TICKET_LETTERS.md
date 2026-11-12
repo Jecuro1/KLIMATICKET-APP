@@ -64,7 +64,7 @@ dazu eine ehrliche Aussage, ob die Fahrten die Raten schon decken. Die Zahlenlog
 (elf Raten auf den Cent gerundet, die zwölfte gleicht aus), zwei mit der Bestellung im Monat 1.
 
 Die Monate der Abbuchung sind ein Modell (Rate n im Kalendermonat, in dem der n-te Gültigkeitsmonat beginnt); die AGB sagen nur „innerhalb der ersten fünf
-Werktage jedes Kalendermonats“. Darum heißt die Zeile „Nächste Abbuchung (erwartet)“. Annahmen, die im Screen stehen: als bezahlt zählt eine Rate erst **nach** den ersten fünf Werktagen ihres Monats (Mo–Fr, Feiertage nicht berücksichtigt);
+Werktage jedes Kalendermonats“. Darum steht bei „Nächste Abbuchung“ „erwartet“. Die Fahrten stehen auf diesem Screen auf den Cent (wie die Raten), damit „decken genau“ nachvollziehbar ist. Annahmen, die im Screen stehen: als bezahlt zählt eine Rate erst **nach** den ersten fünf Werktagen ihres Monats (Mo–Fr, Feiertage nicht berücksichtigt);
 bei einer automatischen Verlängerung buchen sie alle zwölf monatlich (AGB 15.6) – der Unterschied liegt nur im ersten Gültigkeitsmonat und ist nicht abgebildet;
 ein Zuschuss des Arbeitgebers ist nicht abgezogen.
 

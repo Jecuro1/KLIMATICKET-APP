@@ -370,11 +370,12 @@ struct LetterPreviewCard: View {
 private struct LetterZoomSheet: View {
     var content: LetterContent
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationStack {
             ScrollView([.vertical, .horizontal]) {
-                LetterPaper(content: content, width: LetterLayout.pageWidth * 1.15)
+                LetterPaper(content: content, width: LetterLayout.pageWidth * (dynamicTypeSize.isAccessibilitySize ? 2.2 : 1.15))   // larger for large text sizes
                     .shadow(color: .black.opacity(0.14), radius: 14, y: 8)
                     .padding(Theme.Spacing.m)
             }

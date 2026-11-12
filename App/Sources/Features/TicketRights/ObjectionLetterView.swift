@@ -101,6 +101,7 @@ struct ObjectionLetterView: View {
                         .id(LetterAnchor.preview)
                     LetterHintBlock(title: "So kommt der Brief an", paragraphs: [RenewalObjectionLetter.deliveryHint, RenewalObjectionLetter.alternativeWaysHint]
                                     + [TicketRights.earlierVersionNote(ticketStart: context.ticket.start)].compactMap { $0 })
+                        .id(LetterAnchor.hint)
                         .listRowInsets(EdgeInsets())
                 } header: {
                     Text("Vorschau")
@@ -151,7 +152,7 @@ struct ObjectionLetterView: View {
                     .foregroundStyle(Theme.textSecondary)
                 LetterDateChoice(title: "Datum aus deinem Brief wählen", pickerLabel: "Frist laut deinem Brief", date: $deadline,
                                  suggestion: Calendar.vienna.date(byAdding: .day, value: 14, to: Calendar.vienna.startOfDay(for: Date())) ?? Date(),
-                                 suggestionHint: "Die AGB binden die Frist an deinen Verlängerungsbrief, wir kennen sie nicht. Setz das Datum aus dem Brief ein und übernimm es – erst dann steht es im Schreiben.",
+                                 suggestionHint: "Wir kennen deine Frist nicht. Setz das Datum aus deinem Verlängerungsbrief ein und übernimm es – erst dann steht es im Schreiben.",
                                  startsWithSuggestion: showsDeadlineSuggestion) { date in
                     deadlinePill(date)
                 }
