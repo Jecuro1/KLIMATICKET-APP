@@ -164,7 +164,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 return
             }
             guard action == UNNotificationDefaultActionIdentifier else { return }
-            if identifier.hasPrefix("renewal.") || identifier.hasPrefix(AlarmIdentifier.objectionPrefix) {
+            if identifier.hasPrefix("renewal.") || identifier.hasPrefix(AlarmIdentifier.objectionPrefix)
+                || identifier.hasPrefix(AlarmIdentifier.letterPrefix) {   // MARK: ticketletters – the deadline reminders of a letter
                 app.selectedTab = .ticket            // "Morgen läuft dein Ticket ab", "Dein Verlängerungsbrief kommt bald"
             } else if identifier.hasPrefix(AlarmIdentifier.routePrefix) {
                 app.selectedTab = .planner           // MARK: routes – "Abfahrt in 10 Min" of a saved route: the planner

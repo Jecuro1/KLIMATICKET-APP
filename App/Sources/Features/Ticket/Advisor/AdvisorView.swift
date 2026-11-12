@@ -106,6 +106,7 @@ struct AdvisorView: View {
                                        family: ticket.family, isMonthlyPayment: ticket.isMonthlyPayment,
                                        onEdit: { edit() })
                     .id(AdvAnchor.renewalReminder)
+                TicketLettersRenewalEntry(ticket: ticket, advice: advice)   // MARK: ticketletters – Widerspruchsbrief, Raten-Übersicht
             }
         }
         if advice.cancellation.verdict != .expired {
@@ -114,6 +115,7 @@ struct AdvisorView: View {
                 if advice.cancellation.extraordinary != nil {
                     AdvExtraordinaryCard(advice: advice.cancellation)
                 }
+                TicketLettersCancellationEntry(ticket: ticket, advice: advice)   // MARK: ticketletters – Kündigungsschreiben
             }
         }
         if let firstClass = advice.firstClass {

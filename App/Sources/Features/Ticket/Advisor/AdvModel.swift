@@ -114,6 +114,7 @@ enum AdvAnchor: Hashable {
     case section(AdvSection)
     case renewalReminder
     case cancellationChart
+    case lettersRenewal, lettersCancellation   // MARK: ticketletters
 }
 
 /// Meaning of a verdict – drives colour and symbol (colour is never the only carrier: text + symbol always).

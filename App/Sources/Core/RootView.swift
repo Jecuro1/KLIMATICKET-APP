@@ -557,6 +557,9 @@ struct ScreenshotRouter: View {
         // MARK: whatif – „Was wäre wenn?“: real data, assumptions, empty, extreme, AX5 (demo data, no network)
         case let whatIfScreen where WhatIfScreenshotHost.screens.contains(whatIfScreen):
             WhatIfScreenshotHost(screen: whatIfScreen)
+        // MARK: ticketletters – Widerspruchsbrief, Kündigungsschreiben and Raten-Übersicht (demo data, no network)
+        case let lettersScreen where TicketLettersScreenshotHost.screens.contains(lettersScreen):
+            TicketLettersScreenshotHost(screen: lettersScreen)
         // MARK: routes – „Meine Routen“ (list, detail, editor) and „Alarme“ (list, history), demo data, no network
         case let routesScreen where RoutesScreenshotHost.screens.contains(routesScreen):
             RoutesScreenshotHost(screen: routesScreen)
