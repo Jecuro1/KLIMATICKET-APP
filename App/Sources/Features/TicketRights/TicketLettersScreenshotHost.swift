@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PDFKit
 import KlimaCore
 
 /// CI screenshot routes of the Ticket-Schreiben (`-KBScreenshot <screen> -KBDemo YES`, demo data, no network). The letters are
@@ -13,11 +14,14 @@ import KlimaCore
 /// - `lettersInstallments` / `lettersInstallmentsList`: the Raten-Übersicht (summary, and the timeline of 12 installments)
 /// - `lettersEntry` / `lettersCancelEntry`: the entries in the Ticket-Ratgeber
 /// - `lettersAX5` / `lettersAX5Preview`: the Widerspruchsbrief at the largest accessibility text size
+/// - `lettersPDF` / `lettersPDFExtra`: the PDF of the Widerspruchsbrief and of the longest cancellation letter, drawn by
+///   `LetterPDF`, read back with PDFKit (pages, extractable text, title) and page 1 shown – proof that it is a real document
 struct TicketLettersScreenshotHost: View {
     static let screens: Set<String> = [
         "lettersObjection", "lettersObjectionPreview", "lettersReminder", "lettersEmptyAddress", "lettersCancellation",
         "lettersCancellationPreview", "lettersExtraordinary", "lettersCancellationEarly", "lettersInstallments",
-        "lettersInstallmentsList", "lettersEntry", "lettersCancelEntry", "lettersAX5", "lettersAX5Preview",
+        "lettersInstallmentsList", "lettersEntry", "lettersCancelEntry", "lettersAX5", "lettersAX5Preview", "lettersPDF",
+        "lettersPDFExtra",
     ]
 
     let screen: String
@@ -110,6 +114,17 @@ struct TicketLettersScreenshotHost: View {
             NavigationStack { AdvisorView(ticket: ticket, initialAnchor: .renewalReminder) }
         case "lettersCancelEntry":
             NavigationStack { AdvisorView(ticket: ticket, initialAnchor: .lettersCancellation) }
+        case "lettersPDF":
+            LettersPDFCheck(content: RenewalObjectionLetter.make(RenewalObjectionLetter.Input(
+                sender: Self.holder, ticketNumber: context.number, productName: context.ticket.name, validUntil: context.ticket.end,
+                deadline: day(40), place: Self.holder.place, letterDate: today)))
+        case "lettersPDFExtra":
+            LettersPDFCheck(content: CancellationLetter.make(CancellationLetter.Input(
+                ticket: context.ticket, ticketNumber: context.number, sender: Self.holder,
+                kind: .extraordinary(.illness, since: day(-9)), place: Self.holder.place, letterDate: today))
+                ?? RenewalObjectionLetter.make(RenewalObjectionLetter.Input(
+                    sender: Self.holder, ticketNumber: context.number, productName: context.ticket.name, validUntil: context.ticket.end,
+                    deadline: day(40), place: Self.holder.place, letterDate: today)))
         default:
             Color.clear.ambientBackground()
         }
@@ -126,5 +141,48 @@ struct TicketLettersScreenshotHost: View {
 
     private func tripValue(for ticket: TicketEntity) -> Double {
         AdvAdvisor.advice(for: ticket, trips: trips, app: app).summary.totalValue
+    }
+}
+
+/// CI proof that the PDF is a real document: draws it with `LetterPDF`, reads it back with PDFKit and shows what it finds.
+private struct LettersPDFCheck: View {
+    let content: LetterContent
+
+    var body: some View {
+        let data = LetterPDF.data(for: content)
+        let document = PDFDocument(data: data)
+        let text = document?.string ?? ""
+        let title = document?.documentAttributes?["Title"] as? String
+        let page = document?.page(at: 0)
+        let image = page?.thumbnail(of: CGSize(width: 595, height: 842), for: .mediaBox)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Text("PDF-Prüfung")
+                    .font(.title2.bold())
+                    .foregroundStyle(Theme.textPrimary)
+                check("\(document?.pageCount ?? 0) Seite(n), \(data.count / 1024) KB", ok: (document?.pageCount ?? 0) >= 1)
+                check("\(text.count) Zeichen Text auslesbar (markierbar)", ok: text.count > 200)
+                check("Titel: \(title ?? "fehlt")", ok: title == content.documentTitle)
+                check("Beginnt mit: \(text.split(separator: "\n").first.map(String.init) ?? "–")", ok: !text.isEmpty)
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .background(Color.white)
+                        .shadow(color: .black.opacity(0.15), radius: 10, y: 6)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(Theme.Spacing.m)
+            .padding(.top, Theme.Spacing.xl)
+        }
+        .background(Theme.sheetBackground)
+    }
+
+    private func check(_ text: String, ok: Bool) -> some View {
+        Label(text, systemImage: ok ? "checkmark.circle.fill" : "xmark.octagon.fill")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(ok ? Theme.positiveText : Theme.negativeText)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

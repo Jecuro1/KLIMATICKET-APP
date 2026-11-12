@@ -106,7 +106,11 @@ Der Text fließt; ein Block, der nicht mehr passt, beginnt eine zweite Seite (di
 
 `-KBDemo YES -KBScreenshot <name>` (`TicketLettersScreenshotHost`; fiktive Person „Maria Beispiel, Musterweg 1, 1234 Musterstadt“):
 `lettersObjection`, `lettersObjectionPreview`, `lettersReminder`, `lettersEmptyAddress`, `lettersCancellation`, `lettersCancellationPreview`, `lettersExtraordinary`,
-`lettersCancellationEarly`, `lettersInstallments`, `lettersInstallmentsList`, `lettersEntry`, `lettersCancelEntry`, `lettersAX5`, `lettersAX5Preview`.
+`lettersCancellationEarly`, `lettersInstallments`, `lettersInstallmentsList`, `lettersEntry`, `lettersCancelEntry`, `lettersAX5`, `lettersAX5Preview`,
+`lettersPDF`, `lettersPDFExtra` (das PDF des Widerspruchs und des längsten Kündigungsbriefs, mit `LetterPDF` gezeichnet, mit PDFKit zurückgelesen: Seitenzahl,
+auslesbarer Text, Titel, Seite 1 – der CI-Beleg, dass es ein echtes Dokument mit Text ist).
+
+AX5: Die Aktionen („Als PDF teilen“, „Drucken“) stehen bei Bedienungshilfen-Schriftgrößen am Ende des Formulars statt unten angeheftet (sie würden sonst die halbe Seite füllen).
 
 ## 6. Nicht in CI prüfbar (Gerät / Mensch)
 
