@@ -8,9 +8,10 @@ import KlimaCore
 // view through a few small hooks (`RadarView.swift`, `RadarView+Controls.swift`).
 
 extension RadarView {
-    /// The layer is on and the live data is allowed: the radar loads all of Austria for it (`RadarModel.setHeat`).
+    /// The layer is on and the live data is allowed: the radar loads all of Austria for it (`RadarModel.setHeat`). Not while the Zeitreise
+    /// shows another time (docs/RADAR_TIMETRAVEL.md): the numbers are about now, and next to a map of tonight they would be a lie.
     var heatOn: Bool {
-        layers.isOn(.punctuality) && app.live.timetableUnavailable == nil
+        layers.isOn(.punctuality) && app.live.timetableUnavailable == nil && !travel.isAway
     }
 
     /// Something needs the radar's requests: the train layer or the Pünktlichkeit layer.
@@ -180,6 +181,9 @@ extension RadarView {
         switch preset {
         case .heatPanel, .heatAX5:
             model.heat.isExpanded = true
+        case .heatLists:
+            model.heat.isExpanded = true
+            model.heat.scrollsToLists = true
         case .heatCell:   // the map close to Tirol, the cell of the largest hot spot open
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 47.28, longitude: 11.55).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 1.1, longitudeDelta: 1.5)))

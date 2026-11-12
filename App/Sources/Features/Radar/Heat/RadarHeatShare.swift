@@ -21,12 +21,12 @@ struct RadarHeatShare: Transferable {
         .suggestedFileName("KlimaBilanz-Puenktlichkeit.png")
     }
 
-    /// 360 × 450 points at 3×: 1080 × 1350 pixels.
+    /// 360 × 500 points at 3×: 1080 × 1500 pixels.
     @MainActor
     func renderPNG() throws -> Data {
         let renderer = ImageRenderer(content: RadarHeatShareCard(cells: cells, summary: summary, date: date))
         renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(width: 360, height: 450)
+        renderer.proposedSize = ProposedViewSize(width: 360, height: 500)
         renderer.isOpaque = true
         guard let data = renderer.uiImage?.pngData() else { throw RadarHeatShareError.renderFailed }
         return data
@@ -48,7 +48,7 @@ struct RadarHeatShareCard: View {
             Kicker(text: "KlimaBilanz · Pünktlichkeit", color: Color.white.opacity(0.7))
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.punctualPercent.map { "\($0) %" } ?? "–")
-                    .font(.system(size: 84, weight: .ultraLight, design: .rounded))
+                    .font(.system(size: 72, weight: .ultraLight, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
@@ -61,7 +61,7 @@ struct RadarHeatShareCard: View {
                     .foregroundStyle(Theme.textSecondary)
             }
             HeatShareField(cells: cells)
-                .frame(height: 176)
+                .frame(height: 150)
                 .accessibilityHidden(true)
             HeatStackedBar(summary: summary)
             Text(legendLine)
@@ -80,7 +80,8 @@ struct RadarHeatShareCard: View {
             }
         }
         .padding(24)
-        .frame(width: 360, height: 450, alignment: .topLeading)
+        .frame(width: 360, height: 500, alignment: .topLeading)
+        .clipped()
         .background(LinearGradient(colors: [Theme.background, Theme.sheetBackground], startPoint: .top, endPoint: .bottom))
         .environment(\.colorScheme, .dark)
     }

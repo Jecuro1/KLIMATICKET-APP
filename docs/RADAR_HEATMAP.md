@@ -35,6 +35,8 @@ sie endet mit der Ansicht, sie pausiert im Stromspar-Modus und folgt dem Schutzs
   Wird sie ausgeschaltet, folgt der Scheduler wieder der Karte.
 - **Eine Antwort deckt alles.** Gemessen (§R11.1): `maxJny` 1000 liefert alle 923 Schienenfahrzeuge in einer Antwort. Mit den zwei Kacheln der
   Stufe 0 sind es zwei Antworten mit zusammen etwa dieser Zahl; ist eine Kachel abgeschnitten, teilt der Scheduler sie wie sonst.
+- **Nicht in der Zeitreise.** Zeigt die Zeitreise (`docs/RADAR_TIMETRAVEL.md`) eine andere Zeit als jetzt, ist die Pünktlichkeit ausgeblendet und lädt nichts: Ihre Zahlen gelten für jetzt, und neben einer Karte von heute Abend wären
+  sie falsch. Zurück auf „Jetzt“ kommt sie wieder (ohne den Verlauf, der beim Ausblenden endet).
 - **Die Ebene braucht keine Zugpunkte.** Auch mit ausgeschalteter Zug-Ebene lädt das Radar für die Pünktlichkeit; die Zustimmung zu Live-Daten
   (§2) gilt wie vorher: ohne sie lädt nichts und die Ebene zeigt nichts.
 - **Modi und Filter.** Die Zahlen gelten für die eingeschalteten Verkehrsmittel (Standard: Schiene), nicht für den Filter: Der Filter betrifft die
@@ -80,7 +82,7 @@ Die 300 Sekunden sind `RadarDelay.lateThresholdSeconds`, dieselbe Grenze wie der
   weniger als fünf, steht weniger da; ist es keiner, steht das.
 - **Brennpunkte.** Die drei Felder mit der größten **Summe der Verspätungsminuten** (zu frühe Züge zählen 0), unter den Feldern, die eine Farbe haben (mindestens 3 Züge mit
   Wert) **und** deren Median mindestens 5 Minuten beträgt (ein Feld mit zwölf Zügen, die vier Minuten zu spät sind, ist kein Brennpunkt, auch wenn die Summe hoch ist).
-  Ein Feld neben einem besseren wird übersprungen: drei Brennpunkte sind drei Orte, nicht ein Korridor, der dreimal zählt. Der Name ist der häufigste nächste Halt der Züge
+  Ein Feld höchstens zwei Schritte (etwa 27 km) neben einem besseren wird übersprungen: drei Brennpunkte sind drei Orte, nicht ein Korridor, der dreimal zählt (und ihre Nummern auf der Karte liegen nicht übereinander; mit „nur das Nachbarfeld“ lagen sie im ersten Screenshot übereinander). Der Name ist der häufigste nächste Halt der Züge
   im Feld („Raum Jenbach“, bei Gleichstand der erste im Alphabet); er sagt, wo das Feld ungefähr liegt, nicht, wo die Störung ist.
 - **Gebiet der Zahlen.** Das Rechteck des Radars enthält Teile von Bayern, Südtirol, Westungarn und der Slowakei (§R11.1). „Landesweit“ wäre falsch: Das
   Panel sagt „im Radar-Bereich: Österreich und angrenzende Gebiete“.
@@ -113,10 +115,10 @@ Züge ohne Echtzeit-Daten zählen nie als pünktlich.
 
 ## 5. Panel, Bedienung, Zugänglichkeit
 
-Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. Es ist so hoch wie sein Inhalt, höchstens 38 % (zu) oder 52 % (auf) der Karte; was darüber hinausgeht, scrollt in der Karte. Das ist
+Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. Es ist so hoch wie sein Inhalt, höchstens 40 % (zu) oder 62 % (auf, in den Zugänglichkeitsgrößen 80 %) der Karte; was darüber hinausgeht, scrollt in der Karte. Das ist
 nötig: In der größten Textgröße ist der Inhalt mehrere Bildschirme hoch, und eine so hohe Glasfläche wird gar nicht gezeichnet (Screenshots `radarHeatAX5`, Lauf 1: der Text lag ohne Karte auf der Karte). **Zu:** Überschrift „Pünktlich (unter 5 Min)“ mit der großen Zahl, der gestapelte Balken, „412 Züge mit Echtzeit-Daten, 38 ohne“ und
-„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, der Satz zu grau schraffierten Feldern und „Farbe in 95 von 154 Feldern mit Zügen“, Ø Verspätung, Verlauf, Größte Verspätungen jetzt (fünf Zeilen), Brennpunkte
-(drei Zeilen), „Pünktlichkeitskarte teilen“ und die Hinweise.
+„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, Ø Verspätung, **Größte Verspätungen jetzt** (fünf Zeilen), **Brennpunkte** (drei Zeilen), der Satz zu grau schraffierten Feldern und „Farbe in 95 von 154 Feldern mit Zügen“, Verlauf,
+„Pünktlichkeitskarte teilen“ und die Hinweise (die Listen stehen vorn, weil sie das sind, wofür man das Panel öffnet).
 
 - **VoiceOver.** Das Panel liest sich als eine Zusammenfassung (Prozent, Basis, Ø, Teile des Balkens, Stand). Balken und Legende sind für VoiceOver aus (sie würden nur doppeln). Die Zeilen der größten Verspätungen und
   der Brennpunkte sind eigene Schaltflächen („RJX 66 nach Wien Hbf, 18 Minuten verspätet“, „Fahrt öffnen“): So erreicht man Züge und Felder, ohne die Karte zu berühren. Die Felder der Karte sind **keine**
@@ -131,7 +133,7 @@ nötig: In der größten Textgröße ist der Inhalt mehrere Bildschirme hoch, un
 `HeatHistory`: der Anteil „pünktlich“ im Abstand von mindestens 30 s, höchstens 120 Punkte, **nur im Speicher**, nie auf der Platte, leer bei jedem Start der Karte und beim Ausschalten der Ebene. Ein Verlauf
 braucht drei Punkte über mindestens eine Minute und mindestens 20 Züge mit Echtzeit-Daten je Punkt; dann zeigt das offene Panel eine kleine Linie und „Seit 6 Min: 85 % → 87 %“. Geht die Uhr zurück, wird der Punkt verworfen.
 
-**„Pünktlichkeitskarte teilen“ (Zusatz, gebaut).** Im offenen Panel gibt es „Pünktlichkeitskarte teilen“ (`ShareLink`). Das Bild (`RadarHeatShare`, `ImageRenderer`, 1080 × 1350 px, erst beim Export gerendert wie
+**„Pünktlichkeitskarte teilen“ (Zusatz, gebaut).** Im offenen Panel gibt es „Pünktlichkeitskarte teilen“ (`ShareLink`). Das Bild (`RadarHeatShare`, `ImageRenderer`, 1080 × 1500 px, erst beim Export gerendert wie
 `TktSharePass`) zeigt die Zellen auf nachtblauem Grund, ohne Apple-Basiskarte: die Fläche des Radar-Gebiets flach gezeichnet (Längengrad mit dem Kosinus der Breite), ein Glühen unter scharfen Sechsecken, graue Linien für Felder
 ohne Farbe, dazu die große Zahl, der Balken, die Teile in Worten, „Stand 12. Nov. 2026, 17:08 Uhr · Radar-Bereich Österreich“ und den Hinweis (Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet, ohne
 Echtzeit nie pünktlich, grau = zu wenige Züge, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
@@ -181,8 +183,10 @@ Cluster grau), Verspätungen für die Szene gemacht: ein Verspätungs-Cluster ü
 |---|---|
 | `radarHeat` | die Ebene über Österreich, Panel zu |
 | `radarHeatPanel` | das Panel offen |
+| `radarHeatLists` | das offene Panel, gescrollt zu den größten Verspätungen und den Brennpunkten |
 | `radarHeatCell` | die Karte nah an Tirol, das Blatt des größten Brennpunkts |
 | `radarHeatAX5` | das offene Panel in der größten Textgröße |
+| `radarHeatShare` | das Bild „Pünktlichkeitskarte teilen“ |
 
 Tests (Linux, `swift test --package-path Packages/KlimaCore --no-parallel --filter Heat`): `HeatGridTests`, `RadarHeatTests`, `HeatPaintTests`, `RadarHeatTextTests`, `HeatHistoryTests`, dazu `MapLayersTests` (die neue Ebene
 ist aus, ein gespeicherter Wert von vorher liest sich wie vorher). Geprüft: Zell-Ids und Randfälle des Rasters, die Grenzen der Klassen gegen `RadarDelay`, Median, Mindestzahl und die Regel „ohne Echtzeit nie pünktlich“, Rundung,

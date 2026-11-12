@@ -251,6 +251,19 @@ final class RadarHeatTests: XCTestCase {
         XCTAssertEqual(hotspots.map(\.cellID), [first, apart], "three hot spots are three places, not one corridor counted twice")
     }
 
+    func testAHotspotTwoStepsAwayIsSkippedToo() {
+        let origin = HeatCellID(q: 0, r: 0)
+        let twoAway = HeatCellID(q: 2, r: 0), threeAway = HeatCellID(q: 3, r: 0)
+        XCTAssertEqual(HeatGrid.distance(origin, twoAway), 2)
+        XCTAssertEqual(HeatGrid.distance(origin, threeAway), 3)
+        let input = trains("a", count: 5, delays: [1200], at: HeatGrid.center(of: origin))
+            + trains("b", count: 4, delays: [1200], at: HeatGrid.center(of: twoAway))
+            + trains("c", count: 3, delays: [1200], at: HeatGrid.center(of: threeAway))
+        let hotspots = RadarHeat.snapshot(input).hotspots
+        XCTAssertEqual(hotspots.map(\.cellID), [origin, threeAway], "two steps (about 27 km) is still the same place; three is another")
+        XCTAssertEqual(RadarHeat.hotspotSeparation, 2)
+    }
+
     func testThePlaceNameIsTheMostCommonNextStop() {
         let input = [sample("a", next: "Schwaz"), sample("b", next: "Jenbach"), sample("c", next: "Jenbach"), sample("d", next: nil)]
         XCTAssertEqual(RadarHeat.snapshot(input).cells[0].placeName, "Jenbach")

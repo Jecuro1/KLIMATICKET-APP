@@ -224,6 +224,8 @@ public enum RadarHeat {
     public static let severeThresholdSeconds = 900
     public static let topDelayCount = 5
     public static let hotspotCount = 3
+    /// Hot spots are further apart than this many steps of the grid.
+    public static let hotspotSeparation = 2
 
     // MARK: Classes
 
@@ -307,8 +309,9 @@ public enum RadarHeat {
     }
 
     /// The `hotspotCount` cells with the largest sum of delay minutes, among the cells that have a colour and whose median is 5
-    /// minutes or more (a place where trains are late, not just a place with many trains). A cell next to a better one is
-    /// skipped: three hot spots are three places, not one corridor counted three times.
+    /// minutes or more (a place where trains are late, not just a place with many trains). A cell within two steps of a better one
+    /// (about 27 km) is skipped: three hot spots are three places, not one corridor counted three times, and on the country view their
+    /// numbers on the map do not sit on top of each other.
     static func hotspots(in cells: [HeatCell]) -> [HeatHotspot] {
         let ranked = cells
             .filter { ($0.medianDelaySeconds ?? 0) >= Double(lateThresholdSeconds) }
@@ -319,7 +322,7 @@ public enum RadarHeat {
             }
         var chosen: [HeatCell] = []
         for cell in ranked where chosen.count < hotspotCount {
-            if chosen.contains(where: { HeatGrid.distance($0.id, cell.id) <= 1 }) { continue }
+            if chosen.contains(where: { HeatGrid.distance($0.id, cell.id) <= hotspotSeparation }) { continue }
             chosen.append(cell)
         }
         return chosen.enumerated().map { index, cell in

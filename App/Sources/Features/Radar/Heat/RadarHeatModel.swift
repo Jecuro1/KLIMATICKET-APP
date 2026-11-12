@@ -24,6 +24,8 @@ final class RadarHeatModel {
     var trainSheet: RadarVehicle?
     /// Screenshot scene: opens the sheet of the first hot spot as soon as there is one.
     var opensFirstHotspot = false
+    /// Screenshot scene: the open panel scrolls to the lists of the largest delays and the hot spots.
+    var scrollsToLists = false
 
     @ObservationIgnored private var target: [HeatDrawCell] = []
     @ObservationIgnored private var fade: Task<Void, Never>?

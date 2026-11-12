@@ -17,28 +17,38 @@ struct RadarHeatPanel: View {
 
     private var heat: RadarHeatModel { model.heat }
 
-    /// The card is as tall as its content, at most this much of the map: closed 38 %, open 52 %. Beyond that the content scrolls inside
+    /// The card is as tall as its content, at most this much of the map: closed 40 %, open 62 % (80 % at the accessibility text sizes,
+    /// where even the headline is several lines). Beyond that the content scrolls inside
     /// the card. A card of any height would do on a small text size; at the largest ones the content is several screens tall, and a
     /// glass shape that tall is not drawn at all (CI screenshot radarHeatAX5, run 1: the text lay straight on the map).
     private var maxHeight: CGFloat {
-        CGFloat(max(Double(model.mapSize.height), 600) * (heat.isExpanded ? 0.52 : 0.38))
+        let open = typeSize.isAccessibilitySize ? 0.8 : 0.62
+        return CGFloat(max(Double(model.mapSize.height), 560) * (heat.isExpanded ? open : 0.4))
     }
 
     var body: some View {
         let snapshot = heat.snapshot
         let summary = snapshot.summary
-        ScrollView {
-            content(snapshot, summary)
-                .padding(Theme.Spacing.m)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .onGeometryChange(for: CGFloat.self) { proxy in
-                    proxy.size.height
-                } action: { height in
-                    contentHeight = height
-                }
+        ScrollViewReader { reader in
+            ScrollView {
+                content(snapshot, summary)
+                    .padding(Theme.Spacing.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { height in
+                        contentHeight = height
+                    }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(.hidden)
+            .task(id: heat.isExpanded) {
+                // Screenshot scene `radarHeatLists`: the open card shows its lists, not its legend.
+                guard heat.scrollsToLists, heat.isExpanded else { return }
+                try? await Task.sleep(for: .milliseconds(2500))   // the first answers are in
+                reader.scrollTo("heat.lists", anchor: .top)
+            }
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollIndicators(.hidden)
         .frame(maxHeight: contentHeight > 0 ? min(contentHeight, maxHeight) : maxHeight)
         .clipShape(.rect(cornerRadius: Theme.Radius.card, style: .continuous))
         .glassEffect(.regular, in: .rect(cornerRadius: Theme.Radius.card))
@@ -121,7 +131,6 @@ struct RadarHeatPanel: View {
         let summary = snapshot.summary
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             HeatLegend(summary: summary)
-            HeatCellLegend(snapshot: snapshot)
             let average = RadarHeatText.averageLine(summary)
             if !average.isEmpty {
                 Text(average)
@@ -129,11 +138,15 @@ struct RadarHeatPanel: View {
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                topDelays(snapshot)
+                hotspots(snapshot)
+            }
+            .id("heat.lists")
+            HeatCellLegend(snapshot: snapshot)
             if heat.history.hasTrend, let caption = heat.history.caption {
                 HeatSparkline(history: heat.history, caption: caption)
             }
-            topDelays(snapshot)
-            hotspots(snapshot)
             if !snapshot.isEmpty {
                 // The map of the delay as an image (docs/RADAR_HEATMAP.md §6): the cells on a night-blue ground, no base map, no person.
                 ShareLink(item: RadarHeatShare(cells: HeatLayer.drawCells(from: snapshot), summary: summary, date: Date()),

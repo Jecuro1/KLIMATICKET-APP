@@ -262,7 +262,7 @@ struct RadarView: View {
                                                 span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
         case .timeTravel, .timeTravelPlaying, .timeTravelLoading:   // MARK: radartime
             applyTimePreset(preset)
-        case .heat, .heatPanel, .heatCell, .heatAX5:   // MARK: radarheat
+        case .heat, .heatPanel, .heatLists, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection(layers: [.stations, .trains, .disruptions, .routes]).storageValue   // radarheat: not the Pünktlichkeit layer
