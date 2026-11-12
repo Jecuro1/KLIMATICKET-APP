@@ -63,8 +63,16 @@ extension RadarView {
         return GeoPoint(latitude: station.lat, longitude: station.lon)
     }
 
+    /// The station markers and bubbles that do not sit under a train marker (`MapDeclutter`): trains have priority, and MapKit's own
+    /// order of annotation views cannot be set from SwiftUI. Evaluated with the markers, so it follows them.
+    private var visibleStationClusters: [MapCluster] {
+        guard trainsOn else { return stationClusters }
+        return MapDeclutter.stations(stationClusters, awayFromTrains: model.clusters.map(\.center), in: model.box,
+                                     widthPoints: Double(model.mapSize.width), heightPoints: Double(model.mapSize.height))
+    }
+
     @MapContentBuilder var stationLayer: some MapContent {
-        ForEach(stationClusters) { cluster in
+        ForEach(visibleStationClusters) { cluster in
             if cluster.isSingle, let id = cluster.memberIDs.first, let station = stationIndex[id] {
                 Annotation(station.name, coordinate: station.coordinate.clCoordinate, anchor: .bottom) {
                     Button { openDepartures(stationID: id) } label: { StationMapMarker(name: station.name) }

@@ -138,8 +138,9 @@ struct RadarView: View {
                     .stroke(Theme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
             // Trains are declared last, but that does not decide what is on top: MapKit orders annotation views itself (the one
-            // further south is drawn over the one further north) and SwiftUI's Map has no z-index for annotations. A station
-            // bubble can therefore cover a train marker (CI screenshot radarAllZoom); docs/OEBB_LIVE.md §R11 names it as a limit.
+            // further south is drawn over the one further north) and SwiftUI's Map has no z-index for annotations (CI screenshot
+            // radarAllZoom, run 1: a station bubble over a train bubble). So trains have priority by collision: a station marker
+            // that would sit under a train marker is left out (`MapDeclutter`, `visibleStationClusters`).
             if trainsOn {
             ForEach(model.clusters) { cluster in
                 if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] {

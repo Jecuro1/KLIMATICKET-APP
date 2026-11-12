@@ -98,6 +98,34 @@ public struct MapCluster: Sendable, Hashable, Identifiable {
     public var isSingle: Bool { memberIDs.count == 1 }
 }
 
+/// Priority on the Zug-Radar's map: a train is what the screen is about, so a station marker or station bubble that would sit under
+/// a train marker is left out. SwiftUI's `Map` has no z-index for annotations and MapKit orders the views itself (the one further
+/// south over the one further north), so declaring the trains last did not keep a station bubble from covering a train
+/// (docs/OEBB_LIVE.md §R11). The decision is made here, in screen points, from the visible rectangle and the size of the map.
+public enum MapDeclutter {
+    /// Half the width and height (points) of the space a train marker and a station marker take together: a station whose
+    /// position is closer than this to a train in both directions would overlap it.
+    public static let clearanceX = 48.0
+    public static let clearanceY = 36.0
+
+    /// The stations that do not sit under a train, in their order. Unchanged without trains, without a valid rectangle or a size.
+    public static func stations(_ stations: [MapCluster], awayFromTrains trains: [GeoPoint], in box: RadarBox,
+                                widthPoints: Double, heightPoints: Double,
+                                clearanceX: Double = MapDeclutter.clearanceX, clearanceY: Double = MapDeclutter.clearanceY) -> [MapCluster] {
+        guard !trains.isEmpty, !stations.isEmpty, box.isValid, widthPoints > 0, heightPoints > 0,
+              widthPoints.isFinite, heightPoints.isFinite else { return stations }
+        let lonSpan = box.east - box.west, latSpan = box.north - box.south
+        func point(_ geo: GeoPoint) -> (x: Double, y: Double) {
+            ((geo.longitude - box.west) / lonSpan * widthPoints, (box.north - geo.latitude) / latSpan * heightPoints)
+        }
+        let trainPoints = trains.map(point)
+        return stations.filter { station in
+            let at = point(station.center)
+            return !trainPoints.contains { abs($0.x - at.x) < clearanceX && abs($0.y - at.y) < clearanceY }
+        }
+    }
+}
+
 public enum MapClustering {
     /// Groups by grid cell. The cell size follows the zoom (`RadarClustering.cellSize`), so markers merge only where they
     /// would overlap. Output is ordered by cell key: the same input always gives the same ids.
