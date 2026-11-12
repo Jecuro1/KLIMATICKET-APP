@@ -163,6 +163,9 @@ public enum SpokenLabels {
     }
 
     static func clock(_ date: Date, _ tz: TimeZone) -> String {
+        // A NaN or infinite date (corrupt realtime data) traps inside Foundation's calendar on Linux (Swift 6.4); on a device
+        // it reads as 0:00 like every other date without components.
+        guard date.timeIntervalSince1970.isFinite else { return "0:00" }
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = tz
         let c = cal.dateComponents([.hour, .minute], from: date)
