@@ -110,6 +110,7 @@ struct StatsScreen: View {
     private var primarySections: some View {
         StatsGrowOnView(delay: Motion.Stagger.delay(1)) { StatsSavingsCard(snapshot: snapshot, grow: $0) }
             .statsCard(order: 1)
+        YearReviewEntryCard().statsCard(order: 1)   // MARK: yearreview – "Dein Jahr" (at least one trip: this is the populated screen)
         StatsGrowOnView(delay: Motion.Stagger.delay(2)) { StatsMonthlyCard(snapshot: snapshot, grow: $0) }
             .statsCard(order: 2)
         StatsGrowOnView(delay: Motion.Stagger.delay(3)) { StatsModesCard(snapshot: snapshot, grow: $0) }

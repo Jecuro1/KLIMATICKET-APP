@@ -54,6 +54,7 @@ struct RootView: View {
             UpdateSheet()
                 .interactiveDismissDisabled(app.updates.isRequired)
         }
+        .yearReviewHost()   // MARK: yearreview – the year story's full-screen cover (docs/YEAR_REVIEW.md)
         .overlay(alignment: .top) {
             ToastOverlay()
         }
@@ -163,6 +164,7 @@ struct RootView: View {
     /// One of the app-level sheets is up (RootView's own, or Einstellungen / Gipfelbuch, presented by a tab).
     private var isCoveredByAppSheet: Bool {
         app.tripDraft != nil || app.isShowingSettings || app.isShowingAchievements || app.updates.isPresentingSheet
+            || app.yearReviewRequest != nil   // MARK: yearreview – the story's cover
     }
 
     /// Back from the background: remote content, sync, detection regions and – only if something changed – widgets.
@@ -234,6 +236,7 @@ struct RootView: View {
     /// klimabilanz://log?favorite=<uuid> · klimabilanz://tab/<overview|trips|stats|ticket|planner> · klimabilanz://update
     /// klimabilanz://plan?from=…&to=…&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<stationID>   // MARK: planner
     /// klimabilanz://radar – the Zug-Radar   // MARK: widgets
+    /// klimabilanz://year[/2026] – the year story   // MARK: yearreview
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -267,6 +270,9 @@ struct RootView: View {
             app.planner.radarRequested = true
         case "update":
             Task { await app.updates.checkIfDue(force: true) }
+        // MARK: yearreview – klimabilanz://year · klimabilanz://year/2026 (Jahresrückblick; also the widget's tap)
+        case "year":
+            app.handleYearReviewLink(url)
         default:
             break
         }
@@ -530,6 +536,9 @@ struct ScreenshotRouter: View {
         // MARK: reports
         case let reportScreen where RepScreenshotHost.screens.contains(reportScreen):
             RepScreenshotHost(screen: reportScreen)
+        // MARK: yearreview – the year story: pages 1–8, the share page, the empty state and AX5 (demo data, no network)
+        case let yearScreen where YearReviewScreenshotHost.screens.contains(yearScreen):
+            YearReviewScreenshotHost(screen: yearScreen)
         // MARK: map
         case _ where screen.hasPrefix("map"):
             AtlasScreenshotScene(screen: screen)

@@ -100,6 +100,8 @@ final class AppState {
     var isShowingSettings = false
     var isShowingAchievements = false
     var celebrateBreakEven = false
+    // MARK: yearreview – the year story (docs/YEAR_REVIEW.md): set by the cards, the deep link and the widget, presented by RootView.
+    var yearReviewRequest: YearReviewRequest?
 
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var pendingOutsideDraft: TripDraft?

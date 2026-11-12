@@ -78,6 +78,7 @@ struct DashboardView: View {
                         AssistantWhyTicketButton(snapshot: snapshot)
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, Theme.Spacing.xs)
+                        YearReviewSeasonalCard(trips: trips)   // MARK: yearreview – 1 Dec – 31 Jan, dismissible per year
                     } else {
                         DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
                             .padding(.horizontal, Theme.Spacing.cardGutter)
