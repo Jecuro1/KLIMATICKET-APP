@@ -92,7 +92,9 @@ public extension FareEstimator {
         }
 
         // Otherwise: the whole route's tariff km, priced once – never below the direct ticket.
-        let priced = model.round(model.fare(railKm: tariffKm, travelClass: travelClass, discount: discount) * catalog.fareFactor(on: date))
+        // MARK: tarifstand – the tariff km come from table prices, so only increases after the table's day apply
+        let priced = model.round(model.fare(railKm: tariffKm, travelClass: travelClass, discount: discount)
+            * catalog.fareFactor(on: date, relativeTo: relations.validFrom))
         return FareEstimate(fareEUR: max(priced, direct.fareEUR), distanceKm: distance, straightLineKm: direct.straightLineKm,
                             method: .distanceTariff,
                             explanation: "\(label) · geschätzt nach Tarif-km · \(classText)\(discountText)")

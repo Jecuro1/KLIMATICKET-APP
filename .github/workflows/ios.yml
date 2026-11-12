@@ -415,6 +415,7 @@ jobs:
             dist/update.json
             dist/altstore-source.json
             dist/tariffs.json
+            dist/relations-pack.bin
             dist/AppIcon.png
             dist/ota/*
           body_path: dist/RELEASE_NOTES.md
@@ -434,6 +435,7 @@ jobs:
             dist/update.json
             dist/altstore-source.json
             dist/tariffs.json
+            dist/relations-pack.bin
             dist/AppIcon.png
             dist/ota/*
           body_path: dist/RELEASE_NOTES.md

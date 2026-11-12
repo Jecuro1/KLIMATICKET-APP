@@ -191,6 +191,9 @@ public struct TariffCatalog: Codable, Hashable, Sendable {
     public var notes: [String]
     /// Tariff increases by travel date, e.g. [{"validFrom": "2026-12-13", "factor": 1.035}] (applied cumulatively).
     public var fareIndex: [FareIndexPoint]?
+    // MARK: tarifstand
+    /// Where to download the current relation-price table (optional, additive; docs/TARIFF_FRESHNESS.md).
+    public var relationsPack: RelationsPackInfo?
 
     public struct FareIndexPoint: Codable, Hashable, Sendable {
         public var validFrom: String
@@ -204,14 +207,29 @@ public struct TariffCatalog: Codable, Hashable, Sendable {
 
     /// Cumulative price factor for trips on `date`.
     public func fareFactor(on date: Date, calendar: Calendar = .vienna) -> Double {
+        fareFactor(onISODay: TicketProduct.isoDay(date, calendar: calendar))
+    }
+
+    func fareFactor(onISODay day: String) -> Double {
         guard let fareIndex, !fareIndex.isEmpty else { return 1 }
-        let day = TicketProduct.isoDay(date, calendar: calendar)
         return fareIndex.filter { $0.validFrom <= day }.reduce(1) { $0 * $1.factor }
+    }
+
+    /// Factor to apply to a price taken from a relation table that is valid from `tableValidFrom`: the table already holds
+    /// every increase up to that day, so only the change between that day and `date` is applied (also downwards for a trip
+    /// before the table's day). With the bundled table (2025-12-14, no index entry up to then) this equals `fareFactor(on:)`;
+    /// with a newer table from the remote pack the same index entry is never counted twice.
+    public func fareFactor(on date: Date, relativeTo tableValidFrom: String, calendar: Calendar = .vienna) -> Double {
+        let factor = fareFactor(on: date, calendar: calendar)
+        guard TariffFreshness.isISODay(tableValidFrom) else { return factor }
+        let base = fareFactor(onISODay: tableValidFrom)
+        guard base.isFinite, base > 0 else { return factor }
+        return factor / base
     }
 
     public init(version: Int, updatedAt: String, currency: String = "EUR", products: [TicketProduct], fareModel: FareModel,
                 cityFares: [CityFare], kilometergeldEUR: Double, carFullCostPerKmEUR: Double, emissions: EmissionFactors, notes: [String] = [],
-                fareIndex: [FareIndexPoint]? = nil) {
+                fareIndex: [FareIndexPoint]? = nil, relationsPack: RelationsPackInfo? = nil) {
         self.version = version
         self.updatedAt = updatedAt
         self.currency = currency
@@ -223,6 +241,7 @@ public struct TariffCatalog: Codable, Hashable, Sendable {
         self.emissions = emissions
         self.notes = notes
         self.fareIndex = fareIndex
+        self.relationsPack = relationsPack
     }
 
     public static func decode(from data: Data) throws -> TariffCatalog {

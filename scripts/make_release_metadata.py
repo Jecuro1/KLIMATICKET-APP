@@ -4,7 +4,7 @@
   dist/update.json           in-app updater manifest (KlimaCore.UpdateManifest)
   dist/altstore-source.json  AltStore / SideStore source (AltStore source format 2.x + legacy fields)
   dist/RELEASE_NOTES.md      GitHub release body
-  dist/tariffs.json, dist/AppIcon.png
+  dist/tariffs.json, dist/relations-pack.bin (when tariffs.json has a relationsPack block), dist/AppIcon.png
 
 AltStore and SideStore refuse to install/update from a source unless
   * versions[0].version / buildVersion equal CFBundleShortVersionString / CFBundleVersion of the .ipa,
@@ -317,9 +317,21 @@ def main():
 
     tariffs_src = os.path.join(ROOT, "App", "Resources", "tariffs.json")
     with open(tariffs_src, encoding="utf-8") as f:
-        tariffs_version = json.load(f).get("version", 1)
+        tariffs_doc = json.load(f)
+    tariffs_version = tariffs_doc.get("version", 1)
     os.makedirs(dist, exist_ok=True)
     shutil.copy(tariffs_src, os.path.join(dist, "tariffs.json"))
+    # MARK: tarifstand – the relation pack the catalogue points to is published next to it (docs/TARIFF_FRESHNESS.md §3).
+    # A release never ships a catalogue whose pack is missing or does not match its hash and size.
+    pack_info = tariffs_doc.get("relationsPack")
+    if pack_info:
+        pack_src = os.path.join(ROOT, "data", os.path.basename(pack_info["url"]))
+        if not os.path.exists(pack_src):
+            fail(f"tariffs.json names the relation pack {pack_info['url']}, but {pack_src} does not exist")
+        if sha256_of(pack_src) != pack_info["sha256"] or os.path.getsize(pack_src) != pack_info["bytes"]:
+            fail("data/relations-pack.bin does not match relationsPack in tariffs.json "
+                 "(run scripts/build_relations_pack.py, then scripts/build_tariffs.py)")
+        shutil.copy(pack_src, os.path.join(dist, os.path.basename(pack_info["url"])))
     shutil.copy(os.path.join(ROOT, "App", "Resources", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png"),
                 os.path.join(dist, "AppIcon.png"))
 

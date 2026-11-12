@@ -8,6 +8,9 @@ coordinates (≤ 1.2 km) or name. Prices are symmetric; the cheapest variant win
 import json, math, os, re, struct, sys, unicodedata, zlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Data version of the table (docs/TARIFF_FRESHNESS.md): raise it whenever the prices change, so a remote relation pack
+# (scripts/build_relations_pack.py) replaces the bundled table only when it is newer.
+RELATIONS_VERSION = 1
 
 def norm(s):
     s = s.lower().replace("ß", "ss").replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
@@ -108,8 +111,8 @@ def main():
     packed = comp.compress(bytes(blob)) + comp.flush()
     res = os.path.join(ROOT, "App", "Resources")
     with open(os.path.join(res, "relations-points.json"), "w", encoding="utf-8") as f:
-        json.dump({"validFrom": major.get("valid_from", ""), "source": major.get("source_url", ""), "points": points},
-                  f, ensure_ascii=False, separators=(",", ":"))
+        json.dump({"validFrom": major.get("valid_from", ""), "source": major.get("source_url", ""), "points": points,
+                   "version": RELATIONS_VERSION}, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(res, "relations.bin"), "wb") as f:
         f.write(packed)
     old = os.path.join(res, "relations.json")

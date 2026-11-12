@@ -85,7 +85,7 @@ public struct FareEstimator: Sendable {
         guard geo.method != .cityTicket, mode != .metro, mode != .tram,
               let base = relations.price(from: from.id, to: to.id) else { return geo }
         let model = catalog.fareModel
-        var value = base * catalog.fareFactor(on: date)
+        var value = base * catalog.fareFactor(on: date, relativeTo: relations.validFrom)   // MARK: tarifstand – a newer remote table already holds the increase
         if travelClass == .first { value *= model.firstClassFactor }
         if let factor = model.discountFactors[discount.rawValue] { value *= factor }
         value = model.round(value)
