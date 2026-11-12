@@ -253,7 +253,8 @@ public struct RadarTimeline: Sendable {
     /// One vehicle at `time`; nil when it has not started, is over, or is unknown.
     public func pin(for tripID: String, at time: Date, route: RadarRoute? = nil) -> RadarTimePin? {
         guard let trip = trips[tripID], let projected = trip.run.position(at: time, route: route) else { return nil }
-        let gap = trip.observations.map { abs($0.time.timeIntervalSince(time)) }.min() ?? .infinity
+        var gap = TimeInterval.infinity
+        for observation in trip.observations { gap = min(gap, abs(observation.time.timeIntervalSince(time))) }
         return RadarTimePin(tripID: tripID, vehicle: trip.vehicle, coordinate: projected.coordinate, bearing: projected.bearing,
                             phase: projected.phase, path: projected.path, distanceToAnswer: gap, delaySeconds: trip.run.delay(at: time))
     }

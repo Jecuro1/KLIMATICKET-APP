@@ -291,6 +291,14 @@ final class RadarTimelineTests: XCTestCase {
         let bytes = timeline.observationCount * (12 * MemoryLayout<RadarScheduleStop>.stride + MemoryLayout<RadarTimeline.Observation>.stride)
         XCTAssertLessThan(bytes, 12_000_000, "twelve thousand observations are about 8 MB, not the 100 MB that full vehicles would be")
         XCTAssertLessThanOrEqual(MemoryLayout<RadarScheduleStop>.stride, 64)
+        // Asking for every vehicle is cheap enough for 12 frames a second (a debug build on Linux here; a device build is several times faster).
+        let started = Date()
+        var count = 0
+        for step in 0..<10 { count += timeline.pins(at: F.at(10 + Double(step))).count }
+        let perCall = Date().timeIntervalSince(started) / 10
+        print("RADAR_TIME_PERF pins(at:) for 1200 vehicles: \(Int(perCall * 1000)) ms per call (debug, Linux)")
+        XCTAssertGreaterThan(count, 0)
+        XCTAssertLessThan(perCall, 0.25, "under a quarter second even unoptimised")
     }
 
     func testPruneDropsEndedTripsAndObservationsNoOneNeeds() {
