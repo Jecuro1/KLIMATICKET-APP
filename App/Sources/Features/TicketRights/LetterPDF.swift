@@ -58,9 +58,10 @@ private struct LetterPage {
         _ = text(content.senderLines.joined(separator: "\n"), size: LetterLayout.senderSize, x: left, y: LetterLayout.senderTop, width: width)
         _ = text(content.recipientLines.joined(separator: "\n"), size: LetterLayout.bodySize, x: left, y: LetterLayout.recipientTop, width: width)
         _ = text(content.dateLine, size: LetterLayout.bodySize, x: left, y: LetterLayout.dateTop, width: width, alignment: .right)
-        _ = text(content.subject, size: LetterLayout.subjectSize, weight: .bold, x: left, y: LetterLayout.subjectTop, width: width)
+        let subjectHeight = text(content.subject, size: LetterLayout.subjectSize, weight: .bold, x: left, y: LetterLayout.subjectTop, width: width)
 
-        y = LetterLayout.bodyTop
+        // The text follows the subject (a long ticket number may wrap it to two lines).
+        y = max(LetterLayout.bodyTop, LetterLayout.subjectTop + subjectHeight + LetterLayout.subjectGap)
         flow(content.salutation)
         for block in content.blocks {
             switch block {

@@ -18,7 +18,10 @@ enum LetterLayout {
     static let recipientTop: CGFloat = 150
     static let dateTop: CGFloat = 238
     static let subjectTop: CGFloat = 268
+    /// The text starts here when the subject has one line, lower when it has two.
     static let bodyTop: CGFloat = 298
+    /// Space between the subject and the salutation.
+    static let subjectGap: CGFloat = 16
 
     static let senderSize: CGFloat = 9.5
     static let bodySize: CGFloat = 10.5
@@ -61,10 +64,11 @@ struct LetterPaper: View {
             paperText(content.dateLine, size: LetterLayout.bodySize)
                 .frame(width: LetterLayout.textWidth, alignment: .trailing)
                 .offset(x: LetterLayout.left, y: LetterLayout.dateTop)
-            paperText(content.subject, size: LetterLayout.subjectSize, weight: .bold)
-                .frame(width: LetterLayout.textWidth, alignment: .leading)
-                .offset(x: LetterLayout.left, y: LetterLayout.subjectTop)
             VStack(alignment: .leading, spacing: LetterLayout.blockGap) {
+                // The subject may take two lines (a long ticket number): the text below follows it.
+                paperText(content.subject, size: LetterLayout.subjectSize, weight: .bold)
+                    .frame(width: LetterLayout.textWidth, alignment: .leading)
+                    .padding(.bottom, LetterLayout.subjectGap - LetterLayout.blockGap)
                 paperText(content.salutation, size: LetterLayout.bodySize)
                 ForEach(Array(content.blocks.enumerated()), id: \.offset) { _, block in
                     blockView(block)
@@ -84,7 +88,7 @@ struct LetterPaper: View {
                 }
             }
             .frame(width: LetterLayout.textWidth, alignment: .leading)
-            .offset(x: LetterLayout.left, y: LetterLayout.bodyTop)
+            .offset(x: LetterLayout.left, y: LetterLayout.subjectTop)
         }
         .frame(width: LetterLayout.pageWidth, height: LetterLayout.pageHeight, alignment: .topLeading)
     }

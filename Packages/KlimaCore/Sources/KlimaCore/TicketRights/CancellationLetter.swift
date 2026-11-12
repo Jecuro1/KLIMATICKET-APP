@@ -209,7 +209,7 @@ public enum CancellationLetter {
         case .extraordinary(let reason, let since):
             guard status.canWriteExtraordinary else { return nil }
             title = "Außerordentliche Kündigung des KlimaTicket Ö"
-            subject = "Außerordentliche Kündigung meines KlimaTicket Ö – Ticketnummer \(number)"
+            subject = "Außerordentliche Kündigung – Ticketnummer \(number)"
             facts.append(.init("Kündigungsgrund", reason.factValue))
             let deadlineText: String
             if let since {
