@@ -60,6 +60,7 @@ struct WhatIfAssumptionsControls: View {
                 .padding(.vertical, 6)
             }
             .scrollIndicators(.hidden)
+            .scrollClipDisabled()
             .contentMargins(.horizontal, Theme.Spacing.cardGutter, for: .scrollContent)
             .padding(.horizontal, -Theme.Spacing.cardGutter)
         }
@@ -132,8 +133,12 @@ struct WhatIfRouteCard: View {
                 Divider().overlay(Theme.separator)
                 tripsRow
                 slider
-                GlassSegmentedPicker(selection: $route.travelClass, options: TravelClass.allCases) { Text($0.displayName) }
-                    .accessibilityLabel("Klasse")
+                if isLarge {
+                    WhatIfStackedChoice(selection: $route.travelClass, options: TravelClass.allCases) { $0.displayName }
+                } else {
+                    GlassSegmentedPicker(selection: $route.travelClass, options: TravelClass.allCases) { Text($0.displayName) }
+                        .accessibilityLabel("Klasse")
+                }
             }
         }
     }
@@ -143,7 +148,7 @@ struct WhatIfRouteCard: View {
     private var stations: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.s) {
             if !isLarge {
-                RouteGlyph(height: 92)
+                RouteGlyph(height: 100)
             }
             VStack(alignment: .leading, spacing: 0) {
                 stationButton(title: "Von", name: fare?.fromName ?? "", isFrom: true)
@@ -177,6 +182,7 @@ struct WhatIfRouteCard: View {
                 }
                 Spacer(minLength: 0)
             }
+            .padding(.vertical, 6)
             .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -263,8 +269,38 @@ struct WhatIfRouteCard: View {
                 .foregroundStyle(Theme.textTertiary)
         }
         if !isLarge { Spacer(minLength: Theme.Spacing.xs) }
-        Stepper("Fahrten pro Monat", value: tripsBinding, in: 0...WhatIfLimits.maxTripsPerMonth)
-            .labelsHidden()
+        stepper(trips)
+    }
+
+    /// − and + in one glass capsule, each at least 44 × 44 pt (the system stepper is smaller).
+    private func stepper(_ trips: Int) -> some View {
+        HStack(spacing: 0) {
+            Button {
+                tripsBinding.wrappedValue = trips - 1
+            } label: {
+                Image(systemName: "minus")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 56, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(trips <= 0)
+            .accessibilityLabel("Eine Fahrt weniger")
+            Divider()
+                .frame(height: 22)
+            Button {
+                tripsBinding.wrappedValue = trips + 1
+            } label: {
+                Image(systemName: "plus")
+                    .font(.body.weight(.semibold))
+                    .frame(width: 56, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(trips >= WhatIfLimits.maxTripsPerMonth)
+            .accessibilityLabel("Eine Fahrt mehr")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Theme.textPrimary)
+        .glassEffect(.regular.interactive(), in: .capsule)
     }
 
     private var slider: some View {
@@ -364,7 +400,7 @@ struct WhatIfHistoryControls: View {
         GlassCard(padding: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: 0) {
                 WhatIfToggleRow(symbol: "sun.max.fill", tint: Theme.gold, title: "Juli und August ohne Fahrten",
-                                subtitle: "Ferien: in diesen Monaten fährst du nicht",
+                                subtitle: "In den Ferien fährst du nicht",
                                 isOn: Binding(get: { model.excludesSummer }, set: { model.excludesSummer = $0 }))
                 Divider().overlay(Theme.separator)
                 WhatIfToggleRow(symbol: "map.fill", tint: Theme.glacier, title: "Nur ein Bundesland",
@@ -407,6 +443,7 @@ struct WhatIfHistoryControls: View {
             .padding(.vertical, 6)
         }
         .scrollIndicators(.hidden)
+        .scrollClipDisabled()
         .padding(.bottom, Theme.Spacing.xs)
     }
 }
@@ -441,6 +478,7 @@ struct WhatIfToggleRow: View {
             }
         }
         .tint(Theme.accent)
+        .padding(.vertical, 6)
         .frame(minHeight: 52)
         .haptic(.selection, trigger: isOn)
     }
@@ -476,9 +514,41 @@ struct WhatIfTicketKindCard<Extra: View>: View {
                     .padding(.vertical, 6)
                 }
                 .scrollIndicators(.hidden)
-                .padding(.horizontal, -2)
+                .scrollClipDisabled()
                 extra
             }
         }
+    }
+}
+
+// MARK: - Accessibility sizes
+
+/// Full-width choice buttons: the replacement of a side-by-side segmented control at the accessibility text sizes.
+struct WhatIfStackedChoice<Value: Hashable>: View {
+    @Binding var selection: Value
+    let options: [Value]
+    let title: (Value) -> String
+
+    var body: some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    withMotion(Motion.snappy) { selection = option }
+                } label: {
+                    Text(title(option))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .padding(.horizontal, Theme.Spacing.s)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(isSelected ? .regular.tint(Theme.accent.opacity(0.25)).interactive() : .regular.interactive(),
+                             in: .rect(cornerRadius: 28, style: .continuous))
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .haptic(.selection, trigger: selection)
     }
 }

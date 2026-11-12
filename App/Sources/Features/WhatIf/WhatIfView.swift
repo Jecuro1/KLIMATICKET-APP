@@ -106,26 +106,7 @@ struct WhatIfScreen: View {
     @ViewBuilder
     private func modePicker(selection: Binding<WhatIfModel.Mode>) -> some View {
         if typeSize.isAccessibilitySize {
-            VStack(spacing: Theme.Spacing.xs) {
-                ForEach(WhatIfModel.Mode.allCases) { mode in
-                    let isSelected = selection.wrappedValue == mode
-                    Button {
-                        withMotion(Motion.snappy) { selection.wrappedValue = mode }
-                    } label: {
-                        Text(mode.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(isSelected ? Theme.textPrimary : Theme.textSecondary)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity, minHeight: 56)
-                            .padding(.horizontal, Theme.Spacing.s)
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(isSelected ? .regular.tint(Theme.accent.opacity(0.25)).interactive() : .regular.interactive(),
-                                 in: .rect(cornerRadius: 28, style: .continuous))
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
-                }
-            }
-            .haptic(.selection, trigger: selection.wrappedValue)
+            WhatIfStackedChoice(selection: selection, options: WhatIfModel.Mode.allCases) { $0.title }
         } else {
             GlassSegmentedPicker(selection: selection, options: WhatIfModel.Mode.allCases) { Text($0.title) }
                 .accessibilityLabel("Rechnen mit")
