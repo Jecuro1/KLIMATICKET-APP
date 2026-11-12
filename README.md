@@ -31,7 +31,9 @@ Bedienung, Frost-Karten für Inhalte.
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
 - **Aussteige-Wecker** – weckt dich kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort, auch bei gesperrtem iPhone;
   der Standort bleibt auf dem Gerät und wird nicht gespeichert ([docs/EXIT_ALARM.md](docs/EXIT_ALARM.md), mit Geräte-Checkliste)
-- **Automatische Fahrterkennung** (optional) – erkennt Fahrten zwischen deinen Stamm-Bahnhöfen und schlägt sie vor
+- **Fahrten erkennen** – „Fahrt aufzeichnen“ (genau, mit Live-Karte und Live Activity) und die optionale **Hintergrund-Erkennung (Beta)**:
+  Vorschläge mit ehrlichem Etikett (Vielleicht, Wahrscheinlich, Sicher) in der Übersicht, nie ohne dein Okay erfasst; grobe Standortpunkte
+  höchstens 36 Stunden nur auf dem iPhone ([docs/TRIP_DETECTION.md](docs/TRIP_DETECTION.md), mit Geräte-Checkliste und den Grenzen)
 - **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
   einen Cache und machen nie einen Netzaufruf
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick

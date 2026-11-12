@@ -21,6 +21,7 @@ Packages/KlimaCore/         Plattformunabhängige Logik, unter Linux und macOS t
                             Map (Kartenebenen), TrainSearch, Follow, Disruptions, Logging
   Alarms/ Routes/ Widgets/  Alarm-Arten und Meldungsverlauf, gespeicherte Strecken, Widget-Cache und Zeitplan
   ExitAlarm/                Aussteige-Wecker (docs/EXIT_ALARM.md): Planner (Fahrplan + GPS), Buch, Engine mit Protokollen und Fakes
+  Detection/                Fahrten erkennen (docs/TRIP_DETECTION.md): Detektor, Bewertung, 36-h-Puffer, Dedup, Aufzeichnung, Zahlen wie im Editor
   Tariff/                   Tarifstand: Fahrplanwechsel, Frische, Relationspaket (Download, Prüfung)
   TicketRights/             Fahrgastrechte: Widerspruchs- und Kündigungsbrief, Ratenplan, Fristen
   WhatIf/ YearReview/       „Was wäre wenn?“ und der Jahresrückblick (Seiten, Zeiträume, Referenzstrecken)
@@ -29,6 +30,7 @@ Packages/KlimaCloud/        Cloud-Client ohne UI (nur Foundation, unter Linux un
                             Sitzung/Refresh, DTOs, Merge-Regel, PKCE, Zeitstempel (docs/CLOUDFLARE_BACKEND.md §6)
 Shared/                     In App UND Widget-Extension kompiliert – nie ein Netzaufruf (check_integration.py)
   Models.swift              SwiftData-Modelle: TicketEntity, TripEntity, FavoriteRouteEntity + DataSchema
+  TripCandidateEntity.swift Fahrten-Vorschläge (docs/TRIP_DETECTION.md): additiv, nur lokal – nicht im Export, Backup oder Sync
   Theme.swift, Motion/      Design-Tokens und Motion-Tokens (die einzige Quelle für Farben, Abstände, Animation)
   Wegzeichen/               Linien-Schilder, Ortsmarken, Bundesländer-Zeichen (eigene Glyphen, keine Markenlogos)
   WidgetViews/              Alle Widget-Ansichten (auch von der Widget-Galerie der App genutzt)
@@ -39,7 +41,7 @@ App/Sources/
                             ScreenshotRouter, Deep Links, MainTabView), Format (de-AT), Copy, Shortcuts, LaunchTrace
   Data/                     Analytics (AnalyticsSnapshot), Repository (alle Schreibzugriffe), CommitEffects, DemoData,
                             Backup, StoreLoader
-  Services/                 Auth, Sync, Keychain, Update, Tarif, Benachrichtigungen, Standort, Fahrterkennung, manueller
+  Services/                 Auth, Sync, Keychain, Update, Tarif, Benachrichtigungen, Standort, Fahrterkennung (Detection/: Dateien, Recorder), manueller
                             Update-Download; Unterordner Live/ (LiveDataService: Einwilligung, Drosselung, Verfolgen im
                             Hintergrund), Tariff/ (Relationspaket), Widgets/ (WidgetCacheSync), AI/ (Assistent),
                             Diagnostics/ (Diagnose, Watchdog, Perf-Messung)
