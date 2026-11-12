@@ -8,6 +8,7 @@ import KlimaCore
 /// card at a Servicestelle, it does not replace them.
 struct CancellationLetterView: View {
     let context: TicketLetterContext
+    private var fileName: String { mode == .ordinary ? "Kuendigung-KlimaTicket.pdf" : "Ausserordentliche-Kuendigung-KlimaTicket.pdf" }
     /// Scrolls to a block on appear (screenshot routes).
     var screenshotAnchor: LetterAnchor? = nil
 
@@ -89,9 +90,9 @@ struct CancellationLetterView: View {
             ScrollViewReader { proxy in
                 Form {
                     Section {
-                        LetterHero(kicker: "Kündigung · \(context.ticket.name)", title: "Dein Kündigungsschreiben",
-                                   subtitle: mode == .ordinary ? "Ohne Angabe von Gründen – mit dem Kündigungsentgelt aus den AGB."
-                                                              : "Mit wichtigem Grund – ohne Kündigungsentgelt, aber mit Frist und Nachweis.",
+                        LetterHero(kicker: "Kündigungsschreiben", title: "Deine Kündigung",
+                                   subtitle: mode == .ordinary ? "\(context.ticket.name) – ohne Angabe von Gründen, mit dem Kündigungsentgelt aus den AGB."
+                                                              : "\(context.ticket.name) – mit wichtigem Grund: ohne Kündigungsentgelt, aber mit Frist und Nachweis.",
                                    symbol: "xmark.seal.fill", done: steps.done, total: steps.total)
                     }
                     .listRowBackground(Color.clear)
@@ -112,6 +113,7 @@ struct CancellationLetterView: View {
                         Text("Vorschau")
                     }
                     .listRowBackground(Color.clear)
+                    LetterInlineActions(content: letter, fileName: fileName, printJobName: letter.documentTitle)
                     Section {
                         Text(LetterText.notLegalAdvice)
                             .font(.footnote)
@@ -122,10 +124,7 @@ struct CancellationLetterView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    LetterActionBar(content: letter, fileName: mode == .ordinary ? "Kuendigung-KlimaTicket.pdf" : "Ausserordentliche-Kuendigung-KlimaTicket.pdf",
-                                    printJobName: letter.documentTitle)
-                }
+                .modifier(LetterBottomBar(content: letter, fileName: fileName, printJobName: letter.documentTitle))
                 .onChange(of: form.sender) { _, sender in
                     if remembers { LetterStore.saveSender(sender) }
                 }
@@ -172,7 +171,7 @@ struct CancellationLetterView: View {
             .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: Theme.Spacing.m, bottom: Theme.Spacing.s, trailing: Theme.Spacing.m))
         } footer: {
             if !status.canWriteOrdinary {
-                Text("Ohne Angabe von Gründen kannst du ab dem \(status.possibleFromMonth). Gültigkeitsmonat kündigen. Bis dahin geht es nur mit einem wichtigen Grund (AGB Punkt 17.2).")
+                Text("Bis dahin geht es nur mit einem wichtigen Grund (AGB Punkt 17.2).")
             }
         }
     }
@@ -190,7 +189,7 @@ struct CancellationLetterView: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Du bist im \(status.currentMonth). Gültigkeitsmonat. Ein Kündigungsschreiben ohne Grund gibt es erst ab dem \(status.possibleFromMonth).")
+                Text("Du bist im \(status.currentMonth). Gültigkeitsmonat – erst der \(status.possibleFromMonth). erlaubt die Kündigung ohne Angabe von Gründen.")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

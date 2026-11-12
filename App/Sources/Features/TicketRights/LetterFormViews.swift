@@ -17,20 +17,31 @@ struct LetterHero: View {
     var done: Int
     var total: Int
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private var isComplete: Bool { done >= total }
     private var progress: Double { total > 0 ? Double(done) / Double(total) : 0 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(alignment: .center, spacing: Theme.Spacing.m) {
-                medallion
-                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Kicker(text: kicker)
-                    Text(title)
-                        .font(.system(.title2, design: .rounded).weight(.bold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
+            // At accessibility sizes the medallion sits above the words instead of squeezing them.
+            let heading = VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Kicker(text: kicker)
+                Text(title)
+                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                    medallion
+                    heading
+                }
+            } else {
+                HStack(alignment: .center, spacing: Theme.Spacing.m) {
+                    medallion
+                    heading
                 }
             }
             Text(subtitle)
@@ -216,6 +227,7 @@ struct LetterPreviewCard: View {
                     if content.isReady {
                         stamp
                             .padding(10)
+                            .dynamicTypeSize(...DynamicTypeSize.large)   // a stamp on a page, not text
                             .motionTransition(.pop)
                     }
                 }
@@ -231,6 +243,7 @@ struct LetterPreviewCard: View {
                     .buttonStyle(.plain)
                     .glassEffect(.regular.interactive(), in: .circle)
                     .padding(10)
+                    .dynamicTypeSize(...DynamicTypeSize.large)
                     .accessibilityLabel("Brief groß ansehen")
                 }
         }
@@ -297,9 +310,9 @@ struct LetterHintBlock: View {
                     .foregroundStyle(Theme.accentText)
             }
             .accessibilityAddTraits(.isHeader)
-            ForEach(paragraphs, id: \.self) { paragraph in
+            ForEach(Array(paragraphs.enumerated()), id: \.offset) { index, paragraph in
                 Text(paragraph)
-                    .font(.subheadline)
+                    .font(index == 0 ? .subheadline : .footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -343,11 +356,14 @@ struct LetterNoticeCard: View {
 
 // MARK: - Bottom bar
 
-/// „Als PDF teilen“ and „Drucken“ – always at hand, enabled when nothing is missing. While something is missing it says what.
+/// „Als PDF teilen“ and „Drucken“ – pinned at the bottom (at accessibility sizes inline after the form, where the buttons
+/// would take half the screen), enabled when nothing is missing. While something is missing it says what.
 struct LetterActionBar: View {
     var content: LetterContent
     var fileName: String
     var printJobName: String
+    /// Inside the form instead of pinned: no backdrop.
+    var isInline = false
 
     @Environment(AppState.self) private var app
     @State private var printTrigger = 0
@@ -373,23 +389,32 @@ struct LetterActionBar: View {
                 }
             }
         }
-        .padding(.horizontal, Theme.Spacing.m)
-        .padding(.top, Theme.Spacing.s)
-        .padding(.bottom, Theme.Spacing.xs)
+        .padding(.horizontal, isInline ? 0 : Theme.Spacing.m)
+        .padding(.top, isInline ? 0 : Theme.Spacing.s)
+        .padding(.bottom, isInline ? 0 : Theme.Spacing.xs)
+        .background(alignment: .top) {
+            if !isInline {
+                // A short fade above the bar, solid below it: nothing of the form shows between the buttons.
+                LinearGradient(colors: [Theme.sheetBackground.opacity(0), Theme.sheetBackground], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 24)
+                    .offset(y: -24)
+            }
+        }
         .background {
-            LinearGradient(colors: [Theme.sheetBackground.opacity(0), Theme.sheetBackground.opacity(0.96), Theme.sheetBackground],
-                           startPoint: .top, endPoint: UnitPoint(x: 0.5, y: 0.45))
-                .ignoresSafeArea()
+            if !isInline { Theme.sheetBackground.ignoresSafeArea(edges: .bottom) }
         }
         .motionAnimation(Motion.smooth, value: content.isReady)
         .haptic(.success, trigger: content.isReady, when: { old, new in !old && new })
     }
 
+    /// „Es fehlt noch: Name, Ort.“ – the place of the letter follows the holder's place, so it is not named twice.
     private func summary(_ issue: LetterIssue) -> String {
         let missing = content.missingFields
-        if missing.count > 1 {
-            return "Es fehlt noch: " + missing.map(\.title).joined(separator: ", ") + "."
+        let shown = missing.contains(.place) ? missing.filter { $0 != .letterPlace } : missing
+        if shown.count > 1 {
+            return "Es fehlt noch: " + shown.map(\.title).joined(separator: ", ") + "."
         }
+        if let only = shown.first { return LetterIssue.missing(only).message }
         return issue.message
     }
 
@@ -416,5 +441,43 @@ struct LetterActionBar: View {
         .buttonStyle(.glass)
         .disabled(!content.isReady || !LetterPrinter.isAvailable)
         .haptic(.tap, trigger: printTrigger)
+    }
+}
+
+/// The bar at the bottom of a letter sheet – or, at accessibility sizes, nothing here: the actions are a section of the form.
+struct LetterBottomBar: ViewModifier {
+    var content: LetterContent
+    var fileName: String
+    var printJobName: String
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    func body(content view: Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            view
+        } else {
+            view.safeAreaInset(edge: .bottom, spacing: 0) {
+                LetterActionBar(content: content, fileName: fileName, printJobName: printJobName)
+            }
+        }
+    }
+}
+
+/// Inline actions for accessibility sizes (a form section; empty otherwise).
+struct LetterInlineActions: View {
+    var content: LetterContent
+    var fileName: String
+    var printJobName: String
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            Section {
+                LetterActionBar(content: content, fileName: fileName, printJobName: printJobName, isInline: true)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+            }
+        }
     }
 }

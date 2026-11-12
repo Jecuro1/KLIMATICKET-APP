@@ -7,6 +7,7 @@ import KlimaCore
 /// deadline from the holder's own renewal letter.
 struct ObjectionLetterView: View {
     let context: TicketLetterContext
+    static let fileName = "Widerspruch-KlimaTicket.pdf"
     /// Scrolls to a block on appear (screenshot routes).
     var screenshotAnchor: LetterAnchor? = nil
 
@@ -80,8 +81,8 @@ struct ObjectionLetterView: View {
         return ScrollViewReader { proxy in
             Form {
                 Section {
-                    LetterHero(kicker: "Widerspruch · \(context.ticket.name)", title: "Dein Brief ans Kundenservice",
-                               subtitle: "Fertig formuliert nach den AGB – du trägst ein, was nur du weißt, druckst ihn aus und unterschreibst.",
+                    LetterHero(kicker: "Widerspruchsbrief", title: "Dein Widerspruch",
+                               subtitle: "\(context.ticket.name) – fertig formuliert nach den AGB. Du trägst ein, was nur du weißt, druckst aus und unterschreibst.",
                                symbol: "envelope.fill", done: steps.done, total: steps.total)
                 }
                 .listRowBackground(Color.clear)
@@ -103,6 +104,7 @@ struct ObjectionLetterView: View {
                 .listRowBackground(Color.clear)
                 reminderSection
                     .id(LetterAnchor.reminder)
+                LetterInlineActions(content: letter, fileName: Self.fileName, printJobName: letter.documentTitle)
                 Section {
                     Text(LetterText.notLegalAdvice)
                         .font(.footnote)
@@ -113,9 +115,7 @@ struct ObjectionLetterView: View {
             }
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                LetterActionBar(content: letter, fileName: "Widerspruch-KlimaTicket.pdf", printJobName: letter.documentTitle)
-            }
+            .modifier(LetterBottomBar(content: letter, fileName: Self.fileName, printJobName: letter.documentTitle))
             .onChange(of: form.sender) { _, sender in
                 if remembers { LetterStore.saveSender(sender) }
             }
@@ -224,8 +224,10 @@ struct ObjectionLetterView: View {
 
     private var reminderSubtitle: String {
         if !reminderDates.isEmpty {
-            let days = reminderDates.map { Format.date($0, .long) }
-            return "\(days.joined(separator: " und ")), jeweils um 9:00 Uhr."
+            // „17. Dez. und 21. Dez. 2026, jeweils um 9:00 Uhr.“
+            let days = reminderDates.map { Format.dayMonth($0) }.joined(separator: " und ")
+            let year = reminderDates.last.map { Calendar.vienna.component(.year, from: $0) } ?? 0
+            return "\(days) \(year), jeweils um 9:00 Uhr."
         }
         guard let deadline else { return "Wähle zuerst die Frist aus deinem Brief." }
         if LetterDeadline(day: deadline).reminders().isEmpty { return "Die Frist ist zu nah oder vorbei – eine Erinnerung hilft nicht mehr." }

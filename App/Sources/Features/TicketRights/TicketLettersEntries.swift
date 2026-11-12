@@ -26,7 +26,7 @@ struct TicketLettersRenewalEntry: View {
                             showsObjection = true
                         } label: {
                             LetterEntryRow(symbol: "envelope.fill", color: Theme.dawn, title: "Widerspruchsbrief erstellen",
-                                           subtitle: "Fertiger Brief als PDF – ausdrucken, unterschreiben, eingeschrieben senden.",
+                                           subtitle: "Fertig formuliert als PDF – ausdrucken und unterschreiben.",
                                            trailing: "chevron.right")
                         }
                         .buttonStyle(AdvRowButtonStyle())
@@ -92,10 +92,10 @@ struct TicketLettersCancellationEntry: View {
 
     private func subtitle(_ status: CancellationLetter.Status) -> String {
         if status.canWriteOrdinary {
-            let fee = status.fee > 0 ? "mit \(Format.euroPrecise(status.fee)) Kündigungsentgelt" : "ohne Kündigungsentgelt"
-            return "Ohne Grund \(fee) – oder mit wichtigem Grund ohne Entgelt."
+            let fee = status.fee > 0 ? "\(Format.euroPrecise(status.fee)) Entgelt" : "ohne Entgelt"
+            return "Ohne Grund (\(fee)) oder mit wichtigem Grund."
         }
-        return "Ohne Grund ab \(Format.date(status.possibleFrom, .long)) · mit wichtigem Grund schon jetzt."
+        return "Ohne Grund ab \(Format.date(status.possibleFrom, .long)), mit wichtigem Grund schon jetzt."
     }
 }
 

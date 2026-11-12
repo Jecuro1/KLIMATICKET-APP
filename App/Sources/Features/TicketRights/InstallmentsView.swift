@@ -10,6 +10,8 @@ struct InstallmentsView: View {
     /// The value of the trips of this ticket year so far (`SavingsSummary.totalValue`).
     let tripValue: Double
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         let plan = TicketRights.appliesAGB(to: context.ticket) && context.ticket.isMonthlyPayment
             ? InstallmentPlan.make(price: context.ticket.price, start: context.ticket.start) : nil
@@ -64,12 +66,14 @@ struct InstallmentsView: View {
         let balance = plan.balance(tripValue: tripValue)
         return GlassCard(padding: AdvStyle.cardPadding) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: Theme.Spacing.m) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                         paidColumn(plan)
                         valueColumn(balance)
                     }
-                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                } else {
+                    // Cash paid and value received side by side – the comparison is the point of this screen.
+                    HStack(alignment: .top, spacing: Theme.Spacing.m) {
                         paidColumn(plan)
                         valueColumn(balance)
                     }
@@ -99,7 +103,7 @@ struct InstallmentsView: View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Bezahlt bis heute")
             CountUpText(value: plan.paidAmount) { Format.euroPrecise($0) }
-                .font(Theme.Typography.numberLarge)
+                .font(Theme.Typography.numberMedium)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -115,7 +119,7 @@ struct InstallmentsView: View {
         VStack(alignment: .leading, spacing: 2) {
             Kicker(text: "Nutzen der Fahrten bis heute")
             CountUpText(value: balance.value) { Format.euro($0) }
-                .font(Theme.Typography.numberLarge)
+                .font(Theme.Typography.numberMedium)
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -168,7 +172,7 @@ struct InstallmentsView: View {
                 }
                 .accessibilityElement(children: .combine)
                 segmentBar(plan)
-                VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(plan.items.enumerated()), id: \.element.id) { index, item in
                         InstallmentRow(item: item, nextState: index + 1 < plan.items.count ? plan.items[index + 1].state : nil,
                                        isFirst: index == 0, isLast: index == plan.items.count - 1)
@@ -269,13 +273,18 @@ private struct InstallmentRow: View {
             .padding(.top, 6)
             .padding(.bottom, Theme.Spacing.s)
         }
-        .frame(minHeight: 56)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Rate \(item.number) von 12, \(timing), \(Format.euroPrecise(item.amount)), \(stateText)")
+        .accessibilityLabel("Rate \(item.number) von 12, \(heading), \(Format.euroPrecise(item.amount)), \(stateText)")
     }
 
-    private var timing: String {
-        item.timing == .withOrder ? "mit der Bestellung" : "\(Format.monthYear(item.month)), rund um den Monatsanfang"
+    /// „Oktober 2026“ – or „Bei der Bestellung“ for the first two.
+    private var heading: String {
+        item.timing == .withOrder ? "bei der Bestellung" : Format.monthYear(item.month)
+    }
+
+    private var detail: String {
+        item.timing == .withOrder ? "Rate \(item.number)" : "Rate \(item.number) · rund um den Monatsanfang"
     }
 
     private var stateText: String {
@@ -288,10 +297,10 @@ private struct InstallmentRow: View {
 
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text("Rate \(item.number)")
+            Text(heading.prefix(1).uppercased() + heading.dropFirst())
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
-            Text(timing)
+            Text(detail)
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
