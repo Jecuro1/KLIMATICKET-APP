@@ -137,19 +137,6 @@ final class TripCandidateEntity {
 
     // MARK: Reasons text
 
-    static func encode(reasons: [RankingReason]) -> String {
-        reasons.map { r in
-            [r.code, String(r.weight), r.text].map { $0.replacingOccurrences(of: "\t", with: " ").replacingOccurrences(of: "\n", with: " ") }
-                .joined(separator: "\t")
-        }
-        .joined(separator: "\n")
-    }
-
-    static func decode(reasons raw: String) -> [RankingReason] {
-        raw.split(separator: "\n").compactMap { line in
-            let fields = line.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 3, let weight = Double(fields[1]) else { return nil }
-            return RankingReason(code: fields[0], text: fields[2], weight: weight)
-        }
-    }
+    static func encode(reasons: [RankingReason]) -> String { RankingReason.encode(reasons) }
+    static func decode(reasons raw: String) -> [RankingReason] { RankingReason.decode(raw) }
 }

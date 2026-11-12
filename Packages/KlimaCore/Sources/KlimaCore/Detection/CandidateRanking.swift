@@ -114,6 +114,24 @@ public struct RankingReason: Codable, Hashable, Sendable {
     }
 
     public var isPositive: Bool { weight > 0 }
+
+    /// "code<TAB>weight<TAB>text" per line – one String for a stored candidate (tabs and line breaks inside become spaces).
+    public static func encode(_ reasons: [RankingReason]) -> String {
+        reasons.map { r in
+            [r.code, String(r.weight), r.text].map { $0.replacingOccurrences(of: "\t", with: " ").replacingOccurrences(of: "\n", with: " ") }
+                .joined(separator: "\t")
+        }
+        .joined(separator: "\n")
+    }
+
+    /// Lines that do not parse are skipped.
+    public static func decode(_ raw: String) -> [RankingReason] {
+        raw.split(separator: "\n").compactMap { line in
+            let fields = line.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false).map(String.init)
+            guard fields.count == 3, let weight = Double(fields[1]), weight.isFinite else { return nil }
+            return RankingReason(code: fields[0], text: fields[2], weight: weight)
+        }
+    }
 }
 
 public struct CandidateRank: Hashable, Sendable {

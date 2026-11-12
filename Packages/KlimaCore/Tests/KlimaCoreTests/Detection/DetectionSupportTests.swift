@@ -212,6 +212,19 @@ final class DetectionSupportTests: XCTestCase {
         XCTAssertEqual(base.ranked(with: .unavailable).rank.score, base.rank.score, accuracy: 0.0001)
     }
 
+    func testReasonsSurviveTheStoredTextForm() {
+        let reasons = [RankingReason(code: "start.platform", text: "Innsbruck Hauptbahnhof: Bahnhof nur 60 m entfernt", weight: 0.15),
+                       RankingReason(code: "history.dismissed", text: "Mit\ttab und\nZeilenumbruch", weight: -0.2)]
+        let decoded = RankingReason.decode(RankingReason.encode(reasons))
+        XCTAssertEqual(decoded.map(\.code), ["start.platform", "history.dismissed"])
+        XCTAssertEqual(decoded.map(\.weight), [0.15, -0.2])
+        XCTAssertEqual(decoded[1].text, "Mit tab und Zeilenumbruch")
+        XCTAssertTrue(RankingReason.decode("").isEmpty)
+        XCTAssertTrue(RankingReason.decode("kaputt\nnoch\tkaputter").isEmpty)
+        let candidate = candidate()
+        XCTAssertEqual(RankingReason.decode(RankingReason.encode(candidate.rank.reasons)), candidate.rank.reasons)
+    }
+
     func testConfidenceOrderingAndLabels() {
         XCTAssertLessThan(DetectionConfidence.vielleicht, .wahrscheinlich)
         XCTAssertLessThan(DetectionConfidence.wahrscheinlich, .sicher)
