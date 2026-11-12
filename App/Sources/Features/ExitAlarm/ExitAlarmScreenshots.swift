@@ -37,8 +37,9 @@ enum ExitAlarmDemo {
 
     enum Scene { case armed, approaching, fired, passed }
 
-    /// The state of a scene at `now`, built by the planner.
-    static func state(_ scene: Scene, now: Date) -> ExitAlarmState {
+    /// The state of a scene at `now`, built by the planner. `withFix: false` is a run on which iOS delivers no usable position
+    /// ("Genauer Standort" off): the card then shows the timetable's numbers only, no distance.
+    static func state(_ scene: Scene, now: Date, withFix: Bool = true) -> ExitAlarmState {
         let spec = spec(now: now)
         let path = GeoPath(spec.path)
         switch scene {
@@ -47,7 +48,7 @@ enum ExitAlarmDemo {
             var state = ExitAlarmPlanner.arm(spec, arrival: arrival, delaySeconds: 300, now: now).state
             // The train is between St. Pölten and Amstetten, 38 m/s.
             let position = path.point(at: path.length * 0.42) ?? spec.path[0]
-            for step in 0..<2 {
+            for step in 0..<(withFix ? 2 : 0) {
                 ExitAlarmPlanner.apply(.fix(LocationFix(time: now.addingTimeInterval(Double(step) * 5 - 8), coordinate: position, speed: speed,
                                                          horizontalAccuracy: 25)), to: &state, now: now.addingTimeInterval(Double(step) * 5 - 6))
             }
@@ -116,7 +117,7 @@ struct ExitAlarmScreenshotHost: View {
         case "exitAlarmArmed":
             ExitAlarmCardScene(state: ExitAlarmDemo.state(.armed, now: now), now: now)
         case "exitAlarmArmedReduced":
-            ExitAlarmCardScene(state: ExitAlarmDemo.state(.armed, now: now), now: now, approximate: true)
+            ExitAlarmCardScene(state: ExitAlarmDemo.state(.armed, now: now, withFix: false), now: now, approximate: true)
         case "exitAlarmApproaching":
             ExitAlarmCardScene(state: ExitAlarmDemo.state(.approaching, now: now), now: now)
         case "exitAlarmFired":

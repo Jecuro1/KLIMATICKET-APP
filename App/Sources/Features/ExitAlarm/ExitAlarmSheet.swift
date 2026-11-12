@@ -252,7 +252,9 @@ struct ExitAlarmSheet: View {
                            status: kindStatus)
                     Divider()
                     howRow(symbol: "location.fill", tint: Theme.pine, title: "Mit Standort",
-                           text: "Dein iPhone erkennt, wann du dich der Haltestelle näherst, auch ohne Netz. Der frühere Weg gewinnt, geklingelt wird nur einmal.",
+                           text: service.locationIsApproximate && service.locationAuthorization.allowsUpdates
+                               ? "Mit einem ungefähren Standort erkennt dein iPhone nicht, wann du dich der Haltestelle näherst. Der Fahrplan weckt dich allein."
+                               : "Dein iPhone erkennt, wann du dich der Haltestelle näherst, auch ohne Netz. Der frühere Weg gewinnt, geklingelt wird nur einmal.",
                            status: locationStatus)
                     locationButton
                 }
@@ -296,7 +298,7 @@ struct ExitAlarmSheet: View {
     @ViewBuilder private var locationButton: some View {
         if service.locationIsApproximate, service.locationAuthorization.allowsUpdates {
             // The permission is there, the precision is not: only the iOS settings can change that.
-            Text("„Genauer Standort“ ist für KlimaBilanz in iOS aus. Dann gibt iOS nur eine ungefähre Position, und der Fahrplan weckt dich allein.")
+            Text("„Genauer Standort“ ist für KlimaBilanz in iOS aus.")
                 .font(.footnote)
                 .foregroundStyle(Theme.summitText)
                 .fixedSize(horizontal: false, vertical: true)
