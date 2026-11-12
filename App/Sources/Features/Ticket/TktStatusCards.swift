@@ -301,8 +301,10 @@ struct TktPaymentCard: View {
     }
 
     private var instalments: some View {
-        let paid = ticket.paidSoFar()
-        let count = rate > 0 ? min(12, max(0, Int((paid / rate).rounded()))) : 0
+        // MARK: ticketletters – the same count as the Raten-Übersicht (AGB 15.2: two with the order, then ten around the month start)
+        let plan = TicketRights.appliesAGB(to: AdvAdvisor.ticket(ticket)) ? InstallmentPlan.make(price: ticket.price, start: ticket.startDate) : nil
+        let paid = plan?.paidAmount ?? ticket.paidSoFar()
+        let count = plan?.paidCount ?? (rate > 0 ? min(12, max(0, Int((paid / rate).rounded()))) : 0)
         let covered = totalValue >= paid
         // Whole euros that add up with the line below ("€ 583 Fahrtwert · € 817 bezahlt" → "Noch € 234").
         let shownValue = SummitFigures.shownTotal(value: totalValue, price: paid, isPaidOff: covered)
@@ -343,6 +345,19 @@ struct TktPaymentCard: View {
                     .foregroundStyle(Theme.textSecondary)
             }
             .accessibilityElement(children: .combine)
+            if plan != nil {   // MARK: ticketletters – only the KlimaTicket Ö (AGB 15.2)
+                NavigationLink {
+                    InstallmentsView(context: TicketLetterContext(ticket), tripValue: totalValue)
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Raten-Übersicht")
+                        Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(minHeight: 44, alignment: .leading)
+                }
+            }
         }
         .padding(.horizontal, TktStyle.rowPaddingH)
         .padding(.vertical, TktStyle.rowPaddingV + Theme.Spacing.xxs)
