@@ -1,7 +1,7 @@
 # Tarifstand – wie aktuell sind die Preise in der App?
 
 > Das Versprechen der App ist „lohnt sich mein Ticket?“. Dafür müssen die Preise stimmen – auch rund um den Fahrplanwechsel
-> (zweiter Sonntag im Dezember: 14.12.2025, 13.12.2026, 12.12.2027, …) und den Jahreswechsel, ohne auf eine neue App-Version zu
+> (Sonntag nach dem zweiten Samstag im Dezember: 14.12.2025, 13.12.2026, 12.12.2027, …, aber 15.12.2024 und 15.12.2030) und den Jahreswechsel, ohne auf eine neue App-Version zu
 > warten. Die App **zeigt** deshalb, wie aktuell ihre Preise sind, **warnt**, wenn sie veraltet sein können, und kann die
 > Relationspreis-Tabelle (die exakten ÖBB-Standardticket-Preise) wie die Tarife aus der Ferne aktualisieren.
 > **Kein Ticketverkauf, keine Kaufempfehlung, kein ÖBB-Zugriff:** die Aktualisierung spricht nur mit dem Repository-Host des
@@ -19,14 +19,25 @@ Details“, Symbol und Text – nie nur Farbe, bricht bei größter Schrift um).
 | Zustand (`TariffFreshness.State`) | Wann | Text |
 |---|---|---|
 | `newYear` | ab 1. Jänner, wenn **kein** Produkt der Familie KlimaTicket Ö einen Preiseintrag (`validFrom` oder `priceHistory`) ab dem 1. Jänner des laufenden Jahres hat | „Die Preise in der App stammen noch aus 2026 – Für 2027 sind noch keine KlimaTicket-Preise eingetragen; die App aktualisiert sich, sobald neue Preise vorliegen“ |
-| `upcomingChange(Datum)` | ab 1. Dezember, solange der Tarifstand **nicht** nach dem 1. Dezember aktualisiert wurde (`updatedAt` ≥ 1.12. oder `relationsPack.validFrom` ≥ Tag des Fahrplanwechsels) | vor dem Wechsel „Fahrplanwechsel am 13.12. – Preise können sich ändern; …“, ab dem Wechsel „Seit dem Fahrplanwechsel am 13.12. – Preise können sich geändert haben; …“ |
+| `upcomingChange(Datum)` | ab 1. Dezember, solange die Preise **nicht** nach dem 1. Dezember geprüft wurden (`updatedAt` ≥ 1.12.) und die **benutzte** Relationspreis-Tabelle nicht vom Tag des Fahrplanwechsels oder später ist (siehe unten) | vor dem Wechsel „Fahrplanwechsel am 13.12. – Preise können sich ändern; …“, ab dem Wechsel „Seit dem Fahrplanwechsel am 13.12. – Preise können sich geändert haben; …“ |
 | `stale(since:)` | der neueste Eintrag des Fahrpreisindex (`fareIndex`; ohne Index das Katalogdatum `updatedAt`) ist älter als 13 Monate | „Fahrpreise von September 2025 – Preise können abweichen; …“ |
 | `current` | sonst | kein Hinweis |
 
 Vorrang: `newYear`, dann `upcomingChange`, dann `stale`. Alle Tage zählen in Europe/Vienna. **Ein Hinweis nennt nie einen konkreten
 neuen Preis** – er sagt nur, dass es einen geben kann und dass die App ihn von selbst lädt. Die Details (Tippen auf den Hinweis)
-nennen nur, was der geladene Katalog enthält (z. B. „Aufschlag von 3,5 % auf den Normalpreis – so ist es im Tarifstand
-hinterlegt“, wenn `fareIndex` einen Eintrag zum Tag des Wechsels hat).
+nennen nur, was der geladene Katalog enthält (z. B. „Aufschlag von 3,5 % auf den Normalpreis – ein Durchschnittswert aus dem
+Tarifstand; einzelne Verbindungen weichen ab“, wenn `fareIndex` einen Eintrag zum Tag des Wechsels hat). Zur Herkunft dieses
+Wertes (`data/fare_model.json` trägt keine Quelle): Die ÖBB haben im Juli 2026 eine Erhöhung der Standard-Tickets und Vorteilscards
+**im Schnitt** um 3,5 % zum Fahrplanwechsel am 13.12.2026 angekündigt (Presseberichte, z. B. <https://help.orf.at/stories/3236271/>
+und <https://tab.noen.at/niederoesterreich/wirtschaft/ab-dezember-oebb-tickets-und-vorteilscards-werden-teurer-529657795>; die
+Originalmitteilung der ÖBB wurde nicht gelesen). Die App rechnet pauschal mit 3,5 %, jede Verbindung kann abweichen – deshalb der
+Zusatz im Text und die Ablösung durch die echte Tabelle, sobald sie vorliegt.
+
+**Die benutzte Tabelle zählt, nicht die Ankündigung:** Die App übergibt den Gültigkeitstag der Relationspreis-Tabelle, mit der sie gerade
+rechnet (gebündelt oder installiertes Paket). Kündigt der Katalog ein Paket ab dem Tag des Fahrplanwechsels an, das noch nicht
+heruntergeladen (oder abgelehnt) wurde, bleibt der Hinweis stehen, auch wenn `updatedAt` schon im Dezember liegt – die Zahlen auf dem
+Bildschirm sind dann noch die alten. Ein Paket, das vorab geladen wurde, aber erst am Tag des Wechsels gilt, beendet den Hinweis erst
+an diesem Tag. Ohne diese Angabe (nur Tests) zählt die Ankündigung im Katalog.
 
 `lastCheck` (letzter erfolgreicher Blick auf den Update-Server) ändert den Zustand **nicht**: „kein neuerer Katalog“ heißt nicht „die
 Preise stimmen“.
@@ -35,8 +46,10 @@ Preise stimmen“.
 geprüft 12.11.2026“ (Datum der benutzten Relationspreis-Tabelle, neuester KlimaTicket-Ö-Preiseintrag bis heute, letzter Blick auf
 den Update-Server – ein fehlendes Datum fällt weg), ein Schild „Hinweis“, wenn der Zustand nicht „aktuell“ ist, und die Detailseite.
 **Jetzt prüfen** erzwingt einen Blick (Tarife und Relationspreise, ohne die 12/24-Stunden-Grenze, aber nur mit höherer Version) und
-antwortet **Aktuell**, **Aktualisiert**, **Kein Netz** oder **Fehlgeschlagen** (Server antwortet unbrauchbar); danach eine Haptik und
-eine VoiceOver-Ansage. Die alten Zeilen „Tarif-Stand“ und „Tarife aktualisieren“ unter „Updates“ sind darin aufgegangen.
+antwortet **Aktuell** („Auf dem Server liegen keine neueren Preise“ – mehr nicht), **Aktualisiert** (liegt ein heruntergeladenes Paket erst ab einem späteren Tag vor:
+„… gelten ab 13.12.2026“, sonst „Neue Preisdaten sind geladen“), **Kein Netz** oder **Fehlgeschlagen** (Server antwortet unbrauchbar); danach eine Haptik und
+eine VoiceOver-Ansage. Ohne Online-Quelle (lokale Builds) ist die Schaltfläche abgeschaltet und sagt es. Die Detailseite liest den Stand der App nach jeder
+Prüfung neu („Zuletzt geprüft“ folgt der Prüfung). Die alten Zeilen „Tarif-Stand“ und „Tarife aktualisieren“ unter „Updates“ sind darin aufgegangen.
 
 ## 2. Der Katalog: `relationsPack` (optional, additiv)
 
@@ -132,7 +145,7 @@ brauchen den Eintrag**, sonst zeigt die App weiter „stammen noch aus 2026“.
 
 ## 6. Geprüft und nicht geprüft
 
-Linux (`swift test --filter Tariff`): Fahrplanwechsel 2025–2030 (zweiter Sonntag, immer ein Sonntag 1990–2100), Zustandswechsel um
+Linux (`swift test --filter Tariff`): Fahrplanwechsel 2019–2031 (Sonntag nach dem zweiten Samstag, immer ein Sonntag zwischen dem 9. und 15. 1990–2100), Zustandswechsel um
 den 1. Dezember und den 1. Jänner in Europe/Vienna mit eingesetzter Uhr (auch UTC-Grenze), Vorrang, 13-Monate-Grenze, Struktur der
 gebündelten `tariffs.json` (80 Produkte, eindeutige IDs, Preise > 0, `validFrom` streng aufsteigend – schlägt bei vertauschter
 Reihenfolge fehl), alter Katalog ohne `relationsPack`, Validator (falscher Hash, zu groß, falsche Magic/Format, Ausreißer bei Anzahl
@@ -144,6 +157,6 @@ Erhöhung.
 ohne Netz, ob amtliche 2027-Preise schon vorliegen, und die Richtigkeit jedes neuen Preises gegen die amtliche Preisliste (Mensch).
 Gerätetest: Flugmodus an, „Jetzt prüfen“ → „Kein Netz“, Zahlen unverändert; online → „Aktuell“.
 
-**Grenzen:** „Aktuell“ heißt nur, dass kein neuerer Katalog und kein neueres Paket existieren. Läuft ein Weg über Zwischenhalte, von
+**Grenzen:** Eine Weiterleitung des Downloads (GitHub leitet Release-Anhänge auf sein eigenes Datei-Netz um) wird von der Host-Prüfung nicht erfasst; die SHA-256-Prüfung gegen den Katalog schützt die Datei trotzdem. „Aktuell“ heißt nur, dass kein neuerer Katalog und kein neueres Paket existieren. Läuft ein Weg über Zwischenhalte, von
 denen einzelne nicht in der Tabelle stehen, mischt die Schätzung Tabellen- und Entfernungspreise; nach einem Paket mit eingerechneter
 Erhöhung wird der Entfernungsanteil dieser seltenen Wege um die Erhöhung zu niedrig geschätzt (`FareEstimator+Via`).

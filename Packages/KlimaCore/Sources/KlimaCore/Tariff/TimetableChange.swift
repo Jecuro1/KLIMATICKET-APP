@@ -1,16 +1,17 @@
 import Foundation
 
-/// Der Fahrplanwechsel: the ÖBB timetable year changes on the second Sunday of December (2025-12-14, 2026-12-13,
-/// 2027-12-12, …), and the ÖBB Standard-Ticket prices (the "Relationspreise") change with it. The app warns around this
-/// date, because the tables it knows were valid until then (docs/TARIFF_FRESHNESS.md).
+/// Der Fahrplanwechsel: the ÖBB timetable year starts on the Sunday after the second Saturday of December (2025-12-14,
+/// 2026-12-13, 2027-12-12, … and 2024-12-15, 2030-12-15 – the day lies between the 9th and the 15th, so it is the third
+/// Sunday when 1 December is itself a Sunday), and the ÖBB Standard-Ticket prices (the "Relationspreise") change with it.
+/// The app warns around this date, because the tables it knows were valid until then (docs/TARIFF_FRESHNESS.md).
 ///
 /// Pure calendar arithmetic on the Gregorian calendar – independent of the device calendar and time zone.
 public enum TimetableChange {
-    /// Day of the month (8…14) of the second Sunday of December in `year`.
+    /// Day of the month (9…15) of the Sunday after the second Saturday of December in `year`.
     public static func dayOfMonth(year: Int) -> Int {
-        let firstOfDecember = weekday(year: year, month: 12, day: 1)   // 0 = Sunday
-        let firstSunday = 1 + (7 - firstOfDecember) % 7
-        return firstSunday + 7
+        let firstOfDecember = weekday(year: year, month: 12, day: 1)   // 0 = Sunday … 6 = Saturday
+        let firstSaturday = 1 + (6 - firstOfDecember + 7) % 7
+        return firstSaturday + 7 + 1
     }
 
     /// "2026-12-13".

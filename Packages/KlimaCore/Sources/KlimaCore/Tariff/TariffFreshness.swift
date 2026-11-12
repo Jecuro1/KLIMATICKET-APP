@@ -29,7 +29,12 @@ public enum TariffFreshness {
     ///
     /// `lastCheck` (the last successful look at the update server) is accepted so callers pass what they know, but it does
     /// not change the state: a check only proves that no newer catalogue exists, not that the prices in this one are right.
-    public static func state(catalog: TariffCatalog, now: Date, lastCheck: Date? = nil,
+    ///
+    /// `relationsValidFrom` is the validity day of the relation table the app **uses right now** (bundled or installed
+    /// pack). With it, the December notice ends only when that table is from the day of the change or later: a catalogue that
+    /// merely announces a newer pack, which was not (yet) downloaded, does not end it – the numbers on screen would still be
+    /// the old ones. Without it (nil, or not a date) the catalogue's announcement counts, as before.
+    public static func state(catalog: TariffCatalog, now: Date, lastCheck: Date? = nil, relationsValidFrom: String? = nil,
                              calendar: Calendar = .vienna) -> State {
         let today = isoDay(now, calendar: calendar)
         let year = Int(today.prefix(4)) ?? 0
@@ -44,8 +49,15 @@ public enum TariffFreshness {
         if today >= TimetableChange.noticeStartISODay(year: year) {
             let change = TimetableChange.isoDay(year: year)
             let updated = String(catalog.updatedAt.prefix(10))
-            let dataUpdated = (isISODay(updated) && updated >= TimetableChange.noticeStartISODay(year: year))
-                || (catalog.relationsPack.map { isISODay($0.validFrom) && $0.validFrom >= change } ?? false)
+            let checkedSinceDecember = isISODay(updated) && updated >= TimetableChange.noticeStartISODay(year: year)
+            let announcedPack = catalog.relationsPack.map { isISODay($0.validFrom) && $0.validFrom >= change } ?? false
+            let dataUpdated: Bool
+            if let inUse = relationsValidFrom, isISODay(inUse) {
+                // A table from the day of the change is in use: done. A newer pack announced but not in use: still waiting.
+                dataUpdated = inUse >= change || (checkedSinceDecember && !announcedPack)
+            } else {
+                dataUpdated = checkedSinceDecember || announcedPack
+            }
             if !dataUpdated {
                 return .upcomingChange(TimetableChange.date(year: year, calendar: calendar))
             }

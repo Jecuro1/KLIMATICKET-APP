@@ -19,9 +19,9 @@ struct SetTarifstandRows: View {
 
     var body: some View {
         let input = injected ?? app.tariffNoticeInput()
-        let state = TariffFreshness.state(catalog: input.catalog, now: input.now, lastCheck: input.lastCheck)
+        let state = input.freshness
         NavigationLink {
-            TariffNoticeSheet(input: input, showsClose: false)
+            TariffNoticeSheet(input: injected, showsClose: false)
                 .navigationTitle("Tarifstand")
                 .navigationBarTitleDisplayMode(.inline)
         } label: {

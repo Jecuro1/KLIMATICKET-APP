@@ -10,8 +10,9 @@ import Observation
 enum TarifCheckResult: Equatable {
     /// The server answered and nothing newer exists.
     case current
-    /// A newer tariffs document and/or relation pack was installed.
-    case updated
+    /// A newer tariffs document and/or relation pack was installed. `startsOn` is the day (ISO) a downloaded relation table
+    /// takes over when that day lies ahead – it is held back until then, the old table stays right until the timetable change.
+    case updated(startsOn: String?)
     /// No connection.
     case offline
     /// The server answered with something unusable (HTTP error, damaged or rejected file); the data in use is untouched.
@@ -38,14 +39,24 @@ enum TarifCheckResult: Equatable {
     /// A short second line under the result.
     var detail: String {
         switch self {
-        case .current: "Es liegen keine neueren Preise vor."
-        case .updated: "Die neuen Preise gelten ab sofort."
+        case .current: "Auf dem Server liegen keine neueren Preise."
+        case .updated(let startsOn):
+            if let startsOn, TariffFreshness.isISODay(startsOn) {
+                "Neue Fahrpreise sind geladen und gelten ab \(TariffFreshness.germanDate(iso: startsOn))."
+            } else {
+                "Neue Preisdaten sind geladen."
+            }
         case .offline: "Deine Preise bleiben unverändert."
         case .failed: "Deine Preise bleiben unverändert. Versuch es später noch einmal."
         }
     }
 
-    var isSuccess: Bool { self == .current || self == .updated }
+    var isSuccess: Bool {
+        switch self {
+        case .current, .updated: true
+        case .offline, .failed: false
+        }
+    }
 }
 
 /// The state of one "Jetzt prüfen" button (the Settings row and the details sheet each own one).
@@ -88,11 +99,6 @@ final class TarifCheck {
 }
 
 extension AppState {
-    /// The freshness of the prices in the app today (Vienna time), from the catalogue in use and the last check.
-    func tarifFreshness(now: Date = Date()) -> TariffFreshness.State {
-        TariffFreshness.state(catalog: catalog, now: now, lastCheck: tariffs.lastRefresh)
-    }
-
     /// Looks for a newer tariffs document, then for a newer relation pack. `force` is the button: it ignores the 12-hour and
     /// 24-hour limits, never the rule that only a newer version is installed.
     func checkTariffs(force: Bool) async -> TarifCheckResult {
@@ -100,14 +106,15 @@ extension AppState {
         if outcome == .installed { reloadCatalog() }
         let pack = await refreshRelationPack(force: force)
 
-        if outcome == .installed { return .updated }
-        if case .installed = pack { return .updated }
+        // A pack valid from a day that lies ahead is installed but not used yet: say from when it counts.
+        if case .installed = pack.outcome { return .updated(startsOn: pack.startsOn) }
+        if outcome == .installed { return .updated(startsOn: nil) }
         switch outcome {
         case .offline: return .offline
         case .failed, .notConfigured: return .failed
         case .installed, .upToDate, .throttled: break
         }
-        switch pack {
+        switch pack.outcome {
         case .unreachable: return .offline
         case .rejected, .blockedURL: return .failed
         default: return .current
@@ -115,16 +122,19 @@ extension AppState {
     }
 
     /// The relation pack of the current catalogue: downloaded at most once per 24 hours (and only when its version is newer
-    /// than the table in use), validated, installed atomically, then used with the next estimate.
+    /// than the table in use), validated, installed atomically, then used with the next estimate – from its `validFrom` day
+    /// on (`startsOn` is that day when it still lies ahead).
     @discardableResult
-    func refreshRelationPack(force: Bool) async -> RelationPackUpdater.Outcome {
+    func refreshRelationPack(force: Bool) async -> (outcome: RelationPackUpdater.Outcome, startsOn: String?) {
         let (bundled, versionInUse) = await relationsHolder.snapshot()
         let result = await relationPacks.refresh(catalog: catalog, tariffsURL: tariffs.tariffsURL(manifestHint: updates.manifest),
                                                  bundled: bundled, versionInUse: versionInUse, force: force)
+        var startsOn: String?
         if let table = result.table {
             relationsHolder.install(table)
+            if table.validFrom > TariffFreshness.isoDay(Date()) { startsOn = table.validFrom }
             reloadCatalog()   // estimates and the live price chain pick the new table up
         }
-        return result.outcome
+        return (result.outcome, startsOn)
     }
 }

@@ -8,9 +8,11 @@ final class TariffFreshnessTests: XCTestCase {
 
     // MARK: Timetable change
 
-    func testTimetableChangeIsTheSecondSundayOfDecember() {
-        let expected = [2025: "2025-12-14", 2026: "2026-12-13", 2027: "2027-12-12", 2028: "2028-12-10",
-                        2029: "2029-12-09", 2030: "2030-12-08"]
+    /// The timetable year starts on the Sunday after the second Saturday of December: that is the second Sunday except when
+    /// 1 December is a Sunday (2019, 2024, 2030), then it is the third (15 December).
+    func testTimetableChangeIsTheSundayAfterTheSecondSaturdayOfDecember() {
+        let expected = [2019: "2019-12-15", 2024: "2024-12-15", 2025: "2025-12-14", 2026: "2026-12-13", 2027: "2027-12-12",
+                        2028: "2028-12-10", 2029: "2029-12-09", 2030: "2030-12-15", 2031: "2031-12-14"]
         for (year, day) in expected {
             XCTAssertEqual(TimetableChange.isoDay(year: year), day, "\(year)")
         }
@@ -23,7 +25,9 @@ final class TariffFreshnessTests: XCTestCase {
             let day = TimetableChange.date(year: year, calendar: gregorian)
             XCTAssertEqual(gregorian.component(.weekday, from: day), 1, "Sunday in \(year)")   // 1 = Sunday
             let dom = gregorian.component(.day, from: day)
-            XCTAssertTrue((8...14).contains(dom), "second Sunday: day \(dom) in \(year)")
+            XCTAssertTrue((9...15).contains(dom), "Sunday after the second Saturday: day \(dom) in \(year)")
+            // The Saturday before is the second one of the month.
+            XCTAssertEqual((dom - 1 - 1) / 7, 1, "\(year): Saturday \(dom - 1) is the second Saturday")
             XCTAssertEqual(gregorian.component(.month, from: day), 12)
         }
     }
@@ -71,6 +75,32 @@ final class TariffFreshnessTests: XCTestCase {
         XCTAssertEqual(TariffFreshness.state(catalog: F.catalog(pack: pack), now: F.vienna(2026, 12, 14)), .current)
         let older = RelationsPackInfo(url: "relations-pack.bin", sha256: "x", version: 1, validFrom: "2025-12-14", bytes: 1)
         XCTAssertEqual(TariffFreshness.state(catalog: F.catalog(pack: older), now: F.vienna(2026, 12, 14)),
+                       .upcomingChange(F.vienna(2026, 12, 13, 0, 0)))
+    }
+
+    /// With the table in use known, only that table ends the notice: a catalogue that announces a newer pack which was not
+    /// downloaded (or was rejected) must not tell the user "all current" while the old numbers are on screen.
+    func testAnAnnouncedButNotInstalledPackKeepsTheNotice() {
+        let change = F.vienna(2026, 12, 13, 0, 0)
+        let pack = RelationsPackInfo(url: "relations-pack.bin", sha256: "x", version: 2, validFrom: "2026-12-13", bytes: 1)
+        // Catalogue checked on 5 December and announcing the pack, but the table in use is still the one from 14.12.2025.
+        let announced = F.catalog(updatedAt: "2026-12-05", pack: pack)
+        XCTAssertEqual(TariffFreshness.state(catalog: announced, now: F.vienna(2026, 12, 14), relationsValidFrom: "2025-12-14"),
+                       .upcomingChange(change))
+        // The pack is in use (valid from the day of the change): done.
+        XCTAssertEqual(TariffFreshness.state(catalog: announced, now: F.vienna(2026, 12, 14), relationsValidFrom: "2026-12-13"), .current)
+        // Without the table in use the announcement counts (the pure catalogue rule of before).
+        XCTAssertEqual(TariffFreshness.state(catalog: announced, now: F.vienna(2026, 12, 14)), .current)
+        XCTAssertEqual(TariffFreshness.state(catalog: announced, now: F.vienna(2026, 12, 14), relationsValidFrom: ""), .current)
+    }
+
+    func testACheckedCatalogueWithoutANewPackEndsTheNoticeEvenWithTheOldTable() {
+        // The owner compared the prices on 5 December and nothing changed: the old table stays right, no notice.
+        let checked = F.catalog(updatedAt: "2026-12-05")
+        XCTAssertEqual(TariffFreshness.state(catalog: checked, now: F.vienna(2026, 12, 14), relationsValidFrom: "2025-12-14"), .current)
+        // Not checked since 1 December: the notice stays whatever the table says.
+        let old = F.catalog(updatedAt: "2026-11-30")
+        XCTAssertEqual(TariffFreshness.state(catalog: old, now: F.vienna(2026, 12, 14), relationsValidFrom: "2025-12-14"),
                        .upcomingChange(F.vienna(2026, 12, 13, 0, 0)))
     }
 

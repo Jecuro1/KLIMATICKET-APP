@@ -3,7 +3,7 @@ import KlimaCore
 
 // MARK: tarifstand – the notice on the Ticket tab when the prices in the app may be out of date (docs/TARIFF_FRESHNESS.md).
 //
-// Three situations (KlimaCore `TariffFreshness`): the timetable change on the second Sunday of December, New Year without
+// Three situations (KlimaCore `TariffFreshness`): the timetable change in December (the Sunday after the second Saturday), New Year without
 // KlimaTicket prices for the new year, and data older than 13 months. The banner never names a new price – it says that one
 // may exist and that the app fetches it by itself. It is one element for VoiceOver (a spoken sentence, hint „Doppeltippen
 // für Details“), carries an icon and words (no colour-only information) and wraps at the largest text size.
@@ -18,6 +18,11 @@ struct TariffNoticeInput: Equatable {
     var lastCheck: Date?
     /// Validity day of the relation table in use ("2025-12-14").
     var fareValidFrom: String?
+
+    /// The state of the prices: judged with the table in use, so a newer pack that is only announced does not end the notice.
+    var freshness: TariffFreshness.State {
+        TariffFreshness.state(catalog: catalog, now: now, lastCheck: lastCheck, relationsValidFrom: fareValidFrom)
+    }
 }
 
 private struct TariffNoticeInputKey: EnvironmentKey {
@@ -68,7 +73,7 @@ struct TariffNoticeCopy: Equatable {
     var spoken: String
 
     init(_ input: TariffNoticeInput) {
-        let state = TariffFreshness.state(catalog: input.catalog, now: input.now, lastCheck: input.lastCheck)
+        let state = input.freshness
         self.state = state
         let fetch = "die App aktualisiert sich, sobald neue Preise vorliegen"
         let fareFrom = input.fareValidFrom.map { TariffFreshness.germanDate(iso: $0) }
@@ -94,7 +99,7 @@ struct TariffNoticeCopy: Equatable {
             ]
             if let index = input.catalog.fareIndex?.first(where: { $0.validFrom == TimetableChange.isoDay(year: year) }), index.factor > 1 {
                 let percent = Format.number((index.factor - 1) * 100, decimals: 1)
-                paragraphs.append("Bis dahin rechnet die App Fahrten ab dem \(short) mit einem Aufschlag von \(percent) % auf den Normalpreis – so ist es im Tarifstand hinterlegt.")
+                paragraphs.append("Bis neue Preise vorliegen, rechnet die App Fahrten ab dem \(short) mit einem Aufschlag von \(percent) % auf den Normalpreis – ein Durchschnittswert aus dem Tarifstand; einzelne Verbindungen weichen ab.")
             }
             explanation = paragraphs
         case .newYear:
@@ -122,12 +127,12 @@ struct TariffNoticeCopy: Equatable {
         case .current:
             symbol = "checkmark.seal.fill"
             kicker = "Tarifstand"
-            title = "Die Preise sind auf dem neuesten Stand"
-            message = "Die App kennt keine anstehende Preisänderung."
+            title = "Keine Preisänderung bekannt"
+            message = "Neue Preise lädt die App von selbst – ohne App-Update."
             spoken = "\(title). \(message)"
             explanation = [
                 "Die App kennt keine anstehende Preisänderung. Normalpreise stammen aus der ÖBB-Preisliste ab \(fareFrom ?? "–"), KlimaTicket-Preise sind mit Stand \(asOf ?? "–") hinterlegt.",
-                "Die App prüft regelmäßig, ob neue Preise vorliegen, und lädt sie von selbst – ohne App-Update.",
+                "Die App prüft regelmäßig, ob neue Preise vorliegen, und lädt sie von selbst – ohne App-Update. Maßgeblich ist immer der Preis beim Kauf.",
             ]
         }
     }
@@ -162,14 +167,14 @@ struct TariffNoticeBanner: View {
         let shown: TariffNoticeCopy? = showsDetails ? (pinned ?? live) : (live.state.isCurrent ? nil : live)
         Group {
             if let shown {
-                banner(shown, input: input)
+                banner(shown)
                     .motionTransition(.rise)
             }
         }
         .motionAnimation(Motion.smooth, value: shown?.state)
     }
 
-    private func banner(_ copy: TariffNoticeCopy, input: TariffNoticeInput) -> some View {
+    private func banner(_ copy: TariffNoticeCopy) -> some View {
         Button {
             pinned = copy
             showsDetails = true
@@ -186,7 +191,7 @@ struct TariffNoticeBanner: View {
         .accessibilityHint("Doppeltippen für Details")
         .accessibilityAddTraits(.isButton)
         .sheet(isPresented: $showsDetails, onDismiss: { pinned = nil }) {
-            TariffNoticeSheet(input: input)
+            TariffNoticeSheet(input: injected)   // nil outside the demo: the sheet reads the app's state itself
         }
         .task {
             // The icon wiggles once to say "look here" – never repeated, never under Reduce Motion or in screenshots.
@@ -242,21 +247,27 @@ struct TariffNoticeBanner: View {
 
 /// What the notice means, the dates behind it and „Jetzt prüfen“. Also reachable from Einstellungen › Preisberechnung.
 struct TariffNoticeSheet: View {
-    var input: TariffNoticeInput
+    /// nil = the state of the app, read again after every check (so „Zuletzt geprüft“ and the notice follow „Jetzt prüfen“);
+    /// only the CI screenshot hosts hand in a fixed one.
+    private let fixedInput: TariffNoticeInput?
     /// „Schließen“ under the check button – off when the page is pushed in Einstellungen (the back button closes it).
     var showsClose = true
 
+    @Environment(AppState.self) private var app
+    @Environment(\.tariffNoticeInput) private var injected
     @Environment(\.dismiss) private var dismiss
     @State private var check: TarifCheck
 
     /// `check` is preset only by the CI screenshot hosts (a finished check).
-    init(input: TariffNoticeInput, check: TarifCheck? = nil, showsClose: Bool = true) {
-        self.input = input
+    init(input: TariffNoticeInput? = nil, check: TarifCheck? = nil, showsClose: Bool = true) {
+        fixedInput = input
         self.showsClose = showsClose
         _check = State(initialValue: check ?? TarifCheck())
     }
 
     var body: some View {
+        let _ = check.finishedCount   // a finished check re-reads the app's state below
+        let input = fixedInput ?? injected ?? app.tariffNoticeInput()
         let copy = TariffNoticeCopy(input)
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.l) {
@@ -274,7 +285,7 @@ struct TariffNoticeSheet: View {
                     }
                 }
                 .reveal(order: 1)
-                facts
+                facts(input)
                     .reveal(order: 2)
             }
             .padding(.horizontal, Theme.Spacing.screen)
@@ -309,7 +320,7 @@ struct TariffNoticeSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var facts: some View {
+    private func facts(_ input: TariffNoticeInput) -> some View {
         SurfaceCard(padding: Theme.Spacing.l, cornerRadius: Theme.Radius.formGroup) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Kicker(text: "Stand der Daten")
@@ -377,6 +388,11 @@ struct TarifCheckButton: View {
     @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Builds without an online source (local builds) have nothing to ask: the button says so instead of failing.
+    private var hasSource: Bool {
+        LaunchMode.isScreenshot || app.tariffs.tariffsURL(manifestHint: app.updates.manifest) != nil
+    }
+
     var body: some View {
         VStack(spacing: Theme.Spacing.xs) {
             Button {
@@ -391,8 +407,14 @@ struct TarifCheckButton: View {
                 }
             }
             .buttonStyle(.primary)
-            .disabled(check.isChecking)
+            .disabled(check.isChecking || !hasSource)
             .accessibilityValue(check.isChecking ? "Wird geprüft" : "")
+
+            if !hasSource {
+                Text("Keine Online-Quelle eingerichtet")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Theme.textSecondary)
+            }
 
             if case .finished(let result) = check.phase {
                 Label {

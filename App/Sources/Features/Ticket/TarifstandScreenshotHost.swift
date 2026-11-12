@@ -15,6 +15,9 @@ struct TarifstandScreenshotHost: View {
     static let screens: Set<String> = [
         "tarifNoticeUpcoming", "tarifNoticeNewYear", "tarifNoticeStale", "tarifSettingsRow", "tarifSheet",
         "tarifNoticeAX5", "tarifSettingsRowAX5",
+        // MARK: review-tarifstand – no banner (the Ticket tab as before), the details when nothing is due, a finished check that
+        // brings a pack for a later day
+        "tarifNoticeCurrent", "tarifSheetCurrent", "tarifSheetUpdated",
     ]
 
     let screen: String
@@ -77,6 +80,21 @@ struct TarifstandScreenshotHost: View {
                 .ambientBackground()
                 .sheet(isPresented: .constant(true)) {
                     TariffNoticeSheet(input: upcoming, check: TarifCheck(phase: .finished(.current)))
+                }
+        // MARK: review-tarifstand
+        case "tarifNoticeCurrent":
+            ticketTab(input(Self.vienna(2026, 11, 12, 10, 0)))
+        case "tarifSheetCurrent":
+            Color.clear
+                .ambientBackground()
+                .sheet(isPresented: .constant(true)) {
+                    TariffNoticeSheet(input: input(Self.vienna(2026, 11, 12, 10, 0)), check: TarifCheck())
+                }
+        case "tarifSheetUpdated":
+            Color.clear
+                .ambientBackground()
+                .sheet(isPresented: .constant(true)) {
+                    TariffNoticeSheet(input: upcoming, check: TarifCheck(phase: .finished(.updated(startsOn: "2026-12-13"))))
                 }
         default:
             MainTabView().onAppear { app.selectedTab = .ticket }

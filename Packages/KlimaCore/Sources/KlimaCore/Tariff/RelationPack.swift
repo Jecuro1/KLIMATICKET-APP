@@ -21,6 +21,9 @@ public struct RelationPack: Sendable {
     public static let maxBytes = 8 << 20
     /// Decoded points JSON (≈ 100 KB today) may not exceed this.
     static let maxPointsRawBytes = 4 << 20
+    /// Most relations a pack may declare (the bundled table has 178 013): a header that claims more is damaged and must not
+    /// make the app allocate gigabytes before the plausibility checks run.
+    static let maxPairs = 4_000_000
 
     public let version: Int
     /// ISO day "2026-12-13".
@@ -56,7 +59,7 @@ public struct RelationPack: Sendable {
         let (y, m, d) = (day / 10_000, day / 100 % 100, day % 100)
         let validFrom = String(format: "%04d-%02d-%02d", y, m, d)
         guard TariffFreshness.isISODay(validFrom) else { throw RelationPackError.corrupt("validFrom") }
-        guard pointCount > 0, pointCount <= 0x10000, pairCount > 0, pairCount <= 0x7FFF_FFFF / 6 else {
+        guard pointCount > 0, pointCount <= 0x10000, pairCount > 0, pairCount <= maxPairs else {
             throw RelationPackError.corrupt("counts")
         }
         guard pointsStored >= 0, pairsStored >= 0, pointsRaw > 0, pointsRaw <= maxPointsRawBytes,

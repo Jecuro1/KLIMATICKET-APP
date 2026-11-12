@@ -150,7 +150,9 @@ Commit-Nachricht oder der Eingabe `screens` eines manuellen Laufs begrenzt die L
    und `altstore-source.json`. Die App prüft `update.json` (URL in `AppConfig.json`) automatisch und
    zeigt ein Update-Sheet; über AltStore/SideStore-Quelle aktualisiert sich die App im Hintergrund.
 2. **Tarif-Updates:** `tariffs.json` (Preise, Tarifmodell) wird automatisch nachgeladen, wenn eine
-   neuere Version online liegt – ohne App-Update.
+   neuere Version online liegt – ohne App-Update. Dasselbe gilt für die Relationspreis-Tabelle
+   (`relations-pack.bin`, höchstens einmal pro 24 Stunden, geprüft und atomar eingebaut) und der Ticket-Tab warnt rund um
+   Fahrplan- und Jahreswechsel: [TARIFF_FRESHNESS.md](TARIFF_FRESHNESS.md).
 
 ## Login & Sync
 

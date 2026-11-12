@@ -146,6 +146,15 @@ final class RelationPackValidatorTests: XCTestCase {
         assertRejects(data, info, .corrupt("points"))
     }
 
+    /// A damaged header that claims gigabytes of relations is refused before anything is allocated for it.
+    func testRejectsAHeaderThatClaimsAbsurdlyManyRelations() {
+        let (ids, pairs) = PackBuilder.smallPairs()
+        var bytes = [UInt8](PackBuilder.make(version: 2, validFrom: "2026-12-13", pointIDs: ids, pairs: pairs))
+        bytes.replaceSubrange(20..<24, with: PackBuilder.le32(300_000_000))   // pairCount
+        let data = Data(bytes)
+        assertRejects(data, PackBuilder.info(for: data, version: 2, validFrom: "2026-12-13"), .corrupt("counts"))
+    }
+
     func testRejectsAPairCountOutlier() throws {
         let (ids, pairs) = PackBuilder.smallPairs()
         // 300 of 435 relations, but the table in use has 435: −31 % is outside ±25 %.
