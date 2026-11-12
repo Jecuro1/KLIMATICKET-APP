@@ -125,7 +125,9 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 
 - **Gelöscht** wird: beim Übernehmen oder Verwerfen (die Punkte dieser Fahrt), beim Ausschalten der Erkennung, mit **„Alle
   Standortdaten löschen“** (Punkte, Protokoll, alle Vorschläge samt Verlauf) und mit „Alle Daten löschen“. Übernommene Fahrten bleiben.
-- **Nicht** im Export (CSV, Backup), nicht in der Cloud-Synchronisierung. Das Modell ist rein lokal und kommt in keinem
+- **Nicht** im Export (CSV, Backup der App), nicht in der Cloud-Synchronisierung; die Punkte-Datei ist zudem vom iOS-Backup
+  ausgenommen. (Die Vorschläge liegen im selben Speicher wie deine Fahrten und teilen dessen iOS-Backup-Schicksal – sie enthalten
+  nur Haltestellennamen und Zeiten, keine Koordinaten.) Das Modell ist rein lokal und kommt in keinem
   Sync-Pfad vor; auch das Konto-Wechsel-Löschen (`deleteAllLocalData`) nimmt es mit.
 - **Nichts verlässt das Gerät** – außer, mit Zustimmung zu Live-Daten, je Vorschlag **eine** Fahrplanfrage (§7): zwei
   Haltestellennamen und eine Uhrzeit, keine Koordinate.
