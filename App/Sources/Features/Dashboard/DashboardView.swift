@@ -26,6 +26,9 @@ struct DashboardView: View {
     private var trips: [TripEntity]
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var favorites: [FavoriteRouteEntity]
+    /// MARK: tripdetect – the "Fahrten-Vorschläge" inbox: proposals waiting for a decision (`CandidateStatus.pending`).
+    @Query(filter: #Predicate<TripCandidateEntity> { $0.statusRaw == "pending" }, sort: \TripCandidateEntity.departedAt, order: .reverse)
+    private var candidates: [TripCandidateEntity]
 
     /// Scroll progress of the hero (0 at rest … 1 condensed). Only `heroCondense` and `DashCondensedSummit` read it.
     @State private var condense = ScrollCondense()
@@ -62,7 +65,8 @@ struct DashboardView: View {
     private func dashboard(ticket: TicketEntity, snapshot: AnalyticsSnapshot) -> some View {
         let summary = snapshot.summary
         let hasTrips = summary.tripCount > 0
-        let suggestions = app.detection.suggestions
+        let suggestions = candidates   // MARK: tripdetect
+        let isRecording = TripRecorder.shared.isRecording
         return ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -71,6 +75,8 @@ struct DashboardView: View {
                     if hasTrips {
                         // Overlaps the faded valley of the summit chart by a few points (spec §8.1); the route starts above it.
                         DashBalanceCard(snapshot: snapshot, catalog: app.catalog)
+                            .celebrate(trigger: app.detection.acceptTick, haptic: nil)   // MARK: tripdetect – an accepted proposal: the counter pops
+                            .celebrationBurst(trigger: app.detection.acceptTick)
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, -Theme.Spacing.xs)
                             .reveal(order: 2)
@@ -97,8 +103,8 @@ struct DashboardView: View {
                             .reveal(order: 3)
                     }
 
-                    if !suggestions.isEmpty {
-                        DashSuggestionsSection(suggestions: suggestions)
+                    if !suggestions.isEmpty || isRecording {
+                        TripInboxSection(candidates: suggestions, isRecording: isRecording)
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, DashStyle.sectionSpacing)
                             .reveal(order: 4)
@@ -127,7 +133,7 @@ struct DashboardView: View {
                         .scrollCardTransition()
                 }
                 .padding(.bottom, Theme.Spacing.xl)
-                .motionAnimation(Motion.smooth, value: suggestions.count)
+                .motionAnimation(Motion.smooth, value: suggestions.count + (isRecording ? 1 : 0))
             }
             .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
             .revealScope()

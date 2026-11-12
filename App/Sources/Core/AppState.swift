@@ -138,10 +138,18 @@ final class AppState {
         self.planner = PlannerModel(live: live, stations: { bundled.stations.value }, settings: appSettings)
         self.assistant = LocalAssistant(settings: appSettings)   // MARK: ai
         LaunchTrace.mark("state.services")
-        // Region events relaunch the app in the background, without UI – so RootView never configures detection.
-        // Resolve the monitored stations (region id = station id) and prices lazily instead.
-        detection.stationResolver = { id in await bundled.station(id: id) }
-        detection.estimatorProvider = { [weak self] in self?.estimator }
+        // MARK: tripdetect – location events relaunch the app in the background, without UI: so the detection resolves the station
+        // index (with the complete place database), the price table and the open store on demand (docs/TRIP_DETECTION.md §3).
+        detection.stationIndexProvider = { await bundled.indexWithPlaces() }
+        detection.relationProvider = { [weak self] in
+            let table = self?.relations ?? .empty
+            return { a, b in table.price(from: a, to: b) != nil }
+        }
+        detection.repositoryProvider = { [weak self] in
+            guard let self, let container = AppDelegate.container else { return nil }
+            return Repository(context: container.mainContext, app: self)
+        }
+        detection.liveProvider = { [weak self] in self?.live }
         PlannerIntentHost.app = self   // MARK: planner – Siri and Shortcuts answer from this state
     }
 
@@ -251,6 +259,14 @@ final class BundledData: Sendable {
         guard index.places == nil, let places = try? await PlaceIndexLoader.shared.load() else { return nil }
         index.attach(places: places)
         return index.station(id: id)
+    }
+
+    /// The station index with the complete place database attached – built here when a background launch has no UI yet.
+    /// MARK: tripdetect – the detector matches places against every stop, not only the bundled stations.
+    func indexWithPlaces() async -> StationIndex {
+        let index = await stations.load()
+        if index.places == nil, let places = try? await PlaceIndexLoader.shared.load() { index.attach(places: places) }
+        return index
     }
 
     /// Exact ÖBB prices: relations-points.json + raw-DEFLATE compressed relations.bin (UInt16 triples).

@@ -353,7 +353,9 @@ final class BenefitEntity {
 }
 
 enum DataSchema {
-    static let models: [any PersistentModel.Type] = [TicketEntity.self, TripEntity.self, FavoriteRouteEntity.self, BenefitEntity.self]
+    // MARK: tripdetect – TripCandidateEntity is additive (every property has a default): old stores open without a schema version.
+    static let models: [any PersistentModel.Type] = [TicketEntity.self, TripEntity.self, FavoriteRouteEntity.self, BenefitEntity.self,
+                                                     TripCandidateEntity.self]
     static let storeName = "KlimaBilanz.store"
 
     /// The persistent store: in the App Group container (shared with widgets) when available, otherwise in the app

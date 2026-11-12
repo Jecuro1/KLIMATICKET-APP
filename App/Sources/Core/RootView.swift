@@ -107,6 +107,7 @@ struct RootView: View {
             handleExternalRequests()
         }
         .rideActivityHost()  // MARK: live
+        .tripRecorderHost()  // MARK: tripdetect – the full-screen recording screen ("Fahrt aufzeichnen")
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
@@ -124,7 +125,11 @@ struct RootView: View {
             KBTips.configure()   // MARK: motion – TipKit, once per launch (never in screenshot/perf runs)
             let repo = Repository(context: context, app: app)
             if widgetSnapshotIsStale() { repo.refreshWidgets() }   // date-dependent fields; data changes refresh on save
-            if app.detection.isEnabled { repo.configureTripDetection() }
+            app.detection.migrateLegacy(into: repo)   // MARK: tripdetect – open suggestions of the earlier geofence version move into the inbox
+            if app.detection.isEnabled {
+                repo.configureTripDetection()
+                app.detection.requestEvaluation(after: .seconds(1))
+            }
             if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
             await Diagnostics.measureAsync("Sync") { await app.sync.sync(context: context, auth: app.auth) }
             repo.refreshWidgets()
@@ -177,7 +182,10 @@ struct RootView: View {
         if app.settings.autoUpdateCheck { await app.refreshRemoteContent() }
         await Diagnostics.measureAsync("Sync") { await app.sync.sync(context: context, auth: app.auth) }
         let repo = Repository(context: context, app: app)
-        if app.detection.isEnabled { repo.configureTripDetection() }   // favourites and trips may have changed
+        if app.detection.isEnabled {   // favourites and trips may have changed
+            repo.configureTripDetection()
+            app.detection.requestEvaluation(after: .seconds(1))   // MARK: tripdetect – a stay may have settled while the app slept
+        }
         if app.catalog.version != catalogVersion || widgetSnapshotIsStale() { repo.refreshWidgets() }
     }
 
@@ -576,6 +584,9 @@ struct ScreenshotRouter: View {
         // MARK: exitalarm – „Aussteige-Wecker“: sheet, location explanation, armed, approaching, fired, passed, settings (demo, no network)
         case let exitAlarmScreen where ExitAlarmScreenshotHost.screens.contains(exitAlarmScreen):
             ExitAlarmScreenshotHost(screen: exitAlarmScreen)
+        // MARK: tripdetect – Fahrten-Vorschläge, Fahrt aufzeichnen, Erklärung, Einstellungen, Protokoll (synthetic data, no alert)
+        case let detectScreen where TripDetectScreenshotHost.screens.contains(detectScreen):
+            TripDetectScreenshotHost(screen: detectScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

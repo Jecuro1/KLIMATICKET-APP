@@ -14,11 +14,8 @@ enum NotificationCategories {
     static let exitAlarmSnooze = "exitalarm.snooze"
 
     static func registerAll() {
-        // The location suggestion of TripDetectionService keeps its "Erfassen" action.
-        let suggestion = UNNotificationCategory(
-            identifier: TripDetectionService.notificationCategory,
-            actions: [UNNotificationAction(identifier: TripDetectionService.confirmAction, title: "Erfassen", options: [])],
-            intentIdentifiers: [])
+        // MARK: tripdetect – the "Fahrt erkannt?" notice has no action: a ride is never added without looking at it first.
+        let suggestion = UNNotificationCategory(identifier: TripDetectionService.notificationCategory, actions: [], intentIdentifiers: [])
         let follow = UNNotificationCategory(
             identifier: followNotice,
             actions: [

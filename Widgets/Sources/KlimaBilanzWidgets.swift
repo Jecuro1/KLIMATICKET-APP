@@ -27,5 +27,6 @@ struct KlimaBilanzWidgetsBundle: WidgetBundle {
         RideLiveActivity()  // MARK: live
         FollowLiveActivity()  // MARK: follow – "Live verfolgen" (docs/OEBB_LIVE.md §R8)
         ExitAlarmLiveActivity()  // MARK: exitalarm – the AlarmKit alarm of the Aussteige-Wecker (docs/EXIT_ALARM.md)
+        RecordingLiveActivity()  // MARK: tripdetect – "Aufzeichnung läuft"
     }
 }

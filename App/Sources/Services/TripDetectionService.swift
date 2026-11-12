@@ -4,236 +4,375 @@ import UIKit
 import UserNotifications
 import KlimaCore
 
-/// A detected trip waiting for confirmation ("Fahrt St. Anton → Innsbruck erfassen?").
-struct TripSuggestion: Codable, Identifiable, Hashable, Sendable {
-    var id: UUID = UUID()
-    var fromStationID: String
-    var toStationID: String
-    var fromName: String
-    var toName: String
-    var departedAt: Date
-    var arrivedAt: Date
-    var fareEUR: Double
-    var distanceKm: Double
-    var states: [String]
-}
+// "Hintergrund-Erkennung (Beta)" – docs/TRIP_DETECTION.md. Off by default; switched on only through the explanation screen.
+//
+// What it does: with "Immer" location access it collects COARSE data – significant location changes (cell-tower level), visits
+// (iOS tells when you stayed somewhere) and geofence enter/exit at the stations you use most (up to 20) – into a rolling buffer
+// of at most 36 hours on this device. After each event the pure detector (KlimaCore `TripDetector`) turns the buffer into
+// CANDIDATE rides; they go to the "Fahrten-Vorschläge" inbox and NEVER become a ride without a tap. Raw points are deleted
+// when a candidate is confirmed or dismissed, when the feature is switched off and with "Alle Standortdaten löschen".
+// Nothing leaves the device except – with the consent for live data – one timetable question per candidate that carries two
+// station names and a time, never a coordinate.
+//
+// A relaunch for a location event has no UI: stations, prices and the store are resolved on demand through the providers
+// AppState sets, and evaluation waits for the store when it is not open yet (it runs again when the app comes to the foreground).
 
-/// Opt-in automatic trip detection via region monitoring around the user's most used stations (max. 20).
-/// Leaving station A and entering station B within 4 hours produces a suggestion + local notification.
-/// Battery-friendly (no continuous GPS); works in the background and relaunches the app when needed – the relaunch has
-/// no UI, so stations and prices are resolved on demand (`stationResolver`, `estimatorProvider`) when `configure`
-/// has not run in this process. A short stop at a monitored station on the way (a train passing through) extends the
-/// trip: A → B → C becomes one suggestion A → C instead of two.
 @Observable
 @MainActor
 final class TripDetectionService: NSObject, CLLocationManagerDelegate {
-    private(set) var suggestions: [TripSuggestion] = []
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
-    var isEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isEnabled, forKey: Keys.enabled)
-            isEnabled ? requestAndStart() : stopAll()
-        }
+    private(set) var isEnabled: Bool
+    /// The one timetable question per candidate (effective only with the consent for live data).
+    var timetableLookupEnabled: Bool {
+        didSet { UserDefaults.standard.set(timetableLookupEnabled, forKey: DetectionDefaults.timetableLookup) }
+    }
+    /// The "Erkennungs-Protokoll" (newest first).
+    private(set) var log: DetectionLog
+    /// What the buffer holds right now (for the settings page: "3 Orte, 2 Aufenthalte").
+    private(set) var bufferSummary = BufferSummary()
+    /// Counts up when the person accepted a proposal: the savings counter on the Übersicht celebrates (docs/MOTION.md §11).
+    private(set) var acceptTick = 0
+
+    struct BufferSummary: Equatable {
+        var points = 0
+        var visits = 0
+        var oldest: Date?
     }
 
-    /// Station by id (= region identifier) when `configure` has not run in this process (set by AppState).
-    @ObservationIgnored var stationResolver: @MainActor (String) async -> Station? = { _ in nil }
-    /// Fare estimator for the same case (set by AppState).
-    @ObservationIgnored var estimatorProvider: @MainActor () -> FareEstimator? = { nil }
+    // MARK: Providers (set by AppState)
+
+    /// The station index with the complete place database attached (builds it when a background launch has no UI).
+    @ObservationIgnored var stationIndexProvider: @MainActor () async -> StationIndex = { StationIndex(stations: []) }
+    /// Whether the official price table has a relation between two stations.
+    @ObservationIgnored var relationProvider: @MainActor () -> (@Sendable (String, String) -> Bool) = { { _, _ in false } }
+    /// The repository on the open store, nil while the store is not open (a background launch before the first unlock).
+    @ObservationIgnored var repositoryProvider: @MainActor () -> Repository? = { nil }
+    /// The live planner: consent, switches and the timetable (nil: no lookup).
+    @ObservationIgnored var liveProvider: @MainActor () -> LiveDataService? = { nil }
 
     @ObservationIgnored private let manager = CLLocationManager()
-    @ObservationIgnored private var stationsByID: [String: Station] = [:]
-    @ObservationIgnored private var estimator: FareEstimator?
-    /// Region events are handled one after another in arrival order (an arrival may wait for station data).
-    @ObservationIgnored private var eventQueue: Task<Void, Never>?
+    @ObservationIgnored private var buffer: RollingPointBuffer
+    @ObservationIgnored private var queue: Task<Void, Never>?
+    @ObservationIgnored private var scheduled: Task<Void, Never>?
+    @ObservationIgnored private var askedAlways = false
+    @ObservationIgnored private var monitoredStations: [String: Station] = [:]
 
     static let notificationCategory = "TRIP_SUGGESTION"
-    static let confirmAction = "TRIP_SUGGESTION_CONFIRM"
 
-    private enum Keys {
-        static let enabled = "detection.enabled"
-        static let suggestions = "detection.suggestions"
-        static let lastExit = "detection.lastExit"
-        static let lastArrival = "detection.lastArrival"
+    var isAvailable: Bool {
+        CLLocationManager.significantLocationChangeMonitoringAvailable() || CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self)
     }
-
-    /// The last exit from a monitored station. When it ends a short stop at the station a suggestion was just made
-    /// for, the `origin…`/`chainedSuggestionID` fields carry that trip on, so the next arrival can extend it.
-    private struct ExitEvent: Codable {
-        var stationID: String
-        var date: Date
-        var originID: String? = nil
-        var originDate: Date? = nil
-        var chainedSuggestionID: UUID? = nil
-    }
-
-    /// The last arrival that produced a suggestion (to recognise a stop that is only passed through).
-    private struct ArrivalEvent: Codable {
-        var stationID: String
-        var date: Date
-        var suggestionID: UUID
-        var originID: String
-        var originDate: Date
-    }
-
-    private static let maxTripDuration: TimeInterval = 4 * 3600
-    /// Leaving a station this soon after arriving counts as passing through (a train stops 1–3 min) …
-    private static let passThroughDwell: TimeInterval = 5 * 60
-    /// … and the next arrival has to follow within this time to extend the trip.
-    private static let chainWindow: TimeInterval = 90 * 60
+    var isAuthorizedAlways: Bool { authorization == .authorizedAlways }
+    var isDenied: Bool { authorization == .denied || authorization == .restricted }
+    /// Whether the explanation screen was confirmed once (it is shown again after the feature was switched off).
+    var wasExplained: Bool { UserDefaults.standard.bool(forKey: DetectionDefaults.explained) }
 
     override init() {
-        isEnabled = UserDefaults.standard.bool(forKey: Keys.enabled)
+        let defaults = UserDefaults.standard
+        isEnabled = defaults.bool(forKey: DetectionDefaults.backgroundEnabled)
+        timetableLookupEnabled = defaults.object(forKey: DetectionDefaults.timetableLookup) as? Bool ?? true
+        buffer = LaunchMode.isSandboxed ? RollingPointBuffer() : PointBufferStore.load()
+        log = LaunchMode.isSandboxed ? DetectionLog() : DetectionLogStore.load()
         super.init()
         manager.delegate = self
         authorization = manager.authorizationStatus
-        if let data = UserDefaults.standard.data(forKey: Keys.suggestions),
-           let saved = try? JSONDecoder().decode([TripSuggestion].self, from: data) {
-            suggestions = saved.filter { Date().timeIntervalSince($0.arrivedAt) < 7 * 86_400 }
-        }
+        refreshSummary()
         registerNotificationCategory()
+        if isEnabled, isAuthorizedAlways, !LaunchMode.isSandboxed { startSources() }
     }
 
-    var isAuthorizedAlways: Bool { authorization == .authorizedAlways }
-    var isAvailable: Bool { CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) }
+    // MARK: Switching on and off
 
-    /// Updates the monitored stations (call after trips/favourites change and at launch).
-    func configure(stations index: StationIndex, frequentStationIDs: [String], estimator: FareEstimator) {
-        self.estimator = estimator
+    /// "Verstanden, einschalten" on the explanation screen. Asks for the location permission in two steps (iOS wants
+    /// "Beim Verwenden" first, then "Immer"). Never in a screenshot or demo run.
+    func enable() {
+        guard !LaunchMode.isSandboxed else { return }
+        UserDefaults.standard.set(true, forKey: DetectionDefaults.explained)
+        isEnabled = true
+        UserDefaults.standard.set(true, forKey: DetectionDefaults.backgroundEnabled)
+        record(.info("Hintergrund-Erkennung eingeschaltet", at: Date()))
+        advanceAuthorization()
+    }
+
+    /// Switching off stops every source and deletes the raw points.
+    func disable() {
+        guard isEnabled else { return }
+        isEnabled = false
+        UserDefaults.standard.set(false, forKey: DetectionDefaults.backgroundEnabled)
+        stopSources()
+        buffer.removeAll()
+        persistBuffer()
+        record(.info("Hintergrund-Erkennung ausgeschaltet, Standortpunkte gelöscht", at: Date()))
+    }
+
+    /// "Alle Standortdaten löschen": the buffer and the log (the caller removes the candidates through the Repository).
+    func deleteAllLocationData() {
+        buffer.removeAll()
+        persistBuffer()
+        log.removeAll()
+        DetectionLogStore.save(log)
+        scheduled?.cancel()
+    }
+
+    func noteAcceptance() { acceptTick += 1 }
+
+    /// Back from the iOS Settings app: the permission may have changed.
+    func refreshAuthorization() {
+        authorization = manager.authorizationStatus
+        if isEnabled { advanceAuthorization() }
+    }
+
+    /// Settings › Alle Standortdaten löschen leaves a trace of itself, but of nothing else.
+    func noteDeletion() {
+        record(.info("Alle Standortdaten gelöscht", at: Date()))
+    }
+
+    private func advanceAuthorization() {
+        guard !LaunchMode.isSandboxed else { return }
+        authorization = manager.authorizationStatus
+        switch authorization {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse:
+            if !askedAlways {
+                askedAlways = true
+                manager.requestAlwaysAuthorization()
+            }
+        case .authorizedAlways:
+            startSources()
+            requestEvaluation()
+        default:
+            break
+        }
+    }
+
+    // MARK: Sources
+
+    /// Stations whose enter/exit marks a stay at a station – the ones used most, at most 20 (iOS allows 20 regions per app).
+    /// Called at launch and after trips or favourites changed.
+    func configure(stations index: StationIndex, frequentStationIDs: [String]) {
         let selected = frequentStationIDs.compactMap(index.station(id:)).prefix(20)
-        stationsByID = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
-        guard isEnabled, isAuthorizedAlways else { return }
+        monitoredStations = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
+        guard isEnabled, isAuthorizedAlways, !LaunchMode.isSandboxed else { return }
         syncRegions()
     }
 
-    func confirm(_ suggestion: TripSuggestion, repository: Repository) {
-        let trip = TripEntity(date: suggestion.departedAt, fromName: suggestion.fromName, toName: suggestion.toName,
-                              fromStationID: suggestion.fromStationID, toStationID: suggestion.toStationID, mode: .train,
-                              distanceKm: suggestion.distanceKm, fareEUR: suggestion.fareEUR, states: suggestion.states)
-        repository.addTrip(trip)
-        remove(suggestion.id)
+    private func startSources() {
+        if CLLocationManager.significantLocationChangeMonitoringAvailable() { manager.startMonitoringSignificantLocationChanges() }
+        manager.startMonitoringVisits()
+        syncRegions()
     }
 
-    func dismiss(_ suggestion: TripSuggestion) { remove(suggestion.id) }
-
-    /// Handles the "Erfassen" action of a suggestion notification.
-    func handleNotificationResponse(identifier: String, repository: Repository) {
-        guard let id = UUID(uuidString: identifier), let s = suggestions.first(where: { $0.id == id }) else { return }
-        confirm(s, repository: repository)
-    }
-
-    // MARK: Regions
-
-    private func requestAndStart() {
-        switch manager.authorizationStatus {
-        case .notDetermined: manager.requestAlwaysAuthorization()
-        case .authorizedWhenInUse: manager.requestAlwaysAuthorization()
-        case .authorizedAlways: syncRegions()
-        default: break
-        }
+    private func stopSources() {
+        manager.stopMonitoringSignificantLocationChanges()
+        manager.stopMonitoringVisits()
+        for region in manager.monitoredRegions { manager.stopMonitoring(for: region) }
     }
 
     private func syncRegions() {
-        let wanted = Set(stationsByID.keys)
+        guard CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) else { return }
+        let wanted = Set(monitoredStations.keys)
         for region in manager.monitoredRegions where !wanted.contains(region.identifier) {
             manager.stopMonitoring(for: region)
         }
         let existing = Set(manager.monitoredRegions.map(\.identifier))
-        for (id, station) in stationsByID where !existing.contains(id) {
-            let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon),
-                                          radius: 250, identifier: id)
+        for (id, station) in monitoredStations where !existing.contains(id) {
+            let region = CLCircularRegion(center: CLLocationCoordinate2D(latitude: station.lat, longitude: station.lon), radius: 250, identifier: id)
             region.notifyOnEntry = true
             region.notifyOnExit = true
             manager.startMonitoring(for: region)
         }
     }
 
-    private func stopAll() {
-        for region in manager.monitoredRegions { manager.stopMonitoring(for: region) }
+    // MARK: Events
+
+    private func add(points: [CoarsePoint]) {
+        let now = Date()
+        for point in points { buffer.append(point, now: now) }
+        persistBuffer()
+        requestEvaluation()
     }
 
-    private func didExit(stationID: String, at date: Date) {
-        var event = ExitEvent(stationID: stationID, date: date)
-        if let arrival = load(ArrivalEvent.self, forKey: Keys.lastArrival), arrival.stationID == stationID,
-           date.timeIntervalSince(arrival.date) < Self.passThroughDwell {
-            // Possibly only passing through: the next arrival may extend that trip (decided there).
-            event.originID = arrival.originID
-            event.originDate = arrival.originDate
-            event.chainedSuggestionID = arrival.suggestionID
+    private func add(visit: VisitRecord) {
+        buffer.upsert(visit, now: Date())
+        persistBuffer()
+        requestEvaluation()
+    }
+
+    private func regionEvent(center: GeoPoint, entered: Bool, at date: Date) {
+        if entered {
+            buffer.upsert(VisitRecord(at: center, accuracyMeters: 120, arrival: date, departure: nil, observedAt: date), now: date)
+        } else {
+            buffer.closeOpenVisit(near: center, departure: date, now: date)
         }
-        UserDefaults.standard.removeObject(forKey: Keys.lastArrival)
-        store(event, forKey: Keys.lastExit)
+        persistBuffer()
+        requestEvaluation()
     }
 
-    private func didEnter(stationID: String, at date: Date) async {
-        guard let exit = load(ExitEvent.self, forKey: Keys.lastExit) else { return }
-        guard exit.stationID != stationID else {
-            // Back at the station just left: no trip, and no pass-through either.
-            if exit.chainedSuggestionID != nil { store(ExitEvent(stationID: exit.stationID, date: exit.date), forKey: Keys.lastExit) }
-            return
+    private func persistBuffer() {
+        guard !LaunchMode.isSandboxed else { return }
+        PointBufferStore.save(buffer)
+        refreshSummary()
+    }
+
+    private func refreshSummary() {
+        bufferSummary = BufferSummary(points: buffer.points.count, visits: buffer.visits.count,
+                                      oldest: [buffer.points.first?.time, buffer.visits.first?.firstTimeForSummary].compactMap { $0 }.min())
+    }
+
+    // MARK: Evaluation
+
+    /// Runs the detector soon (events come in bursts); runs at launch and when the app comes to the foreground, too.
+    func requestEvaluation(after delay: Duration = .seconds(2)) {
+        guard isEnabled else { return }
+        scheduled?.cancel()
+        scheduled = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            self?.enqueue { await self?.evaluate() }
         }
-        guard date.timeIntervalSince(exit.date) < Self.maxTripDuration, let to = await station(stationID) else { return }
-        // A short stop at the previous station after a trip that is still waiting for confirmation: extend it.
-        var origin: (station: Station, departedAt: Date, replaces: UUID)?
-        if let chained = exit.chainedSuggestionID, let originID = exit.originID, originID != stationID,
-           date.timeIntervalSince(exit.date) < Self.chainWindow, let first = await station(originID) {
-            origin = (first, exit.originDate ?? exit.date, chained)
-        }
-        let previous = await station(exit.stationID)
-        // The user may have confirmed or dismissed the first leg meanwhile – then it stays a trip of its own.
-        if let o = origin, !suggestions.contains(where: { $0.id == o.replaces }) { origin = nil }
-        guard let from = origin?.station ?? previous else { return }
-        UserDefaults.standard.removeObject(forKey: Keys.lastExit)
-        let estimate = (estimator ?? estimatorProvider())?.estimate(from: from, to: to, mode: .train)
-        guard let estimate, estimate.distanceKm >= 2 else { return }
-        let departedAt = origin?.departedAt ?? exit.date
-        let suggestion = TripSuggestion(fromStationID: from.id, toStationID: to.id, fromName: from.name, toName: to.name,
-                                        departedAt: departedAt, arrivedAt: date, fareEUR: estimate.fareEUR,
-                                        distanceKm: estimate.distanceKm, states: Array(Set([from.state, to.state])).sorted())
-        if let replaced = origin?.replaces { remove(replaced) }   // A → B becomes A → C
-        suggestions.insert(suggestion, at: 0)
-        persist()
-        notify(suggestion)
-        store(ArrivalEvent(stationID: stationID, date: date, suggestionID: suggestion.id, originID: from.id, originDate: departedAt),
-              forKey: Keys.lastArrival)
     }
 
-    /// Configured stations first, then the resolver (background relaunch without `configure`).
-    private func station(_ id: String) async -> Station? {
-        if let station = stationsByID[id] { return station }
-        return await stationResolver(id)
-    }
-
-    /// Runs region events strictly one after another, each with extra background time: a relaunch for a region event
-    /// only gets a few seconds, and resolving a stop may first have to build the place index.
+    /// Detector runs one after another, each with extra background time: a relaunch for a location event only gets a few
+    /// seconds, and resolving the stations may first have to build the place index.
     private func enqueue(_ work: @escaping @MainActor () async -> Void) {
-        let previous = eventQueue
-        eventQueue = Task { @MainActor in
+        let previous = queue
+        queue = Task { @MainActor in
             await previous?.value
-            let time = BackgroundTime(name: "TripDetection")
+            let time = DetectionBackgroundTime(name: "TripDetection")
             await work()
             time.end()
         }
     }
 
-    private func load<T: Decodable>(_ type: T.Type, forKey key: String) -> T? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(type, from: data)
+    private func evaluate() async {
+        guard isEnabled, !LaunchMode.isSandboxed, let repository = repositoryProvider() else { return }
+        let now = Date()
+        buffer.prune(now: now)
+        let index = await stationIndexProvider()
+        let detector = TripDetector(matcher: StationMatcher(lookup: index), knownRelation: relationProvider())
+        let outcome = detector.detect(buffer.track, now: now, history: repository.pairHistory())
+        let triage = repository.triage(outcome, now: now)
+        log.record(outcome, duplicates: triage.duplicates, at: now)
+
+        // The optional timetable question – only for rides that are about to be proposed.
+        var candidates = triage.fresh
+        var lines: [UUID: String] = [:]
+        for (i, candidate) in candidates.enumerated() {
+            let verdict = await timetableVerdict(for: candidate, index: index)
+            if case .confirmed(let connection) = verdict { lines[candidate.id] = connection.summary }
+            if verdict != .unavailable { candidates[i] = candidate.ranked(with: verdict) }
+        }
+        candidates = candidates.filter { $0.rank.isProposable }
+        let result = repository.insert(candidates, timetableLines: lines)
+        for candidate in candidates where result.inserted.contains(where: { $0.fromStationID == candidate.from.station.id && $0.toStationID == candidate.to.station.id && $0.departedAt == candidate.departure }) {
+            log.add(.proposed(candidate, at: now), now: now)
+        }
+        for replaced in result.replaced { log.add(.replaced(replaced.candidate, count: replaced.count, at: now), now: now) }
+        repository.pruneDecidedCandidates(now: now)
+        DetectionLogStore.save(log)
+        persistBuffer()
+        if !result.inserted.isEmpty { notify(result.inserted) }
     }
 
-    private func store<T: Encodable>(_ value: T, forKey key: String) {
-        if let data = try? JSONEncoder().encode(value) { UserDefaults.standard.set(data, forKey: key) }
+    /// One timetable question for a candidate: station names (HAFAS location ids) and a time – no coordinate of the person.
+    private func timetableVerdict(for candidate: DetectedCandidate, index: StationIndex) async -> TimetableVerdict {
+        guard timetableLookupEnabled, let live = liveProvider(), live.consent == .granted, let timetable = live.timetable else { return .unavailable }
+        do {
+            let origin = try await live.linker.hafasLocation(for: candidate.from.station)
+            let destination = try await live.linker.hafasLocation(for: candidate.to.station)
+            let query = JourneyQuery(origin: origin, destination: destination, date: candidate.departure.addingTimeInterval(-20 * 60),
+                                     results: 5, includeStopovers: false)
+            let page = try await timetable.journeys(query)
+            let connections = page.journeys.compactMap { journey -> TimetableConnection? in
+                let rides = journey.legs.filter { $0.kind == .ride }
+                guard let first = rides.first?.departure.effective, let last = rides.last?.arrival.effective else { return nil }
+                return TimetableConnection(departure: first, arrival: last, line: rides.first?.line?.name)
+            }
+            return TimetableConfirmation.verdict(departure: candidate.departure, arrival: candidate.arrival, connections: connections)
+        } catch {
+            return .unavailable
+        }
     }
 
-    private func remove(_ id: UUID) {
-        suggestions.removeAll { $0.id == id }
-        persist()
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [id.uuidString])
+    // MARK: Log
+
+    private func record(_ entry: DetectionLogEntry) {
+        log.add(entry, now: entry.loggedAt)
+        guard !LaunchMode.isSandboxed else { return }
+        DetectionLogStore.save(log)
     }
 
-    private func persist() {
-        if let data = try? JSONEncoder().encode(Array(suggestions.prefix(20))) {
-            UserDefaults.standard.set(data, forKey: Keys.suggestions)
+    /// Writes a decision of the person (confirmed, dismissed) into the log; the raw points of that ride are deleted.
+    func didDecide(_ candidate: TripCandidateEntity, accepted: Bool) {
+        buffer.remove(from: candidate.evidenceStart, to: candidate.evidenceEnd)
+        persistBuffer()
+        let verb = accepted ? "Übernommen" : "Verworfen"
+        record(.decision("\(verb). Die Standortpunkte dieser Fahrt sind gelöscht.", title: "\(candidate.fromName) → \(candidate.toName)", at: Date()))
+    }
+
+    func clearLog() {
+        log.removeAll()
+        DetectionLogStore.save(log)
+    }
+
+    // MARK: Migration of the earlier geofence detection
+
+    /// The earlier version kept its suggestions in UserDefaults and monitored regions without the new consent. Open
+    /// suggestions move into the inbox (as "vielleicht"-free legacy proposals), the switch stays off until the new explanation
+    /// was confirmed, and the old regions stop.
+    func migrateLegacy(into repository: Repository) {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: DetectionDefaults.legacySuggestions) != nil || defaults.object(forKey: DetectionDefaults.legacyEnabled) != nil else { return }
+        if let data = defaults.data(forKey: DetectionDefaults.legacySuggestions),
+           let old = try? JSONDecoder().decode([LegacySuggestion].self, from: data) {
+            let known = repository.allCandidates()
+            for suggestion in old where Date().timeIntervalSince(suggestion.arrivedAt) < 7 * 86_400
+                && !known.contains(where: { $0.fromStationID == suggestion.fromStationID && $0.toStationID == suggestion.toStationID && $0.departedAt == suggestion.departedAt }) {
+                let entity = TripCandidateEntity(source: .legacy, fromName: suggestion.fromName, toName: suggestion.toName,
+                                                 fromStationID: suggestion.fromStationID, toStationID: suggestion.toStationID, mode: .train,
+                                                 departedAt: suggestion.departedAt, arrivedAt: suggestion.arrivedAt, straightKm: suggestion.distanceKm,
+                                                 confidence: .wahrscheinlich, sketch: nil)
+                repository.context.insert(entity)
+            }
+            repository.saveCandidates()
+        }
+        if !LaunchMode.isSandboxed {
+            for region in manager.monitoredRegions { manager.stopMonitoring(for: region) }
+        }
+        for key in [DetectionDefaults.legacySuggestions, DetectionDefaults.legacyLastExit, DetectionDefaults.legacyLastArrival, DetectionDefaults.legacyEnabled] {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    private struct LegacySuggestion: Codable {
+        var fromStationID: String
+        var toStationID: String
+        var fromName: String
+        var toName: String
+        var departedAt: Date
+        var arrivedAt: Date
+        var distanceKm: Double
+    }
+
+    // MARK: Notification
+
+    /// "Fahrt erkannt?" – only when notifications are allowed already (nothing is asked here) and it is not the foreground;
+    /// opens the app on the Übersicht, where the inbox is. No action button: every ride is looked at first.
+    private func notify(_ inserted: [TripCandidateEntity]) {
+        guard UIApplication.shared.applicationState != .active else { return }
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = inserted.count == 1 ? "Fahrt erkannt?" : "\(inserted.count) Fahrten erkannt?"
+            let first = inserted[0]
+            content.body = inserted.count == 1 ? "\(first.fromName) → \(first.toName) · \(first.confidence.label) – in der App ansehen und bestätigen."
+                                               : "Sieh sie dir in der Übersicht an und bestätige, was stimmt."
+            content.sound = .default
+            content.categoryIdentifier = Self.notificationCategory
+            content.threadIdentifier = "suggestions"
+            try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: first.id.uuidString, content: content, trigger: nil))
         }
     }
 
@@ -242,42 +381,60 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         NotificationCategories.registerAll()
     }
 
-    private func notify(_ s: TripSuggestion) {
-        let content = UNMutableNotificationContent()
-        content.title = "Fahrt erfassen?"
-        content.body = "\(s.fromName) → \(s.toName) · \(Format.euroPrecise(s.fareEUR))"
-        content.sound = .default
-        content.categoryIdentifier = Self.notificationCategory
-        content.threadIdentifier = "suggestions"
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: s.id.uuidString, content: content, trigger: nil))
-    }
-
     // MARK: CLLocationManagerDelegate
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
             self.authorization = status
-            if status == .authorizedAlways, self.isEnabled { self.syncRegions() }
+            if self.isEnabled { self.advanceAuthorization() }
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        let id = region.identifier, date = Date()
-        Task { @MainActor in self.enqueue { self.didExit(stationID: id, at: date) } }
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let points = locations.compactMap { location -> CoarsePoint? in
+            guard location.horizontalAccuracy >= 0 else { return nil }
+            return CoarsePoint(time: location.timestamp, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude,
+                               accuracyMeters: location.horizontalAccuracy, speedMetersPerSecond: location.speed >= 0 ? location.speed : nil,
+                               source: .significantChange)
+        }
+        guard !points.isEmpty else { return }
+        Task { @MainActor in self.add(points: points) }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
+        let floor = Date(timeIntervalSince1970: 0)
+        let record = VisitRecord(latitude: visit.coordinate.latitude, longitude: visit.coordinate.longitude,
+                                 accuracyMeters: visit.horizontalAccuracy >= 0 ? visit.horizontalAccuracy : 100,
+                                 arrival: visit.arrivalDate > floor ? visit.arrivalDate : nil,
+                                 departure: visit.departureDate < Date.distantFuture.addingTimeInterval(-86_400) ? visit.departureDate : nil,
+                                 observedAt: Date())
+        Task { @MainActor in self.add(visit: record) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        let id = region.identifier, date = Date()
-        Task { @MainActor in self.enqueue { await self.didEnter(stationID: id, at: date) } }
+        guard let circle = region as? CLCircularRegion else { return }
+        let center = GeoPoint(latitude: circle.center.latitude, longitude: circle.center.longitude), date = Date()
+        Task { @MainActor in self.regionEvent(center: center, entered: true, at: date) }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+        guard let circle = region as? CLCircularRegion else { return }
+        let center = GeoPoint(latitude: circle.center.latitude, longitude: circle.center.longitude), date = Date()
+        Task { @MainActor in self.regionEvent(center: center, entered: false, at: date) }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {}
 }
 
-/// A UIKit background-task assertion: keeps a process that iOS woke for a region event alive until the work is done.
+private extension VisitRecord {
+    /// The first moment of a visit for the buffer summary.
+    var firstTimeForSummary: Date { arrival ?? departure ?? observedAt }
+}
+
+/// A UIKit background-task assertion: keeps a process that iOS woke for a location event alive until the work is done.
 @MainActor
-private final class BackgroundTime {
+private final class DetectionBackgroundTime {
     private var id: UIBackgroundTaskIdentifier = .invalid
 
     init(name: String) {

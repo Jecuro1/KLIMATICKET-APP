@@ -302,6 +302,8 @@ struct Repository {
         for e in (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>())) ?? [] { context.delete(e) }
         for e in (try? context.fetch(FetchDescriptor<BenefitEntity>())) ?? [] { context.delete(e) }
         for e in (try? context.fetch(FetchDescriptor<TicketEntity>())) ?? [] { context.delete(e) }
+        for e in allCandidates() { context.delete(e) }   // MARK: tripdetect – proposals and the memory of dismissed pairs
+        app.detection.deleteAllLocationData()
         app.settings.selectedTicketID = nil
         commit(sync: false)
     }
@@ -409,7 +411,7 @@ struct Repository {
     }
 
     func configureTripDetection() {
-        app.detection.configure(stations: app.stations, frequentStationIDs: frequentStationIDs(), estimator: app.estimator)
+        app.detection.configure(stations: app.stations, frequentStationIDs: frequentStationIDs())
     }
 
     // MARK: Commit

@@ -410,6 +410,7 @@ final class SyncService {
         Task { await SavedRouteReminders.removeOrphans(activeRouteIDs: []) }   // MARK: routes – every route is gone
         for e in try context.fetch(FetchDescriptor<BenefitEntity>()) { context.delete(e) }
         for e in try context.fetch(FetchDescriptor<TicketEntity>()) { context.delete(e) }
+        for e in try context.fetch(FetchDescriptor<TripCandidateEntity>()) { context.delete(e) }   // MARK: tripdetect – device-local proposals
     }
 
     // MARK: Merge

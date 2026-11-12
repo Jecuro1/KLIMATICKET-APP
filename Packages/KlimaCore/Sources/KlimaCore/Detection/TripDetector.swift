@@ -97,6 +97,17 @@ public struct DetectionRejection: Hashable, Sendable {
     public var straightKm: Double
     public var averageSpeedKmh: Double?
 
+    public init(reason: Reason, departure: Date, arrival: Date, fromName: String? = nil, toName: String? = nil, straightKm: Double,
+                averageSpeedKmh: Double? = nil) {
+        self.reason = reason
+        self.departure = departure
+        self.arrival = arrival
+        self.fromName = fromName
+        self.toName = toName
+        self.straightKm = straightKm
+        self.averageSpeedKmh = averageSpeedKmh
+    }
+
     /// Short code for tests and the log's filter.
     public var code: String {
         switch reason {

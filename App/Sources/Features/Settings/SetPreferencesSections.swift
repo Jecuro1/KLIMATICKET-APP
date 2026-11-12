@@ -6,8 +6,8 @@ import KlimaCore
 
 // MARK: - Fahrten erfassen
 
-/// How trips get into the app: home station (pre-filled start), favourites (one-tap capture) and
-/// automatic detection via geofences at the favourite stations.
+/// How trips get into the app: home station (pre-filled start), favourites (one-tap capture), recording a ride and the opt-in
+/// background detection (docs/TRIP_DETECTION.md, `TripDetectEntryRow`).
 struct SetCaptureSection: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -15,42 +15,18 @@ struct SetCaptureSection: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
 
     var body: some View {
-        @Bindable var detection = app.detection
         Section {
             Group {
                 homeStationRow
                 favoritesRow
-                // The status row below folds in and out with the switch (animated binding); detection starting and
-                // stopping has its own haptics (docs/MOTION.md §6: .start / .stop).
-                Toggle(isOn: $detection.isEnabled.animation(MotionPolicy.animation(Motion.smooth))) {
-                    // Short enough for one line each next to the switch (the section header already says "Fahrten").
-                    SetRowLabel(title: "Automatisch erkennen",
-                                subtitle: detection.isAvailable ? "Vorschläge an Lieblingsbahnhöfen" : "Auf diesem Gerät nicht verfügbar",
-                                symbol: "location.fill", tint: Theme.glacier)
-                        .setSymbolOnEnable(detection.isEnabled)
-                }
-                .disabled(!detection.isAvailable)
-                .haptic(.start, trigger: detection.isEnabled, when: { _, isOn in isOn })
-                .haptic(.stop, trigger: detection.isEnabled, when: { _, isOn in !isOn })
-                .onChange(of: detection.isEnabled) { _, enabled in
-                    if enabled { Repository(context: context, app: app).configureTripDetection() }
-                }
-                if detection.isEnabled {
-                    Group {
-                        if detection.isAuthorizedAlways {
-                            activeRow
-                        } else {
-                            permissionRow
-                        }
-                    }
-                    .motionTransition(.rise)
-                }
+                // MARK: tripdetect – Fahrt aufzeichnen and the opt-in Hintergrund-Erkennung (Beta) live on their own page.
+                TripDetectEntryRow()
             }
             .listRowBackground(Theme.surface)
         } header: {
             SetSectionHeader(title: "Fahrten erfassen")
         } footer: {
-            SetFooter(text: "Die automatische Erkennung bemerkt per Geofencing, wenn du an deinen häufigsten Bahnhöfen abfährst und ankommst, und schlägt dir die Fahrt zum Erfassen vor – akkuschonend, ohne Dauer-GPS. Dein Standort verlässt dein iPhone nie.")
+            SetFooter(text: "Fahrten aufzeichnen oder – optional, als Beta – im Hintergrund erkennen lassen. Vorschläge werden nie ohne dein Okay erfasst, der Standort bleibt auf deinem iPhone.")
         }
     }
 
@@ -106,32 +82,6 @@ struct SetCaptureSection: View {
         }
         if let state = station.federalState?.displayName { return "\(station.name) · \(state)" }
         return station.name
-    }
-
-    private var activeRow: some View {
-        let count = app.detection.suggestions.count
-        return SetRowLabel(title: "Aktiv",
-                           subtitle: count == 0 ? "Bis zu 20 Bahnhöfe werden beobachtet"
-                                                : "\(SetFormat.count(count, "Vorschlag wartet", "Vorschläge warten")) in der Übersicht",
-                           symbol: "checkmark.circle.fill", tint: Theme.pine)
-            .motionAnimation(Motion.snappy, value: count)
-    }
-
-    private var permissionRow: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            SetRowLabel(title: "Standort „Immer“ fehlt",
-                        subtitle: "Erlaube den Standortzugriff „Immer“, damit Fahrten auch im Hintergrund erkannt werden.",
-                        symbol: "location.slash.fill", tint: Theme.dawn)
-            Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-            } label: {
-                Label("Einstellungen öffnen", systemImage: "gear")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.glass)
-            .controlSize(.small)
-        }
-        .padding(.vertical, 4)
     }
 }
 

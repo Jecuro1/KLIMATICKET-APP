@@ -152,7 +152,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             }
             // A response right after the first unlock can arrive before the scene retried opening the store.
             AppDelegate.launch?.store.retryIfNeeded()
-            guard let app = AppDelegate.appState, let container = AppDelegate.container else { return }
+            guard let app = AppDelegate.appState, AppDelegate.container != nil else { return }
             if category == NotificationCategories.followNotice {
                 switch action {
                 case NotificationCategories.followLog:
@@ -164,12 +164,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 return
             }
             if category == TripDetectionService.notificationCategory {
-                if action == TripDetectionService.confirmAction {
-                    app.detection.handleNotificationResponse(identifier: identifier,
-                                                             repository: Repository(context: container.mainContext, app: app))
-                } else {
-                    app.selectedTab = .overview
-                }
+                app.selectedTab = .overview   // MARK: tripdetect – the inbox "Fahrten-Vorschläge" is on the Übersicht
                 return
             }
             guard action == UNNotificationDefaultActionIdentifier else { return }

@@ -424,6 +424,11 @@ struct TripsView: View {
                 Label("Mehr", systemImage: "ellipsis")
             }
             Button {
+                TripRecorderPresenter.shared.present()   // MARK: tripdetect – "Fahrt aufzeichnen"
+            } label: {
+                Label("Fahrt aufzeichnen", systemImage: "record.circle")
+            }
+            Button {
                 app.presentAddTrip()
             } label: {
                 Label("Fahrt erfassen", systemImage: "plus")
