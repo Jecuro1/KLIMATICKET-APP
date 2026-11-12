@@ -342,7 +342,8 @@ public struct RadarPoint: Sendable, Hashable {
     }
 }
 
-/// Vehicles that share a grid cell. A cluster with one member is drawn as that vehicle.
+/// Vehicles that share a grid cell. A cluster with one member is drawn as that vehicle; its id is "trip|<trip id>", the id of a
+/// group is its cell ("row|column").
 public struct RadarCluster: Sendable, Hashable, Identifiable {
     public var id: String
     public var center: GeoPoint
@@ -391,8 +392,11 @@ public enum RadarClustering {
             let members = cells[key] ?? []
             let lat = members.reduce(0) { $0 + $1.coordinate.latitude } / Double(members.count)
             let lon = members.reduce(0) { $0 + $1.coordinate.longitude } / Double(members.count)
+            // A cell with one vehicle is that vehicle: the id follows the trip, not the cell, so a train that drives over a cell
+            // border keeps its marker (the map moves it) instead of losing it in one cell and getting a new one in the next.
+            let only = members.count == 1 ? members[0].tripID : nil
             return RadarCluster(
-                id: key,
+                id: only.map { "trip|\($0)" } ?? key,
                 center: GeoPoint(latitude: lat, longitude: lon),
                 tripIDs: members.map(\.tripID).sorted(),
                 lateCount: members.filter { $0.delay == .late }.count,

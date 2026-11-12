@@ -70,7 +70,8 @@ public enum HafasCodec {
 
     /// JourneyGeoPos (Zug-Radar). Reference `parse/movement.js`: `jnyL[i].pos` is the position, `stopL` the run.
     /// Entries without a position (or with one outside the WGS84 range) are dropped, duplicate trip ids keep their first
-    /// occurrence, and an absent `jnyL` means an empty map (not an error).
+    /// occurrence, and an absent `jnyL` means an empty map (not an error). `answeredCount` is the length of `jnyL` before the
+    /// drops: the radar decides from it whether the server cut the answer off at `maxJny`.
     public static func radar(from data: Data, serviceIndex: Int = 0) throws -> RadarSnapshot {
         let res = try serviceResult(from: data, serviceIndex: serviceIndex)
         let ctx = Context(res.common)
@@ -83,7 +84,7 @@ public enum HafasCodec {
             return RadarVehicle(tripID: tripID, line: ctx.line(at: j.prodX), direction: ctx.direction(j),
                                 coordinate: position, stopovers: stops, isCancelled: j.isCncl == true)
         }
-        return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS))
+        return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: HafasTime.epoch(res.planrtTS), answeredCount: res.jnyL?.count)
     }
 
     /// JourneyMatch (Zugsuche). `res.jnyL` holds the runs; each run's first and last stop come from `stopL` by `idx`

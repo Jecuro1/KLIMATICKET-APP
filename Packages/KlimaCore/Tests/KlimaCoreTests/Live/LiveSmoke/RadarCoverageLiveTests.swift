@@ -96,7 +96,7 @@ final class RadarCoverageLiveTests: XCTestCase {
 
     private func micro(_ degrees: Double) -> Int { Int((degrees * 1_000_000).rounded()) }
 
-    /// One JourneyGeoPos request with an explicit `maxJny` (the app's builder clamps it to 256, which is what this measures).
+    /// One JourneyGeoPos request with an explicit `maxJny`, sent as given (the app's builder clamps it to `RadarTiling.requestCap`, 1000).
     private func probe(_ label: String, box: RadarBox, products: ProductMask, maxJny: Int, offsetMinutes: Int = 0) async throws -> Probe {
         let when = Date().addingTimeInterval(Double(offsetMinutes) * 60)
         let request = HafasServiceRequest(meth: "JourneyGeoPos", req: HafasRequests.JourneyGeoPos(

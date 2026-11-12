@@ -6,8 +6,6 @@ import Foundation
 public enum RadarStatusText {
     /// A refresh slower than this (seconds) is said in the status ("aktualisiert alle ~45 s").
     public static let cadenceNoteAbove: TimeInterval = 25
-    /// From this latitude span (degrees) the view counts as "ganz Österreich" in the note.
-    public static let countryViewSpan = 2.0
 
     /// "gerade eben", "vor 12 s", "vor 2 Min".
     public static func age(_ seconds: TimeInterval) -> String {
@@ -33,23 +31,30 @@ public enum RadarStatusText {
         return "\(count) \(noun) · \(Self.age(age))"
     }
 
-    /// The notes under the pill, most important first. Empty when nothing needs saying.
-    public static func notes(_ status: RadarStatus, rail: Bool) -> [String] {
+    /// The notes under the pill, most important first. Empty when nothing needs saying. `hasVehicles`: the map shows vehicles
+    /// already (answers of an earlier view count), so a note about tiles still to come is not redundant with "Lade Fahrzeuge …".
+    public static func notes(_ status: RadarStatus, rail: Bool, hasVehicles: Bool = true) -> [String] {
         if status.outsideCoverage {
             return ["Außerhalb des Radar-Bereichs. Die Karte zeigt Züge in Österreich und der nahen Umgebung."]
         }
         var notes: [String] = []
         let what = rail ? "Züge" : "Fahrzeuge"
+        // Only a tile on the finest level can still be cut off, and zooming in does not make it finer: the server answers the
+        // first 1000 of a 5 × 9 km tile whatever the zoom. So the note says what is missing, not that zooming would help.
         if status.cappedTiles == 1 {
-            notes.append("In einem Ausschnitt gibt es mehr \(what), als die Auskunft je Abfrage liefert. Zoom näher heran, dann siehst du alle.")
+            notes.append("In einem Gebiet fahren mehr \(what), als die Auskunft je Abfrage liefert. Ein Teil davon fehlt auf der Karte.")
         } else if status.cappedTiles > 1 {
-            notes.append("In \(status.cappedTiles) Ausschnitten gibt es mehr \(what), als die Auskunft je Abfrage liefert. Zoom näher heran, dann siehst du alle.")
+            notes.append("In \(status.cappedTiles) Gebieten fahren mehr \(what), als die Auskunft je Abfrage liefert. Ein Teil davon fehlt auf der Karte.")
         }
         if status.failedTiles > 0, !status.isPaused {
             notes.append("Für einen Teil der Karte kam keine Antwort. Es wird neu versucht.")
         }
+        // Tiles of a new view that were not asked yet: the count above does not include their trains.
+        if status.pendingTiles > 0, hasVehicles, !status.isPaused {
+            notes.append("Ein Teil der Karte wird noch geladen.")
+        }
         if status.answeredTiles > 0, status.period > cadenceNoteAbove {
-            let scope = status.latitudeSpan >= countryViewSpan ? "Ganz Österreich" : "Dieser Ausschnitt"
+            let scope = status.coversCountry ? "Ganz Österreich" : "Dieser Ausschnitt"
             notes.append("\(scope) · aktualisiert alle ~\(roundedPeriod(status.period)) s")
         }
         return notes

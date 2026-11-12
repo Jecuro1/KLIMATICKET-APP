@@ -250,6 +250,24 @@ final class RadarMapTests: XCTestCase {
         XCTAssertTrue(RadarClustering.group(points, cellDegrees: 0).isEmpty)
     }
 
+    func testALoneVehicleKeepsItsMarkerWhenItDrivesOverACellBorder() {
+        // Cell border at 11.4 (cells of 0.1°): the train is left of it, then right of it.
+        let before = RadarClustering.group([RadarPoint(tripID: "a", coordinate: GeoPoint(latitude: 47.25, longitude: 11.399), delay: .onTime)],
+                                           cellDegrees: 0.1)
+        let after = RadarClustering.group([RadarPoint(tripID: "a", coordinate: GeoPoint(latitude: 47.25, longitude: 11.401), delay: .onTime)],
+                                          cellDegrees: 0.1)
+        XCTAssertEqual(before.first?.id, after.first?.id, "same trip, same id: the map moves the marker instead of replacing it")
+        let pair = RadarClustering.group([RadarPoint(tripID: "a", coordinate: GeoPoint(latitude: 47.25, longitude: 11.401), delay: .onTime),
+                                          RadarPoint(tripID: "b", coordinate: GeoPoint(latitude: 47.26, longitude: 11.402), delay: .onTime)],
+                                         cellDegrees: 0.1)
+        XCTAssertEqual(pair.count, 1)
+        XCTAssertNotEqual(pair.first?.id, after.first?.id, "a group is identified by its cell")
+        let ids = RadarClustering.group((0..<50).map {
+            RadarPoint(tripID: "t\($0)", coordinate: GeoPoint(latitude: 47 + Double($0) * 0.01, longitude: 11), delay: .onTime)
+        }, cellDegrees: 0.005).map(\.id)
+        XCTAssertEqual(Set(ids).count, ids.count, "ids are unique")
+    }
+
     func testCellSizeGrowsWithTheVisibleSpan() {
         XCTAssertLessThan(RadarClustering.cellSize(forLatitudeSpan: 0.5), RadarClustering.cellSize(forLatitudeSpan: 4))
         XCTAssertEqual(RadarClustering.cellSize(forLatitudeSpan: .nan), 0.01)

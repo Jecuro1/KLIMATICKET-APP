@@ -41,17 +41,12 @@ extension RadarView {
         MapStationPin(id: station.id, name: station.name, coordinate: GeoPoint(latitude: station.lat, longitude: station.lon))
     }
 
-    /// Stations in the box, only when the view is close enough. Computed from the bundled index: no request.
+    /// Stations in the box, only when the view is close enough. Computed from the bundled index: no request. Grouped and indexed
+    /// here, once per camera stop, for the span the camera stopped at.
     func refreshStations(box: RadarBox, span: Double) {
-        stationPins = MapStations.isDrawn(latitudeSpan: span) ? MapStations.visible(allStations, in: box) : []
-    }
-
-    private var stationClusters: [MapCluster] {
-        MapClustering.group(stationPins, cellDegrees: RadarClustering.cellSize(forLatitudeSpan: model.spanDegrees))
-    }
-
-    private var stationsByID: [String: MapStationPin] {
-        Dictionary(stationPins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let pins = MapStations.isDrawn(latitudeSpan: span) ? MapStations.visible(allStations, in: box) : []
+        stationClusters = MapClustering.group(pins, cellDegrees: RadarClustering.cellSize(forLatitudeSpan: span))
+        stationIndex = Dictionary(pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
     /// The straight-line sketch of each saved route whose places are known, and the number of routes without a place.
@@ -70,7 +65,7 @@ extension RadarView {
 
     @MapContentBuilder var stationLayer: some MapContent {
         ForEach(stationClusters) { cluster in
-            if cluster.isSingle, let id = cluster.memberIDs.first, let station = stationsByID[id] {
+            if cluster.isSingle, let id = cluster.memberIDs.first, let station = stationIndex[id] {
                 Annotation(station.name, coordinate: station.coordinate.clCoordinate, anchor: .bottom) {
                     Button { openDepartures(stationID: id) } label: { StationMapMarker(name: station.name) }
                         .buttonStyle(.plain)

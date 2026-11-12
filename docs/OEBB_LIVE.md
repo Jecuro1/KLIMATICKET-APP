@@ -2720,7 +2720,8 @@ Abendspitze; nachts und am Wochenende liegt die Zahl niedriger (nicht gemessen).
 den Schienen-Antworten mit mehr als 100 Fahrzeugen; die Wien-Antwort mit überwiegend Bussen 1 666), weil jede Fahrt ihre Haltestellenliste
 (`stopL`) mitbringt. Ganz Österreich: 1,83 MB. Zusammen 6 680 657 Byte für die
 14 Anfragen. Laufzeit 371 ms bis 21 477 ms, Median 3 505 ms, und sie wächst **nicht** mit der Größe (23 Fahrzeuge: 11,6 s; 318 Fahrzeuge:
-5,8 s; 52 Fahrzeuge: 0,4 s). Die 21,5 s gehören zur ersten Anfrage (Verbindungsaufbau). **Nicht gemessen:** die Größe auf der Leitung. Der
+5,8 s; 52 Fahrzeuge: 0,4 s). Die 21,5 s gehören zur ersten Anfrage; das war zugleich die größte Antwort (1,83 MB), Verbindungsaufbau und Größe sind nicht getrennt gemessen.
+**Nicht gemessen:** die Größe auf der Leitung. Der
 Linux-`URLSession` entpackt gzip selbst und blendet `Content-Length` und `Content-Encoding` aus (die App sendet `Accept-Encoding: gzip`).
 Auch die Laufzeit auf einem iPhone im Mobilfunknetz ist nicht gemessen.
 
@@ -2737,8 +2738,9 @@ dem Viertel, in dem jetzt 173 fahren, davon 50 mit derselben Fahrt-ID. Der Serve
 
 Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/Radar/`.
 
-- **Anfragegrenze:** `RadarTiling.requestCap` = 1000, so viel schickt jede Anfrage als `maxJny`. Eine Antwort mit 1000 Fahrzeugen gilt
-  als abgeschnitten. 1000 ist der größte gemessene Wert; sinkt das Limit serverseitig, zeigt Österreich-weit weniger Züge, ohne dass die
+- **Anfragegrenze:** `RadarTiling.requestCap` = 1000, so viel schickt jede Anfrage als `maxJny`. Eine Antwort mit 1000 Einträgen gilt
+  als abgeschnitten. Gezählt wird, was der Server geantwortet hat (`jnyL`, `RadarSnapshot.answeredCount`), nicht was nach dem Verwerfen von
+  Einträgen ohne Position übrig bleibt: 1000 Einträge mit drei ohne Position sind 997 Fahrzeuge und trotzdem abgeschnitten (Test). 1000 ist der größte gemessene Wert; sinkt das Limit serverseitig, zeigt Österreich-weit weniger Züge, ohne dass die
   App es merkt. Der Live-Test misst es neu.
 - **Kachelraster** (`RadarTiles.swift`): ein festes, globales Quadtree. Stufe 0 sind zwei Kacheln (2,8° × 3,9°, etwa 311 × 290 km), zusammen
   genau `RadarBox.austria`; jede Stufe halbiert beide Seiten, die feinste (Stufe 6) ist 0,044° × 0,12° (4,9 × 9 km). Schlüssel
@@ -2750,13 +2752,22 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
   was den Ausschnitt schneidet.
 - **Adaptive Teilung:** Eine Kachel mit einer abgeschnittenen Antwort (≥ 1000) wird durch ihre vier Kinder ersetzt, rekursiv bis Stufe 6.
   Nur Kinder im Ausschnitt werden angefragt. Sind alle vier Kinder zusammen unter 500 Fahrzeugen (alle jünger als 2 Minuten), wird die
-  Teilung zurückgenommen. Ist eine Kachel der Stufe 6 noch abgeschnitten, sagt der Status es („In einem Ausschnitt gibt es mehr Züge, als die
-  Auskunft je Abfrage liefert. Zoom näher heran, dann siehst du alle.“). Für Schiene kommt das bei den gemessenen Zahlen nicht vor (größtes
+  Teilung zurückgenommen. Ist eine Kachel der Stufe 6 noch abgeschnitten, sagt der Status es („In einem Gebiet fahren mehr Züge, als die
+  Auskunft je Abfrage liefert. Ein Teil davon fehlt auf der Karte.“). Ein „Zoom näher heran“ steht dort nicht: Stufe 6 ist die feinste Kachel,
+  Heranzoomen macht sie nicht feiner, und der Server liefert die ersten 1000 Fahrzeuge der Kachel, egal wie nah die Karte ist. Für Schiene kommt das bei den gemessenen Zahlen nicht vor (größtes
   Blatt rund 155); für Busse in Wien wird es vorkommen.
 - **Zeitplan und Budget** (`RadarScheduler`): höchstens **24 Anfragen je Minute** für das Radar (Fahrplan, Abfahrten und Live verfolgen teilen
   sich die übrigen 16 der 40 aus §2 und `RequestThrottle`; das Radar leert den Topf nie), höchstens **4 in 10 Sekunden** (das sind dieselben 24
   je Minute in kleinen Schritten, nie ein Stoß von 12 oder von 24) und mindestens 1 s zwischen zwei Radar-Anfragen: Die erste Runde eines neuen
-  Ausschnitts mit zwei Kacheln ist in 1 s angefragt, ein Ausschnitt mit 32 Kacheln bekommt alle 10 s vier. Ein neuer Ausschnitt setzt sich 0,8 s, bevor neue Kacheln zum ersten Mal angefragt werden. Dichte
+  Ausschnitts mit zwei Kacheln ist in 1 s angefragt, ein Ausschnitt mit 32 Kacheln bekommt alle 10 s vier. Ein neuer Ausschnitt setzt sich 0,8 s, bevor neue Kacheln zum ersten Mal angefragt werden.
+  **Gleichzeitig unterwegs:** höchstens 3 Anfragen. Die Schleife, die sie startet, bewegt auch Marker und Statuszeile (jede Sekunde) und wartet
+  deshalb nicht auf eine Antwort; eine langsame Antwort (gemessen 0,4 bis 21 s) hält weder die Karte noch die übrigen Kacheln auf. Eine Kachel,
+  deren Anfrage noch unterwegs ist, wird nicht ein zweites Mal gefragt, auch nicht über „Jetzt aktualisieren“ (die Antwort unterwegs ist die
+  Aktualisierung); bleibt eine Anfrage 90 s ohne Ausgang, wird die Kachel frei. Geht die Uhr zurück (von Hand gestellt, korrigiert), werden
+  Zeitstempel aus der Zukunft auf „jetzt“ gezogen; sonst stünde das Radar so lange, bis die Uhr sie eingeholt hat.
+  **Wiederholung des Clients:** Der Client wiederholt eine Anfrage nach Zeitüberschreitung oder 502/503/504 einmal nach 1,5 s. Diese zweite
+  Anfrage zählt in `RequestThrottle` (40 je Minute für die ganze App) und im Schutzschalter (drei Fehler in Folge öffnen ihn für 2 Minuten),
+  nicht im Radar-Budget von 24; ein Ausfall kostet also höchstens 6 Anfragen, bevor die Pause kommt. Dichte
   Kacheln (ab 150 Fahrzeugen) und alle Kacheln bei einem Ausschnitt unter 3° Höhe (etwa 330 km, im Hochformat zwei Bundesländer) alle **20 s**, ruhige Kacheln im weiten Ausschnitt alle
   **45 s**. Kacheln, die den Ausschnitt verlassen haben, werden nicht mehr angefragt. Wollen die sichtbaren Kacheln mehr als 24 je
   Minute, werden **alle** um denselben Faktor langsamer (die am längsten überfällige zuerst, nie eine Kachel überholt für immer) und der Status
@@ -2764,14 +2775,20 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 - **Aufbewahrung und Bewegung:** Ein Fahrzeug bleibt 2,5 × der tatsächlichen Aktualisierungsdauer seiner Kachel, mindestens 60 s (ruhige
   Kachel 112 s, durch das Budget gedehnte Kachel entsprechend länger). Die Anzeigeverzögerung ist der Abstand der letzten zwei Antworten
   der Fahrt, mindestens 20 s, höchstens 120 s (§R7).
-- **Entdopplung:** nach Fahrt-ID über alle Kacheln, die jüngste Antwort gewinnt, eine ältere ersetzt nie eine neuere.
+- **Entdopplung:** nach Fahrt-ID über alle Kacheln, die jüngste Antwort gewinnt, eine ältere ersetzt nie eine neuere. „Jünger“ heißt: später
+  angefragt (die Positionen gehören zum Zeitpunkt der Anfrage, `RadarQuery.when`), nicht: später eingetroffen. Das zählt, seit mehrere Anfragen
+  gleichzeitig unterwegs sind: eine langsame Anfrage von vorhin überschreibt keine Position einer schnelleren, späteren.
 - **Fehler:** Eine Kachel, die ausfällt, behält ihre Fahrzeuge bis zum Ende der Aufbewahrung und wird nach 15 s, 30 s, … höchstens 2 Min
   wieder versucht. „Radar pausiert“ erscheint nur, wenn **alle** Kacheln mit Ergebnis ausgefallen sind (nicht schon, wenn die zweite noch nicht
   dran war). Fällt nur ein Teil aus: „Für einen Teil der Karte kam keine Antwort. Es wird neu versucht.“ Eine Ratenbegrenzung (20 s, oder was der
   Server nennt) und ein offener Schutzschalter pausieren das ganze Radar bis zum genannten Zeitpunkt. Ein abgebrochener Lauf gibt die Kachel
   frei, nicht den Platz im Budget.
-- **Status:** „923 Züge · vor 12 s“ (Zahl im Ausschnitt nach Filter; Alter der ältesten Antwort unter den sichtbaren Kacheln) plus die
-  Hinweise oben. Der Hinweis „Zoom hinein für alle Züge“ ist weg. Kein Hinweis, wenn alles im Rhythmus von 25 s oder schneller läuft.
+- **Status:** „923 Züge · vor 12 s“ (Zahl im Ausschnitt nach Filter; Alter der ältesten Antwort unter den sichtbaren Kacheln, gerechnet ab dem Zeitpunkt der Anfrage, auf den die
+  Positionen gehören, nicht ab dem Eintreffen: eine Antwort, die 20 s unterwegs war, ist 20 s älter, als sie aussieht) plus die
+  Hinweise oben. „Ein Teil der Karte wird noch geladen.“ steht, solange sichtbare Kacheln noch nie gefragt wurden und die Karte schon
+  Fahrzeuge zeigt (neuer Ausschnitt: die Zahl enthält deren Züge noch nicht). „Ganz Österreich · aktualisiert alle ~45 s“ steht nur, wenn der
+  Ausschnitt das ganze Radar-Gebiet enthält, sonst „Dieser Ausschnitt · …“ (früher entschied die Breitenspanne ab 2°, das war für einen
+  Ausschnitt von zwei, drei Bundesländern falsch). Der Hinweis „Zoom hinein für alle Züge“ ist weg. Kein Hinweis, wenn alles im Rhythmus von 25 s oder schneller läuft.
   Zeile und Hinweise sind **eine** Glaskarte (Text direkt auf der Karte war zwischen den Markern nicht lesbar), der Platz unter dem Marker ist
   leer: Die Titel unter Zug- und Gruppen-Markern sind ausgeblendet (sie trugen schon Linie oder Zahl). Das Panel unten misst seine Inhaltshöhe,
   und die Karte rahmt den Bereich über dem Panel, damit das Land nicht darunter liegt (CI-Screenshots 2026-11-12: vorher lag Österreich zur Hälfte
@@ -2780,9 +2797,17 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
   ein Marker (56 pt), mit höchstens 150 Zellen je Bildschirm (große Bildschirme bekommen ein gröberes Gitter). Ein Hochformat-iPhone zeigt beim
   Österreich-Zoom etwa 13° Breite; nach der Breitenspanne allein wäre eine Zelle 1,9° groß und ganz Österreich nur eine Handvoll Blasen. Die
   Zahl der Marker bleibt damit unabhängig von der Zahl der Fahrzeuge klein (Test mit 3000 synthetischen Fahrzeugen: höchstens 130 Marker bei jedem
-  Zoom, keine Fahrt geht verloren). Beim Heranzoomen lösen sich die Gruppen in einzelne Züge auf. Gruppen und Pins berechnet das Modell, nicht die
+  Zoom, keine Fahrt geht verloren). Beim Heranzoomen lösen sich die Gruppen in einzelne Züge auf. Ein einzelner Zug trägt die Kennung seiner Fahrt (nicht die seiner Zelle): Fährt er über eine Zellgrenze,
+  bewegt die Karte seinen Marker, statt ihn in der einen Zelle zu verlieren und in der nächsten neu zu setzen. Gruppen und Pins berechnet das Modell, nicht die
   Ansicht, und nur so oft, wie man eine Bewegung sehen kann: jede Sekunde ab einem Ausschnitt unter 0,6° Breite, alle 2 s bis 2°, darüber alle 5 s
   (ein Zug legt etwa 30 m je Sekunde zurück, das ist beim Landeszoom ein Pixel). Die Statuszeile läuft jede Sekunde.
+- **Reihenfolge der Marker:** Die Reihenfolge im Code (Stationen zuerst, Züge zuletzt) bestimmt nicht, was oben liegt. MapKit ordnet Annotationen
+  selbst (die weiter südliche liegt über der weiter nördlichen), und SwiftUIs `Map` hat keinen z-Index für Annotationen. Eine Stationsblase kann
+  daher einen Zugmarker verdecken (CI-Screenshot `radarAllZoom`, Wien: die „30“ liegt über der „22“). Das ist eine Grenze, kein Fehler im Code; die
+  Lösung wäre ein eigener `MKMapView` (zPriority) oder keine Stationsgruppen, solange Züge laufen. Beides ist nicht gebaut.
+- **„Jetzt aktualisieren“ / „Erneut versuchen“:** machen alle sichtbaren Kacheln fällig (Backoff und Pause werden gelöscht) und setzen ein Zeichen; die
+  laufende Schleife schickt sie im Takt des Budgets, auch im Stromspar-Modus, bis keine mehr fällig ist. Es gibt keine zweite Schleife und keine
+  Aufgabe, die das Ausblenden der Ansicht überlebt.
 - **Filter, Zustimmung, Notschalter:** unverändert. Die Standardauswahl bleibt Schiene (4157). Bus, Bim, U-Bahn und S-Bahn sind weiter eigene
   Schalter; wird ein Modus ausgeschaltet, verschwinden seine Fahrzeuge sofort, beim Umschalten beginnen die Kacheln neu.
 - **Demo und Screenshots:** `-KBDemo` ohne Netz; Hosts `radarAll` (etwa 1500 **synthetische** Fahrzeuge entlang erfundener Korridore,
@@ -2793,6 +2818,9 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 `RadarMap.swift` (Aufbewahrung je Antwort, Verzögerung, Gruppen), App `Features/Radar/RadarModel.swift`. Tests (Linux): `RadarTilesTests`,
 `RadarSchedulerTests` (Budget über 10 simulierte Minuten, auch beim Wandern der Karte), `RadarFrameTests`, `RadarStatusTextTests`.
 
-**Nicht geprüft:** der Lauf auf einem Gerät und im Mobilfunknetz (Datenmenge je Minute: Österreich-weit zwei Antworten mit zusammen
+**Nicht geprüft:** das Zeitlimit des Clients (`hafas.timeout`, 20 s) gegen die langsamste gemessene Antwort (21,5 s, erste Anfrage; die Messung lief über einen
+anderen Weg, ob so eine Antwort auf einem iPhone vorkommt, ist offen: ein Fehlschlag wird einmal wiederholt, die Kachel dann mit Backoff neu versucht); alle
+Produkte zusammen: bei Bussen und Bims in einer Großstadt teilt sich der Baum bis Stufe 6 und braucht viele Anfragen je Runde (das Budget dehnt sie, der Status
+sagt „aktualisiert alle ~X s“), und die Datenmenge dabei ist nicht gemessen; der Lauf auf einem Gerät und im Mobilfunknetz (Datenmenge je Minute: Österreich-weit zwei Antworten mit zusammen
 rund 1,8 MB entpackt alle 20 s; die frühere Fassung holte bis zu vier Antworten mit zusammen bis zu 2,3 MB, die Menge ist also vergleichbar,
 aber jetzt vollständig); die Größe auf der Leitung; Werte über 1000; Zahlen nachts und am Wochenende; der Busbetrieb in Wien nach Teilung.

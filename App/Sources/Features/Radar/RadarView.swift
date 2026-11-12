@@ -34,7 +34,10 @@ struct RadarView: View {
     // MARK: map – the layers of the Scotty-style map (docs/OEBB_LIVE.md §R10); the choice is per device
     @AppStorage("map.layers") var layersRaw = MapLayerSelection.initial.storageValue
     @State var allStations: [MapStationPin] = []
-    @State var stationPins: [MapStationPin] = []
+    /// The stations in view, grouped for the zoom, and their lookup by id. Computed when the camera stops (`refreshStations`), not
+    /// in the view body: the body runs every second, and a lookup that is rebuilt per marker is thousands of inserts each time.
+    @State var stationClusters: [MapCluster] = []
+    @State var stationIndex: [String: MapStationPin] = [:]
     @State var showsDisruptions = false
     @State var showsRoutes = false
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
@@ -134,8 +137,9 @@ struct RadarView: View {
                 MapPolyline(coordinates: model.route.map(\.clCoordinate))
                     .stroke(Theme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
-            // Trains last: a later annotation is drawn on top, and a train is what the screen is about, not the station
-            // names and station clusters under it.
+            // Trains are declared last, but that does not decide what is on top: MapKit orders annotation views itself (the one
+            // further south is drawn over the one further north) and SwiftUI's Map has no z-index for annotations. A station
+            // bubble can therefore cover a train marker (CI screenshot radarAllZoom); docs/OEBB_LIVE.md §R11 names it as a limit.
             if trainsOn {
             ForEach(model.clusters) { cluster in
                 if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] {

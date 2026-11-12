@@ -38,10 +38,11 @@ final class RadarStatusTextTests: XCTestCase {
         status.visibleTiles = 12
         status.answeredTiles = 12
         status.period = 41
-        status.latitudeSpan = 4.2
+        status.coversCountry = true
         XCTAssertEqual(RadarStatusText.notes(status, rail: true), ["Ganz Österreich · aktualisiert alle ~45 s"], "rounded up to five seconds")
-        status.latitudeSpan = 0.8
-        XCTAssertEqual(RadarStatusText.notes(status, rail: true), ["Dieser Ausschnitt · aktualisiert alle ~45 s"])
+        status.coversCountry = false
+        XCTAssertEqual(RadarStatusText.notes(status, rail: true), ["Dieser Ausschnitt · aktualisiert alle ~45 s"],
+                       "a view of a few Bundesländer is not 'Ganz Österreich', whatever its latitude span")
         status.period = 25
         XCTAssertTrue(RadarStatusText.notes(status, rail: true).isEmpty, "25 s is still the normal rhythm")
     }
@@ -54,10 +55,25 @@ final class RadarStatusTextTests: XCTestCase {
         XCTAssertEqual(one.count, 1)
         XCTAssertTrue(one[0].contains("mehr Fahrzeuge"))
         status.cappedTiles = 3
-        XCTAssertTrue(RadarStatusText.notes(status, rail: true)[0].hasPrefix("In 3 Ausschnitten gibt es mehr Züge"))
-        // The claim "Zoom hinein für alle Züge" was true when one tile was cut off at 256; it is not any more.
-        XCTAssertFalse(RadarStatusText.notes(status, rail: true).joined().contains("Zoom hinein"))
+        XCTAssertTrue(RadarStatusText.notes(status, rail: true)[0].hasPrefix("In 3 Gebieten fahren mehr Züge"))
+        // The claim "Zoom hinein für alle Züge" was true when one tile was cut off at 256; it is not any more. And only a tile on
+        // the finest level can still be cut off: zooming in would not make it finer, so the note must not promise it.
+        let text = RadarStatusText.notes(status, rail: true).joined().lowercased()
+        XCTAssertFalse(text.contains("zoom"))
+        XCTAssertTrue(text.contains("fehlt auf der karte"), "it says what is missing")
         XCTAssertFalse(RadarStatusText.notes(RadarStatus(), rail: true).joined().contains("256"))
+    }
+
+    func testTilesNotLoadedYetAreSaidWhileTheMapShowsVehicles() {
+        var status = RadarStatus()
+        status.visibleTiles = 4
+        status.answeredTiles = 2
+        status.pendingTiles = 2
+        XCTAssertEqual(RadarStatusText.notes(status, rail: true), ["Ein Teil der Karte wird noch geladen."])
+        XCTAssertTrue(RadarStatusText.notes(status, rail: true, hasVehicles: false).isEmpty,
+                      "with nothing on the map the pill already says 'Lade Fahrzeuge …'")
+        status.pendingTiles = 0
+        XCTAssertTrue(RadarStatusText.notes(status, rail: true).isEmpty)
     }
 
     func testPartialFailureAndOutsideCoverage() {

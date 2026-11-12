@@ -61,6 +61,33 @@ final class RadarTests: XCTestCase {
         // The bus has no position and the fourth entry repeats the first trip id: both are dropped.
         XCTAssertEqual(snapshot.vehicles.map(\.tripID), ["1|SYN0000001|0|1012", "1|SYN0000002|0|1012"])
         XCTAssertEqual(snapshot.realtimeUpdatedAt, Date(timeIntervalSince1970: 1_791_796_500))
+        XCTAssertEqual(snapshot.answeredCount, 4, "the server answered four journeys, two of them are dropped")
+    }
+
+    /// The cut-off test must see what the server answered, not what is left after the entries without a position are dropped:
+    /// 1000 answered and three of them without a position is a cut-off answer with 997 vehicles.
+    func testAnAnswerCutOffAtTheCapIsRecognisedEvenWhenSomeEntriesHaveNoPosition() throws {
+        var entries: [String] = []
+        for index in 0..<1000 {
+            if index < 3 {
+                entries.append(#"{"jid":"1|NOPOS\#(index)|0|1","date":"20261012","prodX":0}"#)
+            } else {
+                entries.append(#"{"jid":"1|T\#(index)|0|1","date":"20261012","prodX":0,"pos":{"x":13600000,"y":48000000}}"#)
+            }
+        }
+        let json = #"{"ver":"1.88","err":"OK","svcResL":[{"meth":"JourneyGeoPos","err":"OK","res":{"common":{},"jnyL":["# + entries.joined(separator: ",") + "]}}]}"
+        let snapshot = try HafasCodec.radar(from: Data(json.utf8))
+        XCTAssertEqual(snapshot.vehicles.count, 997)
+        XCTAssertEqual(snapshot.answeredCount, 1000)
+        XCTAssertFalse(RadarTiling.isTruncated(count: snapshot.vehicles.count), "the vehicles alone would hide the cut-off")
+        XCTAssertTrue(RadarTiling.isTruncated(count: snapshot.answeredCount))
+    }
+
+    func testAnsweredCountIsNeverBelowTheVehicles() {
+        let vehicle = RadarVehicle(tripID: "a", coordinate: GeoPoint(latitude: 47, longitude: 13))
+        XCTAssertEqual(RadarSnapshot(vehicles: [vehicle]).answeredCount, 1, "defaults to the vehicles (demo and tests)")
+        XCTAssertEqual(RadarSnapshot(vehicles: [vehicle], answeredCount: 0).answeredCount, 1)
+        XCTAssertEqual(RadarSnapshot.empty.answeredCount, 0)
     }
 
     func testParserMapsLineDirectionAndPosition() throws {
@@ -86,6 +113,7 @@ final class RadarTests: XCTestCase {
         let data = Data(#"{"ver":"1.88","err":"OK","svcResL":[{"meth":"JourneyGeoPos","err":"OK","res":{"common":{}}}]}"#.utf8)
         let snapshot = try HafasCodec.radar(from: data)
         XCTAssertTrue(snapshot.vehicles.isEmpty)
+        XCTAssertEqual(snapshot.answeredCount, 0)
         XCTAssertNil(snapshot.realtimeUpdatedAt)
     }
 

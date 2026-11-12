@@ -2,8 +2,9 @@ import SwiftUI
 import KlimaCore
 
 // The Zug-Radar's model: what is loaded for the visible map box and the pins drawn from it (split from RadarView.swift).
-// Which tile is asked when is decided by `RadarScheduler` (docs/OEBB_LIVE.md §R11): this model sends the one request it
-// names, stores the answer per vehicle and rebuilds the pins and clusters once a second.
+// Which tile is asked when is decided by `RadarScheduler` (docs/OEBB_LIVE.md §R11): this model sends the requests it names
+// (a few at a time, never waiting for an answer in the loop that moves the markers), stores the answers per vehicle and
+// rebuilds the pins and clusters as often as a move can be seen.
 
 @MainActor
 @Observable
@@ -41,6 +42,9 @@ final class RadarModel {
     @ObservationIgnored private var lastPinRebuild = Date.distantPast
     /// Counts the mode changes: an answer that was asked for before a change is dropped.
     @ObservationIgnored private var generation = 0
+    /// „Jetzt aktualisieren“ / „Erneut versuchen“: the loop sends the due tiles even in Low Power Mode until none is due. There is no
+    /// second loop for it: one loop, one budget, and it ends with the view.
+    @ObservationIgnored private var manualRefresh = false
 
     var products: ProductMask {
         modes.reduce(into: ProductMask(rawValue: 0)) { $0.formUnion($1.products) }
@@ -60,7 +64,9 @@ final class RadarModel {
     }
 
     /// The notes under the pill: cut-off tiles, a partial failure, a slow refresh.
-    var notes: [String] { RadarStatusText.notes(status, rail: isRailOnly) }
+    var notes: [String] {
+        RadarStatusText.notes(status, rail: isRailOnly, hasVehicles: !pins.isEmpty || status.answeredTiles > 0)
+    }
 
     /// Every vehicle of the last minutes, whatever the map shows. Search and the filter's line list use it.
     var knownVehicles: [RadarVehicle] {
@@ -107,59 +113,56 @@ final class RadarModel {
 
     // MARK: Requests
 
-    /// Sends the requests the scheduler names, one at a time, and moves the markers every second in between. Low Power Mode
-    /// pauses the requests (the clock still runs, so the pins stay where the last answer put them). Ends with the task.
+    /// Sends the requests the scheduler names (up to `maxInFlight` at once) and moves the markers and the status in between: a
+    /// slow answer (0.4 to 21 s measured, docs/OEBB_LIVE.md §R11.1) neither freezes the map nor holds up the other tiles. Low Power Mode
+    /// pauses the requests (the clock still runs, so the pins stay where the last answer put them). The requests end with the
+    /// task: cancelling it cancels every request on its way, and each gives its tile back to the scheduler.
     func run(_ service: any RadarService) async {
         scheduler.setViewport(box, latitudeSpan: spanDegrees, now: Date())
-        while !Task.isCancelled {
-            let now = Date()
-            lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
-            tick(now)
-            if lowPower {
-                try? await Task.sleep(for: .seconds(1))
-                continue
-            }
-            switch scheduler.next(now: now) {
-            case .request(let tile):
-                await fetch(tile, service)
-            case .wait(let until):
-                try? await Task.sleep(for: .seconds(min(max(until.timeIntervalSinceNow, 0.05), 1)))
-            case .idle:
-                try? await Task.sleep(for: .seconds(1))
+        await withTaskGroup(of: Void.self) { group in
+            while !Task.isCancelled {
+                let now = Date()
+                lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+                tick(now)
+                if lowPower && !manualRefresh {
+                    try? await Task.sleep(for: .seconds(1))
+                    continue
+                }
+                switch scheduler.next(now: now) {
+                case .request(let tile):
+                    group.addTask { await self.fetch(tile, service) }
+                case .wait(let until):
+                    if manualRefresh, !scheduler.hasDueTiles(now: now) { manualRefresh = false }
+                    try? await Task.sleep(for: .seconds(min(max(until.timeIntervalSinceNow, 0.05), 1)))
+                case .idle:
+                    manualRefresh = false
+                    try? await Task.sleep(for: .seconds(1))
+                }
             }
         }
     }
 
-    /// „Jetzt aktualisieren“ and „Erneut versuchen“: every visible tile once, spaced as the budget wants it.
-    func refreshNow(_ service: any RadarService) async {
+    /// „Jetzt aktualisieren“ and „Erneut versuchen“: every visible tile is asked once more, spaced as the budget wants it. The
+    /// running loop does the work; nothing is sent when the radar is not running (the buttons are only there while it is).
+    func refreshNow() {
         scheduler.refreshAll()
-        var rounds = 0
-        while rounds < 64, scheduler.hasDueTiles(now: Date()) {
-            rounds += 1
-            switch scheduler.next(now: Date()) {
-            case .request(let tile):
-                await fetch(tile, service)
-            case .wait(let until):
-                let delay = until.timeIntervalSinceNow
-                guard delay <= 3 else { return }   // a pause (rate limit): the loop picks it up when it ends
-                try? await Task.sleep(for: .seconds(max(delay, 0.05)))
-            case .idle:
-                return
-            }
-            if Task.isCancelled { return }
-        }
+        manualRefresh = true
     }
 
     private func fetch(_ tile: RadarTileKey, _ service: any RadarService) async {
         let asked = generation
-        let now = Date()
+        let requestedAt = Date()
         do {
-            let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: now, products: products,
+            let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: requestedAt, products: products,
                                                                maxVehicles: RadarTiling.requestCap))
             guard asked == generation else { return }   // the modes changed while this was on its way
-            let answeredAt = Date()
-            scheduler.recordAnswer(tile, count: snapshot.vehicles.count, at: answeredAt)
-            store.merge(snapshot.vehicles, at: answeredAt, retention: scheduler.retention(for: tile))
+            // The positions in the answer are those of `requestedAt` (`RadarQuery.when`), however long the answer took: that is
+            // the time they belong to. So a slow answer (up to 21 s measured) is as old in the status as it is, and an answer of
+            // an older request never replaces a newer one (`RadarFrameStore.merge`), now that several requests are on their way.
+            // The count is what the server answered, not the vehicles left after dropping the entries without a position: that
+            // is what shows an answer cut off at the request cap.
+            scheduler.recordAnswer(tile, count: snapshot.answeredCount, at: requestedAt)
+            store.merge(snapshot.vehicles, at: requestedAt, retention: scheduler.retention(for: tile))
             lastError = nil
         } catch is CancellationError {
             scheduler.recordCancelled(tile)

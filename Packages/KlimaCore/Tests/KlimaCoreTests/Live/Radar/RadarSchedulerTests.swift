@@ -350,6 +350,106 @@ final class RadarSchedulerTests: XCTestCase {
         XCTAssertEqual(Set(sent.map(\.tile)), [west, east], "both tiles are asked again, one after the other")
     }
 
+    // MARK: Requests on their way
+
+    func testATileWhoseRequestIsStillOnItsWayIsNotAskedASecondTime() {
+        var scheduler = austria()
+        guard case .request(let first) = scheduler.next(now: t0.addingTimeInterval(0.8)) else { return XCTFail("first request") }
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(0.8)), 1)
+        // A minute later its answer has still not come (a slow answer takes up to 21 s measured, and the client may retry once):
+        // the tile is not due "again" while it is on its way, the other tile is asked.
+        guard case .request(let second) = scheduler.next(now: t0.addingTimeInterval(60)) else { return XCTFail("second request") }
+        XCTAssertNotEqual(first, second)
+        XCTAssertTrue(scheduler.next(now: t0.addingTimeInterval(62)).isWait, "both are on their way: nothing to send")
+        XCTAssertFalse(scheduler.hasDueTiles(now: t0.addingTimeInterval(62)))
+        scheduler.recordAnswer(first, count: 120, at: t0.addingTimeInterval(63))
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(63)), 1, "an answer frees its tile")
+        XCTAssertEqual(scheduler.next(now: t0.addingTimeInterval(64)), .request(first), "answered, and its interval (from its request) is over: due again")
+    }
+
+    func testNoMoreThanTheConfiguredNumberOfRequestsAreOnTheirWayAtOnce() {
+        var scheduler = austria()
+        scheduler.recordAnswer(west, count: 1000, at: t0)   // five tiles in view: four children of the west tile and the east one
+        scheduler.recordAnswer(east, count: 420, at: t0)
+        XCTAssertEqual(RadarSchedulerConfig.standard.maxInFlight, 3)
+        var asked: [RadarTileKey] = []
+        for second in 1...3 {
+            guard case .request(let tile) = scheduler.next(now: t0.addingTimeInterval(Double(second))) else { return XCTFail("request \(second)") }
+            asked.append(tile)
+        }
+        XCTAssertEqual(Set(asked).count, 3)
+        XCTAssertEqual(scheduler.next(now: t0.addingTimeInterval(4)), .wait(until: t0.addingTimeInterval(4.25)), "three on their way: the fourth waits")
+        scheduler.recordAnswer(asked[0], count: 100, at: t0.addingTimeInterval(4.5))
+        XCTAssertEqual(scheduler.next(now: t0.addingTimeInterval(5)).isRequest, true, "a free place: the next one goes")
+    }
+
+    func testEveryOutcomeFreesTheTile() {
+        var scheduler = austria()
+        guard case .request(let a) = scheduler.next(now: t0.addingTimeInterval(0.8)),
+              case .request(let b) = scheduler.next(now: t0.addingTimeInterval(1.8)) else { return XCTFail("two requests") }
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(2)), 2)
+        scheduler.recordFailure(a, error: LiveError.timeout, at: t0.addingTimeInterval(3))
+        scheduler.recordCancelled(b)
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(3)), 0)
+    }
+
+    func testARequestThatNeverReportsBackFreesItsTileAfterTheTimeout() {
+        var scheduler = austria()
+        _ = scheduler.next(now: t0.addingTimeInterval(0.8))
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(80)), 1)
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(0.8 + RadarSchedulerConfig.standard.requestTimeout + 1)), 0)
+    }
+
+    func testRefreshAllLeavesATileOnItsWayAlone() {
+        var scheduler = austria()
+        guard case .request(let first) = scheduler.next(now: t0.addingTimeInterval(0.8)) else { return XCTFail("first request") }
+        scheduler.refreshAll()
+        XCTAssertNotNil(scheduler.states[first]?.lastRequestAt, "the answer on its way is the refresh")
+        guard case .request(let second) = scheduler.next(now: t0.addingTimeInterval(2)) else { return XCTFail("second request") }
+        XCTAssertNotEqual(first, second, "'Jetzt aktualisieren' does not ask the same tile twice at once")
+    }
+
+    // MARK: A clock that moved backwards
+
+    func testAClockThatWentBackwardsDoesNotFreezeTheRadar() {
+        var scheduler = RadarScheduler()
+        let ahead = t0.addingTimeInterval(3600)   // the clock was an hour ahead while these requests were sent
+        scheduler.setViewport(.austria, latitudeSpan: 4.2, now: ahead)
+        simulate(&scheduler, from: ahead.addingTimeInterval(1), seconds: 6) { _ in 480 }
+        let back = t0.addingTimeInterval(10)   // now it is right again
+        switch scheduler.next(now: back) {
+        case .wait(let until):
+            XCTAssertLessThan(until.timeIntervalSince(back), 61, "a minute at most, not an hour: \(until.timeIntervalSince(back))")
+        case .request:
+            break
+        case .idle:
+            XCTFail("a valid view is never idle")
+        }
+        let sent = simulate(&scheduler, from: back, seconds: 120) { _ in 480 }
+        XCTAssertFalse(sent.isEmpty, "the radar asks again within two minutes")
+        XCTAssertLessThanOrEqual(maxInAnyMinute(sent), 24)
+    }
+
+    // MARK: What the status knows about the view
+
+    func testTheStatusKnowsTilesNotAskedYetAndWhetherTheViewCoversTheCountry() {
+        var scheduler = austria()
+        var status = scheduler.status(now: t0)
+        XCTAssertEqual(status.visibleTiles, 2)
+        XCTAssertEqual(status.pendingTiles, 2, "nothing asked yet")
+        XCTAssertTrue(status.coversCountry)
+        scheduler.recordAnswer(west, count: 300, at: t0.addingTimeInterval(1))
+        status = scheduler.status(now: t0.addingTimeInterval(2))
+        XCTAssertEqual(status.pendingTiles, 1)
+        XCTAssertEqual(status.answeredTiles, 1)
+        XCTAssertTrue(RadarStatusText.notes(status, rail: true).contains("Ein Teil der Karte wird noch geladen."))
+        scheduler.setViewport(oneTileView, latitudeSpan: 0.5, now: t0.addingTimeInterval(3))
+        XCTAssertFalse(scheduler.status(now: t0.addingTimeInterval(3)).coversCountry)
+        // A view of about 4 degrees of latitude on a phone shows two or three Bundesländer, not the country.
+        scheduler.setViewport(RadarBox(north: 48.9, west: 12.0, south: 44.9, east: 14.9), latitudeSpan: 4.0, now: t0.addingTimeInterval(4))
+        XCTAssertFalse(scheduler.status(now: t0.addingTimeInterval(4)).coversCountry)
+    }
+
     // MARK: Retention follows the refresh period
 
     func testRetentionFollowsTheTilesRefreshPeriod() {

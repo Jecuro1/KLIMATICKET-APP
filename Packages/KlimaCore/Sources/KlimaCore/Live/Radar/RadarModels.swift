@@ -105,10 +105,15 @@ public struct RadarSnapshot: Sendable, Hashable {
     public var vehicles: [RadarVehicle]
     /// `planrtTS` – when the realtime data behind the positions was last updated.
     public var realtimeUpdatedAt: Date?
+    /// How many journeys the server put into the answer (`jnyL`), before entries without a position and duplicates were dropped.
+    /// The cut-off test (`RadarTiling.isTruncated`) needs this number: a server that cuts at `maxJny` 1000 and sends three
+    /// entries without a position leaves 997 vehicles, and 997 would not look cut off. Never less than `vehicles.count`.
+    public var answeredCount: Int
 
-    public init(vehicles: [RadarVehicle] = [], realtimeUpdatedAt: Date? = nil) {
+    public init(vehicles: [RadarVehicle] = [], realtimeUpdatedAt: Date? = nil, answeredCount: Int? = nil) {
         self.vehicles = vehicles
         self.realtimeUpdatedAt = realtimeUpdatedAt
+        self.answeredCount = max(answeredCount ?? vehicles.count, vehicles.count)
     }
 
     public static let empty = RadarSnapshot()

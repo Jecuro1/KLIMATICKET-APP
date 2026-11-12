@@ -12,6 +12,10 @@ import Foundation
 // - How many requests the radar may send: at most 24 per minute, at most 4 in any 10 seconds and never two within a second, so the planner, the
 //   departures and "Live verfolgen" keep their share of the 40 requests per minute of `RequestThrottle`. When the visible
 //   tiles want more than that, every tile slows down by the same factor (nobody starves) and the status says so.
+// - How many requests are on their way at once (`maxInFlight`) and that a tile is never asked again while its request is still
+//   on its way: an answer takes 0.4 to 21 s (docs/OEBB_LIVE.md §R11.1), more than a refresh interval at the worst.
+// The budget counts the radar's own requests. The client's single retry after a timeout or a 5xx is not counted here: it goes through
+// `RequestThrottle` (40 a minute for the whole app) and the circuit breaker (three failures in a row open it for two minutes).
 
 public struct RadarSchedulerConfig: Sendable, Equatable {
     /// The radar's share of the HAFAS budget (docs/OEBB_LIVE.md §2: 40 per minute for the whole app).
@@ -21,6 +25,11 @@ public struct RadarSchedulerConfig: Sendable, Equatable {
     public var minGap: TimeInterval = 1.0
     public var burst = 4
     public var burstWindow: TimeInterval = 10
+    /// Requests on their way at the same time. The loop that sends them also moves the markers and the status line every second,
+    /// so it does not wait for an answer; three at once keep it within the budget above and keep a slow answer from holding up the rest.
+    public var maxInFlight = 3
+    /// A request that never reported back (a bug in the caller) frees its tile after this long.
+    public var requestTimeout: TimeInterval = 90
     /// Refresh interval of a dense tile (`denseCount` vehicles or more) and of every tile while the view is zoomed in.
     public var denseInterval: TimeInterval = 20
     /// Refresh interval of a quiet tile in a wide view.
@@ -57,12 +66,16 @@ public struct RadarStatus: Sendable, Equatable {
     public var budgetLimited = false
     /// Visible tiles on the finest level that are still cut off at the request cap.
     public var cappedTiles = 0
+    /// Visible tiles that were never asked or are still waiting for their first answer: their trains are not on the map yet.
+    public var pendingTiles = 0
     /// Every visible tile that has an outcome failed: the map keeps its vehicles but nothing new arrives.
     public var isPaused = false
     /// The view is valid but outside the area the radar covers.
     public var outsideCoverage = false
     /// Latitude span of the view in degrees.
     public var latitudeSpan = 0.0
+    /// The view contains the whole area the radar covers (all of Austria with its margin).
+    public var coversCountry = false
 
     public static let empty = RadarStatus()
 }
@@ -86,6 +99,8 @@ public struct RadarScheduler: Sendable {
         var retryAt: Date?
         /// The request time before the one in flight, to give the slot back when a request is cancelled.
         var requestBefore: Date?
+        /// A request for this tile is on its way (set by `next`, cleared by the outcome).
+        var isInFlight = false
     }
 
     public let config: RadarSchedulerConfig
@@ -165,12 +180,37 @@ public struct RadarScheduler: Sendable {
 
     // MARK: Next step
 
+    /// Requests on their way right now.
+    public func inFlightCount(now: Date) -> Int {
+        states.values.filter { isInFlight($0, now: now) }.count
+    }
+
+    private func isInFlight(_ state: TileState, now: Date) -> Bool {
+        guard state.isInFlight else { return false }
+        guard let last = state.lastRequestAt else { return false }
+        return now.timeIntervalSince(last) < config.requestTimeout
+    }
+
+    /// A clock that moved backwards (set by hand, a correction) would leave timestamps in the future: the budget would count them
+    /// as just sent and the radar would stand still until the clock catches up. They are pulled back to `now`.
+    private mutating func pullBackFutureTimestamps(now: Date) {
+        if let newest = sentAt.last, newest > now { sentAt = sentAt.map { min($0, now) } }
+        for (key, state) in states where (state.lastRequestAt ?? .distantPast) > now || (state.lastAnswerAt ?? .distantPast) > now {
+            var fixed = state
+            if let at = fixed.lastRequestAt, at > now { fixed.lastRequestAt = now }
+            if let at = fixed.lastAnswerAt, at > now { fixed.lastAnswerAt = now }
+            states[key] = fixed
+        }
+    }
+
     /// What to do now. `.request` marks the tile as asked and uses one slot of the budget.
     public mutating func next(now: Date) -> Step {
+        pullBackFutureTimestamps(now: now)
         sentAt.removeAll { now.timeIntervalSince($0) >= 60 }
         let tiles = visibleTiles()
         guard !tiles.isEmpty else { return .idle }
         if let pausedUntil, pausedUntil > now { return .wait(until: pausedUntil) }
+        if inFlightCount(now: now) >= config.maxInFlight { return .wait(until: now.addingTimeInterval(0.25)) }
 
         var best: (key: RadarTileKey, ratio: Double, distance: Double)?
         var earliest: Date?
@@ -178,6 +218,7 @@ public struct RadarScheduler: Sendable {
         let stretchFactor = stretch(for: tiles)
         for key in tiles {
             let state = states[key] ?? TileState()
+            if isInFlight(state, now: now) { continue }   // its answer is on its way: never twice at once
             var dueAt: Date
             if let last = state.lastRequestAt {
                 dueAt = last.addingTimeInterval(interval(for: key) * stretchFactor)
@@ -211,6 +252,7 @@ public struct RadarScheduler: Sendable {
         var state = states[best.key] ?? TileState()
         state.requestBefore = state.lastRequestAt
         state.lastRequestAt = now
+        state.isInFlight = true
         states[best.key] = state
         return .request(best.key)
     }
@@ -221,6 +263,7 @@ public struct RadarScheduler: Sendable {
         let stretchFactor = stretch(for: tiles)
         return tiles.contains { key in
             let state = states[key] ?? TileState()
+            if isInFlight(state, now: now) { return false }
             if let retryAt = state.retryAt, retryAt > now { return false }
             guard let last = state.lastRequestAt else { return true }
             return now >= last.addingTimeInterval(interval(for: key) * stretchFactor)
@@ -237,6 +280,7 @@ public struct RadarScheduler: Sendable {
         state.vehicleCount = count
         state.failures = 0
         state.retryAt = nil
+        state.isInFlight = false
         if RadarTiling.isTruncated(count: count), key.level < RadarTileGrid.maxLevel {
             state.isSplit = true
         }
@@ -281,6 +325,7 @@ public struct RadarScheduler: Sendable {
             }
         }
         state.retryAt = now.addingTimeInterval(wait)
+        state.isInFlight = false
         states[key] = state
     }
 
@@ -289,14 +334,16 @@ public struct RadarScheduler: Sendable {
     public mutating func recordCancelled(_ key: RadarTileKey) {
         guard var state = states[key] else { return }
         state.lastRequestAt = state.requestBefore
+        state.isInFlight = false
         states[key] = state
     }
 
-    /// "Erneut versuchen" and "Jetzt aktualisieren": every visible tile is due at once; backoff and pause are cleared.
+    /// "Erneut versuchen" and "Jetzt aktualisieren": every visible tile is due at once; backoff and pause are cleared. A tile whose
+    /// request is on its way stays as it is: that answer is the refresh.
     public mutating func refreshAll() {
         pausedUntil = nil
         viewChangedAt = nil
-        for key in visibleTiles() {
+        for key in visibleTiles() where states[key]?.isInFlight != true {
             states[key, default: TileState()].lastRequestAt = nil
             states[key]?.retryAt = nil
             states[key]?.failures = 0
@@ -312,6 +359,9 @@ public struct RadarScheduler: Sendable {
         status.visibleTiles = tiles.count
         guard let viewport else { return status }
         if tiles.isEmpty { status.outsideCoverage = viewport.isValid }
+        let area = RadarTileGrid.coverage
+        status.coversCountry = viewport.west <= area.west && viewport.east >= area.east
+            && viewport.south <= area.south && viewport.north >= area.north
         let stretchFactor = stretch(for: tiles)
         status.budgetLimited = stretchFactor > 1
         status.period = tiles.map { interval(for: $0) * stretchFactor }.max() ?? 0
@@ -332,6 +382,7 @@ public struct RadarScheduler: Sendable {
             if let answered = state?.lastAnswerAt { ages.append(max(0, now.timeIntervalSince(answered))) }
         }
         status.oldestAnswerAge = ages.max()
+        status.pendingTiles = pending
         // Paused only when nothing answers: a tile that is still to be asked first is no failure yet, so the banner does not
         // flash while the other tiles of the same round are on their way. An active pause (rate limit) counts as settled.
         let settled = pending == 0 || (pausedUntil.map { $0 > now } ?? false)

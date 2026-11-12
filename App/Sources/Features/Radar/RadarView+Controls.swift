@@ -70,7 +70,7 @@ extension RadarView {
         return GlassCard(padding: Theme.Spacing.s) {
             VStack(alignment: .leading, spacing: 4) {
                 if matches.isEmpty {
-                    Text("Kein Zug in den letzten Minuten gefunden. Zoom näher heran oder probier eine andere Nummer.")
+                    Text("Kein Zug in den zuletzt geladenen Ausschnitten gefunden. Zoom heraus, verschieb die Karte oder probier eine andere Nummer.")
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -136,20 +136,20 @@ extension RadarView {
                     PlannerNoticeCard(symbol: "battery.25percent", title: "Stromspar-Modus",
                                       message: "Das Radar aktualisiert sich nicht, solange der Stromspar-Modus an ist.",
                                       actionTitle: "Jetzt aktualisieren") {
-                        Task { if let s = radarService { await model.refreshNow(s) } }
+                        model.refreshNow()
                     }
                 }
                 if case .failed(let message) = model.load {
                     PlannerNoticeCard(symbol: "wifi.exclamationmark", title: "Radar pausiert", message: message,
                                       actionTitle: "Erneut versuchen") {
-                        Task { if let s = radarService { await model.refreshNow(s) } }
+                        model.refreshNow()
                     }
                 }
                 if focusMissing {
                     Text("Dieser Zug ist gerade nicht auf der Karte. Zoom heraus oder probier es später noch einmal.")
                         .radarHint()
                 }
-                statusPill
+                RadarStatusCard(model: model)
             }
             if !model.route.isEmpty {
                 Button("Route ausblenden") {
@@ -164,11 +164,16 @@ extension RadarView {
         .frame(maxWidth: .infinity)
         .motionAnimation(Motion.smooth, value: model.load)
     }
+}
 
-    /// "923 Züge · vor 12 s": the vehicles in the visible area and the age of the oldest answer behind them, and under it what is
-    /// true about the tiles (a cut-off tile, a partial failure, a refresh slower than 25 s: docs/OEBB_LIVE.md §R11). One glass
-    /// card: text straight on the map would not be legible between the markers.
-    private var statusPill: some View {
+/// "923 Züge · vor 12 s": the vehicles in the visible area and the age of the oldest answer behind them, and under it what is
+/// true about the tiles (a cut-off tile, a partial failure, tiles still loading, a refresh slower than 25 s: docs/OEBB_LIVE.md §R11).
+/// One glass card: text straight on the map would not be legible between the markers. A view of its own: its age ticks every
+/// second, and only this card is re-evaluated for it, not the map with its markers.
+struct RadarStatusCard: View {
+    var model: RadarModel
+
+    var body: some View {
         let text: String
         var spoken: String
         if let pill = model.pillText {
