@@ -10,8 +10,13 @@ import Observation
 ///   A frame interval above 1.5 × the expected duration is a hitch, its excess is hitch time; hitch time ratio =
 ///   hitch ms per scrolled second (Apple: < 5 good, 5–10 noticeable, ≥ 10 critical). Kept per screen and source:
 ///   `touch` (the XCUITest swipes – dragging or decelerating), `tour` (`PerfTour`) or `other` (programmatic).
+/// * **Touches** – a pan on content without a scroll view (the maps of the Zug-Radar and the Atlas) is seen through a
+///   passive pan recognizer on every window (`TouchObserver`: it cancels and delays nothing) and measured like a scroll,
+///   source `touch`.
 /// * **Transitions** – from the moment a tab, the Gipfelbuch or Einstellungen is selected (observation `willSet`,
-///   before SwiftUI builds anything) 1.5 s of frames: time to the first frame, longest frame, hitch time.
+///   before SwiftUI builds anything) 1.5 s of frames: time to the first frame, longest frame, hitch time. The feature
+///   screens `PerfTour` presents itself (`PerfFeature`: Radar, Atlas, Meine Routen, …) start the same window by hand
+///   (`beginPresentation`).
 /// * **Launch** – from `App.init`: time to the first frame, then 4 s of frames like a transition.
 /// * **Memory** – physical footprint once a second and after every segment (peak overall and per screen).
 ///
@@ -71,6 +76,8 @@ final class PerfFrameMonitor: NSObject {
         var pending: [(interval: Double, expected: Double)] = []
         var sawTouch = false
         var distancePt = 0.0
+        /// Finger travel reported by the touch observer (maps) – the larger of the two distances is kept.
+        var touchDistancePt = 0.0
     }
 
     struct ScrollRecord: Codable {
@@ -145,6 +152,11 @@ final class PerfFrameMonitor: NSObject {
         var watchdogHangs: Int
     }
 
+    private struct Weak<Object: AnyObject> {
+        weak var value: Object?
+        init(_ value: Object) { self.value = value }
+    }
+
     private final class Watched {
         weak var view: UIScrollView?
         var token: NSKeyValueObservation?
@@ -164,6 +176,8 @@ final class PerfFrameMonitor: NSObject {
     private var launchFrames: TransitionRecord?
     private var watched: [ObjectIdentifier: Watched] = [:]
     private var scanTimer: Timer?
+    private let touchObserver = TouchObserver()
+    private var touchWindows: [ObjectIdentifier: Weak<UIWindow>] = [:]
     private var footprintPeak: Double?
     private var footprintByScreen: [String: Double] = [:]
     private var navigationName: String?
@@ -254,6 +268,36 @@ final class PerfFrameMonitor: NSObject {
         segment!.pending.removeAll(keepingCapacity: true)
     }
 
+    /// Finger travel on content that is not a scroll view (`TouchObserver`): starts or extends a `touch` segment.
+    fileprivate func touchMoved(distance: Double) {
+        guard distance >= 0.5, isRunning else { return }
+        lastActivity = CACurrentMediaTime()
+        if segment == nil {
+            segment = Segment(screen: screenName)
+            startLink()
+        }
+        segment!.sawTouch = true
+        segment!.touchDistancePt += distance
+        for frame in segment!.pending { segment!.stats.add(interval: frame.interval, expected: frame.expected) }
+        segment!.pending.removeAll(keepingCapacity: true)
+    }
+
+    /// A passive pan recognizer on every window: it sees the drags of XCUITest on a map, where no scroll view moves.
+    private func installTouchObserver() {
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows where touchWindows[ObjectIdentifier(window)]?.value !== window {
+                touchWindows[ObjectIdentifier(window)] = Weak(window)
+                let pan = UIPanGestureRecognizer(target: touchObserver, action: #selector(TouchObserver.pan(_:)))
+                pan.cancelsTouchesInView = false
+                pan.delaysTouchesBegan = false
+                pan.delaysTouchesEnded = false
+                pan.delegate = touchObserver
+                window.addGestureRecognizer(pan)
+            }
+        }
+    }
+
     private func endSegment() {
         guard let finished = segment else { return }
         segment = nil
@@ -263,7 +307,7 @@ final class PerfFrameMonitor: NSObject {
         let key = Key(screen: finished.screen, source: source)
         var record = scroll[key] ?? ScrollRecord(screen: key.screen, source: key.source)
         record.segments += 1
-        record.distancePt += finished.distancePt
+        record.distancePt += max(finished.distancePt, finished.touchDistancePt)
         record.stats.merge(finished.stats)
         scroll[key] = record
         sampleFootprint()
@@ -272,6 +316,7 @@ final class PerfFrameMonitor: NSObject {
 
     /// Observes every scroll view in the app's windows (new ones appear with sheets and pushed screens).
     private func scan() {
+        installTouchObserver()
         watched = watched.filter { $0.value.view != nil }
         for scene in UIApplication.shared.connectedScenes {
             guard let windowScene = scene as? UIWindowScene else { continue }
@@ -339,6 +384,14 @@ final class PerfFrameMonitor: NSObject {
         if transition != nil { finishTransition() }
         transition = (TransitionRecord(from: navigationName ?? "?", to: "?", at: start - origin), start, nil, nil)
         startLink()
+    }
+
+    /// A screen that is not tab navigation (Zug-Radar, Atlas, Meine Routen, Verbindungen, …): the same window of frames
+    /// as a tab switch, named `name`. Called by `PerfPresenter` just before it presents the screen.
+    func beginPresentation(_ name: String) {
+        guard isRunning else { return }
+        beginTransition(at: CACurrentMediaTime())
+        resolveTransition(to: name)
     }
 
     private func resolveTransition(to name: String) {
@@ -423,4 +476,27 @@ final class PerfFrameMonitor: NSObject {
         return nil
         #endif
     }
+}
+
+/// Target and delegate of the window-level pan recognizer: reports finger travel, interferes with nothing.
+@MainActor
+private final class TouchObserver: NSObject, UIGestureRecognizerDelegate {
+    private var last: CGPoint = .zero
+
+    @objc func pan(_ recognizer: UIPanGestureRecognizer) {
+        let point = recognizer.translation(in: nil)
+        switch recognizer.state {
+        case .began:
+            last = point
+        case .changed:
+            let travel = hypot(Double(point.x - last.x), Double(point.y - last.y))
+            last = point
+            PerfFrameMonitor.shared.touchMoved(distance: travel)
+        default:
+            break
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 }

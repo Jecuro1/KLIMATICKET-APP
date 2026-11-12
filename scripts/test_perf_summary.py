@@ -46,6 +46,23 @@ class PerfSummaryTests(unittest.TestCase):
         self.assertIn("Statistik (+1 500 Fahrten)", text)
         self.assertIn("Fehlgeschlagen", text)
 
+    def test_feature_screens_are_listed_with_clock_and_memory(self):
+        log = ("Test Case '-[KlimaBilanzPerfTests.RadarPerfTests testFeatureRadar]' measured [Clock Monotonic Time, s] average: 9.250, "
+               "relative standard deviation: 3.000%, values: [9.1, 9.4], performanceMetricID:x\n"
+               "Test Case '-[KlimaBilanzPerfTests.RadarPerfTests testFeatureRadar]' measured [Memory Peak Physical, kB] average: 307200.000, "
+               "relative standard deviation: 1.000%, values: [307200.0], performanceMetricID:x\n"
+               "Test Case '-[KlimaBilanzPerfTests.RadarPerfTests testFeatureRadar]' passed (31.000 seconds).\n"
+               "Test Case '-[KlimaBilanzPerfTests.PlannerResultsPerfTests testFeaturePlannerResults]' failed (12.000 seconds).\n")
+        summary = perf_summary.summarize(perf_summary.parse_log(log))
+        by_screen = {f["screen"]: f for f in summary["features"]}
+        self.assertEqual(set(by_screen), {"Zug-Radar", "Verbindungen"})
+        self.assertAlmostEqual(by_screen["Zug-Radar"]["clockSeconds"], 9.25)
+        self.assertAlmostEqual(by_screen["Zug-Radar"]["peakMemoryMB"], 300.0)
+        self.assertEqual(summary["failed"], ["testFeaturePlannerResults"])
+        text = perf_summary.markdown(summary)
+        self.assertIn("| Zug-Radar | 9.25 s | 300 MB | passed |", text)
+        self.assertEqual(summary["scroll"], [])   # feature tests never produce XCTest scroll rows
+
     def test_xcode26_launch_metric(self):
         log = ("Test Case '-[KlimaBilanzPerfTests.LaunchPerfTests testLaunch]' measured [Duration "
                "(ApplicationFirstFramePresentationResponsive), s] average: 6.189, relative standard deviation: 5.770%, "

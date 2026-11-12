@@ -6,7 +6,8 @@ import os
 /// XCUITest querying the accessibility tree in between (scripts/perf_profile.sh records the Time Profiler around it).
 ///
 /// 4 s after the first frame it opens the screen (`overview`, `trips`, `stats`, `ticket`, `gipfelbuch`; `all` visits
-/// them in turn, `launch` only waits), lets it settle for 2.5 s and then scrolls its main scroll view to the end and
+/// them in turn, `launch` only waits; the feature screens of `PerfFeature` – `planner`, `plannerResults`, `plannerDetail`,
+/// `radar`, `radarLayers`, `atlas`, `routes`, `stop` – one per tour, they stay open), lets it settle for 2.5 s and then scrolls its main scroll view to the end and
 /// back, three times, at a constant 2 400 pt/s – a display link moves `contentOffset`, the same rendering path as a
 /// flick, measured by `PerfFrameMonitor` as source `tour`. Every phase is a signpost interval (category
 /// PointsOfInterest) and is listed in `Diagnostics/perf-tour.json` in seconds since process start. The app stays
@@ -14,7 +15,7 @@ import os
 ///
 /// With `-KBPerfTourGate YES` each phase waits for the profiler's go file instead (see `waitForGo`).
 ///
-/// `-KBPerfPresent gipfelbuch` (the XCUITests) only opens the Gipfelbuch sheet after the first frame.
+/// `-KBPerfPresent <screen>` (the XCUITests) only opens that screen after the first frame: `gipfelbuch` or a `PerfFeature`.
 @MainActor
 final class PerfTour: NSObject {
     static var requested: String? { UserDefaults.standard.string(forKey: "KBPerfTour") }
@@ -47,7 +48,7 @@ final class PerfTour: NSObject {
             started = true
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(1))
-                open(present)
+                await open(present)
             }
             return
         }
@@ -85,7 +86,7 @@ final class PerfTour: NSObject {
         for screen in screens {
             await waitForGo("open")
             await phase("open \(screen)") {
-                open(screen)
+                await open(screen)
                 try? await Task.sleep(for: .seconds(2.5))
             }
             await waitForGo("scroll")
@@ -98,8 +99,13 @@ final class PerfTour: NSObject {
         writePhases()
     }
 
-    private static func open(_ screen: String) {
+    private static func open(_ screen: String) async {
         guard let app = AppDelegate.appState else { return }
+        // MARK: quality – the feature screens (Fahrplan, Zug-Radar, Atlas, Meine Routen, Haltestelle)
+        if let feature = PerfFeature(rawValue: screen) {
+            await PerfPresenter.present(feature, app: app)
+            return
+        }
         switch screen {
         case "trips": app.selectedTab = .trips
         case "stats": app.selectedTab = .stats

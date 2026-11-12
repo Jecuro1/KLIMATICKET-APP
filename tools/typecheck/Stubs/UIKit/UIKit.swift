@@ -477,6 +477,8 @@ open class UIGestureRecognizer: NSObject {
     open var isEnabled: Bool = true
     open var view: UIView? { _uiStub() }
     open var cancelsTouchesInView: Bool = true
+    open var delaysTouchesBegan: Bool = false
+    open var delaysTouchesEnded: Bool = true
     open func location(in view: UIView?) -> CGPoint { _uiStub() }
     // MARK: dashboardTicket – the ticket pass's sideways pan decides in its delegate whether it may begin.
     weak open var delegate: (any UIGestureRecognizerDelegate)?

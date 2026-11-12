@@ -3,11 +3,13 @@
 #
 # Usage: perf_profile.sh <simulator udid> <path to the built KlimaBilanz.app> <out dir> [tour ...]
 #
-# For every tour (default: launch overview trips stats ticket gipfelbuch) the app is launched in perf mode with
+# For every tour (default: launch overview trips stats ticket gipfelbuch, then the feature screens planner plannerResults
+# plannerDetail radar radarLayers atlas routes stop – PerfFeature in PerfFeatureScreens.swift) the app is launched in perf mode with
 # +1 500 trips, `-KBPerfTour <tour> -KBPerfTourGate YES` (App/Sources/Services/Diagnostics/PerfTour.swift). Each
 # phase of the tour waits for a go file, so the sampler runs exactly around it:
 #   open   – switching to the screen (its first build), 8 s window
-#   scroll – three passes down and up at 2 400 pt/s, 20 s window
+#   scroll – three passes down and up at 2 400 pt/s, 20 s window (a map has no scroll view: nothing moves, the window
+#            still records what the screen does on its own – refresh loop, tiles, pins)
 #   launch – (tour "launch") the first 8 s after the process started
 # `sample` (1 ms interval) writes a call-tree report per phase; scripts/perf_profile.py ranks the main thread's
 # hotspots (<out>/<tour>.profile.json/.md). Best effort: a failing phase is logged and skipped.
@@ -19,7 +21,7 @@ UDID=$1
 APP=$2
 OUT=$3
 shift 3
-TOURS=${*:-launch overview trips stats ticket gipfelbuch}
+TOURS=${*:-launch overview trips stats ticket gipfelbuch planner plannerResults plannerDetail radar radarLayers atlas routes stop}
 BUNDLE_ID=com.knitelarlberg.klimabilanz
 TRIPS=${PERF_PROFILE_TRIPS:-1500}
 HERE=$(cd "$(dirname "$0")" && pwd)

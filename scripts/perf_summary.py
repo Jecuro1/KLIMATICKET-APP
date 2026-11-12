@@ -34,6 +34,18 @@ SCREENS = {
     "Gipfelbuch": "Gipfelbuch",
 }
 
+# FeaturePerfTests (PerfTests/FeaturePerfTests.swift, testFeature<Name>): the screens behind the Scotty replacement.
+FEATURES = {
+    "Planner": "Fahrplan",
+    "PlannerResults": "Verbindungen",
+    "PlannerDetail": "Verbindungsdetail",
+    "Radar": "Zug-Radar",
+    "RadarLayers": "Karte mit Ebenen",
+    "Atlas": "Atlas",
+    "Routes": "Meine Routen",
+    "Stop": "Haltestelle",
+}
+
 
 def parse_log(text):
     """{test: {"class", "metrics": {name: {...}}, "status", "seconds"}} in log order."""
@@ -85,7 +97,7 @@ def fmt(value, digits=1):
 
 def summarize(tests):
     """Structured summary (also written as JSON)."""
-    out = {"launch": None, "scroll": [], "tabTour": [], "failed": [], "testCount": len(tests)}
+    out = {"launch": None, "scroll": [], "tabTour": [], "features": [], "failed": [], "testCount": len(tests)}
     for test, entry in tests.items():
         if entry.get("status") == "failed":
             out["failed"].append(test)
@@ -105,6 +117,14 @@ def summarize(tests):
                 "decelerationHitchRatio": decel and decel["average"],
                 "hitches": hitches and hitches["average"], "hitchesTotalMs": total and total["average"],
                 "frameRate": fps and fps["average"], "rating": rating(drag and drag["average"]),
+            })
+        if test.startswith("testFeature"):
+            clock = metric(entry, "Clock Monotonic Time")
+            peak = metric(entry, "Memory Peak Physical")
+            name = test[len("testFeature"):]
+            out["features"].append({
+                "test": test, "screen": FEATURES.get(name, name), "clockSeconds": clock and clock["average"],
+                "peakMemoryMB": peak and peak["average"] / 1024, "status": entry.get("status"),
             })
         if test.startswith("testTabSwitching"):
             clock = metric(entry, "Clock Monotonic Time")
@@ -369,6 +389,13 @@ def markdown(summary, diag=None):
                   "| Daten | Dauer | CPU | Speicher-Spitze |", "|---|---:|---:|---:|"]
         for t in summary["tabTour"]:
             lines.append(f"| {t['label']} | {fmt(t['clockSeconds'], 2)} s | {fmt(t['cpuSeconds'], 2)} s | {fmt(t['peakMemoryMB'], 0)} MB |")
+        lines.append("")
+    if summary["features"]:
+        lines += ["### Bildschirme hinter dem Scotty-Ersatz (XCTest: Drags über das Fenster, Uhr und Speicher)", "",
+                  "_Die Ruckel-Zahlen dieser Bildschirme stehen oben unter „Scrollen“ und „Bildschirmwechsel“ (von der App gemessen)._", "",
+                  "| Bildschirm | Dauer der Drags | Speicher-Spitze | Test |", "|---|---:|---:|---|"]
+        for f in summary["features"]:
+            lines.append(f"| {f['screen']} | {fmt(f['clockSeconds'], 2)} s | {fmt(f['peakMemoryMB'], 0)} MB | {f['status'] or '–'} |")
         lines.append("")
     if diag and diag.get("profiles"):
         import perf_profile

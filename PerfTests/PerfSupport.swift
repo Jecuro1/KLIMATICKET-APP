@@ -56,6 +56,12 @@ class PerfTestCase: XCTestCase {
     /// `-KBPerfPresent` value for the launch (subclasses override).
     var present: String? { nil }
 
+    /// Whether the tab bar is there once the app is up (a full-screen cover hides it: the feature screens).
+    var requiresTabBar: Bool { true }
+
+    /// Seconds to wait after the launch before the test starts (the presented screen has to be built first).
+    var launchSettle: TimeInterval { 2 }
+
     /// Iterations per measurement.
     var iterations: Int { 4 }
 
@@ -63,14 +69,19 @@ class PerfTestCase: XCTestCase {
         continueAfterFailure = false
         let trips = extraTrips
         let present = present
+        let needsTabBar = requiresTabBar
         let launched = MainActor.assumeIsolated { () -> XCUIApplication in
             let app = PerfApp.make(extraTrips: trips, present: present)
             app.launch()
-            XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 90), "Die Tab-Leiste ist nicht erschienen")
+            if needsTabBar {
+                XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 90), "Die Tab-Leiste ist nicht erschienen")
+            } else {
+                XCTAssertTrue(app.wait(for: .runningForeground, timeout: 90), "Die App läuft nicht im Vordergrund")
+            }
             return app
         }
         app = launched
-        settle(2)
+        settle(launchSettle)
     }
 
     override func tearDownWithError() throws {

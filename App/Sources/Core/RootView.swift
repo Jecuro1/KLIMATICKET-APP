@@ -57,6 +57,7 @@ struct RootView: View {
         }
         .sheet(isPresented: $showsWhatIf) { WhatIfSheet() }   // MARK: whatif
         .yearReviewHost()   // MARK: yearreview – the year story's full-screen cover (docs/YEAR_REVIEW.md)
+        .perfPresentHost()  // MARK: quality – -KBPerfPresent / -KBPerfTour feature screens (perf mode only)
         .overlay(alignment: .top) {
             ToastOverlay()
         }
