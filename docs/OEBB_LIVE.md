@@ -2393,18 +2393,19 @@ Owner request 2026-10-12: alles, was die ÖBB-Scotty-App kann, in KlimaBilanz. P
 Phase 2 (nicht gebaut): Ticketkauf über den Shop-Link hinaus.
 
 ### R1 Zug-Radar: `JourneyGeoPos` [LIVE 2026-10-12 · einmalige Anfrage]
-- Request (`HafasRequests.journeyGeoPos`, Schlüssel exakt wie Referenz `format/radar-req.js`): `maxJny` (≤ 256), `onlyRT:false`,
+- Request (`HafasRequests.journeyGeoPos`, Schlüssel exakt wie Referenz `format/radar-req.js`): `maxJny` (die Referenz sendet 256, der Server nimmt 1000, siehe §R11), `onlyRT:false`,
   `date`/`time` (Wien), `rect` (`llCrd` = West/Süd, `urCrd` = Ost/Nord, Mikrograd), `perSize` (30 000 ms), `perStep` (10 000 ms),
   `ageOfReport:true`, `jnyFltrL` (PROD, Standard `rail` = 4157), `trainPosMode:"CALC"`. Kein `cfg`.
 - **Live-Ergebnis (`RadarLiveTests`, `KB_LIVE_TESTS=1`, genau 1 Anfrage):** HTTP 200, kein
-  `PARSE`/`AUTH`, `jnyL` mit **256 Fahrzeugen** (= Serverlimit), Beispiele „REX 92 → Wr.Neustadt Hbf“, „EC → Wien Hbf“.
+  `PARSE`/`AUTH`, `jnyL` mit **256 Fahrzeugen** (= unser eigenes `maxJny`, **kein** Serverlimit, siehe §R11), Beispiele „REX 92 → Wr.Neustadt Hbf“, „EC → Wien Hbf“.
   ÖBB beantwortet `JourneyGeoPos` also. Die Antwort wurde **nicht** als Fixture gespeichert (kein Live-Dump).
-- **Folge:** Bei vollem Österreich-Ausschnitt liefert der Server nur 256 Fahrzeuge. Die App zeigt dann „Zoom näher heran“.
+- **Folge (überholt):** Aus dieser einen Antwort wurde geschlossen, der Server liefere höchstens 256 Fahrzeuge und die App müsse „Zoom näher
+  heran“ sagen. Das war falsch: §R11 (Messung 2026-11-12) zeigt 923 Fahrzeuge in einer Antwort mit `maxJny` 1000.
 - Parser: `HafasCodec.radar` (Referenz `parse/movement.js`): Fahrzeuge ohne `pos` und doppelte `jid` fallen weg, fehlendes `jnyL`
   ist eine leere Karte. Offline-Fixture: `Fixtures/OEBB/hafas/radar_synthetic_austria.response.json` (**synthetisch**, Zugnummern erfunden).
 - Gate: Zustimmung + Schalter + Kill-Switch über `LiveDataService.radar` (wie Fahrplan). Drosselung über `RequestThrottle`
-  (HAFAS 40/min). App-seitig: eine Anfrage alle 20 s, nur solange der Bildschirm sichtbar und die App aktiv ist; Kartenbewegung
-  löst eine Anfrage beim Ende aus.
+  (HAFAS 40/min). App-seitig: Kacheln, Zeitplan und Budget des Radars stehen in §R11; Anfragen nur, solange der Bildschirm sichtbar
+  und die App aktiv ist.
 
 ### R2 Wagenreihung (Formation): [LIVE 2026-10-12 · einmalige Anfrage] – **nicht vorhanden in der getesteten Antwort**
 - Eine Anfrage: TripSearch Wien Hbf → Salzburg Hbf (Schiene, 3 Ergebnisse). Antwort 133 167 Byte, 6 Verbindungen, 14 Fahrt-IDs.
@@ -2470,7 +2471,7 @@ wie §R6 aus. Die 6 neuen Antworten sind damit vollständig geprüft. Für die 2
 
 | # | Anfrage (`meth`) | Zugtyp (Radar-Kategorie) | HTTP | Bytes | Verschiedene JSON-Schlüssel | Formation-Treffer | Ergebnis |
 |---|---|---|---|---|---|---|---|
-| R1 | JourneyGeoPos, Österreich, rail, 17:00 MESZ | alle | 200 | 571 752 | 99 | **0** | 256 Fahrzeuge (Serverlimit). Kategorien: CJX 3, D 3, DRB 14, DRE 19, EC 15, IC 6, ICE 15, IR 9, Os 7, P 1, R 18, RB 9, RE 22, REX 42, RJ 8, RJX 17, S 31, Sp 2, WB 15. **Kein NJ.** |
+| R1 | JourneyGeoPos, Österreich, rail, 17:00 MESZ | alle | 200 | 571 752 | 99 | **0** | 256 Fahrzeuge (= unser `maxJny`, kein Serverlimit, §R11). Kategorien: CJX 3, D 3, DRB 14, DRE 19, EC 15, IC 6, ICE 15, IR 9, Os 7, P 1, R 18, RB 9, RE 22, REX 42, RJ 8, RJX 17, S 31, Sp 2, WB 15. **Kein NJ.** |
 | R2 | JourneyDetails | RJX (ein Fahrzeug aus R1) | 200 | 12 407 | 151 | **0** | ok |
 | R3 | JourneyDetails | EC (ein Fahrzeug aus R1, irgendwo in AT) | 200 | 15 472 | 129 | **0** | ok |
 | R4 | JourneyDetails | REX (Kontrolle, Regionalzug) | 200 | 18 891 | 150 | **0** | ok |
@@ -2510,22 +2511,25 @@ des Systems), alles darüber ist unser: Marker, Cluster, Route, Filter, Suche, S
 
 - **Dateien:** KlimaCore `Live/Radar/RadarMap.swift` (rein, mit `RadarMapTests` unter Linux), `RadarModels.swift` (Feld
   `isCancelled` aus `isCncl`). App `Features/Radar/RadarView.swift`, `RadarTripSheet.swift`, `RadarFilterSheet.swift`.
-- **Abfrage (Kacheln):** Eine Kachel pro Lauf. Liefert die Antwort das Limit von 256 Fahrzeugen, teilt die nächste Runde die
-  Kartenfläche in vier Quadranten (vier Anfragen, im 40/min-Limit). Bleibt eine Kachel am Limit, steht im Status
-  „Zoom hinein für alle Züge“. Die Teilung bleibt, bis die Karte bewegt wird (dann bis zu vier Anfragen je 20-s-Lauf, also bis zu
-  12 je Minute für das Radar allein). Antwortet eine Kachel nicht, zeigt die Karte die anderen und den Hinweis „Radar pausiert“
-  mit „Erneut versuchen“. Ohne Netz gibt es keine leere Karte mit neuer Uhrzeit, sondern denselben Hinweis.
+- **Abfrage (Kacheln):** Seit 2026-11-12 deckt ein festes Kachelraster den Ausschnitt ab, ein Zeitplan mit Budget sendet die Anfragen
+  (§R11). Die frühere Fassung („eine Kachel pro Lauf, bei 256 Fahrzeugen vier Quadranten, bleibt eine Kachel am Limit, steht dort
+  ‚Zoom hinein für alle Züge‘“) ist ersetzt: Das Limit lag bei 1000, nicht bei 256, und gilt je Kachel mit beliebig tiefer Teilung.
+  Antwortet eine Kachel nicht, zeigt die Karte die anderen weiter; „Radar pausiert“ mit „Erneut versuchen“ erscheint nur, wenn alle
+  sichtbaren Kacheln ausfallen. Ohne Netz gibt es keine leere Karte mit neuer Uhrzeit, sondern denselben Hinweis.
 - **Ausschnitt:** Die Kartenbox wird auf den WGS84-Bereich begrenzt (Zoom über Pole oder Datumsgrenze hinaus). Eine ungültige
   Box würde sonst still keine Anfrage mehr auslösen.
-- **Bewegung:** Die Positionen kommen vom Server (`trainPosMode` CALC). Der Marker wird **20 s hinter der Uhr** gezeichnet
-  (`RadarEstimate.displayLag`). Zwischen zwei Antworten läuft er linear von der vorletzten zur letzten Position, gestrichelter Ring
+- **Bewegung:** Die Positionen kommen vom Server (`trainPosMode` CALC). Der Marker wird **mindestens 20 s hinter der Uhr** gezeichnet
+  (`RadarEstimate.displayLag`; bei einer Kachel, die nur alle 45 s antwortet, so viel wie der Abstand ihrer letzten zwei Antworten,
+  höchstens 120 s, sonst spränge der Marker bei jeder Antwort zurück). Zwischen zwei Antworten läuft er linear von der vorletzten zur letzten Position, gestrichelter Ring
   = geschätzt, und nur solange er sich bewegt. Ein stehender Zug bleibt stehen und ist nicht geschätzt. Nach der letzten Antwort
   bleibt er stehen (keine Hochrechnung). Ohne die Verzögerung läge die letzte Antwort immer in der Vergangenheit: Die Schätzung
   wäre nie sichtbar und der Marker würde bei jeder Antwort springen. Preis: Die Anzeige hängt bis zu 20 s hinter der
   Serverposition. Positionen außerhalb des WGS84-Bereichs werden verworfen.
   Die `ani`-Frames aus der Referenz (`parse/movement.js`) werden **nicht** ausgewertet: Ihr Format (`fromLocations`, `toLocations`)
   ist gegen keine Live-Antwort geprüft.
-- **Aufbewahrung:** Ein Fahrzeug bleibt 60 s nach der letzten Antwort, in der es vorkam (`RadarFrameStore`).
+- **Aufbewahrung:** Ein Fahrzeug bleibt nach der letzten Antwort, in der es vorkam, mindestens 60 s (`RadarFrameStore`). Eine Kachel,
+  die seltener antwortet, hält ihre Fahrzeuge länger: 2,5 × ihr tatsächlicher Abstand (§R11), damit ruhige Kacheln zwischen zwei
+  Aktualisierungen nichts verlieren. Dieselbe Fahrt in zwei Kacheln ist ein Eintrag, die jüngste Antwort gewinnt.
 - **Verspätung (Ring):** grün pünktlich (unter 5 Min), orange ab 5 Min, rot fällt aus, grau ohne Echtzeit. Maßgeblich ist die
   Verspätung des nächsten Halts mit Fahrplanzeit nach „jetzt“, sonst der letzte bekannte Wert.
 - **Bundesland:** Stichwortsuche über Haltestellennamen und Richtung. Das ist eine **Schätzung** (keine Koordinaten je Land).
@@ -2657,3 +2661,133 @@ Entscheidung des Owners. Jede Ebene liegt über der Basiskarte und hängt nicht 
 **Code:** `Live/Map/MapLayers.swift` (`MapLayer`, `MapLayerSelection`, `MapStationPin`, `MapStations`, `MapClustering`,
 `MapRouteSketch`), `Live/Radar/RadarModels.swift` (`RadarBox.contains`, bisher nur in der App), App `Features/Radar/RadarView.swift`
 (Ebenen, Stations- und Routen-Schicht), `Features/Radar/MapLayerBar.swift` (Leiste, Marker). Tests: `MapLayersTests` (13).
+
+## R11 Zug-Radar: alle Züge (2026-11-12)
+
+Owner-Auftrag 2026-11-12: „bei ÖBB Scotty sind aber auch alle Züge ja sichtbar“. Bis dahin zeigte das Radar im Österreich-Ausschnitt nur einen
+Teil der Züge und sagte „Zoom hinein für alle Züge“. §R1 und §R7 gingen davon aus, dass der Server höchstens 256 Fahrzeuge je Anfrage
+liefert. Das war aus **einer** Antwort geschlossen und nie gemessen. Dieser Abschnitt hat die Messung und das Verfahren, das daraus folgt.
+
+### R11.1 Messung (einmalig, ausdrücklich vom Owner freigegeben)
+
+- **Budget:** höchstens 14 JourneyGeoPos-Anfragen insgesamt, eine Momentaufnahme, mindestens 2 s Abstand (gebaut: 2,1 s), ehrlicher
+  User-Agent (`KlimaBilanz/live-test (iPhone; iOS; private, low-volume)`), keine Wiederholung bei Fehlern, Stopp bei 403/429 und bei jedem
+  Fehler. **Verbraucht: genau 14, alle HTTP 200**, keine Wiederholung, kein `PARSE`/`AUTH`.
+- **Test:** `Tests/KlimaCoreTests/Live/LiveSmoke/RadarCoverageLiveTests.swift`. Lauf:
+  `KB_LIVE_TESTS=1 KB_RADAR_COVERAGE=1 swift test --package-path Packages/KlimaCore --no-parallel --filter RadarCoverageLiveTests`.
+  Zwei Schalter mit Absicht: Ein Lauf mit `--filter LiveSmoke` verbraucht diese 14 Anfragen nicht. `BudgetedTransport` zählt jede Anfrage vor
+  dem Versand, hält den Abstand ein und verweigert alles nach dem ersten Fehler (auch den Wiederholungsversuch des Clients; das
+  Ausweichprofil ist im Test aus). Gedruckt werden nur Zahlen und Struktur: keine Fahrzeuglisten, keine Fahrt-IDs, keine Namen. Nichts davon
+  ist im Repository gespeichert.
+- **Zeitpunkt:** Donnerstag 2026-11-12, 17:08 Uhr Wien (Werktag, Abendspitze). **Ort:** eine Cloud-Sandbox über einen gemeinsamen
+  Ausgangs-Proxy, nicht ein iPhone. Die Laufzeiten gelten nur dafür; sie zeigen die Streuung, nicht die Laufzeit auf einem Gerät.
+
+| # | Anfrage (Rechteck N/W/S/O in Grad) | Produkte | `maxJny` | Fahrzeuge | Bytes (entpackt) | ms |
+|---|---|---|---|---|---|---|
+| 1 (a) | ganz Österreich 49,10 / 9,45 / 46,30 / 17,25 | Schiene (4157) | 1000 | **923** | 1 831 536 | 21 477 |
+| 2 | Viertel Nordwest 49,10 / 9,45 / 47,70 / 13,35 | Schiene | 1000 | 318 | 581 806 | 5 763 |
+| 3 | Viertel Nordost 49,10 / 13,35 / 47,70 / 17,25 | Schiene | 1000 | 300 | 633 777 | 1 095 |
+| 4 | Viertel Südwest 47,70 / 9,45 / 46,30 / 13,35 | Schiene | 1000 | 173 | 363 611 | 1 210 |
+| 5 | Viertel Südost 47,70 / 13,35 / 46,30 / 17,25 | Schiene | 1000 | 133 | 309 237 | 585 |
+| 6 | NW, Achtel 49,10 / 9,45 / 48,40 / 11,40 | Schiene | 1000 | 52 | 106 093 | 371 |
+| 7 | NW, Achtel 49,10 / 11,40 / 48,40 / 13,35 | Schiene | 1000 | 36 | 69 378 | 3 996 |
+| 8 | NW, Achtel 48,40 / 9,45 / 47,70 / 11,40 | Schiene | 1000 | 88 | 163 619 | 3 013 |
+| 9 | NW, Achtel 48,40 / 11,40 / 47,70 / 13,35 | Schiene | 1000 | 144 | 267 816 | 5 583 |
+| 10 | NO, Achtel 49,10 / 13,35 / 48,40 / 15,30 | Schiene | 1000 | 23 | 45 804 | 11 638 |
+| 11 | NO, Achtel 49,10 / 15,30 / 48,40 / 17,25 | Schiene | 1000 | 40 | 79 746 | 5 950 |
+| 12 | NO, Achtel 48,40 / 13,35 / 47,70 / 15,30 | Schiene | 1000 | 81 | 202 013 | 421 |
+| 13 (d) | Wien 48,32 / 16,18 / 48,10 / 16,58 (24 × 30 km) | **alle** (8191) | 1000 | **1000** | 1 666 493 | 4 667 |
+| 14 (e) | wie 4, aber `time` + 60 min | Schiene | 1000 | 171 | 359 728 | 819 |
+
+Der Nordost-Südost-Achtel (48,40 / 15,30 / 47,70 / 17,25, Wien und Umland) wurde wegen des Budgets nicht abgefragt.
+
+**(a) Ist 256 ein hartes Serverlimit? Nein.** Mit `maxJny` 1000 liefert eine einzige Anfrage für ganz Österreich 923 Fahrzeuge (`jnyL` 923,
+alle mit Position, keine doppelte Fahrt-ID). Der größte gemessene Wert ist 1000: Die Wien-Antwort in (d) hatte genau 1000 Einträge, 1000
+wird also angenommen. **Nicht gemessen:** Werte über 1000 und ob der Server irgendwo darüber eine Grenze hat. Die 256 des früheren
+Ergebnisses (§R1, §R6) waren unser eigenes `maxJny`.
+
+**(b) Wie viele Schienenfahrzeuge sind unterwegs?** 923 im Rechteck von `RadarBox.austria` (Produktmaske 4157: Railjet, Intercity,
+Nachtzug, Regional, S-Bahn, WESTbahn; das Rechteck enthält auch Teile von Bayern, Südtirol, Westungarn und der Slowakei). Die vier Viertel
+haben 318, 300, 173 und 133 Fahrzeuge (Summe 924, eines mehr als in (a): die Anfragen liegen Sekunden auseinander). Bei einer
+Grenze von 256 wären nur die zwei nördlichen Viertel zu teilen gewesen. Ihre acht Achtel haben 52, 36, 88, 144, 23, 40, 81 und (nicht
+gemessen) rund 155: 923 minus die 768 eindeutigen gemessenen Fahrzeuge der Blätter. Das ist eine **Rechnung, keine Messung**, weil (a) und
+die Teilanfragen Sekunden auseinanderliegen. Das dichteste Blatt (Wien und Umland, 78 × 145 km) hat also rund 17 % aller Züge. Mit
+einer Grenze von 256 bräuchte ganz Österreich 1 + 4 + 8 = 13 Anfragen (Wurzel, vier Viertel, zwei Mal vier Achtel), mit 1000 eine.
+Blattaufbau: 2 Blätter der Tiefe 1 (173, 133), 7 gemessene Blätter der Tiefe 2, 1 ungemessenes. Wochentag und Tageszeit: Donnerstag,
+Abendspitze; nachts und am Wochenende liegt die Zahl niedriger (nicht gemessen).
+
+**(c) Was kostet eine Antwort?** Etwa 2 KB je Schienenfahrzeug **entpackt** (ganz Österreich: 1 984 Byte je Fahrzeug; Spanne 1 830 bis 2 325 in
+den Schienen-Antworten mit mehr als 100 Fahrzeugen; die Wien-Antwort mit überwiegend Bussen 1 666), weil jede Fahrt ihre Haltestellenliste
+(`stopL`) mitbringt. Ganz Österreich: 1,83 MB. Zusammen 6 680 657 Byte für die
+14 Anfragen. Laufzeit 371 ms bis 21 477 ms, Median 3 505 ms, und sie wächst **nicht** mit der Größe (23 Fahrzeuge: 11,6 s; 318 Fahrzeuge:
+5,8 s; 52 Fahrzeuge: 0,4 s). Die 21,5 s gehören zur ersten Anfrage (Verbindungsaufbau). **Nicht gemessen:** die Größe auf der Leitung. Der
+Linux-`URLSession` entpackt gzip selbst und blendet `Content-Length` und `Content-Encoding` aus (die App sendet `Accept-Encoding: gzip`).
+Auch die Laufzeit auf einem iPhone im Mobilfunknetz ist nicht gemessen.
+
+**(d) Wie schnell erreichen Busse das Limit?** Sofort. Wien (24 × 30 km) mit allen Produkten: genau 1000 Fahrzeuge, also am Limit, die
+echte Zahl ist höher. Nach `Line.mode`: Bus 626, Bim 325, S-Bahn 28, Zug 21. Busse und Bims sind 95 %. Für die Bus- und Bim-Ebene reicht
+auch 1000 in einer Großstadt nicht; dort muss die Teilung bis in feine Kacheln gehen.
+
+**(e) Doppelte Fahrten und Zeitparameter.** 2 von 770 Einträgen kamen in zwei Nachbarblättern vor (Grenze 48,40° N): 0,26 %. Die Entdopplung
+nach Fahrt-ID bleibt nötig, ändert aber kaum etwas. Ein `time` 60 Minuten in der Zukunft wird angenommen (HTTP 200): 171 Fahrzeuge in
+dem Viertel, in dem jetzt 173 fahren, davon 50 mit derselben Fahrt-ID. Der Server rechnet also Positionen für die spätere Zeit.
+**Nur notiert, nicht gebaut** (Zeitreise wäre ein eigener Auftrag).
+
+### R11.2 Verfahren (seit 2026-11-12)
+
+Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/Radar/`.
+
+- **Anfragegrenze:** `RadarTiling.requestCap` = 1000, so viel schickt jede Anfrage als `maxJny`. Eine Antwort mit 1000 Fahrzeugen gilt
+  als abgeschnitten. 1000 ist der größte gemessene Wert; sinkt das Limit serverseitig, zeigt Österreich-weit weniger Züge, ohne dass die
+  App es merkt. Der Live-Test misst es neu.
+- **Kachelraster** (`RadarTiles.swift`): ein festes, globales Quadtree. Stufe 0 sind zwei Kacheln (2,8° × 3,9°, etwa 311 × 290 km), zusammen
+  genau `RadarBox.austria`; jede Stufe halbiert beide Seiten, die feinste (Stufe 6) ist 0,044° × 0,12° (4,9 × 9 km). Schlüssel
+  `RadarTileKey(level, row, col)`: Dieselbe Stelle hat immer denselben Schlüssel, Antworten werden je Kachel gemerkt und gelten weiter,
+  während die Karte wandert. Nachbarkacheln teilen ihre Kante Bit für Bit. Außerhalb von Österreich gibt es keine Kacheln; der Status sagt
+  das, wenn der Ausschnitt ganz draußen liegt.
+- **Stufe nach Zoom:** die Stufe, deren Kachelhöhe mindestens der sichtbaren Breitenspanne entspricht (und weniger als das Doppelte). Ein
+  Ausschnitt berührt dadurch höchstens 2 × 2 Kacheln: Österreich-weit zwei, ein Stadtausschnitt ein bis vier kleine. Es wird nur angefragt,
+  was den Ausschnitt schneidet.
+- **Adaptive Teilung:** Eine Kachel mit einer abgeschnittenen Antwort (≥ 1000) wird durch ihre vier Kinder ersetzt, rekursiv bis Stufe 6.
+  Nur Kinder im Ausschnitt werden angefragt. Sind alle vier Kinder zusammen unter 500 Fahrzeugen (alle jünger als 2 Minuten), wird die
+  Teilung zurückgenommen. Ist eine Kachel der Stufe 6 noch abgeschnitten, sagt der Status es („In einem Ausschnitt gibt es mehr Züge, als die
+  Auskunft je Abfrage liefert. Zoom näher heran, dann siehst du alle.“). Für Schiene kommt das bei den gemessenen Zahlen nicht vor (größtes
+  Blatt rund 155); für Busse in Wien wird es vorkommen.
+- **Zeitplan und Budget** (`RadarScheduler`): höchstens **24 Anfragen je Minute** für das Radar (Fahrplan, Abfahrten und Live verfolgen teilen
+  sich die übrigen 16 der 40 aus §2 und `RequestThrottle`; das Radar leert den Topf nie), und mindestens 2,5 s zwischen zwei Radar-Anfragen
+  (60 s / 24), also nie ein Stoß von 12. Ein neuer Ausschnitt setzt sich 0,8 s, bevor neue Kacheln zum ersten Mal angefragt werden. Dichte
+  Kacheln (ab 150 Fahrzeugen) und alle Kacheln bei einem Ausschnitt unter 1,5° Breite alle **20 s**, ruhige Kacheln im weiten Ausschnitt alle
+  **45 s**. Kacheln, die den Ausschnitt verlassen haben, werden nicht mehr angefragt. Wollen die sichtbaren Kacheln mehr als 24 je
+  Minute, werden **alle** um denselben Faktor langsamer (die am längsten überfällige zuerst, nie eine Kachel überholt für immer) und der Status
+  sagt es („Ganz Österreich · aktualisiert alle ~80 s“). Die Karte wird dabei nie leer.
+- **Aufbewahrung und Bewegung:** Ein Fahrzeug bleibt 2,5 × der tatsächlichen Aktualisierungsdauer seiner Kachel, mindestens 60 s (ruhige
+  Kachel 112 s, durch das Budget gedehnte Kachel entsprechend länger). Die Anzeigeverzögerung ist der Abstand der letzten zwei Antworten
+  der Fahrt, mindestens 20 s, höchstens 120 s (§R7).
+- **Entdopplung:** nach Fahrt-ID über alle Kacheln, die jüngste Antwort gewinnt, eine ältere ersetzt nie eine neuere.
+- **Fehler:** Eine Kachel, die ausfällt, behält ihre Fahrzeuge bis zum Ende der Aufbewahrung und wird nach 15 s, 30 s, … höchstens 2 Min
+  wieder versucht. „Radar pausiert“ erscheint nur, wenn **alle** Kacheln mit Ergebnis ausgefallen sind (nicht schon, wenn die zweite noch nicht
+  dran war). Fällt nur ein Teil aus: „Für einen Teil der Karte kam keine Antwort. Es wird neu versucht.“ Eine Ratenbegrenzung (20 s, oder was der
+  Server nennt) und ein offener Schutzschalter pausieren das ganze Radar bis zum genannten Zeitpunkt. Ein abgebrochener Lauf gibt die Kachel
+  frei, nicht den Platz im Budget.
+- **Status:** „923 Züge · vor 12 s“ (Zahl im Ausschnitt nach Filter; Alter der ältesten Antwort unter den sichtbaren Kacheln) plus die
+  Hinweise oben. Der Hinweis „Zoom hinein für alle Züge“ ist weg. Kein Hinweis, wenn alles im Rhythmus von 25 s oder schneller läuft.
+- **Darstellung:** Das Gitter der Gruppen (`RadarClustering`) folgt jetzt dem Bildschirm statt der Breitenspanne: Eine Zelle ist etwa so groß wie
+  ein Marker (56 pt), mit höchstens 150 Zellen je Bildschirm (große Bildschirme bekommen ein gröberes Gitter). Ein Hochformat-iPhone zeigt beim
+  Österreich-Zoom etwa 13° Breite; nach der Breitenspanne allein wäre eine Zelle 1,9° groß und ganz Österreich nur eine Handvoll Blasen. Die
+  Zahl der Marker bleibt damit unabhängig von der Zahl der Fahrzeuge klein (Test mit 3000 synthetischen Fahrzeugen: höchstens 130 Marker bei jedem
+  Zoom, keine Fahrt geht verloren). Beim Heranzoomen lösen sich die Gruppen in einzelne Züge auf. Gruppen und Pins berechnet das Modell, nicht die
+  Ansicht, und nur so oft, wie man eine Bewegung sehen kann: jede Sekunde ab einem Ausschnitt unter 0,6° Breite, alle 2 s bis 2°, darüber alle 5 s
+  (ein Zug legt etwa 30 m je Sekunde zurück, das ist beim Landeszoom ein Pixel). Die Statuszeile läuft jede Sekunde.
+- **Filter, Zustimmung, Notschalter:** unverändert. Die Standardauswahl bleibt Schiene (4157). Bus, Bim, U-Bahn und S-Bahn sind weiter eigene
+  Schalter; wird ein Modus ausgeschaltet, verschwinden seine Fahrzeuge sofort, beim Umschalten beginnen die Kacheln neu.
+- **Demo und Screenshots:** `-KBDemo` ohne Netz; Hosts `radarAll` (etwa 1500 **synthetische** Fahrzeuge entlang erfundener Korridore,
+  Österreich-weit, Gruppen mit Zahlen) und `radarAllZoom` (derselbe Satz im Osten, einzelne Züge und kleine Gruppen). Die Fahrzeuge sind
+  erfunden, kein Fahrplan, keine echte Position (`ScottyDemoDense.swift`).
+
+**Code:** `Live/Radar/RadarTiles.swift` (Kachelraster), `RadarScheduler.swift` (Zeitplan, Budget, Status), `RadarStatusText.swift` (Texte),
+`RadarMap.swift` (Aufbewahrung je Antwort, Verzögerung, Gruppen), App `Features/Radar/RadarModel.swift`. Tests (Linux): `RadarTilesTests`,
+`RadarSchedulerTests` (Budget über 10 simulierte Minuten, auch beim Wandern der Karte), `RadarFrameTests`, `RadarStatusTextTests`.
+
+**Nicht geprüft:** der Lauf auf einem Gerät und im Mobilfunknetz (Datenmenge je Minute: Österreich-weit zwei Antworten mit zusammen
+rund 1,8 MB entpackt alle 20 s; die frühere Fassung holte bis zu vier Antworten mit zusammen bis zu 2,3 MB, die Menge ist also vergleichbar,
+aber jetzt vollständig); die Größe auf der Leitung; Werte über 1000; Zahlen nachts und am Wochenende; der Busbetrieb in Wien nach Teilung.
