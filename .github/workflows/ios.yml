@@ -136,6 +136,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # MARK: quality – before anything is compiled: duplicate type names, contract views, braces, and no URLSession /
+      # URLRequest / HafasClient / LiveDataService in Widgets/ or Shared/ (docs/WIDGETS.md §1, scripts/check_integration.py).
+      - name: Integration lint
+        run: python3 scripts/check_integration.py
+
       - name: Select Xcode
         run: |
           ls -d /Applications/Xcode*.app || true
@@ -314,6 +319,12 @@ jobs:
           if [ -n "${SCREENS_INPUT:-}" ]; then LIST=$(printf '%s' "$SCREENS_INPUT" | tr ',' ' '); fi
           if [ -n "$LIST" ]; then export SCREENS="$LIST"; fi
           bash scripts/capture_screenshots.sh "$UDID" build/sim/Build/Products/Debug-iphonesimulator/KlimaBilanz.app shots
+
+      # MARK: quality – the screenshot launches' trace in the job summary; a ::warning:: for every launch without a
+      # "stall" or "auth.loaded" line (blank launch). Never fails the job (scripts/launch_trace_summary.py).
+      - name: Launch trace summary
+        if: always() && env.SHOTS == 'true'
+        run: python3 scripts/launch_trace_summary.py shots/launch-trace.txt --summary-file "$GITHUB_STEP_SUMMARY"
 
       - name: Screenshot README
         if: env.SHOTS == 'true'
