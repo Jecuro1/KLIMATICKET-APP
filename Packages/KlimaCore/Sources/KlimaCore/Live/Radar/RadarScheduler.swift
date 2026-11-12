@@ -9,16 +9,18 @@ import Foundation
 //   answer was cut off at the request cap is replaced by its four children, recursively, down to the finest level.
 // - When a tile is asked again: dense tiles and zoomed-in views every 20 s, quiet tiles every 45 s. Tiles that left the view
 //   are not asked again.
-// - How many requests the radar may send: at most 24 per minute and never two within 2.5 seconds, so the planner, the
+// - How many requests the radar may send: at most 24 per minute, at most 4 in any 10 seconds and never two within a second, so the planner, the
 //   departures and "Live verfolgen" keep their share of the 40 requests per minute of `RequestThrottle`. When the visible
 //   tiles want more than that, every tile slows down by the same factor (nobody starves) and the status says so.
 
 public struct RadarSchedulerConfig: Sendable, Equatable {
     /// The radar's share of the HAFAS budget (docs/OEBB_LIVE.md §2: 40 per minute for the whole app).
     public var perMinute = 24
-    /// Least time between two radar requests: 60 s / 24 = 2.5 s, so the requests of a minute are spread evenly and never sent
-    /// as a burst of 24 followed by silence.
-    public var minGap: TimeInterval = 2.5
+    /// Least time between two radar requests, and the most in any `burstWindow` seconds: 4 in 10 s is the same 24 a minute, so a
+    /// busy view sends its requests in small steps (the first round of a new view in 4 s) and never as a burst of 12 or of 24.
+    public var minGap: TimeInterval = 1.0
+    public var burst = 4
+    public var burstWindow: TimeInterval = 10
     /// Refresh interval of a dense tile (`denseCount` vehicles or more) and of every tile while the view is zoomed in.
     public var denseInterval: TimeInterval = 20
     /// Refresh interval of a quiet tile in a wide view.
@@ -197,9 +199,11 @@ public struct RadarScheduler: Sendable {
         }
         guard let best else { return .wait(until: earliest ?? now.addingTimeInterval(1)) }
 
-        // The budget: spacing between two requests and at most `perMinute` in any minute.
+        // The budget: spacing between two requests, at most `burst` in any `burstWindow` and `perMinute` in any minute.
         var free = now
         if let last = sentAt.last { free = max(free, last.addingTimeInterval(config.minGap)) }
+        let recent = sentAt.filter { now.timeIntervalSince($0) < config.burstWindow }
+        if recent.count >= config.burst { free = max(free, recent[recent.count - config.burst].addingTimeInterval(config.burstWindow)) }
         if sentAt.count >= config.perMinute { free = max(free, sentAt[sentAt.count - config.perMinute].addingTimeInterval(60)) }
         guard free <= now else { return .wait(until: free) }
 

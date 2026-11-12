@@ -44,8 +44,8 @@ for APPEARANCE in light dark; do
     sleep "${SHOT_DELAY:-5}"
     # MARK: stats – MapKit streams its tiles from the network; map screens get extra time so they don't capture the
     # empty beige grid (the map screens open their sheets/camera moves after ~1 s on top).
-    # MARK: radarall – the Austria-wide radar scenes stream MapKit tiles too (and ask two radar tiles, 2.5 s apart).
-    case "$SCREEN" in map*|radarAll*) sleep "${MAP_TILE_DELAY:-6}" ;; esac
+    # MARK: radarall – the radar scenes stream MapKit tiles too and ask their radar tiles one second apart.
+    case "$SCREEN" in map*|radar*) sleep "${MAP_TILE_DELAY:-6}" ;; esac
     # MARK: stops – the complete place index (40,000 stops) builds in the background of a debug simulator build in ~5–9 s.
     case "$SCREEN" in stationSearch*|stopDetail*) sleep "${PLACES_DELAY:-10}" ;; esac
     case "$SCREEN" in stopDetail*) sleep "${MAP_TILE_DELAY:-6}" ;; esac

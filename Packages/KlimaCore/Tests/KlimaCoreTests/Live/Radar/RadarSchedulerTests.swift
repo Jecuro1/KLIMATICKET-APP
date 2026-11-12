@@ -39,6 +39,10 @@ final class RadarSchedulerTests: XCTestCase {
         return sent.map { (at: $0.0, tile: $0.1) }
     }
 
+    private func maxInAnyTenSeconds(_ sent: [(at: Date, tile: RadarTileKey)]) -> Int {
+        sent.indices.map { i in sent.filter { $0.at <= sent[i].at && sent[i].at.timeIntervalSince($0.at) < 10 }.count }.max() ?? 0
+    }
+
     private func maxInAnyMinute(_ sent: [(at: Date, tile: RadarTileKey)]) -> Int {
         sent.indices.map { i in sent.filter { $0.at <= sent[i].at && sent[i].at.timeIntervalSince($0.at) < 60 }.count }.max() ?? 0
     }
@@ -50,8 +54,8 @@ final class RadarSchedulerTests: XCTestCase {
         XCTAssertEqual(scheduler.visibleTiles(), [west, east], "the Austria view is two tiles")
         XCTAssertEqual(scheduler.next(now: t0), .wait(until: t0.addingTimeInterval(0.8)), "a new view settles first")
         guard case .request(let first) = scheduler.next(now: t0.addingTimeInterval(0.8)) else { return XCTFail("first request") }
-        XCTAssertEqual(scheduler.next(now: t0.addingTimeInterval(0.8)), .wait(until: t0.addingTimeInterval(3.3)), "2.5 s between two requests")
-        guard case .request(let second) = scheduler.next(now: t0.addingTimeInterval(3.3)) else { return XCTFail("second request") }
+        XCTAssertEqual(scheduler.next(now: t0.addingTimeInterval(0.8)), .wait(until: t0.addingTimeInterval(1.8)), "one second between two requests")
+        guard case .request(let second) = scheduler.next(now: t0.addingTimeInterval(1.8)) else { return XCTFail("second request") }
         XCTAssertEqual(Set([first, second]), [west, east])
     }
 
@@ -167,8 +171,9 @@ final class RadarSchedulerTests: XCTestCase {
         XCTAssertLessThanOrEqual(maxInAnyMinute(sent), 24, "no minute holds more than 24 requests")
         XCTAssertGreaterThan(sent.count, 200, "and the budget is really used: \(sent.count) requests in 10 minutes")
         for (a, b) in zip(sent, sent.dropFirst()) {
-            XCTAssertGreaterThanOrEqual(b.at.timeIntervalSince(a.at), 2.5 - 1e-9, "never a burst: 2.5 s apart at least")
+            XCTAssertGreaterThanOrEqual(b.at.timeIntervalSince(a.at), 1.0 - 1e-9, "never two requests within a second")
         }
+        XCTAssertLessThanOrEqual(maxInAnyTenSeconds(sent), 4, "never a burst: 4 requests in 10 seconds at most")
     }
 
     func testPanningAroundForTenMinutesNeverExceedsTheBudgetEither() {
@@ -186,6 +191,7 @@ final class RadarSchedulerTests: XCTestCase {
         }
         XCTAssertGreaterThan(sent.count, 100)
         XCTAssertLessThanOrEqual(maxInAnyMinute(sent), 24)
+        XCTAssertLessThanOrEqual(maxInAnyTenSeconds(sent), 4)
     }
 
     func testTheSharedBudgetLeavesRoomForThePlannerAndFollow() {
@@ -330,8 +336,8 @@ final class RadarSchedulerTests: XCTestCase {
         let now = t0.addingTimeInterval(1)
         XCTAssertEqual(scheduler.next(now: now), .request(oneTile))
         scheduler.recordCancelled(oneTile)
-        XCTAssertEqual(scheduler.next(now: now), .wait(until: now.addingTimeInterval(2.5)), "the request may have reached the server: spacing applies")
-        XCTAssertEqual(scheduler.next(now: now.addingTimeInterval(2.5)), .request(oneTile), "but the tile is due again at once")
+        XCTAssertEqual(scheduler.next(now: now), .wait(until: now.addingTimeInterval(1)), "the request may have reached the server: spacing applies")
+        XCTAssertEqual(scheduler.next(now: now.addingTimeInterval(1)), .request(oneTile), "but the tile is due again at once")
     }
 
     func testRefreshAllMakesEveryVisibleTileDueAndClearsTheBackoff() {

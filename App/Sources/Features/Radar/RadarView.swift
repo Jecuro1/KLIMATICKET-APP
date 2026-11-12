@@ -124,6 +124,18 @@ struct RadarView: View {
 
     private var mapLayer: some View {
         Map(position: $camera) {
+            if layers.isOn(.stations), MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
+                stationLayer
+            }
+            if layers.isOn(.routes) {
+                routeLayer
+            }
+            if model.routeTripID == model.selectedTripID, model.route.count > 1 {
+                MapPolyline(coordinates: model.route.map(\.clCoordinate))
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+            }
+            // Trains last: a later annotation is drawn on top, and a train is what the screen is about, not the station
+            // names and station clusters under it.
             if trainsOn {
             ForEach(model.clusters) { cluster in
                 if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] {
@@ -143,16 +155,6 @@ struct RadarView: View {
                     .annotationTitles(.hidden)   // the bubble carries its count
                 }
             }
-            }
-            if layers.isOn(.stations), MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
-                stationLayer
-            }
-            if layers.isOn(.routes) {
-                routeLayer
-            }
-            if model.routeTripID == model.selectedTripID, model.route.count > 1 {
-                MapPolyline(coordinates: model.route.map(\.clCoordinate))
-                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
             }
         }
         .mapStyle(mapStyle.style)

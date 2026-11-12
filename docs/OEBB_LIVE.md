@@ -2754,8 +2754,9 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
   Auskunft je Abfrage liefert. Zoom näher heran, dann siehst du alle.“). Für Schiene kommt das bei den gemessenen Zahlen nicht vor (größtes
   Blatt rund 155); für Busse in Wien wird es vorkommen.
 - **Zeitplan und Budget** (`RadarScheduler`): höchstens **24 Anfragen je Minute** für das Radar (Fahrplan, Abfahrten und Live verfolgen teilen
-  sich die übrigen 16 der 40 aus §2 und `RequestThrottle`; das Radar leert den Topf nie), und mindestens 2,5 s zwischen zwei Radar-Anfragen
-  (60 s / 24), also nie ein Stoß von 12. Ein neuer Ausschnitt setzt sich 0,8 s, bevor neue Kacheln zum ersten Mal angefragt werden. Dichte
+  sich die übrigen 16 der 40 aus §2 und `RequestThrottle`; das Radar leert den Topf nie), höchstens **4 in 10 Sekunden** (das sind dieselben 24
+  je Minute in kleinen Schritten, nie ein Stoß von 12 oder von 24) und mindestens 1 s zwischen zwei Radar-Anfragen: Die erste Runde eines neuen
+  Ausschnitts mit zwei Kacheln ist in 1 s angefragt, ein Ausschnitt mit 32 Kacheln bekommt alle 10 s vier. Ein neuer Ausschnitt setzt sich 0,8 s, bevor neue Kacheln zum ersten Mal angefragt werden. Dichte
   Kacheln (ab 150 Fahrzeugen) und alle Kacheln bei einem Ausschnitt unter 3° Höhe (etwa 330 km, im Hochformat zwei Bundesländer) alle **20 s**, ruhige Kacheln im weiten Ausschnitt alle
   **45 s**. Kacheln, die den Ausschnitt verlassen haben, werden nicht mehr angefragt. Wollen die sichtbaren Kacheln mehr als 24 je
   Minute, werden **alle** um denselben Faktor langsamer (die am längsten überfällige zuerst, nie eine Kachel überholt für immer) und der Status
