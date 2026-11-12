@@ -20,6 +20,7 @@ Packages/KlimaCore/         Plattformunabhängige Logik, unter Linux und macOS t
                             (Live-Preis, Shop, Budget), Coverage (Deckt das KlimaTicket die Fahrt?), Planner, Radar,
                             Map (Kartenebenen), TrainSearch, Follow, Disruptions, Logging
   Alarms/ Routes/ Widgets/  Alarm-Arten und Meldungsverlauf, gespeicherte Strecken, Widget-Cache und Zeitplan
+  ExitAlarm/                Aussteige-Wecker (docs/EXIT_ALARM.md): Planner (Fahrplan + GPS), Buch, Engine mit Protokollen und Fakes
   Tariff/                   Tarifstand: Fahrplanwechsel, Frische, Relationspaket (Download, Prüfung)
   TicketRights/             Fahrgastrechte: Widerspruchs- und Kündigungsbrief, Ratenplan, Fristen
   WhatIf/ YearReview/       „Was wäre wenn?“ und der Jahresrückblick (Seiten, Zeiträume, Referenzstrecken)

@@ -29,6 +29,8 @@ Bedienung, Frost-Karten für Inhalte.
 - **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
   Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
+- **Aussteige-Wecker** – weckt dich kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort, auch bei gesperrtem iPhone;
+  der Standort bleibt auf dem Gerät und wird nicht gespeichert ([docs/EXIT_ALARM.md](docs/EXIT_ALARM.md), mit Geräte-Checkliste)
 - **Automatische Fahrterkennung** (optional) – erkennt Fahrten zwischen deinen Stamm-Bahnhöfen und schlägt sie vor
 - **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
   einen Cache und machen nie einen Netzaufruf
