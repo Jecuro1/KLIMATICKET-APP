@@ -551,6 +551,9 @@ struct ScreenshotRouter: View {
         case "advisor", "advisorRenewal", "advisorCancel", "advisorCancelChart", "advisorExtras", "advisorFamily",
              "advisorJob", "ticketEdit", "ticketAdvisor":
             AdvScreenshotHost(screen: screen)
+        // MARK: tarifstand – the price notice on the Ticket tab, its details and the Tarifstand row (injected clock, no network)
+        case let tarifScreen where TarifstandScreenshotHost.screens.contains(tarifScreen):
+            TarifstandScreenshotHost(screen: tarifScreen)
         // MARK: whatif – „Was wäre wenn?“: real data, assumptions, empty, extreme, AX5 (demo data, no network)
         case let whatIfScreen where WhatIfScreenshotHost.screens.contains(whatIfScreen):
             WhatIfScreenshotHost(screen: whatIfScreen)

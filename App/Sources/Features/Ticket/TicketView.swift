@@ -136,6 +136,7 @@ struct TicketView: View {
 
     private func statusCards(ticket: TicketEntity, summary: SavingsSummary, proxy: ScrollViewProxy) -> some View {
         VStack(spacing: TktStyle.cardSpacing) {
+            TariffNoticeBanner().reveal(order: 2) // MARK: tarifstand – prices may be out of date (timetable change, New Year)
             TktValidityCard(start: ticket.startDate, end: ticket.endDate, summary: summary)
                 .reveal(order: 2)
             if needsRenewal(ticket, summary: summary) {

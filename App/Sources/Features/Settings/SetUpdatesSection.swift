@@ -1,7 +1,8 @@
 import SwiftUI
 import KlimaCore
 
-/// App updates (version, status, check, auto-check, AltStore/SideStore source) and the tariff catalog state.
+/// App updates (version, status, check, auto-check, AltStore/SideStore source). The tariff state lives in Preisberechnung now
+/// (SetTarifstandRows, MARK: tarifstand).
 struct SetUpdatesSection: View {
     @Environment(AppState.self) private var app
     @Environment(\.openURL) private var openURL
@@ -9,7 +10,6 @@ struct SetUpdatesSection: View {
     /// Owned by SettingsView, which presents the sheet at list level.
     @Binding var showsUpdateSheet: Bool
 
-    @State private var isRefreshingTariffs = false
     /// A check started here failed (no toast for it: one error haptic and the status line says why).
     @State private var checkFailedTrigger = 0
     /// The available release as shown: mirrored from the service so its row folds in with a spring when a check
@@ -55,18 +55,6 @@ struct SetUpdatesSection: View {
             SetSectionHeader(title: "Updates")
         } footer: {
             SetFooter(text: app.updates.channelFooter)
-        }
-
-        Section {
-            Group {
-                tariffRow
-                refreshTariffsRow
-            }
-            .listRowBackground(Theme.surface)
-        } header: {
-            SetSectionHeader(title: "Ticketpreise & Tarife")
-        } footer: {
-            SetFooter(text: "Ticketpreise und das Tarifmodell aktualisieren sich automatisch, sobald online neue Werte liegen – ohne App-Update.")
         }
     }
 
@@ -207,56 +195,6 @@ struct SetUpdatesSection: View {
         return app.updates.state == .notConfigured ? "Update-Quelle nicht eingerichtet" : "Verfügbar nach der ersten Update-Prüfung"
     }
 
-    // MARK: Tariffs
-
-    /// Whether an online source for the tariff catalog is configured (update manifest hint or AppConfig).
-    private var hasTariffSource: Bool {
-        app.updates.manifest?.tariffsURL.flatMap(URL.init(string:)) != nil || app.config.remoteTariffs != nil
-    }
-
-    private var tariffRow: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            SetRowLabel(title: "Tarif-Stand", subtitle: tariffSubtitle, symbol: "tag.fill", tint: Theme.dawn)
-                .setSymbolEffect(.bounce, trigger: app.catalog.version)
-            Spacer(minLength: Theme.Spacing.xs)
-            SetPill(text: "v\(app.catalog.version)", tint: Theme.summitText)
-                .numericValue(Double(app.catalog.version))
-        }
-        .motionAnimation(Motion.smooth, value: app.catalog.version)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var tariffSubtitle: String {
-        var parts: [String] = []
-        if let day = SetFormat.isoDay(app.catalog.updatedAt) {
-            parts.append("Stand \(Format.date(day))")
-        } else if !app.catalog.updatedAt.isEmpty {
-            parts.append("Stand \(app.catalog.updatedAt)")
-        }
-        parts.append(SetFormat.count(app.catalog.products.count, "Ticketpreis", "Ticketpreise"))
-        if let refreshed = app.tariffs.lastRefresh {
-            parts.append("geprüft \(SetFormat.relative(refreshed))")
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    /// The arrows turn while the catalogue loads; the toast (and its haptic) reports the result.
-    private var refreshTariffsRow: some View {
-        Button {
-            Task { await refreshTariffs() }
-        } label: {
-            HStack(spacing: Theme.Spacing.s) {
-                SetRowLabel(title: "Tarife aktualisieren",
-                            subtitle: hasTariffSource ? nil : "Keine Online-Quelle eingerichtet",
-                            symbol: "arrow.triangle.2.circlepath", tint: Theme.glacier, isBusy: isRefreshingTariffs)
-                Spacer(minLength: Theme.Spacing.xs)
-                SetBusyIndicator(isBusy: isRefreshingTariffs)
-            }
-        }
-        .disabled(isRefreshingTariffs || !hasTariffSource)
-        .accessibilityValue(isRefreshingTariffs ? "Wird aktualisiert" : "")
-    }
-
     // MARK: Actions
 
     private func checkForUpdates() async {
@@ -269,25 +207,6 @@ struct SetUpdatesSection: View {
             app.showToast("checkmark.circle.fill", "KlimaBilanz ist aktuell", "Version \(AppConfig.appVersion)")
         } else if case .failed = app.updates.state {
             checkFailedTrigger += 1
-        }
-    }
-
-    private func refreshTariffs() async {
-        isRefreshingTariffs = true
-        let before = app.catalog.version
-        let refreshedBefore = app.tariffs.lastRefresh
-        let updated = await app.tariffs.refreshIfNeeded(manifestHint: app.updates.manifest, force: true)
-        app.reloadCatalog()
-        isRefreshingTariffs = false
-        // `refreshIfNeeded` returns false both for "nothing newer" and for failures; only a successful download
-        // moves `lastRefresh`, which tells the two apart.
-        let reachedServer = app.tariffs.lastRefresh != refreshedBefore
-        if updated || app.catalog.version > before {
-            app.showToast("checkmark.circle.fill", "Tarife aktualisiert", "Tarif-Version \(app.catalog.version)")
-        } else if reachedServer {
-            app.showToast("checkmark.circle.fill", "Tarife sind aktuell", "Tarif-Version \(app.catalog.version)")
-        } else {
-            app.showToast("exclamationmark.triangle.fill", "Tarife nicht erreichbar", "Bitte später noch einmal versuchen")
         }
     }
 }

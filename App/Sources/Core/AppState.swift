@@ -78,7 +78,10 @@ final class AppState {
     /// `init`, so nothing of it runs before the first frame; reading waits only for whatever is left of that build.
     @ObservationIgnored let bundled: BundledData
     var stations: StationIndex { bundled.stations.value }
-    var relations: RelationPriceTable { bundled.relations.value }
+    // MARK: tarifstand – the table in use is the bundled one or a newer, validated pack (docs/TARIFF_FRESHNESS.md).
+    @ObservationIgnored let relationsHolder: RelationsHolder
+    @ObservationIgnored let relationPacks: RelationPackService
+    var relations: RelationPriceTable { relationsHolder.current }
     private(set) var catalog: TariffCatalog
     let settings: AppSettings
     let auth: AuthService
@@ -110,6 +113,12 @@ final class AppState {
         let bundled = BundledData()
         bundled.preload()
         self.bundled = bundled
+        // MARK: tarifstand – the cached relation pack is read (and checked again) in the background, behind the bundled table.
+        let relationPacks = RelationPackService()
+        let relationsHolder = RelationsHolder(bundled: bundled.relations) { relationPacks.loadInstalledTable(reference: $0) }
+        relationsHolder.preload()
+        self.relationPacks = relationPacks
+        self.relationsHolder = relationsHolder
         self.settings = settings ?? AppSettings()
         let tariffs = TariffService()
         self.tariffs = tariffs
@@ -124,7 +133,7 @@ final class AppState {
         // network with the user's consent (LiveDataService).
         let appSettings = self.settings
         let live = LiveDataService(appConfig: AppConfig.shared, settings: appSettings, catalog: initialCatalog,
-                                   stations: { bundled.stations.value }, relations: { bundled.relations.value })
+                                   stations: { bundled.stations.value }, relations: { relationsHolder.current })   // MARK: tarifstand
         self.live = live
         self.planner = PlannerModel(live: live, stations: { bundled.stations.value }, settings: appSettings)
         self.assistant = LocalAssistant(settings: appSettings)   // MARK: ai
@@ -160,6 +169,7 @@ final class AppState {
         let task = Task { @MainActor in
             defer { self.remoteRefresh = nil }
             if await self.tariffs.refreshIfNeeded(manifestHint: self.updates.manifest) { self.reloadCatalog() }
+            await self.refreshRelationPack(force: false)   // MARK: tarifstand – at most once per 24 h, only when newer
             await self.updates.checkIfDue(force: false)
             await self.live.refreshConfigIfDue(manifest: self.updates.manifest)   // MARK: planner
         }
@@ -255,7 +265,7 @@ final class BundledData: Sendable {
         }
         defer { LaunchTrace.mark("relations.built") }
         return RelationPriceTable(validFrom: meta.validFrom, source: meta.source,
-                                  pointIDs: meta.points.map(\.stationID), triples: raw)
+                                  pointIDs: meta.points.map(\.stationID), triples: raw, version: meta.version ?? 1)   // MARK: tarifstand
     }
 
     static func loadStations() -> StationIndex {

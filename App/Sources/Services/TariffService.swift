@@ -42,25 +42,44 @@ final class TariffService {
 
     private var bundledCache: TariffCatalog?
 
+    // MARK: tarifstand
+    /// What a refresh found. `offline` = no connection, `failed` = the server answered with something that is not a usable
+    /// catalogue (an HTTP error, a file that does not decode).
+    enum RefreshOutcome: Equatable {
+        case installed, upToDate, throttled, offline, failed, notConfigured
+    }
+
+    /// Where the tariffs document comes from: the update manifest's hint, else the build configuration.
+    func tariffsURL(manifestHint: UpdateManifest?) -> URL? {
+        manifestHint?.tariffsURL.flatMap(URL.init(string:)) ?? config.remoteTariffs
+    }
+
     /// Downloads a newer catalog at most every 12 h. Returns true when a newer catalog was installed.
     @discardableResult
     func refreshIfNeeded(manifestHint: UpdateManifest?, force: Bool = false) async -> Bool {
-        let url = manifestHint?.tariffsURL.flatMap(URL.init(string:)) ?? config.remoteTariffs
-        guard let url else { return false }
-        if !force, let last = lastRefresh, Date().timeIntervalSince(last) < 12 * 3600 { return false }
-        if let hinted = manifestHint?.tariffsVersion, hinted <= currentCatalog().version, !force { return false }
+        await refresh(manifestHint: manifestHint, force: force) == .installed
+    }
+
+    /// Like `refreshIfNeeded`, but says what happened (Einstellungen › „Jetzt prüfen“). `lastRefresh` moves only when the
+    /// server delivered a usable catalogue, whether it was newer or not.
+    func refresh(manifestHint: UpdateManifest?, force: Bool = false) async -> RefreshOutcome {
+        guard let url = tariffsURL(manifestHint: manifestHint) else { return .notConfigured }
+        if !force, let last = lastRefresh, Date().timeIntervalSince(last) < 12 * 3600 { return .throttled }
+        if let hinted = manifestHint?.tariffsVersion, hinted <= currentCatalog().version, !force { return .upToDate }
         do {
             var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return false }
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return .failed }
             let remote = try TariffCatalog.decode(from: data)
             defaults.set(Date(), forKey: "tariffs.lastRefresh")
-            guard remote.isUsable, remote.version > currentCatalog().version else { return false }
+            guard remote.isUsable, remote.version > currentCatalog().version else { return .upToDate }
             try data.write(to: cacheURL, options: .atomic)
-            return true
+            return .installed
+        } catch is URLError {
+            return .offline
         } catch {
-            return false
+            return .failed
         }
     }
 
