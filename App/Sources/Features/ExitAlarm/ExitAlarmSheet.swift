@@ -361,6 +361,8 @@ struct ExitAlarmSheet: View {
         .padding(.top, Theme.Spacing.xs)
         .padding(.bottom, Theme.Spacing.xs)
         .background(.bar)
+        // The pinned bar stops growing at the second accessibility size: the stops above must keep room to scroll.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 
     // MARK: Actions

@@ -17,7 +17,7 @@ struct SetExitAlarmSection: View {
                     // Short titles keep the chosen value on the row's line, like the sound below ("5 Min", not "5 Min vorher").
                     ForEach(ExitAlarmLead.allCases, id: \.self) { Text($0 == .atArrival ? "Bei Ankunft" : "\($0.minutes) Min").tag($0) }
                 } label: {
-                    SetRowLabel(title: "Klingeln", subtitle: "Minuten vor der Ankunft, Voreinstellung für neue Wecker",
+                    SetRowLabel(title: "Vorlauf", subtitle: "Für neue Wecker",
                                 symbol: "bell.badge.fill", tint: Theme.dawn)
                 }
 
