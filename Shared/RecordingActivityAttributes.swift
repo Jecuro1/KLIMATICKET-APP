@@ -16,15 +16,19 @@ struct RecordingActivityAttributes: ActivityAttributes {
         var isStopped: Bool
         /// When it was stopped: the timer stands still at that moment instead of counting on until the activity goes away.
         var stoppedAt: Date?
+        /// When the app last sent these numbers. A recording that no longer updates (the process ended, no GPS for minutes) goes stale
+        /// (`staleDate`); the timer then stands still at this moment instead of counting on for a recording that may be gone.
+        var updatedAt: Date?
 
         init(distanceKm: Double = 0, speedKmh: Double = 0, stationName: String? = nil, isAtStation: Bool = false, isStopped: Bool = false,
-             stoppedAt: Date? = nil) {
+             stoppedAt: Date? = nil, updatedAt: Date? = nil) {
             self.distanceKm = distanceKm
             self.speedKmh = speedKmh
             self.stationName = stationName
             self.isAtStation = isAtStation
             self.isStopped = isStopped
             self.stoppedAt = stoppedAt
+            self.updatedAt = updatedAt
         }
     }
 

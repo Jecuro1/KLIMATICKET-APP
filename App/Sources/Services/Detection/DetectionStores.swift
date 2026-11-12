@@ -60,9 +60,13 @@ enum DetectionFiles {
 enum PointBufferStore {
     static let fileName = "points.json"
 
+    /// Reads the file and drops what is older than 36 hours – from the file, too: a phone that was not touched for days must not keep
+    /// the points of the last ride on disk until the next event writes the file again.
     static func load(now: Date = Date()) -> RollingPointBuffer {
-        var buffer = DetectionFiles.load(RollingPointBuffer.self, from: fileName) ?? RollingPointBuffer()
+        let stored = DetectionFiles.load(RollingPointBuffer.self, from: fileName) ?? RollingPointBuffer()
+        var buffer = stored
         buffer.prune(now: now)
+        if buffer != stored { save(buffer) }
         return buffer
     }
 
@@ -76,8 +80,10 @@ enum DetectionLogStore {
     static let fileName = "log.json"
 
     static func load(now: Date = Date()) -> DetectionLog {
-        var log = DetectionFiles.load(DetectionLog.self, from: fileName) ?? DetectionLog()
+        let stored = DetectionFiles.load(DetectionLog.self, from: fileName) ?? DetectionLog()
+        var log = stored
         log.prune(now: now)
+        if log != stored { save(log) }   // the 14 days hold on disk, too
         return log
     }
 

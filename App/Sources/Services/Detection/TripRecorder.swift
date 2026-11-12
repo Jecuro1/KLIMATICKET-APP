@@ -1,11 +1,14 @@
 import Foundation
 import CoreLocation
+import UIKit
+import UserNotifications
 import KlimaCore
 
 // "Fahrt aufzeichnen" (Mode A, docs/TRIP_DETECTION.md §2): the reliable way. The person starts a recording, the phone delivers
 // precise GPS fixes – in the background too, with the blue location indicator – the live screen shows time, distance, speed and
 // the station you are at, and stopping proposes the ride for confirmation. Location is used ONLY while a recording runs
-// ("Beim Verwenden" is enough). Nothing is kept after the ride is decided except the ordinary trip.
+// ("Beim Verwenden" is enough). Nothing is kept after the ride is decided except the ordinary trip. A recording nobody stops ends by
+// itself (30 minutes without moving, 12 hours, permission taken away): full-accuracy GPS must not run for days on a forgotten phone.
 
 /// CoreLocation as a `LocationProviding` source: dense fixes for a recording.
 final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProviding, @unchecked Sendable {
@@ -27,6 +30,9 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
 
     var status: CLAuthorizationStatus { manager.authorizationStatus }
 
+    /// "Genauer Standort" is off in the iOS settings: the fixes are only good to a few kilometres, the recording would never find a route.
+    var isReducedAccuracy: Bool { manager.accuracyAuthorization == .reducedAccuracy }
+
     func requestPermission() { manager.requestWhenInUseAuthorization() }
 
     func positions() -> AsyncStream<CoarsePoint> {
@@ -39,8 +45,12 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
                 self.manager.showsBackgroundLocationIndicator = true
             }
             self.manager.startUpdatingLocation()
+            // iOS asks once whether the exact location may be used for this recording (Info.plist: NSLocationTemporaryUsageDescriptionDictionary).
+            if self.isReducedAccuracy { self.manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: Self.fullAccuracyPurposeKey) }
         }
     }
+
+    static let fullAccuracyPurposeKey = "TripRecording"
 
     func stop() {
         continuation?.finish()
@@ -90,8 +100,21 @@ final class TripRecorder {
     private(set) var proposal: RecordingProposal?
     /// The proposal was handed to the inbox as this candidate.
     private(set) var candidateID: UUID?
+    /// Why the recording ended without "Beenden" (nil: the person ended it).
+    private(set) var autoStopReason: RecordingAutoStop?
+    /// "Genauer Standort" is off: no usable fix can come.
+    private(set) var accuracyIsReduced = false
+    /// A recording was running when the app process ended (iOS ended it, or it was swiped away): the track was only in memory and is gone.
+    private(set) var interruptedStart: Date?
 
     var isRecording: Bool { phase == .recording }
+
+    /// Files the proposal of a recording that ended by itself (the screen may not be open, the app may be in the background). Set by
+    /// AppState; returns the inbox entry.
+    @ObservationIgnored var autoStopHandler: (@MainActor (RecordingProposal) -> TripCandidateEntity?)?
+
+    /// UserDefaults key: when the running recording started. Present only while one runs – the time, never a place.
+    private static let runningKey = "tripdetect.recording.since"
 
     @ObservationIgnored private var session: RecordingSession?
     @ObservationIgnored private var feed: (any LocationProviding)?
@@ -104,7 +127,14 @@ final class TripRecorder {
     /// touches CoreLocation, so it can never raise a permission alert).
     init(makeFeed: @escaping @MainActor () -> any LocationProviding = { LaunchMode.isSandboxed ? ScriptedTrackProvider(script: []) : CoreLocationFeed() }) {
         self.makeFeed = makeFeed
+        // A start time that is still there was never cleared by a stop: the process ended during a recording.
+        if !LaunchMode.isSandboxed, let started = UserDefaults.standard.object(forKey: Self.runningKey) as? Date {
+            interruptedStart = started
+            UserDefaults.standard.removeObject(forKey: Self.runningKey)
+        }
     }
+
+    func acknowledgeInterruption() { interruptedStart = nil }
 
     /// A recorder that shows a recording in progress without running one (CI scenes): the fixes of a scripted track up to
     /// `until` are taken in at once.
@@ -118,6 +148,14 @@ final class TripRecorder {
         return recorder
     }
 
+    /// CI scenes only: a state the live code reaches on a device (a reduced-accuracy permission, a recording that ended by itself, one the
+    /// process lost) – nothing of it can be provoked in the simulator without a system dialog.
+    func demoState(accuracyIsReduced: Bool = false, autoStop: RecordingAutoStop? = nil, interruptedStart: Date? = nil) {
+        self.accuracyIsReduced = accuracyIsReduced
+        self.autoStopReason = autoStop
+        self.interruptedStart = interruptedStart
+    }
+
     // MARK: Start and stop
 
     /// Starts a recording. The permission is asked here (and only here), never in a screenshot or demo run.
@@ -126,32 +164,46 @@ final class TripRecorder {
         self.lookup = lookup
         proposal = nil
         candidateID = nil
+        autoStopReason = nil
+        interruptedStart = nil
         if LaunchMode.isSandboxed {
             begin(lookup: lookup, feed: makeFeed())
             return
         }
         let live = CoreLocationFeed()
+        // Weak: the feed holds this closure, so a strong reference back to it would keep both (and the location manager) alive
+        // for good after the recording was cancelled. It also hears a permission taken away while recording.
+        live.onAuthorization = { [weak self, weak live] status in
+            Task { @MainActor in
+                guard let self, let live else { return }
+                self.authorizationChanged(status, feed: live, lookup: lookup)
+            }
+        }
         switch live.status {
         case .denied, .restricted:
             phase = .denied
         case .notDetermined:
             phase = .needsPermission
-            // Weak: the feed holds this closure, so a strong reference back to it would keep both (and the location manager) alive
-            // for good after the recording was cancelled.
-            live.onAuthorization = { [weak self, weak live] status in
-                Task { @MainActor in
-                    guard let self, let live, self.phase == .needsPermission else { return }
-                    switch status {
-                    case .authorizedWhenInUse, .authorizedAlways: self.begin(lookup: lookup, feed: live)
-                    case .denied, .restricted: self.phase = .denied
-                    default: break
-                    }
-                }
-            }
             feed = live
             live.requestPermission()
         default:
             begin(lookup: lookup, feed: live)
+        }
+    }
+
+    private func authorizationChanged(_ status: CLAuthorizationStatus, feed live: CoreLocationFeed, lookup: any StationLookup) {
+        switch phase {
+        case .needsPermission:
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways: begin(lookup: lookup, feed: live)
+            case .denied, .restricted: phase = .denied
+            default: break
+            }
+        case .recording:
+            // Location off in the iOS settings or Control Center: no fix can come any more. End cleanly instead of "GPS-Signal schwach" for good.
+            if status == .denied || status == .restricted { finishAutomatically(.locationOff) }
+        default:
+            break
         }
     }
 
@@ -171,15 +223,50 @@ final class TripRecorder {
                 RecordingActivityController.shared.update(snapshot)
             }
         }
-        // The clock of the live screen: elapsed time and "GPS verloren" tick even when no fix arrives.
+        // The clock of the live screen: elapsed time and "GPS verloren" tick even when no fix arrives. It also ends a forgotten recording.
         ticker = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 guard let self, self.phase == .recording, let session = self.session else { return }
-                self.snapshot = session.snapshot(now: Date())
+                let now = Date()
+                self.snapshot = session.snapshot(now: now)
+                let reduced = (self.feed as? CoreLocationFeed)?.isReducedAccuracy ?? false
+                if reduced != self.accuracyIsReduced { self.accuracyIsReduced = reduced }
+                if let reason = session.autoStop(now: now) {
+                    self.finishAutomatically(reason)
+                    return
+                }
             }
         }
+        if !LaunchMode.isSandboxed { UserDefaults.standard.set(startedAt, forKey: Self.runningKey) }
         RecordingActivityController.shared.begin(startedAt: startedAt)
+    }
+
+    /// The recording ends without the person: it proposes the ride up to the moment the phone last moved, files it in the inbox through
+    /// `autoStopHandler`, and – with the app in the background and notifications allowed already – says so.
+    func finishAutomatically(_ reason: RecordingAutoStop) {
+        guard phase == .recording else { return }
+        var endedAt = Date()
+        if case .idle(let since) = reason { endedAt = since }
+        autoStopReason = reason
+        let result = stop(now: endedAt)
+        if let result, let candidate = autoStopHandler?(result) { candidateID = candidate.id }
+        notifyAutoStop(reason, hasProposal: result != nil)
+    }
+
+    private func notifyAutoStop(_ reason: RecordingAutoStop, hasProposal: Bool) {
+        guard !LaunchMode.isSandboxed, UIApplication.shared.applicationState != .active else { return }
+        Task {
+            let settings = await UNUserNotificationCenter.current().notificationSettings()
+            guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+            let content = UNMutableNotificationContent()
+            content.title = "Aufzeichnung beendet"
+            content.body = reason.text() + (hasProposal ? " Die Fahrt wartet in der Übersicht." : " Es kam keine Fahrt zusammen.")
+            content.sound = .default
+            content.categoryIdentifier = TripDetectionService.notificationCategory
+            content.threadIdentifier = "recording"
+            try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "recording.autostop", content: content, trigger: nil))
+        }
     }
 
     /// Stops the recording and builds the proposal. Idempotent.
@@ -194,6 +281,7 @@ final class TripRecorder {
         snapshot = session?.snapshot(now: now)
         proposal = result
         phase = .finished
+        UserDefaults.standard.removeObject(forKey: Self.runningKey)
         RecordingActivityController.shared.end(proposal: result)
         return result
     }
@@ -208,7 +296,10 @@ final class TripRecorder {
         snapshot = nil
         proposal = nil
         candidateID = nil
+        autoStopReason = nil
+        accuracyIsReduced = false
         phase = .idle
+        UserDefaults.standard.removeObject(forKey: Self.runningKey)
         RecordingActivityController.shared.end(proposal: nil)
     }
 

@@ -4,6 +4,8 @@ import KlimaCore
 
 // The app's side of the "Aufzeichnung läuft" Live Activity (Shared/RecordingActivityAttributes.swift). Started when a recording
 // starts, updated at most every 10 s while it runs, ended when it stops. `pushType: nil`: no remote updates, no APNs.
+// Every update moves the `staleDate` two minutes ahead: a recording whose process is gone (or that has had no GPS for two minutes)
+// goes stale on the Lock Screen ("Keine aktuellen Daten") instead of counting a timer for a recording that may not exist.
 // Never in a screenshot or perf run.
 
 @MainActor
@@ -16,12 +18,17 @@ final class RecordingActivityController {
 
     var isAllowed: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
+    /// How long the numbers stay "current" without a new update.
+    static let staleAfter: TimeInterval = 120
+    private static func staleDate(from now: Date = Date()) -> Date { now.addingTimeInterval(staleAfter) }
+
     /// Starts the activity of a recording (nothing happens when Live Activities are off – the recording itself runs).
     func begin(startedAt: Date) {
         guard !LaunchMode.isSandboxed, isAllowed, activity == nil else { return }
-        let content = ActivityContent(state: RecordingActivityAttributes.ContentState(), staleDate: nil, relevanceScore: 70)
+        let now = Date()
+        let content = ActivityContent(state: RecordingActivityAttributes.ContentState(updatedAt: now), staleDate: Self.staleDate(from: now), relevanceScore: 70)
         activity = try? Activity.request(attributes: RecordingActivityAttributes(startedAt: startedAt), content: content, pushType: nil)
-        lastUpdate = Date()
+        lastUpdate = now
     }
 
     /// Ends every "Aufzeichnung läuft" activity this process does not own: a recording does not survive the app being killed, so one
@@ -44,12 +51,13 @@ final class RecordingActivityController {
     func update(_ snapshot: RecordingSnapshot) {
         guard let activity else { return }
         let station = snapshot.currentStation?.station.name ?? snapshot.lastStation?.name
+        let now = Date()
         let state = RecordingActivityAttributes.ContentState(distanceKm: snapshot.distanceKm, speedKmh: snapshot.speedKmh, stationName: station,
-                                                              isAtStation: snapshot.currentStation != nil)
+                                                              isAtStation: snapshot.currentStation != nil, updatedAt: now)
         lastState = state
-        guard Date().timeIntervalSince(lastUpdate) >= 10 else { return }
-        lastUpdate = Date()
-        Task { await activity.update(ActivityContent(state: state, staleDate: nil, relevanceScore: 70)) }
+        guard now.timeIntervalSince(lastUpdate) >= 10 else { return }
+        lastUpdate = now
+        Task { await activity.update(ActivityContent(state: state, staleDate: Self.staleDate(from: now), relevanceScore: 70)) }
     }
 
     /// Ends the activity; a stopped recording stays on the Lock Screen for a moment as "Aufzeichnung gestoppt".

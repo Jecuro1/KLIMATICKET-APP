@@ -24,8 +24,33 @@ public struct RecordingConfig: Hashable, Sendable {
     public var minRideSeconds: TimeInterval = 60
     /// The live map line keeps at most this many points.
     public var maxTrackPoints = 1200
+    /// A recording that has not left a circle of this radius for `idleStopSeconds` was forgotten, not ridden: it ends by itself
+    /// (the GPS at full accuracy would otherwise run down the battery, and the blue pill would stay on, until the person remembers).
+    public var idleRadiusMeters = 150.0
+    public var idleStopSeconds: TimeInterval = 30 * 60
+    /// No ride lasts longer than this (the detector's limit, too): a recording that runs this long was forgotten.
+    public var maxRecordingSeconds: TimeInterval = 12 * 3600
 
     public init() {}
+}
+
+/// Why a recording ended without the person pressing "Beenden".
+public enum RecordingAutoStop: Hashable, Sendable {
+    /// Nothing moved since this moment (the ride ended there; the rest was waiting).
+    case idle(since: Date)
+    /// Running for more than 12 hours.
+    case tooLong
+    /// The permission was taken away (iOS Settings, Control Center): no more fixes can come.
+    case locationOff
+
+    /// What the person is told, in the recording screen and in the notice.
+    public func text(idleMinutes: Int = 30) -> String {
+        switch self {
+        case .idle: "Die Aufzeichnung hat sich beendet: Du hast dich \(idleMinutes) Minuten nicht bewegt. Der Standort ist wieder aus."
+        case .tooLong: "Die Aufzeichnung hat sich nach 12 Stunden beendet. Der Standort ist wieder aus."
+        case .locationOff: "Die Aufzeichnung wurde beendet, weil der Standortzugriff entzogen wurde."
+        }
+    }
 }
 
 public struct RecordingSnapshot: Hashable, Sendable {
@@ -85,9 +110,13 @@ public struct RecordingSession: Sendable {
     private var haltCandidate: Station?
     private var halts: [(station: Station, at: Date)] = []
     private var latestFixTime: Date?
+    /// The last place the phone was more than `idleRadiusMeters` away from, and since when it has stayed within that circle.
+    private var anchor: GeoPoint?
+    private var anchorTime: Date
 
     public init(startedAt: Date, lookup: any StationLookup, config: RecordingConfig = RecordingConfig()) {
         self.startedAt = startedAt
+        self.anchorTime = startedAt
         self.config = config
         self.matcher = StationMatcher(lookup: lookup, maxDistanceMeters: config.endpointRadiusMeters)
         self.nearMatcher = StationMatcher(lookup: lookup, maxDistanceMeters: config.stationRadiusMeters)
@@ -120,6 +149,11 @@ public struct RecordingSession: Sendable {
         maxSpeed = max(maxSpeed, speed)
         lastAccepted = point
         latestFixTime = point.time
+        // The idle clock restarts whenever the phone leaves the circle around the last anchor.
+        if anchor.map({ DetectionGeo.meters($0, point.geo) >= config.idleRadiusMeters }) ?? true {
+            anchor = point.geo
+            anchorTime = point.time
+        }
         fixes.append(point)
         if moved || track.isEmpty { appendTrack(point.geo) }
         refreshStation(at: point)
@@ -160,6 +194,17 @@ public struct RecordingSession: Sendable {
         }
     }
 
+    // MARK: Forgotten recordings
+
+    /// Whether the recording should end by itself at `now`: it ran 12 hours, or the phone stayed within 150 m of one place for 30
+    /// minutes (a forgotten recording on a desk). A ride has halts of minutes, never half an hour; a longer wait ends the recording
+    /// – the proposal then reaches back to the moment the phone last moved (`proposal(endedAt:)`).
+    public func autoStop(now: Date) -> RecordingAutoStop? {
+        if now.timeIntervalSince(startedAt) >= config.maxRecordingSeconds { return .tooLong }
+        if now.timeIntervalSince(anchorTime) >= config.idleStopSeconds { return .idle(since: anchorTime) }
+        return nil
+    }
+
     // MARK: Read
 
     public func snapshot(now: Date) -> RecordingSnapshot {
@@ -169,8 +214,11 @@ public struct RecordingSession: Sendable {
     }
 
     /// The ride this recording makes, nil when it is too short to be one (an accidental start).
+    ///
+    /// `end` is when the recording ended. Fixes after it do not belong to the ride (an automatic stop reaches back to the last
+    /// movement: the half hour the phone stood still is no part of the trip).
     public func proposal(endedAt end: Date) -> RecordingProposal? {
-        guard let first = fixes.first, let lastFix = fixes.last else { return nil }
+        guard let first = fixes.first, let lastFix = fixes.last(where: { $0.time <= end }) ?? fixes.last else { return nil }
         let duration = max(end, lastFix.time).timeIntervalSince(startedAt)
         let straight = DetectionGeo.meters(first.geo, lastFix.geo)
         guard distanceMeters >= config.minRideMeters, duration >= config.minRideSeconds, straight >= config.minRideMeters * 0.5 else { return nil }

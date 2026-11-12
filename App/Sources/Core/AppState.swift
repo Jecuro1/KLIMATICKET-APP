@@ -150,6 +150,13 @@ final class AppState {
             return Repository(context: container.mainContext, app: self)
         }
         detection.liveProvider = { [weak self] in self?.live }
+        // MARK: tripdetect – a recording that ends by itself (forgotten, 12 hours, location permission taken away) may end with the screen
+        // closed and the app in the background: it files its proposal in the inbox like a stopped one. (Touching `TripRecorder.shared`
+        // here also ends a "Aufzeichnung läuft" Live Activity that a killed process left behind, at every launch.)
+        TripRecorder.shared.autoStopHandler = { [weak self] proposal in
+            guard let self, let container = AppDelegate.container else { return nil }
+            return Repository(context: container.mainContext, app: self).insertRecordingCandidate(proposal)
+        }
         PlannerIntentHost.app = self   // MARK: planner – Siri and Shortcuts answer from this state
     }
 

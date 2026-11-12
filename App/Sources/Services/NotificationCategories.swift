@@ -15,7 +15,10 @@ enum NotificationCategories {
 
     static func registerAll() {
         // MARK: tripdetect – the "Fahrt erkannt?" notice has no action: a ride is never added without looking at it first.
-        let suggestion = UNNotificationCategory(identifier: TripDetectionService.notificationCategory, actions: [], intentIdentifiers: [])
+        // The body names the stations of the ride. Where the person hides previews (Einstellungen › Mitteilungen › Vorschauen), iOS shows the
+        // placeholder instead: where someone was is nobody's business on a locked screen.
+        let suggestion = UNNotificationCategory(identifier: TripDetectionService.notificationCategory, actions: [], intentIdentifiers: [],
+                                                hiddenPreviewsBodyPlaceholder: "Ein Fahrten-Vorschlag wartet in der Übersicht.")
         let follow = UNNotificationCategory(
             identifier: followNotice,
             actions: [

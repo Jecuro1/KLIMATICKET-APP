@@ -47,6 +47,8 @@ struct TripRecordView: View {
         }
         .haptic(.start, trigger: startTick)
         .haptic(.stop, trigger: stopTick)
+        // A recording that ended by itself filed its proposal without this screen: show it as soon as the screen is there.
+        .task(id: recorder.candidateID) { resolveCandidate() }
         .interactiveDismissDisabled(recorder.isRecording)
         // Throwing a running recording away cannot be undone: one stray tap beside "Beenden" must not do it.
         .confirmationDialog("Aufzeichnung verwerfen?", isPresented: $confirmsDiscard, titleVisibility: .visible) {
@@ -101,7 +103,11 @@ struct TripRecordView: View {
     private var content: some View {
         switch recorder.phase {
         case .idle:
-            idleCard.reveal(order: 0)
+            VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                if let started = recorder.interruptedStart { interruptedCard(started) }
+                idleCard
+            }
+            .reveal(order: 0)
         case .needsPermission:
             waitingCard.reveal(order: 0)
         case .denied:
@@ -118,6 +124,7 @@ struct TripRecordView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.m) {
             RecordMapCard(track: snapshot?.track ?? [], stations: nearby, current: snapshot?.currentStation?.station.id)
                 .reveal(order: 0)
+            if recorder.accuracyIsReduced { reducedAccuracyCard.motionTransition(.rise) }
             clock(snapshot).reveal(.focus, order: 1)
             HStack(spacing: Theme.Spacing.s) {
                 figure(title: "Strecke", value: Format.number(snapshot?.distanceKm ?? 0, decimals: (snapshot?.distanceKm ?? 0) < 10 ? 1 : 0),
@@ -127,7 +134,7 @@ struct TripRecordView: View {
             .reveal(order: 2)
             stationCard(snapshot).reveal(order: 3)
             if (snapshot?.secondsSinceFix ?? 0) > 20 {
-                Label("Kein GPS-Signal – im Tunnel? Die Aufzeichnung läuft weiter und holt den Weg danach nach.", systemImage: "antenna.radiowaves.left.and.right.slash")
+                Label("Kein GPS-Signal – im Tunnel? Die Aufzeichnung läuft weiter. Die Lücke wird danach als gerade Linie überbrückt.", systemImage: "antenna.radiowaves.left.and.right.slash")
                     .font(.footnote)
                     .foregroundStyle(Theme.summitText)
                     .motionTransition(.rise)
@@ -204,6 +211,8 @@ struct TripRecordView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     bullet("location.fill", "Der genaue Standort wird nur genutzt, solange die Aufzeichnung läuft (blaue Anzeige oben).")
                     bullet("lock.shield.fill", "Die Standortpunkte bleiben auf deinem iPhone und nur im Arbeitsspeicher. Gespeichert wird allein der Vorschlag: Haltestellen, Zeiten und eine Skizze ohne Koordinaten.")
+                    bullet("lock.iphone", "Auf dem Sperrbildschirm und in der Dynamic Island steht, solange sie läuft, die Fahrzeit, die Strecke und der Bahnhof, an dem du bist.")
+                    bullet("timer", "Bleibst du 30 Minuten an einem Ort, beendet sie sich selbst – nach 12 Stunden auch. Dann ist der Standort wieder aus.")
                     bullet("bolt.badge.clock.fill", "Das braucht mehr Akku als sonst – bei langen Fahrten das Ladekabel dabei haben.")
                 }
                 .padding(.top, 4)
@@ -229,6 +238,51 @@ struct TripRecordView: View {
         }
     }
 
+    private var reducedAccuracyCard: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Label("Genauer Standort ist aus", systemImage: "location.slash.fill").font(.headline).foregroundStyle(Theme.summitText)
+                Text("iOS gibt KlimaBilanz nur einen ungefähren Standort (einige Kilometer genau). Damit findet die Aufzeichnung keine Strecke. Schalte in den Einstellungen unter Standort „Genauer Standort“ ein.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                } label: {
+                    Label("Einstellungen öffnen", systemImage: "gear").font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.glass)
+            }
+        }
+    }
+
+    /// The process ended while a recording ran: the track was only in memory, so it is gone – said plainly.
+    private func interruptedCard(_ started: Date) -> some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                Label("Letzte Aufzeichnung unterbrochen", systemImage: "exclamationmark.triangle.fill").font(.headline).foregroundStyle(Theme.summitText)
+                Text("Die Aufzeichnung von \(Format.relativeDay(started)), \(Format.time(started)) Uhr endete, ohne dass du sie beendet hast – iOS oder du habt die App geschlossen. Die Strecke lag nur im Arbeitsspeicher und ist weg.")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Verstanden") { withMotion(Motion.smooth) { recorder.acknowledgeInterruption() } }
+                    .font(.subheadline.weight(.semibold))
+                    .buttonStyle(.glass)
+            }
+        }
+        .motionTransition(.rise)
+    }
+
+    private func autoStopNote(_ reason: RecordingAutoStop) -> some View {
+        GlassCard {
+            Label(reason.text(), systemImage: "timer")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .motionTransition(.rise)
+    }
+
     private var deniedCard: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -250,15 +304,18 @@ struct TripRecordView: View {
 
     @ViewBuilder
     private var finishedContent: some View {
-        if let candidate = reviewing {
-            TripRecordResult(candidate: candidate).reveal(order: 0)
-        } else if recorder.proposal == nil {
-            GlassCard {
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    Text("Zu kurz für eine Fahrt").font(.headline).foregroundStyle(Theme.textPrimary)
-                    Text("Es kam keine Strecke zusammen – vielleicht war es ein versehentlicher Start. Es wurde nichts gespeichert.")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            if let reason = recorder.autoStopReason { autoStopNote(reason).reveal(order: 0) }
+            if let candidate = reviewing {
+                TripRecordResult(candidate: candidate).reveal(order: 1)
+            } else if recorder.proposal == nil {
+                GlassCard {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        Text("Zu kurz für eine Fahrt").font(.headline).foregroundStyle(Theme.textPrimary)
+                        Text("Es kam keine Strecke zusammen – vielleicht war es ein versehentlicher Start. Es wurde nichts gespeichert.")
+                            .font(.subheadline)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
                 }
             }
         }
@@ -315,6 +372,14 @@ struct TripRecordView: View {
         let candidate = Repository(context: context, app: app).insertRecordingCandidate(proposal)
         recorder.attach(candidate: candidate)
         withMotion(Motion.smooth) { reviewing = candidate }
+    }
+
+    /// The inbox entry a recording that ended by itself filed (by the recorder, through AppState).
+    private func resolveCandidate() {
+        guard reviewing == nil, let id = recorder.candidateID else { return }
+        var descriptor = FetchDescriptor<TripCandidateEntity>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        if let found = (try? context.fetch(descriptor))?.first { withMotion(Motion.smooth) { reviewing = found } }
     }
 
     /// The rail stations around the ride so far (the map labels them; bus stops would only be noise at this scale).

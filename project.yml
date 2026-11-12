@@ -56,9 +56,16 @@ targets:
               - klimabilanz
         NSLocationWhenInUseUsageDescription: "KlimaBilanz schlägt dir die nächstgelegene Haltestelle vor, zeigt Abfahrten in deiner Nähe und zeichnet auf Wunsch eine Fahrt genau auf (nur solange die Aufzeichnung läuft). Für Live-Abfahrten wird ein auf rund 100 m gerundeter Standort an die ÖBB-Fahrplanauskunft gesendet. Der Aussteige-Wecker nutzt deinen Standort nur auf dem iPhone, solange ein Wecker scharf ist, um dich kurz vor deiner Haltestelle zu wecken – er wird nicht gespeichert und nicht gesendet."
         NSLocationAlwaysAndWhenInUseUsageDescription: "Nur wenn du es einschaltest: Die Hintergrund-Erkennung (Beta) bemerkt grob, wann du dich an Bahnhöfen aufhältst und weit wegbewegst, und schlägt dir Fahrten vor, die du bestätigst; die groben Standortpunkte bleiben höchstens 36 Stunden auf deinem iPhone und verlassen es nie. Der Aussteige-Wecker braucht „Immer“, damit er dich bei gesperrtem iPhone vor deiner Haltestelle weckt: Er nutzt den Standort nur während einer Fahrt mit scharfem Wecker und speichert und sendet ihn nicht."
+        # MARK: tripdetect – if "Genauer Standort" is off in the iOS settings, "Fahrt aufzeichnen" may ask once for the exact location
+        # (CLLocationManager.requestTemporaryFullAccuracyAuthorization, purpose key "TripRecording"). No entitlement involved.
+        NSLocationTemporaryUsageDescriptionDictionary:
+          TripRecording: "Für die genaue Aufzeichnung deiner Fahrt braucht KlimaBilanz kurz deinen genauen Standort – nur solange die Aufzeichnung läuft, und er bleibt auf dem iPhone."
         NSUserActivityTypes:
           - com.knitelarlberg.klimabilanz.addTrip
         NSSupportsLiveActivities: true  # live: "Unterwegs" and "Live verfolgen" Live Activities
+        # MARK: tripdetect – "Aufzeichnung läuft" updates its figures about every 10 s; iOS budgets Live Activity updates and this key asks
+        # for the larger budget. A plain Info.plist key (the person can switch it off in the iOS settings); no entitlement, no push.
+        NSSupportsLiveActivitiesFrequentUpdates: true
         # MARK: follow – background refresh of an active "Live verfolgen" (docs/OEBB_LIVE.md §R8). iOS decides when it runs.
         # MARK: exitalarm – "location" keeps the app alive in the background (blue status pill) while an Aussteige-Wecker is armed
         # and a trip runs (docs/EXIT_ALARM.md); MARK: tripdetect – the same mode keeps a running "Fahrt aufzeichnen" alive

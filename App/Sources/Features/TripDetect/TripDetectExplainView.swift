@@ -24,11 +24,13 @@ struct TripDetectExplainView: View {
                           lines: ["Grobe Standortpunkte (Mobilfunk-Ebene, Hunderte Meter genau), Aufenthalte und das Betreten und Verlassen deiner häufigsten Bahnhöfe.",
                                   "Nur auf diesem iPhone, höchstens 36 Stunden. Danach löscht KlimaBilanz sie von selbst.",
                                   "Sofort weg: wenn du einen Vorschlag übernimmst oder verwirfst (die Punkte dieser Fahrt), wenn du die Erkennung ausschaltest und mit „Alle Standortdaten löschen“.",
-                                  "Die Punkte stehen nicht im Export, nicht im iOS-Backup und nicht in der Cloud-Synchronisierung. Ein Vorschlag (nur Haltestellennamen und Zeiten, keine Koordinaten) liegt bei deinen Fahrten auf dem iPhone, bis du entscheidest."])
+                                  "Die Punkte stehen nicht im Export, nicht im iOS-Backup und nicht in der Cloud-Synchronisierung.",
+                                  "Ein Vorschlag (nur Haltestellennamen und Zeiten, keine Koordinaten) liegt bei deinen Fahrten auf dem iPhone, bis du entscheidest. Danach bleibt ein kleiner Eintrag 90 Tage, damit ein verworfenes Paar später weniger Gewicht bekommt.",
+                                  "Das Erkennungs-Protokoll (Haltestellennamen, Zeiten und Gründe, keine Koordinaten) bleibt höchstens 14 Tage. Du kannst es jederzeit leeren."])
                         .reveal(order: 2)
                     block(symbol: "hand.raised.fill", tint: Theme.dusk, title: "Was nie passiert",
                           lines: ["Es wird nie eine Fahrt ohne dein Okay erfasst. Jeder Vorschlag fragt dich: Übernehmen, Bearbeiten oder Verwerfen.",
-                                  "Dein Standort verlässt das iPhone nicht. Nur wenn du Live-Daten erlaubt hast, fragt KlimaBilanz je Vorschlag einmal den Fahrplan, ob zwischen den beiden Bahnhöfen zu dieser Zeit ein Zug fuhr – mit zwei Haltestellennamen und der Uhrzeit, ohne Koordinaten.",
+                                  "Dein Standort verlässt das iPhone nicht. Nur wenn du Live-Daten erlaubt hast, fragt KlimaBilanz je Vorschlag einmal den Fahrplan, ob zwischen den beiden Bahnhöfen zu dieser Zeit ein Zug fuhr – mit zwei Haltestellennamen und der Uhrzeit, ohne Koordinaten. Das lässt sich unter „Fahrplan“ abschalten.",
                                   "Kein Tracking, keine Werbung."])
                         .reveal(order: 3)
                     block(symbol: "exclamationmark.triangle.fill", tint: Theme.dawn, title: "Wo es sich irren kann",

@@ -39,7 +39,28 @@ Die Zahlen (`RecordingSession`, KlimaCore):
   (und damit „Tempo 0“ und seine Halte) liefert; das Zittern eines stehenden Handys filtert `RecordingSession`.
 - „Verwerfen“ während der Aufzeichnung fragt nach: Die Strecke ist danach weg und nicht zurückzuholen.
 - Die Live Activity „Aufzeichnung läuft“ zeigt nach dem Beenden „Aufzeichnung gestoppt“ mit stehender Uhr. Eine Activity, die ein
-  beendeter App-Prozess zurückgelassen hat, wird beim nächsten Start der App beendet.
+  beendeter App-Prozess zurückgelassen hat, wird beim nächsten Start der App beendet. Bis dahin steht sie nicht auf „läuft“: Jede
+  Aktualisierung setzt ihr `staleDate` zwei Minuten voraus; danach zeigt der Sperrbildschirm „Keine aktuellen Daten“ mit angehaltener
+  Uhr (Prozess beendet, oder zwei Minuten ohne GPS). Sie nennt auf dem **Sperrbildschirm** den Bahnhof, an dem du bist; der
+  Startbildschirm der Aufzeichnung sagt das vorher. Ihre Zahlen kommen etwa alle 10 s; `NSSupportsLiveActivitiesFrequentUpdates`
+  (nur ein Info.plist-Schlüssel, kein Entitlement) bittet iOS um das größere Budget für Aktualisierungen; wie viel iOS wirklich erlaubt, und ob
+  du es in den iOS-Einstellungen abgeschaltet hast, lässt sich nur auf dem Gerät sehen (Checkliste 29).
+- **Eine vergessene Aufzeichnung beendet sich selbst** (`RecordingSession.autoStop`, getestet): wenn das Handy 30 Minuten lang nicht
+  aus einem Kreis von 150 m um denselben Ort kommt (ein Halt dauert Minuten, nie eine halbe Stunde), nach 12 Stunden (länger dauert
+  keine Fahrt, auch der Detektor kennt dieses Limit) oder wenn der Standortzugriff entzogen wird. Der Vorschlag reicht dann bis zu
+  dem Moment, an dem sich das Handy zuletzt bewegt hat – die halbe Stunde Stillstand gehört nicht zur Fahrt. Er landet im Postfach
+  (auch bei geschlossenem Bildschirm und App im Hintergrund), und – nur wenn Mitteilungen schon erlaubt sind, nur im Hintergrund –
+  eine Mitteilung „Aufzeichnung beendet“ sagt warum. Ohne diese Regel liefe der genaue Standort samt blauer Anzeige tagelang weiter.
+  Wer vor der Fahrt mehr als 30 Minuten am Bahnsteig wartet, wird deshalb beendet, bevor die Fahrt beginnt; dann neu starten.
+- **„Genauer Standort“ aus** (iOS-Einstellungen): Die Aufzeichnung fragt einmal um den genauen Standort für diese Aufzeichnung
+  (`requestTemporaryFullAccuracyAuthorization`, Schlüssel „TripRecording“ in `NSLocationTemporaryUsageDescriptionDictionary`); lehnst
+  du ab, steht auf dem Bildschirm „Genauer Standort ist aus“ mit „Einstellungen öffnen“ – ohne diesen Hinweis bliebe die Karte leer
+  („Warte auf das erste GPS-Signal“), weil jeder Fix ungenauer als 100 m verworfen wird.
+- **Die App wird während einer Aufzeichnung beendet** (iOS oder Wischen): Die Strecke lag nur im Arbeitsspeicher und ist weg. Beim
+  nächsten Start steht auf dem Aufzeichnen-Bildschirm „Letzte Aufzeichnung unterbrochen“ (Grundlage: ein einziger Zeitstempel, der Start,
+  in UserDefaults, nur solange eine Aufzeichnung läuft) – nichts wird vorgetäuscht, und die Live Activity wird beendet.
+- Eine Lücke ohne GPS (Tunnel) wird nach dem Wiederfinden **als gerade Linie** überbrückt, nicht nachgeholt; die Strecke dieser Lücke
+  ist deshalb etwas zu kurz. Der Wert kommt nicht aus der Strecke (siehe unten), die Fahrt bleibt richtig bepreist.
 
 Der **Wert** kommt nicht aus der aufgezeichneten Strecke, sondern genau wie bei einer getippten Fahrt aus Start, Ziel und Mittel
 (§5) – sonst wäre dieselbe Fahrt je nach Erfassungsweg unterschiedlich viel wert.
@@ -51,6 +72,12 @@ Der **Wert** kommt nicht aus der aufgezeichneten Strecke, sondern genau wie bei 
 - **Aufenthalte** (`CLVisit`): iOS meldet, wo und von wann bis wann du geblieben bist.
 - **Geofences** an deinen bis zu 15 häufigsten Bahnhöfen (250 m; iOS erlaubt 20 je App, der Rest bleibt dem Aussteige-Wecker): Betreten und Verlassen ergeben Aufenthalte mit genauer Zeit –
   die beste Quelle für den Halt am Bahnsteig.
+
+**Berechtigungen:** Die Systemfrage kommt nur nach „Verstanden, einschalten“ auf dem Erklärungsbildschirm („Beim Verwenden“, dann
+„Immer“). Ein Start der App oder die Rückkehr aus dem Hintergrund fragt nie von sich aus (auch nicht, wenn die Berechtigung in den
+iOS-Einstellungen zurückgesetzt wurde: dann steht in den Einstellungen „Standort ist aus“). Verweigerst du „Immer“, bleibt die
+Erkennung ohne Funktion und sagt das („Standort ‚Immer‘ fehlt“, „Einstellungen öffnen“). Steht **„Genauer Standort“ auf aus**,
+sind Orte nur auf einige Kilometer bekannt: kein Bahnhof liegt dann innerhalb von 500 m, und die Einstellungen sagen es.
 
 Alles landet im **rollenden Puffer** (§6). Nach jedem Ereignis (und beim Öffnen der App) läuft der reine Detektor
 (`TripDetector`, KlimaCore) über den Puffer.
@@ -126,11 +153,12 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 
 | Was | Wo | Wie lange | Wofür |
 |---|---|---|---|
-| Grobe Standortpunkte, Aufenthalte, Betreten/Verlassen von Bahnhöfen | eine JSON-Datei in `Application Support/TripDetection/points.json`, vom Backup ausgenommen, Dateischutz bis zur ersten Entsperrung | **höchstens 36 Stunden** (älteres wird bei jedem Schreiben gelöscht, höchstens 3000 Punkte) | der Detektor |
+| Grobe Standortpunkte, Aufenthalte, Betreten/Verlassen von Bahnhöfen | eine JSON-Datei in `Application Support/TripDetection/points.json`, vom Backup ausgenommen, Dateischutz bis zur ersten Entsperrung | **höchstens 36 Stunden** (älteres wird bei jedem Schreiben **und beim Start der App aus der Datei** gelöscht, höchstens 3000 Punkte; liegt das Handy tagelang still, bleibt die Datei bis zum nächsten Start liegen – nicht länger) | der Detektor |
 | Vorschlag (`TripCandidateEntity`) | SwiftData, nur auf diesem Gerät | bis zur Entscheidung (höchstens 14 Tage); danach als kleiner Eintrag 90 Tage | Postfach, Verwerfen-Gedächtnis |
 | Erkennungs-Protokoll | `Application Support/TripDetection/log.json` | höchstens 14 Tage, 120 Einträge | damit du die Treffsicherheit beurteilen kannst |
 | Fixes einer Aufzeichnung (Modus A) | **nur Arbeitsspeicher**, keine Datei | bis „Beenden“ oder „Verwerfen“ (oder bis die App beendet wird) | Live-Karte, Zahlen, Vorschlag |
 | Route der Karte | **keine Koordinaten**: 2–16 Punkte relativ zur Fahrt (0…1) | wie der Vorschlag | Mini-Strecke auf der Karte |
+| Beginn der laufenden Aufzeichnung | ein Zeitstempel in UserDefaults (`tripdetect.recording.since`), **kein Ort** | bis „Beenden“, „Verwerfen“ oder dem nächsten Start | „Letzte Aufzeichnung unterbrochen“ ehrlich anzeigen |
 
 - **Gelöscht** wird: beim Übernehmen oder Verwerfen (die Punkte dieser Fahrt), beim Ausschalten der Erkennung, mit **„Alle
   Standortdaten löschen“** (Punkte, Protokoll, alle Vorschläge samt Verlauf) und mit „Alle Daten löschen“. Übernommene Fahrten bleiben.
@@ -141,9 +169,17 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 - **Nichts verlässt das Gerät** – außer, mit Zustimmung zu Live-Daten, je Vorschlag **eine** Fahrplanfrage (§7): zwei
   Haltestellennamen und eine Uhrzeit, keine Koordinate.
 - `Info.plist`: `NSLocationWhenInUseUsageDescription` und `NSLocationAlwaysAndWhenInUseUsageDescription` auf Deutsch und genau;
-  `UIBackgroundModes`: `fetch`, `location` (für laufende Aufzeichnungen und den Aussteige-Wecker). **Keine Berechtigung, die
+  `NSLocationTemporaryUsageDescriptionDictionary` (Schlüssel „TripRecording“, nur für „Genauer Standort“ aus);
+  `NSSupportsLiveActivitiesFrequentUpdates`; `UIBackgroundModes`: `fetch`, `location` (für laufende Aufzeichnungen und den
+  Aussteige-Wecker). Alles ohne Entitlement und ohne Push. **Keine Berechtigung, die
   ein bezahltes Entwicklerkonto braucht**: kein Push, keine zeitkritischen Mitteilungen, keine Wallet, kein CloudKit, keine
   neuen Entitlements – `project.yml` und die `.entitlements` sind unverändert; die App bleibt per AltStore/SideStore installierbar.
+- **Die zentrale Datenschutzseite** (Einstellungen › Über › Datenschutz, im Onboarding als „Datenschutzerklärung“ verlinkt,
+  `Copy.privacy`) sagt dasselbe wie dieses Kapitel. Sie behauptete früher, Standortdaten würden „nie gespeichert“ – seit der
+  Hintergrund-Erkennung (Puffer bis 36 Stunden, Protokoll bis 14 Tage, Vorschläge 90 Tage) wäre das falsch gewesen; jede
+  Änderung an dem, was gespeichert wird, ändert auch diesen Text.
+- **Mitteilungen:** „Fahrt erkannt?“ nennt in der Vorschau die beiden Haltestellen. Wo du Vorschauen verbirgst (Einstellungen ›
+  Mitteilungen › Vorschauen), zeigt iOS stattdessen „Ein Fahrten-Vorschlag wartet in der Übersicht“ (`hiddenPreviewsBodyPlaceholder`).
 - Die App hat keine `PrivacyInfo.xcprivacy`; es gibt also nichts zu aktualisieren. Käme eine, müssten Standort (nicht verknüpft,
   nicht für Tracking) und der Zugriff auf `UserDefaults` dort stehen.
 - Der frühere Geofence-Schalter („Automatisch erkennen“, Schlüssel `detection.enabled`) gilt nicht mehr: Beim ersten Start
@@ -155,7 +191,12 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 Nur mit deiner Zustimmung zu Live-Daten (`docs/OEBB_LIVE.md` §2) und dem Schalter „Fahrplan zum Abgleich nutzen“. Für einen
 **neuen** Vorschlag fragt die App **einmal** die ÖBB-Fahrplanauskunft (Verbindungssuche nach den Haltestellen-IDs, 20 Minuten vor
 der Abfahrt) – über denselben gedrosselten Client wie der Fahrplan (40 Anfragen pro Minute für die ganze App, ehrlicher
-User-Agent). Gesendet werden zwei Haltestellennamen/IDs und eine Zeit. Passt eine Verbindung (Abfahrt ±15 Minuten, Ankunft
+User-Agent). Gesendet werden zwei Haltestellennamen/IDs und eine Zeit – nie ein Standort des Nutzers (`StationLinker` sucht nach dem
+**Namen** der Haltestelle, nicht nach Koordinaten; kennt die App die ÖBB-ID einer Haltestelle noch nicht, kommt je Haltestelle eine
+Namenssuche dazu, 30 Tage zwischengespeichert; eine `uic:`-Haltestelle braucht sie nicht). Schalter „Live-Daten“ aus, Zustimmung
+zurückgezogen oder Kill-Switch gesetzt: keine Anfrage (`LiveDataService.timetable` ist dann nil, geprüft vor jeder Frage).
+Das Ergebnis einer Frage gilt für diesen Start der App (ein Vorschlag, der nicht vorgeschlagen wird, wird nicht bei jedem Lauf neu
+erfragt); nach einem Fehler fragt der nächste Lauf noch einmal. Passt eine Verbindung (Abfahrt ±15 Minuten, Ankunft
 ±25 Minuten), steht auf der Karte „Fahrplan: REX 5429 fährt um 08:07“ und das Etikett kann „Sicher“ werden. Gibt es keine, sinkt
 der Wert; ist keine Antwort zu haben, bleibt alles wie ohne Abgleich. Live-Tests wie üblich nur mit `KB_LIVE_TESTS=1`.
 
@@ -179,7 +220,11 @@ Erkennung zu deinem Alltag passt.
 - Ein laufendes „Fahrt aufzeichnen“ überlebt das Beenden der App durch den Nutzer nicht.
 - Die Geofences der häufigsten Bahnhöfe werden beim Öffnen der App gesetzt (und bei jeder Rückkehr aus dem Hintergrund
   aktualisiert). Startet iOS die App nur für ein Ortsereignis neu, bleiben die vorhandenen Regionen unberührt.
+- Nach einem Neustart des iPhones ist der Speicher der App bis zum ersten Entsperren verschlüsselt: Die App öffnet ihren Speicher
+  dann nicht und verarbeitet keine Ortsereignisse. Was iOS in dieser Zeit meldet, kann verloren gehen (nicht prüfbar, siehe §11).
 - Die Karte der Aufzeichnung ist eine Skizze ohne Straßen und Kacheln.
+- Der Detektor sieht nur grobe Punkte; Park & Ride (Auto am Bahnhof) und eine Autofahrt zwischen zwei Bahnhofsorten bleiben
+  unentscheidbar (§4). Das Etikett sagt es, die Entscheidung bleibt bei dir.
 
 ## 10. Aufbau
 
@@ -246,12 +291,38 @@ Vorher: Standort und Mitteilungen für KlimaBilanz erlauben; Live-Aktivitäten a
     vorgeschlagen: die Geofences überleben den Neustart.
 23. Verwerfen auf einer Karte: Toast „Vorschlag verworfen“ mit „Rückgängig“; nach dem Rückgängig ist die Karte wieder da.
 
+24. **Vergessene Aufzeichnung (Akku, Datenschutz):** Aufzeichnung starten, das iPhone 35 Minuten still auf den Tisch legen. Sie beendet sich
+    nach 30 Minuten selbst: blaue Standortanzeige weg, Live Activity weg, im Hintergrund eine Mitteilung „Aufzeichnung beendet“ (wenn
+    Mitteilungen erlaubt sind), beim Öffnen der Hinweis „… 30 Minuten nicht bewegt“; „Zu kurz für eine Fahrt“, nichts gespeichert.
+25. Eine echte Fahrt aufzeichnen, nach der Ankunft 40 Minuten nicht bewegen, App nicht öffnen: der Vorschlag im Postfach endet bei der
+    Ankunft, nicht 30 Minuten später; Strecke und Wert wie bei „Beenden“ von Hand.
+26. **„Genauer Standort“ aus** (iOS-Einstellungen › KlimaBilanz › Standort): Aufzeichnung starten – einmalige Frage nach dem genauen
+    Standort mit dem Text aus der Info.plist. „Nicht erlauben“ → Karte „Genauer Standort ist aus“ mit „Einstellungen öffnen“.
+    Einstellungen › Fahrten erkennen zeigt bei eingeschalteter Hintergrund-Erkennung dieselbe Zeile.
+27. Standort während der Aufzeichnung in iOS ausschalten (Datenschutz › Ortungsdienste): Aufzeichnung beendet sich mit „… Standortzugriff
+    entzogen“. (iOS kann die App dabei selbst beenden: dann gilt Punkt 21 und 28.)
+28. App während der Aufzeichnung im App-Umschalter beenden, dann öffnen: Aufzeichnen-Bildschirm zeigt „Letzte Aufzeichnung unterbrochen“, die
+    Live Activity ist weg; sie stand zwischendurch nach spätestens zwei Minuten auf „Keine aktuellen Daten“, nicht auf „läuft“.
+29. Live Activity: Zahlen aktualisieren sich etwa alle 10 s. Bleibt sie zurück: iOS-Einstellungen › KlimaBilanz › Live-Aktivitäten
+    › „Häufigere Updates“ prüfen (und notieren). Tunnel mit GPS-Verlust über zwei Minuten: „Keine aktuellen Daten“, danach wieder Zahlen.
+30. Mitteilungen › Vorschauen auf „Nie“ oder „Wenn entsperrt“: „Fahrt erkannt?“ zeigt auf dem gesperrten Bildschirm den Platzhalter,
+    keine Haltestellen.
+31. „Alle Standortdaten löschen“ während eine Aufzeichnung läuft: sie wird verworfen, blaue Anzeige und Live Activity sind weg.
+32. Einstellungen › Über › Datenschutz: der Abschnitt „Standort“ stimmt mit dem überein, was du siehst (Punkte höchstens 36 Stunden,
+    Protokoll 14 Tage, Vorschläge 90 Tage, Löschen unter Einstellungen › Fahrten erkennen).
+33. iPhone neu starten und **nicht** entsperren, eine Strecke fahren (Beifahrer:in), danach entsperren: Gab es einen Vorschlag? (Wir
+    wissen nicht, ob iOS die Ereignisse nachliefert – bitte notieren.)
+34. Berechtigung in den iOS-Einstellungen auf „Nie“ stellen, App öffnen: kein Systemdialog von selbst; Einstellungen › Fahrten
+    erkennen zeigt „Standort ist aus“.
+
 ## 12. Was in CI geprüft ist
 
 - KlimaCore (`swift test`, Linux): Detektor, Bewertung, Puffer, Deduplizierung, Aufzeichnung, Zahlen-Gleichheit – synthetische Spuren
   für Zug mit Zwischenhalten, Regionalzug mit GPS-Lücke im Tunnel, Auto auf der Autobahn neben der Bahn, Auto am Bahnhof, Gehen,
   Rad, Bim, Aufenthalt am Bahnhof, Tag mit zwei Fahrten, Fahrt über Mitternacht, beide Zeitumstellungen, Umstieg, Dublette einer
   eingetragenen Fahrt.
+- Die Regeln der vergessenen Aufzeichnung (`RecordingSession.autoStop`): Handy auf dem Tisch, Halt von 20 Minuten gehört zur Fahrt,
+  Vorschlag endet mit der Fahrt, Ende nach 12 Stunden, keine Fixes überhaupt.
 - Typprüfung (Linux, `tools/typecheck`) und macOS-Build in CI; Bildschirme `tripDetectInbox`, `tripDetectRecord`,
   `tripDetectRecordIdle`, `tripDetectReview`, `tripDetectExplain`, `tripDetectSettings`, `tripDetectSettingsOff`,
   `tripDetectLog`, `tripDetectEdit`, `tripDetectInboxAX5` mit synthetischen Daten, ohne Systemdialoge.

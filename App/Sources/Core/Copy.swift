@@ -33,9 +33,11 @@ enum Copy {
     """
 
     static let privacy = """
-    Deine Daten gehören dir. Ohne Konto bleiben alle Fahrten ausschließlich auf deinem iPhone. Mit Konto werden sie verschlüsselt (TLS) in deine persönliche Cloud-Datenbank synchronisiert, auf die nur du Zugriff hast. Es gibt kein Tracking, keine Werbung und keine Weitergabe an Dritte. Standortdaten werden nur kurz genutzt, um die nächste Haltestelle vorzuschlagen, und nie gespeichert.
+    Deine Daten gehören dir. Ohne Konto bleiben alle Fahrten ausschließlich auf deinem iPhone. Mit Konto werden sie verschlüsselt (TLS) in deine persönliche Cloud-Datenbank synchronisiert, auf die nur du Zugriff hast. Es gibt kein Tracking, keine Werbung und keine Weitergabe an Dritte.
 
-    Live-Daten: Wenn du sie aktivierst, fragt dein iPhone Fahrplan und Preise direkt bei der ÖBB und der Verkehrsauskunft Österreich ab. Dabei werden die gesuchten Haltestellen und Zeiten übertragen, für „In der Nähe“ auch dein auf rund 100 m gerundeter Standort. KlimaBilanz selbst erhält diese Daten nicht.
+    Standort: Die nächste Haltestelle wird aus deinem Standort berechnet und nicht gespeichert. „Fahrt aufzeichnen“ nutzt den genauen Standort nur, solange du aufzeichnest, und hält die Punkte nur im Arbeitsspeicher; gespeichert wird allein der Fahrtvorschlag (Haltestellen, Zeiten, eine Skizze ohne Koordinaten). Der Aussteige-Wecker nutzt den Standort nur auf dem iPhone, solange ein Wecker scharf ist, und speichert ihn nicht. Nur wenn du die Hintergrund-Erkennung (Beta) einschaltest, merkt sich dein iPhone grobe Standortpunkte und Aufenthalte höchstens 36 Stunden – nur auf dem Gerät, nicht im Export, nicht in der Cloud und nicht im iOS-Backup. Sie werden gelöscht, wenn du über eine Fahrt entscheidest, wenn du die Erkennung ausschaltest und mit „Alle Standortdaten löschen“ (Einstellungen › Fahrten erkennen). Das Erkennungs-Protokoll (Haltestellennamen, Zeiten, Gründe, keine Koordinaten) bleibt höchstens 14 Tage auf dem iPhone, Fahrtvorschläge nach deiner Entscheidung 90 Tage.
+
+    Live-Daten: Wenn du sie aktivierst, fragt dein iPhone Fahrplan und Preise direkt bei der ÖBB und der Verkehrsauskunft Österreich ab. Dabei werden die gesuchten Haltestellen und Zeiten übertragen, für „In der Nähe“ auch dein auf rund 100 m gerundeter Standort; ein erkannter Fahrtvorschlag kann – wenn du es nicht abschaltest – einmal den Fahrplan zwischen den beiden Haltestellen abfragen (Namen und Uhrzeit, nie dein Standort). KlimaBilanz selbst erhält diese Daten nicht.
     """
 
     static let dataSources: [(title: String, detail: String)] = [

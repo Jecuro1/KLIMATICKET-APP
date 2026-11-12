@@ -9,11 +9,15 @@ import KlimaCore
 // - `tripDetectReview`: the proposal after "Beenden" · `tripDetectExplain`: the explanation screen
 // - `tripDetectSettings` / `tripDetectSettingsOff`: Einstellungen › Fahrten erkennen · `tripDetectLog`: the Erkennungs-Protokoll
 // - `tripDetectEdit`: "Bearbeiten" of a proposal · `tripDetectActivity`: the Live Activity "Aufzeichnung läuft" (Sperrbildschirm und Dynamic Island)
+// - MARK: review2-tripdetect – `tripDetectRecordReduced`: "Genauer Standort ist aus" on the live screen · `tripDetectRecordAutoStop`: a recording that
+//   ended by itself, with its proposal · `tripDetectRecordInterrupted`: "Letzte Aufzeichnung unterbrochen" · `tripDetectSettingsReduced`
 
 struct TripDetectScreenshotHost: View {
     static let screens: Set<String> = [
         "tripDetectInbox", "tripDetectInboxAX5", "tripDetectRecord", "tripDetectRecordIdle", "tripDetectReview", "tripDetectExplain",
         "tripDetectSettings", "tripDetectSettingsOff", "tripDetectLog", "tripDetectEdit", "tripDetectActivity",
+        // MARK: review2-tripdetect
+        "tripDetectRecordReduced", "tripDetectRecordAutoStop", "tripDetectRecordInterrupted", "tripDetectSettingsReduced",
     ]
 
     let screen: String
@@ -31,6 +35,15 @@ struct TripDetectScreenshotHost: View {
                 if let recorder { TripRecordView(recorder: recorder) } else { Color.clear.ambientBackground() }
             case "tripDetectRecordIdle":
                 TripRecordView(recorder: TripRecorder())
+            // MARK: review2-tripdetect
+            case "tripDetectRecordReduced":
+                if let recorder { TripRecordView(recorder: recorder) } else { Color.clear.ambientBackground() }
+            case "tripDetectRecordAutoStop":
+                review
+            case "tripDetectRecordInterrupted":
+                if let recorder { TripRecordView(recorder: recorder) } else { Color.clear.ambientBackground() }
+            case "tripDetectSettingsReduced":
+                NavigationStack { TripDetectSettingsView(preview: TripDetectDemo.settingsReduced) }
             case "tripDetectReview":
                 review
             case "tripDetectExplain":
@@ -90,13 +103,19 @@ struct TripDetectScreenshotHost: View {
         // After "Beenden": the timer stands still at the moment of stopping (it does not count on until the activity is dismissed).
         let stopped = RecordingActivityAttributes.ContentState(distanceKm: 28.4, speedKmh: 0, stationName: "Telfs-Pfaffenhofen", isAtStation: true, isStopped: true,
                                                                stoppedAt: attributes.startedAt.addingTimeInterval(22 * 60 + 40))
+        // MARK: review2-tripdetect – the app has sent nothing for two minutes (process ended, or no GPS): the timer stands still, nothing is claimed.
+        let staleState = RecordingActivityAttributes.ContentState(distanceKm: 34.2, speedKmh: 92, stationName: "Stams", isAtStation: false,
+                                                                  updatedAt: attributes.startedAt.addingTimeInterval(19 * 60 + 5))
         return ZStack {
             Color.clear.ambientBackground()
-            VStack(spacing: Theme.Spacing.l) {
+            VStack(spacing: Theme.Spacing.m) {
                 RecordingLockScreenView(attributes: attributes, state: state)
                     .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                 RecordingLockScreenView(attributes: attributes, state: stopped)
+                    .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                RecordingLockScreenView(attributes: attributes, state: staleState, isStale: true)
                     .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                 VStack(spacing: Theme.Spacing.xs) {
@@ -142,11 +161,30 @@ struct TripDetectScreenshotHost: View {
         let all = TripDetectDemo.candidates(now: Date())
         switch screen {
         case "tripDetectInbox", "tripDetectInboxAX5": candidates = all
-        case "tripDetectReview": candidates = [TripDetectDemo.recordedCandidate(now: Date())]
+        case "tripDetectReview", "tripDetectRecordAutoStop": candidates = [TripDetectDemo.recordedCandidate(now: Date())]
         case "tripDetectEdit": candidates = [all[1]]
         default: break
         }
         if screen == "tripDetectRecord" || screen == "tripDetectReview" { recorder = TripDetectDemo.recorder(lookup: app.stations, finished: screen == "tripDetectReview") }
+        // MARK: review2-tripdetect
+        switch screen {
+        case "tripDetectRecordReduced":
+            // The first minutes of a recording that never finds a usable fix: no track, "Genauer Standort" off.
+            let started = Date().addingTimeInterval(-95)
+            let demo = TripRecorder.demo(lookup: app.stations, track: [], startedAt: started, until: 0)
+            demo.demoState(accuracyIsReduced: true)
+            recorder = demo
+        case "tripDetectRecordAutoStop":
+            // The phone stayed in the pocket after the ride: the recording ended by itself, the proposal ends with the ride.
+            let demo = TripDetectDemo.recorder(lookup: app.stations, finished: true)
+            demo.demoState(autoStop: .idle(since: Date().addingTimeInterval(-32 * 60)))
+            recorder = demo
+        case "tripDetectRecordInterrupted":
+            let demo = TripRecorder()
+            demo.demoState(interruptedStart: Date().addingTimeInterval(-3 * 3600))
+            recorder = demo
+        default: break
+        }
     }
 }
 
@@ -252,6 +290,9 @@ enum TripDetectDemo {
 
     static let settingsOn = TripDetectSettingsState(isEnabled: true, isAuthorizedAlways: true, points: 14, visits: 3,
                                                     oldest: Date().addingTimeInterval(-19 * 3600), logCount: 7, timetableLookup: true, liveConsentGranted: true)
+    // MARK: review2-tripdetect
+    static let settingsReduced = TripDetectSettingsState(isEnabled: true, isAuthorizedAlways: true, isReducedAccuracy: true, points: 0, visits: 0,
+                                                         logCount: 2, timetableLookup: true, liveConsentGranted: true)
     static let settingsOff = TripDetectSettingsState(isEnabled: false, isAuthorizedAlways: false, logCount: 0, timetableLookup: true, liveConsentGranted: false)
 
     static func logEntries(now: Date) -> [DetectionLogEntry] {

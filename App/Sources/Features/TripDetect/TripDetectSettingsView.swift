@@ -11,6 +11,8 @@ struct TripDetectSettingsState: Equatable {
     var isEnabled = false
     var isAuthorizedAlways = false
     var isDenied = false
+    /// "Genauer Standort" is off in the iOS settings.
+    var isReducedAccuracy = false
     var isAvailable = true
     var points = 0
     var visits = 0
@@ -22,7 +24,7 @@ struct TripDetectSettingsState: Equatable {
     @MainActor
     static func live(_ service: TripDetectionService, liveConsent: Bool) -> TripDetectSettingsState {
         TripDetectSettingsState(isEnabled: service.isEnabled, isAuthorizedAlways: service.isAuthorizedAlways, isDenied: service.isDenied,
-                                isAvailable: service.isAvailable, points: service.bufferSummary.points, visits: service.bufferSummary.visits,
+                                isReducedAccuracy: service.isReducedAccuracy, isAvailable: service.isAvailable, points: service.bufferSummary.points, visits: service.bufferSummary.visits,
                                 oldest: service.bufferSummary.oldest, logCount: service.log.entries.count,
                                 timetableLookup: service.timetableLookupEnabled, liveConsentGranted: liveConsent)
     }
@@ -71,7 +73,7 @@ struct TripDetectSettingsView: View {
             Button("Alles löschen", role: .destructive) { deleteAll() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Gelöscht werden die gesammelten Standortpunkte, das Erkennungs-Protokoll und alle Fahrten-Vorschläge samt Verlauf. Fahrten, die du schon übernommen hast, bleiben.")
+            Text("Gelöscht werden die gesammelten Standortpunkte, das Erkennungs-Protokoll und alle Fahrten-Vorschläge samt Verlauf. Fahrten, die du schon übernommen hast, bleiben. Eine laufende Aufzeichnung wird verworfen.")
         }
         .haptic(.warning, trigger: deletionTick)
         .onChange(of: scenePhase) { _, phase in
@@ -113,6 +115,7 @@ struct TripDetectSettingsView: View {
                 if state.isEnabled {
                     Group {
                         if state.isAuthorizedAlways { activeRows(state) } else { permissionRow(state) }
+                        if state.isReducedAccuracy { accuracyRow }
                     }
                     .motionTransition(.rise)
                 }
@@ -135,10 +138,19 @@ struct TripDetectSettingsView: View {
     }
 
     private func permissionRow(_ state: TripDetectSettingsState) -> some View {
+        settingsRow(title: state.isDenied ? "Standort ist aus" : "Standort „Immer“ fehlt",
+                    subtitle: "Erlaube den Standortzugriff „Immer“, damit Fahrten auch im Hintergrund erkannt werden.")
+    }
+
+    /// The person allows only an approximate location: places are known to a few kilometres, no station is within 500 m of them.
+    private var accuracyRow: some View {
+        settingsRow(title: "Genauer Standort ist aus",
+                    subtitle: "Mit einem ungefähren Standort (einige Kilometer genau) lassen sich Bahnhöfe nicht zuordnen. Schalte „Genauer Standort“ in den iOS-Einstellungen ein.")
+    }
+
+    private func settingsRow(title: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            SetRowLabel(title: state.isDenied ? "Standort ist aus" : "Standort „Immer“ fehlt",
-                        subtitle: "Erlaube den Standortzugriff „Immer“, damit Fahrten auch im Hintergrund erkannt werden.",
-                        symbol: "location.slash.fill", tint: Theme.dawn)
+            SetRowLabel(title: title, subtitle: subtitle, symbol: "location.slash.fill", tint: Theme.dawn)
             Button {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             } label: {

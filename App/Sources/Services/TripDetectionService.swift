@@ -21,6 +21,9 @@ import KlimaCore
 @MainActor
 final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
+    /// The person chose "Genauer Standort: aus" in the iOS settings: the places are known only to a few kilometres, so no station can
+    /// be matched (and region monitoring is not offered by iOS then).
+    private(set) var isReducedAccuracy = false
     private(set) var isEnabled: Bool
     /// The one timetable question per candidate (effective only with the consent for live data).
     var timetableLookupEnabled: Bool {
@@ -86,6 +89,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         super.init()
         manager.delegate = self
         authorization = manager.authorizationStatus
+        isReducedAccuracy = !LaunchMode.isSandboxed && manager.accuracyAuthorization == .reducedAccuracy
         refreshSummary()
         registerNotificationCategory()
         if isEnabled, isAuthorizedAlways, !LaunchMode.isSandboxed { startSources() }
@@ -101,7 +105,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         isEnabled = true
         UserDefaults.standard.set(true, forKey: DetectionDefaults.backgroundEnabled)
         record(.info("Hintergrund-Erkennung eingeschaltet", at: Date()))
-        advanceAuthorization()
+        advanceAuthorization(userInitiated: true)
     }
 
     /// Switching off stops every source and deletes the raw points.
@@ -121,6 +125,9 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
 
     /// "Alle Standortdaten löschen": the buffer and the log (the caller removes the candidates through the Repository).
     func deleteAllLocationData() {
+        // A running recording keeps its fixes in memory: they are location data, too.
+        if TripRecorder.shared.isRecording { TripRecorder.shared.discard() }
+        timetableAnswers.removeAll()
         buffer.removeAll()
         persistBuffer()
         log.removeAll()
@@ -134,6 +141,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     /// Back from the iOS Settings app: the permission may have changed.
     func refreshAuthorization() {
         authorization = manager.authorizationStatus
+        isReducedAccuracy = !LaunchMode.isSandboxed && manager.accuracyAuthorization == .reducedAccuracy
         if isEnabled { advanceAuthorization() }
     }
 
@@ -142,12 +150,14 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         record(.info("Alle Standortdaten gelöscht", at: Date()))
     }
 
-    private func advanceAuthorization() {
+    /// `userInitiated`: the person just switched the feature on. Only then may a system dialog appear: a launch or a return from the
+    /// background (permission reset in the iOS settings, say) must not open one out of the blue.
+    private func advanceAuthorization(userInitiated: Bool = false) {
         guard !LaunchMode.isSandboxed else { return }
         authorization = manager.authorizationStatus
         switch authorization {
         case .notDetermined:
-            manager.requestWhenInUseAuthorization()
+            if userInitiated { manager.requestWhenInUseAuthorization() }
         case .authorizedWhenInUse:
             if !askedAlways {
                 askedAlways = true
@@ -156,6 +166,8 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         case .authorizedAlways:
             startSources()
             requestEvaluation()
+        case .denied, .restricted:
+            stopSources()   // the permission was taken away: nothing may keep listening (iOS stops delivering anyway)
         default:
             break
         }
@@ -269,7 +281,8 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         let now = Date()
         buffer.prune(now: now)
         // Nothing collected: no reason to build the place database (a launch for a location event has only a few seconds).
-        guard !buffer.isEmpty else { return }
+        // The pruned state goes to disk too: what is older than 36 hours must not stay in the file.
+        guard !buffer.isEmpty else { persistBuffer(); return }
         let index = await stationIndexProvider()
         guard isEnabled, !Task.isCancelled else { return }
         let detector = TripDetector(matcher: StationMatcher(lookup: index), knownRelation: relationProvider())
@@ -379,7 +392,9 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         }
         if !LaunchMode.isSandboxed {
             // The earlier version named its regions by station id ("at:47:1187"); an alarm's region is a UUID and ours has the prefix.
-            for region in manager.monitoredRegions where region.identifier.contains(":") && !region.identifier.hasPrefix(Self.regionPrefix) {
+            // Never the Aussteige-Wecker's circles ("exitalarm.": regions are shared by every manager of the app).
+            for region in manager.monitoredRegions where region.identifier.contains(":") && !region.identifier.hasPrefix(Self.regionPrefix)
+                && !region.identifier.hasPrefix("exitalarm.") {
                 manager.stopMonitoring(for: region)
             }
         }
@@ -428,8 +443,10 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
+        let reduced = manager.accuracyAuthorization == .reducedAccuracy
         Task { @MainActor in
             self.authorization = status
+            self.isReducedAccuracy = !LaunchMode.isSandboxed && reduced
             if self.isEnabled { self.advanceAuthorization() }
         }
     }

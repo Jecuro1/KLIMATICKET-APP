@@ -132,6 +132,70 @@ final class RecordingSessionTests: XCTestCase {
         XCTAssertLessThan(DetectionGeo.meters(track.last!, F.landeck.location), 400)
     }
 
+    // MARK: A forgotten recording ends by itself (battery, blue pill, privacy)
+
+    /// A phone left on a desk: fixes keep coming from the same place; after half an hour the recording stops itself.
+    func testARecordingLeftOnADeskEndsAfterHalfAnHour() {
+        let start = F.nov12("08:00")
+        var s = session(at: start)
+        for fix in ScriptedTrack.stay(at: F.innsbruck.location, from: start, to: start.addingTimeInterval(50 * 60), interval: 5, accuracy: 10, jitterMeters: 4, source: .recording) {
+            s.ingest(fix)
+        }
+        XCTAssertNil(s.autoStop(now: start.addingTimeInterval(29 * 60)), "29 minutes of waiting is a delayed train, not a forgotten phone")
+        guard case .idle(let since)? = s.autoStop(now: start.addingTimeInterval(31 * 60)) else { return XCTFail("30 minutes without moving must end it") }
+        XCTAssertEqual(since.timeIntervalSince(start), 0, accuracy: 6, "idle since the first fix")
+    }
+
+    /// A ride, then the phone stays in the pocket at the destination: the proposal ends where the ride ended, not half an hour later.
+    func testTheProposalOfAnIdleStopEndsWithTheRide() throws {
+        let start = F.nov12("08:00")
+        let ride = ScriptedTrack.ride(waypoints: [F.innsbruck, F.landeck].map(\.location), start: start, cruiseKmh: 100, interval: 5)
+        var s = session(at: start)
+        ride.forEach { s.ingest($0) }
+        let arrival = ride.last!.time
+        for fix in ScriptedTrack.stay(at: F.landeck.location, from: arrival.addingTimeInterval(5), to: arrival.addingTimeInterval(45 * 60), interval: 5, accuracy: 10,
+                                      jitterMeters: 4, source: .recording) {
+            s.ingest(fix)
+        }
+        XCTAssertNil(s.autoStop(now: arrival.addingTimeInterval(20 * 60)), "a 20 minute halt is still part of a ride")
+        guard case .idle(let since)? = s.autoStop(now: arrival.addingTimeInterval(45 * 60)) else { return XCTFail("45 minutes of standing still must end it") }
+        XCTAssertLessThan(abs(since.timeIntervalSince(arrival)), 60, "the moment it last moved is the arrival")
+
+        let proposal = try XCTUnwrap(s.proposal(endedAt: since))
+        XCTAssertEqual(proposal.from?.station.id, F.innsbruck.id)
+        XCTAssertEqual(proposal.to?.station.id, F.landeck.id)
+        XCTAssertLessThan(abs(proposal.end.timeIntervalSince(arrival)), 60, "the proposal ends with the ride, not with the waiting")
+        XCTAssertEqual(proposal.distanceKm, F.km(F.innsbruck, F.landeck), accuracy: F.km(F.innsbruck, F.landeck) * 0.05)
+    }
+
+    /// Moving keeps the recording alive however long the fixes go on – until the 12 hour limit.
+    func testARideIsNeverIdleButAnythingBeyondTwelveHoursIsForgotten() {
+        let start = F.nov12("08:00")
+        var s = session(at: start)
+        let ride = ScriptedTrack.ride(waypoints: [F.innsbruck, F.landeck].map(\.location), start: start, cruiseKmh: 60, interval: 10)
+        for fix in ride {
+            s.ingest(fix)
+            XCTAssertNil(s.autoStop(now: fix.time), "a moving train is not idle")
+        }
+        XCTAssertNotEqual(s.autoStop(now: start.addingTimeInterval(12 * 3600 - 1)), .tooLong)
+        XCTAssertEqual(s.autoStop(now: start.addingTimeInterval(12 * 3600)), .tooLong)
+    }
+
+    /// No fix at all (GPS never found, location off): half an hour later the recording ends, too.
+    func testARecordingWithoutAnyFixEndsToo() {
+        let start = F.nov12("08:00")
+        let s = session(at: start)
+        XCTAssertNil(s.autoStop(now: start.addingTimeInterval(10 * 60)))
+        XCTAssertEqual(s.autoStop(now: start.addingTimeInterval(30 * 60)), .idle(since: start))
+        XCTAssertNil(s.proposal(endedAt: start.addingTimeInterval(30 * 60)), "nothing was recorded, nothing is proposed")
+    }
+
+    func testTheAutoStopTextsNameTheReason() {
+        XCTAssertTrue(RecordingAutoStop.idle(since: Date()).text().contains("30 Minuten nicht bewegt"))
+        XCTAssertTrue(RecordingAutoStop.tooLong.text().contains("12 Stunden"))
+        XCTAssertTrue(RecordingAutoStop.locationOff.text().contains("Standortzugriff"))
+    }
+
     /// The recorder reads its fixes from any provider: here the scripted one, as the demo scenes and CI do.
     func testRecordingFromAScriptedProvider() async throws {
         let start = F.nov12("08:00")

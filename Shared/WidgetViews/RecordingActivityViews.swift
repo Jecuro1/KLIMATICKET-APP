@@ -17,8 +17,23 @@ enum RecordingCopy {
         return state.isAtStation ? "Bei \(name)" : "Zuletzt \(name)"
     }
 
-    static func spoken(_ state: RecordingActivityAttributes.ContentState) -> String {
+    /// The headline: stopped, running, or "stale" – the app has not sent anything for two minutes (no GPS, or the app was ended).
+    static func headline(_ state: RecordingActivityAttributes.ContentState, isStale: Bool) -> String {
         if state.isStopped { return "Aufzeichnung gestoppt" }
+        return isStale ? "Keine aktuellen Daten" : "Aufzeichnung läuft"
+    }
+
+    /// The line under the timer when the numbers are stale: nothing is claimed about where the phone is.
+    static let staleHint = "Öffne KlimaBilanz und sieh nach"
+
+    /// Where the timer stands still: at the stop, or – when stale – at the last update.
+    static func pausedAt(_ state: RecordingActivityAttributes.ContentState, isStale: Bool) -> Date? {
+        state.stoppedAt ?? (isStale ? state.updatedAt : nil)
+    }
+
+    static func spoken(_ state: RecordingActivityAttributes.ContentState, isStale: Bool = false) -> String {
+        if state.isStopped { return "Aufzeichnung gestoppt" }
+        if isStale { return "Aufzeichnung: keine aktuellen Daten. \(staleHint)." }
         return "Aufzeichnung läuft. \(figures(state)). \(station(state))"
     }
 }
@@ -26,40 +41,46 @@ enum RecordingCopy {
 struct RecordingLockScreenView: View {
     let attributes: RecordingActivityAttributes
     let state: RecordingActivityAttributes.ContentState
+    /// The system marked the numbers stale (`staleDate` passed without an update).
+    var isStale = false
+
+    private var showsStale: Bool { isStale && !state.isStopped }
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            Image(systemName: state.isStopped ? "stop.circle.fill" : "record.circle")
+            Image(systemName: state.isStopped ? "stop.circle.fill" : (showsStale ? "exclamationmark.circle" : "record.circle"))
                 .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(state.isStopped ? Theme.textSecondary : Theme.pine)
+                .foregroundStyle(state.isStopped || showsStale ? Theme.textSecondary : Theme.pine)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(state.isStopped ? "Aufzeichnung gestoppt" : "Aufzeichnung läuft")
+                Text(RecordingCopy.headline(state, isStale: isStale))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Theme.textSecondary)
-                Text(timerInterval: attributes.timerRange, pauseTime: state.stoppedAt, countsDown: false)
+                Text(timerInterval: attributes.timerRange, pauseTime: RecordingCopy.pausedAt(state, isStale: isStale), countsDown: false)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.textPrimary)
+                    .foregroundStyle(showsStale ? Theme.textSecondary : Theme.textPrimary)
                     .lineLimit(1)
-                Text(RecordingCopy.station(state))
+                Text(showsStale ? RecordingCopy.staleHint : RecordingCopy.station(state))
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(WidFormat.number(state.distanceKm, decimals: state.distanceKm < 10 ? 1 : 0))
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textPrimary)
-                Text("km").font(.caption.weight(.semibold)).foregroundStyle(Theme.textSecondary)
-                Text("\(Int(state.speedKmh.rounded())) km/h").font(.caption).monospacedDigit().foregroundStyle(Theme.textTertiary)
+            if !showsStale {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(WidFormat.number(state.distanceKm, decimals: state.distanceKm < 10 ? 1 : 0))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textPrimary)
+                    Text("km").font(.caption.weight(.semibold)).foregroundStyle(Theme.textSecondary)
+                    Text("\(Int(state.speedKmh.rounded())) km/h").font(.caption).monospacedDigit().foregroundStyle(Theme.textTertiary)
+                }
             }
         }
         .padding(16)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(RecordingCopy.spoken(state))
+        .accessibilityLabel(RecordingCopy.spoken(state, isStale: isStale))
     }
 }
 
@@ -83,12 +104,17 @@ struct RecordingIslandTimer: View {
 
 struct RecordingIslandBottom: View {
     let state: RecordingActivityAttributes.ContentState
+    var isStale = false
     var body: some View {
-        HStack {
-            Text(RecordingCopy.station(state)).lineLimit(1)
-            Spacer(minLength: 8)
-            Text(RecordingCopy.figures(state)).monospacedDigit().lineLimit(1)
+        if isStale && !state.isStopped {
+            Text(RecordingCopy.staleHint).lineLimit(1).font(.footnote.weight(.medium))
+        } else {
+            HStack {
+                Text(RecordingCopy.station(state)).lineLimit(1)
+                Spacer(minLength: 8)
+                Text(RecordingCopy.figures(state)).monospacedDigit().lineLimit(1)
+            }
+            .font(.footnote.weight(.medium))
         }
-        .font(.footnote.weight(.medium))
     }
 }

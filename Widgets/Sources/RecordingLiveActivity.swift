@@ -7,22 +7,24 @@ import SwiftUI
 struct RecordingLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RecordingActivityAttributes.self) { context in
-            RecordingLockScreenView(attributes: context.attributes, state: context.state)
+            RecordingLockScreenView(attributes: context.attributes, state: context.state, isStale: context.isStale)
                 .activityBackgroundTint(Theme.background.opacity(0.92))
                 .activitySystemActionForegroundColor(Theme.textPrimary)
                 .widgetURL(WidDeepLink.overview)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) { RecordingIslandLeading() }
-                DynamicIslandExpandedRegion(.trailing) { RecordingIslandTimer(attributes: context.attributes, pausedAt: context.state.stoppedAt) }
-                DynamicIslandExpandedRegion(.center) {
-                    Text(context.state.isStopped ? "Aufzeichnung gestoppt" : "Aufzeichnung läuft").font(.headline)
+                DynamicIslandExpandedRegion(.trailing) {
+                    RecordingIslandTimer(attributes: context.attributes, pausedAt: RecordingCopy.pausedAt(context.state, isStale: context.isStale))
                 }
-                DynamicIslandExpandedRegion(.bottom) { RecordingIslandBottom(state: context.state) }
+                DynamicIslandExpandedRegion(.center) {
+                    Text(RecordingCopy.headline(context.state, isStale: context.isStale)).font(.headline)
+                }
+                DynamicIslandExpandedRegion(.bottom) { RecordingIslandBottom(state: context.state, isStale: context.isStale) }
             } compactLeading: {
                 RecordingIslandLeading()
             } compactTrailing: {
-                RecordingIslandTimer(attributes: context.attributes, pausedAt: context.state.stoppedAt)
+                RecordingIslandTimer(attributes: context.attributes, pausedAt: RecordingCopy.pausedAt(context.state, isStale: context.isStale))
             } minimal: {
                 RecordingIslandLeading()
             }
