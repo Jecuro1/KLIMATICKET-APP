@@ -20,6 +20,7 @@ Oberfläche in `App/Sources/Features/Radar/Heat/`. Nichts davon fragt selbst etw
 | `HeatHistory.swift` | Verlauf dieser Sitzung für die Sparkline (nur im Speicher) |
 | `RadarHeatModel.swift`, `RadarModel+Heat.swift` | Zustand der Ebene, Haken ins Radar-Modell |
 | `RadarView+Heat.swift`, `RadarHeatPanel.swift`, `RadarHeatCellSheet.swift`, `RadarHeatMarkers.swift`, `RadarHeatPalette.swift` | Karte, Panel, Feld-Blatt, Punkte, Farben |
+| `RadarHeatShare.swift` | Karte als Bild (`ImageRenderer`) |
 | `RadarHeatDemo.swift`, `RadarHeatScreenshotHost.swift` | erfundene Züge und die CI-Szenen |
 
 ## 1. Laden: ganz Österreich, ohne eigene Schleife
@@ -127,8 +128,10 @@ Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. **Zu:** Überschrif
 `HeatHistory`: der Anteil „pünktlich“ im Abstand von mindestens 30 s, höchstens 120 Punkte, **nur im Speicher**, nie auf der Platte, leer bei jedem Start der Karte und beim Ausschalten der Ebene. Ein Verlauf
 braucht drei Punkte über mindestens eine Minute und mindestens 20 Züge mit Echtzeit-Daten je Punkt; dann zeigt das offene Panel eine kleine Linie und „Seit 6 Min: 85 % → 87 %“. Geht die Uhr zurück, wird der Punkt verworfen.
 
-„Pünktlichkeitskarte teilen“ als Bild ist **nicht gebaut** (Zusatz, zuerst gestrichen): Das Teilen eines Bildes bräuchte `ImageRenderer` mit einer Karte, die MapKit-Kacheln nicht in ein Bild gibt (die Basiskarte fehlte,
-nur die Felder wären zu sehen), und eine Entscheidung, was ein geteiltes Bild über Orte sagen darf.
+**„Pünktlichkeitskarte teilen“ (Zusatz, gebaut).** Im offenen Panel gibt es „Pünktlichkeitskarte teilen“ (`ShareLink`). Das Bild (`RadarHeatShare`, `ImageRenderer`, 1080 × 1350 px, erst beim Export gerendert wie
+`TktSharePass`) zeigt die Zellen auf nachtblauem Grund, ohne Apple-Basiskarte: die Fläche des Radar-Gebiets flach gezeichnet (Längengrad mit dem Kosinus der Breite), ein Glühen unter scharfen Sechsecken, graue Linien für Felder
+ohne Farbe, dazu die große Zahl, der Balken, die Teile in Worten, „Stand 12. Nov. 2026, 17:08 Uhr · Radar-Bereich Österreich“ und den Hinweis (Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet, ohne
+Echtzeit nie pünktlich, grau = zu wenige Züge, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
 
 ## 7. Messung (einmalig, vom Owner freigegeben)
 
@@ -179,7 +182,9 @@ Folge der Regel „mindestens 3 Züge“ bei 13-km-Feldern, nicht ein Fehler. Da
 
 Tests (Linux, `swift test --package-path Packages/KlimaCore --no-parallel --filter Heat`): `HeatGridTests`, `RadarHeatTests`, `HeatPaintTests`, `RadarHeatTextTests`, `HeatHistoryTests`, dazu `MapLayersTests` (die neue Ebene
 ist aus, ein gespeicherter Wert von vorher liest sich wie vorher). Geprüft: Zell-Ids und Randfälle des Rasters, die Grenzen der Klassen gegen `RadarDelay`, Median, Mindestzahl und die Regel „ohne Echtzeit nie pünktlich“, Rundung,
-Rangfolge der Brennpunkte, leere und Teil-Antworten, Doppelte und fehlerhafte Positionen, Unabhängigkeit von der Reihenfolge der Züge, die Obergrenze für 2 000 Fahrzeuge, die Überblendung.
+Rangfolge der Brennpunkte, leere und Teil-Antworten, Doppelte und fehlerhafte Positionen, Unabhängigkeit von der Reihenfolge der Züge, die Obergrenze für 2 000 Fahrzeuge, die Überblendung, und mit `HeatLoadTests`, dass die Ebene den Scheduler bei zwei Kacheln und 6 Anfragen je Minute hält (zehn simulierte Minuten, auch wenn die Karte jede Viertelsekunde dieselbe Ansicht meldet).
+
+**Perf-Fall.** `radarHeat` in `PerfFeature` (`PerfFeatureScreens.swift`), `RadarHeatPerfTests` (`PerfTests/FeaturePerfTests.swift`) und die Tour-Liste in `scripts/perf_profile.sh`: dieselbe Karte mit der Ebene an (Demo-Szene `heat`), gepannt wie die anderen Karten. Der CI-Job `perf` läuft nur mit `[perf]` oder von Hand und dauert 55 bis 95 Minuten; er wurde für diese Arbeit **nicht** ausgelöst, es gibt also **keine Messung** und keine Baseline. `scripts/perf_compare.py` führt einen Bildschirm, der nur in einem Lauf vorkommt, als „neu“.
 
 ## 9. Was nur auf einem iPhone zu prüfen ist
 
@@ -191,7 +196,6 @@ Rangfolge der Brennpunkte, leere und Teil-Antworten, Doppelte und fehlerhafte Po
 
 ## 10. Nicht gebaut, Grenzen
 
-- Das Teilen als Bild (§6).
 - Ein Verlauf über Sitzungen und eine Karte vergangener Verspätungen: Es gibt keine Historie, nur den Moment.
 - Korridore als Zusammenfassung von Feldern: Brennpunkte sind Felder (§3).
 - Die Verspätung am nächsten Halt ist nicht die Ankunftsverspätung am Ziel; ein Zug kann sie aufholen oder vergrößern.

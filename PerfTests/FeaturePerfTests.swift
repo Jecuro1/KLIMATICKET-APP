@@ -8,21 +8,21 @@ import XCTest
 /// the tests flick or drag over the window. `PerfFrameMonitor` records what happens under the name of the screen
 /// (hitch time ratio of the scroll or pan, first frame and hitches of the presentation, memory).
 enum PerfFeatureScreen: String {
-    case planner, plannerResults, plannerDetail, radar, radarLayers, radarAll, atlas, routes, stop
+    case planner, plannerResults, plannerDetail, radar, radarLayers, radarAll, radarHeat, atlas, routes, stop   // MARK: radarheat
 
     /// Seconds from the launch until the screen is built, and a map's tiles and pins are in.
     var settle: TimeInterval {
         switch self {
         case .planner: 4
         case .plannerResults, .plannerDetail: 10
-        case .radar, .radarLayers, .radarAll, .atlas: 9
+        case .radar, .radarLayers, .radarAll, .radarHeat, .atlas: 9
         case .routes: 6
         case .stop: 10
         }
     }
 
     /// Maps pan; everything else scrolls.
-    var isMap: Bool { self == .radar || self == .radarLayers || self == .radarAll || self == .atlas }
+    var isMap: Bool { self == .radar || self == .radarLayers || self == .radarAll || self == .radarHeat || self == .atlas }
 }
 
 class FeaturePerfTestCase: PerfTestCase {
@@ -113,6 +113,17 @@ final class RadarAllPerfTests: FeaturePerfTestCase {
 
     @MainActor
     func testFeatureRadarAll() {
+        measureFeature()
+    }
+}
+
+/// MARK: radarheat – the Pünktlichkeit layer (docs/RADAR_HEATMAP.md): about 900 synthetic trains, the heat cells as map overlays
+/// (at most 900 of them), trains as dots, the summary panel. Pans like the other maps.
+final class RadarHeatPerfTests: FeaturePerfTestCase {
+    override var screen: PerfFeatureScreen { .radarHeat }
+
+    @MainActor
+    func testFeatureRadarHeat() {
         measureFeature()
     }
 }

@@ -23,6 +23,9 @@ enum PerfFeature: String, CaseIterable {
     /// Zug-Radar with about 1500 synthetic vehicles, Austria-wide (docs/OEBB_LIVE.md §R11): the markers are clusters, a
     /// thousand vehicles still make fewer than 130 annotations.
     case radarAll
+    /// MARK: radarheat – the Pünktlichkeit layer (docs/RADAR_HEATMAP.md): about 900 synthetic trains, the heat cells as map overlays (at most 900),
+    /// trains as dots, the summary panel.
+    case radarHeat
     /// The Atlas (map of the trips) with the excursion demo year.
     case atlas
     /// „Meine Routen“.
@@ -39,6 +42,7 @@ enum PerfFeature: String, CaseIterable {
         case .radar: "Zug-Radar"
         case .radarLayers: "Karte mit Ebenen"
         case .radarAll: "Zug-Radar, alle Züge"
+        case .radarHeat: "Zug-Radar, Pünktlichkeit"
         case .atlas: "Atlas"
         case .routes: "Meine Routen"
         case .stop: "Haltestelle"
@@ -49,7 +53,7 @@ enum PerfFeature: String, CaseIterable {
     var isCover: Bool {
         switch self {
         case .planner, .plannerResults, .plannerDetail: false
-        case .radar, .radarLayers, .radarAll, .atlas, .routes, .stop: true
+        case .radar, .radarLayers, .radarAll, .radarHeat, .atlas, .routes, .stop: true
         }
     }
 }
@@ -69,7 +73,7 @@ final class PerfPresenter {
             app.selectedTab = .planner   // a tab switch: PerfFrameMonitor times it like any other tab
         case .plannerResults, .plannerDetail:
             await presentConnections(feature, app: app)
-        case .radar, .radarLayers, .radarAll, .atlas, .routes, .stop:
+        case .radar, .radarLayers, .radarAll, .radarHeat, .atlas, .routes, .stop:
             PerfFrameMonitor.shared.beginPresentation(feature.title)
             Diagnostics.sheet(feature.title, presented: true)
             shared.cover = feature
@@ -141,6 +145,8 @@ private struct PerfFeatureCover: View {
             RadarView(preset: .layers)
         case .radarAll:
             RadarView(preset: .allTrains)
+        case .radarHeat:
+            RadarView(preset: .heat)
         case .atlas:
             AtlasScreenshotScene(screen: "map")   // seeds the excursion demo year, then NavigationStack { AtlasView() }
         case .routes:

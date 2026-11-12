@@ -154,6 +154,13 @@ extension RadarView {
 
     // MARK: Presets
 
+    /// CI screenshots launch one scene after another in one simulator, and the layer choice is stored per device (`@AppStorage`): a scene
+    /// of another preset would show the heat layer a heat scene left behind. Only in screenshot and perf runs, never for a person.
+    func dropHeatLayerInScreenshots() {
+        guard LaunchMode.isSandboxed, !preset.isHeatDemo, layers.isOn(.punctuality) else { return }
+        toggleLayer(.punctuality)
+    }
+
     /// The CI scenes (`RadarHeatScreenshotHost`): demo trains with a delay cluster over Tirol and a quiet rest of the country.
     func applyHeatPreset(_ preset: RadarPreset) {
         layersRaw = MapLayerSelection(layers: [.stations, .trains, .punctuality]).storageValue

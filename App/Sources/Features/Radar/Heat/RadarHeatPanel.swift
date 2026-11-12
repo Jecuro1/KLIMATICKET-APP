@@ -111,6 +111,16 @@ struct RadarHeatPanel: View {
             }
             topDelays(snapshot)
             hotspots(snapshot)
+            if !snapshot.isEmpty {
+                // The map of the delay as an image (docs/RADAR_HEATMAP.md §6): the cells on a night-blue ground, no base map, no person.
+                ShareLink(item: RadarHeatShare(cells: HeatLayer.drawCells(from: snapshot), summary: summary, date: Date()),
+                          preview: SharePreview("Pünktlichkeit der Züge in Österreich",
+                                                image: Image(systemName: "gauge.with.dots.needle.67percent"))) {
+                    Label("Pünktlichkeitskarte teilen", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+            }
             HeatNotes(model: model)
         }
     }

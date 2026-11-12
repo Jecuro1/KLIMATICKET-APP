@@ -239,6 +239,7 @@ struct RadarView: View {
     private func applyPreset() {
         // "Auf der Karte zeigen" needs the train layer: it is switched on, and the choice stays (the layer bar shows it).
         if focusTripID != nil, !layers.isOn(.trains) { toggleLayer(.trains) }
+        dropHeatLayerInScreenshots()   // MARK: radarheat – a scene of another preset does not inherit the layer a heat scene stored
         switch preset {
         case .live:
             break
