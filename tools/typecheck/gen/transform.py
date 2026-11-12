@@ -108,6 +108,7 @@ MODULES = {
     "AppIntents": dict(objc="Foundation"),
     "_AppIntents_SwiftUI": dict(),
     "ActivityKit": dict(),
+    "AlarmKit": dict(),   # Aussteige-Wecker (docs/EXIT_ALARM.md): the time-based alarm that rings through silent mode
     "WidgetKit": dict(objc="Foundation"),
     "_MapKit_SwiftUI": dict(),
     "_AuthenticationServices_SwiftUI": dict(),

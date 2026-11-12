@@ -59,6 +59,7 @@ MODULES = [
     ("_AppIntents_SwiftUI", ["AppIntents", "SwiftUI"]),
     ("ActivityKit", ["Combine", "FoundationShim"]),
     ("WidgetKit", ["AppIntents", "_AppIntents_SwiftUI", "SwiftUI", "DeveloperToolsSupport", "ActivityKit"]),
+    ("AlarmKit", ["ActivityKit", "AppIntents", "_AppIntents_SwiftUI", "SwiftUI", "FoundationShim"]),   # generated (Aussteige-Wecker)
     ("UserNotifications", ["FoundationShim", "CoreLocation"]),
     ("BackgroundTasks", ["FoundationShim"]),  # hand-written (Stubs/BackgroundTasks): app refresh for "Live verfolgen"
     ("FoundationModels", ["FoundationShim"]),  # hand-written (Stubs/FoundationModels): on-device assistant (docs/LOCAL_AI.md)
