@@ -96,7 +96,7 @@ Die App wird mit kostenloser Apple-ID neu signiert (AltStore, SideStore). Eine F
 - **`PrivacyInfo.xcprivacy`** gibt es im Repository nicht. Für eine Sideload-Installation wird sie nicht gebraucht; für den App Store wäre sie nötig (Erlaubnis des Eigentümers, welche Datenarten die App angibt, u. a. den auf 100 m gerundeten Standort an die ÖBB). Nicht Teil dieses Tracks, offen.
 - **Veraltete Schnittstelle:** `CLLocationManager.startMonitoring(for:)` für Kreise ist seit iOS 17 als veraltet markiert (Nachfolger `CLMonitor`). Sie funktioniert weiter, und die Fahrterkennung nutzt dieselbe. Der Umstieg auf `CLMonitor` ist offen (ohne Mac nicht geprüft).
 - **Kreise:** ihre Namen tragen das Präfix `exitalarm.` (die Fahrterkennung teilt sich den Satz der Kreise und fasst nur ihre eigenen an). Ein unveränderter Kreis wird beim Neustart der App **nicht** neu gesetzt: iOS behält Kreise über Starts hinweg, und ein erneutes Setzen könnte den Eintritt verschlucken, wegen dem iOS die App gerade gestartet hat.
-- **Geofence-Grenze:** iOS erlaubt 20 überwachte Kreise je App, geteilt mit der Fahrterkennung (`TripDetectionService` nimmt bis zu 20 Lieblingsbahnhöfe). Verweigert das System den Kreis, merkt sich die Engine das (`geofenceFailed`), und die GPS-Schätzung plus der Fahrplan tragen weiter.
+- **Geofence-Grenze:** iOS erlaubt 20 überwachte Kreise je App, geteilt mit der Fahrterkennung (`TripDetectionService` nimmt bis zu 15 häufigste Bahnhöfe, der Wecker braucht höchstens drei Kreise: 18 von 20; jede Seite fasst nur Kreise mit ihrem eigenen Namenspräfix an). Verweigert das System den Kreis, merkt sich die Engine das (`geofenceFailed`), und die GPS-Schätzung plus der Fahrplan tragen weiter.
 
 ## 8. Ehrliche Grenzen
 
