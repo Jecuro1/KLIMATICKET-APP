@@ -14,13 +14,17 @@ struct RecordingActivityAttributes: ActivityAttributes {
         var isAtStation: Bool
         /// Stopped: the activity shows "Gestoppt" until it is dismissed.
         var isStopped: Bool
+        /// When it was stopped: the timer stands still at that moment instead of counting on until the activity goes away.
+        var stoppedAt: Date?
 
-        init(distanceKm: Double = 0, speedKmh: Double = 0, stationName: String? = nil, isAtStation: Bool = false, isStopped: Bool = false) {
+        init(distanceKm: Double = 0, speedKmh: Double = 0, stationName: String? = nil, isAtStation: Bool = false, isStopped: Bool = false,
+             stoppedAt: Date? = nil) {
             self.distanceKm = distanceKm
             self.speedKmh = speedKmh
             self.stationName = stationName
             self.isAtStation = isAtStation
             self.isStopped = isStopped
+            self.stoppedAt = stoppedAt
         }
     }
 

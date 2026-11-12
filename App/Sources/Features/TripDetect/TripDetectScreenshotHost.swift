@@ -87,10 +87,16 @@ struct TripDetectScreenshotHost: View {
     private var activity: some View {
         let attributes = RecordingActivityAttributes(startedAt: Date().addingTimeInterval(-(23 * 60 + 10)))
         let state = RecordingActivityAttributes.ContentState(distanceKm: 34.2, speedKmh: 92, stationName: "Stams", isAtStation: false)
+        // After "Beenden": the timer stands still at the moment of stopping (it does not count on until the activity is dismissed).
+        let stopped = RecordingActivityAttributes.ContentState(distanceKm: 28.4, speedKmh: 0, stationName: "Telfs-Pfaffenhofen", isAtStation: true, isStopped: true,
+                                                               stoppedAt: attributes.startedAt.addingTimeInterval(22 * 60 + 40))
         return ZStack {
             Color.clear.ambientBackground()
             VStack(spacing: Theme.Spacing.l) {
                 RecordingLockScreenView(attributes: attributes, state: state)
+                    .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                RecordingLockScreenView(attributes: attributes, state: stopped)
                     .background(Theme.background.opacity(0.92), in: .rect(cornerRadius: 28, style: .continuous))
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                 VStack(spacing: Theme.Spacing.xs) {

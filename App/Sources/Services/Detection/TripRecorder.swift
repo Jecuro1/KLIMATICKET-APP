@@ -18,7 +18,9 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 8
+        // No distance filter (the default): a standing train delivers no fix at all under a filter, and the live screen would show its last
+        // speed for good, report "GPS-Signal schwach" after 20 s at every station and never see a halt. The jitter of a standing phone
+        // is filtered in `RecordingSession` (steps under ~6 m add no distance).
         manager.activityType = .otherNavigation
         manager.pausesLocationUpdatesAutomatically = false
     }
@@ -66,7 +68,12 @@ final class CoreLocationFeed: NSObject, CLLocationManagerDelegate, LocationProvi
 @Observable
 @MainActor
 final class TripRecorder {
-    static let shared = TripRecorder()
+    /// The one recorder of the app. Created on first use – before that no recording can exist in this process, so a "Aufzeichnung
+    /// läuft" Live Activity that is still on the Lock Screen belongs to a process that was killed: it ends here.
+    static let shared: TripRecorder = {
+        RecordingActivityController.shared.endOrphans()
+        return TripRecorder()
+    }()
 
     enum Phase: Equatable {
         case idle
@@ -93,8 +100,9 @@ final class TripRecorder {
     @ObservationIgnored private let makeFeed: @MainActor () -> any LocationProviding
     @ObservationIgnored private var lookup: (any StationLookup)?
 
-    /// `makeFeed`: where the fixes come from – CoreLocation on the device, a scripted track in CI and demos.
-    init(makeFeed: @escaping @MainActor () -> any LocationProviding = { CoreLocationFeed() }) {
+    /// `makeFeed`: where the fixes come from – CoreLocation on the device, a scripted track in CI and demos (a sandboxed run never
+    /// touches CoreLocation, so it can never raise a permission alert).
+    init(makeFeed: @escaping @MainActor () -> any LocationProviding = { LaunchMode.isSandboxed ? ScriptedTrackProvider(script: []) : CoreLocationFeed() }) {
         self.makeFeed = makeFeed
     }
 
@@ -128,9 +136,11 @@ final class TripRecorder {
             phase = .denied
         case .notDetermined:
             phase = .needsPermission
-            live.onAuthorization = { [weak self] status in
+            // Weak: the feed holds this closure, so a strong reference back to it would keep both (and the location manager) alive
+            // for good after the recording was cancelled.
+            live.onAuthorization = { [weak self, weak live] status in
                 Task { @MainActor in
-                    guard let self, self.phase == .needsPermission else { return }
+                    guard let self, let live, self.phase == .needsPermission else { return }
                     switch status {
                     case .authorizedWhenInUse, .authorizedAlways: self.begin(lookup: lookup, feed: live)
                     case .denied, .restricted: self.phase = .denied

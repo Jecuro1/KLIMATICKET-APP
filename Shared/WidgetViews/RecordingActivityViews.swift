@@ -37,7 +37,7 @@ struct RecordingLockScreenView: View {
                 Text(state.isStopped ? "Aufzeichnung gestoppt" : "Aufzeichnung läuft")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Theme.textSecondary)
-                Text(timerInterval: attributes.timerRange, countsDown: false)
+                Text(timerInterval: attributes.timerRange, pauseTime: state.stoppedAt, countsDown: false)
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
@@ -71,8 +71,10 @@ struct RecordingIslandLeading: View {
 
 struct RecordingIslandTimer: View {
     let attributes: RecordingActivityAttributes
+    /// Set once the recording was stopped: the timer stands still there.
+    var pausedAt: Date? = nil
     var body: some View {
-        Text(timerInterval: attributes.timerRange, countsDown: false)
+        Text(timerInterval: attributes.timerRange, pauseTime: pausedAt, countsDown: false)
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .frame(maxWidth: 56)

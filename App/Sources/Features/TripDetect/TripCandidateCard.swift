@@ -52,9 +52,16 @@ struct TripCandidateActions {
         return true
     }
 
+    /// "Verwerfen" – with a toast and "Rückgängig" like every destructive tap of the app (a legitimate ride is not lost to a slip).
     func dismiss(_ candidate: TripCandidateEntity) {
-        Repository(context: context, app: app).dismiss(candidate)
+        let repository = Repository(context: context, app: app)
+        repository.dismiss(candidate)
         app.detection.didDecide(candidate, accepted: false)
+        let from = candidate.fromName.isEmpty ? "Start offen" : TripRow.short(candidate.fromName)
+        let to = candidate.toName.isEmpty ? "Ziel offen" : TripRow.short(candidate.toName)
+        app.showToast("arrow.uturn.backward.circle", "Vorschlag verworfen", "\(from) → \(to)", actionTitle: "Rückgängig", haptic: .tap) {
+            repository.undoDismiss(candidate)
+        }
     }
 }
 
@@ -112,7 +119,6 @@ struct TripCandidateCard: View {
     @State private var facts: CandidateTripFacts?
     @State private var showsReasons = false
     @State private var showsEditor = false
-    @State private var dismissTick = 0
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.m) {
@@ -128,7 +134,6 @@ struct TripCandidateCard: View {
         .sheet(isPresented: $showsEditor) {
             TripCandidateEditSheet(candidate: candidate, initial: stations)
         }
-        .haptic(.tap, trigger: dismissTick)
     }
 
     // MARK: Parts
@@ -271,6 +276,7 @@ struct TripCandidateCard: View {
             }
             .buttonStyle(.glassProminent)
             .tint(Theme.prominentTint)
+            .accessibilityLabel("Fahrt \(spokenRoute) übernehmen")
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: Theme.Spacing.xs) { secondaryButtons }
                 VStack(spacing: Theme.Spacing.xs) { secondaryButtons }
@@ -288,9 +294,9 @@ struct TripCandidateCard: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
+        .accessibilityLabel("Fahrt \(spokenRoute) bearbeiten")
         Button {
             withMotion(Motion.smooth) { TripCandidateActions(app: app, context: context).dismiss(candidate) }
-            dismissTick += 1
         } label: {
             Label("Verwerfen", systemImage: "xmark")
                 .font(.subheadline.weight(.semibold))
@@ -298,6 +304,7 @@ struct TripCandidateCard: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
+        .accessibilityLabel("Fahrt \(spokenRoute) verwerfen")
     }
 
     // MARK: Text
@@ -306,6 +313,11 @@ struct TripCandidateCard: View {
         let from = candidate.fromName.isEmpty ? "Start wählen" : TripRow.short(candidate.fromName)
         let to = candidate.toName.isEmpty ? "Ziel wählen" : TripRow.short(candidate.toName)
         return "\(from) → \(to)"
+    }
+
+    /// "von Innsbruck Hbf nach Landeck" – what VoiceOver says for the buttons, so three cards do not each offer a bare "Übernehmen".
+    private var spokenRoute: String {
+        "von \(candidate.fromName.isEmpty ? "unbekanntem Start" : TripRow.short(candidate.fromName)) nach \(candidate.toName.isEmpty ? "unbekanntem Ziel" : TripRow.short(candidate.toName))"
     }
 
     /// "Heute, 07:48–08:55"

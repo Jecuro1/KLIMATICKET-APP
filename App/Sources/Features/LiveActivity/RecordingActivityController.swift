@@ -24,6 +24,22 @@ final class RecordingActivityController {
         lastUpdate = Date()
     }
 
+    /// Ends every "Aufzeichnung läuft" activity this process does not own: a recording does not survive the app being killed, so one
+    /// that is still on the Lock Screen after a relaunch would show a running timer for a recording that no longer exists.
+    func endOrphans() {
+        guard !LaunchMode.isSandboxed else { return }
+        let orphans = Activity<RecordingActivityAttributes>.activities.filter { $0.id != activity?.id }
+        guard !orphans.isEmpty else { return }
+        Task {
+            for orphan in orphans {
+                var state = orphan.content.state
+                state.isStopped = true
+                state.stoppedAt = Date()
+                await orphan.end(ActivityContent(state: state, staleDate: nil), dismissalPolicy: .immediate)
+            }
+        }
+    }
+
     /// Takes the live numbers; the system gets them at most every 10 s.
     func update(_ snapshot: RecordingSnapshot) {
         guard let activity else { return }
@@ -42,6 +58,7 @@ final class RecordingActivityController {
         self.activity = nil
         var state = lastState
         state.isStopped = true
+        state.stoppedAt = Date()
         state.speedKmh = 0
         Task {
             await activity.end(ActivityContent(state: state, staleDate: nil, relevanceScore: 0), dismissalPolicy: proposal == nil ? .immediate : .after(Date().addingTimeInterval(120)))

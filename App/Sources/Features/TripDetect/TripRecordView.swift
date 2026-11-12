@@ -19,6 +19,7 @@ struct TripRecordView: View {
     @State private var nearby: [Station] = []
     @State private var stopTick = 0
     @State private var startTick = 0
+    @State private var confirmsDiscard = false
 
     /// `previewReview`: CI scenes show the proposal of a finished recording right away.
     init(recorder: TripRecorder = .shared, previewReview: TripCandidateEntity? = nil) {
@@ -47,6 +48,13 @@ struct TripRecordView: View {
         .haptic(.start, trigger: startTick)
         .haptic(.stop, trigger: stopTick)
         .interactiveDismissDisabled(recorder.isRecording)
+        // Throwing a running recording away cannot be undone: one stray tap beside "Beenden" must not do it.
+        .confirmationDialog("Aufzeichnung verwerfen?", isPresented: $confirmsDiscard, titleVisibility: .visible) {
+            Button("Aufzeichnung verwerfen", role: .destructive) { withMotion(Motion.smooth) { recorder.discard() }; stopTick += 1 }
+            Button("Weiter aufzeichnen", role: .cancel) {}
+        } message: {
+            Text("Die bisherige Strecke wird gelöscht, es wird keine Fahrt vorgeschlagen.")
+        }
     }
 
     // MARK: Top bar
@@ -195,7 +203,7 @@ struct TripRecordView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 VStack(alignment: .leading, spacing: 6) {
                     bullet("location.fill", "Der genaue Standort wird nur genutzt, solange die Aufzeichnung läuft (blaue Anzeige oben).")
-                    bullet("lock.shield.fill", "Er bleibt auf deinem iPhone. Nach deiner Entscheidung bleibt nur die Fahrt selbst.")
+                    bullet("lock.shield.fill", "Die Standortpunkte bleiben auf deinem iPhone und nur im Arbeitsspeicher. Gespeichert wird allein der Vorschlag: Haltestellen, Zeiten und eine Skizze ohne Koordinaten.")
                     bullet("bolt.badge.clock.fill", "Das braucht mehr Akku als sonst – bei langen Fahrten das Ladekabel dabei haben.")
                 }
                 .padding(.top, 4)
@@ -276,10 +284,10 @@ struct TripRecordView: View {
                     Label("Aufzeichnung beenden", systemImage: "stop.circle.fill")
                 }
                 .buttonStyle(.primary)
-                Button("Verwerfen", role: .destructive) { recorder.discard(); stopTick += 1 }
+                Button("Verwerfen", role: .destructive) { confirmsDiscard = true }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.negativeText)
-                    .padding(.top, 2)
+                    .frame(minHeight: 44)
             case .finished:
                 Button {
                     recorder.reset()

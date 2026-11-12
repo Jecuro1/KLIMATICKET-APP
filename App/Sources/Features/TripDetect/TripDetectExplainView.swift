@@ -24,7 +24,7 @@ struct TripDetectExplainView: View {
                           lines: ["Grobe Standortpunkte (Mobilfunk-Ebene, Hunderte Meter genau), Aufenthalte und das Betreten und Verlassen deiner häufigsten Bahnhöfe.",
                                   "Nur auf diesem iPhone, höchstens 36 Stunden. Danach löscht KlimaBilanz sie von selbst.",
                                   "Sofort weg: wenn du einen Vorschlag übernimmst oder verwirfst (die Punkte dieser Fahrt), wenn du die Erkennung ausschaltest und mit „Alle Standortdaten löschen“.",
-                                  "Nicht im Export, nicht im Backup, nicht in der Cloud-Synchronisierung."])
+                                  "Die Punkte stehen nicht im Export, nicht im iOS-Backup und nicht in der Cloud-Synchronisierung. Ein Vorschlag (nur Haltestellennamen und Zeiten, keine Koordinaten) liegt bei deinen Fahrten auf dem iPhone, bis du entscheidest."])
                         .reveal(order: 2)
                     block(symbol: "hand.raised.fill", tint: Theme.dusk, title: "Was nie passiert",
                           lines: ["Es wird nie eine Fahrt ohne dein Okay erfasst. Jeder Vorschlag fragt dich: Übernehmen, Bearbeiten oder Verwerfen.",

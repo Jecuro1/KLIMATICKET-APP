@@ -56,6 +56,9 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     @ObservationIgnored private var scheduled: Task<Void, Never>?
     @ObservationIgnored private var askedAlways = false
     @ObservationIgnored private var monitoredStations: [String: Station] = [:]
+    /// `configure` ran in this launch. A relaunch for a location event has no UI and so no station list yet: syncing the
+    /// regions then would stop all of them, and the arrival at the destination would never wake the app.
+    @ObservationIgnored private var regionsConfigured = false
     /// The timetable's answer per ride (this launch): a ride that is not proposed comes back at every run, but is asked about once.
     @ObservationIgnored private var timetableAnswers: [String: TimetableVerdict] = [:]
 
@@ -106,6 +109,10 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         guard isEnabled else { return }
         isEnabled = false
         UserDefaults.standard.set(false, forKey: DetectionDefaults.backgroundEnabled)
+        askedAlways = false
+        // A run that is waiting or running must not file a proposal after the person switched the feature off.
+        scheduled?.cancel()
+        queue?.cancel()
         stopSources()
         buffer.removeAll()
         persistBuffer()
@@ -119,6 +126,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         log.removeAll()
         DetectionLogStore.save(log)
         scheduled?.cancel()
+        queue?.cancel()
     }
 
     func noteAcceptance() { acceptTick += 1 }
@@ -160,6 +168,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     func configure(stations index: StationIndex, frequentStationIDs: [String]) {
         let selected = frequentStationIDs.compactMap(index.station(id:)).prefix(Self.maxRegions)
         monitoredStations = Dictionary(uniqueKeysWithValues: selected.map { ($0.id, $0) })
+        regionsConfigured = true
         guard isEnabled, isAuthorizedAlways, !LaunchMode.isSandboxed else { return }
         syncRegions()
     }
@@ -177,7 +186,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     }
 
     private func syncRegions() {
-        guard CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) else { return }
+        guard regionsConfigured, CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) else { return }
         let wanted = Set(monitoredStations.keys.map { Self.regionPrefix + $0 })
         let mine = manager.monitoredRegions.filter { $0.identifier.hasPrefix(Self.regionPrefix) }
         for region in mine where !wanted.contains(region.identifier) { manager.stopMonitoring(for: region) }
@@ -194,6 +203,7 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     // MARK: Events
 
     private func add(points: [CoarsePoint]) {
+        guard isEnabled else { return }   // an event that was already on its way when the feature was switched off
         let now = Date()
         for point in points { buffer.append(point, now: now) }
         persistBuffer()
@@ -201,12 +211,14 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
     }
 
     private func add(visit: VisitRecord) {
+        guard isEnabled else { return }
         buffer.upsert(visit, now: Date())
         persistBuffer()
         requestEvaluation()
     }
 
     private func regionEvent(center: GeoPoint, entered: Bool, at date: Date) {
+        guard isEnabled else { return }
         if entered {
             buffer.upsert(VisitRecord(at: center, accuracyMeters: 120, arrival: date, departure: nil, observedAt: date), now: date)
         } else {
@@ -256,7 +268,10 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
         guard isEnabled, !LaunchMode.isSandboxed, let repository = repositoryProvider() else { return }
         let now = Date()
         buffer.prune(now: now)
+        // Nothing collected: no reason to build the place database (a launch for a location event has only a few seconds).
+        guard !buffer.isEmpty else { return }
         let index = await stationIndexProvider()
+        guard isEnabled, !Task.isCancelled else { return }
         let detector = TripDetector(matcher: StationMatcher(lookup: index), knownRelation: relationProvider())
         let outcome = detector.detect(buffer.track, now: now, history: repository.pairHistory())
         let triage = repository.triage(outcome, now: now)
@@ -280,6 +295,8 @@ final class TripDetectionService: NSObject, CLLocationManagerDelegate {
             if case .confirmed(let connection) = verdict { lines[candidate.id] = connection.summary }
             if verdict != .unavailable { candidates[i] = candidate.ranked(with: verdict) }
         }
+        // The timetable question took a while: the person may have switched the feature off (or deleted everything) meanwhile.
+        guard isEnabled, !Task.isCancelled else { return }
         // A ride the timetable made unlikely is not proposed – and the log says why.
         for dropped in candidates where !dropped.rank.isProposable {
             log.add(.rejected(DetectionRejection(reason: .tooUncertain(score: dropped.rank.score), departure: dropped.departure, arrival: dropped.arrival,

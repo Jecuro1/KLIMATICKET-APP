@@ -143,6 +143,14 @@ extension Repository {
         saveCandidates()
     }
 
+    /// "Rückgängig" after "Verwerfen": the proposal waits in the inbox again and no longer counts against its pair of stations.
+    func undoDismiss(_ candidate: TripCandidateEntity) {
+        guard candidate.status == .dismissed else { return }
+        candidate.status = .pending
+        candidate.decidedAt = nil
+        saveCandidates()
+    }
+
     /// Adds a proposal of "Fahrt aufzeichnen" (a recording is one explicit ride – it always goes to the inbox and the review).
     @discardableResult
     func insertRecordingCandidate(_ proposal: RecordingProposal) -> TripCandidateEntity {

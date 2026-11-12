@@ -230,7 +230,9 @@ public struct TripDetector: Sendable {
         for visit in track.visits where visit.isValid {
             // iOS tells about a visit only after the stay lasted a while; no departure = still there.
             guard let arrival = visit.arrival else {
-                // Arrival unknown: the stay's start (and so its dwell) can not be shown – it can still be a start.
+                // Arrival unknown: the dwell can not be shown, so this stay is neither a start nor a destination (the rule "a dwell
+                // at both ends" needs a measured one). It is kept as a zero-length stay: it still takes part in merging with the
+                // points and visits of the same place, which may know the arrival.
                 if let departure = visit.departure {
                     stays.append(Stay(center: visit.geo, arrival: departure, departure: departure, lastSeen: departure, accuracy: visit.accuracyMeters, viaVisit: true))
                 }
@@ -391,7 +393,10 @@ public struct TripDetector: Sendable {
             id: UUID(), source: .background, from: from, to: to, via: Array(viaStations.prefix(TripVia.maxCount)), departure: departure,
             arrival: arrival, straightKm: straightKm, pathKm: pathKm, averageSpeedKmh: speed, dwellAtStart: a.dwell, dwellAtEnd: b.dwell,
             mode: TripModeGuess.mode(from: from.station, to: to.station), evidence: evidence, rank: rank, sketch: sketch,
-            evidenceStart: a.arrival, evidenceEnd: b.departure ?? b.arrival)
+            evidenceStart: a.arrival,
+            // An open destination keeps its first fix: with only two fixes (a phone that stands still sends no more) taking one away would
+            // erase the stay the NEXT ride starts from.
+            evidenceEnd: b.departure ?? b.arrival.addingTimeInterval(-1))
         return .candidate(candidate)
     }
 

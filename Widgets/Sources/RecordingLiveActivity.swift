@@ -14,7 +14,7 @@ struct RecordingLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) { RecordingIslandLeading() }
-                DynamicIslandExpandedRegion(.trailing) { RecordingIslandTimer(attributes: context.attributes) }
+                DynamicIslandExpandedRegion(.trailing) { RecordingIslandTimer(attributes: context.attributes, pausedAt: context.state.stoppedAt) }
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.state.isStopped ? "Aufzeichnung gestoppt" : "Aufzeichnung läuft").font(.headline)
                 }
@@ -22,7 +22,7 @@ struct RecordingLiveActivity: Widget {
             } compactLeading: {
                 RecordingIslandLeading()
             } compactTrailing: {
-                RecordingIslandTimer(attributes: context.attributes)
+                RecordingIslandTimer(attributes: context.attributes, pausedAt: context.state.stoppedAt)
             } minimal: {
                 RecordingIslandLeading()
             }

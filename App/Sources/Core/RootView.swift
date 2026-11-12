@@ -126,6 +126,7 @@ struct RootView: View {
             let repo = Repository(context: context, app: app)
             if widgetSnapshotIsStale() { repo.refreshWidgets() }   // date-dependent fields; data changes refresh on save
             app.detection.migrateLegacy(into: repo)   // MARK: tripdetect – open suggestions of the earlier geofence version move into the inbox
+            repo.pruneDecidedCandidates()   // MARK: tripdetect – stale proposals and old decisions go, with or without the background detection
             if app.detection.isEnabled {
                 repo.configureTripDetection()
                 app.detection.requestEvaluation(after: .seconds(1))

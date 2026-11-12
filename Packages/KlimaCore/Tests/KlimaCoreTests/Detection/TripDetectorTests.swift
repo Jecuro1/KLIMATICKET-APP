@@ -362,12 +362,42 @@ final class TripDetectorTests: XCTestCase {
         XCTAssertTrue(F.detector().detect(still, now: F.nov12("09:30")).candidates.isEmpty)
     }
 
-    func testVisitWithoutArrivalCanStartButNeverEndARide() throws {
+    /// Confirming or dismissing deletes the points of the ride – but not the first fix of the open destination: a phone that stands still
+    /// sends no more, and with one fix left the stay the next ride starts from would be gone.
+    func testDeletingTheEvidenceLeavesTheOpenDestinationStayIntact() throws {
         let dep = F.nov12("08:05"), arr = F.nov12("09:10")
-        let track = CoarseTrack(
-            points: ScriptedTrack.coarseLine(from: F.innsbruck.location, to: F.landeck.location, start: dep, end: arr, count: 5),
+        var points = ScriptedTrack.stay(at: F.innsbruck.location, from: F.nov12("07:40"), to: dep.addingTimeInterval(-60))
+        points += ScriptedTrack.coarseLine(from: F.innsbruck.location, to: F.landeck.location, start: dep, end: arr, count: 5)
+        points += [CoarsePoint(time: arr, at: F.landeck.location, accuracyMeters: 40),
+                   CoarsePoint(time: arr.addingTimeInterval(8 * 60), at: F.landeck.location, accuracyMeters: 40)]
+        let c = try F.detector().detect(CoarseTrack(points: points), now: F.nov12("09:30")).onlyCandidate()
+
+        var buffer = RollingPointBuffer(points: points, visits: [])
+        buffer.remove(from: c.evidenceStart, to: c.evidenceEnd)
+        XCTAssertTrue(buffer.points.filter { $0.time < arr }.isEmpty, "everything of the ride and its start is gone")
+        XCTAssertEqual(buffer.points.filter { $0.time >= arr }.count, 2, "the destination stay is not part of the evidence")
+        // The stay is still a stay for the next ride.
+        let again = F.detector().detect(buffer.track, now: F.nov12("09:30"))
+        XCTAssertTrue(again.candidates.isEmpty)
+    }
+
+    /// iOS reports an unknown arrival as `distantPast`: with no measured dwell the stay is neither a destination nor a start.
+    func testVisitWithoutArrivalCanNeitherEndNorStartARide() throws {
+        let dep = F.nov12("08:05"), arr = F.nov12("09:10")
+        let points = ScriptedTrack.coarseLine(from: F.innsbruck.location, to: F.landeck.location, start: dep, end: arr, count: 5)
+        let noEnd = CoarseTrack(
+            points: points,
             visits: [F.visit(F.innsbruck, arrival: F.nov12("07:50"), departure: dep), F.visit(F.landeck, arrival: nil, departure: nil, observed: F.nov12("09:22"))])
-        XCTAssertTrue(F.detector().detect(track, now: F.nov12("09:30")).candidates.isEmpty)
+        XCTAssertTrue(F.detector().detect(noEnd, now: F.nov12("09:30")).candidates.isEmpty)
+        let noStart = CoarseTrack(
+            points: points,
+            visits: [F.visit(F.innsbruck, arrival: nil, departure: dep), F.visit(F.landeck, arrival: arr, departure: nil, observed: F.nov12("09:22"))])
+        XCTAssertTrue(F.detector().detect(noStart, now: F.nov12("09:30")).candidates.isEmpty)
+        // The same ride with both arrivals known is found – the dwell is what was missing.
+        let both = CoarseTrack(
+            points: points,
+            visits: [F.visit(F.innsbruck, arrival: F.nov12("07:50"), departure: dep), F.visit(F.landeck, arrival: arr, departure: nil, observed: F.nov12("09:22"))])
+        XCTAssertEqual(F.detector().detect(both, now: F.nov12("09:30")).candidates.count, 1)
     }
 
     func testRouteSketchIsRelativeAndRoundTrips() throws {

@@ -34,6 +34,12 @@ Die Zahlen (`RecordingSession`, KlimaCore):
 - Start und Ziel werden Bahnhöfen im Umkreis von 800 m zugeordnet; gibt es keinen, fragt die Bearbeiten-Ansicht danach.
 - Ein Halt an einem Bahnhof zählt ab 15 s unter 7 km/h. Halte sind ein Hinweis, keine Zwischenstationen der Fahrt.
 - Unter 500 m oder 60 s ist es keine Fahrt (versehentlicher Start): nichts wird gespeichert.
+- Die Fixes einer Aufzeichnung liegen **nur im Arbeitsspeicher**, nie in einer Datei. Gespeichert wird allein der Vorschlag
+  (Haltestellen, Zeiten, Skizze ohne Koordinaten). Der Ortsdienst läuft ohne Abstandsfilter, damit ein stehender Zug weiter Fixes
+  (und damit „Tempo 0“ und seine Halte) liefert; das Zittern eines stehenden Handys filtert `RecordingSession`.
+- „Verwerfen“ während der Aufzeichnung fragt nach: Die Strecke ist danach weg und nicht zurückzuholen.
+- Die Live Activity „Aufzeichnung läuft“ zeigt nach dem Beenden „Aufzeichnung gestoppt“ mit stehender Uhr. Eine Activity, die ein
+  beendeter App-Prozess zurückgelassen hat, wird beim nächsten Start der App beendet.
 
 Der **Wert** kommt nicht aus der aufgezeichneten Strecke, sondern genau wie bei einer getippten Fahrt aus Start, Ziel und Mittel
 (§5) – sonst wäre dieselbe Fahrt je nach Erfassungsweg unterschiedlich viel wert.
@@ -55,7 +61,8 @@ Alles landet im **rollenden Puffer** (§6). Nach jedem Ereignis (und beim Öffne
 2. Luftlinie zwischen den beiden Haltestellen **mindestens 5 km**.
 3. Durchschnittstempo vom Verlassen des Starts bis zum Ankommen am Ziel **35 bis 250 km/h**.
 4. **Aufenthalt an beiden Enden** (mindestens 3 Minuten; ein Aufenthalt ohne bekanntes Ende muss 5 Minuten gedauert haben – das
-   verhindert, dass ein Halt des Zuges für das Ziel gehalten wird).
+   verhindert, dass ein Halt des Zuges für das Ziel gehalten wird). Ein von iOS gemeldeter Aufenthalt ohne bekannte Ankunft hat keine
+   messbare Dauer und zählt deshalb weder als Start noch als Ziel.
 5. Der Weg dazwischen geht nicht hin und her (Weglänge ≤ 3 × Luftlinie), die Dauer ist höchstens 12 Stunden.
 6. Ein **Umstieg** (Aufenthalt am Umsteigeort bis 25 Minuten, beide Teilstrecken und die Gesamtstrecke bestehen die Regeln) wird zu
    **einer** Fahrt „über Umsteigeort“ (die App kennt Via-Halte und rechnet den Preis dafür richtig).
@@ -107,7 +114,8 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
   ist der Betrag derselbe. Danach: Toast mit „Rückgängig“, Haptik, ein kleiner
   Pop samt Konfetti-Burst auf der Bilanz-Karte (Reduce Motion: nur Aufblitzen).
 - **Bearbeiten**: Von, Nach und Verkehrsmittel (Zug, Bus, Bim, U-Bahn, oder das erkannte) ändern; der Wert folgt sofort.
-- **Verwerfen**: bleibt als kleiner Eintrag (Paar, Zeit, ohne Punkte) für 90 Tage.
+- **Verwerfen**: bleibt als kleiner Eintrag (Paar, Zeit, Skizze ohne Koordinaten, keine Punkte) für 90 Tage; ein Toast bietet
+  „Rückgängig“ an (der Vorschlag wartet dann wieder im Postfach).
 - **Keine Doppelten** (`CandidateDedup`): dieselbe Strecke in derselben Richtung am selben Tag (oder ±90 Minuten) deckt der
   eingetragene Eintrag ab – auch wenn er abends getippt wurde. Ein Eintrag deckt nur so viele Fahrten, wie er Teilstrecken hat
   („Hin & Retour“ = beide Richtungen); wer zweimal A → B fährt und eine eingetragen hat, bekommt die andere vorgeschlagen. Eine
@@ -121,6 +129,7 @@ Dieselbe Fahrt (gleiche Strecke, gleiche Zeit) kommt nach dem Verwerfen nicht zu
 | Grobe Standortpunkte, Aufenthalte, Betreten/Verlassen von Bahnhöfen | eine JSON-Datei in `Application Support/TripDetection/points.json`, vom Backup ausgenommen, Dateischutz bis zur ersten Entsperrung | **höchstens 36 Stunden** (älteres wird bei jedem Schreiben gelöscht, höchstens 3000 Punkte) | der Detektor |
 | Vorschlag (`TripCandidateEntity`) | SwiftData, nur auf diesem Gerät | bis zur Entscheidung (höchstens 14 Tage); danach als kleiner Eintrag 90 Tage | Postfach, Verwerfen-Gedächtnis |
 | Erkennungs-Protokoll | `Application Support/TripDetection/log.json` | höchstens 14 Tage, 120 Einträge | damit du die Treffsicherheit beurteilen kannst |
+| Fixes einer Aufzeichnung (Modus A) | **nur Arbeitsspeicher**, keine Datei | bis „Beenden“ oder „Verwerfen“ (oder bis die App beendet wird) | Live-Karte, Zahlen, Vorschlag |
 | Route der Karte | **keine Koordinaten**: 2–16 Punkte relativ zur Fahrt (0…1) | wie der Vorschlag | Mini-Strecke auf der Karte |
 
 - **Gelöscht** wird: beim Übernehmen oder Verwerfen (die Punkte dieser Fahrt), beim Ausschalten der Erkennung, mit **„Alle
@@ -168,6 +177,8 @@ Erkennung zu deinem Alltag passt.
 - iOS entscheidet, wann die App im Hintergrund aufwacht. Es gibt keine Zusage für eine bestimmte Minute, und nach einem
   beendeten App-Prozess (Wischen im App-Umschalter) kommen nur noch iOS-Ereignisse, die die App neu starten.
 - Ein laufendes „Fahrt aufzeichnen“ überlebt das Beenden der App durch den Nutzer nicht.
+- Die Geofences der häufigsten Bahnhöfe werden beim Öffnen der App gesetzt (und bei jeder Rückkehr aus dem Hintergrund
+  aktualisiert). Startet iOS die App nur für ein Ortsereignis neu, bleiben die vorhandenen Regionen unberührt.
 - Die Karte der Aufzeichnung ist eine Skizze ohne Straßen und Kacheln.
 
 ## 10. Aufbau
@@ -226,6 +237,14 @@ Vorher: Standort und Mitteilungen für KlimaBilanz erlauben; Live-Aktivitäten a
 18. Zwei Tage im Alltag laufen lassen, danach das Erkennungs-Protokoll lesen: Wie viele echte Fahrten wurden vorgeschlagen, wie
     viele fehlten, wie viele Falsche? Akkuverbrauch unter iOS-Einstellungen › Batterie.
 19. Installation per AltStore/SideStore mit der neuen Version: startet ohne Entitlement-Fehler.
+20. Modus A: Der Zug steht länger als 20 Sekunden am Bahnhof – „GPS-Signal schwach“ erscheint **nicht**, das Tempo fällt auf 0, der
+    Halt wird gezählt (Karte zeigt „Du bist am Bahnhof“).
+21. Modus A: App im App-Umschalter beenden, während die Aufzeichnung läuft – beim nächsten Öffnen verschwindet „Aufzeichnung läuft“
+    vom Sperrbildschirm (die Activity wird beendet).
+22. Modus B: Erkennung eingeschaltet lassen, App im App-Umschalter wegwischen, eine Strecke fahren – der Vorschlag kommt trotzdem
+    (iOS startet die App für den Ortswechsel neu). Die Rückfahrt am selben Tag, ebenfalls ohne die App zu öffnen, wird wieder
+    vorgeschlagen: die Geofences überleben den Neustart.
+23. Verwerfen auf einer Karte: Toast „Vorschlag verworfen“ mit „Rückgängig“; nach dem Rückgängig ist die Karte wieder da.
 
 ## 12. Was in CI geprüft ist
 
