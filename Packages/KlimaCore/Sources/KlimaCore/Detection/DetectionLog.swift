@@ -61,7 +61,10 @@ public struct DetectionLogEntry: Codable, Hashable, Sendable, Identifiable {
         if r.fromName == nil && r.toName == nil { title = "Ortswechsel ohne Haltestellen" }
         var detail = r.text
         if let speed = r.averageSpeedKmh, r.straightKm >= 1, !detail.contains("km/h") {
-            detail += " · \(Format1.km(r.straightKm)) km Luftlinie, Ø \(Int(speed.rounded())) km/h"
+            // The text of "zu kurz" already names the distance.
+            if case .tooShort = r.reason { detail += " · Ø \(Int(speed.rounded())) km/h" } else {
+                detail += " · \(Format1.km(r.straightKm)) km Luftlinie, Ø \(Int(speed.rounded())) km/h"
+            }
         }
         return DetectionLogEntry(loggedAt: now, kind: .rejected, title: title, detail: "Nicht vorgeschlagen: " + detail,
                                  tripStart: r.departure, tripEnd: r.arrival,
