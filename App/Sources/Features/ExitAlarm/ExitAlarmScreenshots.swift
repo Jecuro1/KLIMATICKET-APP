@@ -92,21 +92,31 @@ private enum ExitAlarmBookHolder {
 
 struct ExitAlarmScreenshotHost: View {
     static let screens: Set<String> = ["exitAlarmSheet", "exitAlarmSheetHow", "exitAlarmLocation", "exitAlarmArmed", "exitAlarmApproaching",
-                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings", "exitAlarmFiredAX5", "exitAlarmApproachingAX5", "exitAlarmSheetAX5"]
+                                       "exitAlarmFired", "exitAlarmPassed", "exitAlarmSettings", "exitAlarmFiredAX5", "exitAlarmApproachingAX5", "exitAlarmSheetAX5",
+                                       // MARK: review2-exitalarm – "Genauer Standort" off: the card, the sheet and Settings say the timetable carries the alarm
+                                       "exitAlarmArmedReduced", "exitAlarmSheetHowReduced", "exitAlarmSettingsReduced"]
 
     let screen: String
     private let now = Date()
 
     var body: some View {
+        scene
+            // MARK: review2-exitalarm – the scenes of a screen name that ends in "Reduced" run with "Genauer Standort" off (fakes only).
+            .task { if screen.hasSuffix("Reduced") { ExitAlarmService.shared.simulateApproximateLocation() } }
+    }
+
+    @ViewBuilder private var scene: some View {
         switch screen {
         case "exitAlarmSheet":
             ExitAlarmSheet(input: ExitAlarmDemo.input(now: now))
-        case "exitAlarmSheetHow":
+        case "exitAlarmSheetHow", "exitAlarmSheetHowReduced":
             ExitAlarmSheet(input: ExitAlarmDemo.input(now: now, scrollTo: "how"))
         case "exitAlarmLocation":
             NavigationStack { ExitAlarmLocationExplainer(onContinue: {}, onSkip: {}) }
         case "exitAlarmArmed":
             ExitAlarmCardScene(state: ExitAlarmDemo.state(.armed, now: now), now: now)
+        case "exitAlarmArmedReduced":
+            ExitAlarmCardScene(state: ExitAlarmDemo.state(.armed, now: now), now: now, approximate: true)
         case "exitAlarmApproaching":
             ExitAlarmCardScene(state: ExitAlarmDemo.state(.approaching, now: now), now: now)
         case "exitAlarmFired":
@@ -139,12 +149,14 @@ struct ExitAlarmScreenshotHost: View {
 private struct ExitAlarmCardScene: View {
     let state: ExitAlarmState
     let now: Date
+    var approximate = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    ExitAlarmCard(state: state, now: now, kind: .alarmKit, locationAuthorization: .always, showsActions: true)
+                    ExitAlarmCard(state: state, now: now, kind: .alarmKit, locationAuthorization: .always,
+                                  locationIsApproximate: approximate, showsActions: true)
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                         Text("LIVE-AKTIVITÄT")
                             .font(.caption.weight(.bold))

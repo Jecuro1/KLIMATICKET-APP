@@ -23,6 +23,9 @@ final class ExitAlarmUserDefaultsStorage: ExitAlarmPersisting {
             defaults.removeObject(forKey: Self.key)
             return
         }
-        if let data = try? JSONEncoder().encode(book) { defaults.set(data, forKey: Self.key) }
+        // The engine saves after every fix and every 5-second tick, but the saved book only changes when an alarm does (the newest
+        // position is not part of it): identical data is not written again, which spares the disk and the battery on a night train.
+        guard let data = try? JSONEncoder().encode(book), defaults.data(forKey: Self.key) != data else { return }
+        defaults.set(data, forKey: Self.key)
     }
 }

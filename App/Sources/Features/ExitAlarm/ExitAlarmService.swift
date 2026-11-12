@@ -19,6 +19,8 @@ final class ExitAlarmService {
     /// Counts up on every change of the engine: views that read `book` re-render.
     private(set) var revision = 0
     private(set) var locationAuthorization: ExitAlarmLocationAuthorization
+    /// "Genauer Standort" is off in iOS: the location is only good to some kilometres, so the timetable carries the alarm.
+    private(set) var locationIsApproximate = false
     private(set) var alarmKind: ExitAlarmKind
     /// The user declined AlarmKit and the notification fallback in iOS: nothing can ring when the app is closed.
     private(set) var cannotRingInBackground = false
@@ -27,6 +29,9 @@ final class ExitAlarmService {
     @ObservationIgnored private let system: SystemExitAlarmScheduler?
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private var restored = false
+    /// What the Live Activity last heard about the alarms (stop, kind of line, approaching): it is refreshed when this changes, so the
+    /// "Aussteigen in 4 Min" line does not outlive the alarm until the next poll.
+    @ObservationIgnored private var activitySignature: String?
     /// Screenshot, perf or demo run: fakes, no prompts, nothing real.
     let isSimulated: Bool
 
@@ -123,6 +128,19 @@ final class ExitAlarmService {
 
     func acknowledgeTest() { engine.acknowledgeTest() }
 
+    /// Demo scenes and CI screenshots only: "Genauer Standort" is off (the fakes say so; nothing real is touched).
+    func simulateApproximateLocation() {
+        guard isSimulated, let scripted = engine.location as? ScriptedLocationProvider else { return }
+        scripted.isReducedAccuracy = true
+        refreshStatus()
+    }
+
+    /// "Alle Daten löschen" (Einstellungen › Daten): every alarm, the system alarms and circles of them and the saved book go.
+    func deleteAll() {
+        engine.reset()
+        updateTicker()
+    }
+
     /// "Wecker testen": rings in ten seconds like a real one.
     func startTest() async {
         await prepare(askForPermissions: true)
@@ -148,6 +166,7 @@ final class ExitAlarmService {
 
     func refreshStatus() {
         locationAuthorization = engine.location.authorization
+        locationIsApproximate = engine.locationIsApproximate
         if let system {
             alarmKind = system.kind
             cannotRingInBackground = system.kind == .none
@@ -219,8 +238,22 @@ final class ExitAlarmService {
     private func engineChanged() {
         revision &+= 1
         locationAuthorization = engine.location.authorization
+        locationIsApproximate = engine.locationIsApproximate
         if let system { alarmKind = system.kind }
         ExitAlarmWindow.shared.update()   // the full-screen moment shows or hides with the alarm's state
+        refreshActivityIfNeeded()
+    }
+
+    /// The Live Activity says "Aussteigen in 4 Min" while an alarm is armed. When the alarm stops being armed (cancelled, rang, ended
+    /// by Live-Daten off) or a new one appears, the follow refreshes its activity at once: a line that says "armed" after the alarm is
+    /// gone would be a promise nobody keeps. Only a change of the line's shape counts, not the passing minutes.
+    private func refreshActivityIfNeeded() {
+        guard !isSimulated else { return }
+        let info = engine.book.activityInfo(now: Date())
+        let signature = info.map { "\($0.stopName)|\($0.isTransfer)|\($0.isApproaching)" }
+        guard signature != activitySignature else { return }
+        activitySignature = signature
+        LiveFollowTracker.shared.exitAlarmChanged()
     }
 
     /// A tick every 5 seconds while an alarm is active (or a test waits): the app is awake then, in the foreground or kept

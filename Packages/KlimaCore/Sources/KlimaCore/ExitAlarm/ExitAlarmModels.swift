@@ -219,6 +219,9 @@ public struct ExitAlarmConfig: Sendable {
     public var speedTimeConstant: TimeInterval = 30
     /// The alarm ends this long after the arrival.
     public var expiryAfterArrival: TimeInterval = 600
+    /// An alarm that never learned its arrival (the timetable gave none) ends this long after it rang, or after it was set: the
+    /// location must not run for ever for a moment nobody knows.
+    public var maxLifeWithoutArrival: TimeInterval = 6 * 3600
     /// The geofence radius never goes below this.
     public var minGeofenceRadius: Double = 1500
     public var maxGeofenceRadius: Double = 20_000

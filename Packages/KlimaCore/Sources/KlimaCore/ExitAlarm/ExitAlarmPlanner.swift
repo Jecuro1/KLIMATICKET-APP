@@ -206,8 +206,12 @@ public enum ExitAlarmPlanner {
     // MARK: Evaluation
 
     private static func evaluate(_ state: inout ExitAlarmState, now: Date, config: ExitAlarmConfig, fixArrived: Bool) -> [ExitAlarmEffect] {
-        if let arrival = state.timetableArrival ?? state.spec.plannedArrival,
-           now >= arrival.addingTimeInterval(config.expiryAfterArrival) {
+        if let arrival = state.timetableArrival ?? state.spec.plannedArrival {
+            if now >= arrival.addingTimeInterval(config.expiryAfterArrival) {
+                return end(&state, reason: state.phase == .acknowledged ? .completed : .expired, now: now)
+            }
+        } else if now >= (state.firedAt ?? state.spec.createdAt).addingTimeInterval(config.maxLifeWithoutArrival) {
+            // No arrival at all: the alarm would never expire, and a rung one would keep the location running for ever.
             return end(&state, reason: state.phase == .acknowledged ? .completed : .expired, now: now)
         }
         var effects: [ExitAlarmEffect] = []

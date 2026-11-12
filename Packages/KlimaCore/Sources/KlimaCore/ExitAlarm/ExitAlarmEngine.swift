@@ -31,6 +31,9 @@ public protocol ExitAlarmLocationHandler: AnyObject {
 public protocol ExitAlarmLocationProviding: AnyObject {
     var authorization: ExitAlarmLocationAuthorization { get }
     var isRegionMonitoringAvailable: Bool { get }
+    /// "Genauer Standort" is off for the app in iOS: the fixes are only good to some kilometres. The planner drops them (accuracy
+    /// over `ExitAlarmConfig.maxAccuracy`), so the timetable carries the alarm; the app says so instead of promising the location.
+    var isReducedAccuracy: Bool { get }
     var handler: ExitAlarmLocationHandler? { get set }
     /// Only after the pre-prompt screen: the system asks "Beim Verwenden", then offers "Immer".
     func requestWhenInUse()
@@ -72,6 +75,10 @@ public protocol ExitAlarmScheduling: AnyObject {
     func cancel(id: String)
     func ringNow(_ content: ExitAlarmRingContent)
     func stopRinging(id: String)
+}
+
+extension ExitAlarmLocationProviding {
+    public var isReducedAccuracy: Bool { false }
 }
 
 public protocol ExitAlarmPersisting: AnyObject {
@@ -146,6 +153,25 @@ public final class ExitAlarmEngine: ExitAlarmLocationHandler {
     }
 
     public var hasActiveAlarms: Bool { !book.active.isEmpty }
+
+    /// The permission lets the app read the location, but only to some kilometres ("Genauer Standort" is off).
+    public var locationIsApproximate: Bool { location.authorization.allowsUpdates && location.isReducedAccuracy }
+
+    /// "Alle Daten löschen": every alarm ends and nothing of them stays. The system alarms are cancelled, the circles and the
+    /// updates stop, a waiting test is dropped, and the saved book is emptied (not even the ended alarms of the last hour stay).
+    public func reset() {
+        let now = clock()
+        run(book.apply(.end(.cancelledByUser), now: now, config: config), now: now)
+        for id in regions { location.stopMonitoring(regionID: id) }
+        regions.removeAll()
+        failedRegions.removeAll()
+        geofenceFailed = false
+        echoGuard.removeAll()
+        acknowledgeTest()
+        book = ExitAlarmBook()
+        syncLocation()
+        changed()
+    }
 
     // MARK: Arming
 

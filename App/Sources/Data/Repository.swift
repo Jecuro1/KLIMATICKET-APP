@@ -303,10 +303,18 @@ struct Repository {
         for e in (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>())) ?? [] { context.delete(e) }
         for e in (try? context.fetch(FetchDescriptor<BenefitEntity>())) ?? [] { context.delete(e) }
         for e in (try? context.fetch(FetchDescriptor<TicketEntity>())) ?? [] { context.delete(e) }
-        for e in allCandidates() { context.delete(e) }   // MARK: tripdetect – proposals and the memory of dismissed pairs
-        app.detection.deleteAllLocationData()
+        deleteDeviceOnlyData()
         app.settings.selectedTicketID = nil
         commit(sync: false)
+    }
+
+    /// What never syncs and lives only on this device: the trip proposals and the location buffer of the detection, and the armed
+    /// Aussteige-Wecker with their system alarms and circles. "Alle Daten löschen" removes it on both paths – with a cloud account the
+    /// rows are tombstoned instead of deleted, and these would have stayed. The caller saves the context.
+    private func deleteDeviceOnlyData() {
+        for e in allCandidates() { context.delete(e) }   // MARK: tripdetect – proposals and the memory of dismissed pairs
+        app.detection.deleteAllLocationData()
+        ExitAlarmService.shared.deleteAll()               // MARK: exitalarm – nothing of an alarm outlives "Alle Daten löschen"
     }
 
     /// "Alles löschen" that also reaches the cloud: with a signed-in account every row is tombstoned and uploaded
@@ -319,6 +327,8 @@ struct Repository {
             return true
         }
         let ok = await app.sync.deleteAllDataEverywhere(context: context, auth: app.auth)
+        deleteDeviceOnlyData()
+        commit(sync: false)
         app.settings.selectedTicketID = nil
         refreshWidgets()
         return ok

@@ -210,6 +210,7 @@ struct SetDataSection: View {
         LetterStore.eraseAll()   // MARK: ticketletters – name and address in the Keychain, the switch
         DemoDataStore.forget()
         WhatIfStore.clear()   // MARK: whatif – saved scenarios hold the user's routes
+        NoticeHistoryStore.clear()   // MARK: exitalarm – the Alarme history keeps the texts of delivered notices, an alarm's stop and time too
         let repo = Repository(context: context, app: app)
         Task {
             let ok = await repo.deleteAllDataEverywhere()

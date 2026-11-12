@@ -118,7 +118,7 @@ struct ExitAlarmSheet: View {
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("KlimaBilanz weckt dich kurz vor deinem Ausstieg, auch im Schlaf.")
+                Text(ExitAlarmPresentation.promise(kind: service.alarmKind))
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -284,15 +284,34 @@ struct ExitAlarmSheet: View {
     }
 
     private var locationStatus: (String, Bool) {
+        if service.locationIsApproximate, service.locationAuthorization.allowsUpdates { return ("nur ungefähr", false) }
         switch service.locationAuthorization {
-        case .always: ("Immer erlaubt", true)
-        case .whenInUse: ("Nur beim Verwenden", false)
-        case .notDetermined: ("noch nicht erlaubt", false)
-        case .denied, .restricted: ("in iOS aus", false)
+        case .always: return ("Immer erlaubt", true)
+        case .whenInUse: return ("Nur beim Verwenden", false)
+        case .notDetermined: return ("noch nicht erlaubt", false)
+        case .denied, .restricted: return ("in iOS aus", false)
         }
     }
 
     @ViewBuilder private var locationButton: some View {
+        if service.locationIsApproximate, service.locationAuthorization.allowsUpdates {
+            // The permission is there, the precision is not: only the iOS settings can change that.
+            Text("„Genauer Standort“ ist für KlimaBilanz in iOS aus. Dann gibt iOS nur eine ungefähre Position, und der Fahrplan weckt dich allein.")
+                .font(.footnote)
+                .foregroundStyle(Theme.summitText)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            } label: {
+                Label("Genauen Standort in iOS erlauben", systemImage: "gearshape.fill").frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+        } else {
+            locationPermissionButton
+        }
+    }
+
+    @ViewBuilder private var locationPermissionButton: some View {
         switch service.locationAuthorization {
         case .notDetermined:
             Button { showsExplainer = true } label: {
@@ -476,7 +495,7 @@ struct ExitAlarmLocationExplainer: View {
                     point("clock.arrow.circlepath", "Der Fahrplan bleibt die Grundlage",
                           "Auch ohne Standort klingelt der Wecker zur erwarteten Ankunft. Der Standort macht ihn früher und genauer, wenn du schneller bist als geplant.")
                     point("eye.slash.fill", "Nichts wird gespeichert oder gesendet",
-                          "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher.")
+                          "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher. Das Lesen kostet während der Fahrt Akku.")
                     point("hand.raised.fill", "Du behältst die Kontrolle",
                           "iOS fragt dich gleich in zwei Schritten. „Immer“ kannst du später in den Einstellungen zurücknehmen.")
                 }

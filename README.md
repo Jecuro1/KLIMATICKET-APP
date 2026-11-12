@@ -30,8 +30,9 @@ Bedienung, Frost-Karten für Inhalte.
 - **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
   Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
-- **Aussteige-Wecker** – weckt dich kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort, auch bei gesperrtem iPhone;
-  der Standort bleibt auf dem Gerät und wird nicht gespeichert ([docs/EXIT_ALARM.md](docs/EXIT_ALARM.md), mit Geräte-Checkliste)
+- **Aussteige-Wecker** – klingelt kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort (bei gesperrtem iPhone mit der
+  Erlaubnis „Immer“); der Standort bleibt auf dem Gerät und wird nicht gespeichert. Noch nicht auf einem iPhone geprüft
+  ([docs/EXIT_ALARM.md](docs/EXIT_ALARM.md), mit Geräte-Checkliste und den Grenzen)
 - **Fahrten erkennen** – „Fahrt aufzeichnen“ (genau, mit Live-Karte und Live Activity) und die optionale **Hintergrund-Erkennung (Beta)**:
   Vorschläge mit ehrlichem Etikett (Vielleicht, Wahrscheinlich, Sicher) in der Übersicht, nie ohne dein Okay erfasst; grobe Standortpunkte
   höchstens 36 Stunden nur auf dem iPhone ([docs/TRIP_DETECTION.md](docs/TRIP_DETECTION.md), mit Geräte-Checkliste und den Grenzen)

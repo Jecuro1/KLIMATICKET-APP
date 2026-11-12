@@ -8,6 +8,8 @@ import Foundation
 public final class ScriptedLocationProvider: ExitAlarmLocationProviding {
     public var authorization: ExitAlarmLocationAuthorization
     public var isRegionMonitoringAvailable = true
+    /// "Genauer Standort" off (a test or a demo scene sets it).
+    public var isReducedAccuracy = false
     public weak var handler: ExitAlarmLocationHandler?
     public private(set) var isUpdating = false
     public private(set) var regions: [String: (center: GeoPoint, radius: Double)] = [:]

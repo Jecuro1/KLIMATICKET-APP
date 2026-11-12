@@ -119,6 +119,8 @@ struct ExitAlarmCard: View {
     var now: Date = Date()
     var kind: ExitAlarmKind = .alarmKit
     var locationAuthorization: ExitAlarmLocationAuthorization = .always
+    /// "Genauer Standort" is off in iOS: the location counts for nothing, the timetable carries the alarm.
+    var locationIsApproximate = false
     /// Shows "Ändern" and "Abbrechen".
     var showsActions = false
     var onEdit: () -> Void = {}
@@ -167,7 +169,8 @@ struct ExitAlarmCard: View {
                         VStack(alignment: .leading, spacing: Theme.Spacing.xs) { remaining(line, estimate: estimate) }
                     }
                 }
-                ExitAlarmFacts(lead: state.spec.lead, kind: kind, locationAuthorization: locationAuthorization)
+                ExitAlarmFacts(lead: state.spec.lead, kind: kind, locationAuthorization: locationAuthorization,
+                               locationIsApproximate: locationIsApproximate)
                 if showsActions, state.isActive {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: Theme.Spacing.s) { actionButtons }
@@ -240,6 +243,7 @@ struct ExitAlarmFacts: View {
     let lead: ExitAlarmLead
     let kind: ExitAlarmKind
     let locationAuthorization: ExitAlarmLocationAuthorization
+    var locationIsApproximate = false
 
     var body: some View {
         ExitAlarmFlowLayout(spacing: 6) { chips }
@@ -278,14 +282,16 @@ struct ExitAlarmFacts: View {
     }
 
     private var locationText: String {
+        // Reduced accuracy: the permission is there, but the planner drops positions that are good to some kilometres.
+        if locationIsApproximate, locationAuthorization.allowsUpdates { return "Standort zu ungenau, nur Fahrplan" }
         switch locationAuthorization {
-        case .always: "Standort immer"
-        case .whenInUse: "Standort beim Verwenden"
-        default: "Nur Fahrplan"
+        case .always: return "Standort immer"
+        case .whenInUse: return "Standort beim Verwenden"
+        default: return "Nur Fahrplan"
         }
     }
 
     private var locationSymbol: String {
-        locationAuthorization.allowsUpdates ? "location.fill" : "location.slash"
+        locationAuthorization.allowsUpdates && !locationIsApproximate ? "location.fill" : "location.slash"
     }
 }

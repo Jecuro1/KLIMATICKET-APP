@@ -41,7 +41,7 @@ struct SetExitAlarmSection: View {
                 statusRow(title: "Standort", value: locationText.0, ok: locationText.1)
 
                 if service.locationAuthorization == .denied || service.locationAuthorization == .restricted
-                    || service.locationAuthorization == .whenInUse || service.cannotRingInBackground {
+                    || service.locationAuthorization == .whenInUse || service.locationIsApproximate || service.cannotRingInBackground {
                     Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                     } label: {
@@ -56,7 +56,11 @@ struct SetExitAlarmSection: View {
         } footer: {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 SetFooter(text: kindFooter)
-                SetFooter(text: "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher, und nichts wird gesendet. Mit „Immer“ weckt dich der Wecker auch bei gesperrtem iPhone; ohne Standort klingelt er nach Fahrplan.")
+                if service.locationIsApproximate, service.locationAuthorization.allowsUpdates {
+                    SetFooter(text: "„Genauer Standort“ ist für KlimaBilanz in iOS aus: iOS gibt nur eine ungefähre Position, einige Kilometer genau. Damit rechnet der Wecker nicht mit dem Standort, der Fahrplan trägt ihn allein. Schalte „Genauer Standort“ in den iOS-Einstellungen unter Standort ein, wenn der Standort mithelfen soll.")
+                }
+                SetFooter(text: "Der Standort wird nur auf deinem iPhone gelesen, solange ein Wecker scharf ist und die Fahrt läuft; das kostet in dieser Zeit Akku. Es gibt keinen Verlauf, nur die letzte Position im Arbeitsspeicher, und nichts wird gesendet. Mit „Immer“ weckt dich der Wecker auch bei gesperrtem iPhone; ohne Standort klingelt er nach Fahrplan.")
+                SetFooter(text: "Halt, Zeit und Stand eines Weckers bleiben nach seinem Ende höchstens eine Stunde auf dem iPhone. „Alle Daten löschen“ unter Daten räumt sie sofort ab.")
             }
         }
         .task { await service.prepare(askForPermissions: false) }
@@ -93,11 +97,13 @@ struct SetExitAlarmSection: View {
     }
 
     private var locationText: (String, Bool) {
+        // Allowed, but "Genauer Standort" is off: say what that means for the alarm, not "Immer erlaubt".
+        if service.locationIsApproximate, service.locationAuthorization.allowsUpdates { return ("nur ungefähr, Fahrplan trägt", false) }
         switch service.locationAuthorization {
-        case .always: ("Immer erlaubt", true)
-        case .whenInUse: ("Nur beim Verwenden", false)
-        case .notDetermined: ("noch nicht gefragt", false)
-        case .denied, .restricted: ("in iOS aus", false)
+        case .always: return ("Immer erlaubt", true)
+        case .whenInUse: return ("Nur beim Verwenden", false)
+        case .notDetermined: return ("noch nicht gefragt", false)
+        case .denied, .restricted: return ("in iOS aus", false)
         }
     }
 

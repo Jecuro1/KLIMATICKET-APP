@@ -214,6 +214,17 @@ final class LiveFollowTracker {
         }
     }
 
+    /// An Aussteige-Wecker was armed, rang or ended: a running Live Activity says so now, not at the next poll (which can be 15 minutes
+    /// away, or never when Live-Daten went off). It only updates an activity that already runs; it asks for nothing. // MARK: exitalarm
+    func exitAlarmChanged() {
+        guard let snapshot, let id = activityID, !snapshot.stage.isFinished, !isDemoRun, !LaunchMode.isSandboxed,
+              FollowNoticeStore.load().isEnabled else { return }
+        let now = Date()
+        let state = FollowLiveState.make(from: snapshot, now: now).with(exitAlarm: ExitAlarmService.shared.activityInfo(now: now))
+        let staleDate = FollowRefreshPlan.staleDate(arrival: snapshot.arrivalEstimate, now: now)
+        Task { _ = await FollowActivityController.shared.update(id: id, state: state, staleDate: staleDate) }
+    }
+
     /// Ends the Live Activity at once (stop, replaced follow, switch off).
     private func endActivityNow() {
         guard let id = activityID else { return }

@@ -16,7 +16,9 @@ final class CLExitAlarmLocation: NSObject, ExitAlarmLocationProviding, CLLocatio
     override init() {
         super.init()
         manager.delegate = self
-        // Kilometres, not metres: a 100 m accuracy and a 100 m distance filter keep the radio quiet. The speed is smoothed.
+        // Not the best accuracy: a stop is 1.5 km wide for the circle and the speed is smoothed, so 100 m is enough. The distance filter
+        // keeps the app from waking for every metre (a train at 40 m/s still reports about every 3 seconds). The location hardware
+        // runs while the updates run: that is the battery cost of "Beim Verwenden"/"Immer" during a trip (docs/EXIT_ALARM.md §8).
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         manager.distanceFilter = 100
         manager.activityType = .otherNavigation   // trains and boats
@@ -35,6 +37,9 @@ final class CLExitAlarmLocation: NSObject, ExitAlarmLocationProviding, CLLocatio
     }
 
     var isRegionMonitoringAvailable: Bool { CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) }
+
+    /// "Genauer Standort" is off in the iOS settings: iOS then delivers positions good to some kilometres only.
+    var isReducedAccuracy: Bool { manager.accuracyAuthorization == .reducedAccuracy }
 
     func requestWhenInUse() { manager.requestWhenInUseAuthorization() }
     func requestAlways() { manager.requestAlwaysAuthorization() }

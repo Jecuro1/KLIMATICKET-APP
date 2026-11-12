@@ -17,7 +17,8 @@ struct ExitAlarmFollowSection: View {
             ForEach(alarms) { state in
                 TimelineView(.periodic(from: .now, by: 10)) { context in
                     ExitAlarmCard(state: state, now: context.date, kind: service.alarmKind,
-                                  locationAuthorization: service.locationAuthorization, showsActions: true,
+                                  locationAuthorization: service.locationAuthorization,
+                                  locationIsApproximate: service.locationIsApproximate, showsActions: true,
                                   onEdit: { onOpen(state.spec.stopID) }, onCancel: { service.cancel(state.id) })
                 }
                 .motionTransition(.rise)
@@ -31,7 +32,7 @@ struct ExitAlarmFollowSection: View {
                                 Text(alarms.isEmpty ? "Aussteige-Wecker" : "Weiteren Wecker stellen")
                                     .font(.headline)
                                     .foregroundStyle(Theme.textPrimary)
-                                Text("Weckt dich kurz vor deiner Haltestelle, auch im Schlaf.")
+                                Text(ExitAlarmPresentation.promise(kind: service.alarmKind))
                                     .font(.footnote)
                                     .foregroundStyle(Theme.textSecondary)
                                     .fixedSize(horizontal: false, vertical: true)

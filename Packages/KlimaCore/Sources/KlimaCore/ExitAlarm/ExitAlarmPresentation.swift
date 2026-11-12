@@ -151,6 +151,20 @@ public enum ExitAlarmPresentation {
         return "\(state.spec.isTransfer ? "Umsteigen" : "Aussteigen") in \(durationText(seconds))"
     }
 
+    /// The one sentence that says what the alarm does, by the kind of alarm this iPhone uses. "Auch im Schlaf" stands only where it is
+    /// true: the system alarm rings through the silent switch and Focus, a notification does not, and without a permission the alarm
+    /// waits for one.
+    public static func promise(kind: ExitAlarmKind) -> String {
+        switch kind {
+        case .alarmKit:
+            "Weckt dich kurz vor deiner Haltestelle, auch im Schlaf und bei lautlosem iPhone."
+        case .notifications:
+            "Meldet sich kurz vor deiner Haltestelle. Der Lautlos-Schalter und der Fokus können die Mitteilung stumm schalten."
+        case .none:
+            "Weckt dich kurz vor deiner Haltestelle. Beim Stellen fragt iOS nach der Erlaubnis für den Wecker."
+        }
+    }
+
     // MARK: Full-screen moment and notification
 
     public static func firedTitle(_ state: ExitAlarmState) -> String {
