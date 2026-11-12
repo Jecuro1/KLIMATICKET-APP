@@ -141,7 +141,7 @@ Der Regler selbst ist lokal. Anfragen gibt es, **sobald die Zeit nicht „Jetzt�
 
 ## 6. Demo und Screenshots
 
-`-KBDemo` und die Hosts `radarTime` (Regler bei +45 Minuten), `radarTimePlaying` (Zeitraffer läuft ab +30 Minuten, Westbahn, ein Zug gewählt mit Spur), `radarTimeLoading` („Zeitreise lädt 3/12“, bleibt stehen), `radarTimeAX5` (größte Schrift), `radarTimeChip` (15 Minuten zurück, die Karte zum Chip eingeklappt: „Rückblick“ im Band, die Zeit und der Weg zurück im Chip). Kein Netz, keine Berechtigung.
+`-KBDemo` und die Hosts `radarTime` (Regler bei +45 Minuten), `radarTimePlaying` (Zeitraffer läuft ab −30 Minuten, Westbahn, ein Zug gewählt mit Spur), `radarTimeLoading` („Zeitreise lädt 3/12“, bleibt stehen), `radarTimeAX5` (größte Schrift), `radarTimeChip` (15 Minuten zurück, die Karte zum Chip eingeklappt: „Rückblick“ im Band, die Zeit und der Weg zurück im Chip). Kein Netz, keine Berechtigung.
 Die Züge sind **erfunden** (`RadarTimeDemo.swift`: 14 Linien auf den echten Hauptstrecken mit erfundenen Fahrplänen, je Antwort vier Halte wie die echte Auskunft); kein echter Zug, Fahrplan oder Standort.
 
 ## 7. Geprüft und nicht geprüft

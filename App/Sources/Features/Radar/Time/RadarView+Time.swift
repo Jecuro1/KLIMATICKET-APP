@@ -35,7 +35,7 @@ extension RadarView {
         }
     }
 
-    /// The CI scenes (`RadarTimeScreenshotHost`): synthetic trains, the scrubber open at +45 minutes; playing from +30 minutes, zoomed to the Westbahn with
+    /// The CI scenes (`RadarTimeScreenshotHost`): synthetic trains, the scrubber open at +45 minutes; playing from 30 minutes back, zoomed to the Westbahn with
     /// one train selected; loading, stuck at three snapshots.
     func applyTimePreset(_ preset: RadarPreset) {
         layersRaw = MapLayerSelection(layers: [.trains]).storageValue   // only the trains: the scene is about them
@@ -44,7 +44,7 @@ extension RadarView {
         case .timeTravelPlaying:
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2, longitude: 15.6).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)))
-            travel.applyDemo(minutes: 30, playing: true, featured: ("RJX 60", GeoPoint(latitude: 48.2, longitude: 15.6)))
+            travel.applyDemo(minutes: -30, playing: true, featured: ("RJX 60", GeoPoint(latitude: 48.2, longitude: 15.6)))
         case .timeTravelLoading:
             travel.applyDemo(minutes: 45, playing: false)
         case .timeTravelChip:   // the past, with the card folded to its chip: "Rückblick" in the banner, the time and the way back in the chip

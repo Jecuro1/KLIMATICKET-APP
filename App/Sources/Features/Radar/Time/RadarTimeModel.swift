@@ -426,10 +426,16 @@ final class RadarTimeModel {
         }
         pins = built
         pinsByID = Dictionary(built.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        clusters = RadarClustering.group(
-            built.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) },
-            cellDegrees: RadarClustering.cellSize(latitudeSpan: live.spanDegrees, longitudeSpan: box.east - box.west,
-                                                  widthPoints: Double(live.mapSize.width), heightPoints: Double(live.mapSize.height)))
+        // The selected train stays a marker of its own, so its trail ends at it and not in a bubble.
+        let cell = RadarClustering.cellSize(latitudeSpan: live.spanDegrees, longitudeSpan: box.east - box.west,
+                                            widthPoints: Double(live.mapSize.width), heightPoints: Double(live.mapSize.height))
+        let selectedID = live.selectedTripID
+        func point(_ pin: RadarPin) -> RadarPoint { RadarPoint(tripID: pin.id, coordinate: pin.coordinate, delay: pin.delay) }
+        var groups = RadarClustering.group(built.filter { $0.id != selectedID }.map(point), cellDegrees: cell)
+        if let selectedID, let pin = pinsByID[selectedID] {
+            groups += RadarClustering.group([point(pin)], cellDegrees: cell)
+        }
+        clusters = groups
         if straight != hasStraightPins { hasStraightPins = straight }
         // The CI scene keeps one train selected so the trail shows (the same tap a user does): the one of this line nearest to a point, so the
         // selection follows the time-lapse and stays in the picture.
