@@ -94,7 +94,21 @@ enum YearReviewText {
         return "\(parts.value) \(parts.unit)"
     }
 
+    // MARK: Purpose
+
+    /// "70 von 79 Fahrten haben einen Zweck – die Prozent beziehen sich auf alle Fahrten." The percentages are shares of all
+    /// trips (`CategoryBucket.tripShare`, as in Statistik › "Wofür du fährst"), so the caption says so.
+    static func purposeCaption(_ purpose: YearReview.Purpose) -> String {
+        let of = purpose.totalTrips > purpose.categorisedTrips ? "\(purpose.categorisedTrips) von \(purpose.totalTrips) Fahrten haben einen Zweck"
+            : "Alle \(purpose.categorisedTrips) Fahrten haben einen Zweck"
+        return of + " – die Prozent beziehen sich auf alle Fahrten."
+    }
+
     // MARK: Routes & trips
+
+    /// The distance of a trip's one direction – what the record "Längste Fahrt" is chosen by and what Statistik and the
+    /// Jahresbericht print (a round trip is not doubled).
+    static func tripDistance(_ trip: TripRecord) -> String { Format.km(trip.distanceKm) }
 
     static func routeTitle(_ route: RouteStat) -> String { "\(route.fromName) – \(route.toName)" }
 
@@ -152,13 +166,14 @@ enum YearReviewText {
             parts.append("Längste Serie: \(streakText(rhythm.longestStreakDays)).")
             return prefix + parts.joined(separator: " ")
         case .onTheRoad(let road):
-            var parts = ["Du warst in \(road.stateCount) von \(YearReview.OnTheRoad.totalStates) Bundesländern."]
-            if let trip = road.longestTrip { parts.append("Längste Fahrt: \(tripTitle(trip)), \(Format.km(trip.totalDistanceKm)).") }
+            var parts: [String] = []
+            if road.stateCount > 0 { parts.append("Du warst in \(road.stateCount) von \(YearReview.OnTheRoad.totalStates) Bundesländern.") }
+            if let trip = road.longestTrip { parts.append("Längste Fahrt: \(tripTitle(trip)), \(tripDistance(trip)).") }
             if let trip = road.mostValuableTrip, trip.id != road.longestTrip?.id { parts.append("Wertvollste Fahrt: \(tripTitle(trip)), \(SummitFigures.euro(trip.totalValue)).") }
             return prefix + parts.joined(separator: " ")
         case .purpose(let purpose):
             let top = purpose.buckets.first?.category?.displayName ?? ""
-            return prefix + "Wofür du gefahren bist: am häufigsten \(top). \(purpose.categorisedTrips) Fahrten mit Zweck."
+            return prefix + "Wofür du gefahren bist: am häufigsten \(top). \(purposeCaption(purpose))"
         case .climate(let climate):
             return prefix + "Du hast etwa \(co2Text(climate.co2SavedKg)) CO₂ gespart – eine Schätzung im Vergleich zum Auto."
         case .finale:

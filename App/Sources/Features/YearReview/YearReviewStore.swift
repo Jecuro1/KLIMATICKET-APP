@@ -72,16 +72,21 @@ final class YearReviewStore {
     func reload(_ inputs: YearReviewInputs) {
         self.inputs = inputs
         holderName = inputs.holderName
-        choices = YearReviewPeriods.choices(tickets: inputs.tickets, trips: inputs.records, now: inputs.now,
-                                            preferredTicket: inputs.preferredTicket)
+        // Statistik can show an older ticket year than the active one: the story then opens on that ticket.
+        let picked = request.ticket.flatMap { $0 == inputs.preferredTicket ? nil : $0 }
+        let preferred = picked ?? inputs.preferredTicket
+        choices = YearReviewPeriods.choices(tickets: inputs.tickets, trips: inputs.records, now: inputs.now, preferredTicket: preferred)
         let wanted: YearReviewPeriod
         if let selectedID, let match = choices.first(where: { $0.id == selectedID }) {
             wanted = match
         } else if let year = request.year {
             wanted = choices.first { $0.kind == .calendarYear && $0.year == year } ?? YearReviewPeriods.calendarYear(year)
+        } else if picked != nil || request.startsOnTicketYear,
+                  let ticket = YearReviewPeriods.currentTicket(in: inputs.tickets, preferred: preferred, now: inputs.now) {
+            wanted = YearReviewPeriods.ticketPeriod(ticket)
         } else {
             wanted = YearReviewPeriods.defaultPeriod(tickets: inputs.tickets, trips: inputs.records, now: inputs.now,
-                                                     preferredTicket: inputs.preferredTicket)
+                                                     preferredTicket: preferred)
         }
         build(wanted, resetPage: !isLoaded)
         isLoaded = true

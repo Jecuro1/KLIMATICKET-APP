@@ -7,12 +7,15 @@ import KlimaCore
 
 /// Statistik: "Dein Jahr" – shown once at least one trip exists (the caller shows it only then).
 struct YearReviewEntryCard: View {
+    /// The ticket year the Statistik screen shows: when it is not the active ticket, the story opens on it.
+    var ticket: TicketPeriod? = nil
+
     @Environment(AppState.self) private var app
     @Environment(\.yearReviewZoom) private var zoom
 
     var body: some View {
         Button {
-            app.presentYearReview(source: .statistics)
+            app.presentYearReview(ticket: ticket, source: .statistics)
         } label: {
             GlassCard(padding: Theme.Spacing.m) {
                 HStack(spacing: Theme.Spacing.s + 2) {
@@ -97,6 +100,8 @@ struct YearReviewSeasonalCard: View {
                             .foregroundStyle(Theme.textSecondary)
                             .frame(width: 32, height: 32)
                             .background(Theme.surfaceSecondary, in: .circle)
+                            .frame(width: 44, height: 44)   // the touch target is 44 pt, the disc stays 32
+                            .contentShape(.circle)
                     }
                     .buttonStyle(.pressable)
                     .accessibilityLabel("Jahresrückblick ausblenden")

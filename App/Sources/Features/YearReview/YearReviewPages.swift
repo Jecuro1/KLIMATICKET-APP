@@ -556,23 +556,38 @@ struct YearReviewRoadPage: View {
     var body: some View {
         StoryPageScaffold(kind: .onTheRoad, symbol: "map.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                Text("Du warst in")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.textSecondary)
-                    .padding(.top, Theme.Spacing.m)
-                    .reveal(order: 1)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    CountUpText(value: Double(road.stateCount), from: ctx.start(.onTheRoad, Double(road.stateCount)), delay: 0.2) { Format.number($0) }
-                        .font(.system(size: 64, weight: .light, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.textPrimary)
-                    Text("von \(YearReview.OnTheRoad.totalStates) Bundesländern")
+                if road.states.isEmpty {
+                    // The trips carry no federal-state data: "0 von 9" would be a claim, not a count – only the records stay.
+                    Text("Unterwegs gewesen")
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(Theme.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.top, Theme.Spacing.m)
+                        .reveal(order: 1)
+                    Text("Deine Rekorde")
+                        .font(.system(size: 52, weight: .light, design: .rounded))
+                        .foregroundStyle(Theme.routeGradient)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .reveal(.focus, order: 2)
+                } else {
+                    Text("Du warst in")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Theme.textSecondary)
+                        .padding(.top, Theme.Spacing.m)
+                        .reveal(order: 1)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        CountUpText(value: Double(road.stateCount), from: ctx.start(.onTheRoad, Double(road.stateCount)), delay: 0.2) { Format.number($0) }
+                            .font(.system(size: 64, weight: .light, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("von \(YearReview.OnTheRoad.totalStates) Bundesländern")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .reveal(.focus, order: 2)
+                    stateGrid.reveal(order: 3)
                 }
-                .reveal(.focus, order: 2)
-                stateGrid.reveal(order: 3)
                 records.reveal(order: 4)
             }
         }
@@ -616,7 +631,7 @@ struct YearReviewRoadPage: View {
     private var records: some View {
         VStack(spacing: Theme.Spacing.xs) {
             if let trip = road.longestTrip {
-                recordRow(symbol: "ruler", title: "Längste Fahrt", route: YearReviewText.tripTitle(trip), value: Format.km(trip.totalDistanceKm))
+                recordRow(symbol: "ruler", title: "Längste Fahrt", route: YearReviewText.tripTitle(trip), value: YearReviewText.tripDistance(trip))
             }
             if let trip = road.mostValuableTrip, trip.id != road.longestTrip?.id {
                 recordRow(symbol: "eurosign.circle", title: "Wertvollste Fahrt", route: YearReviewText.tripTitle(trip), value: SummitFigures.euro(trip.totalValue))
@@ -686,7 +701,7 @@ struct YearReviewPurposePage: View {
                     }
                 }
                 .reveal(order: 3)
-                StoryCaption("\(StatsNames.trips(purpose.categorisedTrips)) mit Zweck – Fahrten ohne Zweck sind hier nicht gezählt.")
+                StoryCaption(YearReviewText.purposeCaption(purpose))
                     .reveal(order: 4)
             }
         }

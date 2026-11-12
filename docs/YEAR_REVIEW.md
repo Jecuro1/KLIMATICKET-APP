@@ -11,10 +11,10 @@ Code: `Packages/KlimaCore/Sources/KlimaCore/YearReview/` (Logik, Linux-Tests) un
 
 | Weg | Wie |
 |---|---|
-| Statistik | Karte „Dein Jahr“ nach der Ersparnis-Karte (sobald das Ticketjahr mindestens eine Fahrt hat) |
+| Statistik | Karte „Dein Jahr“ nach der Ersparnis-Karte (sobald das Ticketjahr mindestens eine Fahrt hat); zeigt die Statistik gerade ein anderes Ticketjahr als das aktive, öffnet die Story genau dieses |
 | Übersicht | Saisonkarte vom 1. Dezember bis 31. Jänner, sobald das Jahr Fahrten hat; pro Jahr wegtippbar (UserDefaults-Schlüssel `yearReview.dismissed.<Jahr>`) |
-| Deep Link | `klimabilanz://year` (Standardzeitraum) oder `klimabilanz://year/2026` (Kalenderjahr) |
-| Widget | Tipp auf das Widget „Jahresrückblick“ öffnet `klimabilanz://year` (nur die `widgetURL`-Zeile geändert) |
+| Deep Link | `klimabilanz://year` (Standardzeitraum), `klimabilanz://year/2026` (Kalenderjahr) oder `klimabilanz://year/ticket` (aktives Ticket-Jahr) |
+| Widget | Tipp auf das Widget „Jahresrückblick“ öffnet `klimabilanz://year/ticket`, weil das Widget die Zahlen des Ticket-Zeitraums zeigt (nur die `widgetURL`-Zeile geändert) |
 
 Alle vier setzen `AppState.yearReviewRequest`; `RootView` präsentiert genau eine `fullScreenCover` (`.yearReviewHost()`). Die beiden
 Karten zoomen (`zoomSource` / `zoomDestination`, Motion-Tokens) in die Story, Links öffnen ohne Zoom. Offene App-Sheets
@@ -43,9 +43,9 @@ keine Seite, sondern den freundlichen Leerzustand mit „Fahrt erfassen“.
 | Strecke | km, verglichen mit einer Referenzstrecke | `summary.distanceKm`, `ReferenceDistances` | 0 km |
 | Lieblingsroute | Top-Route, Anzahl, zwei Verfolger (Hin und zurück zählt einmal) | `StatsAggregator.topRoutes` | Top-Route unter 2 Fahrten |
 | Rhythmus | stärkster Monat mit Mini-Balkendiagramm, häufigster Wochentag, längste Serie | `months`, `weekdays`, `records` | unter 3 Fahrten |
-| Unterwegs | Bundesländer, längste und wertvollste Fahrt | `StatsAggregator.records` | weder Bundesland noch längste Fahrt |
-| Wofür | Zwecke, nach Fahrten gereiht (STRETCH) | `CategoryStats.buckets` | unter 3 Fahrten mit Zweck |
-| Klima | CO₂ gespart, Auto gegen Öffis, „Schätzung“ | `CarComparisonResult.co2SavedKg` (= Statistik › „Öffis vs. Auto“) | kein Vergleich oder 0 kg |
+| Unterwegs | Bundesländer, längste und wertvollste Fahrt (Kilometer einer Richtung, wie Statistik und Bericht; ohne Bundesland-Daten nur „Deine Rekorde“, nie „0 von 9“) | `StatsAggregator.records` | weder Bundesland noch längste Fahrt |
+| Wofür | Zwecke, nach Fahrten gereiht (STRETCH); Prozent = Anteil an **allen** Fahrten wie in Statistik › „Wofür du fährst“, die Zeile darunter nennt „70 von 79 Fahrten haben einen Zweck“ | `CategoryStats.buckets` | unter 3 Fahrten mit Zweck |
+| Klima | CO₂ gespart, Auto gegen Öffis, „Schätzung“ | `CarComparisonResult.co2SavedKg` (= Statistik › „Öffis vs. Auto“) | kein Vergleich oder unter 0,5 kg (die Seite zeigt ganze Kilogramm, „0 kg“ wäre sinnlos) |
 | Abschluss | Bild zum Teilen | – | nie |
 
 **Überschrift und ehrliche Bilanz.** Die Überschrift der Ersparnis-Seite ist der Wert **aller** Fahrten gegen den eigenen Ticketpreis – dieselbe
@@ -71,13 +71,19 @@ Schaltersteuerung, „Bewegung reduzieren“ und Bedienungshilfen-Textgrößen l
 Bewegung, bei Textgrößen ab AX1 auch ohne Tippzonen: die Seite scrollt). Auch in der Hintergrund-App oder beim Halten läuft die Uhr nicht.
 
 Jede Seite ist **ein** Bedienungshilfen-Element mit gesprochener Zusammenfassung („Seite 3 von 8: Du bist 4.812 Kilometer gefahren …“),
-der Fortschritt hat `accessibilityValue`, Diagramme tragen Textwerte, keine Information steckt nur in einer Farbe.
+der Fortschritt hat `accessibilityValue`, Diagramme tragen Textwerte, keine Information steckt nur in einer Farbe. Mit VoiceOver bleibt der
+Fokus beim Seitenwechsel auf „Weiter“; deshalb sagt die Story die neue Seite an (`AccessibilityNotification.Announcement` mit der
+gesprochenen Zusammenfassung). Bricht das System eine Berührung ab (Scrollen in einer langen Seite, Alarm, Kantenwischen), laufen Halten
+und Wischen nicht weiter (`@GestureState` als Sicherheitsnetz zu `onEnded`). Die Segment-Schalter der Teilen-Seite (Format, Stil) wachsen
+höchstens bis xxxLarge mit, damit „Dunkel“ und „Gipfel“ bei AX5 nicht abgeschnitten werden.
 
 ## 5. Das Bild zum Teilen
 
 Letzte Seite: Live-Vorschau (`ImageRenderer`, die Vorschau ist der Export), Format **9:16** (1080 × 1920 px) oder **4:5** (1080 × 1350 px),
 Stil **Hell**, **Dunkel**, **Gipfel**, Schalter **„Strecken und Namen zeigen“** – standardmäßig **aus**: dann stehen nur Gesamtzahlen im
-Bild (Gewinn bzw. Prozent, Fahrten, Kilometer, CO₂, Bundesländer), keine Stationen und kein Name. Ein: Lieblingsroute, längste Fahrt,
+Bild (Gewinn bzw. Prozent, Fahrten, Kilometer, CO₂, Bundesländer), keine Stationen und kein Name. Die Zahl oben heißt „Gewinn gegenüber dem
+Ticketpreis“ (bei einem Kalenderjahr „… den anteiligen Ticketkosten“), nicht „gespart“: sie ist der Wert aller Fahrten gegen den
+Ticketpreis und kann Fahrten enthalten, die du ohne Ticket nicht gemacht hättest (die Story trennt diese Zeile ab). Ein: Lieblingsroute, längste Fahrt,
 Vergleichsstrecke und Name des Ticketinhabers. Geteilt wird mit `ShareLink` und einem PNG-`Transferable` (Muster `StatsSharePayload`); das
 Teilen-Menü bietet „Bild sichern“, deshalb ist keine Fotos-Berechtigung nötig. Die PNG-Größe wird nach dem Rendern geprüft und bei Abweichung
 auf exakt die Pixelzahl gezeichnet.

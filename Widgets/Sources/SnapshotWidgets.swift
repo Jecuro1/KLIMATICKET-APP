@@ -94,7 +94,7 @@ private struct YearReviewEntryView: View {
                              margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
-            .widgetURL(URL(string: "klimabilanz://year"))   // MARK: yearreview – opens the year story (RootView › handleDeepLink)
+            .widgetURL(URL(string: "klimabilanz://year/ticket"))   // MARK: yearreview – the story of the ticket period the widget shows (RootView › handleDeepLink)
             .widgetBrandBackground(family)
     }
 }

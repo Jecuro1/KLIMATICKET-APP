@@ -239,7 +239,7 @@ struct RootView: View {
     /// klimabilanz://log?favorite=<uuid> · klimabilanz://tab/<overview|trips|stats|ticket|planner> · klimabilanz://update
     /// klimabilanz://plan?from=…&to=…&at=<ISO8601>&arr=0|1 · klimabilanz://board?station=<stationID>   // MARK: planner
     /// klimabilanz://radar – the Zug-Radar   // MARK: widgets
-    /// klimabilanz://year[/2026] – the year story   // MARK: yearreview
+    /// klimabilanz://year[/2026|/ticket] – the year story   // MARK: yearreview
     /// klimabilanz://whatif – „Was wäre wenn?“   // MARK: whatif
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
@@ -276,9 +276,15 @@ struct RootView: View {
             Task { await app.updates.checkIfDue(force: true) }
         case "whatif":   // MARK: whatif
             showsWhatIf = true
-        // MARK: yearreview – klimabilanz://year · klimabilanz://year/2026 (Jahresrückblick; also the widget's tap)
+        // MARK: yearreview – klimabilanz://year · /2026 · /ticket (Jahresrückblick; also the widget's tap)
         case "year":
-            app.handleYearReviewLink(url)
+            // A cover cannot be presented over the open Was-wäre-wenn sheet (it would stay pending): that closes first.
+            let closesWhatIf = showsWhatIf
+            showsWhatIf = false
+            Task { @MainActor in
+                if closesWhatIf { try? await Task.sleep(for: .milliseconds(450)) }
+                app.handleYearReviewLink(url)
+            }
         default:
             break
         }

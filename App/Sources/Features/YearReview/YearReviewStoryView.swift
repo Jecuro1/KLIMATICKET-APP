@@ -35,6 +35,8 @@ struct YearReviewStoryView: View {
     @State private var dragOffset: CGFloat = 0
     @State private var isTouching = false
     @State private var holdTask: Task<Void, Never>?
+    /// True while a finger is down; it resets by itself when the system cancels the touch (`onEnded` does not run then).
+    @GestureState private var isPressing = false
 
     init(request: YearReviewRequest, setup: YearReviewScreenshotSetup? = nil, onClose: @escaping () -> Void) {
         self.request = request
@@ -64,6 +66,27 @@ struct YearReviewStoryView: View {
         }
         .haptic(.selection, trigger: store.manualSteps)
         .accessibilityAction(.escape) { onClose() }
+        .onChange(of: store.index) { _, _ in announcePage() }
+        .onChange(of: isPressing) { _, pressing in
+            guard !pressing else { return }
+            // The touch is over. When `onEnded` did not run (the system took it: a scroll in a long page, an alert, an edge
+            // swipe) the hold and the drag would stay: let go of both. The hop lets a normal `onEnded` finish first.
+            Task { @MainActor in releaseTouchIfCancelled() }
+        }
+    }
+
+    private func releaseTouchIfCancelled() {
+        guard isTouching else { return }
+        holdTask?.cancel()
+        isTouching = false
+        store.isHolding = false
+        if dragOffset != 0 { withMotion(Motion.smooth) { dragOffset = 0 } }
+    }
+
+    /// With VoiceOver the focus stays on "Weiter" when the page changes: say what the new page is.
+    private func announcePage() {
+        guard voiceOverEnabled, let page = store.current, let review = store.review else { return }
+        AccessibilityNotification.Announcement(YearReviewText.spoken(page, review: review, number: store.index + 1, total: store.pageCount)).post()
     }
 
     // MARK: Data
@@ -227,6 +250,7 @@ struct YearReviewStoryView: View {
 
     private var storyGesture: some Gesture {
         DragGesture(minimumDistance: 0)
+            .updating($isPressing) { _, pressing, _ in pressing = true }
             .onChanged { value in
                 if !isTouching {
                     isTouching = true

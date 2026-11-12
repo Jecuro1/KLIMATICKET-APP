@@ -117,8 +117,36 @@ final class YearReviewTests: XCTestCase {
         let r = review(trips)
         let purpose = try! XCTUnwrap(r.purpose)
         XCTAssertEqual(purpose.categorisedTrips, 3)
+        XCTAssertEqual(purpose.totalTrips, 4)
         XCTAssertEqual(purpose.buckets.map(\.category), [.commute, .leisure])
         XCTAssertFalse(purpose.buckets.contains(where: \.isUncategorized))
+    }
+
+    /// The percentages on the page are `tripShare` = trips / ALL trips (like Statistik › "Wofür du fährst"), so the caption
+    /// names the total: "3 von 4 Fahrten haben einen Zweck".
+    func testPurposeSharesAreRelativeToAllTrips() throws {
+        let trips = [trip(date(2026, 4, 2), category: .commute), trip(date(2026, 4, 3), category: .commute),
+                     trip(date(2026, 4, 4), category: .leisure), trip(date(2026, 4, 5)), trip(date(2026, 4, 6))]
+        let purpose = try XCTUnwrap(review(trips).purpose)
+        XCTAssertEqual(purpose.totalTrips, 5)
+        XCTAssertEqual(purpose.categorisedTrips, 3)
+        XCTAssertEqual(try XCTUnwrap(purpose.buckets.first).tripShare, 2.0 / 5.0, accuracy: 1e-9)
+    }
+
+    /// A page that would read "0 kg" is left out (the figure is shown in whole kilograms).
+    func testClimatePageNeedsAtLeastHalfAKilogram() {
+        let tiny = CarComparisonResult(ticketCost: 0, costPerKm: 0.5, railKm: 1, roadKm: 1.15, tripCount: 1, legCount: 1, variableCost: 0.6,
+                                       fixedCostsPerYear: 0, fixedCostsToDate: 0, breakEvenDate: nil, forecastBreakEvenDate: nil,
+                                       series: [], forecast: [], projectedEndCarCost: 0, co2CarKg: 0.3, co2TransitKg: 0.0, drivingHours: 0)
+        XCTAssertEqual(tiny.co2SavedKg, 0.3, accuracy: 1e-9)
+        let period = YearReviewPeriods.ticketPeriod(ticket())
+        let r = YearReview.make(trips: [trip(date(2026, 4, 2), km: 1)], tickets: [ticket()], car: tiny, period: period, now: date(2026, 9, 1))
+        XCTAssertNil(r.climate)
+        XCTAssertNil(r.finale?.co2SavedKg)
+        var enough = tiny
+        enough.co2CarKg = 0.6
+        let r2 = YearReview.make(trips: [trip(date(2026, 4, 2), km: 1)], tickets: [ticket()], car: enough, period: period, now: date(2026, 9, 1))
+        XCTAssertNotNil(r2.climate)
     }
 
     func testPurposeIsRankedByTripsNotByValue() {

@@ -93,7 +93,9 @@ struct YearReviewShareContent: Hashable {
         let hero: (String, String)
         switch YearReviewText.verdict(savings) {
         case .profit(let amount) where amount >= 1:
-            hero = ("+ \(SummitFigures.euro(amount))", "mit dem KlimaTicket gespart")
+            // "Gewinn", not "gespart": the value of every trip against the ticket price – the same figure as the Übersicht hero, and
+            // it may include trips you would not have made without the ticket (the story's honest line says so).
+            hero = ("+ \(SummitFigures.euro(amount))", savings.costIsPartial ? "Gewinn gegenüber den anteiligen Ticketkosten" : "Gewinn gegenüber dem Ticketpreis")
         case .profit:
             hero = ("100 %", "amortisiert")
         case .remaining:
@@ -108,7 +110,7 @@ struct YearReviewShareContent: Hashable {
         if let co2 = finale.co2SavedKg {
             let parts = StatsCalc.co2Parts(co2)
             tiles.append(.init(value: parts.value, unit: parts.unit, label: "CO₂ gespart"))
-        } else if let road = review.onTheRoad {
+        } else if let road = review.onTheRoad, road.stateCount > 0 {
             tiles.append(.init(value: "\(road.stateCount)/\(YearReview.OnTheRoad.totalStates)", unit: nil, label: "Bundesländer"))
         }
 
@@ -121,7 +123,7 @@ struct YearReviewShareContent: Hashable {
                 lines.append(.init(label: "Lieblingsroute", text: "\(YearReviewText.routeTitle(top)) · \(top.trips)×"))
             }
             if let trip = review.onTheRoad?.longestTrip {
-                lines.append(.init(label: "Längste Fahrt", text: "\(YearReviewText.tripTitle(trip)) · \(Format.km(trip.totalDistanceKm))"))
+                lines.append(.init(label: "Längste Fahrt", text: "\(YearReviewText.tripTitle(trip)) · \(YearReviewText.tripDistance(trip))"))
             }
             if let reference = review.distance?.reference {
                 lines.append(.init(label: "Entspricht", text: YearReviewText.referenceLine(reference)))
@@ -520,6 +522,7 @@ struct YearReviewFinalePage: View {
             Text(format.title).accessibilityLabel(format.spokenTitle)
         }
         .accessibilityLabel("Format")
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // a segmented control: at AX5 "Dunkel" would read "Dun"
     }
 
     private func stylePicker(_ options: Binding<YearReviewShareOptions>, style: YearReviewShareStyle) -> some View {
@@ -528,6 +531,7 @@ struct YearReviewFinalePage: View {
             Text(style.title)
         }
         .accessibilityLabel("Stil")
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     // MARK: Share

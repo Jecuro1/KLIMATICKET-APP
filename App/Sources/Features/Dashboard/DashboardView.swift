@@ -78,13 +78,14 @@ struct DashboardView: View {
                         AssistantWhyTicketButton(snapshot: snapshot)
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, Theme.Spacing.xs)
-                        YearReviewSeasonalCard(trips: trips)   // MARK: yearreview – 1 Dec – 31 Jan, dismissible per year
                     } else {
                         DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, Theme.Spacing.xs)
                             .reveal(order: 2)
                     }
+                    // MARK: yearreview – 1 Dec – 31 Jan, dismissible per year; also when a new ticket has no trip yet but the year has
+                    YearReviewSeasonalCard(trips: trips)
 
                     if hasTrips || !favorites.isEmpty {
                         // No second "Neue Fahrt" button in the content – the header's "+" and the favourites do that (DESIGN.md §5.1 · 5).

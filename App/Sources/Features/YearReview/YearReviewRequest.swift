@@ -3,7 +3,7 @@ import KlimaCore
 
 // "Dein Jahr" (docs/YEAR_REVIEW.md): how the story is opened and presented. One request value in `AppState`, one
 // full-screen cover in `RootView` (`.yearReviewHost()`), four ways in: the Statistik card, the seasonal card on the
-// Übersicht (1 Dec – 31 Jan), the deep link klimabilanz://year[/2026] and the tap on the Jahresrückblick widget.
+// Übersicht (1 Dec – 31 Jan), the deep link klimabilanz://year[/2026|/ticket] and the tap on the Jahresrückblick widget.
 
 /// What opens the story. `year` nil = the default period (`YearReviewPeriods.defaultPeriod`).
 struct YearReviewRequest: Identifiable, Equatable {
@@ -16,6 +16,12 @@ struct YearReviewRequest: Identifiable, Equatable {
 
     let id = UUID()
     var year: Int?
+    /// The ticket year Statistik was showing (its own picker, not necessarily the active ticket): the story opens on it, so the
+    /// figures are the ones on the screen the card sits on. nil = the usual default period.
+    var ticket: TicketPeriod?
+    /// klimabilanz://year/ticket (the Jahresrückblick widget shows the ticket period): open the active ticket year, not the
+    /// calendar year the default would pick from 1 Dec on.
+    var startsOnTicketYear = false
     var source: Source = .link
 }
 
@@ -34,10 +40,11 @@ extension AppState {
     /// story follows once they are gone (a cover cannot be presented over a sheet); an open trip editor keeps its
     /// unsaved input and is never covered; a required update is never covered either; during the onboarding there is
     /// nothing to look back on yet.
-    func presentYearReview(year: Int? = nil, source: YearReviewRequest.Source = .link) {
+    func presentYearReview(year: Int? = nil, ticket: TicketPeriod? = nil, startsOnTicketYear: Bool = false,
+                           source: YearReviewRequest.Source = .link) {
         guard yearReviewRequest == nil, tripDraft == nil, settings.onboardingCompleted || LaunchMode.isSandboxed else { return }
         if updates.isPresentingSheet && updates.isRequired { return }
-        let request = YearReviewRequest(year: year, source: source)
+        let request = YearReviewRequest(year: year, ticket: ticket, startsOnTicketYear: startsOnTicketYear, source: source)
         guard isShowingSettings || isShowingAchievements || updates.isPresentingSheet else {
             yearReviewRequest = request
             return
@@ -51,10 +58,12 @@ extension AppState {
         }
     }
 
-    /// "klimabilanz://year" · "klimabilanz://year/2026" (a path that is no sensible year opens the default period).
+    /// "klimabilanz://year" · "klimabilanz://year/2026" · "klimabilanz://year/ticket" (a path that is no sensible year opens the
+    /// default period).
     func handleYearReviewLink(_ url: URL) {
-        let year = Int(url.lastPathComponent).flatMap { (2000...2100).contains($0) ? $0 : nil }
-        presentYearReview(year: year, source: .link)
+        let last = url.lastPathComponent
+        let year = Int(last).flatMap { (2000...2100).contains($0) ? $0 : nil }
+        presentYearReview(year: year, startsOnTicketYear: last.lowercased() == "ticket", source: .link)
     }
 
     /// "Fahrt erfassen" from the empty story: the story closes, the editor follows (a sheet cannot open under a cover).

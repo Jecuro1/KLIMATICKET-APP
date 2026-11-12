@@ -106,6 +106,9 @@ public struct YearReview: Hashable, Sendable {
         /// bucket is left out.
         public var buckets: [CategoryBucket]
         public var categorisedTrips: Int
+        /// All trips of the period: the percentages of `CategoryBucket.tripShare` are shares of these (like Statistik ›
+        /// "Wofür du fährst"), so the page can say "70 von 79 Fahrten haben einen Zweck".
+        public var totalTrips: Int
     }
 
     /// Page 7 – CO₂ against the car (Schätzung).
@@ -164,6 +167,8 @@ public struct YearReview: Hashable, Sendable {
     public static let minRhythmTrips = 3
     /// "Wofür" needs this many categorised trips.
     public static let minPurposeTrips = 3
+    /// The climate page needs at least this many kg saved: the page shows whole kilograms, so less would read "0 kg".
+    public static let minClimateKg = 0.5
 
     // MARK: Value
 
@@ -257,17 +262,18 @@ public struct YearReview: Hashable, Sendable {
                 if abs(a.value - b.value) > 0.004 { return a.value > b.value }
                 return (a.category.flatMap { order.firstIndex(of: $0) } ?? order.count) < (b.category.flatMap { order.firstIndex(of: $0) } ?? order.count)
             }
-            pages.append(.purpose(Purpose(buckets: buckets, categorisedTrips: JourneySummary.tripCount(categorised))))
+            pages.append(.purpose(Purpose(buckets: buckets, categorisedTrips: JourneySummary.tripCount(categorised),
+                                          totalTrips: summary.tripCount)))
         }
 
-        if let car, car.co2SavedKg > 0 {
+        if let car, car.co2SavedKg >= minClimateKg {
             pages.append(.climate(Climate(co2SavedKg: car.co2SavedKg, co2CarKg: car.co2CarKg, co2TransitKg: car.co2TransitKg,
                                           carRoadKm: car.roadKm)))
         }
 
         pages.append(.finale(Finale(tripCount: summary.tripCount, distanceKm: summary.distanceKm, totalValue: summary.totalValue,
                                     net: summary.totalValue - accounting.price, hasTicketCost: accounting.price > 0.005,
-                                    co2SavedKg: car.flatMap { $0.co2SavedKg > 0 ? $0.co2SavedKg : nil })))
+                                    co2SavedKg: car.flatMap { $0.co2SavedKg >= minClimateKg ? $0.co2SavedKg : nil })))
         return YearReview(period: period, accounting: accounting, pages: pages)
     }
 
