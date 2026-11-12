@@ -221,11 +221,11 @@ struct YearReviewSavingsPage: View {
 
     private func barRow(title: String, amount: String, fraction: Double, tint: AnyShapeStyle, drawn: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+            StoryLabelValue {
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                Spacer(minLength: Theme.Spacing.xs)
+            } value: {
                 Text(amount)
                     .font(.subheadline.weight(.bold))
                     .monospacedDigit()
@@ -694,12 +694,11 @@ struct YearReviewPurposePage: View {
 
     private func row(_ bucket: CategoryBucket, maxTrips: Int, drawn: Bool) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline) {
+            StoryLabelValue {
                 Label(bucket.category?.displayName ?? "", systemImage: bucket.category?.symbolName ?? "tag")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(1)
-                Spacer(minLength: Theme.Spacing.xs)
+            } value: {
                 Text("\(StatsNames.trips(bucket.trips)) · \(Format.percent(bucket.tripShare))")
                     .font(.footnote.weight(.semibold))
                     .monospacedDigit()
@@ -767,11 +766,11 @@ struct YearReviewClimatePage: View {
 
     private func barRow(symbol: String, title: String, kg: Double, fraction: Double, tint: AnyShapeStyle, drawn: Bool) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack {
+            StoryLabelValue {
                 Label(title, systemImage: symbol)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                Spacer(minLength: Theme.Spacing.xs)
+            } value: {
                 Text(YearReviewText.co2Text(kg))
                     .font(.subheadline.weight(.bold))
                     .monospacedDigit()

@@ -163,6 +163,26 @@ struct StoryCaption: View {
     }
 }
 
+/// A label with its figure on one line – stacked when the text is too large for one line (accessibility sizes).
+struct StoryLabelValue<Label: View, Value: View>: View {
+    @ViewBuilder var label: Label
+    @ViewBuilder var value: Value
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+                label
+                Spacer(minLength: Theme.Spacing.xs)
+                value
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                label
+                value
+            }
+        }
+    }
+}
+
 // MARK: - Entrances
 
 /// Hands its content `isDrawn`: false until the page appeared, then true for good (animated with `Motion.gentle`). Bars
@@ -231,21 +251,21 @@ struct StoryRidge: View {
 // MARK: - Progress
 
 /// The segmented progress bars on top: finished pages full, the current page filling over `pageSeconds` (full when the
-/// story does not advance on its own), the rest empty. One accessibility element: "Seite 3 von 8".
+/// story does not advance on its own), the rest empty. One accessibility element: "Seite 3 von 8". The page position comes
+/// in as plain values from the story (it re-renders on every page change); only the clock's ticks are observed here, so the
+/// 30 Hz of the auto-advance re-render nothing but this bar.
 struct YearReviewProgressBar: View {
-    let store: YearReviewStore
+    let current: Int
+    let count: Int
+    let clock: YearReviewClock
     let advancesAutomatically: Bool
 
     var body: some View {
-        // Everything the bar depends on is read here, in the body – an `@Observable` read inside the `ForEach` closure is
-        // not tracked (the bar would keep showing the first page).
-        let elapsed = store.clock.elapsed
-        let current = store.index
-        let count = store.pageCount
-        let isLast = store.isLast
+        let elapsed = clock.elapsed
+        let isLast = current >= count - 1
         HStack(spacing: 4) {
             ForEach(0..<count, id: \.self) { index in
-                segment(index, current: current, isLast: isLast, elapsed: elapsed)
+                segment(index, isLast: isLast, elapsed: elapsed)
             }
         }
         .frame(height: 4)
@@ -254,7 +274,7 @@ struct YearReviewProgressBar: View {
         .accessibilityValue(YearReviewText.pageOf(current + 1, count))
     }
 
-    private func segment(_ index: Int, current: Int, isLast: Bool, elapsed: Double) -> some View {
+    private func segment(_ index: Int, isLast: Bool, elapsed: Double) -> some View {
         let fraction: Double
         if index < current {
             fraction = 1
@@ -266,10 +286,11 @@ struct YearReviewProgressBar: View {
         return Capsule()
             .fill(Theme.textTertiary.opacity(0.28))
             .overlay(alignment: .leading) {
-                Capsule()
-                    .fill(Theme.textPrimary)
-                    .scaleEffect(x: max(fraction, 0.0001), anchor: .leading)
-                    .opacity(fraction > 0 ? 1 : 0)
+                GeometryReader { proxy in
+                    Capsule()
+                        .fill(Theme.textPrimary)
+                        .frame(width: proxy.size.width * CGFloat(fraction))
+                }
             }
             .clipShape(.capsule)
     }

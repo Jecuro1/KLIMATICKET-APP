@@ -393,26 +393,32 @@ struct YearReviewFinalePage: View {
     let ctx: YearReviewPageContext
 
     @Environment(\.colorScheme) private var colorScheme
+    /// Format, style and names: plain page state, mirrored to the store so they survive paging back and forth.
+    @State private var options: YearReviewShareOptions
     @State private var previewImage: UIImage?
     @State private var pageHeight: CGFloat = 640
 
+    init(finale: YearReview.Finale, ctx: YearReviewPageContext) {
+        self.finale = finale
+        self.ctx = ctx
+        _options = State(initialValue: ctx.store.shareOptions)
+    }
+
     var body: some View {
-        @Bindable var store = ctx.store
-        let options = store.shareOptions
         let style = options.resolvedStyle(for: colorScheme)
-        let content = YearReviewShareContent.make(review: ctx.review, showsDetails: options.showsDetails, holderName: store.holderName)
-        // The preview takes what the controls below leave over (they need about 300 pt).
-        let previewHeight = min(430, max(210, pageHeight - 270))
+        let content = YearReviewShareContent.make(review: ctx.review, showsDetails: options.showsDetails, holderName: ctx.store.holderName)
+        // The preview takes what the controls below leave over (they need about 360 pt).
+        let previewHeight = min(430, max(200, pageHeight - 360))
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 StoryKicker(kind: .finale, symbol: "square.and.arrow.up")
                     .reveal(.fade)
-                titleRow(options: $store.shareOptions)
+                titleRow($options)
                     .reveal(order: 1)
                 if let content {
                     preview(content: content, options: options, style: style, height: previewHeight)
                         .reveal(.focus, order: 2)
-                    controls(options: $store.shareOptions, style: style)
+                    controls($options, style: style)
                         .reveal(order: 3)
                     shareButton(content: content, options: options, style: style)
                         .reveal(order: 4)
@@ -424,6 +430,7 @@ struct YearReviewFinalePage: View {
         }
         .scrollIndicators(.visible)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { pageHeight = $0 }
+        .onChange(of: options) { _, new in ctx.store.shareOptions = new }
         .task(id: PreviewKey(content: content, format: options.format, style: style)) {
             guard let content else { return }
             previewImage = YearReviewShareRenderer.image(content: content, format: options.format, style: style)
@@ -471,7 +478,7 @@ struct YearReviewFinalePage: View {
     // MARK: Controls
 
     /// "Dein Jahr als Bild" with the format next to it (below it at large text sizes).
-    private func titleRow(options: Binding<YearReviewShareOptions>) -> some View {
+    private func titleRow(_ options: Binding<YearReviewShareOptions>) -> some View {
         let title = Text("Dein Jahr als Bild")
             .font(.title2.weight(.bold))
             .foregroundStyle(Theme.textPrimary)
@@ -489,7 +496,7 @@ struct YearReviewFinalePage: View {
         }
     }
 
-    private func controls(options: Binding<YearReviewShareOptions>, style: YearReviewShareStyle) -> some View {
+    private func controls(_ options: Binding<YearReviewShareOptions>, style: YearReviewShareStyle) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             stylePicker(options, style: style)
             Toggle(isOn: options.showsDetails) {
@@ -500,8 +507,8 @@ struct YearReviewFinalePage: View {
             .tint(Theme.accent)
             .haptic(.selection, trigger: options.wrappedValue.showsDetails)
             Text(options.wrappedValue.showsDetails
-                 ? "Im Bild stehen deine Lieblingsroute, deine längste Fahrt und dein Name – nur teilen, wenn du das möchtest."
-                 : "Im Bild stehen nur Gesamtzahlen: keine Stationen und kein Name.")
+                 ? "Mit Lieblingsroute, längster Fahrt und deinem Namen."
+                 : "Nur Gesamtzahlen – keine Stationen, kein Name.")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

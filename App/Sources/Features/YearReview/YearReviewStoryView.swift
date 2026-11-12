@@ -132,7 +132,8 @@ struct YearReviewStoryView: View {
     private var topBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
             if store.pageCount > 0 {
-                YearReviewProgressBar(store: store, advancesAutomatically: advancesAutomatically)
+                YearReviewProgressBar(current: store.index, count: store.pageCount, clock: store.clock,
+                                       advancesAutomatically: advancesAutomatically)
             }
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 VStack(alignment: .leading, spacing: 1) {
