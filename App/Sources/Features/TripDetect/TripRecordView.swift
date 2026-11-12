@@ -315,7 +315,7 @@ struct TripRecordView: View {
         let center = DetectionGeo.lerp(first, last, 0.5)
         let reach = max(2, min(40, max(first.distanceKm(to: last), 1) / 2 + 2))
         let hits = app.stations.nearest(to: center, limit: 150, maxKm: reach)
-        nearby = Array(hits.map(\.station).filter(StationMatcher.isRailLike).prefix(40))
+        nearby = Array(hits.map(\.station).filter(StationMatcher.isRailLike).prefix(24))
     }
 
     // MARK: Formatting
@@ -393,7 +393,7 @@ struct RecordMapCard: View {
             let projection = MapProjection(track: track, size: proxy.size)
             ZStack {
                 grid
-                Canvas { context, _ in
+                Canvas { context, size in
                     // Important stations first, so their names win where labels would overlap.
                     let ordered = stations.sorted { a, b in
                         if (a.id == current) != (b.id == current) { return a.id == current }
@@ -410,7 +410,10 @@ struct RecordMapCard: View {
                         guard rail, !labelled.contains(where: { abs($0.x - point.x) < 86 && abs($0.y - point.y) < 14 }) else { continue }
                         labelled.append(point)
                         let label = context.resolve(Text(station.name).font(.system(size: 10, weight: .semibold)).foregroundColor(Theme.textSecondary))
-                        context.draw(label, at: CGPoint(x: point.x + radius + 4, y: point.y - 7), anchor: .leading)
+                        // A name that would run off the card goes to the left of its dot.
+                        let fitsRight = point.x + radius + 4 + label.measure(in: size).width < size.width - 6
+                        context.draw(label, at: CGPoint(x: point.x + (fitsRight ? radius + 4 : -(radius + 4)), y: point.y - 7),
+                                     anchor: fitsRight ? .leading : .trailing)
                     }
                 }
                 SketchLine(points: track.compactMap { projection.point(for: $0) })

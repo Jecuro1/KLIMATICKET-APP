@@ -65,9 +65,8 @@ struct ConfidenceChip: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: symbol).font(.caption.weight(.bold))
-            Text(confidence.label).font(.caption.weight(.bold)).lineLimit(1)
+            Text(confidence.label).font(.caption.weight(.bold)).lineLimit(1).minimumScaleFactor(0.6)
         }
-        .fixedSize()
         .foregroundStyle(tint)
         .padding(.horizontal, 9)
         .padding(.vertical, 4)
