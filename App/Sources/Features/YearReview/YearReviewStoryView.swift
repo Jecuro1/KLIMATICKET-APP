@@ -155,7 +155,7 @@ struct YearReviewStoryView: View {
                 }
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .font(.body.weight(.semibold))
+                        .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
                         .frame(width: 44, height: 44)
                 }
@@ -166,6 +166,8 @@ struct YearReviewStoryView: View {
         }
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.top, Theme.Spacing.xs)
+        // The chrome keeps a usable size at the largest text sizes; the pages themselves scale fully.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
     // MARK: Pages
@@ -197,13 +199,19 @@ struct YearReviewStoryView: View {
 
     private var emptyState: some View {
         let missing = store.period.map { "Für \($0.title()) gibt es noch keine Fahrten." }
-        return ScrollView {
-            EmptyStateView(symbol: "mountain.2", title: "Dein Jahr beginnt mit der ersten Fahrt",
-                           message: (missing.map { $0 + " " } ?? "") + "Sobald du Fahrten erfasst, bekommst du hier deinen Rückblick: Ersparnis, Strecke, Rekorde und Klima.",
-                           actionTitle: "Fahrt erfassen") {
-                app.closeYearReviewAndAddTrip()
+        let empty = EmptyStateView(symbol: "mountain.2", title: "Dein Jahr beginnt mit der ersten Fahrt",
+                                   message: (missing.map { $0 + " " } ?? "") + "Sobald du Fahrten erfasst, bekommst du hier deinen Rückblick: Ersparnis, Strecke, Rekorde und Klima.",
+                                   actionTitle: "Fahrt erfassen") {
+            app.closeYearReviewAndAddTrip()
+        }
+        return ViewThatFits(in: .vertical) {
+            VStack {
+                Spacer(minLength: 0)
+                empty
+                Spacer(minLength: 0)
+                Color.clear.frame(height: Theme.Spacing.xxl)
             }
-            .padding(.top, Theme.Spacing.xxl)
+            ScrollView { empty.padding(.top, Theme.Spacing.l) }
         }
     }
 
@@ -253,13 +261,13 @@ struct YearReviewStoryView: View {
 
     // MARK: Bottom bar
 
-    private var showsPeriodChips: Bool {
+    private var showsPeriodMenu: Bool {
         store.choices.count > 1 && (store.current == nil || store.current?.kind == .intro)
     }
 
     private var bottomBar: some View {
         VStack(spacing: Theme.Spacing.s) {
-            if showsPeriodChips { periodChips }
+            if showsPeriodMenu { periodMenu }
             if store.pageCount > 0 {
                 HStack(spacing: Theme.Spacing.s) {
                     Button { store.back(manual: true) } label: {
@@ -293,22 +301,44 @@ struct YearReviewStoryView: View {
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.top, Theme.Spacing.xs)
         .padding(.bottom, Theme.Spacing.xs)
+        // Same as the top bar: the buttons never wrap letter by letter at accessibility sizes.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
-    /// "Ticket-Jahr 2026/27" · "Kalenderjahr 2026" · … – what the first page offers.
-    private var periodChips: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: Theme.Spacing.xs) {
+    /// "Ticket-Jahr 2026/27" · "Kalenderjahr 2026" · … – what the first page offers, as one menu (the chips would not fit
+    /// next to each other on a phone).
+    private var periodMenu: some View {
+        let selection = Binding<String>(
+            get: { store.selectedPeriodID ?? "" },
+            set: { id in
+                guard let period = store.choices.first(where: { $0.id == id }) else { return }
+                withMotion(Motion.snappy) { store.select(period) }
+            })
+        return Menu {
+            Picker("Zeitraum", selection: selection) {
                 ForEach(store.choices) { period in
-                    Chip(title: period.title(), symbol: period.kind == .ticket ? "ticket.fill" : "calendar",
-                         isSelected: period.id == store.selectedPeriodID) {
-                        withMotion(Motion.snappy) { store.select(period) }
-                    }
+                    Label(period.title(), systemImage: period.kind == .ticket ? "ticket" : "calendar").tag(period.id)
                 }
             }
-            .padding(.vertical, 4)
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: store.period?.kind == .calendarYear ? "calendar" : "ticket.fill")
+                    .font(.subheadline.weight(.semibold))
+                Text(store.period?.title() ?? "Zeitraum")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .foregroundStyle(Theme.textPrimary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
         }
-        .scrollIndicators(.hidden)
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityLabel("Zeitraum wählen")
+        .accessibilityValue(store.period?.title() ?? "")
         .haptic(.selection, trigger: store.selectedPeriodID)
     }
 }

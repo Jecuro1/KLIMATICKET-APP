@@ -97,7 +97,7 @@ struct YearReviewShareContent: Hashable {
         case .profit:
             hero = ("100 %", "amortisiert")
         case .remaining:
-            hero = (Format.number(SummitFigures.percent(savings.realValue / max(savings.ticketCost, 0.01))) + " %",
+            hero = (Format.number(SummitFigures.percent(savings.totalValue / max(savings.ticketCost, 0.01))) + " %",
                     savings.costIsPartial ? "der anteiligen Ticketkosten" : "amortisiert")
         case .valueOnly(let value):
             hero = (SummitFigures.euro(value), "Fahrtwert")
@@ -153,7 +153,7 @@ struct YearReviewShareCard: View {
             YearReviewShareBackdrop(style: style, isStory: isStory)
             VStack(alignment: .leading, spacing: 0) {
                 brandRow
-                Spacer(minLength: 10)
+                Color.clear.frame(height: isStory ? 64 : 8)
                 Kicker(text: content.periodTitle, color: Theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -180,7 +180,7 @@ struct YearReviewShareCard: View {
                         .padding(.top, 12)
                 }
                 if content.hasDetails { detailsPanel.padding(.top, 12) }
-                Spacer(minLength: isStory ? 150 : 10)
+                Spacer(minLength: 8)
                 tilesRow
                 Text("Hat sich dein Ticket schon rentiert?")
                     .font(.system(size: 11, weight: .medium))
@@ -223,15 +223,19 @@ struct YearReviewShareCard: View {
                     Text(line.text)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.textPrimary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.75)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.surface, in: .rect(cornerRadius: 16, style: .continuous))
+        .background(panelFill, in: .rect(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
+    }
+
+    /// The Gipfel look has mountains behind the panels: they get a calm backing so the text stays readable.
+    private var panelFill: AnyShapeStyle {
+        style == .summit ? AnyShapeStyle(Theme.background.opacity(0.78)) : AnyShapeStyle(Theme.surface)
     }
 
     private var tilesRow: some View {
@@ -263,12 +267,13 @@ struct YearReviewShareCard: View {
             }
         }
         .padding(.vertical, 12)
-        .background(Theme.surface, in: .rect(cornerRadius: 18, style: .continuous))
+        .background(panelFill, in: .rect(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1))
     }
 }
 
-/// The three looks. Hell: morning sky. Dunkel: "Blaue Stunde". Gipfel: the dark sky with a glowing horizon and ridges.
+/// The three looks. Hell: morning sky with a pale ridge. Dunkel: "Blaue Stunde" with a dusky ridge. Gipfel: the dark sky with
+/// a glowing horizon and tall ridges.
 private struct YearReviewShareBackdrop: View {
     let style: YearReviewShareStyle
     let isStory: Bool
@@ -281,28 +286,44 @@ private struct YearReviewShareBackdrop: View {
                 LinearGradient(colors: [Theme.background, Theme.glacier.opacity(0.20), Theme.dawn.opacity(0.26)], startPoint: .top, endPoint: .bottom)
                 RadialGradient(colors: [Theme.dawn.opacity(0.40), Theme.dawn.opacity(0)], center: UnitPoint(x: 0.82, y: 0.84), startRadius: 0, endRadius: 260)
                 RadialGradient(colors: [Theme.glacier.opacity(0.28), Theme.glacier.opacity(0)], center: UnitPoint(x: 0.1, y: 0.04), startRadius: 0, endRadius: 280)
+                ridges(farOpacity: 0.20, nearOpacity: 0.26, height: isStory ? 0.34 : 0.28)
             case .dark:
                 LinearGradient(colors: [Theme.background, Theme.dusk.opacity(0.32), Theme.dawn.opacity(0.30)], startPoint: .top, endPoint: .bottom)
                 RadialGradient(colors: [Theme.alpenglow.opacity(0.35), Theme.alpenglow.opacity(0)], center: UnitPoint(x: 0.78, y: 0.7), startRadius: 0, endRadius: 240)
                 RadialGradient(colors: [Theme.glacier.opacity(0.22), Theme.glacier.opacity(0)], center: UnitPoint(x: 0.1, y: 0.05), startRadius: 0, endRadius: 270)
+                ridges(farOpacity: 0.30, nearOpacity: 0.40, height: isStory ? 0.34 : 0.28)
             case .summit:
                 LinearGradient(colors: [Theme.background, Theme.dusk.opacity(0.55), Theme.alpenglow.opacity(0.45), Theme.dawn.opacity(0.70)],
                                startPoint: .top, endPoint: .bottom)
-                RadialGradient(colors: [Theme.dawn.opacity(0.85), Theme.dawn.opacity(0)], center: UnitPoint(x: 0.7, y: isStory ? 0.78 : 0.8), startRadius: 0, endRadius: 190)
+                RadialGradient(colors: [Theme.dawn.opacity(0.85), Theme.dawn.opacity(0)], center: UnitPoint(x: 0.7, y: isStory ? 0.72 : 0.74), startRadius: 0, endRadius: 210)
                 GeometryReader { proxy in
                     ZStack(alignment: .bottom) {
-                        RidgeShape(peakX: 0.7, peakY: 0.32, seed: 21, roughness: 0.8)
+                        RidgeShape(peakX: 0.7, peakY: 0.22, seed: 21, roughness: 0.8)
                             .fill(LinearGradient(colors: [Theme.dusk.opacity(0.9), Theme.background], startPoint: .top, endPoint: .bottom))
-                            .frame(height: proxy.size.height * (isStory ? 0.34 : 0.3))
-                        RidgeShape(peakX: 0.28, peakY: 0.42, seed: 8, roughness: 0.6)
-                            .fill(Theme.background.opacity(0.92))
-                            .frame(height: proxy.size.height * (isStory ? 0.24 : 0.2))
+                            .frame(height: proxy.size.height * (isStory ? 0.44 : 0.38))
+                        RidgeShape(peakX: 0.26, peakY: 0.34, seed: 8, roughness: 0.6)
+                            .fill(Theme.background.opacity(0.94))
+                            .frame(height: proxy.size.height * (isStory ? 0.3 : 0.25))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 }
             }
         }
         .accessibilityHidden(true)
+    }
+
+    private func ridges(farOpacity: Double, nearOpacity: Double, height: Double) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                RidgeShape(peakX: 0.72, peakY: 0.2, seed: 11, roughness: 0.7)
+                    .fill(LinearGradient(colors: [Theme.dusk.opacity(farOpacity), Theme.dusk.opacity(0.02)], startPoint: .top, endPoint: .bottom))
+                    .frame(height: proxy.size.height * height)
+                RidgeShape(peakX: 0.3, peakY: 0.34, seed: 5, roughness: 0.5)
+                    .fill(LinearGradient(colors: [Theme.glacier.opacity(nearOpacity), Theme.glacier.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                    .frame(height: proxy.size.height * height * 0.78)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        }
     }
 }
 
@@ -381,15 +402,12 @@ struct YearReviewFinalePage: View {
         let style = options.resolvedStyle(for: colorScheme)
         let content = YearReviewShareContent.make(review: ctx.review, showsDetails: options.showsDetails, holderName: store.holderName)
         // The preview takes what the controls below leave over (they need about 300 pt).
-        let previewHeight = min(430, max(210, pageHeight - 300))
+        let previewHeight = min(430, max(210, pageHeight - 270))
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 StoryKicker(kind: .finale, symbol: "square.and.arrow.up")
                     .reveal(.fade)
-                Text("Dein Jahr als Bild")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(Theme.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
+                titleRow(options: $store.shareOptions)
                     .reveal(order: 1)
                 if let content {
                     preview(content: content, options: options, style: style, height: previewHeight)
@@ -452,12 +470,28 @@ struct YearReviewFinalePage: View {
 
     // MARK: Controls
 
+    /// "Dein Jahr als Bild" with the format next to it (below it at large text sizes).
+    private func titleRow(options: Binding<YearReviewShareOptions>) -> some View {
+        let title = Text("Dein Jahr als Bild")
+            .font(.title2.weight(.bold))
+            .foregroundStyle(Theme.textPrimary)
+            .accessibilityAddTraits(.isHeader)
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                title
+                Spacer(minLength: Theme.Spacing.xs)
+                formatPicker(options).frame(width: 132)
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                title
+                formatPicker(options)
+            }
+        }
+    }
+
     private func controls(options: Binding<YearReviewShareOptions>, style: YearReviewShareStyle) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: Theme.Spacing.xs) { formatPicker(options); stylePicker(options, style: style) }
-                VStack(alignment: .leading, spacing: Theme.Spacing.xs) { formatPicker(options); stylePicker(options, style: style) }
-            }
+            stylePicker(options, style: style)
             Toggle(isOn: options.showsDetails) {
                 Text("Strecken und Namen zeigen")
                     .font(.subheadline.weight(.semibold))
@@ -498,7 +532,7 @@ struct YearReviewFinalePage: View {
                 Label("Bild teilen", systemImage: "square.and.arrow.up")
             }
             .buttonStyle(.primary)
-            Text("PNG · \(options.format.pixelText). Im Teilen-Menü findest du „Bild sichern“ – ohne Zugriff auf deine Fotos.")
+            Text("PNG · \(options.format.pixelText) · „Bild sichern“ im Teilen-Menü")
                 .font(.caption)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

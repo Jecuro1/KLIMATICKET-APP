@@ -71,14 +71,11 @@ struct YearReviewIntroPage: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             StoryRidge()
-            StoryPageScaffold {
+            StoryPageScaffold(kind: .intro, symbol: "sparkles", bottomInset: 150) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-                    StoryKicker(kind: .intro, symbol: "sparkles")
-                        .reveal(.fade)
                     Text(ctx.review.period.kind == .ticket ? "Dein Ticket-Jahr" : "Dein Kalenderjahr")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
-                        .padding(.top, Theme.Spacing.l)
                         .reveal(order: 1)
                     Text(ctx.review.period.yearLabel())
                         .font(.system(size: yearSize, weight: .ultraLight, design: .rounded))
@@ -100,13 +97,12 @@ struct YearReviewIntroPage: View {
                     StoryCaption(caption)
                         .reveal(order: 5)
                 }
-                .padding(.bottom, Theme.Spacing.xxl * 3)
             }
         }
     }
 
     private var caption: String {
-        var text = "an \(Format.days(intro.travelDays)) unterwegs"
+        var text = "\(YearReviewText.onDays(intro.travelDays)) unterwegs"
         if let name = intro.ticketName { text += " mit deinem \(name)" }
         return text
     }
@@ -124,10 +120,8 @@ struct YearReviewSavingsPage: View {
     var body: some View {
         let verdict = YearReviewText.verdict(savings)
         ZStack {
-            StoryPageScaffold {
+            StoryPageScaffold(kind: .savings, symbol: "eurosign.circle.fill") {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                    StoryKicker(kind: .savings, symbol: "eurosign.circle.fill")
-                        .reveal(.fade)
                     Text(headline(verdict))
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
@@ -208,14 +202,14 @@ struct YearReviewSavingsPage: View {
         .padding(.top, Theme.Spacing.xs)
     }
 
-    /// Value of the trips against the ticket cost – two bars with text labels.
+    /// Value of all trips against the ticket cost – two bars with text labels.
     private var comparison: some View {
-        let scale = max(savings.hasTicketCost ? savings.realValue : savings.totalValue, savings.ticketCost, 1)
-        let value = savings.hasTicketCost ? savings.realValue : savings.totalValue
+        let scale = max(savings.totalValue, savings.ticketCost, 1)
         return GlassCard(padding: Theme.Spacing.m) {
             StoryDraw { drawn in
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-                    barRow(title: "Wert deiner Fahrten", amount: YearReviewText.valueText(savings), fraction: value / scale, tint: AnyShapeStyle(Theme.progressGradient), drawn: drawn)
+                    barRow(title: "Wert deiner Fahrten", amount: YearReviewText.valueText(savings), fraction: savings.totalValue / scale,
+                           tint: AnyShapeStyle(Theme.progressGradient), drawn: drawn)
                     if savings.hasTicketCost {
                         barRow(title: savings.costIsPartial ? "Ticket (anteilig)" : "Ticket", amount: YearReviewText.costText(savings),
                                fraction: savings.ticketCost / scale, tint: AnyShapeStyle(Theme.summit), drawn: drawn)
@@ -241,16 +235,24 @@ struct YearReviewSavingsPage: View {
         }
     }
 
+    /// The honest balance as its own line: trips you would not have made are extra value, not saved money.
     private var induced: some View {
         HStack(alignment: .top, spacing: Theme.Spacing.xs) {
             Image(systemName: "sparkles")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.dusk)
                 .accessibilityHidden(true)
-            Text(YearReviewText.inducedLine(savings))
-                .font(.footnote)
-                .foregroundStyle(Theme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                if let outcome = YearReviewText.honestOutcome(savings) {
+                    Text(outcome)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                }
+                Text(YearReviewText.inducedLine(savings))
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(Theme.Spacing.s)
         .background(Theme.dusk.opacity(0.10), in: .rect(cornerRadius: Theme.Radius.chip, style: .continuous))
@@ -276,10 +278,8 @@ struct YearReviewDistancePage: View {
     let ctx: YearReviewPageContext
 
     var body: some View {
-        StoryPageScaffold {
+        StoryPageScaffold(kind: .distance, symbol: "point.topleft.down.to.point.bottomright.curvepath.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .distance, symbol: "point.topleft.down.to.point.bottomright.curvepath.fill")
-                    .reveal(.fade)
                 Text("Du bist")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
@@ -375,11 +375,9 @@ struct YearReviewFavoritePage: View {
 
     var body: some View {
         let top = favorite.top
-        StoryPageScaffold {
+        StoryPageScaffold(kind: .favoriteRoute, symbol: "star.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .favoriteRoute, symbol: "star.fill")
-                    .reveal(.fade)
-                Text("Deine Lieblingsroute")
+                Text("Am häufigsten unterwegs auf")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.top, Theme.Spacing.m)
@@ -452,10 +450,8 @@ struct YearReviewRhythmPage: View {
     let ctx: YearReviewPageContext
 
     var body: some View {
-        StoryPageScaffold {
+        StoryPageScaffold(kind: .rhythm, symbol: "waveform.path.ecg") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .rhythm, symbol: "waveform.path.ecg")
-                    .reveal(.fade)
                 if let best = rhythm.bestMonth {
                     Text("Dein stärkster Monat")
                         .font(.title3.weight(.semibold))
@@ -558,10 +554,8 @@ struct YearReviewRoadPage: View {
     let ctx: YearReviewPageContext
 
     var body: some View {
-        StoryPageScaffold {
+        StoryPageScaffold(kind: .onTheRoad, symbol: "map.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .onTheRoad, symbol: "map.fill")
-                    .reveal(.fade)
                 Text("Du warst in")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
@@ -664,12 +658,11 @@ struct YearReviewPurposePage: View {
     let ctx: YearReviewPageContext
 
     var body: some View {
-        let buckets = Array(purpose.buckets.prefix(5))
+        let buckets = Array(purpose.buckets.prefix(5))   // most trips first (YearReview ranks them)
         let top = buckets.first
-        StoryPageScaffold {
+        let maxTrips = buckets.map(\.trips).max() ?? 1
+        StoryPageScaffold(kind: .purpose, symbol: "tag.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .purpose, symbol: "tag.fill")
-                    .reveal(.fade)
                 Text("Wofür du am meisten gefahren bist")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
@@ -687,7 +680,7 @@ struct YearReviewPurposePage: View {
                     StoryDraw(delay: 0.3) { drawn in
                         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                             ForEach(buckets) { bucket in
-                                row(bucket, maxTrips: buckets.first?.trips ?? 1, drawn: drawn)
+                                row(bucket, maxTrips: maxTrips, drawn: drawn)
                             }
                         }
                     }
@@ -727,10 +720,8 @@ struct YearReviewClimatePage: View {
 
     var body: some View {
         let parts = StatsCalc.co2Parts(climate.co2SavedKg)
-        StoryPageScaffold {
+        StoryPageScaffold(kind: .climate, symbol: "leaf.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                StoryKicker(kind: .climate, symbol: "leaf.fill")
-                    .reveal(.fade)
                 Text("Du hast gespart")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)

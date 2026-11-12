@@ -8,7 +8,7 @@ enum YearReviewText {
 
     /// What the Ersparnis page says in one line.
     enum Verdict: Equatable {
-        /// `realValue ≥ cost`: the whole-euro profit (can be 0 for a dead heat).
+        /// `totalValue ≥ cost`: the whole-euro profit (can be 0 for a dead heat).
         case profit(Double)
         /// The whole-euro rest to the break-even.
         case remaining(Double)
@@ -16,19 +16,18 @@ enum YearReviewText {
         case valueOnly(Double)
     }
 
+    /// The headline: the value of all trips against the ticket price, rounded like the Übersicht hero and the Jahresbericht
+    /// (`SummitFigures`, the same figures as `SavingsSummary.shownProfitEuro` / `shownRemainingEuro`).
     static func verdict(_ savings: YearReview.Savings) -> Verdict {
         guard savings.hasTicketCost else { return .valueOnly(max(0, savings.totalValue.rounded())) }
         if savings.isPaidOff {
-            return .profit(SummitFigures.shownProfit(value: savings.realValue, price: savings.ticketCost))
+            return .profit(SummitFigures.shownProfit(value: savings.totalValue, price: savings.ticketCost))
         }
-        return .remaining(SummitFigures.shownRemaining(value: savings.realValue, price: savings.ticketCost, isPaidOff: false))
+        return .remaining(SummitFigures.shownRemaining(value: savings.totalValue, price: savings.ticketCost, isPaidOff: false))
     }
 
-    /// The whole-euro figures printed next to each other: value of the trips and ticket cost (price − shown total stays
-    /// consistent with the hero's rounding).
-    static func valueText(_ savings: YearReview.Savings) -> String {
-        SummitFigures.euro(savings.hasTicketCost ? savings.realValue : savings.totalValue)
-    }
+    /// "€ 1.050": the value of all trips next to the ticket cost.
+    static func valueText(_ savings: YearReview.Savings) -> String { SummitFigures.euro(savings.totalValue) }
 
     static func costText(_ savings: YearReview.Savings) -> String { SummitFigures.euro(savings.ticketCost) }
 
@@ -44,9 +43,22 @@ enum YearReviewText {
         }
     }
 
+    /// "Ehrlich gerechnet: Gewinn € 12" / "… noch € 70 bis zum Break-even" – the same balance without the trips you would not have made.
+    static func honestOutcome(_ savings: YearReview.Savings) -> String? {
+        guard savings.hasTicketCost else { return nil }
+        if savings.isHonestlyPaidOff {
+            let profit = SummitFigures.shownProfit(value: savings.realValue, price: savings.ticketCost)
+            return profit >= 1 ? "Ehrlich gerechnet: Gewinn \(SummitFigures.euro(profit))" : "Ehrlich gerechnet: Punktlandung"
+        }
+        let rest = SummitFigures.shownRemaining(value: savings.realValue, price: savings.ticketCost, isPaidOff: false)
+        let target = savings.costIsPartial ? "bis zu den anteiligen Ticketkosten" : "bis zum Break-even"
+        return "Ehrlich gerechnet: noch \(SummitFigures.euro(rest)) \(target)"
+    }
+
+    /// The induced trips as their own line: extra value, no saving.
     static func inducedLine(_ savings: YearReview.Savings) -> String {
         let trips = savings.inducedTripCount == 1 ? "einer Fahrt" : "\(savings.inducedTripCount) Fahrten"
-        return "\(SummitFigures.euro(savings.extraValue)) Mehrwert aus \(trips), die du ohne Ticket nicht gemacht hättest – zählt nicht als gespartes Geld."
+        return "\(SummitFigures.euro(savings.extraValue)) Mehrwert aus \(trips), die du ohne Ticket nicht gemacht hättest – das ist kein gespartes Geld."
     }
 
     // MARK: Distance
@@ -70,6 +82,9 @@ enum YearReviewText {
 
     static func tripsText(_ n: Int) -> String { StatsNames.trips(n) }
 
+    /// "an einem Tag" · "an 76 Tagen".
+    static func onDays(_ n: Int) -> String { n == 1 ? "an einem Tag" : "an \(n) Tagen" }
+
     static func streakText(_ days: Int) -> String { days == 1 ? "1 Tag" : "\(days) Tage" }
 
     // MARK: Climate
@@ -92,7 +107,7 @@ enum YearReviewText {
 
     static func kicker(for kind: YearReviewPageKind) -> String {
         switch kind {
-        case .intro: "Dein Jahr"
+        case .intro: "Rückblick"
         case .savings: "Ersparnis"
         case .distance: "Strecke"
         case .favoriteRoute: "Lieblingsroute"
@@ -110,7 +125,7 @@ enum YearReviewText {
         let prefix = pageOf(number, total) + ": "
         switch page {
         case .intro(let intro):
-            var text = "Dein \(review.period.title()) – \(StatsNames.trips(intro.tripCount)) an \(Format.days(intro.travelDays))."
+            var text = "Dein \(review.period.title()): \(StatsNames.trips(intro.tripCount)) \(onDays(intro.travelDays))."
             if let name = intro.ticketName { text += " Ticket: \(name)." }
             return prefix + text
         case .savings(let savings):
@@ -119,7 +134,10 @@ enum YearReviewText {
                 text += " Fahrten im Wert von \(valueText(savings)) gegen \(costText(savings)) Ticketkosten\(savings.costIsPartial ? ", anteilig" : "")."
             }
             if let date = savings.breakEvenDate { text += " Rentiert seit \(Format.dayMonth(date))." }
-            if savings.hasInducedTrips { text += " " + inducedLine(savings) }
+            if savings.hasInducedTrips {
+                if let honest = honestOutcome(savings) { text += " \(honest)." }
+                text += " " + inducedLine(savings)
+            }
             return prefix + text
         case .distance(let distance):
             var text = "Du bist \(Format.number(distance.km)) Kilometer gefahren."

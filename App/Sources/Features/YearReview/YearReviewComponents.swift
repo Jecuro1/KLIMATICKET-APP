@@ -6,19 +6,33 @@ import KlimaCore
 
 // MARK: - Page frame
 
-/// A page's content: laid out to fit the screen, and – when the text is so large that it cannot (accessibility sizes) –
-/// scrolling instead of clipping.
+/// A page: the eyebrow on top, the content centred in the space below. Laid out to fit the screen; when the text is so large
+/// that it cannot (accessibility sizes) the page scrolls instead of clipping.
 struct StoryPageScaffold<Content: View>: View {
+    let kind: YearReviewPageKind
+    let symbol: String
+    /// Room kept free at the bottom (the ridge of the first page).
+    var bottomInset: CGFloat = 0
     @ViewBuilder var content: Content
 
     var body: some View {
         ViewThatFits(in: .vertical) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                StoryKicker(kind: kind, symbol: symbol)
+                    .reveal(.fade)
+                Spacer(minLength: Theme.Spacing.s)
                 content
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .padding(.bottom, Theme.Spacing.m)
+                Spacer(minLength: Theme.Spacing.s)
+                Color.clear.frame(height: bottomInset + Theme.Spacing.l)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            ScrollView {
+                VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    StoryKicker(kind: kind, symbol: symbol)
+                    content
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.bottom, Theme.Spacing.m)
             }
             .scrollIndicators(.visible)
         }
@@ -223,24 +237,29 @@ struct YearReviewProgressBar: View {
     let advancesAutomatically: Bool
 
     var body: some View {
+        // Everything the bar depends on is read here, in the body – an `@Observable` read inside the `ForEach` closure is
+        // not tracked (the bar would keep showing the first page).
         let elapsed = store.clock.elapsed
+        let current = store.index
+        let count = store.pageCount
+        let isLast = store.isLast
         HStack(spacing: 4) {
-            ForEach(0..<store.pageCount, id: \.self) { index in
-                segment(index, elapsed: elapsed)
+            ForEach(0..<count, id: \.self) { index in
+                segment(index, current: current, isLast: isLast, elapsed: elapsed)
             }
         }
         .frame(height: 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Fortschritt")
-        .accessibilityValue(YearReviewText.pageOf(store.index + 1, store.pageCount))
+        .accessibilityValue(YearReviewText.pageOf(current + 1, count))
     }
 
-    private func segment(_ index: Int, elapsed: Double) -> some View {
+    private func segment(_ index: Int, current: Int, isLast: Bool, elapsed: Double) -> some View {
         let fraction: Double
-        if index < store.index {
+        if index < current {
             fraction = 1
-        } else if index == store.index {
-            fraction = advancesAutomatically && !store.isLast ? min(1, elapsed / YearReviewStore.pageSeconds) : 1
+        } else if index == current {
+            fraction = advancesAutomatically && !isLast ? min(1, elapsed / YearReviewStore.pageSeconds) : 1
         } else {
             fraction = 0
         }

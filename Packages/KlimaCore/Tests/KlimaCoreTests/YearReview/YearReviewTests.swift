@@ -121,6 +121,18 @@ final class YearReviewTests: XCTestCase {
         XCTAssertFalse(purpose.buckets.contains(where: \.isUncategorized))
     }
 
+    func testPurposeIsRankedByTripsNotByValue() {
+        let trips = [
+            trip(date(2026, 4, 2), fare: 90, category: .holiday),
+            trip(date(2026, 4, 3), fare: 5, category: .leisure), trip(date(2026, 4, 4), fare: 5, category: .leisure),
+            trip(date(2026, 4, 5), fare: 5, category: .leisure),
+            trip(date(2026, 4, 6), fare: 20, category: .commute), trip(date(2026, 4, 7), fare: 20, category: .commute),
+        ]
+        let purpose = try! XCTUnwrap(review(trips).purpose)
+        XCTAssertEqual(purpose.buckets.map(\.category), [.leisure, .commute, .holiday])
+        XCTAssertEqual(purpose.buckets.map(\.trips), [3, 2, 1])
+    }
+
     func testPagesAreInReadingOrder() {
         let trips = (0..<8).map { trip(date(2026, 4, 2 + $0), category: .commute) }
         let r = review(trips, car: true)
@@ -167,11 +179,18 @@ final class YearReviewTests: XCTestCase {
         let savings = try! XCTUnwrap(r.savings)
         XCTAssertEqual(savings.totalValue, summary.totalValue, accuracy: 1e-9)
         XCTAssertEqual(savings.ticketCost, summary.ticketPrice)
+        // The headline is the one of Statistik's hero and the Jahresbericht (all trips) …
+        XCTAssertEqual(savings.net, summary.net, accuracy: 1e-9)
+        XCTAssertEqual(savings.remaining, summary.remainingToBreakEven, accuracy: 1e-9)
+        XCTAssertEqual(savings.isPaidOff, summary.isPaidOff)
+        XCTAssertEqual(savings.breakEvenDate, summary.paidOffDate)
+        // … and the honest balance stays a separate line with Statistik's "Ehrliche Bilanz" numbers.
         XCTAssertEqual(savings.realValue, honest.realSavings, accuracy: 1e-9)
         XCTAssertEqual(savings.extraValue, honest.extraValue, accuracy: 1e-9)
         XCTAssertEqual(savings.inducedTripCount, honest.inducedTripCount)
-        XCTAssertEqual(savings.net, honest.honestNet, accuracy: 1e-9)
-        XCTAssertEqual(savings.remaining, honest.remainingHonest, accuracy: 1e-9)
+        XCTAssertEqual(savings.honestNet, honest.honestNet, accuracy: 1e-9)
+        XCTAssertEqual(savings.honestRemaining, honest.remainingHonest, accuracy: 1e-9)
+        XCTAssertTrue(savings.hasInducedTrips)
 
         let distance = try! XCTUnwrap(r.distance)
         XCTAssertEqual(distance.km, summary.distanceKm, accuracy: 1e-9)
@@ -211,7 +230,7 @@ final class YearReviewTests: XCTestCase {
 
     // MARK: Induced trips
 
-    func testInducedTripsAreExtraValueNotSavings() {
+    func testInducedTripsStayASeparateLine() {
         let t = ticket(price: 100)
         let trips = [
             trip(date(2026, 3, 5), fare: 60),
@@ -220,19 +239,33 @@ final class YearReviewTests: XCTestCase {
         ]
         let r = review(trips, ticket: t)
         let savings = try! XCTUnwrap(r.savings)
+        let summary = SavingsCalculator.summary(ticket: t, trips: trips, now: date(2026, 9, 1))
+        // Headline: all trips, like the Übersicht hero and the Jahresbericht.
         XCTAssertEqual(savings.totalValue, 160, accuracy: 1e-9)
+        XCTAssertEqual(savings.net, 60, accuracy: 1e-9)
+        XCTAssertEqual(savings.net, summary.net, accuracy: 1e-9)
+        XCTAssertTrue(savings.isPaidOff)
+        XCTAssertEqual(savings.breakEvenDate, date(2026, 3, 6), "the day the value of all trips reached the price")
+        XCTAssertEqual(savings.breakEvenDate, summary.paidOffDate)
+        // Separate line: the induced trips are extra value, not saved money (Statistik's "Ehrliche Bilanz").
         XCTAssertEqual(savings.realValue, 110, accuracy: 1e-9)
         XCTAssertEqual(savings.extraValue, 50, accuracy: 1e-9)
         XCTAssertEqual(savings.inducedTripCount, 1)
         XCTAssertTrue(savings.hasInducedTrips)
-        XCTAssertEqual(savings.net, 10, accuracy: 1e-9, "the headline counts only trips that would have been bought")
-        XCTAssertTrue(savings.isPaidOff)
-        // The break-even day is the one on which the trips that would have been bought reached the price – not 6 March,
-        // where the induced trip would have carried it.
-        XCTAssertEqual(savings.breakEvenDate, date(2026, 3, 7))
-        XCTAssertEqual(savings.breakEvenTicketName, "KlimaTicket Ö Klassik")
+        XCTAssertEqual(savings.honestNet, 10, accuracy: 1e-9)
+        XCTAssertTrue(savings.isHonestlyPaidOff)
         let honest = CategoryStats.honestBalance(ticket: t, trips: trips)
-        XCTAssertEqual(savings.net, honest.honestNet, accuracy: 1e-9)
+        XCTAssertEqual(savings.honestNet, honest.honestNet, accuracy: 1e-9)
+        XCTAssertEqual(savings.realValue + savings.extraValue, savings.totalValue, accuracy: 1e-9)
+    }
+
+    func testInducedTripsCanMeanThatTheHonestBalanceIsNotPaidOffYet() {
+        let r = review([trip(date(2026, 3, 5), fare: 80, induced: true), trip(date(2026, 3, 6), fare: 30)], ticket: ticket(price: 100))
+        let savings = try! XCTUnwrap(r.savings)
+        XCTAssertTrue(savings.isPaidOff, "110 of 100 with all trips")
+        XCTAssertFalse(savings.isHonestlyPaidOff, "30 of 100 without the induced trip")
+        XCTAssertEqual(savings.honestRemaining, 70, accuracy: 1e-9)
+        XCTAssertEqual(savings.remaining, 0)
     }
 
     func testAllInducedMeansNothingSavedYet() {
@@ -240,7 +273,8 @@ final class YearReviewTests: XCTestCase {
         let savings = try! XCTUnwrap(r.savings)
         XCTAssertEqual(savings.realValue, 0)
         XCTAssertEqual(savings.extraValue, 80, accuracy: 1e-9)
-        XCTAssertEqual(savings.remaining, 100, accuracy: 1e-9)
+        XCTAssertEqual(savings.remaining, 20, accuracy: 1e-9)
+        XCTAssertEqual(savings.honestRemaining, 100, accuracy: 1e-9)
         XCTAssertNil(savings.breakEvenDate)
     }
 

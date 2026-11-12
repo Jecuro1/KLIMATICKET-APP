@@ -32,9 +32,10 @@ extension EnvironmentValues {
 extension AppState {
     /// Opens the story. App-level sheets that are up (Einstellungen, Gipfelbuch, an optional update) close first and the
     /// story follows once they are gone (a cover cannot be presented over a sheet); an open trip editor keeps its
-    /// unsaved input and is never covered; a required update is never covered either.
+    /// unsaved input and is never covered; a required update is never covered either; during the onboarding there is
+    /// nothing to look back on yet.
     func presentYearReview(year: Int? = nil, source: YearReviewRequest.Source = .link) {
-        guard yearReviewRequest == nil, tripDraft == nil else { return }
+        guard yearReviewRequest == nil, tripDraft == nil, settings.onboardingCompleted || LaunchMode.isSandboxed else { return }
         if updates.isPresentingSheet && updates.isRequired { return }
         let request = YearReviewRequest(year: year, source: source)
         guard isShowingSettings || isShowingAchievements || updates.isPresentingSheet else {

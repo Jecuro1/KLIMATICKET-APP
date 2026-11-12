@@ -23,7 +23,7 @@ struct YearReviewEntryCard: View {
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("Ersparnis, Strecke, Rekorde und Klima – zum Durchtippen und Teilen.")
+                        Text("Ersparnis, Strecke, Rekorde und Klima – zum Durchtippen.")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)

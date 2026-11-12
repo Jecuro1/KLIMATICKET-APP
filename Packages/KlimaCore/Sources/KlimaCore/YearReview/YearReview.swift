@@ -30,20 +30,21 @@ public struct YearReview: Hashable, Sendable {
         public var travelDays: Int
     }
 
-    /// Page 2 – the value of the trips against the own ticket price.
+    /// Page 2 – the value of all trips against the own ticket price (the headline Statistik, the Übersicht hero and the
+    /// Jahresbericht show), with the honest balance as a separate line.
     public struct Savings: Hashable, Sendable {
         /// Own ticket costs of the period (a calendar year: pro rata up to today). 0 = no ticket in the period.
         public var ticketCost: Double
-        /// Regular-fare value of all trips (what `SavingsSummary.totalValue` says).
+        /// Regular-fare value of all trips (`SavingsSummary.totalValue`) – the headline.
         public var totalValue: Double
-        /// Value of the trips that would otherwise have been paid for – the headline (`HonestBalance.realSavings`).
+        /// Value of the trips that would otherwise have been paid for (`HonestBalance.realSavings`).
         public var realValue: Double
         /// Value of the trips made only because of the ticket ("Ohne Ticket wäre ich nicht gefahren"): extra value, no saving.
         public var extraValue: Double
         public var inducedTripCount: Int
         public var tripCount: Int
-        /// The day a ticket of the period paid off (counting only trips that would otherwise have been bought), when that
-        /// day lies inside the period.
+        /// The day a ticket of the period paid off (`SavingsSummary.paidOffDate` rule: all trips), when that day lies inside
+        /// the period.
         public var breakEvenDate: Date?
         public var breakEvenTicketName: String?
         /// A calendar year: the ticket cost is the share of the days up to today, not the whole price.
@@ -51,10 +52,14 @@ public struct YearReview: Hashable, Sendable {
 
         public var hasTicketCost: Bool { ticketCost > 0.005 }
         public var hasInducedTrips: Bool { inducedTripCount > 0 }
-        /// `realValue − ticketCost`: positive = money really saved.
-        public var net: Double { realValue - ticketCost }
-        public var isPaidOff: Bool { hasTicketCost && realValue >= ticketCost }
-        public var remaining: Double { max(0, ticketCost - realValue) }
+        /// `totalValue − ticketCost`: positive = profit.
+        public var net: Double { totalValue - ticketCost }
+        public var isPaidOff: Bool { hasTicketCost && totalValue >= ticketCost }
+        public var remaining: Double { max(0, ticketCost - totalValue) }
+        /// The same, counting only trips that would otherwise have been bought (identical when nothing is induced).
+        public var honestNet: Double { realValue - ticketCost }
+        public var isHonestlyPaidOff: Bool { hasTicketCost && realValue >= ticketCost }
+        public var honestRemaining: Double { max(0, ticketCost - realValue) }
     }
 
     /// Page 3 – kilometres, put in perspective.
@@ -97,7 +102,8 @@ public struct YearReview: Hashable, Sendable {
 
     /// Optional page "Wofür" – only with at least `YearReview.minPurposeTrips` categorised trips.
     public struct Purpose: Hashable, Sendable {
-        /// Categorised buckets by value (the uncategorised one is left out).
+        /// Categorised buckets, most trips first (ties: higher value, then the usual category order); the uncategorised
+        /// bucket is left out.
         public var buckets: [CategoryBucket]
         public var categorisedTrips: Int
     }
@@ -244,8 +250,14 @@ public struct YearReview: Hashable, Sendable {
 
         let categorised = trips.filter { $0.category != nil }
         if JourneySummary.tripCount(categorised) >= minPurposeTrips {
-            pages.append(.purpose(Purpose(buckets: CategoryStats.buckets(trips).filter { !$0.isUncategorized },
-                                          categorisedTrips: JourneySummary.tripCount(categorised))))
+            // `CategoryStats.buckets` sorts by value; this page says "am meisten gefahren", so it ranks by trips.
+            let order = TripCategory.allCases
+            let buckets = CategoryStats.buckets(trips).filter { !$0.isUncategorized }.sorted { a, b in
+                if a.trips != b.trips { return a.trips > b.trips }
+                if abs(a.value - b.value) > 0.004 { return a.value > b.value }
+                return (a.category.flatMap { order.firstIndex(of: $0) } ?? order.count) < (b.category.flatMap { order.firstIndex(of: $0) } ?? order.count)
+            }
+            pages.append(.purpose(Purpose(buckets: buckets, categorisedTrips: JourneySummary.tripCount(categorised))))
         }
 
         if let car, car.co2SavedKg > 0 {
@@ -254,7 +266,7 @@ public struct YearReview: Hashable, Sendable {
         }
 
         pages.append(.finale(Finale(tripCount: summary.tripCount, distanceKm: summary.distanceKm, totalValue: summary.totalValue,
-                                    net: honest.realSavings - accounting.price, hasTicketCost: accounting.price > 0.005,
+                                    net: summary.totalValue - accounting.price, hasTicketCost: accounting.price > 0.005,
                                     co2SavedKg: car.flatMap { $0.co2SavedKg > 0 ? $0.co2SavedKg : nil })))
         return YearReview(period: period, accounting: accounting, pages: pages)
     }
@@ -267,9 +279,9 @@ public struct YearReview: Hashable, Sendable {
         return accounting.price > 0.005 ? accounting.name : nil
     }
 
-    /// The first day inside the period on which a ticket of the period paid off. Like the honest balance it counts only trips
-    /// that would otherwise have been bought (`isInduced` trips are extra value, not a saving). A ticket whose price is 0
-    /// (the employer pays) never "pays off".
+    /// The first day inside the period on which a ticket of the period paid off – like `SavingsCalculator` over all trips
+    /// of that ticket (the day Statistik and the Übersicht call "Rentiert seit"). A ticket whose price is 0 (the employer
+    /// pays) never "pays off".
     static func breakEvenDay(period: YearReviewPeriod, tickets: [TicketPeriod], trips: [TripRecord],
                              calendar: Calendar) -> (date: Date, ticketName: String)? {
         let candidates: [TicketPeriod]
@@ -281,7 +293,7 @@ public struct YearReview: Hashable, Sendable {
         var best: (date: Date, ticketName: String)?
         for ticket in candidates where ticket.price > 0.005 {
             var running = 0.0
-            let own = trips.filter { ticket.contains($0.date) && !$0.isInduced }.sorted { $0.date < $1.date }
+            let own = trips.filter { ticket.contains($0.date) }.sorted { $0.date < $1.date }
             for trip in own {
                 running += trip.totalValue
                 guard running >= ticket.price else { continue }

@@ -29,6 +29,7 @@ Fahrten hat), sonst das aktive Ticket-Jahr. Alles in `Calendar.vienna` (`YearRev
 **Ein Kalenderjahr vergleicht mit anteiligen Ticketkosten:** jedes Ticket, das das Jahr berührt, zählt `Preis × Tage im Jahr (bis heute) ÷
 Tage des Tickets`. Ohne Ticket im Zeitraum ist der Preis 0 – die Story zeigt dann den Fahrtwert und behauptet keinen Gewinn. Der
 Break-even-Tag eines Kalenderjahrs ist der Tag, an dem ein darin berührtes Ticket sich rentiert hat, wenn dieser Tag im Jahr liegt.
+Die Zeitraum-Wahl auf der ersten Seite ist ein Menü (Chips passen auf dem Telefon nicht nebeneinander).
 
 ## 3. Seiten und Auslassregeln
 
@@ -38,18 +39,20 @@ keine Seite, sondern den freundlichen Leerzustand mit „Fahrt erfassen“.
 | Seite | Inhalt | Quelle der Zahlen | Entfällt, wenn |
 |---|---|---|---|
 | Intro | Zeitraum, Ticketname, Fahrten (zählt einmal hoch), Reisetage | `SavingsCalculator.summary` | keine Fahrt |
-| Ersparnis | „Gewinn € X“ oder „noch € X bis zum Break-even“, Wert gegen Ticketpreis, Break-even-Tag (spielt die vorhandene Feier **einmal**) | `HonestBalance`, `SummitFigures` (gleiche Rundung wie Hero und Bericht) | nie (ab einer Fahrt) |
+| Ersparnis | „Gewinn € X“ oder „noch € X bis zum Break-even“, Wert gegen Ticketpreis, Break-even-Tag (spielt die vorhandene Feier **einmal**), ehrliche Bilanz als eigene Zeile | `SavingsSummary`, `HonestBalance`, `SummitFigures` (gleiche Rundung wie Hero und Bericht) | nie (ab einer Fahrt) |
 | Strecke | km, verglichen mit einer Referenzstrecke | `summary.distanceKm`, `ReferenceDistances` | 0 km |
 | Lieblingsroute | Top-Route, Anzahl, zwei Verfolger (Hin und zurück zählt einmal) | `StatsAggregator.topRoutes` | Top-Route unter 2 Fahrten |
 | Rhythmus | stärkster Monat mit Mini-Balkendiagramm, häufigster Wochentag, längste Serie | `months`, `weekdays`, `records` | unter 3 Fahrten |
 | Unterwegs | Bundesländer, längste und wertvollste Fahrt | `StatsAggregator.records` | weder Bundesland noch längste Fahrt |
-| Wofür | Zwecke nach Fahrten (STRETCH) | `CategoryStats.buckets` | unter 3 Fahrten mit Zweck |
+| Wofür | Zwecke, nach Fahrten gereiht (STRETCH) | `CategoryStats.buckets` | unter 3 Fahrten mit Zweck |
 | Klima | CO₂ gespart, Auto gegen Öffis, „Schätzung“ | `CarComparisonResult.co2SavedKg` (= Statistik › „Öffis vs. Auto“) | kein Vergleich oder 0 kg |
 | Abschluss | Bild zum Teilen | – | nie |
 
-**Ehrliche Bilanz.** Die Überschrift der Ersparnis-Seite zählt nur Fahrten, die du sonst bezahlt hättest (`HonestBalance.realSavings`,
-wie die Statistik-Karte „Ehrliche Bilanz“). „Ohne Ticket wäre ich nicht gefahren“-Fahrten stehen in einer eigenen Zeile als Mehrwert, nie
-als gespartes Geld. Der Break-even-Tag zählt ebenfalls nur diese Fahrten.
+**Überschrift und ehrliche Bilanz.** Die Überschrift der Ersparnis-Seite ist der Wert **aller** Fahrten gegen den eigenen Ticketpreis – dieselbe
+Zahl wie auf dem Hero der Übersicht und im PDF-Jahresbericht (`SavingsSummary`, gleiche Rundung über `SummitFigures`, Break-even-Tag =
+`paidOffDate`). „Ohne Ticket wäre ich nicht gefahren“-Fahrten stehen in einer **eigenen Zeile**: „Ehrlich gerechnet: Gewinn / noch € …“ (nur
+Fahrten, die du sonst bezahlt hättest, wie Statistik › „Ehrliche Bilanz“, `HonestBalance`) und „€ X Mehrwert aus N Fahrten …, das ist kein
+gespartes Geld“. Ohne solche Fahrten gibt es nur die eine Zahl.
 
 **Referenzstrecke.** Die Entfernung eines Paares (Wien–Graz, Wien–Linz, Wien–Salzburg, Wien–Villach, Wien–Innsbruck, Bregenz–Wien)
 ist die Luftlinie (Haversine, `GeoPoint.distanceKm`) zwischen den Koordinaten der gebündelten Stationen – keine eingetippte Zahl. Gewählt wird
@@ -95,4 +98,4 @@ mit Statistik und Jahresbericht. Siehe die Geräte-Checkliste im Track.
 `swift test --package-path Packages/KlimaCore --filter YearReview`: Standardzeitraum rund um Dez/Jän und die Zeitumstellungstage
 (29. März, 25. Oktober) in Europe/Vienna, anteilige Ticketkosten, Auslassregeln für 0, 1 und 3 Fahrten, Zahlen gleich `StatsAggregator` /
 `SavingsCalculator` / `HonestBalance` / `CarComparison` auf Fixtures, deterministischer Gleichstand der Top-Route (mehr Fahrten, dann höherer
-Wert, dann Name), Referenzstrecke positiv und symmetrisch und aus den Stationskoordinaten, „Ohne Ticket nicht gefahren“ zählt nicht als Ersparnis.
+Wert, dann Name), Referenzstrecke positiv und symmetrisch und aus den Stationskoordinaten, „Ohne Ticket nicht gefahren“ bleibt eine eigene Zeile (Überschrift gleich `SavingsSummary`, ehrliche Zahlen gleich `HonestBalance`).
