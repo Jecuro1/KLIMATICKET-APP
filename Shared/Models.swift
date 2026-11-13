@@ -146,6 +146,15 @@ final class TripEntity {
     /// „RJX 19910 · Bus 760“.
     var lineSummary: String = ""
     var arrivalAt: Date?
+    // MARK: timebalance – „Zeitbilanz“ (docs/TIME_BALANCE.md). Defaults only, so a store from 1.0.8 migrates lightweight.
+    // Local only: not in the sync DTOs (the backend needs a migration first); the JSON backup carries them as optional keys.
+    // Never read in a @Query predicate.
+    /// Ride duration of one direction in minutes (like `distanceKm` and `fareEUR`), as the holder entered it (0 = unknown).
+    var durationMinutes: Int = 0
+    /// Arrival delay in minutes (never negative; only meaningful when `delaySourceRaw` is set).
+    var delayMinutes: Int = 0
+    /// Where the delay came from: "" = not recorded, "manual", "live".
+    var delaySourceRaw: String = ""
     var createdAt: Date = Date()
     var updatedAt: Date = Date()
     var deletedAt: Date?
