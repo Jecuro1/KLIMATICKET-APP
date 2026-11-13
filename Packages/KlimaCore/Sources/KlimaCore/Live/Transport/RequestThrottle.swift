@@ -22,6 +22,10 @@ public actor RequestThrottle {
     private let sleeper: @Sendable (TimeInterval) async throws -> Void
     /// Reserved send times per provider (the last minute only).
     private var slots: [LiveProvider: [Date]] = [:]
+    // MARK: funktionen – counters for Funktionen › Datenschutz (docs/FUNCTIONS_HUB.md §5): requests that really went out (the
+    // wait was over), in memory only, from the launch on. No request content is kept, only the time.
+    private var sent: [LiveProvider: [Date]] = [:]
+    private var totals: [LiveProvider: Int] = [:]
 
     public init(clock: @escaping @Sendable () -> Date = { Date() },
                 sleeper: @escaping @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64($0 * 1e9)) }) {
@@ -46,6 +50,7 @@ public actor RequestThrottle {
         list.append(slot)
         slots[provider] = list
         if wait > 0 { try await sleeper(wait) }
+        recordSent(provider, at: slot)   // MARK: funktionen
     }
 
     /// Number of requests reserved in the last 60 s (for tests and the Settings status).
@@ -53,4 +58,50 @@ public actor RequestThrottle {
         let now = clock()
         return (slots[provider] ?? []).filter { now.timeIntervalSince($0) < 60 }.count
     }
+
+    // MARK: funktionen – request counters
+
+    private func recordSent(_ provider: LiveProvider, at date: Date) {
+        totals[provider, default: 0] += 1
+        var list = (sent[provider] ?? []).filter { date.timeIntervalSince($0) < 60 }
+        list.append(date)
+        sent[provider] = list
+    }
+
+    /// Requests that went out since the throttle was made (the launch): a reserved slot counts once its wait is over.
+    public func totalAcquired(_ provider: LiveProvider) -> Int {
+        totals[provider] ?? 0
+    }
+
+    /// The send time of the newest request, nil before the first.
+    public func lastAcquired(_ provider: LiveProvider) -> Date? {
+        sent[provider]?.max()
+    }
+
+    /// Last minute, since the launch and the newest send time of one provider.
+    public func counters(_ provider: LiveProvider) -> RequestCounters {
+        let now = clock()
+        let lastMinute = (sent[provider] ?? []).filter { now.timeIntervalSince($0) < 60 }.count
+        return RequestCounters(lastMinute: lastMinute, total: totalAcquired(provider), last: lastAcquired(provider))
+    }
+
+    /// The counters of every provider.
+    public func allCounters() -> [LiveProvider: RequestCounters] {
+        Dictionary(uniqueKeysWithValues: LiveProvider.allCases.map { ($0, counters($0)) })
+    }
+}
+
+/// MARK: funktionen – what Funktionen › Datenschutz shows per live provider („3 in der letzten Minute, 41 seit dem Start“).
+public struct RequestCounters: Equatable, Sendable {
+    public var lastMinute: Int
+    public var total: Int
+    public var last: Date?
+
+    public init(lastMinute: Int = 0, total: Int = 0, last: Date? = nil) {
+        self.lastMinute = lastMinute
+        self.total = total
+        self.last = last
+    }
+
+    public static let zero = RequestCounters()
 }
