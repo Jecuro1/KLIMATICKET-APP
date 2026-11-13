@@ -132,3 +132,13 @@ Die Punkte gelten jeweils ab ihrem Eintrag bis zum nächsten: Das Abklingen nach
   per AltStore/SideStore installierten Build nicht ausprobiert.
 - Gerätecheck für den Owner: Schalter an, iPhone sperren, Sperrbildschirm- und Home-Widgets ansehen; „Live verfolgen“ mit
   gekoppelter Watch starten und den Smart Stack ansehen.
+
+## 9. Gesehen (CI-Screenshots, Simulator, hell und dunkel)
+
+- Lauf 43438388828: erste Szenen. Der Kreis-Stil von `ProgressView` war in der App ein Lade-Rädchen (behoben, §7), das
+  Symbol der Inline-Zeile wurde mit dem Betrag verdeckt (behoben), bei AX5 brachen die Schaltertitel mitten im Wort (behoben:
+  Schalter unter dem Text).
+- Lauf 43444084719: Abschnitt in der echten Galerie (unter StandBy), Uhrzeit der Vorschau ist die echte, Watch-Bühne mit
+  Stapelkarte, Umstiegszeile „Umstieg 16:15 · in Wien Hbf · Weiter in …“. Die Abfahrtszeit berührte den Ring (behoben).
+- Lauf 43450975954: Zeit im Ring mit Abstand, AX5 bei den Schaltern ohne Worttrennung. Die helle AX5-Szene bei den Schaltern
+  zeigte einmal den Startbildschirm (Start im CI-Simulator über 8 s, die dunkle Aufnahme derselben Szene startete in 1 s).
