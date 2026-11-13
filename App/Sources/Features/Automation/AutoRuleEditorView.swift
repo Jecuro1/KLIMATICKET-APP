@@ -163,6 +163,7 @@ struct AutoRuleEditorView: View {
         Button(action: runTest) {
             Label(probe == nil ? "Testlauf" : "Nochmal prüfen", systemImage: probe == nil ? "play.fill" : "arrow.clockwise")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.onAccent)   // the symbol would take the tint – the button's own fill – and vanish
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
@@ -479,6 +480,7 @@ struct AutoTimeRow: View {
             minute = AutoClock.minuteOfDay(date, calendar: .vienna)
         }), displayedComponents: .hourAndMinute)
         .environment(\.timeZone, Self.vienna)
+        .environment(\.locale, Format.locale)   // 19:00, not 7:00 PM
     }
 }
 

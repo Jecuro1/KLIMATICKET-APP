@@ -134,5 +134,6 @@ Keine SwiftData-Änderung.
 
 `-KBScreenshot <name> -KBDemo YES`, Uhr fest auf Donnerstag, 12.11.2026, 17:42; erfundene Regeln, Fakten und Protokoll; keine
 System-Mitteilung, keine Abfrage, kein Netz (`AutoDemo.swift`):
-`automationList`, `automationEditor`, `automationTest` (Testlauf der Verspätungsregel), `automationLog`, `automationBudget` (mehr
-Termine als Plätze), `automationAX5` (größte Schrift).
+`automationList`, `automationListBottom` (Vorlagen, Protokoll), `automationEditor`, `automationEditorBottom` (Filter, Bedingungen,
+„Dann“), `automationTest` (Testlauf der Verspätungsregel), `automationLog`, `automationBudget` (mehr Termine als Plätze),
+`automationAX5` und `automationAX5Rows` (größte Schrift).

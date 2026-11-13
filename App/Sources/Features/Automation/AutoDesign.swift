@@ -226,9 +226,10 @@ struct AutoBudgetBar: View {
                 .motionAnimation(Motion.smooth, value: used)
                 .accessibilityHidden(true)
             if waiting > 0 {
-                Label("\(waiting) \(waiting == 1 ? "Termin wartet" : "Termine warten") auf einen Platz", systemImage: "hourglass")
-                    .font(.footnote.weight(.semibold))
+                Text("+ \(waiting) warten")
+                    .font(.footnote.weight(.semibold).monospacedDigit())
                     .foregroundStyle(Theme.summitText)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
             }
         }
         .accessibilityElement(children: .combine)

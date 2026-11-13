@@ -26,6 +26,8 @@ final class AutomationEngineTests: XCTestCase {
         XCTAssertEqual(verdict.firings.first?.title, "Verspätung 8 Min")
         XCTAssertEqual(verdict.firings.first?.body, "RJ 66 kommt in Innsbruck Hbf etwa 8 Min später an (ÖBB-Prognose).")
         XCTAssertEqual(verdict.firings.first?.explanation, text(verdict))
+        XCTAssertEqual(AutoText.firedLine(text(verdict)),
+                       "Ausgelöst: Verspätung 8 Min ist mindestens 5 Min (RJ 66, Ausstieg Innsbruck Hbf), kein Cooldown")
         XCTAssertTrue(verdict.marks.contains(.followReported(ruleID: rule.id, tripID: "1|RJ66|0")))
         XCTAssertTrue(verdict.marks.contains(.fired(ruleID: rule.id, at: now)))
     }

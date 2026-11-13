@@ -290,13 +290,13 @@ final class AutoRunner {
         if UIApplication.shared.applicationState == .active, let app {
             showToast(title: firing.title, body: firing.body, kind: kind, opensAddTrip: firing.opensAddTrip,
                       from: firing.addTripFrom, to: firing.addTripTo, shortcut: firing.shortcutName, app: app)
-            if let rule { record(id: identifier, rule: rule, at: firing.at, title: firing.title, detail: firing.explanation, channel: .inApp) }
+            if let rule { record(id: identifier, rule: rule, at: firing.at, title: firing.title, detail: AutoText.firedLine(firing.explanation), channel: .inApp) }
             NoticeHistoryStore.record(DeliveredNotice(id: identifier, kind: .automation, title: firing.title, body: firing.body,
                                                       deliveredAt: firing.at))
             return true
         }
         guard await AutoNotifications.post(firing, kind: kind, identifier: identifier) else { return false }
-        if let rule { record(id: identifier, rule: rule, at: firing.at, title: firing.title, detail: firing.explanation, channel: .notification) }
+        if let rule { record(id: identifier, rule: rule, at: firing.at, title: firing.title, detail: AutoText.firedLine(firing.explanation), channel: .notification) }
         return true
     }
 

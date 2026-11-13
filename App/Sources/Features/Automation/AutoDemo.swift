@@ -9,7 +9,9 @@ import KlimaCore
 // - `automationTest`: the editor of „Verspätung melden“ with the Testlauf run (RJ 66, 12 Min late at Innsbruck Hbf)
 // - `automationLog`: „Zuletzt ausgelöst“ with in-app, notice, delivered and cancelled entries
 // - `automationBudget`: more planned moments than places – the full bar and the warning
-// - `automationAX5`: the screen at the largest text size
+// - `automationAX5`: the screen at the largest text size, `automationAX5Rows` scrolled to the rules
+// - `automationListBottom`: the lower part (templates, „Zuletzt ausgelöst“)
+// - `automationEditorBottom`: the editor of „Große Fahrt“ scrolled down (filter, conditions, „Dann“, name)
 
 enum AutoDemo {
     static let now: Date = {
@@ -80,16 +82,16 @@ enum AutoDemo {
         }
         return AutoLog(entries: [
             entry("d1", delayID, "Verspätung melden", at(0, 7, 31), "Verspätung 12 Min",
-                  "Würde jetzt auslösen: Verspätung 12 Min ist mindestens 10 Min (RJ 66, Ausstieg Innsbruck Hbf), Bedingungen erfüllt, kein Cooldown",
+                  "Ausgelöst: Verspätung 12 Min ist mindestens 10 Min (RJ 66, Ausstieg Innsbruck Hbf), Bedingungen erfüllt, kein Cooldown",
                   .inApp),
             entry("d2", eveningID, "Abendcheck", at(-1, 19, 0), "Heute noch keine Fahrt erfasst",
                   "Warst du heute mit den Öffis unterwegs? Tippe hier und trag die Fahrt nach.", .delivered),
             entry("d3", eveningID, "Abendcheck", at(-2, 17, 48), "Heute noch keine Fahrt erfasst",
                   "Abgesagt: an diesem Tag ist schon eine Fahrt erfasst.", .cancelled),
             entry("d4", milestoneID, "Meilensteine feiern", at(-4, 8, 5), "50 % geschafft",
-                  "Würde jetzt auslösen: 50 % amortisiert – 50 % ist erreicht und für dieses Ticket noch nicht gefeiert", .inApp),
+                  "Ausgelöst: 50 % amortisiert – 50 % ist erreicht und für dieses Ticket noch nicht gefeiert", .inApp),
             entry("d5", delayID, "Verspätung melden", at(-6, 18, 12), "Verspätung 15 Min",
-                  "Würde jetzt auslösen: Verspätung 15 Min ist mindestens 10 Min (REX 5, Ausstieg Landeck-Zams), Bedingungen erfüllt, kein Cooldown",
+                  "Ausgelöst: Verspätung 15 Min ist mindestens 10 Min (REX 5, Ausstieg Landeck-Zams), Bedingungen erfüllt, kein Cooldown",
                   .notification),
         ])
     }
@@ -107,6 +109,7 @@ enum AutoDemo {
 struct AutoScreenshotHost: View {
     static let screens: Set<String> = [
         "automationList", "automationEditor", "automationTest", "automationLog", "automationBudget", "automationAX5",
+        "automationAX5Rows", "automationListBottom", "automationEditorBottom",
     ]
 
     let screen: String
@@ -116,16 +119,28 @@ struct AutoScreenshotHost: View {
         NavigationStack {
             if isReady { content }
         }
-        .dynamicTypeSize(screen == "automationAX5" ? .accessibility5 : .large)
+        .defaultScrollAnchor(anchor)
+        .defaultScrollAnchor(anchor, for: .sizeChanges)   // the rows arrive after the first frame
+        .dynamicTypeSize(screen.hasPrefix("automationAX5") ? .accessibility5 : .large)
         .onAppear {
             AutoDemo.install(screen)
             isReady = true
         }
     }
 
+    private var anchor: UnitPoint? {
+        switch screen {
+        case "automationListBottom", "automationEditorBottom": .bottom
+        case "automationAX5Rows": .center
+        default: nil
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         switch screen {
+        case "automationEditorBottom":
+            AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.bigTripID) ?? AutoDemo.rules[4], isNew: false)
         case "automationEditor":
             AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.eveningID) ?? AutoDemo.rules[0], isNew: false)
         case "automationTest":

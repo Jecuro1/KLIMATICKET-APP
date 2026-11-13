@@ -196,6 +196,13 @@ public enum AutoText {
         }
     }
 
+    /// The log's line for a firing that happened: „Ausgelöst: …“ instead of the Testlauf's „Würde jetzt auslösen: …“.
+    public static func firedLine(_ explanation: String) -> String {
+        let prefix = "Würde jetzt auslösen: "
+        guard explanation.hasPrefix(prefix) else { return explanation }
+        return "Ausgelöst: " + explanation.dropFirst(prefix.count)
+    }
+
     /// One reason in words (no prefix).
     public static func reasonText(_ reason: AutoReason, now: Date, calendar: Calendar) -> String {
         switch reason {

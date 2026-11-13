@@ -345,28 +345,25 @@ struct AutoHeroCard: View {
     var used: Int
     var waiting: Int
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                Image(systemName: "wand.and.sparkles")
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(Theme.ctaGradient, in: .rect(cornerRadius: 16, style: .continuous))
-                    .symbolBounce(on: isEnabled)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Wenn … dann …")
-                        .font(.system(.title3, design: .rounded, weight: .bold))
-                        .foregroundStyle(Theme.textPrimary)
-                    Text("Deine Regeln auf dem iPhone")
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.textSecondary)
+            // At accessibility sizes the title gets the full width under the icon and the switch.
+            if typeSize.isAccessibilitySize {
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    badge
+                    Spacer(minLength: Theme.Spacing.xs)
+                    toggle
                 }
-                Spacer(minLength: Theme.Spacing.xs)
-                Toggle("Automatik", isOn: $isEnabled)
-                    .labelsHidden()
-                    .accessibilityLabel("Automatik")
+                title
+            } else {
+                HStack(alignment: .center, spacing: Theme.Spacing.s) {
+                    badge
+                    title
+                    Spacer(minLength: Theme.Spacing.xs)
+                    toggle
+                }
             }
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) { count; next }
@@ -376,6 +373,36 @@ struct AutoHeroCard: View {
         }
         .padding(.vertical, Theme.Spacing.xs)
         .opacity(isEnabled ? 1 : 0.85)
+    }
+
+    private var badge: some View {
+        Image(systemName: "wand.and.sparkles")
+            .font(.system(size: 24, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 52, height: 52)
+            .background(Theme.ctaGradient, in: .rect(cornerRadius: 16, style: .continuous))
+            .symbolBounce(on: isEnabled)
+            .accessibilityHidden(true)
+    }
+
+    private var title: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Wenn … dann …")
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(Theme.textPrimary)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+                .accessibilityAddTraits(.isHeader)
+            Text("Deine Regeln auf dem iPhone")
+                .font(.subheadline)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var toggle: some View {
+        Toggle("Automatik", isOn: $isEnabled)
+            .labelsHidden()
+            .accessibilityLabel("Automatik")
     }
 
     private var count: some View {
@@ -397,7 +424,7 @@ struct AutoHeroCard: View {
             Text(nextText)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.accentText)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.opacity)
         }
     }
@@ -411,40 +438,68 @@ struct AutoRuleRow: View {
     var open: () -> Void
     var toggle: (Bool) -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         let isLive = rule.isEnabled && isMasterOn
-        HStack(alignment: .top, spacing: Theme.Spacing.s) {
-            Button(action: open) {
-                HStack(alignment: .top, spacing: Theme.Spacing.s) {
-                    AutoKindTile(kind: rule.trigger.kind, isOn: isLive)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(rule.name)
-                            .font(.headline)
-                            .foregroundStyle(isLive ? Theme.textPrimary : Theme.textSecondary)
-                        Text(AutoText.sentence(rule))
-                            .font(.subheadline)
-                            .foregroundStyle(Theme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Label(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus"),
-                              systemImage: rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.horizontal")
-                            .font(.caption.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(isLive ? Theme.accentText : Theme.textTertiary)
-                            .contentTransition(.opacity)
+        Group {
+            // At accessibility sizes the switch sits next to the icon, so the sentence keeps the whole width.
+            if typeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    HStack {
+                        AutoKindTile(kind: rule.trigger.kind, isOn: isLive)
+                        Spacer(minLength: Theme.Spacing.xs)
+                        toggleView
                     }
-                    Spacer(minLength: 0)
+                    openButton(isLive: isLive, showsTile: false)
                 }
-                .contentShape(Rectangle())
+            } else {
+                HStack(alignment: .top, spacing: Theme.Spacing.s) {
+                    openButton(isLive: isLive, showsTile: true)
+                    toggleView
+                }
             }
-            .buttonStyle(.pressableCard)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(rule.name), \(isLive ? "eingeschaltet" : "ausgeschaltet"). \(AutoText.sentence(rule)) \(isLive ? nextLine : "")")
-            .accessibilityHint("Öffnet Testlauf und Details")
-            .accessibilityAddTraits(.isButton)
-            Toggle(rule.name, isOn: Binding(get: { rule.isEnabled }, set: toggle))
-                .labelsHidden()
-                .accessibilityLabel("\(rule.name) einschalten")
         }
         .padding(.vertical, 4)
+    }
+
+    private var toggleView: some View {
+        Toggle(rule.name, isOn: Binding(get: { rule.isEnabled }, set: toggle))
+            .labelsHidden()
+            .accessibilityLabel("\(rule.name) einschalten")
+    }
+
+    private func openButton(isLive: Bool, showsTile: Bool) -> some View {
+        Button(action: open) {
+            HStack(alignment: .top, spacing: Theme.Spacing.s) {
+                if showsTile { AutoKindTile(kind: rule.trigger.kind, isOn: isLive) }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(rule.name)
+                        .font(.headline)
+                        .foregroundStyle(isLive ? Theme.textPrimary : Theme.textSecondary)
+                    Text(AutoText.sentence(rule))
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Image(systemName: rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill")
+                            .accessibilityHidden(true)
+                        Text(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus"))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .contentTransition(.opacity)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(isLive ? Theme.accentText : Theme.textTertiary)
+                }
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(rule.name), \(isLive ? "eingeschaltet" : "ausgeschaltet"). \(AutoText.sentence(rule)) \(isLive ? nextLine : "")")
+        .accessibilityHint("Öffnet Testlauf und Details")
+        .accessibilityAddTraits(.isButton)
     }
 }
