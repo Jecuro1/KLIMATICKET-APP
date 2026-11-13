@@ -232,16 +232,25 @@ struct RadarTimeCard: View {
             Label("Mobile Daten oder Datensparmodus: grobe Zeitreise, ein Zeitpunkt je Stunde.", systemImage: "antenna.radiowaves.left.and.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
             Text("So bleibt die Datenmenge klein. Genau diese Minute lädst du mit „Genau laden“.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
-            HStack(spacing: Theme.Spacing.xs) {
-                smallButton("Fein laden", symbol: "square.stack.3d.up") { travel.useFine() }
-                smallButton("Genau laden", symbol: "scope") { travel.refreshExactNow() }
+                .fixedSize(horizontal: false, vertical: true)
+            // Side by side while both fit, else one under the other (at accessibility sizes the pair is wider than the card).
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Theme.Spacing.xs) { meteredButtons }
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) { meteredButtons }
             }
         }
         .padding(Theme.Spacing.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+    }
+
+    @ViewBuilder private var meteredButtons: some View {
+        smallButton("Fein laden", symbol: "square.stack.3d.up") { travel.useFine() }
+        smallButton("Genau laden", symbol: "scope") { travel.refreshExactNow() }
     }
 
     /// Low Power Mode: nothing is loaded (as in the live radar), the picture is calculated from what is there. A tap loads after all.
