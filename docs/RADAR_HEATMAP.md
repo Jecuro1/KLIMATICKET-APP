@@ -102,7 +102,9 @@ getrennt gemessen. Ob es reicht, hängt also daran, wann das erste Byte kommt. K
 2. Scheitert auch das, wartet diese Kachel 15 s, dann 30 s, … höchstens 2 Minuten; die andere läuft weiter. Die Züge der Kachel bleiben 60 s
    auf der Karte und in den Zahlen, das Panel sagt „Für einen Teil des Landes kam keine Antwort. Die Zahlen gelten für die geladenen Gebiete.“
 3. Drei gescheiterte Anfragen in Folge öffnen den Schutzschalter: 2 Minuten keine ÖBB-Anfrage der ganzen App (auch Fahrplan und Abfahrten).
-   Das Panel sagt „Das Radar pausiert. Die Zahlen sind vom letzten Stand.“, darunter steht „Radar pausiert“ mit „Erneut versuchen“.
+   Sind beide Kacheln ausgefallen, sagt das Panel „Das Radar pausiert. Die Zahlen sind vom letzten Stand.“, darunter steht „Radar pausiert“ mit
+   „Erneut versuchen“; hat eine Kachel noch ihre Antwort, bleibt es beim Hinweis aus Schritt 2. „Erneut versuchen“ öffnet den Schutzschalter nicht:
+   Die Anfrage endet vor der Drossel (`LiveHealth.check`), ohne Netz, und das Radar wartet weiter.
 
 Es staut sich nichts: höchstens 3 Anfragen gleichzeitig, eine Kachel nie zweimal zugleich, eine Anfrage ohne Ausgang gibt ihre Kachel nach 90 s
 frei. Ohne Netz ist `timetableUnavailable` `.offline`: Die Schleife endet, die Ebene lädt nichts und sagt, dass sie Live-Daten braucht.
