@@ -70,9 +70,9 @@ final class RadarCityDemoFleetTests: XCTestCase {
 
     func testTheCitySceneIsNotCutOff() {
         var scheduler = RadarScheduler(config: .syntheticCityDemo)
-        let close = RadarBox(north: 48.2230, west: 16.3495, south: 48.1780, east: 16.3945)
-        scheduler.setViewport(close, latitudeSpan: 0.045, now: t0)
-        scheduler.setCityViewport(close, latitudeSpan: 0.045, now: t0)
+        let close = RadarBox(north: 48.2020, west: 16.3600, south: 48.1820, east: 16.3900)   // the scene: 0.02° around 48.192, 16.375
+        scheduler.setViewport(close, latitudeSpan: 0.02, now: t0)
+        scheduler.setCityViewport(close, latitudeSpan: 0.02, now: t0)
         var elapsed = 0.0
         var seen: [RadarVehicle] = []
         while elapsed < 11 {

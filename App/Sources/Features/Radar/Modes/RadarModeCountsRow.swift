@@ -7,6 +7,7 @@ import KlimaCore
 struct RadarModeCountsRow: View {
     var counts: RadarModeCounts
     @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .caption) private var dot: CGFloat = 7
 
     var body: some View {
         Group {
@@ -34,9 +35,9 @@ struct RadarModeCountsRow: View {
             HStack(spacing: 4) {
                 Circle()
                     .fill(entry.mode?.color ?? Theme.textTertiary)
-                    .frame(width: 7, height: 7)
+                    .frame(width: dot, height: dot)
                 Text(RadarModesText.label(entry.mode))
-                Text("\(entry.count)")
+                Text(verbatim: String(entry.count))   // no thousands separator: the pill says „5080 Fahrzeuge“ the same way
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .contentTransition(.numericText(value: Double(entry.count)))

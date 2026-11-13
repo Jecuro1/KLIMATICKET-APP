@@ -53,7 +53,7 @@ struct RadarClusterBubble: View {
 
     var body: some View {
         let worst: RadarDelayState = cluster.cancelledCount > 0 ? .cancelled : (cluster.lateCount > 0 ? .late : .onTime)
-        Text("\(cluster.count)")
+        Text(verbatim: String(cluster.count))   // MARK: radarmodes – „1010“, never the locale's „1,010“
             .font(.system(size: 13, weight: .bold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(.white)

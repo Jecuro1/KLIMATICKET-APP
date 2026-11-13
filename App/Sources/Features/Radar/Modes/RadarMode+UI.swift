@@ -71,8 +71,9 @@ extension RadarView {
             camera = .region(MKCoordinateRegion(center: wien.clCoordinate, span: MKCoordinateSpan(latitudeDelta: 0.12, longitudeDelta: 0.12)))
         default:   // Wien close up with all five modes
             setModes(RadarModeSelection(Set(RadarMode.allCases)))
-            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2005, longitude: 16.3720).clCoordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 0.045, longitudeDelta: 0.045)))
+            // Close enough that most vehicles are single plates (a Wien view of 0.12° would be groups of 10 to 25).
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.1920, longitude: 16.3750).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)))
             applyFilterScene(preset)
         }
     }

@@ -165,7 +165,7 @@ extension RadarView {
                     Text("Dieser Zug ist gerade nicht auf der Karte. Zoom heraus oder probier es später noch einmal.")
                         .radarHint()
                 }
-                if !heatOn { RadarStatusCard(model: model) }   // MARK: radarheat – the panel has its own age and notes
+                if !heatOn { RadarStatusCard(model: model, onLegend: { showsLegend = true }) }   // MARK: radarheat – the panel has its own age and notes; radarmodes – „Legende“
             }
             radar2StatusNotes   // MARK: radar2 – outside the block above: each note decides itself when it shows (also while away)
             if !model.route.isEmpty {
