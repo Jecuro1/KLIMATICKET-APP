@@ -72,6 +72,15 @@ public struct LiveFollowSnapshot: Sendable, Hashable, Codable {
         return Int(transfer.plannedDeparture.timeIntervalSince(arrival).rounded(.down))
     }
 
+    // MARK: anschluss
+    /// Spare minutes of the change at `now`, in the whole minutes of the connection detail and the guard card
+    /// (`TransferBuffer.minutes`): the guard's expected departure while fresh, else the planned one, minus the walk when known.
+    public func transferBufferMinutes(now: Date) -> Int? {
+        guard let transfer, let arrival = arrivalEstimate else { return nil }
+        return TransferBuffer.minutes(arrival: arrival, departure: transfer.departureEstimate(now: now),
+                                      walkMinutes: transfer.walkMinutes ?? 0)
+    }
+
     /// Delay at the alighting stop (arrival, else departure); otherwise the latest delay the run reports.
     public var delaySeconds: Int? {
         if let d = alighting?.arrival?.delaySeconds ?? alighting?.departure?.delaySeconds { return d }
@@ -123,6 +132,9 @@ public enum LiveFollow {
     public static let arrivingSoonWindow: TimeInterval = 10 * 60
     /// A change with less spare time than this is reported as tight.
     public static let tightTransferSeconds = 5 * 60
+    // MARK: anschluss
+    /// How long the guard's expected departure of the next leg counts for the notice (docs/CONNECTION_GUARD.md §6).
+    public static let transferEstimateLifetime: TimeInterval = 10 * 60
 
     /// Builds the snapshot for `target` from one `TripDetails` answer at time `now`. Stops are matched by location id
     /// (then extId); when a stop is not part of the run, the boarding falls back to the first and the alighting to the
@@ -220,8 +232,9 @@ public enum LiveFollow {
             if remaining > 0, remaining <= arrivingSoonWindow {
                 out.append(.arrivingSoon(stop: alightName, minutes: max(1, Int((remaining / 60).rounded(.up)))))
             }
-            if let transfer = current.transfer, let buffer = current.transferBufferSeconds, buffer < tightTransferSeconds {
-                out.append(.tightTransfer(station: transfer.stationName, bufferMinutes: Int((Double(buffer) / 60).rounded(.down))))
+            // MARK: anschluss – whole minutes through `TransferBuffer.minutes`, the same number as the card and the detail.
+            if let transfer = current.transfer, let buffer = current.transferBufferMinutes(now: now), buffer * 60 < tightTransferSeconds {
+                out.append(.tightTransfer(station: transfer.stationName, bufferMinutes: buffer))
             }
         }
         return out

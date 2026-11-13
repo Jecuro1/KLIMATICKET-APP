@@ -253,7 +253,7 @@ public enum JourneyPresentation {
         let prev = journey.legs[a], next = journey.legs[b]
         guard let arrival = prev.arrival.effective, let departure = next.departure.effective else { return nil }
         let walk = journey.legs[(a + 1)..<b].filter { $0.kind != .ride }.reduce(0) { $0 + walkMinutes($1) }
-        let buffer = minutesBetween(arrival, departure) - walk
+        let buffer = TransferBuffer.minutes(arrival: arrival, departure: departure, walkMinutes: walk)   // MARK: anschluss – one formula
         let risk: TransferRisk = buffer >= 5 ? .ok : (buffer >= 2 ? .tight : .atRisk)
         let text: String
         switch risk {

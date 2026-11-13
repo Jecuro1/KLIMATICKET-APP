@@ -30,10 +30,30 @@ public struct FollowTransfer: Sendable, Hashable, Codable {
     public var plannedDeparture: Date
     /// Line of the next leg, e.g. "RJ 162", when known.
     public var lineName: String?
+    // MARK: anschluss – the guard's estimate of the change (docs/CONNECTION_GUARD.md §6). Optional: records saved before decode as nil.
+    /// Expected departure of the next leg at the station (realtime, else planned), as the Anschluss-Wächter last saw it.
+    public var expectedDeparture: Date?
+    /// When the guard saw `expectedDeparture`; older than `LiveFollow.transferEstimateLifetime` it is not used any more.
+    public var expectedAt: Date?
+    /// Walk between the two rides in whole minutes, when the connection says it.
+    public var walkMinutes: Int?
 
-    public init(stationName: String, plannedDeparture: Date, lineName: String? = nil) {
+    public init(stationName: String, plannedDeparture: Date, lineName: String? = nil,
+                expectedDeparture: Date? = nil, expectedAt: Date? = nil, walkMinutes: Int? = nil) {
         self.stationName = stationName
         self.plannedDeparture = plannedDeparture
         self.lineName = lineName
+        self.expectedDeparture = expectedDeparture
+        self.expectedAt = expectedAt
+        self.walkMinutes = walkMinutes
+    }
+
+    /// The departure the change is counted with at `now`: the guard's expected departure while it is at most
+    /// `LiveFollow.transferEstimateLifetime` old, else the planned one (a warning too many rather than one too few).
+    public func departureEstimate(now: Date) -> Date {   // MARK: anschluss
+        if let expectedDeparture, let expectedAt, now.timeIntervalSince(expectedAt) <= LiveFollow.transferEstimateLifetime {
+            return expectedDeparture
+        }
+        return plannedDeparture
     }
 }
