@@ -11,7 +11,9 @@ public enum RadarHeatText {
     public static let punctualLabel = "Pünktlich (unter 5 Min)"
 
     /// What every figure rests on, always shown under the numbers.
-    public static let methodNote = "Die Verspätung ist die Echtzeit-Verspätung, die die ÖBB für den nächsten Halt meldet. Die Positionen sind berechnet, nicht gemessen. Züge ohne Echtzeit-Daten zählen nie als pünktlich: Sie fehlen in den Prozenten."
+    /// It also says what the figure is not: one moment of the trains this app holds, not ÖBB's punctuality statistics (which count
+    /// differently and over a whole day), so a "74 %" here is never read as the railway's official figure.
+    public static let methodNote = "Die Verspätung ist die Echtzeit-Verspätung, die die ÖBB für den nächsten Halt meldet (fehlt sie dort: die am letzten Halt mit Echtzeit-Wert). Die Positionen sind berechnet, nicht gemessen. Züge ohne Echtzeit-Daten zählen nie als pünktlich: Sie fehlen in den Prozenten. Eine Momentaufnahme dieser App, keine Pünktlichkeitsstatistik der ÖBB."
 
     /// The area the numbers cover: the radar's rectangle holds Austria and some border regions.
     public static let areaNote = "Gezählt werden Züge und S-Bahnen im Radar-Bereich: Österreich und angrenzende Gebiete. Busse, Bims und U-Bahnen zählen nicht."
@@ -179,10 +181,15 @@ public enum RadarHeatText {
     /// Shown when no mode that carries trains is on: the numbers are about trains and S-Bahnen only.
     public static let noRailNote = "Die Pünktlichkeit zählt nur Züge und S-Bahnen. Schalte oben „Züge“ oder „S-Bahn“ ein."
 
-    /// The note under the panel when the data is incomplete: some tiles are still loading or failed.
+    /// The note under the panel when the data is incomplete: some tiles are still loading or failed, or their last answer is so old
+    /// that its trains have left the radar (after a minute or more in the background, under the cockpit or in Low Power Mode).
     public static func completenessNote(_ status: RadarStatus) -> String? {
         if status.isPaused { return "Das Radar pausiert. Die Zahlen sind vom letzten Stand." }
         if status.failedTiles > 0 { return "Für einen Teil des Landes kam keine Antwort. Die Zahlen gelten für die geladenen Gebiete." }
+        if status.staleTiles > 0, status.staleTiles >= status.answeredTiles {
+            return "Die Daten sind zu alt und zählen nicht mehr. Neue Zahlen kommen mit der nächsten Antwort."
+        }
+        if status.staleTiles > 0 { return "Für einen Teil des Landes ist die letzte Antwort zu alt. Die Zahlen gelten für die übrigen Gebiete." }
         if status.pendingTiles > 0 { return "Ein Teil des Landes wird noch geladen. Die Zahlen gelten für die geladenen Gebiete." }
         if status.cappedTiles > 0 { return "In einem Gebiet fehlt ein Teil der Züge: Mehr als die Auskunft je Abfrage liefert." }
         return nil

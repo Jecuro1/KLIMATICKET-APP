@@ -34,6 +34,9 @@ extension RadarModel {
     /// positions the map shows them.
     func refreshHeat(at now: Date) {
         guard heat.needsUpdate(at: now) else { return }
+        // Trains older than their retention never count: switched on after a while without the loop (the train layer off, the map
+        // still), the store can hold the answers of minutes ago until the next rebuild prunes it.
+        store.prune(now: now)
         let mask = products.intersection(.rail)
         let samples = store.entries.values.compactMap { entry -> HeatSample? in
             let vehicle = entry.vehicle
@@ -43,9 +46,13 @@ extension RadarModel {
             return HeatSample(vehicle: vehicle, coordinate: RadarEstimate.shown(entry, now: now).coordinate, now: now)
         }
         // The trend line only takes complete answers: with one of the two tiles still on its way the share would jump for the area
-        // that is missing, not for the punctuality.
-        let complete = status.answeredTiles > 0 && status.pendingTiles == 0 && status.failedTiles == 0 && status.cappedTiles == 0 && !status.isPaused
-        heat.update(samples, at: now, isComplete: complete)
+        // that is missing, not for the punctuality. A tile whose last answer is older than its retention is missing too (back from
+        // the background after minutes: the first new answer covers half the country, the other half's trains are gone).
+        let complete = status.answeredTiles > 0 && status.pendingTiles == 0 && status.failedTiles == 0 && status.cappedTiles == 0
+            && status.staleTiles == 0 && !status.isPaused
+        // The time the numbers belong to: the request time of the oldest answer behind them (the share image says it, not the
+        // moment the panel was drawn).
+        heat.update(samples, at: now, isComplete: complete, dataTime: status.oldestAnswerAge.map { now.addingTimeInterval(-$0) })
     }
 
     /// No mode that carries trains is on (only buses, trams or subways): the layer has nothing to count and says so.

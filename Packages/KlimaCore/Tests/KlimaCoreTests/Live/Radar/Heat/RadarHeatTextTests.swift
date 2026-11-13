@@ -132,6 +132,25 @@ final class RadarHeatTextTests: XCTestCase {
         XCTAssertNotNil(RadarHeatText.completenessNote(capped))
     }
 
+    func testAnAnswerTooOldToCountIsSaid() {
+        // Review 2: back from the background after minutes, both tiles still count as answered, but their trains have left the
+        // store. Without a note the first fresh answer showed half the country's numbers as if they were the whole.
+        var status = RadarStatus()
+        status.answeredTiles = 2
+        status.staleTiles = 1
+        XCTAssertEqual(RadarHeatText.completenessNote(status), "Für einen Teil des Landes ist die letzte Antwort zu alt. Die Zahlen gelten für die übrigen Gebiete.")
+        status.staleTiles = 2
+        XCTAssertEqual(RadarHeatText.completenessNote(status), "Die Daten sind zu alt und zählen nicht mehr. Neue Zahlen kommen mit der nächsten Antwort.")
+        status.failedTiles = 1
+        XCTAssertTrue(RadarHeatText.completenessNote(status)?.contains("keine Antwort") ?? false, "a failure is said first")
+    }
+
+    func testTheMethodNoteSaysItIsNoOfficialStatistic() {
+        // Review 2: "74 %" next to ÖBB's own published punctuality would read as a contradiction or as the railway's figure.
+        XCTAssertTrue(RadarHeatText.methodNote.contains("keine Pünktlichkeitsstatistik der ÖBB"))
+        XCTAssertTrue(RadarHeatText.methodNote.contains("letzten Halt"), "the fallback to the last stop with a realtime value is said")
+    }
+
     func testTheAreaNoteNamesTrainsAndTheNoRailNoteSaysWhatToSwitchOn() {
         XCTAssertTrue(RadarHeatText.areaNote.contains("Züge und S-Bahnen"), "the numbers are about trains: buses, trams and subways are not counted")
         XCTAssertTrue(RadarHeatText.areaNote.contains("Busse"))

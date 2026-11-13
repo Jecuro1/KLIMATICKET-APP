@@ -53,11 +53,15 @@ struct HeatTrainDot: View {
 struct HeatClusterDot: View {
     var cluster: RadarCluster
     var noun = "Züge"
+    /// At least one train of the group carries realtime data and is on time. Without one (and with none late or cancelled) the
+    /// group's trains have no realtime data at all: a grey ring, never a green one (Review 2: "ohne Echtzeit nie pünktlich").
+    var hasOnTime = true
 
     private var diameter: CGFloat { cluster.count >= 10 ? 17 : 14 }
 
     var body: some View {
-        let worst: HeatBucket = cluster.cancelledCount > 0 ? .cancelled : (cluster.lateCount > 0 ? .delayed : .onTime)
+        let worst: HeatBucket = cluster.cancelledCount > 0 ? .cancelled
+            : (cluster.lateCount > 0 ? .delayed : (hasOnTime ? .onTime : .noRealtime))
         Circle()
             .fill(Theme.sheetBackground)
             .overlay(Circle().strokeBorder(worst.tint, lineWidth: 3.5))

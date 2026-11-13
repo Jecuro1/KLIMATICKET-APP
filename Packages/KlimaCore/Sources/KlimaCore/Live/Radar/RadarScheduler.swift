@@ -68,6 +68,10 @@ public struct RadarStatus: Sendable, Equatable {
     public var cappedTiles = 0
     /// Visible tiles that were never asked or are still waiting for their first answer: their trains are not on the map yet.
     public var pendingTiles = 0
+    /// Answered visible tiles whose last answer is older than its retention (`RadarScheduler.retention(for:)`): the store has dropped
+    /// their vehicles, so they are on the map and in the numbers no more. It happens after the app was in the background, under the
+    /// cockpit or in Low Power Mode for longer than a minute, until the next answer of the tile. A part of `answeredTiles`.
+    public var staleTiles = 0
     /// Every visible tile that has an outcome failed: the map keeps its vehicles but nothing new arrives.
     public var isPaused = false
     /// The view is valid but outside the area the radar covers.
@@ -396,11 +400,14 @@ public struct RadarScheduler: Sendable {
             let state = states[key]
             if let state, state.failures > 0 {
                 status.failedTiles += 1
-            } else if let state, state.lastAnswerAt != nil {
+            } else if let state, let answered = state.lastAnswerAt {
                 status.answeredTiles += 1
                 if RadarTiling.isTruncated(count: state.vehicleCount ?? 0), key.level >= RadarTileGrid.maxLevel {
                     status.cappedTiles += 1
                 }
+                // The same rule as `RadarFrameStore.prune`: an answer older than its retention has left the store.
+                let retention = max(RadarTiling.frameRetention, config.retentionFactor * interval(for: key) * stretchFactor)
+                if now.timeIntervalSince(answered) > retention { status.staleTiles += 1 }
             } else {
                 pending += 1
             }

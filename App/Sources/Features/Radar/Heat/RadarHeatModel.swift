@@ -16,6 +16,11 @@ final class RadarHeatModel {
     private(set) var shown: [HeatDrawCell] = []
     /// National punctuality at the moments of this session, for the sparkline. In memory only.
     private(set) var history = HeatHistory()
+    /// The latest numbers rest on every tile of the country, each with a fresh answer (`RadarModel.refreshHeat`). Only then the share
+    /// image is offered: an image of half the country would travel without the note that says so.
+    private(set) var isComplete = false
+    /// The time the latest numbers belong to: the request time of the oldest answer behind them. The share image prints it.
+    private(set) var dataTime: Date?
     /// The panel shows the details (legend, largest delays, hot spots) or only the headline.
     var isExpanded = false
     /// The cell whose trains are listed in the sheet.
@@ -69,17 +74,22 @@ final class RadarHeatModel {
             trainSheet = nil
             answerPending = false
             lastCompute = .distantPast
+            isComplete = false
+            dataTime = nil
         }
     }
 
     /// Takes the trains of one moment: new numbers for the panel, new cells for the map. `isComplete` is true when every tile of the
     /// country has answered: only then the moment goes into the trend of this session.
-    func update(_ samples: [HeatSample], at now: Date, isComplete: Bool = true) {
+    func update(_ samples: [HeatSample], at now: Date, isComplete: Bool = true, dataTime: Date? = nil) {
         guard isEnabled else { return }
         lastCompute = now
         answerPending = false
         let next = RadarHeat.snapshot(samples)
         if next != snapshot { snapshot = next }
+        if self.isComplete != isComplete { self.isComplete = isComplete }
+        let time = dataTime ?? now
+        if self.dataTime != time { self.dataTime = time }
         if isComplete { history.record(next.summary, at: now) }
         let cells = HeatLayer.drawCells(from: next)
         if cells != target { crossfade(to: cells) }

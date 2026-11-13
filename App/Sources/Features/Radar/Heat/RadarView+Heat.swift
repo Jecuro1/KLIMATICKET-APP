@@ -92,7 +92,8 @@ extension RadarView {
 
     @ViewBuilder func clusterLabel(_ cluster: RadarCluster, noun: String) -> some View {
         if heatOn {
-            HeatClusterDot(cluster: cluster, noun: noun)
+            HeatClusterDot(cluster: cluster, noun: noun,
+                           hasOnTime: cluster.tripIDs.contains { model.pinsByID[$0]?.delay == .onTime })
         } else {
             RadarClusterBubble(cluster: cluster, noun: noun)
         }

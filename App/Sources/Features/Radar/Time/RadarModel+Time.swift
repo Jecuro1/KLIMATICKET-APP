@@ -22,8 +22,9 @@ extension RadarModel {
         scheduler.pause(until: time)
     }
 
-    /// The live radar holds all of Austria and every tile has answered: a Zeitreise needs no snapshot of its own for "now".
+    /// The live radar holds all of Austria and every tile has answered: a Zeitreise needs no snapshot of its own for "now". An answer
+    /// too old to count (back from the background after minutes: its trains have left the store) is no answer here either.
     var holdsAllOfAustria: Bool {
-        status.coversCountry && status.pendingTiles == 0 && status.failedTiles == 0 && status.answeredTiles > 0
+        status.coversCountry && status.pendingTiles == 0 && status.failedTiles == 0 && status.answeredTiles > 0 && status.staleTiles == 0
     }
 }

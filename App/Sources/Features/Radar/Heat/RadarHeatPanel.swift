@@ -148,9 +148,10 @@ struct RadarHeatPanel: View {
                 HeatSparkline(history: heat.history, caption: caption)
                     .id("heat.trend")
             }
-            if !snapshot.isEmpty {
+            if !snapshot.isEmpty, heat.isComplete {
                 // The map of the delay as an image (docs/RADAR_HEATMAP.md §6): the cells on a night-blue ground, no base map, no person.
-                ShareLink(item: RadarHeatShare(cells: heat.drawnCells, summary: summary, date: Date()),
+                // Only from complete numbers (every tile answered, none failed, none too old), with the time they belong to.
+                ShareLink(item: RadarHeatShare(cells: heat.drawnCells, summary: summary, date: heat.dataTime ?? Date()),
                           preview: SharePreview("Pünktlichkeit der Züge in Österreich",
                                                 image: Image(systemName: "gauge.with.dots.needle.67percent"))) {
                     Label("Pünktlichkeitskarte teilen", systemImage: "square.and.arrow.up")
@@ -186,7 +187,8 @@ struct RadarHeatPanel: View {
             Kicker(text: "Brennpunkte")
                 .accessibilityAddTraits(.isHeader)
             if snapshot.hotspots.isEmpty {
-                Text("Gerade kein Gebiet, in dem mindestens \(RadarHeat.minimumSample) Züge im Mittel 5 Minuten oder mehr verspätet sind.")
+                // The rule is the cell's median (docs/RADAR_HEATMAP.md §3), so the words say median, not "im Mittel" (a mean).
+                Text("Gerade kein Gebiet mit mindestens \(RadarHeat.minimumSample) Zügen mit Echtzeit-Daten und einem Median von 5 Minuten Verspätung oder mehr.")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
