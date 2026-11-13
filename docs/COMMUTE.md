@@ -189,3 +189,8 @@ Ein zweiter Blick auf den fertigen Track hat gefunden und behoben:
 - Unbekannte Station oder Haltestelle: einmal sagen statt jede Minute neu suchen (§7, §12).
 - Die Linienzeichen der drei Zeilen beginnen jetzt auf einer Kante, egal wie breit das Abzeichen ist („pünktlich“ oder „+4“).
 - Symbol-Effekte von Störungsband und Einladung folgen „Bewegung reduzieren“.
+- Einstellungen › Pendeln: Seit dem Scroll-Schritt der CI-Szene hingen zwei Task-Modifier an der Liste, und die Vorschläge des
+  Erkenners blieben in der Szene leer („Noch kein Vorschlag“ trotz Vorschlag). Jetzt ein Task (Erkenner, danach der CI-Scroll), und
+  „Noch kein Vorschlag“ erscheint erst, wenn der Erkenner gelaufen ist. Ob das auf dem iPhone genauso war, ist offen; die Szene
+  `commuteSettings` prüft jetzt genau diesen Weg.
+- Die Einladung verspricht Verspätung und Gleis nur, wenn Live-Daten an sind; sonst „deinen Plan – mit Live-Daten auch …“.

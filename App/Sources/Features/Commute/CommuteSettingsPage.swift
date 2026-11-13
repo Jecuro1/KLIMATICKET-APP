@@ -33,11 +33,6 @@ struct CommuteSettingsPage: View {
         self.isSheet = isSheet
         self.previewCandidates = previewCandidates
         self.screenshotScrollsDown = screenshotScrollsDown
-        // CI scenes bring their candidates: shown from the first frame, not only after the detector's task ran.
-        if let previewCandidates {
-            _candidates = State(initialValue: previewCandidates)
-            _hasDetected = State(initialValue: true)
-        }
         // Only the detector's window is read (56 days and one day of slack), not the whole history.
         let start = Date().addingTimeInterval(-Double(CommuteDetector.windowDays + 1) * 86_400)
         _recentTrips = Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start },
@@ -46,8 +41,11 @@ struct CommuteSettingsPage: View {
 
     var body: some View {
         ScrollViewReader { proxy in
+            // One task: the detector over the recent trips (again when their number changes), then the CI scroll. Two stacked
+            // task modifiers on the list left the suggestions empty in the CI scene (the detector's task did not deliver).
             list
-                .task {
+                .task(id: recentTrips.count) {
+                    detect()
                     guard screenshotScrollsDown else { return }
                     try? await Task.sleep(for: .milliseconds(700))
                     proxy.scrollTo("times", anchor: .top)
@@ -92,7 +90,6 @@ struct CommuteSettingsPage: View {
         } message: {
             Text("Der Pendel-Modus wird ausgeschaltet und vergisst Strecke, Wochentage und Zeiten. Deine Fahrten bleiben. Die Übersicht fragt 30 Tage nicht nach dieser Strecke.")
         }
-        .task(id: recentTrips.count) { detect() }
     }
 
     // MARK: Switch
