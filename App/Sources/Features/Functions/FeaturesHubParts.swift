@@ -93,6 +93,7 @@ private struct FeatureHeroPill: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Theme.summitText.opacity(0.12), in: .rect(cornerRadius: 12, style: .continuous))
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 }
 

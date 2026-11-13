@@ -122,7 +122,7 @@ struct FeaturesHubView: View {
         Section {
             ForEach(notes) { note in
                 Button {
-                    withMotion(Motion.smooth) { proxy.scrollTo(note.id, anchor: .center) }
+                    withMotion(Motion.smooth) { proxy.scrollTo(Self.rowAnchor(note.id), anchor: .center) }
                     flash(note.id)
                 } label: {
                     HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
@@ -177,7 +177,7 @@ struct FeaturesHubView: View {
                               onEnableDependency: { dependency in toggle(dependency, true) },
                               onOpenPage: { openPage = descriptor.id },
                               opensFlowsForScreenshot: descriptor.id == screenshotFlows)
-                    .id(descriptor.id)
+                    .id(Self.rowAnchor(descriptor.id))
                     .listRowBackground(highlighted == descriptor.id ? Theme.accent.opacity(0.16) : Theme.surface)
             }
         } header: {
@@ -211,14 +211,17 @@ struct FeaturesHubView: View {
 
     // MARK: Focus
 
+    /// The scroll id of a feature's row – not the bare id, which the hidden note of the same feature carries as its identity.
+    private static func rowAnchor(_ id: FeatureID) -> String { "row.\(id.rawValue)" }
+
     private func scrollToFocus(_ proxy: ScrollViewProxy) async {
         guard let target = focus ?? screenshotAnchor else { return }
         // A sheet first finishes sliding in; the list measures its lazy rows on the way, so a second pass lands exactly.
         try? await Task.sleep(for: .milliseconds(isSheet ? 650 : 450))
-        withMotion(Motion.smooth) { proxy.scrollTo(target, anchor: .center) }
+        withMotion(Motion.smooth) { proxy.scrollTo(Self.rowAnchor(target), anchor: .center) }
         if focus != nil { flash(target) }
         try? await Task.sleep(for: .milliseconds(500))
-        withMotion(Motion.smooth) { proxy.scrollTo(target, anchor: .center) }
+        withMotion(Motion.smooth) { proxy.scrollTo(Self.rowAnchor(target), anchor: .center) }
     }
 
     /// The row lights up for a moment (stays lit in screenshots).
