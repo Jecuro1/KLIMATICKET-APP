@@ -125,15 +125,32 @@ Keine SwiftData-Änderung.
 - Der Sprung in die Kurzbefehle-App (`shortcuts://run-shortcut`) und ob der Kurzbefehl mit genau diesem Namen gefunden wird.
 - Der Hinweis in der offenen App, wenn eine geplante Mitteilung im Vordergrund ankommt.
 
-## 8. Bewusst nicht gebaut
+## 8. Bewusst nicht gebaut, und was vom Stretch blieb
 
 - **„Übliche Zeit“** (Auslöser aus den Wochentag-Mittelwerten der eigenen Fahrten) – Stretch, gestrichen.
+- Gebaut aus dem Stretch: die Aktion **Kurzbefehl anbieten** und die Vorlage **„Wochenende ruhig“** (ein Schalter für alle Regeln).
 - Orts-Auslöser, Aktionen, die Fahrten schreiben, Skripte, Push, Server.
 
-## 9. Demo und Screenshots
+## 9. Einbau in die App (eine markierte Zeile je Stelle, `// MARK: automation`)
+
+| Stelle | Was |
+|---|---|
+| `Data/CommitEffects.swift` | nach jedem Speichern `AutoRunner.didCommit` (entprellt, 0,6 s) |
+| `Features/Planner/LiveFollow/LiveFollowTracker.swift` | nach jeder Antwort `await AutoRunner.followUpdated` (auch im Hintergrund-Abruf; gewartet, damit die Mitteilung vor dem Einschlafen raus ist) |
+| `Core/RootView.swift` | Szene aktiv → `sceneBecameActive` (Protokoll übernehmen, neu planen); Blatt „Regel ansehen“; Screenshot-Szenen |
+| `KlimaBilanzApp.swift` | `willPresent`: Hinweis statt Banner; `didReceive`: Fahrt erfassen, Regel ansehen, Kurzbefehl |
+| `Services/NotificationCategories.swift` | die Kategorien `rule` und `rule.shortcut` |
+| `Features/Alarms/*` | eine Zeile je Regel, Art „Automatik“ (Symbol, Farbe, Schalter, Löschen) |
+| `Data/Repository.swift` | „Alle Daten löschen“ löscht auch Regeln, Protokoll, Merker und geplante Mitteilungen |
+| `Features/Settings/SettingsView.swift` | die Zeile „Automatik“ unter „Mitteilungen“ |
+| `Packages/KlimaCore/…/Alarms/AlarmKinds.swift` | Art `automation`, Präfix `rule.` |
+
+Der Runner ist ein eigenes Singleton (`AutoRunner.shared`) statt einer Eigenschaft von `AppState` – so bleibt `AppState.swift` unberührt.
+
+## 10. Demo und Screenshots
 
 `-KBScreenshot <name> -KBDemo YES`, Uhr fest auf Donnerstag, 12.11.2026, 17:42; erfundene Regeln, Fakten und Protokoll; keine
 System-Mitteilung, keine Abfrage, kein Netz (`AutoDemo.swift`):
 `automationList`, `automationListBottom` (Vorlagen, Protokoll), `automationEditor`, `automationEditorBottom` (Filter, Bedingungen,
 „Dann“), `automationTest` (Testlauf der Verspätungsregel), `automationLog`, `automationBudget` (mehr Termine als Plätze),
-`automationAX5` und `automationAX5Rows` (größte Schrift).
+`automationAX5` und `automationAX5Rows` (größte Schrift), `automationSettingsRow` (die Zeile in Einstellungen).

@@ -363,8 +363,14 @@ struct AutoRuleEditorView: View {
                 .textInputAutocapitalization(.sentences)
                 .motionTransition(.rise)
             }
-            TextField("Eigener Titel", text: Binding(get: { draft.customTitle }, set: setTitle),
-                      prompt: Text("Automatisch: \(previewTitle)"))
+            LabeledContent {
+                TextField("Eigener Titel", text: Binding(get: { draft.customTitle }, set: setTitle),
+                          prompt: Text(previewTitle))
+                    .multilineTextAlignment(.trailing)
+            } label: {
+                Label("Titel", systemImage: "textformat")
+            }
+            .accessibilityHint("Leer lassen für den automatischen Titel")
             if kind.usesCooldown {
                 Picker(selection: $draft.cooldownMinutes) {
                     ForEach(AutoRule.cooldownChoices, id: \.self) { Text(cooldownTitle($0)).tag($0) }

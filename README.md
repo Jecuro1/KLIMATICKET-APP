@@ -40,6 +40,10 @@ Bedienung, Frost-Karten für Inhalte.
   drei Verbindungen mit Verspätung, Gleis und bei Ausfall der nächsten Verbindung, Erfassen mit einem Tipp, „Wann fährt mein nächster
   Zug?“ per Siri; dazu „Nächste Abfahrten“ im Haltestellen-Detail. Verspätungen nur mit Live-Daten und nur bei offener App; noch nicht auf
   einem iPhone geprüft ([docs/COMMUTE.md](docs/COMMUTE.md))
+- **Automatik** – eigene Regeln „Wenn … dann …“ auf dem iPhone: vor Ablauf erinnern, Meilensteine feiern, abends erinnern, wenn noch keine
+  Fahrt erfasst ist, Verspätung der verfolgten Fahrt melden, nach einer Fahrt ab einem Wert. Ein Testlauf erklärt jede Entscheidung, ein
+  Protokoll zeigt, was passiert ist. Regeln laufen nur bei offener App oder als vorab geplante Mitteilung, schreiben nie Fahrten und fragen
+  nichts im Netz ab; noch nicht auf einem iPhone geprüft ([docs/AUTOMATION.md](docs/AUTOMATION.md))
 - **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
   einen Cache und machen nie einen Netzaufruf. „Gesperrt & privat“ verbirgt Strecken (Standard) und auf Wunsch Beträge am gesperrten
   iPhone; die Widgets melden dem Smart Stack, wann sie gerade wichtig sind (kurz vor der Abfahrt, am Break-even-Tag – die Reihung

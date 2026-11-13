@@ -490,8 +490,10 @@ struct AutoRuleRow: View {
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Image(systemName: rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill")
-                            .accessibilityHidden(true)
+                        if !typeSize.isAccessibilitySize {   // at the largest sizes the symbol would push the words aside
+                            Image(systemName: rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill")
+                                .accessibilityHidden(true)
+                        }
                         Text(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus"))
                             .fixedSize(horizontal: false, vertical: true)
                             .contentTransition(.opacity)

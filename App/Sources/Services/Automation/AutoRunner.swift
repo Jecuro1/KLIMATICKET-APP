@@ -56,7 +56,7 @@ final class AutoRunner {
     /// After every successful save (CommitEffects): milestones and „Fahrt erfasst“ are checked, then the plan follows.
     /// Coalesced like the widget refresh, so a burst of saves is one check.
     func didCommit(context: ModelContext, app: AppState) {
-        guard !isInert else { return }
+        guard !isInert, store.book.isEnabled, store.book.rules.contains(where: \.isEnabled) else { return }   // no rule, no work
         commitTask?.cancel()
         commitTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(600))

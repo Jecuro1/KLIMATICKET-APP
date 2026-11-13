@@ -39,6 +39,7 @@ struct SettingsView: View {
                 SetAppearanceSection()
                 SetAssistantSection() // MARK: ai – „KI auf dem Gerät“ (docs/LOCAL_AI.md)
                 SetNotificationsSection()
+                SetAutomationSection() // MARK: automation – „Automatik“: eigene Regeln „Wenn … dann …“ (docs/AUTOMATION.md)
                 SetUpdatesSection(showsUpdateSheet: $showsUpdateSheet)
                 SetDataSection()
                 SetAboutSection()
