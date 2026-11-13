@@ -6,6 +6,7 @@ import KlimaCore
 struct ScottyScreenshotHost: View {
     static let screens: Set<String> = ["radar", "radarTrip", "radarFilter", "radarSearch", "radarCluster",
                                        "radarAll", "radarAllZoom",   // MARK: radarall
+                                       "radarAX5",   // MARK: radar – the layer bar and the Zeitreise chip at the largest text size
                                        "disruptions", "disruptionDetail", "liveFollow"]
 
     let screen: String
@@ -14,6 +15,8 @@ struct ScottyScreenshotHost: View {
         switch screen {
         case "radar":
             RadarView()
+        case "radarAX5":   // the default radar at AX5: the layer bar with its five chips, the status and the clock chip under it
+            RadarView().dynamicTypeSize(.accessibility5)
         case "radarFilter":   // MARK: radar – the filter sheet open over the map
             RadarView(preset: .filter)
         case "radarSearch":   // MARK: radar – search with suggestions for "RJX"

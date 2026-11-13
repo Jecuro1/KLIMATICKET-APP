@@ -10,12 +10,10 @@ import KlimaCore
 extension RadarView {
     /// The layer is on and the live data is allowed: the radar loads all of Austria for it (`RadarModel.setHeat`). Not while the Zeitreise
     /// shows another time (docs/RADAR_TIMETRAVEL.md): the numbers are about now, and next to a map of tonight they would be a lie.
-    var heatOn: Bool {
-        layers.isOn(.punctuality) && app.live.timetableUnavailable == nil && !travel.isAway
-    }
+    var heatOn: Bool { gate.heatOn }
 
     /// Something needs the radar's requests: the train layer or the Pünktlichkeit layer.
-    var loadsRadar: Bool { trainsOn || heatOn }
+    var loadsRadar: Bool { gate.loadsRadar }
 
     /// The base map's appearance as the cells see it (the "Dunkel" map style forces the dark palette).
     private var heatScheme: ColorScheme { mapStyle == .dark ? .dark : colorScheme }

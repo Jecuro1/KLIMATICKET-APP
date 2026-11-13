@@ -53,15 +53,26 @@ struct RadarView: View {
 
     var mapStyle: RadarMapStyle { RadarMapStyle(rawValue: styleRaw) ?? .standard }
 
-    /// The train layer is on and the live data is allowed. Without it no train request is sent, and the map still shows
-    /// the layers that work offline (stations, saved routes).
-    var trainsOn: Bool {
-        layers.isOn(.trains) && app.live.timetableUnavailable == nil
+    /// What is on and open, for the rules the live loop, the Pünktlichkeit layer, the Zeitreise and the cockpit share (`RadarFeatureGate`,
+    /// docs/OEBB_LIVE.md §R11.3).
+    var gate: RadarFeatureGate {
+        RadarFeatureGate(layers: layers, access: liveAccess, railOnly: model.isRailOnly, sceneActive: scenePhase == .active,
+                         cockpitOpen: cockpit != nil, timeOpen: travel.isOpen, timeAway: travel.isAway)
     }
 
-    private var isRunning: Bool {
-        scenePhase == .active && loadsRadar && !travel.isAway && cockpit == nil   // MARK: radarheat – trains or the Pünktlichkeit layer; radartime – paused while away from now; radarcockpit – the cockpit asks for its one train instead
+    /// Whether the live data may be asked: offline alone is told apart, it suspends a Zeitreise instead of ending it.
+    private var liveAccess: RadarFeatureGate.Access {
+        guard let reason = app.live.timetableUnavailable else { return .open }
+        return reason == .offline ? .offline : .closed
     }
+
+    /// The train layer is on and the live data is allowed. Without it no train request is sent, and the map still shows
+    /// the layers that work offline (stations, saved routes).
+    var trainsOn: Bool { gate.trainsOn }
+
+    /// The live loop runs: a layer needs it (trains or Pünktlichkeit), the Zeitreise is at now (radartime) and no cockpit covers the radar
+    /// (radarcockpit: it asks for its one train instead).
+    private var isRunning: Bool { gate.liveLoopRuns }
 
     var body: some View {
         NavigationStack {
@@ -125,8 +136,7 @@ struct RadarView: View {
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
-            .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, available: timeAvailable, allowed: timeAllowed,
-                                     sceneActive: scenePhase == .active && cockpit == nil))   // MARK: radartime – paused under the cockpit, like the live loop
+            .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, gate: gate))   // MARK: radartime – paused under the cockpit, like the live loop
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
                 refreshStations(box: model.box, span: model.spanDegrees)

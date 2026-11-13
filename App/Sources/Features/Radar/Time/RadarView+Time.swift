@@ -10,15 +10,8 @@ extension RadarView {
     /// The Zeitreise is offered: trains are on and allowed, only trains (the snapshots are of rail vehicles), and the Pünktlichkeit layer
     /// (about now) is off. Asked of the layer itself, not of `heatOn` (which is off while away): switching the layer on during a Zeitreise
     /// ends it, so the chip does what it says instead of waiting silently behind the Zeitreise.
-    var timeAvailable: Bool { trainsOn && !layers.isOn(.punctuality) && model.isRailOnly }
-
-    /// The same without the connection: the layer and the access (consent, switch, kill switch) allow the Zeitreise. Offline alone does
-    /// not end it for good: what it loaded stays (`RadarTimeModel.suspend`).
-    var timeAllowed: Bool {
-        guard layers.isOn(.trains), !layers.isOn(.punctuality), model.isRailOnly else { return false }
-        guard let reason = app.live.timetableUnavailable else { return true }
-        return reason == .offline
-    }
+    /// The rule is `RadarFeatureGate.timeAvailable`; how a Zeitreise ends when it is no longer offered is `RadarFeatureGate.timeEnding`.
+    var timeAvailable: Bool { gate.timeAvailable }
 
     /// The Cockpit follows a train live (docs/RADAR_COCKPIT.md). From a Zeitreise only a train the live radar knows: a train that starts
     /// later has no live position, and the Zeitreise's calculated one must not be handed on as one that was seen now.
@@ -91,24 +84,28 @@ struct RadarTimeHooks: ViewModifier {
     var travel: RadarTimeModel
     var model: RadarModel
     var service: (any RadarService)?
-    var available: Bool
-    /// `available` without the connection: false only when the layer or the access ends the Zeitreise.
-    var allowed: Bool
-    var sceneActive: Bool
+    /// The radar's state: whether the Zeitreise's loop runs and how it ends (`RadarFeatureGate`, docs/OEBB_LIVE.md §R11.3).
+    var gate: RadarFeatureGate
 
-    private var runs: Bool { available && sceneActive && travel.isActive }
+    private var runs: Bool { gate.timeLoopRuns }
 
     func body(content: Content) -> some View {
         content
-            // The loop runs while the Zeitreise is open or away from now and the radar is visible; leaving the radar or the layer ends it
-            // together with every request on its way.
+            // The loop runs while the Zeitreise is open or away from now and the radar is visible without a cockpit over it; leaving the radar
+            // or the layer ends it together with every request on its way.
             .task(id: runs) {
                 guard runs, let service else { return }
                 await travel.run(service: service, live: model)
             }
-            // Access gone or the layer off: everything ends. Only offline: the Zeitreise ends, what it loaded stays for a quick return.
-            .onChange(of: allowed) { _, on in if !on { travel.reset() } }
-            .onChange(of: available) { _, on in if !on, allowed { travel.suspend() } }
+            // Access gone, the train layer off, the Pünktlichkeit layer or another mode on: everything ends. Only offline: the Zeitreise ends,
+            // what it loaded stays for a quick return.
+            .onChange(of: gate) { old, new in
+                switch RadarFeatureGate.timeEnding(from: old, to: new) {
+                case .reset?: travel.reset()
+                case .suspend?: travel.suspend()
+                case nil: break
+                }
+            }
             .onChange(of: model.filter) { _, _ in travel.filterChanged() }
             .onChange(of: model.box) { _, _ in travel.viewChanged() }
             .onChange(of: model.mapSize) { _, _ in travel.viewChanged() }
