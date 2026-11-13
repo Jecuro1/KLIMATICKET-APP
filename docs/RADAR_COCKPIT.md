@@ -51,7 +51,7 @@ Die Richtung kommt aus der Strecke 0,6 km voraus, nicht aus dem Stück unter dem
 Blickpunkt (0,4 s) gleiten ebenso; ein Wechsel der Ansicht ist deshalb ein Schwenk, kein Sprung. Die Kamera wird 20-mal je Sekunde (Stromspar-Modus: 8-mal) gesetzt.
 
 **Was auf der Karte steht.** Der Zug als leuchtende Platte: sein Linien-Zeichen auf Glas, Rahmen und Schein in der Farbe der Verspätung, ein Pfeil in Fahrtrichtung (relativ zur
-Kamera: beim Verfolgen nach vorn), ein Haltezeichen, wenn er steht. Die Strecke voraus ist je Teilstück zwischen zwei Halten nach der Verspätung am Ende des Teilstücks gefärbt:
+Kamera: beim Verfolgen nach vorn; drehst du die Karte in „Frei“, dreht der Pfeil mit), ein Haltezeichen, wenn er steht. Die Strecke voraus ist je Teilstück zwischen zwei Halten nach der Verspätung am Ende des Teilstücks gefärbt:
 **grün** (unter 5 Minuten), **orange** (5 Minuten und mehr), **rot** (ausfallender Halt oder ganze Fahrt), **grau** (keine Echtzeit). Hinter dem Zug ist die Strecke dünn und grau.
 Die nächsten vier Halte sind Flaggen mit Name und Ankunftszeit, die übrigen Halte Punkte, passierte gedimmt. Andere Fahrzeuge sind **nicht** zu sehen: Nur der verfolgte Zug bewegt sich.
 Hat die Auskunft keine Strecke geliefert oder passt sie nicht zu den Halten (ein Halt weiter als 2 km daneben), sind es gerade Linien zwischen den Halten; ein Hinweis unter dem Schalter
@@ -84,7 +84,7 @@ wartet / live / verloren ──Zug am letzten Halt, oder Fahrplan seit 5 Minuten
 Kamera: Verfolgen ⇄ Vogelperspektive; Finger auf der Karte → Frei; „Zurück zum Zug“ → die Ansicht davor
 ```
 
-- **Keine Position mehr** (verloren): die Marke bleibt, wo sie war, grau und ohne Schein (der Ort, an dem der Zug zuletzt war, keine Live-Position), ein Banner sagt, warum („Die Auskunft meldet den Zug gerade nicht“, wenn Antworten kommen, oder „Keine Verbindung zu ÖBB“,
+- **Keine Position mehr** (verloren): die Marke bleibt, wo sie war, grau und ohne Schein (der Ort, an dem der Zug zuletzt war, keine Live-Position), ebenso der Punkt auf der Fortschritts-Leiste, ein Banner sagt, warum („Die Auskunft meldet den Zug gerade nicht“, wenn Antworten kommen, oder „Keine Verbindung zu ÖBB“,
   wenn nichts mehr kommt) und seit wann, mit „Erneut versuchen“. Die Anfragen laufen langsamer weiter (alle 30 s), der Zug kann wiederkommen.
 - **Fahrt beendet**: Der Zug steht am letzten Halt, oder er fehlt seit 45 s im Radar, war zuletzt in den letzten 6 km seiner Fahrt und die Ankunftszeit am Ziel steht in höchstens zwei Minuten an oder ist
   schon erreicht (ein angekommener Zug wird aus dem Radar genommen). Banner „Fahrt beendet · Der Zug hat X erreicht“ mit „Schließen“, keine Anfragen mehr. Der Punkt des Halts unter der Marke wird nicht gezeichnet (MapKit
@@ -176,7 +176,7 @@ aufgespannt. Der Zeitplan fragt die Position zuerst, dann die Details; Fehler we
 
 ## 5. Gestaltung
 
-Panel: `frostedCard` (Inhalt, `DESIGN.md` §2), Glas nur für Bedienelemente (Schließen, Schalter, Aktionen, Linien-Chip, Banner). Typografie: Halt 30 pt Rounded Bold, Ankunft 36 pt Rounded Bold mit `monospacedDigit` und `numericText`, alles skaliert
+Panel und Banner: `frostedCard` (Inhalt, `DESIGN.md` §2; beim Banner läuft die Strecke direkt darunter, durch klares Glas kreuzte sie die Wörter), Glas nur für Bedienelemente (Schließen, Schalter, Aktionen, Linien-Chip). Typografie: Halt 30 pt Rounded Bold, Ankunft 36 pt Rounded Bold mit `monospacedDigit` und `numericText`, alles skaliert
 (`@ScaledMetric`). Farben nur aus `Theme` (Verspätungs-Töne: `positive`, `summit`, `negative`, grau; kleiner Text in den Text-Varianten `positiveText`, `summitText`, `negativeText`). Bewegung nur über `Motion`-Tokens
 (`snappy` für den Schalter, `smooth` für Banner und Rückkehr-Knopf, `number` für Ziffern); der Kamera-Flug ist die eigene Animation von MapKit (2,0 s hin, 1,4 s zurück). Die Marke pulsiert nur über `pulsingHalo`
 (`ContinuousMotionReader`: nur sichtbar, nie bei Reduce Motion, Stromspar-Modus oder in Screenshots).

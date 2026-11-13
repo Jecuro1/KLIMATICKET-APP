@@ -243,7 +243,8 @@ struct CockpitModeSwitcher: View {
     }
 }
 
-/// A note on a glass card above the HUD: the train is lost, the run has ended, the Stromspar-Modus pauses the updates.
+/// A note on a card above the HUD: the train is lost, the run has ended, the Stromspar-Modus pauses the updates. The same frosted card as the HUD,
+/// not clear glass: the route line runs right under it and must not cross the words.
 struct CockpitBanner: View {
     var symbol: String
     var title: String
@@ -282,7 +283,7 @@ struct CockpitBanner: View {
         }
         .padding(Theme.Spacing.s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .frostedCard(cornerRadius: 20)
         .accessibilityElement(children: .contain)
     }
 }

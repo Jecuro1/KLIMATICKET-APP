@@ -7,7 +7,7 @@ import KlimaCore
 //
 //   radarCockpit        following: behind and above the train, the route ahead tinted by delay, the HUD (three answers 20 s apart: with a speed estimate)
 //   radarCockpitBird    from above, north up
-//   radarCockpitFree    the camera is the user's, zoomed out over the whole route, "Zurück zum Zug" is there
+//   radarCockpitFree    the camera is the user's, zoomed out over the next stops, "Zurück zum Zug" is there
 //   radarCockpitAX5     following, at the largest text size: the HUD keeps the essentials
 //   radarCockpitEnded   the train has reached its last stop: "Fahrt beendet"
 //   radarCockpitLost    no position for two and a half minutes: "Keine Position mehr"
@@ -137,8 +137,8 @@ struct CockpitScreenshotHost: View {
         case "radarCockpitBird":
             return CockpitDemo.launch(now: now, mode: .bird)
         case "radarCockpitFree":
-            // The whole corridor from Wien to Salzburg in view.
-            let overview = CockpitCamera(center: GeoPoint(latitude: 48.0, longitude: 14.7), distance: 560_000, heading: 0, pitch: 0)
+            // Zoomed out west of the train: the train, Linz and Attnang-Puchheim with their flags whole, none under the controls or the button.
+            let overview = CockpitCamera(center: GeoPoint(latitude: 48.12, longitude: 14.2), distance: 560_000, heading: 0, pitch: 0)
             return CockpitDemo.launch(now: now, mode: .free, camera: overview)
         case "radarCockpitEnded":
             return CockpitDemo.launch(now: now, scenario: .ended)

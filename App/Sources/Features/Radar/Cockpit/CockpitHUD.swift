@@ -43,7 +43,7 @@ struct CockpitHUDCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             stopBlock(summary, hud: hud)
             if !typeSize.isAccessibilitySize {
-                if !hud.isProvisional { progress(summary) }
+                if !hud.isProvisional { progress(summary, hud: hud) }
                 footer(summary, hud: hud)
             }
         }
@@ -120,28 +120,40 @@ struct CockpitHUDCard: View {
 
     // MARK: Progress
 
-    private func progress(_ summary: CockpitSummary) -> some View {
-        CockpitProgressBar(progress: summary.progress, ticks: summary.stopTicks, tint: summary.delayState.tint)
+    /// A train without a position for two minutes is grey on the bar as on the map: the dot marks where it was last seen, not a live place.
+    private func progress(_ summary: CockpitSummary, hud: CockpitHUD) -> some View {
+        CockpitProgressBar(progress: summary.progress, ticks: summary.stopTicks,
+                           tint: hud.state == .lost ? RadarDelayState.unknown.tint : summary.delayState.tint, glows: hud.state != .lost)
             .accessibilityHidden(true)
     }
 
     /// Distance, speed, the age of the position and the way to the note about where the position comes from: one row when it fits, else the
-    /// distance and the speed over the age, else each on its own line. Never a lone separator dot.
+    /// distance and the speed over the age, else each on its own line. Never a lone separator dot. Without a distance and a speed (at the
+    /// destination) the age stands alone on the leading edge, where it stands in every other state.
     private func footer(_ summary: CockpitSummary, hud: CockpitHUD) -> some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.xs) {
-                distanceAndSpeed(summary)
-                Spacer(minLength: 4)
-                ageAndInfo(summary)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: Theme.Spacing.xs) { distanceAndSpeed(summary) }
-                ageAndInfo(summary)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                distanceText(summary)
-                speedText(summary)
-                ageAndInfo(summary)
+        Group {
+            if summary.distanceKm == nil, CockpitText.speed(summary.speed) == nil {
+                HStack(spacing: 0) {
+                    ageAndInfo(summary)
+                    Spacer(minLength: 0)
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        distanceAndSpeed(summary)
+                        Spacer(minLength: 4)
+                        ageAndInfo(summary)
+                    }
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: Theme.Spacing.xs) { distanceAndSpeed(summary) }
+                        ageAndInfo(summary)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        distanceText(summary)
+                        speedText(summary)
+                        ageAndInfo(summary)
+                    }
+                }
             }
         }
         .font(.footnote)
@@ -298,15 +310,19 @@ struct CockpitActionLabel: View {
     var isOn = false
 
     var body: some View {
+        // The symbols differ in height (the share box is taller than the bell): one frame for all keeps the three titles on one line. The
+        // title keeps a margin to the button's edge and shrinks before it touches it ("Aussteige-Wecker" on a narrow phone).
         VStack(spacing: 3) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
                 .symbolReplaceTransition()
+                .frame(height: 22)
             Text(title)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
+        .padding(.horizontal, 8)
         .foregroundStyle(isOn ? Theme.accentText : Theme.textPrimary)
         .frame(maxWidth: .infinity, minHeight: 52)
         .contentShape(.rect(cornerRadius: 18))
@@ -333,6 +349,7 @@ struct CockpitProgressBar: View {
     var progress: Double
     var ticks: [Double]
     var tint: Color
+    var glows = true
 
     private static let dot: CGFloat = 18
 
@@ -356,7 +373,7 @@ struct CockpitProgressBar: View {
                     .fill(Color.white)
                     .overlay(Circle().strokeBorder(tint, lineWidth: 3.5))
                     .frame(width: Self.dot, height: Self.dot)
-                    .shadow(color: tint.opacity(0.8), radius: 6)
+                    .shadow(color: tint.opacity(glows ? 0.8 : 0), radius: 6)
                     .position(x: x, y: proxy.size.height / 2)
             }
             .motionAnimation(Motion.smooth, value: progress)

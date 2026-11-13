@@ -13,6 +13,9 @@ struct CockpitMap: View {
     var scheme: ColorScheme
 
     @State private var position: MapCameraPosition
+    /// The map's own heading while the camera is the user's: a two-finger turn in "Frei" turns the map, not the planner's camera, and the
+    /// chevron on the train has to point against what is on screen. nil while the planner drives the camera.
+    @State private var userHeading: Double?
 
     init(model: CockpitModel, style: RadarMapStyle, scheme: ColorScheme, start: CockpitCamera?) {
         self.model = model
@@ -52,6 +55,15 @@ struct CockpitMap: View {
         }
         .onMapCameraChange(frequency: .onEnd) { context in
             model.noteUserCamera(CockpitCamera(context.camera))
+        }
+        // Only in "Frei" and only on a turn of more than two degrees: the driven camera does not write state here 20 times a second.
+        .onMapCameraChange(frequency: .continuous) { context in
+            guard model.hud.mode == .free else { return }
+            let heading = context.camera.heading
+            if userHeading.map({ abs(CockpitAngle.delta(from: $0, to: heading)) > 2 }) ?? true { userHeading = heading }
+        }
+        .onChange(of: model.hud.mode) { _, mode in
+            if mode != .free { userHeading = nil }
         }
         .accessibilityHidden(true)
     }
@@ -95,7 +107,7 @@ struct CockpitMap: View {
         if let marker = model.marker {
             Annotation(model.line.map { LinePresentation.title($0) } ?? "Zug", coordinate: marker.coordinate.clCoordinate, anchor: .center) {
                 CockpitTrainMarker(line: model.line, state: model.hud.summary?.delayState ?? .unknown, heading: marker.heading,
-                                   cameraHeading: model.camera?.heading ?? 0, isHeld: model.hud.summary.map(isHeld) ?? false,
+                                   cameraHeading: userHeading ?? model.camera?.heading ?? 0, isHeld: model.hud.summary.map(isHeld) ?? false,
                                    isStale: model.hud.state == .lost)
             }
             .annotationTitles(.hidden)
