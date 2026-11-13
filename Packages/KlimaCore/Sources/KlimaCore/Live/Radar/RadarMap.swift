@@ -345,9 +345,12 @@ public enum RadarSearch {
     public static func suggestions(for query: RadarSearchQuery, in vehicles: [RadarVehicle], limit: Int = 8) -> [RadarVehicle] {
         var seen = Set<String>()
         var result: [RadarVehicle] = []
-        let byName = vehicles.sorted(by: { ($0.line?.name ?? "") < ($1.line?.name ?? "") })
-        let ordered = byName.filter { query.isLineKey($0) } + byName.filter { !query.isLineKey($0) }
-        for vehicle in ordered where query.matches(vehicle) {
+        var exact: [RadarVehicle] = []
+        var rest: [RadarVehicle] = []
+        for vehicle in vehicles.sorted(by: { ($0.line?.name ?? "") < ($1.line?.name ?? "") }) {
+            if query.isLineKey(vehicle) { exact.append(vehicle) } else if query.matches(vehicle) { rest.append(vehicle) }
+        }
+        for vehicle in exact + rest {
             let key = vehicle.line.map { RadarLine.compact($0.name) } ?? vehicle.tripID
             guard seen.insert(key).inserted else { continue }
             result.append(vehicle)
