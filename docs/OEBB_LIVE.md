@@ -2588,6 +2588,11 @@ kein Netz und starten keine Live-Aktivität.
   Nicht gebaut.
 - Wagenreihung: keine Daten (§R6). Nicht gebaut, damit keine Wagen erfunden werden.
 - Umstiegszeit ohne Fußweg: der Fußweg zwischen zwei Bahnhöfen wird nicht abgezogen. Die Warnung ist ein Hinweis, kein Fahrplan.
+  **Stand 2026-11-13 (radar2 `anschluss`):** Die Mitteilung „Anschluss knapp“ rechnet jetzt mit dem Fußweg und, solange sie höchstens
+  10 Min alt ist, mit der erwarteten Abfahrt des Anschlusses, in denselben ganzen Minuten wie das Verbindungsdetail.
+- **Anschluss-Wächter** (radar2 `anschluss`): verfolgst du eine Verbindung mit Umstieg, prüft die App den Umstieg (eine Reconstruction
+  alle 120 s, 60 s wenn es knapp wird, über die App-Drossel, nicht das Radar-Budget) – nur bei offener App, nie im Hintergrund.
+  Zustände, Zahlen und Grenzen: [docs/CONNECTION_GUARD.md](CONNECTION_GUARD.md).
 
 ## R9 Zugsuche („Züge suchen“, JourneyMatch) [LIVE 2026-10-14 · eine Anfrage]
 

@@ -71,7 +71,12 @@ struct ConnectionDetailView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let target = followTarget(row) {   // MARK: scotty – Live verfolgen (first ride leg)
-                    Button { LiveFollowTracker.shared.start(target, live: app.live) } label: {
+                    Button {
+                        LiveFollowTracker.shared.start(target, live: app.live)
+                        // MARK: radar2-anschluss – a connection with a change gets the Anschluss-Wächter (docs/CONNECTION_GUARD.md)
+                        ConnectionGuardService.shared.register(journey: row.journey, followTripID: target.tripID, products: model.guardProducts,
+                                                               klimaTicketOnly: model.isKlimaTicketOnly, live: app.live)
+                    } label: {
                         Image(systemName: "location.fill")
                     }
                     .accessibilityLabel("Live verfolgen")

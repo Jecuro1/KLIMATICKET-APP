@@ -189,7 +189,9 @@ public enum FeatureRegistry {
                 offEffect: "Der Fahrplan zeigt „Live-Daten sind aus“; Zug-Radar, Züge suchen und Störungen sind ausgeblendet.",
                 hiddenEntry: nil,
                 dataFlows: [FeatureDataFlow(.oebbTimetable,
-                                            sends: "Haltestellen, Zeiten und Zugnummern deiner Suchen; für „In der Nähe“ dein Standort auf rund 100 m gerundet",
+                                            // MARK: radar2-anschluss – the Anschluss-Wächter checks the followed connection (docs/CONNECTION_GUARD.md §4)
+                                            sends: "Haltestellen, Zeiten und Zugnummern deiner Suchen; für „In der Nähe“ dein Standort auf rund 100 m gerundet; "
+                                                + "beim Live-Verfolgen einer Verbindung mit Umstieg diese Verbindung und bei Bedarf Umstiegsbahnhof und Ziel",
                                             when: "wenn du suchst oder eine Live-Ansicht offen ist, für deine Widgets beim Öffnen der App höchstens alle 15 Minuten – \(liveAsk)")])
         case .livePrices:
             return FeatureDescriptor(

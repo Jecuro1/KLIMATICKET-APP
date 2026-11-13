@@ -46,6 +46,10 @@ struct CommuteActions {
     func follow(_ row: CommuteRow) {
         guard let target = followTarget(row) else { return }
         LiveFollowTracker.shared.start(target, live: app.live)
+        if let journey = model.journey(for: row) {   // MARK: radar2-anschluss – a change gets the Anschluss-Wächter, alternatives as in the Fahrplan
+            ConnectionGuardService.shared.register(journey: journey, followTripID: target.tripID, products: app.planner.guardProducts,
+                                                   klimaTicketOnly: app.planner.isKlimaTicketOnly, live: app.live)
+        }
         app.showToast("location.fill", "Live verfolgen", "\(row.lineTitle) · \(row.timeText)", haptic: .start)
     }
 

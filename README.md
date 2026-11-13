@@ -44,6 +44,10 @@ Bedienung, Frost-Karten für Inhalte.
 - **Aussteige-Wecker** – klingelt kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort (bei gesperrtem iPhone mit der
   Erlaubnis „Immer“); der Standort bleibt auf dem Gerät und wird nicht gespeichert. Noch nicht auf einem iPhone geprüft
   ([docs/EXIT_ALARM.md](docs/EXIT_ALARM.md), mit Geräte-Checkliste und den Grenzen)
+- **Anschluss-Wächter** – verfolgst du eine Verbindung mit Umstieg live, zeigt das Blatt der Verfolgung, wie viele Minuten zum Umsteigen
+  bleiben (Sicher, Wird knapper, Wackelt, Wahrscheinlich verpasst, Verpasst, Fällt aus), mit Fußweg, Gleis und Trend, und wenn es eng
+  wird die nächsten Verbindungen ab dem Umstiegsbahnhof. Dieselbe Zahl wie im Verbindungsdetail; nur bei offener App; noch nicht auf
+  einem iPhone geprüft ([docs/CONNECTION_GUARD.md](docs/CONNECTION_GUARD.md))
 - **Fahrten erkennen** – „Fahrt aufzeichnen“ (genau, mit Live-Karte und Live Activity) und die optionale **Hintergrund-Erkennung (Beta)**:
   Vorschläge mit ehrlichem Etikett (Vielleicht, Wahrscheinlich, Sicher) in der Übersicht, nie ohne dein Okay erfasst; grobe Standortpunkte
   höchstens 36 Stunden nur auf dem iPhone ([docs/TRIP_DETECTION.md](docs/TRIP_DETECTION.md), mit Geräte-Checkliste und den Grenzen)

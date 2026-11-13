@@ -90,6 +90,8 @@ final class ConnectionGuardService {
     /// Screenshot scenes: no loop, no toast, the status as scripted.
     @ObservationIgnored private(set) var isScripted = false
     @ObservationIgnored private var scriptedStatus: GuardStatus?
+    /// Screenshot scenes: the scene's clock („vor 3 Min“ stays 3 however late the capture is).
+    @ObservationIgnored private(set) var scriptedNow: Date?
 
     private init() {
         appActive = UIApplication.shared.applicationState == .active
@@ -321,7 +323,7 @@ final class ConnectionGuardService {
 
     /// One request. The answer counts only for the guard that asked (a guard replaced meanwhile drops it).
     private func perform(_ kind: GuardRequestKind, manual: Bool) async {
-        guard var current = engine else { return }
+        guard var current = engine, !current.requests.inFlight else { return }   // never two in flight (loop and „Jetzt prüfen“)
         let services = servicesProvider()
         let mine = generation
         let sentAt = clock()
@@ -421,6 +423,7 @@ final class ConnectionGuardService {
         nextCheckAt = nil
         isScripted = false
         scriptedStatus = nil
+        scriptedNow = nil
     }
 
     /// The guard is over („Umstieg vorbei“ or the window has passed): no more requests, the record goes; the card keeps the
@@ -444,6 +447,7 @@ final class ConnectionGuardService {
         nextCheckAt = nil
         isScripted = false
         scriptedStatus = nil
+        scriptedNow = nil
         GuardRecordStore.save(nil)
     }
 
@@ -465,6 +469,7 @@ final class ConnectionGuardService {
         engine = scripted
         isScripted = true
         scriptedStatus = status
+        scriptedNow = clock()
         self.alternatives = alternatives
         wantsAlternatives = false
     }

@@ -183,6 +183,7 @@ enum GuardDemo {
     @MainActor
     static func install(_ scene: Scene, now: Date) {
         let service = ConnectionGuardService.shared
+        service.clock = { now }   // the scene's clock (screenshot launches only)
         let record = record(scene, now: now)
         var alternativesState: ConnectionGuardService.Alternatives = .idle
         var searchedAt: Date?

@@ -101,7 +101,7 @@ struct ConnectionGuardCard: View {
     var body: some View {
         if let engine = service.engine, engine.record.followTripID == target.tripID, let a = engine.assessment {
             TimelineView(.periodic(from: .now, by: 15)) { context in
-                card(a, engine: engine, now: context.date)
+                card(a, engine: engine, now: service.scriptedNow ?? context.date)
             }
             .sheet(isPresented: $showsAlternatives) {
                 GuardAlternativesSheet(onPlanner: {
@@ -212,7 +212,8 @@ struct ConnectionGuardCard: View {
         let words = Font.title3.weight(.semibold)
         if let number = h.number {
             let digits = Text(number)
-                .font(.system(size: min(numberSize, 64), weight: .bold, design: .rounded))
+                // The number stays the largest thing on the card, also at accessibility sizes (where the words grow past it).
+                .font(.system(size: min(numberSize * (isLarge ? 1.4 : 1), 96), weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(a.state.isWarning ? GuardStyle.textColor(a.state) : Theme.textPrimary)
                 .contentTransition(.numericText(value: Double(a.bufferMinutes ?? 0)))
@@ -423,25 +424,35 @@ struct ConnectionGuardCard: View {
     @ViewBuilder
     private func checkButton(off: Bool) -> some View {
         if !off {
-            Button { service.checkNow() } label: {
-                Label(GuardText.checkButton, systemImage: "arrow.clockwise")
-                    .font(.subheadline.weight(.medium))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
+            Button { service.checkNow() } label: { tileLabel(GuardText.checkButton, symbol: "arrow.clockwise") }
+                .buttonStyle(.glass)
         }
     }
 
     private var alarmButton: some View {
-        Button { onAlarm() } label: {
-            Label(GuardText.alarmButton, systemImage: "bell.badge")
+        Button { onAlarm() } label: { tileLabel(GuardText.alarmButton, symbol: "bell.badge") }
+            .buttonStyle(.glass)
+    }
+
+    /// Symbol over the words in the narrow side-by-side buttons (the words wrap instead of being cut); symbol beside them at
+    /// accessibility sizes, where the buttons stack.
+    @ViewBuilder
+    private func tileLabel(_ title: String, symbol: String) -> some View {
+        if isLarge {
+            Label(title, systemImage: symbol)
                 .font(.subheadline.weight(.medium))
-                .multilineTextAlignment(.center)
-                .lineLimit(isLarge ? nil : 2)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            VStack(spacing: 3) {
+                Image(systemName: symbol).font(.body.weight(.semibold))
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
         }
-        .buttonStyle(.glass)
     }
 
     private func menu(alternatives: Bool, off: Bool) -> some View {
