@@ -525,6 +525,9 @@ struct ScreenshotRouter: View {
         // MARK: radartime – the Zeitreise: the scrubber at +45 minutes, playing, loading, at AX5 (synthetic trains, no network)
         case let timeScreen where RadarTimeScreenshotHost.screens.contains(timeScreen):
             RadarTimeScreenshotHost(screen: timeScreen)
+        // MARK: radar2-radarmodes – Bus, Bim and U-Bahn on the radar: Wien, the zoom hint, the legend, the crowded view, AX5 (synthetic city fleets, no network)
+        case let modesScreen where RadarModesScreenshotHost.screens.contains(modesScreen):
+            RadarModesScreenshotHost(screen: modesScreen)
         // MARK: scotty – Zug-Radar, Störungen, Live verfolgen (demo data, no network)
         case let scottyScreen where ScottyScreenshotHost.screens.contains(scottyScreen):
             ScottyScreenshotHost(screen: scottyScreen)

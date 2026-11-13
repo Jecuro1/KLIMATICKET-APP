@@ -44,6 +44,8 @@ enum RadarPreset: String, Sendable {
     case timeTravel, timeTravelPlaying, timeTravelLoading, timeTravelChip
     // MARK: radarheat – the Pünktlichkeit layer on synthetic trains (demo only): the map, the open panel, a cell, the panel at the largest text size
     case heat, heatPanel, heatLists, heatTrend, heatCell, heatAX5
+    // MARK: radarmodes – Bus, Bim and U-Bahn on synthetic city fleets (demo only): Wien close up, Austria with Bus on, the legend, the crowded view
+    case modesCity, modesZoomHint, modesLegend, modesCrowded
 
     /// The synthetic dense demo (`DemoRadarService(dense: true)`), only ever used by the CI screenshot hosts.
     var isDenseDemo: Bool { self == .allTrains || self == .allTrainsZoom }
@@ -51,6 +53,8 @@ enum RadarPreset: String, Sendable {
     var isTimeDemo: Bool { self == .timeTravel || self == .timeTravelPlaying || self == .timeTravelLoading || self == .timeTravelChip }
     // MARK: radarheat – the synthetic trains with a delay cluster over Tirol (`RadarHeatDemo.swift`).
     var isHeatDemo: Bool { self == .heat || self == .heatPanel || self == .heatLists || self == .heatTrend || self == .heatCell || self == .heatAX5 }
+    // MARK: radarmodes – the synthetic city fleets (`Modes/RadarCityDemo.swift`) with the demo-only fast budget.
+    var isCityDemo: Bool { self == .modesCity || self == .modesZoomHint || self == .modesLegend || self == .modesCrowded }
 }
 
 /// Live copy for failures (Du-Form, no technical codes).
@@ -80,9 +84,10 @@ struct RadarPin: Identifiable, Hashable {
 
     var id: String { vehicle.tripID }
 
-    /// VoiceOver text: "RJX 66, nach Innsbruck Hbf, 5 Minuten verspätet, Position geschätzt".
+    /// VoiceOver text: "Bus 13A, nach Hütteldorf, 6 Minuten verspätet, Position berechnet" (MARK: radarmodes – the mode's noun where the title has
+    /// none, and always where the position comes from).
     var accessibilityText: String {
-        var parts = [vehicle.line.map { LinePresentation.title($0) } ?? "Zug"]
+        var parts = [vehicle.line.map { RadarModesText.spokenLine(title: LinePresentation.title($0), kind: LinePresentation.kind($0)) } ?? "Fahrzeug"]
         if let direction = vehicle.direction { parts.append("nach \(direction)") }
         switch delay {
         case .cancelled: parts.append("fällt aus")
@@ -92,7 +97,7 @@ struct RadarPin: Identifiable, Hashable {
             parts.append("\(minutes) Minuten verspätet")
         case .unknown: parts.append("Verspätung unbekannt")
         }
-        if isEstimate { parts.append("Position geschätzt") }
+        parts.append(RadarModesText.positionNote(isEstimate: isEstimate))
         return parts.joined(separator: ", ")
     }
 }

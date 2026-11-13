@@ -20,7 +20,8 @@ struct DemoRadarService: RadarService {
             guard let line = v.line else { return false }
             return !line.product.intersection(query.products).isEmpty && query.box.contains(v.coordinate)
         }
-        return RadarSnapshot(vehicles: vehicles, realtimeUpdatedAt: t)
+        let city = query.products.isDisjoint(with: [.bus, .tram, .subway]) ? [] : RadarCityDemoFleet.answer(query).vehicles   // MARK: radarmodes
+        return RadarSnapshot(vehicles: vehicles + city, realtimeUpdatedAt: t)
     }
 }
 

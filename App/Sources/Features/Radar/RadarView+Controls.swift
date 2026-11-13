@@ -120,11 +120,13 @@ extension RadarView {
                     Chip(title: mode.title, symbol: mode.symbol, isSelected: model.modes.contains(mode)) {
                         toggleMode(mode)   // MARK: radarmodes – stored per device
                     }
+                    .modifier(RadarModeChipZoom(mode: mode, isOn: model.modes.contains(mode), outOfZoom: model.cityOutOfZoom))   // MARK: radarmodes
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
         }
         .scrollIndicators(.hidden)
+        .scrollClipDisabled()   // MARK: radarmodes – the chips' zoom badge reaches over their edge
         .haptic(.selection, trigger: model.modes)   // MARK: radarmodes
     }
 
@@ -183,6 +185,8 @@ extension RadarView {
 /// second, and only this card is re-evaluated for it, not the map with its markers.
 struct RadarStatusCard: View {
     var model: RadarModel
+    /// MARK: radarmodes – opens „Legende“; nil: no button.
+    var onLegend: (() -> Void)? = nil
 
     var body: some View {
         let text: String
@@ -195,28 +199,45 @@ struct RadarStatusCard: View {
             text = model.load == .loading ? "Lade Fahrzeuge …" : "Noch keine Positionen"
             spoken = text
         }
+        // MARK: radarmodes – the counts per mode while a city mode is on (they add up to the pill)
+        let counts = model.modes.hasCity && model.pillText != nil ? model.modeCounts : nil
+        if let counts { spoken += ". " + counts.spoken }
         let notes = model.notes
         if !notes.isEmpty { spoken += ". " + notes.joined(separator: " ") }
-        return VStack(spacing: 2) {
-            HStack(spacing: Theme.Spacing.xs) {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                Text(text).monospacedDigit()   // the age ticks every second: the card keeps its width
+        return HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+            VStack(spacing: 2) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                    Text(text).monospacedDigit()   // the age ticks every second: the card keeps its width
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                if let counts { RadarModeCountsRow(counts: counts).padding(.vertical, 1) }
+                ForEach(notes, id: \.self) { note in
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(Theme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(Theme.textPrimary)
-            ForEach(notes, id: \.self) { note in
-                Text(note)
-                    .font(.caption)
-                    .foregroundStyle(Theme.textSecondary)
-                    .multilineTextAlignment(.center)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken)
+            .accessibilityAddTraits(.updatesFrequently)
+            if let onLegend {
+                Button(action: onLegend) {
+                    Image(systemName: "info.circle")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle().inset(by: -11))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(RadarModesText.legendTitle)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spoken)
-        .accessibilityAddTraits(.updatesFrequently)
     }
 }
 

@@ -4,8 +4,8 @@ import KlimaCore
 
 // Vehicle marker and cluster bubble of the Zug-Radar, plus the coordinate and follow-target helpers (split from RadarView.swift).
 
-/// One vehicle on the map: its line plate in the mode colour, the delay ring, a dashed ring for estimates and the
-/// direction arrow towards the next stop.
+/// One vehicle on the map: its line plate (MARK: radarmodes – the Wegzeichen plate of its line, `RadarModePlate`), the delay ring, a dashed ring
+/// for estimates and the direction arrow towards the next stop.
 struct RadarMarker: View {
     var pin: RadarPin
     var isSelected = false
@@ -14,16 +14,8 @@ struct RadarMarker: View {
 
     var body: some View {
         let mode = pin.vehicle.line?.mode ?? .other
-        let plate = pin.vehicle.line.map { LinePresentation.plate($0) } ?? ""
         VStack(spacing: 1) {
-            Text(plate.isEmpty ? "•" : plate)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(Theme.modeColor(mode), in: .capsule)
-                .overlay(Capsule().strokeBorder(pin.delay.tint,
-                                                style: StrokeStyle(lineWidth: 2, dash: pin.isEstimate ? [3, 2] : [])))
+            RadarModePlate(badge: .radar(pin.vehicle.line, size: .s), delay: pin.delay, isEstimate: pin.isEstimate)   // MARK: radarmodes
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
             if let bearing = pin.bearing, decoration.showsArrow {
                 Image(systemName: "location.north.fill")

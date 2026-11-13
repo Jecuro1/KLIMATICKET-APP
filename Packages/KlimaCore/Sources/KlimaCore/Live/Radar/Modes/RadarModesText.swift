@@ -176,3 +176,54 @@ public enum RadarModesText {
         return notes
     }
 }
+
+// MARK: radarmodes – the legend and the marker's VoiceOver text
+public extension RadarModesText {
+    static let legendTitle = "Legende"
+
+    /// The row title of a mode in the legend ("Zug", "S-Bahn", "Bus", "Bim", "U-Bahn").
+    static func legendLabel(_ mode: RadarMode) -> String { label(mode) }
+
+    /// What VoiceOver says for a mode's row: the plate in words, after the Wegzeichen plates.
+    static func legendSpoken(_ mode: RadarMode) -> String {
+        switch mode {
+        case .rail: return "Zug: Keil mit der Zuggattung für Fernzüge, Rechteck mit Gattung und Linie für Regionalzüge, blau"
+        case .suburban: return "S-Bahn: abgerundetes Schild mit S und Liniennummer, petrol"
+        case .bus: return "Bus: Kapsel mit Liniennummer, orange"
+        case .tram: return "Bim: abgerundetes Schild mit Bim-Symbol, violett"
+        case .subway: return "U-Bahn: Quadrat mit der Linie, in der Farbe der Linie"
+        }
+    }
+
+    static let legendModesFooter = "Form, Zeichen und Text unterscheiden die Verkehrsmittel, nicht die Farbe allein."
+    static let legendOnTime = "Grüner Ring: pünktlich (unter 5 Min)"
+    static let legendLate = "Oranger Ring: ab 5 Min verspätet"
+    static let legendCancelled = "Roter Ring: fällt aus"
+    static let legendUnknown = "Grauer Ring: keine Echtzeit-Daten"
+    static let legendEstimate = "Gestrichelt: zwischen zwei Antworten geschätzt"
+    static let legendArrow = "Pfeil: Richtung zum nächsten Halt"
+    static let legendGroup = "Zahl im Kreis: mehrere Fahrzeuge an dieser Stelle"
+    static let legendFooter = "Die Positionen berechnet die ÖBB-Auskunft aus Fahrplan und Echtzeit-Meldungen. Es ist kein GPS."
+
+    /// The spoken name of a line on the radar: the title with the mode's noun where the title has none („S-Bahn S 45“, „Straßenbahn D“,
+    /// „U-Bahn-Linie U6“; „Bus 13A“ and „RJX 66“ stay as they are).
+    static func spokenLine(title: String, kind: LineKind) -> String {
+        switch kind {
+        case .tram:
+            if title.hasPrefix("Tram ") { return "Straßenbahn " + title.dropFirst(5) }
+            return title.localizedCaseInsensitiveContains("straßenbahn") ? title : "Straßenbahn \(title)"
+        case .sBahn:
+            return title.localizedCaseInsensitiveContains("s-bahn") ? title : "S-Bahn \(title)"
+        case .uBahn:
+            return title.localizedCaseInsensitiveContains("u-bahn") ? title : "U-Bahn-Linie \(title)"
+        case .bus, .nachtbus, .skibus, .wanderbus, .rufbus:
+            return title.localizedCaseInsensitiveContains("bus") ? title : "Bus \(title)"
+        default:
+            return title
+        }
+    }
+
+    /// The end of a marker's VoiceOver text: „Position berechnet“ (by the Auskunft), or „Position geschätzt“ while the marker moves between
+    /// two answers (our own interpolation).
+    static func positionNote(isEstimate: Bool) -> String { isEstimate ? "Position geschätzt" : "Position berechnet" }
+}

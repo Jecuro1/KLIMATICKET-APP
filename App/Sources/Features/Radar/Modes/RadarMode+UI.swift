@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 import KlimaCore
 
 // MARK: radarmodes – how a transport mode of the radar looks (docs/RADAR_MODES.md §5): the symbol and the colour of the app's transport mode, so
@@ -28,5 +29,51 @@ extension RadarView {
     /// The Zeitreise's clock chip is missing only because a city mode is on: a short hint takes its place (the rest of the rule is unchanged).
     var timeHintShown: Bool {
         trainsOn && !layers.isOn(.punctuality) && !model.carriesOnlyTrains && !travel.isAway
+    }
+}
+
+/// A city mode's chip while the map is too far out for it: a small zoom badge, and VoiceOver says „an, erscheint beim Heranzoomen“.
+struct RadarModeChipZoom: ViewModifier {
+    var mode: RadarMode
+    var isOn: Bool
+    var outOfZoom: Bool
+
+    func body(content: Content) -> some View {
+        let waits = isOn && mode.isCity && outOfZoom
+        content
+            .overlay(alignment: .topTrailing) {
+                if waits {
+                    Image(systemName: "plus.magnifyingglass")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(3)
+                        .background(Theme.accent, in: .circle)
+                        .offset(x: 3, y: -3)
+                        .motionTransition(.pop)
+                        .accessibilityHidden(true)
+                }
+            }
+            .motionAnimation(Motion.snappy, value: waits)
+            .accessibilityValue(RadarModesText.chipValue(isOn: isOn, outOfZoom: mode.isCity && outOfZoom))
+    }
+}
+
+extension RadarView {
+    /// The CI scenes of Bus, Bim and U-Bahn (`RadarModesScreenshotHost`): synthetic city fleets with the demo-only fast budget.
+    func applyModesPreset(_ preset: RadarPreset) {
+        model.adopt(schedulerConfig: .forRadar(syntheticCityDemo: true, sandboxed: LaunchMode.isSandboxed))
+        let wien = RadarCityDemoFleet.stephansplatz
+        switch preset {
+        case .modesZoomHint:   // Austria (the default camera) with Bus on: the hint and the chip's zoom badge
+            setModes(RadarModeSelection([.rail, .suburban, .bus]))
+        case .modesCrowded:   // Wien at 0.12°: knots of vehicles make the city lane crowded and cut off
+            setModes(RadarModeSelection(Set(RadarMode.allCases)))
+            camera = .region(MKCoordinateRegion(center: wien.clCoordinate, span: MKCoordinateSpan(latitudeDelta: 0.12, longitudeDelta: 0.12)))
+        default:   // Wien close up with all five modes
+            setModes(RadarModeSelection(Set(RadarMode.allCases)))
+            camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2005, longitude: 16.3720).clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: 0.045, longitudeDelta: 0.045)))
+            if preset == .modesLegend { showsLegend = true }
+        }
     }
 }

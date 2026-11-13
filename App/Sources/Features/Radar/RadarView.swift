@@ -28,6 +28,7 @@ struct RadarView: View {
     @State var camera: MapCameraPosition = .region(RadarView.austriaRegion)
     @State var query = ""
     @State var showsFilter = false
+    @State var showsLegend = false   // MARK: radarmodes – „Legende“ from the status card
     @State var sheetVehicle: RadarVehicle?
     @State var cockpit: CockpitLaunch?   // MARK: radarcockpit – the full-screen view that follows one train (docs/RADAR_COCKPIT.md)
     @State var pendingCockpit: CockpitLaunch?
@@ -137,6 +138,7 @@ struct RadarView: View {
             .fullScreenCover(item: $cockpit) { launch in   // MARK: radarcockpit
                 CockpitView(launch: launch, services: .live(app, budget: model)) { cockpit = nil }
             }
+            .sheet(isPresented: $showsLegend) { RadarLegendSheet().presentationDetents([.medium, .large]) }   // MARK: radarmodes
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
@@ -227,7 +229,8 @@ struct RadarView: View {
 
     /// The radar service. The dense demo scenes bring their own (synthetic, no network); everything else goes through the gate.
     var radarService: (any RadarService)? {
-        preset.isTimeDemo ? RadarTimeDemoService() : (preset.isDenseDemo ? DemoRadarService(dense: true) : (preset.isHeatDemo ? DemoRadarService(heat: true) : app.live.radar))   // MARK: radarheat, radartime
+        if preset.isCityDemo { return RadarCityDemoService(crowded: preset == .modesCrowded) }   // MARK: radarmodes
+        return preset.isTimeDemo ? RadarTimeDemoService() : (preset.isDenseDemo ? DemoRadarService(dense: true) : (preset.isHeatDemo ? DemoRadarService(heat: true) : app.live.radar))   // MARK: radarheat, radartime
     }
 
     private func select(_ pin: RadarPin) {
@@ -296,6 +299,8 @@ struct RadarView: View {
             applyTimePreset(preset)
         case .heat, .heatPanel, .heatLists, .heatTrend, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)
+        case .modesCity, .modesZoomHint, .modesLegend, .modesCrowded:   // MARK: radarmodes
+            applyModesPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection(layers: [.stations, .trains, .disruptions, .routes]).storageValue   // radarheat: not the Pünktlichkeit layer
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.20, longitude: 16.37).clCoordinate,

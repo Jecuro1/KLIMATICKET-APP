@@ -142,3 +142,27 @@ final class RadarModesTextTests: XCTestCase {
         XCTAssertEqual(RadarModesText.notes(situation(status, modes: [.rail, .suburban])), expected)
     }
 }
+
+// MARK: radarmodes – legend and marker words
+final class RadarModesLegendTextTests: XCTestCase {
+    func testLegendSaysCalculatedAndNotGPS() {
+        XCTAssertTrue(RadarModesText.legendFooter.contains("berechnet"))
+        XCTAssertTrue(RadarModesText.legendFooter.contains("kein GPS"))
+        XCTAssertEqual(RadarModesText.legendSpoken(.bus), "Bus: Kapsel mit Liniennummer, orange")
+        XCTAssertEqual(RadarModesText.legendSpoken(.tram), "Bim: abgerundetes Schild mit Bim-Symbol, violett")
+        XCTAssertEqual(RadarMode.allCases.map(RadarModesText.legendLabel), ["Zug", "S-Bahn", "Bus", "Bim", "U-Bahn"])
+        XCTAssertEqual(RadarModesText.legendOnTime, "Grüner Ring: pünktlich (unter 5 Min)")
+        XCTAssertEqual(RadarModesText.legendLate, "Oranger Ring: ab 5 Min verspätet")
+    }
+
+    func testSpokenLineAddsTheNounWhereTheTitleHasNone() {
+        XCTAssertEqual(RadarModesText.spokenLine(title: "S 45", kind: .sBahn), "S-Bahn S 45")
+        XCTAssertEqual(RadarModesText.spokenLine(title: "Tram D", kind: .tram), "Straßenbahn D")
+        XCTAssertEqual(RadarModesText.spokenLine(title: "D", kind: .tram), "Straßenbahn D")
+        XCTAssertEqual(RadarModesText.spokenLine(title: "U6", kind: .uBahn), "U-Bahn-Linie U6")
+        XCTAssertEqual(RadarModesText.spokenLine(title: "Bus 13A", kind: .bus), "Bus 13A")
+        XCTAssertEqual(RadarModesText.spokenLine(title: "RJX 66", kind: .fern), "RJX 66")
+        XCTAssertEqual(RadarModesText.positionNote(isEstimate: false), "Position berechnet")
+        XCTAssertEqual(RadarModesText.positionNote(isEstimate: true), "Position geschätzt")
+    }
+}

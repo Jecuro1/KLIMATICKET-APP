@@ -63,3 +63,21 @@ extension RadarModel {
     /// The city modes are on, but the map is too far out for them.
     var cityOutOfZoom: Bool { status.city.outOfZoom }
 }
+
+extension RadarModel {
+    /// The counts line: the vehicles on the map per mode; a city mode out of zoom is left out (the zoom note says why), a class outside the five
+    /// is „Andere“, so the line adds up to the pill.
+    var modeCounts: RadarModeCounts {
+        let inZoom = scheduler.cityIsInZoom
+        return RadarModeCounts(productClasses: pins.map { $0.vehicle.line?.productClass ?? 0 },
+                               shownModes: modes.ordered.filter { !$0.isCity || inZoom })
+    }
+
+    /// The CI scenes of the city demo ask with the demo-only fast budget (`RadarSchedulerConfig.forRadar`): a new scheduler, the lanes start over.
+    func adopt(schedulerConfig config: RadarSchedulerConfig) {
+        guard scheduler.config != config else { return }
+        scheduler = RadarScheduler(config: config, budget: scheduler.budgetState)
+        laneMasks = [:]
+        applyViewport()
+    }
+}
