@@ -98,6 +98,14 @@ final class GuardTextTests: XCTestCase {
         a.trend = .rising
         a.trendReference = GuardSample(at: at("14:24"), minutes: 2)
         XCTAssertEqual(GuardText.trend(a, now: at("14:27")), "Entspannt sich: vor 3 Min waren es 2 Min")
+        a.trend = .falling
+        a.trendReference = GuardSample(at: at("14:25"), minutes: -1)
+        XCTAssertEqual(GuardText.trend(a, now: at("14:27")), "Wird knapper: vor 2 Min fehlte 1 Min")
+        a.trendReference = GuardSample(at: at("14:25"), minutes: -3)
+        XCTAssertEqual(GuardText.trend(a, now: at("14:27")), "Wird knapper: vor 2 Min fehlten 3 Min")
+        a.basedOnPlan = true
+        XCTAssertNil(GuardText.trend(a, now: at("14:27")), "the timetable has no trend")
+        a.basedOnPlan = false
         a.hasTrendHistory = false
         XCTAssertNil(GuardText.trend(a, now: at("14:27")), "one answer is no trend")
     }

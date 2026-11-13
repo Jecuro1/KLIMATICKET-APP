@@ -109,12 +109,13 @@ final class ConnectionGuardService {
 
     /// „Live verfolgen“ of a connection with a change (ConnectionDetailView): the guard watches the change after the first ride.
     /// Needs two ride legs, a Reconstruction handle and the follow of the first ride; otherwise nothing happens.
-    func register(journey: Journey, followTripID: String, products: ProductMask, klimaTicketOnly: Bool, live: LiveDataService) {
+    func register(journey: Journey, followTripID: String, feederRide: Int = 0, products: ProductMask, klimaTicketOnly: Bool,
+                  live: LiveDataService) {
         let now = clock()
-        guard ConnectionGuard.canWatch(journey, followTripID: followTripID),
+        guard ConnectionGuard.canWatch(journey, followTripID: followTripID, feederRide: feederRide),
               LiveFollowTracker.shared.target?.tripID == followTripID else { return }
-        let record = GuardRecord(followTripID: followTripID, journey: journey, journeyAt: now, products: products,
-                                 klimaTicketOnly: klimaTicketOnly, createdAt: now)
+        let record = GuardRecord(followTripID: followTripID, journey: journey, journeyAt: now, feederRide: feederRide,
+                                 products: products, klimaTicketOnly: klimaTicketOnly, createdAt: now)
         if live.isDemo {
             let demoJourney = journey
             install(record, services: { GuardDemo.liveDemoServices(journey: demoJourney) })
@@ -155,7 +156,8 @@ final class ConnectionGuardService {
 
     /// The follow's JourneyDetails answer of the feeder (no request; recomputes; silent in the background).
     func followUpdated(target: LiveFollowTarget, snapshot: LiveFollowSnapshot, at: Date) {
-        guard var current = engine, current.record.followTripID == target.tripID else { return }
+        // Scripted scenes keep their numbers (the demo run's clock drifts with every answer).
+        guard var current = engine, current.record.followTripID == target.tripID, !isScripted else { return }
         let change = current.followUpdated(snapshot, at: at, now: clock())
         engine = current
         handle(change)
@@ -217,6 +219,18 @@ final class ConnectionGuardService {
                 self.alternatives = .failed(GuardText.alternativesFailed, query: query)
             }
         }
+    }
+
+    /// „REX 41 weiter verfolgen“ after „Umstieg vorbei“: the connecting ride becomes the follow; a change after it gets a guard.
+    func continueFollow(live: LiveDataService) -> LiveFollowTarget? {
+        guard let current = engine, let next = current.continuation else { return nil }
+        let record = current.record
+        LiveFollowTracker.shared.start(next.target, live: live)
+        if let ride = next.nextFeederRide {
+            register(journey: record.journey, followTripID: next.target.tripID, feederRide: ride, products: record.products,
+                     klimaTicketOnly: record.klimaTicketOnly, live: live)
+        }
+        return next.target
     }
 
     /// The card showed the automatic alternatives.
@@ -453,13 +467,6 @@ final class ConnectionGuardService {
         scriptedStatus = status
         self.alternatives = alternatives
         wantsAlternatives = false
-    }
-
-    /// A scripted follow answer of the feeder (the screenshot follow of the demo run).
-    func applyScriptedFollow(_ snapshot: LiveFollowSnapshot, at: Date) {
-        guard var current = engine else { return }
-        _ = current.followUpdated(snapshot, at: at, now: clock())
-        engine = current
     }
 
     /// Screenshot scenes: the card opens the alternatives as in the real flow.

@@ -8,7 +8,10 @@ import KlimaCore
 enum GuardDemo {
     /// The scenes of `GuardScreenshotHost`.
     enum Scene: String, CaseIterable {
-        case safe, tighter, shaky, missed, cancelled, noRealtime, alternatives, accessory, ax5
+        case safe, tighter, shaky, missed, cancelled, noRealtime, alternatives, accessory, ax5, over
+
+        /// Scenes without the running demo follow (its realtime and its future arrival would contradict the card).
+        var isCardOnly: Bool { self == .noRealtime || self == .over }
     }
 
     static let feederTripID = "demo|radar|RJX66"
@@ -32,6 +35,10 @@ enum GuardDemo {
         /// Earlier answers: (minutes ago, feeder delay at Linz, connection delay); the last answer is now with the run's +5.
         var history: [(ago: Double, feederDelay: Int, connectionDelay: Int?)] = []
         var feederDelay: Int? = 5
+        /// Moves the whole connection (minutes): „Umstieg vorbei“ needs a change that lies behind.
+        var shift: Double = 0
+        /// A third ride after the connection (Bus 280 Summerau → Rainbach im Mühlkreis), for „weiter verfolgen“ with its own change.
+        var laterRide = false
     }
 
     static func script(_ scene: Scene) -> Script {
@@ -48,6 +55,8 @@ enum GuardDemo {
             return Script(connectionPlanned: 38, connectionDelay: 0, cancelled: true)
         case .noRealtime:
             return Script(connectionPlanned: 38, connectionDelay: nil, feederDelay: nil)
+        case .over:
+            return Script(connectionPlanned: 34, connectionDelay: 1, shift: -40, laterRide: true)
         }
     }
 
@@ -62,32 +71,42 @@ enum GuardDemo {
 
     /// The followed connection: RJX 66 Wien Hbf → Linz Hbf, walk 3 min, REX 41 Linz Hbf → Summerau (1 h 2 min).
     static func journey(_ s: Script, feederDelay: Int?, connectionDelay: Int?, now: Date) -> Journey {
-        let arrival = now.addingTimeInterval(feederArrival * 60)
+        let arrival = now.addingTimeInterval((feederArrival + s.shift) * 60)
         let feeder = Leg(id: "demo-guard-feeder", kind: .ride, origin: wien, destination: linz,
-                         departure: event(feederDeparture, now: now, delay: feederDelay == nil ? nil : 0, platform: "9"),
-                         arrival: event(feederArrival, now: now, delay: feederDelay, platform: "4"),
+                         departure: event(feederDeparture + s.shift, now: now, delay: feederDelay == nil ? nil : 0, platform: "9"),
+                         arrival: event(feederArrival + s.shift, now: now, delay: feederDelay, platform: "4"),
                          line: DemoScotty.rjx("RJX 66", number: "66"), direction: "Innsbruck Hbf", tripID: feederTripID,
                          isReachable: true)
         let walkLeg = Leg(id: "demo-guard-walk", kind: .walk, origin: linz, destination: linz,
                           departure: StopEvent(planned: arrival), arrival: StopEvent(planned: arrival.addingTimeInterval(Double(walk) * 60)),
                           walkDurationSeconds: walk * 60)
         let connection = Leg(id: "demo-guard-connection", kind: .ride, origin: linz, destination: summerau,
-                             departure: event(s.connectionPlanned, now: now, delay: connectionDelay, platform: s.platform,
+                             departure: event(s.connectionPlanned + s.shift, now: now, delay: connectionDelay, platform: s.platform,
                                               realtimePlatform: s.realtimePlatform, cancelled: s.cancelled),
-                             arrival: event(s.connectionPlanned + 62, now: now, delay: connectionDelay, platform: "1", cancelled: s.cancelled),
+                             arrival: event(s.connectionPlanned + s.shift + 62, now: now, delay: connectionDelay, platform: "1",
+                                            cancelled: s.cancelled),
                              line: DemoScotty.regional("REX 41", number: "41"), direction: "Summerau", tripID: "demo|guard|REX41",
                              isReachable: true, isCancelled: s.cancelled)
-        return Journey(legs: [feeder, walkLeg, connection], durationSeconds: Int((s.connectionPlanned + 62 - feederDeparture) * 60),
-                       changes: 1, refreshToken: "demo-guard-token", realtimeUpdatedAt: now)
+        var legs = [feeder, walkLeg, connection]
+        if s.laterRide {
+            let start = s.connectionPlanned + s.shift + 62 + 9
+            legs.append(Leg(id: "demo-guard-later", kind: .ride, origin: summerau, destination: DemoScotty.location("Rainbach im Mühlkreis"),
+                            departure: event(start, now: now, delay: nil), arrival: event(start + 14, now: now, delay: nil),
+                            line: DemoJourneys.bus("280"), direction: "Rainbach im Mühlkreis", tripID: "demo|guard|Bus280"))
+        }
+        let end = s.connectionPlanned + 62 + (s.laterRide ? 23 : 0)
+        return Journey(legs: legs, durationSeconds: Int((end - feederDeparture) * 60), changes: s.laterRide ? 2 : 1,
+                       refreshToken: "demo-guard-token", realtimeUpdatedAt: now)
     }
 
     /// The follow target of the scenes: the demo run from Wien Hbf to Linz Hbf with the change to REX 41.
     static func followTarget(_ scene: Scene, now: Date) -> LiveFollowTarget {
         let s = script(scene)
         return LiveFollowTarget(tripID: feederTripID, lineName: "RJX 66", boardingStop: wien, alightStop: linz,
-                                plannedDeparture: now.addingTimeInterval(feederDeparture * 60),
-                                plannedArrival: now.addingTimeInterval(feederArrival * 60),
-                                transfer: FollowTransfer(stationName: "Linz Hbf", plannedDeparture: now.addingTimeInterval(s.connectionPlanned * 60),
+                                plannedDeparture: now.addingTimeInterval((feederDeparture + s.shift) * 60),
+                                plannedArrival: now.addingTimeInterval((feederArrival + s.shift) * 60),
+                                transfer: FollowTransfer(stationName: "Linz Hbf",
+                                                         plannedDeparture: now.addingTimeInterval((s.connectionPlanned + s.shift) * 60),
                                                          lineName: "REX 41", walkMinutes: walk))
     }
 
@@ -110,7 +129,7 @@ enum GuardDemo {
         return out
     }
 
-    /// Alternatives from Linz Hbf to Summerau: REX 43, a change to Bus 291 in Pregarten, R 3443 and a later REX (top three shown).
+    /// Alternatives from Linz Hbf to Summerau: REX 43, a change to Bus 291 in Pregarten, REX 47 and a later REX (top three shown).
     static func alternatives(after date: Date, now: Date) -> [Journey] {
         func ride(_ id: String, _ line: Line, from: Location, to: Location, dep: Double, arr: Double, platform: String?) -> Leg {
             Leg(id: id, kind: .ride, origin: from, destination: to, departure: event(dep, now: now, delay: 0, platform: platform),
@@ -124,11 +143,11 @@ enum GuardDemo {
                                                dep: base + 31, arr: base + 56, platform: "6"),
                                           ride("Bus291", bus, from: pregarten, to: summerau, dep: base + 63, arr: base + 91, platform: nil)],
                                    changes: 1)
-        let r3443 = Journey(legs: [ride("R3443", DemoScotty.regional("R 3443", number: "3443"), from: linz, to: summerau,
+        let rex47 = Journey(legs: [ride("REX47", DemoScotty.regional("REX 47", number: "47"), from: linz, to: summerau,
                                         dep: base + 24, arr: base + 104, platform: "8")], changes: 0)
         let later = Journey(legs: [ride("REX45", DemoScotty.regional("REX 45", number: "45"), from: linz, to: summerau,
                                         dep: base + 70, arr: base + 132, platform: "3")], changes: 0)
-        return [later, r3443, viaPregarten, rex43]
+        return [later, rex47, viaPregarten, rex43]
     }
 
     /// Scripted network for the scenes: the last answer again, the demo alternatives.
@@ -156,6 +175,11 @@ enum GuardDemo {
     }
 
     /// Installs a scene into the shared service (the follow of the scene must be running for the card to show it).
+    /// The scenes' clock, on a whole minute (the timetable has whole minutes; seconds would make 14:59 and 15:00 out of one time).
+    static func sceneNow(_ date: Date = Date()) -> Date {
+        Date(timeIntervalSince1970: (date.timeIntervalSince1970 / 60).rounded(.down) * 60)
+    }
+
     @MainActor
     static func install(_ scene: Scene, now: Date) {
         let service = ConnectionGuardService.shared
@@ -178,7 +202,8 @@ enum GuardDemo {
             }
         }
         service.installScripted(record: record, answers: answers(scene, now: now),
-                                status: .updated(at: now, next: now.addingTimeInterval(scene == .safe || scene == .noRealtime ? 120 : 60)),
+                                status: scene == .over ? .ended(lastAt: now.addingTimeInterval(-60))
+                                    : .updated(at: now, next: now.addingTimeInterval(scene == .safe || scene == .noRealtime ? 120 : 60)),
                                 services: services(scene, now: now), alternatives: alternativesState, searchedAt: searchedAt)
         if scene == .missed || scene == .alternatives { service.requestScriptedAlternatives() }
     }

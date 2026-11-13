@@ -189,7 +189,7 @@ struct GuardAlternativesSheet: View {
                 Label(GuardText.followButton, systemImage: "location.fill")
             }
             .buttonStyle(.glassProminent)
-            .tint(Theme.accent)
+            .tint(Theme.prominentTint)
             .accessibilityLabel(GuardText.followButtonSpoken)
         }
         if let from = journey.origin, let to = journey.destination {

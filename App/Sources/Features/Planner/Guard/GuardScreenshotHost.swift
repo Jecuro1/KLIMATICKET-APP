@@ -7,7 +7,7 @@ import KlimaCore
 
 struct GuardScreenshotHost: View {
     static let screens: Set<String> = ["guardSafe", "guardTighter", "guardShaky", "guardMissed", "guardCancelled", "guardNoRealtime",
-                                       "guardAlternatives", "guardAccessory", "guardAX5"]
+                                       "guardAlternatives", "guardAccessory", "guardAX5", "guardOver"]
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -22,6 +22,7 @@ struct GuardScreenshotHost: View {
         case "guardAlternatives": .alternatives
         case "guardAccessory": .accessory
         case "guardAX5": .ax5
+        case "guardOver": .over
         default: .shaky
         }
     }
@@ -29,8 +30,8 @@ struct GuardScreenshotHost: View {
     var body: some View {
         content
             .task {
-                let now = Date()
-                if scene != .noRealtime {
+                let now = GuardDemo.sceneNow()
+                if !scene.isCardOnly {
                     LiveFollowTracker.shared.start(GuardDemo.followTarget(scene, now: now), live: app.live)
                 }
                 GuardDemo.install(scene, now: now)
@@ -43,8 +44,8 @@ struct GuardScreenshotHost: View {
         switch scene {
         case .accessory:
             MainTabView()
-        case .noRealtime:
-            GuardCardOnlyShot(target: GuardDemo.followTarget(.noRealtime, now: Date()))
+        case .noRealtime, .over:
+            GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
         case .alternatives:
             GuardAlternativesSheet()
         case .ax5:

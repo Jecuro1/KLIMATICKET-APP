@@ -130,11 +130,20 @@ struct ConnectionGuardCard: View {
                 main(a, engine: engine, now: now)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(GuardText.accessibility(a, now: now))
-                    .accessibilityAction(named: GuardText.alternativesButton) { openAlternatives() }
-                    .accessibilityAction(named: GuardText.checkButton) { service.checkNow() }
-                    .accessibilityAction(named: GuardText.alarmButton) { onAlarm() }
-                    .accessibilityAction(named: engine.record.switchedOff ? GuardText.switchOn : GuardText.switchOff) {
-                        service.setSwitchedOff(!engine.record.switchedOff)
+                    .accessibilityActions {
+                        if let next = engine.continuation?.target {
+                            Button(GuardText.continueSpoken(next.lineName)) { continueFollow() }
+                        }
+                        Button(GuardText.alternativesButton) { openAlternatives() }
+                        if a.state != .over, !engine.record.switchedOff {
+                            Button(GuardText.checkButton) { service.checkNow() }
+                        }
+                        Button(GuardText.alarmButton) { onAlarm() }
+                        if a.state != .over {
+                            Button(engine.record.switchedOff ? GuardText.switchOn : GuardText.switchOff) {
+                                service.setSwitchedOff(!engine.record.switchedOff)
+                            }
+                        }
                     }
                 footer
             }
@@ -142,19 +151,21 @@ struct ConnectionGuardCard: View {
     }
 
     private func main(_ a: GuardAssessment, engine: GuardEngine, now: Date) -> some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.s) {
-            rail(a.state)
-            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                header(a)
-                headline(a)
-                    .scaleEffect(pulsing ? 1.04 : 1, anchor: .leading)
-                if let trend = GuardText.trend(a, now: now) { trendLine(trend, a) }
-                legs(a, engine: engine)
-                notes(a)
-                status(engine: engine, now: now)
-                actions(a, engine: engine)
-            }
+        VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+            header(a)
+            headline(a)
+                .scaleEffect(pulsing ? 1.04 : 1, anchor: .leading)
+            if let trend = GuardText.trend(a, now: now) { trendLine(trend, a) }
+            legs(a, engine: engine)
+            notes(a)
+            status(engine: engine, now: now)
+            actions(a, engine: engine)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The rail runs the full height of the card's content (a background is offered the content's size); at accessibility
+        // sizes the text needs the width, and the chip carries the state.
+        .padding(.leading, isLarge ? 0 : 28 + Theme.Spacing.s)
+        .background(alignment: .leading) { if !isLarge { rail(a.state) } }
         .motionAnimation(Motion.smooth, value: a.state)
     }
 
@@ -162,7 +173,7 @@ struct ConnectionGuardCard: View {
     private func rail(_ state: GuardState) -> some View {
         VStack(spacing: 6) {
             Image(systemName: "arrow.triangle.swap")
-                .font(.title3.weight(.semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(GuardStyle.color(state))
                 .rotationEffect(.degrees(90))
                 .frame(width: 28, height: 28)
@@ -201,7 +212,7 @@ struct ConnectionGuardCard: View {
         let words = Font.title3.weight(.semibold)
         if let number = h.number {
             let digits = Text(number)
-                .font(.system(size: min(numberSize, 48), weight: .bold, design: .rounded))
+                .font(.system(size: min(numberSize, 64), weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(a.state.isWarning ? GuardStyle.textColor(a.state) : Theme.textPrimary)
                 .contentTransition(.numericText(value: Double(a.bufferMinutes ?? 0)))
@@ -256,11 +267,17 @@ struct ConnectionGuardCard: View {
         let plate = Group {
             if let line { PlannerLinePlate(line: line, size: .m) } else { Text(figure.lineName).font(.footnote.weight(.bold)) }
         }
-        let time = Text(GuardText.legTime(figure))
-            .font(.subheadline.weight(.semibold))
-            .monospacedDigit()
-            .foregroundStyle(GuardStyle.timeColor(figure))
-            .strikethrough(figure.isCancelled, color: Theme.negativeText)
+        let time = HStack(spacing: 6) {
+            if figure.isCancelled, let planned = figure.planned {
+                Text(RealtimePresentation.time(planned)).strikethrough(true, color: Theme.negativeText)
+                Text("fällt aus")
+            } else {
+                Text(GuardText.legTime(figure))
+            }
+        }
+        .font(.subheadline.weight(.semibold))
+        .monospacedDigit()
+        .foregroundStyle(GuardStyle.timeColor(figure))
         let platform = GuardText.platform(figure).map { text in
             Text(text)
                 .font(.subheadline.weight(figure.platformChanged ? .bold : .regular))
@@ -361,35 +378,73 @@ struct ConnectionGuardCard: View {
         }
     }
 
+    /// „Alternativen ansehen“ across the card when it matters; „Jetzt prüfen“, „Wecker fürs Umsteigen“ and the menu below, side by
+    /// side (stacked at accessibility sizes).
     private func actions(_ a: GuardAssessment, engine: GuardEngine) -> some View {
+        let off = engine.record.switchedOff || a.state == .over
         let showsAlternativesButton = a.state.rank >= GuardState.shaky.rank
-        let off = engine.record.switchedOff
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) { buttons(showsAlternativesButton, off: off, engine: engine) }
-            VStack(alignment: .leading, spacing: 8) { buttons(showsAlternativesButton, off: off, engine: engine) }
+        return VStack(alignment: .leading, spacing: 8) {
+            if let next = engine.continuation?.target {
+                Button { continueFollow() } label: {
+                    Label(GuardText.continueButton(next.lineName), systemImage: "location.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(Theme.prominentTint)
+                .accessibilityLabel(GuardText.continueSpoken(next.lineName))
+            }
+            if showsAlternativesButton {
+                Button { openAlternatives() } label: {
+                    Label(GuardText.alternativesButton, systemImage: "arrow.triangle.branch")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(Theme.prominentTint)
+            }
+            if a.state == .over {
+                EmptyView()   // the change is behind you: only „weiter verfolgen“
+            } else if isLarge {
+                checkButton(off: off)
+                alarmButton
+                menu(alternatives: showsAlternativesButton, off: engine.record.switchedOff)
+            } else {
+                HStack(spacing: 8) {
+                    checkButton(off: off)
+                    alarmButton
+                    menu(alternatives: showsAlternativesButton, off: engine.record.switchedOff)
+                }
+            }
         }
         .padding(.top, 2)
     }
 
     @ViewBuilder
-    private func buttons(_ alternatives: Bool, off: Bool, engine: GuardEngine) -> some View {
-        if alternatives {
-            Button { openAlternatives() } label: {
-                Label(GuardText.alternativesButton, systemImage: "arrow.triangle.branch").lineLimit(isLarge ? nil : 1)
-            }
-            .buttonStyle(.glassProminent)
-            .tint(Theme.accent)
-        }
+    private func checkButton(off: Bool) -> some View {
         if !off {
             Button { service.checkNow() } label: {
-                Label(GuardText.checkButton, systemImage: "arrow.clockwise").lineLimit(isLarge ? nil : 1)
+                Label(GuardText.checkButton, systemImage: "arrow.clockwise")
+                    .font(.subheadline.weight(.medium))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
         }
+    }
+
+    private var alarmButton: some View {
         Button { onAlarm() } label: {
-            Label(GuardText.alarmButton, systemImage: "bell.badge").lineLimit(isLarge ? nil : 1)
+            Label(GuardText.alarmButton, systemImage: "bell.badge")
+                .font(.subheadline.weight(.medium))
+                .multilineTextAlignment(.center)
+                .lineLimit(isLarge ? nil : 2)
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
+    }
+
+    private func menu(alternatives: Bool, off: Bool) -> some View {
         Menu {
             if !alternatives {
                 Button { openAlternatives() } label: { Label(GuardText.alternativesButton, systemImage: "arrow.triangle.branch") }
@@ -419,6 +474,11 @@ struct ConnectionGuardCard: View {
     }
 
     // MARK: Behaviour
+
+    private func continueFollow() {
+        guard let target = service.continueFollow(live: app.live) else { return }
+        app.showToast("location.fill", "Live verfolgen", target.lineName, haptic: .start)
+    }
 
     private func openAlternatives() {
         service.searchAlternatives()

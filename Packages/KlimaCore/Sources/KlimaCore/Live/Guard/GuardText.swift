@@ -76,10 +76,11 @@ public enum GuardText {
         return GuardHeadline(prefix: prefix, number: "\(missing)", suffix: "Min", full: "\(prefix) \(missing) Min")
     }
 
-    /// „Wird knapper: vor 4 Min waren es 9 Min“ · „Gleichbleibend“ · „Entspannt sich: vor 3 Min waren es 2 Min“. nil without
-    /// two answers to compare, and for the end states.
+    /// „Wird knapper: vor 4 Min waren es 9 Min“ · „Gleichbleibend“ · „Entspannt sich: vor 3 Min waren es 2 Min“ (short of time
+    /// then: „… vor 2 Min fehlte 1 Min“). nil without two answers to compare, without realtime (the timetable has no trend) and for
+    /// the end states.
     public static func trend(_ a: GuardAssessment, now: Date) -> String? {
-        guard a.hasTrendHistory, a.bufferMinutes != nil else { return nil }
+        guard a.hasTrendHistory, a.bufferMinutes != nil, !a.basedOnPlan else { return nil }
         switch a.state {
         case .cancelled, .missed, .over: return nil
         default: break
@@ -89,11 +90,17 @@ public enum GuardText {
             return "Gleichbleibend"
         case .falling:
             guard let ref = a.trendReference else { return "Wird knapper" }
-            return "Wird knapper: vor \(minutesAgo(ref.at, now: now)) Min waren es \(ref.minutes) Min"
+            return "Wird knapper: vor \(minutesAgo(ref.at, now: now)) Min \(then(ref.minutes))"
         case .rising:
             guard let ref = a.trendReference else { return "Entspannt sich" }
-            return "Entspannt sich: vor \(minutesAgo(ref.at, now: now)) Min waren es \(ref.minutes) Min"
+            return "Entspannt sich: vor \(minutesAgo(ref.at, now: now)) Min \(then(ref.minutes))"
         }
+    }
+
+    /// „waren es 9 Min“ · „fehlte 1 Min“ · „fehlten 3 Min“.
+    static func then(_ minutes: Int) -> String {
+        if minutes >= 0 { return "waren es \(minutes) Min" }
+        return minutes == -1 ? "fehlte 1 Min" : "fehlten \(-minutes) Min"
     }
 
     /// „14:31 (+3)“ · „14:30 (-1)“ · „14:31 (pünktlich)“ · „14:40 laut Fahrplan“ · „14:40 · fällt aus“.
@@ -247,7 +254,7 @@ public enum GuardText {
     }
 
     static func spokenTrend(_ a: GuardAssessment) -> String? {
-        guard a.hasTrendHistory, a.bufferMinutes != nil else { return nil }
+        guard a.hasTrendHistory, a.bufferMinutes != nil, !a.basedOnPlan else { return nil }
         switch a.state {
         case .cancelled, .missed, .over: return nil
         default: break
