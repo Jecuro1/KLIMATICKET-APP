@@ -41,11 +41,12 @@ struct CommuteSettingsPage: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            // One task: the detector over the recent trips (again when their number changes), then the CI scroll. Two stacked
-            // task modifiers on the list left the suggestions empty in the CI scene (the detector's task did not deliver).
+            // The detector runs when the page appears and again when the number of recent trips changes – synchronously, not
+            // from a task: in the CI scene a task-driven detector never delivered before the capture (two runs, empty list).
             list
-                .task(id: recentTrips.count) {
-                    detect()
+                .onAppear { detect() }
+                .onChange(of: recentTrips.count) { detect() }
+                .task {
                     guard screenshotScrollsDown else { return }
                     try? await Task.sleep(for: .milliseconds(700))
                     proxy.scrollTo("times", anchor: .top)
