@@ -137,8 +137,9 @@ struct CockpitScreenshotHost: View {
         case "radarCockpitBird":
             return CockpitDemo.launch(now: now, mode: .bird)
         case "radarCockpitFree":
-            // Zoomed out west of the train: the train, Linz and Attnang-Puchheim with their flags whole, none under the controls or the button.
-            let overview = CockpitCamera(center: GeoPoint(latitude: 48.12, longitude: 14.2), distance: 560_000, heading: 0, pitch: 0)
+            // Zoomed out west of the train: the train, Linz and Attnang-Puchheim with their flags whole, none under the controls or the button,
+            // and Salzburg just off the left edge (at 560 km its flag stood half in the picture).
+            let overview = CockpitCamera(center: GeoPoint(latitude: 48.10, longitude: 14.135), distance: 466_000, heading: 0, pitch: 0)
             return CockpitDemo.launch(now: now, mode: .free, camera: overview)
         case "radarCockpitEnded":
             return CockpitDemo.launch(now: now, scenario: .ended)

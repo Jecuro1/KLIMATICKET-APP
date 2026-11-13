@@ -311,7 +311,8 @@ struct CockpitActionLabel: View {
 
     var body: some View {
         // The symbols differ in height (the share box is taller than the bell): one frame for all keeps the three titles on one line. The
-        // title keeps a margin to the button's edge and shrinks before it touches it ("Aussteige-Wecker" on a narrow phone).
+        // title keeps a small margin to the button's edge; it first tightens its letters, then shrinks, before it touches the edge
+        // ("Aussteige-Wecker" fills its third of the card on a 402-point phone), so the three titles stay close to one size.
         VStack(spacing: 3) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
@@ -320,9 +321,10 @@ struct CockpitActionLabel: View {
             Text(title)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
+                .allowsTightening(true)
                 .minimumScaleFactor(0.7)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 4)
         .foregroundStyle(isOn ? Theme.accentText : Theme.textPrimary)
         .frame(maxWidth: .infinity, minHeight: 52)
         .contentShape(.rect(cornerRadius: 18))
