@@ -70,7 +70,7 @@ struct CountUpText: View {
 
     private func countIn() {
         guard !isSettled, counted == nil else { return }
-        guard !reduceMotion, value != from else {
+        guard !reduceMotion, value != from, AppearanceRuntime.allowsDecoration else {   // MARK: themes – Bewegung „Ruhig“: no count-in
             isSettled = true
             return
         }

@@ -20,6 +20,7 @@ final class MotionTilt {
     private static let deadBand = 0.002
 
     func start() {
+        guard AppearanceRuntime.allowsDecoration else { return }   // MARK: themes – Bewegung „Ruhig“/„Aus“: no tilt parallax
         users += 1
         guard users == 1 else { return }
         isSubscribed = MotionFeed.shared.add(self)

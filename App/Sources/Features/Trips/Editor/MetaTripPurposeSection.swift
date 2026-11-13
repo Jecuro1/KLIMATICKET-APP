@@ -63,7 +63,7 @@ struct MetaTripPurposeSection: View {
     @State private var tapTick = 0
 
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
+        let haptics = app.settings.selectionHapticsEnabled   // MARK: themes – selection ticks only at Haptik „Voll“
         VStack(alignment: .leading, spacing: 10) {
             header
                 .padding(.horizontal, Theme.Spacing.screen)

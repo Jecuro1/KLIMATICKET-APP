@@ -51,7 +51,7 @@ struct WorkCarChart: View {
             }
             .chartOverlay { proxy in
                 StatsScrubLayer(proxy: proxy, scrub: scrub, value: { date in carValue(at: date).map { $0 * grow } },
-                                markerColor: Theme.dawn, hapticsEnabled: app.settings.hapticsEnabled) { date, _ in
+                                markerColor: Theme.dawn, hapticsEnabled: app.settings.selectionHapticsEnabled) { date, _ in   // MARK: themes
                     if let car = carValue(at: date) { callout(date: date, car: car) }
                 }
             }

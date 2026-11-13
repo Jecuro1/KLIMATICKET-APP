@@ -253,7 +253,7 @@ struct DashWeekInsightCard: View {
             .motionAnimation(Motion.gentle, value: stats)
             HStack(spacing: Theme.Spacing.xs) {
                 ForEach(0..<7, id: \.self) { day in
-                    Text(DashStyle.weekdays[day])
+                    Text(AppearanceRuntime.weekdayColumns[day])   // MARK: themes – Wochenstart
                         .font(.caption2.weight(day == stats.todayIndex ? .bold : .regular))
                         .foregroundStyle(day == stats.todayIndex ? Theme.textPrimary : Theme.textSecondary)
                         .frame(maxWidth: .infinity)

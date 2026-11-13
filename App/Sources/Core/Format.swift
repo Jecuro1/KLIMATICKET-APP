@@ -14,7 +14,7 @@ enum Format {
     }
 
     static func euro(_ value: Double, decimals: Int? = nil) -> String {
-        let digits = decimals ?? (abs(value) >= 1000 || value == value.rounded() ? 0 : 2)
+        let digits = decimals ?? AppearanceRuntime.format.euroFractionDigits(for: value)   // MARK: themes – Zahlen › Beträge
         if euroStyles.indices.contains(digits) { return value.formatted(euroStyles[digits]) }
         return value.formatted(.currency(code: "EUR").locale(locale).precision(.fractionLength(digits)))
     }
@@ -39,7 +39,8 @@ enum Format {
     static func km(_ value: Double) -> String { "\(number(value, decimals: value < 10 ? 1 : 0)) km" }
 
     static func kg(_ value: Double) -> String {
-        value >= 1000 ? "\(number(value / 1000, decimals: 1)) t" : "\(number(value)) kg"
+        let parts = AppearanceRuntime.format.co2Parts(kg: value)   // MARK: themes – Zahlen › CO₂ (automatisch kg/t, immer kg)
+        return "\(number(parts.value, decimals: parts.decimals)) \(parts.unit)"
     }
 
     /// "75 %". Never shows "100 %" before the goal is actually reached (99,6 % → "99 %").

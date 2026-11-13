@@ -95,7 +95,7 @@ struct StatsScrubLayer<Callout: View>: View {
         .allowsHitTesting(false)
         // The chart itself carries the spoken summary; the callout only exists under a scrubbing finger.
         .accessibilityHidden(true)
-        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && hapticsEnabled && !MotionPolicy.isStatic }
+        .sensoryFeedback(.selection, trigger: selectedDay) { _, new in new != nil && hapticsEnabled && !MotionPolicy.isScreenshot }   // MARK: themes
     }
 
     /// One tick per day crossed, not per frame.

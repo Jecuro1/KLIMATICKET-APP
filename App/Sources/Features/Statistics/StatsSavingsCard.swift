@@ -222,7 +222,7 @@ struct StatsSavingsCard: View {
         }
         .chartOverlay { proxy in
             StatsScrubLayer(proxy: proxy, scrub: scrub, value: selectionMarkerValue, markerColor: Theme.dusk,
-                            hapticsEnabled: app.settings.hapticsEnabled) { date, _ in
+                            hapticsEnabled: app.settings.selectionHapticsEnabled) { date, _ in   // MARK: themes – ticks
                 callout(for: date)
             }
         }

@@ -4,8 +4,11 @@ import UIKit
 /// When and how the app animates (docs/MOTION.md §3). Every animation goes through one of these wrappers so that
 /// Reduce Motion (cross-fades instead of movement) and the CI screenshot mode (end state at once) hold everywhere.
 enum MotionPolicy {
-    /// CI screenshots (`-KBScreenshot`): every animation starts in its end state (DESIGN.md §6).
-    static let isStatic: Bool = LaunchMode.isScreenshot
+    /// CI screenshots (`-KBScreenshot`) or Look & Feel › Bewegung „Aus“: every animation starts in its end state (DESIGN.md §6).
+    static var isStatic: Bool { isScreenshot || AppearanceRuntime.motion == .off }   // MARK: themes
+
+    /// CI screenshots only (haptics stay silent there; Bewegung „Aus“ keeps them).  // MARK: themes
+    static let isScreenshot: Bool = LaunchMode.isScreenshot
 
     /// Reduce Motion, read where no view environment is at hand (actions, view models). Views use
     /// `@Environment(\.accessibilityReduceMotion)` – it also updates the view when the setting changes.

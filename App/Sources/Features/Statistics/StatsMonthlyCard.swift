@@ -107,7 +107,7 @@ struct StatsMonthlyCard: View {
         }
         .motionAnimation(Motion.snappy, value: selectedID)
         .sensoryFeedback(.selection, trigger: selectedID) { _, new in
-            new != nil && app.settings.hapticsEnabled && !MotionPolicy.isStatic
+            new != nil && app.settings.selectionHapticsEnabled && !MotionPolicy.isScreenshot   // MARK: themes
         }
         .accessibilityLabel("Monatsbilanz")
     }

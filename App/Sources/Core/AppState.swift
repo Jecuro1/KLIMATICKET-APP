@@ -355,7 +355,15 @@ final class AppSettings {
     var defaultTravelClass: TravelClass { didSet { defaults.set(defaultTravelClass.rawValue, forKey: "defaultTravelClass") } }
     var homeStationID: String? { didSet { defaults.set(homeStationID, forKey: "homeStationID") } }
     var appearance: Appearance { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
-    var hapticsEnabled: Bool { didSet { defaults.set(hapticsEnabled, forKey: "hapticsEnabled") } }
+    // MARK: themes – Look & Feel (Farbe, Bewegung, Haptik, Zahlen) in theme.v1 of the App Group (docs/THEMES.md). Haptik replaces
+    // the old switch „Haptisches Feedback“: `false` became „Aus“; `hapticsEnabled` stays as „not Aus“ for the existing call sites.
+    let look: AppearanceStore
+    var hapticsEnabled: Bool {
+        get { look.prefs.haptics != .off }
+        set { look.prefs.haptics = newValue ? .full : .off }
+    }
+    /// Selection ticks play only at Haptik „Voll“ („Dezent“ drops them).  // MARK: themes
+    var selectionHapticsEnabled: Bool { look.prefs.haptics == .full }
     var autoUpdateCheck: Bool { didSet { defaults.set(autoUpdateCheck, forKey: "autoUpdateCheck") } }
     var renewalRemindersEnabled: Bool { didSet { defaults.set(renewalRemindersEnabled, forKey: "renewalRemindersEnabled") } }
     var weeklySummaryEnabled: Bool { didSet { defaults.set(weeklySummaryEnabled, forKey: "weeklySummaryEnabled") } }
@@ -388,7 +396,9 @@ final class AppSettings {
         defaultTravelClass = TravelClass(rawValue: defaults.string(forKey: "defaultTravelClass") ?? "") ?? .second
         homeStationID = defaults.string(forKey: "homeStationID")
         appearance = Appearance(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
-        hapticsEnabled = defaults.object(forKey: "hapticsEnabled") as? Bool ?? true
+        // MARK: themes – the App Group holds theme.v1 (widgets read the palette); screenshot and perf runs store nothing.
+        look = AppearanceStore(defaults: LaunchMode.isSandboxed ? nil : (defaults == .standard ? AppGroup.defaults : defaults),
+                               legacyHapticsEnabled: defaults.object(forKey: "hapticsEnabled") as? Bool)
         autoUpdateCheck = defaults.object(forKey: "autoUpdateCheck") as? Bool ?? true
         renewalRemindersEnabled = defaults.object(forKey: "renewalRemindersEnabled") as? Bool ?? true
         weeklySummaryEnabled = defaults.bool(forKey: "weeklySummaryEnabled")

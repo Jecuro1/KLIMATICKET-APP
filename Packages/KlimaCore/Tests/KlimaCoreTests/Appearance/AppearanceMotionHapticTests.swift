@@ -86,6 +86,32 @@ final class AppearanceMotionHapticTests: XCTestCase {
         XCTAssertEqual(HapticTable.output(.success, level: .full), .success)
     }
 
+    /// Voll plays exactly what `Haptic.feedback` in Haptics.swift says (the debug gallery and the pre-level behaviour).
+    func testFullMatchesHapticsSwift() throws {
+        let haptics = try AppearanceRepo.source("App/Sources/DesignSystem/Motion/Haptics.swift")
+        func source(_ output: HapticOutput) -> String {
+            switch output {
+            case .none: return "nil"
+            case .success: return ".success"
+            case .warning: return ".warning"
+            case .error: return ".error"
+            case .selection: return ".selection"
+            case let .impact(weight, intensity):
+                let name = weight == .light ? "light" : (weight == .medium ? "medium" : "heavy")
+                return ".impact(weight: .\(name), intensity: \(intensity))"
+            case .increase: return ".increase"
+            case .decrease: return ".decrease"
+            case .levelChange: return ".levelChange"
+            case .start: return ".start"
+            case .stop: return ".stop"
+            }
+        }
+        for event in HapticEvent.allCases {
+            let line = "case .\(event.rawValue): \(source(HapticTable.full(event)))"
+            XCTAssertTrue(haptics.contains(line), "Haptics.swift has no \(line)")
+        }
+    }
+
     /// Dezent lowers impacts one step and drops selection ticks; everything else stays.
     func testSubtleLowersImpactsAndDropsTicks() {
         XCTAssertEqual(HapticTable.output(.selection, level: .subtle), .none)

@@ -37,7 +37,7 @@ struct AmbientBackground: View {
         Group {
             if reduceTransparency {
                 Theme.background
-            } else if reduceMotion || LaunchMode.isScreenshot || !animated {
+            } else if reduceMotion || LaunchMode.isScreenshot || !animated || !AppearanceRuntime.allowsDecoration {   // MARK: themes
                 sky(t: 4)
             } else {
                 animatedSky

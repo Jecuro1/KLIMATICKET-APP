@@ -116,7 +116,7 @@ struct StatsCalendarCard: View {
                 .font(.caption2.weight(.semibold))
                 .lineLimit(1)
             ForEach(0..<7, id: \.self) { index in
-                Text(index % 2 == 0 ? StatsNames.weekdayShort[index] : " ")
+                Text(index % 2 == 0 ? AppearanceRuntime.weekdayColumns[index] : " ")   // MARK: themes – Wochenstart
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)

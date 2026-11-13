@@ -189,7 +189,7 @@ enum StatsCalc {
     // MARK: Heatmap
 
     static func heatmap(_ snapshot: AnalyticsSnapshot, now: Date = Date()) -> [StatsHeatWeek] {
-        let cal = Calendar.vienna
+        let cal = AppearanceRuntime.weekCalendar   // MARK: themes – Wochenstart: the calendar's rows start on that day
         let start = cal.startOfDay(for: snapshot.ticket.start)
         let end = cal.startOfDay(for: snapshot.ticket.end)
         let today = cal.startOfDay(for: now)

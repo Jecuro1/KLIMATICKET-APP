@@ -49,7 +49,7 @@ struct PerkPassengerRightsView: View {
         }
         .navigationTitle("Fahrgastrechte")
         .navigationBarTitleDisplayMode(.large)
-        .perkHaptic(.selection, trigger: selectionTick, enabled: haptics)
+        .perkHaptic(.selection, trigger: selectionTick, enabled: app.settings.selectionHapticsEnabled)   // MARK: themes
         .perkHaptic(.success, trigger: successTick, enabled: haptics)
     }
 

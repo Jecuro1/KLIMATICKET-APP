@@ -47,7 +47,7 @@ struct PerkCatalogSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .perkHaptic(.selection, trigger: selectionTick, enabled: app.settings.hapticsEnabled)
+        .perkHaptic(.selection, trigger: selectionTick, enabled: app.settings.selectionHapticsEnabled)   // MARK: themes
     }
 
     // MARK: List

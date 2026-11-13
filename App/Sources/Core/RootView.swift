@@ -39,9 +39,11 @@ struct RootView: View {
                 }
             } else {
                 MainTabView()
+                    .id(app.settings.look.revision)   // MARK: themes – Look & Feel applied: every tab is built again (cross-fade)
                     .transition(.opacity)
             }
         }
+        .appearanceSwitchHost()   // MARK: themes – Farbe, Bewegung, Zahlen switch once Einstellungen has closed
         .environment(\.ambientSkyPaused, isCoveredByAppSheet)
         .animation(.smooth(duration: 0.5), value: app.settings.onboardingCompleted)
         // MARK: global – the placeholder cross-fades in and out (it used to cut). The fade-out is over long before the

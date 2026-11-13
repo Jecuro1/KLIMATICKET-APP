@@ -179,10 +179,10 @@ struct TktEditSheet: View {
                     // MARK: advisor
                     AdvEditRenewalSection(autoRenews: $draft.autoRenews, employerText: $employerText, family: draft.family,
                                           fullPrice: parsedPrice.map { $0 + (showsAddOns ? (parsedAddOnPrice ?? 0) : 0) },
-                                          hapticsEnabled: app.settings.hapticsEnabled)
+                                          hapticsEnabled: app.settings.selectionHapticsEnabled)   // MARK: themes – ticks
                     if showsAddOns {
                         AdvEditAddOnsSection(addOns: $draft.addOns, priceText: $addOnPriceText, productID: draft.productID,
-                                             variant: draft.variant, hapticsEnabled: app.settings.hapticsEnabled)
+                                             variant: draft.variant, hapticsEnabled: app.settings.selectionHapticsEnabled)   // MARK: themes
                     }
                     holderSection
                 }

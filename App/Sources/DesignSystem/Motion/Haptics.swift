@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The app's haptics vocabulary (docs/MOTION.md §6). One meaning per haptic, used the same way on every screen.
-/// All of them respect Einstellungen › Haptik (`AppSettings.hapticsEnabled`) and are silent in screenshot mode.
+/// All of them play at the level of Einstellungen › Look & Feel › Haptik (KlimaCore `HapticTable`) and are silent in
+/// screenshot mode.
 enum Haptic {
     /// Something was saved or logged: trip saved, favourite logged, ticket added, import finished.
     case success
@@ -63,9 +64,10 @@ private struct HapticModifier<T: Equatable>: ViewModifier {
     @Environment(AppState.self) private var app: AppState?
 
     func body(content: Content) -> some View {
-        content.sensoryFeedback(haptic.feedback, trigger: trigger) { old, new in
-            guard !MotionPolicy.isStatic, app?.settings.hapticsEnabled ?? true else { return false }
-            return condition(old, new)
+        // MARK: themes – the level (Aus · Dezent · Voll) picks what plays; Bewegung „Aus“ does not silence haptics.
+        content.sensoryFeedback(trigger: trigger) { old, new in
+            guard !MotionPolicy.isScreenshot, condition(old, new) else { return nil }
+            return haptic.feedback(at: app?.settings.look.hapticLevel ?? .full)
         }
     }
 }

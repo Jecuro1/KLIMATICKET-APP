@@ -24,7 +24,7 @@ struct MetaFavoriteEditSheet: View {
     }
 
     var body: some View {
-        let haptics = app.settings.hapticsEnabled
+        let haptics = app.settings.selectionHapticsEnabled   // MARK: themes – selection ticks only at Haptik „Voll“
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {

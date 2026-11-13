@@ -195,7 +195,7 @@ struct StatsWeekdayCard: View {
     private var maxTrips: Double { Double(snapshot.weekdays.map(\.trips).max() ?? 1) }
 
     private var chart: some View {
-        Chart(snapshot.weekdays) { day in
+        Chart(AppearanceRuntime.weekOrdered(snapshot.weekdays)) { day in   // MARK: themes – Wochenstart
             BarMark(x: .value("Wochentag", day.shortName), y: .value("Fahrten", Double(day.trips) * grow), width: .ratio(0.56))
                 .cornerRadius(5)
                 .foregroundStyle(style(for: day))
@@ -227,7 +227,7 @@ struct StatsWeekdayCard: View {
         .chartXSelection(value: selectionBinding)
         .motionAnimation(Motion.snappy, value: selectedName)
         .sensoryFeedback(.selection, trigger: selectedName) { _, new in
-            new != nil && app.settings.hapticsEnabled && !MotionPolicy.isStatic
+            new != nil && app.settings.selectionHapticsEnabled && !MotionPolicy.isScreenshot   // MARK: themes
         }
         .accessibilityLabel("Fahrten pro Wochentag")
     }

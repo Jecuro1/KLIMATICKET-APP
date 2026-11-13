@@ -136,7 +136,7 @@ struct DashWeekStats: Equatable {
     /// `trips` must be sorted newest first (the dashboard's @Query): the walk stops at the first trip before the previous
     /// week, so it reads a fortnight of trips instead of the whole history on every dashboard update.
     static func make(fromNewestFirst trips: [TripEntity], now: Date = Date()) -> DashWeekStats {
-        let cal = Calendar.vienna
+        let cal = AppearanceRuntime.weekCalendar   // MARK: themes – Zahlen › Wochenstart (Montag by default)
         let today = cal.startOfDay(for: now)
         let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? today
         let previousStart = cal.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart

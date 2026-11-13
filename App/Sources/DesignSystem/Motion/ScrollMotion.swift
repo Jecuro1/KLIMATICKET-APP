@@ -101,9 +101,10 @@ private struct HeroCondenseModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let p = progress.value
+        let still = reduceMotion || !AppearanceRuntime.allowsDecoration   // MARK: themes – Bewegung „Ruhig“: no condense scale
         content
-            .scaleEffect(reduceMotion ? 1 : 1 - (1 - minScale) * p, anchor: .top)
-            .offset(y: reduceMotion ? 0 : 40 * p)
+            .scaleEffect(still ? 1 : 1 - (1 - minScale) * p, anchor: .top)
+            .offset(y: still ? 0 : 40 * p)
             .opacity(1 - (1 - fadeTo) * Double(p))
     }
 }
