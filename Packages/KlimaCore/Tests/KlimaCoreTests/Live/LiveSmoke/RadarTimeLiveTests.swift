@@ -27,6 +27,15 @@ final class RadarTimeLiveTests: XCTestCase {
 
     private func micro(_ degrees: Double) -> Int { Int((degrees * 1_000_000).rounded()) }
 
+    /// The repository: this file's path without its last seven parts (Packages/KlimaCore/Tests/KlimaCoreTests/Live/LiveSmoke/<file>).
+    static func isInsideRepository(_ url: URL, file: String = #filePath) -> Bool {
+        var root = URL(fileURLWithPath: file)
+        for _ in 0..<7 { root.deleteLastPathComponent() }
+        let base = root.standardizedFileURL.resolvingSymlinksInPath().path
+        let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+        return path == base || path.hasPrefix(base + "/")
+    }
+
     private func request(_ when: Date) -> HafasServiceRequest<HafasRequests.JourneyGeoPos> {
         let box = RadarBox.austria
         return HafasServiceRequest(meth: "JourneyGeoPos", req: HafasRequests.JourneyGeoPos(
@@ -37,10 +46,25 @@ final class RadarTimeLiveTests: XCTestCase {
             jnyFltrL: [.products(.rail)], trainPosMode: "CALC"))
     }
 
+    /// No request: the guard that keeps raw answers (vehicle data) out of the public repository (review 2).
+    func testTheRawFolderMustBeOutsideTheRepository() {
+        var root = URL(fileURLWithPath: #filePath)
+        for _ in 0..<7 { root.deleteLastPathComponent() }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("docs/RADAR_TIMETRAVEL.md").path), "the root is the repository")
+        XCTAssertTrue(Self.isInsideRepository(root.appendingPathComponent("docs/raw")))
+        XCTAssertTrue(Self.isInsideRepository(root))
+        XCTAssertFalse(Self.isInsideRepository(URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("radar-time-raw")))
+        XCTAssertFalse(Self.isInsideRepository(URL(fileURLWithPath: root.path + "-raw")), "a sibling with the same prefix is outside")
+    }
+
     func testMeasureTimeTravel() async throws {
         guard HafasLiveTests.enabled else { throw XCTSkip("KB_LIVE_TESTS=1 not set") }
         guard ProcessInfo.processInfo.environment["KB_RADAR_TIME"] == "1" else { throw XCTSkip("KB_RADAR_TIME=1 not set") }
         let rawDir = ProcessInfo.processInfo.environment["KB_RADAR_TIME_RAW_DIR"].map { URL(fileURLWithPath: $0) }
+        // The raw answers are vehicle data of real trains: never inside the (public) repository, before a single request is sent.
+        if let rawDir, Self.isInsideRepository(rawDir) {
+            throw XCTSkip("KB_RADAR_TIME_RAW_DIR must be outside the repository (raw answers are vehicle data)")
+        }
         if let rawDir { try FileManager.default.createDirectory(at: rawDir, withIntermediateDirectories: true) }
 
         var config = LiveConfig.default

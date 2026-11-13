@@ -233,7 +233,7 @@ struct RadarTimeCard: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("So bleibt die Datenmenge klein. Genau diese Minute lädst du mit „Genau laden“.")
+            Text("So bleibt die Datenmenge kleiner. Genau diese Minute lädst du mit „Genau laden“.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
