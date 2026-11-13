@@ -5,7 +5,7 @@ import KlimaCore
 // One invented train on the Westbahn between Wien and Salzburg with a polyline that bends between the stations, times relative to "now", no network and
 // no real run. The delays shrink along the run, so the route ahead is orange first and green after.
 //
-//   radarCockpit        following: behind and above the train, the route ahead tinted by delay, the HUD
+//   radarCockpit        following: behind and above the train, the route ahead tinted by delay, the HUD (three answers 20 s apart: with a speed estimate)
 //   radarCockpitBird    from above, north up
 //   radarCockpitFree    the camera is the user's, zoomed out over the whole route, "Zurück zum Zug" is there
 //   radarCockpitAX5     following, at the largest text size: the HUD keeps the essentials
@@ -114,8 +114,15 @@ enum CockpitDemo {
             seen = now
             position = GeoPoint(latitude: stops[stops.count - 1].lat, longitude: stops[stops.count - 1].lon)
         }
+        // A running train has been answered for a while: two earlier answers 20 s apart give the speed estimate, as in the live cockpit.
+        let earlier: [CockpitLaunch.Sighting] = scenario == .live
+            ? [-40.0, -20.0].map { offset in
+                let at = now.addingTimeInterval(offset)
+                return CockpitLaunch.Sighting(vehicle: vehicle(at: self.position(at: at, now: now), now: now), at: at)
+            }
+            : []
         return CockpitLaunch(vehicle: vehicle(at: position, now: now), details: details(now: now), seenAt: seen, mode: mode, staticCamera: camera,
-                             scenario: scenario)
+                             scenario: scenario, earlier: earlier)
     }
 }
 

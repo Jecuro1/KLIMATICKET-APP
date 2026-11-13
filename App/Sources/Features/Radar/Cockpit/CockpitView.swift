@@ -30,48 +30,60 @@ struct CockpitView: View {
     private var isFollowed: Bool { tracker.target?.tripID == model.tripID }
 
     var body: some View {
-        ZStack {
-            CockpitMap(model: model, style: mapStyle, scheme: mapStyle == .dark ? .dark : colorScheme, start: launch.startCamera)
-                .ignoresSafeArea()
-            VStack(spacing: Theme.Spacing.xs) {
-                topBar
-                CockpitModeSwitcher(mode: model.hud.mode) { model.select($0) }
-                banners
-                Spacer(minLength: 0)
-                if model.hud.offersReturn { returnButton }
-                CockpitHUDCard(model: model, onAlarm: openAlarm, onFollow: startFollowing, isFollowing: isFollowed)
+        // The controls sit in the map's safe area (as on the radar): MapKit centres its camera in the part of the map that is left between
+        // them, so the train is never under the HUD, at any text size. The map itself still draws edge to edge, under the glass.
+        CockpitMap(model: model, style: mapStyle, scheme: mapStyle == .dark ? .dark : colorScheme, start: launch.startCamera)
+            .overlay(alignment: .bottom) {
+                // Above Apple's attribution, which sits at the bottom left of the map's safe area.
+                if model.hud.offersReturn { returnButton.padding(.bottom, 34) }
             }
-            .padding(.horizontal, Theme.Spacing.cardGutter)
-            .padding(.bottom, Theme.Spacing.xs)
-        }
-        .background(Theme.background.ignoresSafeArea())
-        .motionAnimation(Motion.smooth, value: model.hud.offersReturn)
-        .motionAnimation(Motion.smooth, value: model.hud.banner)
-        .haptic(.selection, trigger: model.hud.mode)
-        .task(id: scenePhase == .active) {
-            model.setReduceMotion(reduceMotion)
-            guard scenePhase == .active else { return }
-            model.begin(reduceMotion: reduceMotion)
-            await model.run()
-        }
-        .onChange(of: reduceMotion) { _, value in model.setReduceMotion(value) }
-        .sheet(item: $alarmInput) { ExitAlarmSheet(input: $0) }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: Theme.Spacing.xs) {
+                    topBar
+                    CockpitModeSwitcher(mode: model.hud.mode) { model.select($0) }
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    banners
+                }
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+                .padding(.bottom, Theme.Spacing.xs)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                CockpitHUDCard(model: model, onAlarm: openAlarm, onFollow: startFollowing, isFollowing: isFollowed)
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    .padding(.top, Theme.Spacing.xs)
+                    .padding(.bottom, Theme.Spacing.xs)
+            }
+            .background(Theme.background.ignoresSafeArea())
+            .motionAnimation(Motion.smooth, value: model.hud.offersReturn)
+            .motionAnimation(Motion.smooth, value: model.hud.banner)
+            .haptic(.selection, trigger: model.hud.mode)
+            .task(id: scenePhase == .active) {
+                model.setReduceMotion(reduceMotion)
+                guard scenePhase == .active else { return }
+                model.begin(reduceMotion: reduceMotion)
+                await model.run()
+            }
+            .onChange(of: reduceMotion) { _, value in model.setReduceMotion(value) }
+            .sheet(item: $alarmInput) { ExitAlarmSheet(input: $0) }
     }
 
     // MARK: Top
 
     private var topBar: some View {
         HStack(spacing: Theme.Spacing.xs) {
+            // A bar button: the glyph keeps its size in its circle, the large content viewer shows it big (long press).
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.body.weight(.bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(Theme.textPrimary)
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel("Cockpit schließen")
+            .accessibilityShowsLargeContentViewer { Label("Schließen", systemImage: "xmark") }
             lineChip
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         }
     }
 
@@ -87,14 +99,16 @@ struct CockpitView: View {
                     Text("nach \(destination)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
                 }
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
+        .padding(.vertical, 4)
         .frame(minHeight: 44)
-        .glassEffect(.regular, in: .capsule)
+        .glassEffect(.regular, in: .rect(cornerRadius: 22))
         .accessibilityElement(children: .combine)
     }
 
@@ -119,6 +133,9 @@ struct CockpitView: View {
             }
             if let note = model.hud.note, model.hud.banner == nil || !model.hud.lowPower {
                 Text(note).radarHint()
+            } else if model.hud.isStraightLine {
+                // No polyline for this run: the lines on the map join the stops, and the map says so (docs/RADAR_COCKPIT.md §1).
+                Text(CockpitText.straightLineNote).radarHint()
             }
         }
         .transition(.opacity)
@@ -243,7 +260,8 @@ struct CockpitBanner: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Spacing.s) {
+        // The action sits under the words, so the words keep the width of the card ("Zuletzt gesehen vor 2 Min." on one line, not four).
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.accentText)
@@ -252,18 +270,19 @@ struct CockpitBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline.weight(.bold)).foregroundStyle(Theme.textPrimary)
                 Text(detail).font(.footnote).foregroundStyle(Theme.textSecondary).fixedSize(horizontal: false, vertical: true)
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .font(.footnote.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .padding(.top, 4)
+                }
             }
             Spacer(minLength: 0)
-            if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .font(.footnote.weight(.semibold))
-                    .buttonStyle(.bordered)
-                    .fixedSize()
-            }
         }
         .padding(Theme.Spacing.s)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }

@@ -65,17 +65,20 @@ struct CockpitHUDCard: View {
                 Spacer(minLength: 8)
                 if let platform = summary.platform { platformChip(platform) }
             }
-            Text(summary.nextStop ?? CockpitText.phaseLine(summary))
+            Text(CockpitText.headline(summary))
                 .font(.system(size: stopSize, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(typeSize.isAccessibilitySize ? 3 : 2)
                 .minimumScaleFactor(0.7)
                 .fixedSize(horizontal: false, vertical: true)
             if summary.nextStop != nil { arrivalRow(summary, hud: hud) }
-            Text(CockpitText.phaseLine(summary))
-                .font(.subheadline)
-                .foregroundStyle(Theme.textSecondary)
-                .lineLimit(2)
+            // What the train does, under the stop it heads for. At the accessibility sizes a plain "Unterwegs" gives its room to the map.
+            if let subline = CockpitText.subline(summary), !(typeSize.isAccessibilitySize && summary.phase == .underway) {
+                Text(subline)
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 2)
+            }
         }
     }
 
@@ -122,43 +125,72 @@ struct CockpitHUDCard: View {
             .accessibilityHidden(true)
     }
 
-    /// Distance, speed, the age of the position and the way to the note about where the position comes from.
+    /// Distance, speed, the age of the position and the way to the note about where the position comes from: one row when it fits, else the
+    /// distance and the speed over the age, else each on its own line. Never a lone separator dot.
     private func footer(_ summary: CockpitSummary, hud: CockpitHUD) -> some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.xs) { footerItems(summary, hud: hud) }
-            VStack(alignment: .leading, spacing: 2) { footerItems(summary, hud: hud) }
+            HStack(spacing: Theme.Spacing.xs) {
+                distanceAndSpeed(summary)
+                Spacer(minLength: 4)
+                ageAndInfo(summary)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: Theme.Spacing.xs) { distanceAndSpeed(summary) }
+                ageAndInfo(summary)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                distanceText(summary)
+                speedText(summary)
+                ageAndInfo(summary)
+            }
         }
         .font(.footnote)
         .foregroundStyle(Theme.textSecondary)
     }
 
-    @ViewBuilder private func footerItems(_ summary: CockpitSummary, hud: CockpitHUD) -> some View {
+    @ViewBuilder private func distanceAndSpeed(_ summary: CockpitSummary) -> some View {
+        distanceText(summary)
+        if summary.distanceKm != nil, CockpitText.speed(summary.speed) != nil { dot }
+        speedText(summary)
+    }
+
+    @ViewBuilder private func distanceText(_ summary: CockpitSummary) -> some View {
         if let km = summary.distanceKm {
             Text("noch \(CockpitText.distance(km: km))")
                 .monospacedDigit()
+                .lineLimit(1)
                 .contentTransition(.numericText(countsDown: true))
                 .motionAnimation(Motion.number, value: CockpitText.distance(km: km))
         }
+    }
+
+    /// "ca. 118 km/h · geschätzt", only while the train moves and two answers allow an estimate.
+    @ViewBuilder private func speedText(_ summary: CockpitSummary) -> some View {
         if let speed = CockpitText.speed(summary.speed) {
-            dot
             Text(speed)
                 .monospacedDigit()
+                .lineLimit(1)
                 .contentTransition(.numericText())
                 .motionAnimation(Motion.number, value: speed)
         }
-        Spacer(minLength: 4)
-        if let age = summary.fixAge {
-            Text(CockpitText.age(age))
-                .monospacedDigit()
+    }
+
+    private func ageAndInfo(_ summary: CockpitSummary) -> some View {
+        HStack(spacing: 2) {
+            if let age = summary.fixAge {
+                Text(CockpitText.age(age))
+                    .monospacedDigit()
+                    .lineLimit(1)
+            }
+            Button { showsInfo = true } label: {
+                Image(systemName: "info.circle")
+                    .font(.footnote.weight(.semibold))
+                    .frame(width: 32, height: 32)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Woher die Position kommt")
         }
-        Button { showsInfo = true } label: {
-            Image(systemName: "info.circle")
-                .font(.footnote.weight(.semibold))
-                .frame(width: 32, height: 32)
-                .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Woher die Position kommt")
     }
 
     private var dot: some View {
@@ -181,13 +213,26 @@ struct CockpitHUDCard: View {
 
     // MARK: Actions
 
+    /// The exit alarm and "Live verfolgen" only make sense for a train that is still on its way: not once it has arrived, the run has ended
+    /// or the run is cancelled. Sharing stays ("RJX 66 hat Salzburg Hbf erreicht.").
+    private func offersTrainActions(_ hud: CockpitHUD) -> Bool {
+        guard hud.state != .ended, !hud.isCancelled else { return false }
+        guard let summary = hud.summary else { return true }
+        switch summary.phase {
+        case .arrived, .cancelled: return false
+        default: return true
+        }
+    }
+
     /// The quick actions: the exit alarm, "Live verfolgen", sharing.
     private func actions(hud: CockpitHUD) -> some View {
         HStack(spacing: Theme.Spacing.xs) {
-            CockpitActionButton(title: "Aussteige-Wecker", symbol: "bell.badge", action: onAlarm)
-            CockpitActionButton(title: isFollowing ? "Wird verfolgt" : "Live verfolgen", symbol: isFollowing ? "location.fill" : "location",
-                                isOn: isFollowing, action: onFollow)
-                .disabled(isFollowing)
+            if offersTrainActions(hud) {
+                CockpitActionButton(title: "Aussteige-Wecker", symbol: "bell.badge", action: onAlarm)
+                CockpitActionButton(title: isFollowing ? "Wird verfolgt" : "Live verfolgen", symbol: isFollowing ? "location.fill" : "location",
+                                    isOn: isFollowing, action: onFollow)
+                    .disabled(isFollowing)
+            }
             if let summary = hud.summary {
                 ShareLink(item: CockpitText.share(summary)) {
                     CockpitActionLabel(title: "Teilen", symbol: "square.and.arrow.up")
@@ -201,9 +246,11 @@ struct CockpitHUDCard: View {
     /// At the largest text sizes the three actions are one menu: the card keeps its room for the stop and its time.
     private func compactActions(hud: CockpitHUD) -> some View {
         Menu {
-            Button(action: onAlarm) { Label("Aussteige-Wecker", systemImage: "bell.badge") }
-            Button(action: onFollow) { Label(isFollowing ? "Wird verfolgt" : "Live verfolgen", systemImage: "location") }
-                .disabled(isFollowing)
+            if offersTrainActions(hud) {
+                Button(action: onAlarm) { Label("Aussteige-Wecker", systemImage: "bell.badge") }
+                Button(action: onFollow) { Label(isFollowing ? "Wird verfolgt" : "Live verfolgen", systemImage: "location") }
+                    .disabled(isFollowing)
+            }
             if let summary = hud.summary {
                 ShareLink(item: CockpitText.share(summary)) { Label("Teilen", systemImage: "square.and.arrow.up") }
             }
@@ -280,16 +327,20 @@ struct CockpitActionButton: View {
 }
 
 /// The whole run as a bar: filled to the train, a tick for every stop the train calls at, the train as a glowing dot. Decoration for the eyes: the HUD's
-/// spoken summary says the same in words.
+/// spoken summary says the same in words. Ticks and dot share one scale, inset by the dot's radius: at the last stop the dot covers the last tick
+/// instead of stopping short of it.
 struct CockpitProgressBar: View {
     var progress: Double
     var ticks: [Double]
     var tint: Color
 
+    private static let dot: CGFloat = 18
+
     var body: some View {
         GeometryReader { proxy in
-            let width = proxy.size.width
-            let x = min(max(progress, 0), 1) * width
+            let inset = Self.dot / 2
+            let usable = max(proxy.size.width - Self.dot, 1)
+            let x = inset + min(max(progress, 0), 1) * usable
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.surfaceSecondary).frame(height: 6)
                 Capsule().fill(Theme.routeGradient).frame(width: max(x, 6), height: 6)
@@ -299,14 +350,14 @@ struct CockpitProgressBar: View {
                         .fill(passed ? Color.white : Theme.textTertiary.opacity(0.9))
                         .overlay(Circle().strokeBorder(passed ? Theme.accent : Color.clear, lineWidth: 1.5))
                         .frame(width: 8, height: 8)
-                        .position(x: min(max(tick, 0), 1) * width, y: proxy.size.height / 2)
+                        .position(x: inset + min(max(tick, 0), 1) * usable, y: proxy.size.height / 2)
                 }
                 Circle()
                     .fill(Color.white)
                     .overlay(Circle().strokeBorder(tint, lineWidth: 3.5))
-                    .frame(width: 18, height: 18)
+                    .frame(width: Self.dot, height: Self.dot)
                     .shadow(color: tint.opacity(0.8), radius: 6)
-                    .position(x: min(max(x, 9), width - 9), y: proxy.size.height / 2)
+                    .position(x: x, y: proxy.size.height / 2)
             }
             .motionAnimation(Motion.smooth, value: progress)
         }

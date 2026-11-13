@@ -95,7 +95,8 @@ struct CockpitMap: View {
         if let marker = model.marker {
             Annotation(model.line.map { LinePresentation.title($0) } ?? "Zug", coordinate: marker.coordinate.clCoordinate, anchor: .center) {
                 CockpitTrainMarker(line: model.line, state: model.hud.summary?.delayState ?? .unknown, heading: marker.heading,
-                                   cameraHeading: model.camera?.heading ?? 0, isHeld: model.hud.summary.map(isHeld) ?? false)
+                                   cameraHeading: model.camera?.heading ?? 0, isHeld: model.hud.summary.map(isHeld) ?? false,
+                                   isStale: model.hud.state == .lost)
             }
             .annotationTitles(.hidden)
         }
@@ -172,26 +173,30 @@ struct CockpitFlagView: View {
 }
 
 /// The followed train: its line plate on a glowing glass capsule, the glow in the delay tint. The chevron under it points the way the train travels,
-/// relative to the camera (in the follow view that is straight ahead).
+/// relative to the camera (in the follow view that is straight ahead). A train without a position for two minutes (`isStale`) keeps its place,
+/// grey and without glow: the last place it was seen, not a live one.
 struct CockpitTrainMarker: View {
     var line: Line?
     var state: RadarDelayState
     var heading: Double?
     var cameraHeading: Double
     var isHeld: Bool
+    var isStale = false
 
     var body: some View {
-        let tint = state.tint
+        let tint = isStale ? RadarDelayState.unknown.tint : state.tint
         ZStack {
             // The glow: a soft disc and a ring that breathes while the train moves.
-            Circle()
-                .fill(tint.opacity(0.42))
-                .frame(width: 92, height: 92)
-                .blur(radius: 16)
-            Circle()
-                .strokeBorder(tint.opacity(0.55), lineWidth: 2)
-                .frame(width: 70, height: 70)
-                .pulsingHalo(tint, scale: 1.5, period: 2.4)
+            if !isStale {
+                Circle()
+                    .fill(tint.opacity(0.42))
+                    .frame(width: 92, height: 92)
+                    .blur(radius: 16)
+                Circle()
+                    .strokeBorder(tint.opacity(0.55), lineWidth: 2)
+                    .frame(width: 70, height: 70)
+                    .pulsingHalo(tint, scale: 1.5, period: 2.4)
+            }
             VStack(spacing: 3) {
                 if let line {
                     PlannerLinePlate(line: line, size: .m)
@@ -207,8 +212,10 @@ struct CockpitTrainMarker: View {
             .padding(.vertical, 8)
             .background(.thinMaterial, in: .rect(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(tint, lineWidth: 2.5))
-            .shadow(color: tint.opacity(0.7), radius: 12)
+            .shadow(color: tint.opacity(isStale ? 0 : 0.7), radius: 12)
             .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+            .opacity(isStale ? 0.8 : 1)
+            .saturation(isStale ? 0 : 1)
         }
         .accessibilityHidden(true)
     }

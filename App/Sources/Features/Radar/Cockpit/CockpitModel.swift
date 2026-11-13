@@ -22,6 +22,14 @@ struct CockpitLaunch: Identifiable {
     /// A scene that holds its camera (the free scene).
     var staticCamera: CockpitCamera?
     var scenario: Scenario = .live
+    /// Demo scenes only: earlier answers of the radar for this train (oldest first, before `seenAt`), so a scene starts as the live cockpit is
+    /// after a minute: with a speed estimate. The live cockpit starts with the one answer the radar has.
+    var earlier: [Sighting] = []
+
+    struct Sighting {
+        var vehicle: RadarVehicle
+        var at: Date
+    }
 
     var id: String { vehicle.tripID }
 }
@@ -136,8 +144,13 @@ final class CockpitModel {
         let now = clock()
         switch launch.scenario {
         case .live, .ended:
-            feed = CockpitFeed(vehicle: launch.vehicle, seenAt: launch.seenAt, now: now, mode: launch.mode, details: launch.details,
-                               detailsAt: launch.seenAt)
+            let first = launch.earlier.first
+            feed = CockpitFeed(vehicle: first?.vehicle ?? launch.vehicle, seenAt: first?.at ?? launch.seenAt, now: now, mode: launch.mode,
+                               details: launch.details, detailsAt: launch.seenAt)
+            if first != nil {
+                for sighting in launch.earlier.dropFirst() { feed.applyRadar(RadarSnapshot(vehicles: [sighting.vehicle]), requestedAt: sighting.at) }
+                feed.applyRadar(RadarSnapshot(vehicles: [launch.vehicle]), requestedAt: launch.seenAt)
+            }
         case .lost:
             // A train that was seen two and a half minutes ago and has not been in the answers since.
             feed = CockpitFeed(vehicle: launch.vehicle, seenAt: launch.seenAt, now: launch.seenAt, mode: launch.mode, details: launch.details,
@@ -340,7 +353,8 @@ final class CockpitModel {
         next.offersReturn = feed.session.offersReturn
         next.clock = now
         next.isProvisional = frame?.isProvisional ?? true
-        next.isStraightLine = frame?.route?.isStraightLine ?? false
+        // Straight lines only once the whole run is there: before it, with the radar's four stops, no line is drawn at all.
+        next.isStraightLine = frame?.isProvisional == false && frame?.route?.isStraightLine == true
         next.isCancelled = frame?.isCancelled ?? false
         next.lowPower = lowPower
         switch feed.session.state {
@@ -386,10 +400,16 @@ final class CockpitModel {
         lines = CockpitMapLines(
             passed: split.passed.map(\.clCoordinate),
             ahead: split.ahead.map { CockpitMapLine(id: $0.id, coordinates: $0.points.map(\.clCoordinate), state: $0.state) },
-            stops: route.stops.filter(\.isServed).map { stop in
-                CockpitMapStop(id: stop.id, coordinate: stop.coordinate.clCoordinate, isPassed: stop.km < km - 0.05, flag: flags[stop.id])
+            stops: route.stops.filter(\.isServed).compactMap { stop -> CockpitMapStop? in
+                // MapKit orders annotations itself (SwiftUI's Map has no z-index): the dot of a stop the train stands at, or is just
+                // passing, would now and then be drawn over the train (CI screenshot radarCockpitEnded, run 43336170151). It is left out.
+                if flags[stop.id] == nil, abs(stop.km - km) < Self.dotClearKm { return nil }
+                return CockpitMapStop(id: stop.id, coordinate: stop.coordinate.clCoordinate, isPassed: stop.km < km - 0.05, flag: flags[stop.id])
             })
     }
+
+    /// A stop dot closer to the train than this (along the route) is not drawn: the marker covers it.
+    static let dotClearKm = 0.35
 }
 
 extension CockpitModel.Services {
