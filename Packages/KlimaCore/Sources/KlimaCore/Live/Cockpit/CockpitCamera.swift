@@ -75,6 +75,13 @@ public struct CockpitCamera: Sendable, Equatable {
     public var heading: Double
     /// Degrees from straight down (0) towards the horizon.
     public var pitch: Double
+
+    public init(center: GeoPoint, distance: Double, heading: Double = 0, pitch: Double = 0) {
+        self.center = center
+        self.distance = distance
+        self.heading = heading
+        self.pitch = pitch
+    }
 }
 
 /// What the planner needs to know now.

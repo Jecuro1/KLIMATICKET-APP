@@ -231,17 +231,15 @@ public struct CockpitFrame: Sendable {
     public var fixAge: TimeInterval?
     public var state: CockpitSession.State
     public var isCancelled: Bool
-    var previousCoordinate: GeoPoint?
-    var nextStopCoordinate: GeoPoint?
-    /// The train stands (at a stop, or before its departure, or at the end).
-    var isHeld: Bool
+}
 
-    /// What the camera planner needs.
-    public func cameraInput(mode: CockpitCameraMode, reduceMotion: Bool) -> CockpitCameraInput {
-        let kmh: Double? = isHeld ? 0 : (speed.kmh ?? (speed == .standing ? 0 : nil))
-        return CockpitCameraInput(train: coordinate, trainKm: isProvisional ? nil : km, path: isProvisional ? nil : route?.path, speedKmh: kmh,
-                                  previous: previousCoordinate, nextStop: nextStopCoordinate, mode: mode, reduceMotion: reduceMotion)
-    }
+/// Where the train is drawn, and which way it points.
+public struct CockpitMarker: Sendable, Equatable {
+    public var coordinate: GeoPoint
+    public var km: Double?
+    public var isEstimate: Bool
+    /// Direction of travel, degrees clockwise from north.
+    public var heading: Double?
 }
 
 // MARK: - Feed
@@ -293,7 +291,7 @@ public struct CockpitFeed: Sendable {
     /// position is used only when the radar has not given one for a while (the train was not in its box): two sources for the same
     /// moment would make the marker step back and forth.
     public mutating func applyDetails(_ trip: TripDetails, at: Date) {
-        guard trip.tripID == tripID || trip.tripID.isEmpty else { return }
+        // The answer is for the trip that was asked for, whatever form its id comes back in.
         if let known = detailsAt, at < known { return }
         details = trip
         detailsAt = at
@@ -404,28 +402,68 @@ public struct CockpitFeed: Sendable {
 
     // MARK: Frame
 
-    public func frame(now: Date) -> CockpitFrame? {
+    /// The cheap part of a frame, asked every few hundredths of a second: where to draw the train and what the camera needs.
+    private struct Context {
+        var place: (coordinate: GeoPoint, km: Double?, isEstimate: Bool)
+        var entry: RadarFrameStore.Entry
+        var reading: CockpitSpeedEstimator.Reading
+        var held: Bool
+        var next: GeoPoint?
+        var effectiveKm: Double?
+    }
+
+    private func context(now: Date) -> Context? {
         guard let entry = store.entries[tripID], let place = position(now: now) else { return nil }
         let reading = speed.reading(now: now)
-        var summary: CockpitSummary?
         var held = false
         var next: GeoPoint?
-        if let route, let km = place.km ?? provisionalKm(route, at: place.coordinate) {
-            summary = CockpitSummary.make(route: route, km: km, now: now, speed: reading, fixAge: max(now.timeIntervalSince(entry.seenAt), 0),
-                                          lineTitle: line.map { LinePresentation.title($0) } ?? "Zug", destination: direction ?? route.stops.last?.name)
-            switch summary?.phase {
-            case .atStop?, .beforeDeparture?, .arrived?: held = true
-            default: break
+        var effectiveKm = place.km
+        if let route {
+            effectiveKm = place.km ?? provisionalKm(route, at: place.coordinate)
+            if let km = effectiveKm {
+                switch route.situation(atKm: km, now: now) {
+                case .atStop, .beforeDeparture, .arrived: held = true
+                case .between: break
+                }
+                next = route.nextStopIndex(atKm: km, now: now).map { route.stops[$0].coordinate }
             }
-            next = route.nextStopIndex(atKm: km, now: now).map { route.stops[$0].coordinate }
         }
+        return Context(place: place, entry: entry, reading: reading, held: held, next: next, effectiveKm: effectiveKm)
+    }
+
+    private func cameraInput(_ context: Context, mode: CockpitCameraMode, reduceMotion: Bool) -> CockpitCameraInput {
         let provisional = details == nil
-        var frame = CockpitFrame(coordinate: place.coordinate, km: place.km, isEstimate: place.isEstimate, route: route, isProvisional: provisional,
-                                 summary: summary, heading: nil, speed: reading, fixAge: max(now.timeIntervalSince(entry.seenAt), 0),
-                                 state: session.state, isCancelled: route?.isCancelled ?? radarCancelled,
-                                 previousCoordinate: entry.previousCoordinate, nextStopCoordinate: next, isHeld: held)
-        frame.heading = CockpitCameraPlanner.travelHeading(frame.cameraInput(mode: .follow, reduceMotion: false))
-        return frame
+        let kmh: Double? = context.held ? 0 : (context.reading.kmh ?? (context.reading == .standing ? 0 : nil))
+        return CockpitCameraInput(train: context.place.coordinate, trainKm: provisional ? nil : context.place.km,
+                                  path: provisional ? nil : route?.path, speedKmh: kmh, previous: context.entry.previousCoordinate,
+                                  nextStop: context.next, mode: mode, reduceMotion: reduceMotion)
+    }
+
+    /// What the camera planner needs, now. nil until a position is known.
+    public func cameraInput(now: Date, mode: CockpitCameraMode, reduceMotion: Bool) -> CockpitCameraInput? {
+        context(now: now).map { cameraInput($0, mode: mode, reduceMotion: reduceMotion) }
+    }
+
+    /// The train's marker, now: the cheap part of a frame (no summary, no strings).
+    public func marker(now: Date) -> CockpitMarker? {
+        guard let context = context(now: now) else { return nil }
+        let heading = CockpitCameraPlanner.travelHeading(cameraInput(context, mode: .follow, reduceMotion: false))
+        return CockpitMarker(coordinate: context.place.coordinate, km: context.place.km, isEstimate: context.place.isEstimate, heading: heading)
+    }
+
+    /// Everything the views draw, now. The summary costs a few allocations: once a second is enough.
+    public func frame(now: Date) -> CockpitFrame? {
+        guard let context = context(now: now) else { return nil }
+        let age = max(now.timeIntervalSince(context.entry.seenAt), 0)
+        var summary: CockpitSummary?
+        if let route, let km = context.effectiveKm {
+            summary = CockpitSummary.make(route: route, km: km, now: now, speed: context.reading, fixAge: age,
+                                          lineTitle: line.map { LinePresentation.title($0) } ?? "Zug", destination: direction ?? route.stops.last?.name)
+        }
+        let input = cameraInput(context, mode: .follow, reduceMotion: false)
+        return CockpitFrame(coordinate: context.place.coordinate, km: context.place.km, isEstimate: context.place.isEstimate, route: route,
+                            isProvisional: details == nil, summary: summary, heading: CockpitCameraPlanner.travelHeading(input),
+                            speed: context.reading, fixAge: age, state: session.state, isCancelled: route?.isCancelled ?? radarCancelled)
     }
 
     /// With only the radar's four stops there is no polyline: the train's place on the chain of stops (for the next stop and the delay).

@@ -367,15 +367,19 @@ final class CockpitFeedTests: XCTestCase {
         var feed = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(0), details: details(), detailsAt: at(0))
         feed.applyRadar(snapshot([vehicle(lon: 15.5 + 0.7 / 74.5)]), requestedAt: at(20))
         let frame = try XCTUnwrap(feed.frame(now: at(45)))
-        let input = frame.cameraInput(mode: .follow, reduceMotion: false)
+        let input = try XCTUnwrap(feed.cameraInput(now: at(45), mode: .follow, reduceMotion: false))
         XCTAssertNotNil(input.path)
         XCTAssertNotNil(input.trainKm)
         XCTAssertEqual(try XCTUnwrap(frame.heading), 90, accuracy: 1)
+        let marker = try XCTUnwrap(feed.marker(now: at(45)))
+        XCTAssertEqual(marker.coordinate, frame.coordinate)
+        XCTAssertEqual(marker.heading ?? -1, 90, accuracy: 1)
+        XCTAssertTrue(marker.isEstimate || !frame.isEstimate)
         // Standing at B (the stop's own times): the camera input says 0 km/h.
         let stand = CockpitFeed(vehicle: vehicle(lon: 15.0), seenAt: F.at(31), now: F.at(31), details: details(), detailsAt: F.at(31))
-        let held = try XCTUnwrap(stand.frame(now: F.at(31).addingTimeInterval(1)))
-        XCTAssertEqual(held.cameraInput(mode: .follow, reduceMotion: false).speedKmh, 0)
-        XCTAssertEqual(held.summary?.phase, .atStop(stop: "Halt 1", departure: F.at(32)))
+        let heldAt = F.at(31).addingTimeInterval(1)
+        XCTAssertEqual(stand.cameraInput(now: heldAt, mode: .follow, reduceMotion: false)?.speedKmh, 0)
+        XCTAssertEqual(stand.frame(now: heldAt)?.summary?.phase, .atStop(stop: "Halt 1", departure: F.at(32)))
     }
 
     func testTheMarkerIsDrawnOnTheRouteWhenItIsNearIt() throws {

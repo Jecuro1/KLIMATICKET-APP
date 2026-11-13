@@ -39,6 +39,9 @@ struct RadarTripSheet: View {
     var onRoute: ([GeoPoint]) -> Void = { _ in }
     /// A stop was chosen: its departures open (the radar closes).
     var onStation: (Location) -> Void = { _ in }
+    /// MARK: radarcockpit – "Cockpit": the camera follows this train. The sheet closes, the radar opens the full-screen view with the details
+    /// this sheet has loaded (stops, polyline) so it can start with the whole run. nil: no Cockpit button (previews, screenshots of the sheet).
+    var onCockpit: ((RadarVehicle, TripDetails?) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(AppState.self) private var app
@@ -128,6 +131,16 @@ struct RadarTripSheet: View {
             }
             .buttonStyle(.primary)
             .disabled(vehicle.stopovers.count < 2)
+
+            // MARK: radarcockpit – the camera follows the train, tilted in 3D, with the next stop, the arrival and the delay
+            if let onCockpit {
+                Button { onCockpit(run, details); dismiss() } label: {
+                    Label("Cockpit", systemImage: "view.3d").frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .disabled(vehicle.stopovers.count < 2)
+                .accessibilityHint("Die Kamera folgt dem Zug von schräg oben")
+            }
 
             // MARK: exitalarm – „Wecker für diesen Zug“: a thin button, the shared sheet picks the stop
             Button { openAlarm() } label: {

@@ -28,6 +28,8 @@ struct RadarView: View {
     @State var query = ""
     @State var showsFilter = false
     @State var sheetVehicle: RadarVehicle?
+    @State var cockpit: CockpitLaunch?   // MARK: radarcockpit – the full-screen view that follows one train (docs/RADAR_COCKPIT.md)
+    @State var pendingCockpit: CockpitLaunch?
     @State private var statusHeight: CGFloat = 0
     @AppStorage("radar.mapStyle") var styleRaw = RadarMapStyle.standard.rawValue
     @FocusState var searchFocused: Bool
@@ -57,7 +59,7 @@ struct RadarView: View {
     }
 
     private var isRunning: Bool {
-        scenePhase == .active && loadsRadar && !travel.isAway   // MARK: radarheat – trains or the Pünktlichkeit layer; radartime – paused while away from now
+        scenePhase == .active && loadsRadar && !travel.isAway && cockpit == nil   // MARK: radarheat – trains or the Pünktlichkeit layer; radartime – paused while away from now; radarcockpit – the cockpit asks for its one train instead
     }
 
     var body: some View {
@@ -102,7 +104,7 @@ struct RadarView: View {
                                     .union(model.filter.categories).filter { !$0.isEmpty }.sorted())
                     .presentationDetents([.medium, .large])
             }
-            .sheet(item: $sheetVehicle) { vehicle in
+            .sheet(item: $sheetVehicle, onDismiss: openPendingCockpit) { vehicle in   // MARK: radarcockpit
                 RadarTripSheet(vehicle: vehicle,
                                onCenter: { center(on: vehicle.tripID) },
                                onRoute: { points in
@@ -111,9 +113,13 @@ struct RadarView: View {
                                },
                                onStation: { stop in
                                    showBoard { app.planner.showBoard(live: stop) }
-                               })
+                               },
+                               onCockpit: { run, details in pendingCockpit = cockpitLaunch(run, details) })   // MARK: radarcockpit
                     .presentationDetents([.fraction(0.32), .medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+            }
+            .fullScreenCover(item: $cockpit) { launch in   // MARK: radarcockpit
+                CockpitView(launch: launch, services: .live(app, budget: model)) { cockpit = nil }
             }
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }

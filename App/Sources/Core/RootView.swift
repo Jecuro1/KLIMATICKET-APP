@@ -502,6 +502,9 @@ struct ScreenshotRouter: View {
         // MARK: radarheat – the Pünktlichkeit layer: the map, the open panel, a cell, the panel at AX5 (demo trains, no network)
         case let heatScreen where RadarHeatScreenshotHost.screens.contains(heatScreen):
             RadarHeatScreenshotHost(screen: heatScreen)
+        // MARK: radarcockpit – the Cockpit-Ansicht: following, from above, free, at AX5, ended, lost (a synthetic train on a synthetic route, no network)
+        case let cockpitScreen where CockpitScreenshotHost.screens.contains(cockpitScreen):
+            CockpitScreenshotHost(screen: cockpitScreen)
         // MARK: radartime – the Zeitreise: the scrubber at +45 minutes, playing, loading, at AX5 (synthetic trains, no network)
         case let timeScreen where RadarTimeScreenshotHost.screens.contains(timeScreen):
             RadarTimeScreenshotHost(screen: timeScreen)
