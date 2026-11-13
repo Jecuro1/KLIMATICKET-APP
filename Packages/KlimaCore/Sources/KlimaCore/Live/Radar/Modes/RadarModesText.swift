@@ -149,6 +149,10 @@ public enum RadarModesText {
         let cityRuns = city.visibleTiles > 0
         var notes: [String] = []
         if city.outOfZoom, !cityModes.isEmpty { notes.append(zoomHint(cityModes)) }
+        // An empty map first: it is what the user sees (the screenshot of the first run had it under the data note).
+        if status.anyAnswered, s.pinCount == 0, !status.anyPending, !status.isPausedOnBothLanes, !status.outsideCoverage {
+            notes.append(s.filterActive && s.unfilteredCount > 0 ? emptyWithFilter(unfiltered: s.unfilteredCount) : empty)
+        }
         // The wide lane's notes; while the city lane runs the cadence note below speaks for both lanes.
         var wide = status
         if cityRuns { wide.period = 0 }
@@ -169,9 +173,6 @@ public enum RadarModesText {
             if s.meteredCity { notes.append(metered(cityModes)) }
             let megabytes = RadarDataEstimate.megabytesPerMinute(cityTileCounts: city.vehicleCounts, period: city.period)
             if let rounded = RadarDataEstimate.noteMegabytes(megabytes) { notes.append(dataEstimate(cityModes, megabytes: rounded)) }
-        }
-        if status.anyAnswered, s.pinCount == 0, !status.anyPending, !status.isPausedOnBothLanes, !status.outsideCoverage {
-            notes.append(s.filterActive && s.unfilteredCount > 0 ? emptyWithFilter(unfiltered: s.unfilteredCount) : empty)
         }
         return notes
     }
@@ -279,6 +280,7 @@ public extension RadarModesText {
     /// „Filter: RJX, RJ · nur verspätet“.
     static func activeFilter(_ filter: RadarFilter) -> String { "Filter: \(filter.summary)" }
 
-    static let searchPlaceholder = "Linie oder Zugnummer, z. B. RJX 66 oder 13A"
+    /// Short enough for the field on a phone (the spec's „Linie oder Zugnummer, z. B. RJX 66 oder 13A“ was cut off on the CI screenshots).
+    static let searchPlaceholder = "Linie oder Zug, z. B. 13A, RJX 66"
     static let searchNoMatch = "Nichts gefunden in den geladenen Gebieten. Zoom heraus, verschieb die Karte oder probier eine andere Nummer."
 }

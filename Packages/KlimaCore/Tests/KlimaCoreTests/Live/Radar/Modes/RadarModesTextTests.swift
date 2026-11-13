@@ -175,8 +175,27 @@ final class RadarModesSheetTextTests: XCTestCase {
         XCTAssertEqual(RadarModesText.removeLine("13A"), "13A entfernen")
         XCTAssertTrue(RadarModesText.groupsFooter.contains("250"))
         XCTAssertTrue(RadarModesText.labelFooter.contains("80"))
-        XCTAssertEqual(RadarModesText.searchPlaceholder, "Linie oder Zugnummer, z. B. RJX 66 oder 13A")
+        XCTAssertEqual(RadarModesText.searchPlaceholder, "Linie oder Zug, z. B. 13A, RJX 66")
+        XCTAssertLessThanOrEqual(RadarModesText.searchPlaceholder.count, 34, "fits the field on a phone like the old placeholder")
         XCTAssertFalse(RadarModesText.searchNoMatch.contains("Kein Zug"), "the search finds buses too")
         XCTAssertEqual(RadarModesText.filterOff, "Filter aus")
+    }
+}
+
+// MARK: radarmodes – an empty map is said before the other notes
+final class RadarModesEmptyFirstTests: XCTestCase {
+    func testTheEmptyNoteComesFirst() {
+        var status = RadarStatus()
+        status.visibleTiles = 1
+        status.answeredTiles = 1
+        status.city.isActive = true
+        status.city.visibleTiles = 6
+        status.city.answeredTiles = 6
+        status.city.period = 20
+        status.city.vehicleCounts = Array(repeating: 400, count: 6)
+        let notes = RadarModesText.notes(.init(status: status, selection: RadarModeSelection(Set(RadarMode.allCases)), pinCount: 0,
+                                               unfilteredCount: 396, filterActive: true))
+        XCTAssertEqual(notes.first, "Kein Fahrzeug passt zum Filter. Ohne Filter wären es 396.")
+        XCTAssertTrue(notes.contains("Bus, Bim und U-Bahn: etwa 12 MB pro Minute (geschätzt)."))
     }
 }

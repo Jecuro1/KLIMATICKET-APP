@@ -116,25 +116,14 @@ struct RadarView: View {
             }
             .onChange(of: model.pins.count) { _, _ in centerOnFocusedTrip() }
             .sheet(isPresented: $showsFilter) {
-                if RadarFilterRollout.newSheet {
-                    // MARK: radarmodes – „Filter & Darstellung“; chosen lines and operators stay in it even when none is on the map now
-                    RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
-                                     modes: Binding(get: { model.modes }, set: { setModes($0) }),
-                                     display: Binding(get: { model.display }, set: { model.display = $0 }),
-                                     vehicles: model.knownVehicles, counts: model.modeCounts,
-                                     parts: model.radar2,   // MARK: radar2
-                                     page: filterPage, scrollTo: filterScroll)
-                        .presentationDetents([.medium, .large], selection: $filterDetent)
-                } else {
-                    RadarLegacyFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
-                                           modes: Binding(get: { model.modes }, set: { setModes($0) }),
-                                           // Selected lines stay in the list even when none of them is on the map right now, so an
-                                           // active line filter is always visible and can be cleared.
-                                           categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
-                                              .union(model.filter.categories).filter { !$0.isEmpty }.sorted(),
-                                           parts: model.radar2)   // MARK: radar2
-                        .presentationDetents([.medium, .large])
-                }
+                // MARK: radarmodes – „Filter & Darstellung“; chosen lines and operators stay in it even when none is on the map now
+                RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
+                                 modes: Binding(get: { model.modes }, set: { setModes($0) }),
+                                 display: Binding(get: { model.display }, set: { model.display = $0 }),
+                                 vehicles: model.knownVehicles, counts: model.modeCounts,
+                                 parts: model.radar2,   // MARK: radar2
+                                 page: filterPage, scrollTo: filterScroll)
+                    .presentationDetents([.medium, .large], selection: $filterDetent)
             }
             .sheet(item: $sheetVehicle, onDismiss: openPendingCockpit) { vehicle in   // MARK: radarcockpit
                 RadarTripSheet(vehicle: vehicle,

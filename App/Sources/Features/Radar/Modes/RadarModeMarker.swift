@@ -103,15 +103,16 @@ struct RadarDestinationLabel: View {
     var text: String
 
     var body: some View {
+        // The capsule hugs the text; only a long name is cut (at 130 pt).
         Text(text)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(1)
-            .frame(maxWidth: 120)
-            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 5)
             .padding(.vertical, 1.5)
             .background(Theme.sheetBackground.opacity(0.92), in: .capsule)
+            .frame(maxWidth: 130)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

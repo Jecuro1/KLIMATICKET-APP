@@ -122,8 +122,7 @@ eines Datenzählers auf dem iPhone fehlt (§12).
 
 ## 6. Filter, Schnellwahl, Darstellung
 
-Das Blatt „Filter & Darstellung“ (Knopf links oben, `RadarFilterSheet`) hat zwei Seiten. (Stand dieses Commits: Bis seine Screenshots angesehen
-sind, öffnet der Knopf außerhalb der Screenshot-Starts noch das bisherige Blatt, `RadarFilterRollout`.) Jede Änderung wirkt sofort auf der Karte. **Verkehrsmittel
+Das Blatt „Filter & Darstellung“ (Knopf links oben, `RadarFilterSheet`) hat zwei Seiten. Jede Änderung wirkt sofort auf der Karte. **Verkehrsmittel
 fragen die Auskunft** (beide Spuren, §3); **alle Filter wirken auf dem iPhone** auf die Fahrzeuge, die das Radar hält, mit einem einzigen Prüfer
 (`RadarFilter.matches(_:delay:)`) für die Live-Pins und die Pins der Zeitreise (README radar2 F9).
 
@@ -212,8 +211,8 @@ Takt, mobile Daten, Datenmenge, leer, leer mit Filter), Zeitreise-Hinweis, Legen
 - Szenen (`RadarModesScreenshotHost`): `radarModesCity` (Wien nah, alle fünf Arten, Zählzeile), `radarModesZoomHint` (Österreich mit Bus: Hinweis,
   Lupe am Chip), `radarModesLegend`, `radarModesCrowded` (zu dicht, abgeschnitten, Datenmenge), `radarModesAX5`, `radarModesDots` (Nur Punkte, Groß,
   Gruppen aus), `radarModesFilter` (Blatt oben), `radarModesFilterLines` (Linie, Betreiber, Verspätung), `radarModesDisplay` (Darstellung mit Vorschau),
-  `radarModesEmpty` (ein Filter, auf den nichts passt). Die Wien-Szene zeigt 0,045° statt 0,12°: bei 0,12° wären fast alle Marker Gruppen und die
-  Schilder nicht zu sehen.
+  `radarModesEmpty` (ein Filter, auf den nichts passt). Die Wien-Szene zeigt 0,02° um Hauptbahnhof und Belvedere statt 0,12°: bei 0,12° (und noch bei 0,045°, erster
+  Screenshot-Lauf) waren fast alle Marker Gruppen von 5 bis 25 und die Schilder nicht zu sehen.
 
 ## 11. Geprüft / nicht geprüft
 
