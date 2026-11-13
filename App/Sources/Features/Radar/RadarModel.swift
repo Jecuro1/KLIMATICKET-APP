@@ -38,7 +38,15 @@ final class RadarModel {
     let heat = RadarHeatModel()
 
     @ObservationIgnored var store = RadarFrameStore()
-    @ObservationIgnored var scheduler = RadarScheduler()
+    /// Starts from the budget the last radar view left (`RadarBudgetLedger`) and writes it back after every change: closing and opening the
+    /// radar again is no fresh budget of 24 a minute (Zeitreise review 2). The tiles start empty as before.
+    @ObservationIgnored var scheduler = RadarScheduler(budget: RadarModel.sharedBudget?.state ?? RadarBudgetState()) {
+        didSet { RadarModel.sharedBudget?.state = scheduler.budgetState }
+    }
+
+    /// The app's one radar budget. Screenshot and perf launches (synthetic trains, no network) keep one per view as before: their radar
+    /// scenes run one after another in one process and would otherwise wait for each other's budget.
+    nonisolated static var sharedBudget: RadarBudgetLedger? { LaunchMode.isSandboxed ? nil : .shared }
     @ObservationIgnored private var lastError: Error?
     @ObservationIgnored private var lastRebuild = Date.distantPast
     @ObservationIgnored private var lastPinRebuild = Date.distantPast

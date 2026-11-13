@@ -208,6 +208,14 @@ final class RadarTimeModel {
         snapshotHere = nil
     }
 
+    /// The phone went offline (a tunnel, a dead spot): the Zeitreise ends like "Zurück zu Jetzt" (the live radar shows no trains offline
+    /// either), but what it loaded stays. Back online, a Zeitreise within ten minutes uses it again instead of loading up to 22 MB anew:
+    /// before review 2 every connection drop threw it all away (`reset`), on a train ride through tunnels again and again.
+    func suspend() {
+        isOpen = false
+        leave()
+    }
+
     /// The radar was closed, the train layer went off, another mode came on: everything of the Zeitreise ends.
     func reset() {
         generation += 1
@@ -288,6 +296,15 @@ final class RadarTimeModel {
     /// request on its way; each gives its snapshot back to the scheduler.
     func run(service: any RadarService, live: RadarModel) async {
         self.live = live
+        // The loop ran before and was stopped while away from now: the app was in the background, the cockpit was open or the phone was
+        // offline, maybe for many minutes. The Zeitreise starts once more: the network path is asked again, snapshots older than ten
+        // minutes are planned again (once; fresher ones stay, `RadarTimeScheduler.begin`), and the time-lapse keeps its place from now,
+        // not from the moment it stopped (it would otherwise run behind the scrubber's range). Before review 2 nothing was loaded again:
+        // after a long pause the picture stayed on old delays, only "Stand der Verspätungen: vor 25 Min" said so.
+        if began {
+            began = false
+            if isPlaying { playBase = RadarTimeAxis.base(now: Date()) }
+        }
         var last = Date()
         // Discarding: a request that has answered is let go at once, instead of waiting in the group until the Zeitreise ends.
         await withDiscardingTaskGroup { group in
@@ -330,7 +347,11 @@ final class RadarTimeModel {
 
     private func claim(_ live: RadarModel) -> (Date) -> Date? {
         if demo { return { _ in nil } }   // no network in the demo: nothing to budget
-        return { [weak live] now in live?.claimRequestSlot(now: now) }
+        // Without the radar's model there is no budget to ask, so nothing is sent (nil would mean "taken, send now").
+        return { [weak live] now in
+            guard let live else { return now.addingTimeInterval(1) }
+            return live.claimRequestSlot(now: now)
+        }
     }
 
     /// The Zeitreise starts: the live radar's vehicles are the first snapshot, the network path is asked, the plan is made.
@@ -343,6 +364,7 @@ final class RadarTimeModel {
         let coarse = isMetered && !userChoseFine
         profile = coarse ? .coarse : .fine
         scheduler.allowsAutoExact = !coarse
+        scheduler.oneAtATime = isMetered   // a slow mobile link carries one answer at full speed instead of two at half of it
         timeline.addLive(live.knownEntries(at: now))
         // What the scrubber can reach stays: half an hour back. The snapshots of an earlier Zeitreise still count as fetched for ten
         // minutes, so pruning at "now" would leave the last half hour without its trains.

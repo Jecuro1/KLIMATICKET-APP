@@ -59,9 +59,12 @@ public struct RadarTimeSchedulerConfig: Sendable, Equatable {
     public var pastRange: TimeInterval = -RadarTimeAxis.minOffset
     /// The scrubber must rest this long before the snapshot for its minute is requested.
     public var restDelay: TimeInterval = 0.6
-    /// Requests on their way at the same time (the live loop is paused meanwhile).
+    /// Requests on their way at the same time (the live loop is paused meanwhile). One on a metered connection (`oneAtATime`).
     public var maxInFlight = 2
-    public var requestTimeout: TimeInterval = 90
+    /// A request that never reported back frees its snapshot after this long. Longer than the client can take for one request: two tries
+    /// of at most 60 s each (`timeoutIntervalForResource`), 1.5 s between them and up to 5 s in the app's throttle before each, 131.5 s.
+    /// With 90 s (before review 2) a slow answer that was still loading was asked a second time, on exactly the slow network where it hurts.
+    public var requestTimeout: TimeInterval = 150
     /// Tries per snapshot, with 15 s, then 30 s between them. After the last one the point stays missing and the panel says so.
     public var maxAttempts = 3
     public var baseBackoff: TimeInterval = 15
@@ -89,8 +92,9 @@ public struct RadarTimeScheduler: Sendable {
         case idle
     }
 
-    /// The measured size of one answer for all of Austria, unpacked, in megabytes (docs/OEBB_LIVE.md §R11.1: 1 831 536 bytes). The size on the
-    /// wire (gzip) was not measured; the numbers shown to the user say "entpackt".
+    /// The measured size of one answer for all of Austria in megabytes (docs/OEBB_LIVE.md §R11.1: 1 831 536 bytes). The server's `/gate` does
+    /// not compress its answers although the app asks for gzip (docs/OEBB_LIVE.md §A2.1: no `Content-Encoding` in any recorded answer), so this
+    /// is about what goes over the network too.
     public static let megabytesPerAnswer = 1.8
 
     enum Phase: Sendable, Equatable {
@@ -121,6 +125,9 @@ public struct RadarTimeScheduler: Sendable {
     public private(set) var requestsSent = 0
     /// False on a metered connection: a resting minute is then fetched only on a tap (`requestExact`).
     public var allowsAutoExact = true
+    /// A metered connection: one answer at a time. A slow link then carries one answer of up to 1.8 MB at its full speed instead of two at
+    /// half of it, each of which could run into the client's 60 s limit and be loaded again.
+    public var oneAtATime = false
 
     private var target: Date?
     private var movedAt: Date = .distantPast
@@ -318,7 +325,7 @@ public struct RadarTimeScheduler: Sendable {
             }
         }
         if let pausedUntil, pausedUntil > now { return .wait(until: pausedUntil) }
-        if inFlightCount >= config.maxInFlight { return .wait(until: now.addingTimeInterval(0.25)) }
+        if inFlightCount >= (oneAtATime ? 1 : config.maxInFlight) { return .wait(until: now.addingTimeInterval(0.25)) }
 
         var earliest: Date?
         if let exact = exactCandidate(now: now, earliest: &earliest) {

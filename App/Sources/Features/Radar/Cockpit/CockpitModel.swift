@@ -433,7 +433,11 @@ extension CockpitModel.Services {
         if let radar = app.live.radar { services.radar = { try await radar.radar($0) } }
         if let timetable = app.live.timetable { services.trip = { try await timetable.trip($0, includePolyline: true) } }
         if !app.live.isDemo, let budget {
-            services.claim = { [weak budget] now in budget?.claimRequestSlot(now: now) }
+            // Without the radar's model there is no budget to ask: wait (nil would mean "taken, send now").
+            services.claim = { [weak budget] now in
+                guard let budget else { return now.addingTimeInterval(1) }
+                return budget.claimRequestSlot(now: now)
+            }
             services.pause = { [weak budget] time in budget?.pauseRadar(until: time) }
         }
         return services

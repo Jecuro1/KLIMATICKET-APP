@@ -28,8 +28,10 @@ public struct RadarSchedulerConfig: Sendable, Equatable {
     /// Requests on their way at the same time. The loop that sends them also moves the markers and the status line every second,
     /// so it does not wait for an answer; three at once keep it within the budget above and keep a slow answer from holding up the rest.
     public var maxInFlight = 3
-    /// A request that never reported back (a bug in the caller) frees its tile after this long.
-    public var requestTimeout: TimeInterval = 90
+    /// A request that never reported back (a bug in the caller) frees its tile after this long: longer than the client can take for one
+    /// request (two tries of at most 60 s, 1.5 s between them, up to 5 s in the throttle before each: 131.5 s). At 90 s a slow answer that
+    /// was still loading was asked a second time (Zeitreise review 2).
+    public var requestTimeout: TimeInterval = 150
     /// Refresh interval of a dense tile (`denseCount` vehicles or more) and of every tile while the view is zoomed in.
     public var denseInterval: TimeInterval = 20
     /// Refresh interval of a quiet tile in a wide view.
@@ -118,6 +120,17 @@ public struct RadarScheduler: Sendable {
     public init(config: RadarSchedulerConfig = .standard) {
         self.config = config
     }
+
+    /// A scheduler that continues a budget: the send times of the last minute and a pause of an earlier radar view
+    /// (`RadarBudgetLedger`). Its tiles start empty.
+    public init(config: RadarSchedulerConfig = .standard, budget: RadarBudgetState) {
+        self.config = config
+        sentAt = budget.sentAt.sorted()
+        pausedUntil = budget.pausedUntil
+    }
+
+    /// What the budget remembers: handed to the next radar view, so closing and opening the radar again is no fresh budget.
+    public var budgetState: RadarBudgetState { RadarBudgetState(sentAt: sentAt, pausedUntil: pausedUntil) }
 
     // MARK: View
 
@@ -420,5 +433,46 @@ public struct RadarScheduler: Sendable {
         let settled = pending == 0 || (pausedUntil.map { $0 > now } ?? false)
         status.isPaused = status.answeredTiles == 0 && status.failedTiles > 0 && settled
         return status
+    }
+}
+
+// MARK: - The budget across radar views
+
+/// The radar budget's memory: when the last requests went out (the last minute is enough) and a pause (rate limit, open circuit).
+public struct RadarBudgetState: Sendable, Equatable {
+    public var sentAt: [Date]
+    public var pausedUntil: Date?
+
+    public init(sentAt: [Date] = [], pausedUntil: Date? = nil) {
+        self.sentAt = sentAt
+        self.pausedUntil = pausedUntil
+    }
+}
+
+/// One radar budget for the whole app. Each radar view has its own model and scheduler; without this, closing the radar and opening it
+/// again started an empty budget, and a user who did that every few seconds (or opened it, started a Zeitreise with its plan of 12
+/// snapshots, closed it and opened it again) sent more than 24 radar requests a minute (Zeitreise review 2). The view's model writes its
+/// budget here after every change and the next view starts from it. Only the app's throttle (40 a minute) held before.
+public final class RadarBudgetLedger: @unchecked Sendable {
+    public static let shared = RadarBudgetLedger()
+
+    private let lock = NSLock()
+    private var stored = RadarBudgetState()
+
+    public init() {}
+
+    public var state: RadarBudgetState {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+        set {
+            lock.lock()
+            defer { lock.unlock() }
+            // Only the last minute counts; older send times are dropped so the ledger stays small.
+            let newest = newValue.sentAt.max() ?? .distantPast
+            stored = RadarBudgetState(sentAt: newValue.sentAt.filter { newest.timeIntervalSince($0) < 60 }, pausedUntil: newValue.pausedUntil)
+        }
     }
 }

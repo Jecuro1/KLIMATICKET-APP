@@ -125,7 +125,7 @@ struct RadarView: View {
             .sheet(isPresented: $showsDisruptions) { DisruptionsView() }
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
-            .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, available: timeAvailable,
+            .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, available: timeAvailable, allowed: timeAllowed,
                                      sceneActive: scenePhase == .active && cockpit == nil))   // MARK: radartime – paused under the cockpit, like the live loop
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }

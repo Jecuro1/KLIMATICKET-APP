@@ -393,7 +393,27 @@ final class RadarTimeSchedulerTests: XCTestCase {
         scheduler.begin(now: now, profile: .coarse, includeNow: false)
         guard case .request = scheduler.next(now: now, claim: { _ in nil }), case .request = scheduler.next(now: now, claim: { _ in nil }) else { return XCTFail("two") }
         XCTAssertFalse(scheduler.next(now: now.addingTimeInterval(30), claim: { _ in nil }).isRequest, "both still on their way")
-        XCTAssertTrue(scheduler.next(now: now.addingTimeInterval(91), claim: { _ in nil }).isRequest, "after 90 s they are asked again")
+        // Review 2: the client can take 131.5 s for one request (two tries of at most 60 s, 1.5 s between, up to 5 s in the throttle before
+        // each). A slow answer still loading at 91 s was asked a second time before; now not before the timeout.
+        XCTAssertFalse(scheduler.next(now: now.addingTimeInterval(132), claim: { _ in nil }).isRequest, "the client may still be loading")
+        XCTAssertTrue(scheduler.next(now: now.addingTimeInterval(151), claim: { _ in nil }).isRequest, "after 150 s they are asked again")
+    }
+
+    func testTheTimeoutIsLongerThanTheClientsSlowestRequest() {
+        let resource: TimeInterval = 60, retryDelay: TimeInterval = 1.5, throttleWait: TimeInterval = 5
+        XCTAssertGreaterThan(RadarTimeSchedulerConfig.standard.requestTimeout, 2 * (resource + throttleWait) + retryDelay)
+        XCTAssertGreaterThan(RadarSchedulerConfig.standard.requestTimeout, 2 * (resource + throttleWait) + retryDelay)
+    }
+
+    func testAMeteredConnectionLoadsOneAnswerAtATime() {
+        // Review 2: on a slow mobile link two answers of up to 1.8 MB share it, each may run into the client's 60 s limit and is loaded again.
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: now, profile: .coarse, includeNow: false)
+        scheduler.oneAtATime = true
+        guard case .request(let first) = scheduler.next(now: now, claim: { _ in nil }) else { return XCTFail("first") }
+        XCTAssertFalse(scheduler.next(now: now.addingTimeInterval(1), claim: { _ in nil }).isRequest, "one is on its way")
+        scheduler.recordAnswer(first, answeredCount: 500, now: now.addingTimeInterval(3))
+        XCTAssertTrue(scheduler.next(now: now.addingTimeInterval(4), claim: { _ in nil }).isRequest, "answered: the next one goes")
     }
 
     // MARK: Answers cut off at the request cap
@@ -478,9 +498,67 @@ final class RadarTimeSchedulerTests: XCTestCase {
 
     func testTheVolumeIsStatedHonestly() {
         // 1.8 MB is the largest answer measured (evening peak); at 22 Uhr it was 1.2 MB. So the number is an upper bound: "bis etwa".
-        XCTAssertEqual(RadarTimeText.volume(points: 11), "Bis etwa 20 MB (entpackt, 11 Abfragen). Auf der Leitung ist es weniger.")
-        XCTAssertEqual(RadarTimeText.volume(points: 3), "Bis etwa 5,4 MB (entpackt, 3 Abfragen). Auf der Leitung ist es weniger.")
+        // Review 2: the card said "Auf der Leitung ist es weniger". The server's /gate does not compress (docs/OEBB_LIVE.md §A2.1: no
+        // Content-Encoding in any recorded answer although the app asks for gzip), so the number is about what goes over the network. Each
+        // minute loaded exactly adds one more answer; the card did not say so.
+        XCTAssertEqual(RadarTimeText.volume(points: 11),
+                       "Bis etwa 20 MB für 11 Zeitpunkte, dazu bis etwa 1,8 MB für jede genau geladene Minute. Die Auskunft schickt die Daten ungepackt.")
+        XCTAssertEqual(RadarTimeText.volume(points: 3),
+                       "Bis etwa 5,4 MB für 3 Zeitpunkte, dazu bis etwa 1,8 MB für jede genau geladene Minute. Die Auskunft schickt die Daten ungepackt.")
+        XCTAssertTrue(RadarTimeText.volume(points: 1).hasPrefix("Bis etwa 1,8 MB für 1 Zeitpunkt,"))
+        XCTAssertFalse(RadarTimeText.volume(points: 12).contains("weniger"))
         XCTAssertEqual(RadarTimeScheduler.megabytesPerAnswer, 1.8, "the measured 1 831 536 bytes, rounded up")
+    }
+
+    // MARK: Review 2
+
+    /// Closing and opening the radar again every 3 s, each time starting a Zeitreise with its plan and the live tiles of a new view: every
+    /// view had its own scheduler, so every opening was a fresh budget. Now each view starts from the budget the last one left.
+    func testOpeningTheRadarAgainIsNoFreshBudget() {
+        func simulate(ledger: RadarBudgetLedger?) -> [Date] {
+            var sent: [Date] = []
+            var clock = now
+            for _ in 0..<40 {   // two minutes
+                var live = ledger.map { RadarScheduler(budget: $0.state) } ?? RadarScheduler()
+                live.setViewport(.austria, latitudeSpan: 4.2, now: clock)
+                var travel = RadarTimeScheduler()
+                travel.begin(now: clock, profile: .fine, includeNow: true)
+                travel.setTarget(clock.addingTimeInterval(45 * 60), now: clock)
+                let closes = clock.addingTimeInterval(3)
+                while clock < closes {
+                    if case .request(let tile) = live.next(now: clock) {
+                        sent.append(clock)
+                        live.recordAnswer(tile, count: 450, at: clock)
+                    }
+                    if case .request(let request) = travel.next(now: clock, claim: { live.claimSlot(now: $0) }) {
+                        sent.append(clock)
+                        travel.recordAnswer(request, answeredCount: 900, now: clock.addingTimeInterval(0.5))
+                    }
+                    ledger?.state = live.budgetState
+                    clock = clock.addingTimeInterval(0.25)
+                }
+            }
+            return sent
+        }
+        func most(_ sent: [Date], within window: TimeInterval) -> Int {
+            sent.map { start in sent.filter { $0 >= start && $0.timeIntervalSince(start) < window }.count }.max() ?? 0
+        }
+        let before = simulate(ledger: nil)
+        XCTAssertGreaterThan(most(before, within: 60), 24, "without the ledger every opening was a fresh budget (the test would prove nothing)")
+        let after = simulate(ledger: RadarBudgetLedger())
+        XCTAssertLessThanOrEqual(most(after, within: 60), 24)
+        XCTAssertLessThanOrEqual(most(after, within: 10), 4)
+        XCTAssertGreaterThan(after.count, 0)
+    }
+
+    func testTheLedgerKeepsOnlyTheLastMinuteAndThePause() {
+        let ledger = RadarBudgetLedger()
+        let pause = now.addingTimeInterval(20)
+        ledger.state = RadarBudgetState(sentAt: [now.addingTimeInterval(-120), now.addingTimeInterval(-30), now], pausedUntil: pause)
+        XCTAssertEqual(ledger.state.sentAt, [now.addingTimeInterval(-30), now])
+        var next = RadarScheduler(budget: ledger.state)
+        XCTAssertEqual(next.claimSlot(now: now.addingTimeInterval(5)), pause, "a rate limit's pause holds the next view too")
+        XCTAssertNil(next.claimSlot(now: now.addingTimeInterval(21)))
     }
 
     // MARK: Review 1

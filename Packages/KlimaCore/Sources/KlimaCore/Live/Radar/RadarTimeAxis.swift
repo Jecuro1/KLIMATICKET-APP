@@ -229,12 +229,19 @@ public enum RadarTimeText {
                     : "\(failed) Zeitpunkte konnten nicht geladen werden. Zügen, die erst später losfahren, fehlen dort Daten."
     }
 
-    /// The volume, honestly: unpacked bytes of the largest measured answer (docs/OEBB_LIVE.md §R11.1: 1,83 MB for all of Austria in the
-    /// evening peak; 1,2 MB at 22 Uhr, docs/RADAR_TIMETRAVEL.md §R12), so an upper bound: "bis etwa". The size on the wire is not measured.
+    /// The volume, honestly: the largest measured answer (docs/OEBB_LIVE.md §R11.1: 1,83 MB for all of Austria in the evening peak; 1,2 MB
+    /// at 22 Uhr, docs/RADAR_TIMETRAVEL.md §R12), so an upper bound: "bis etwa". Each minute loaded exactly adds one answer. The server does
+    /// not compress (docs/OEBB_LIVE.md §A2.1), so this is about what goes over the network: before review 2 the card said it was less there.
     public static func volume(points: Int) -> String {
-        let megabytes = Double(points) * RadarTimeScheduler.megabytesPerAnswer
-        let text = megabytes < 10 ? String(format: "%.1f", megabytes) : String(format: "%.0f", megabytes)
-        return "Bis etwa \(text.replacingOccurrences(of: ".", with: ",")) MB (entpackt, \(points) Abfragen). Auf der Leitung ist es weniger."
+        let total = megabytes(Double(points) * RadarTimeScheduler.megabytesPerAnswer)
+        let one = megabytes(RadarTimeScheduler.megabytesPerAnswer)
+        let noun = points == 1 ? "Zeitpunkt" : "Zeitpunkte"
+        return "Bis etwa \(total) MB für \(points) \(noun), dazu bis etwa \(one) MB für jede genau geladene Minute. Die Auskunft schickt die Daten ungepackt."
+    }
+
+    private static func megabytes(_ value: Double) -> String {
+        let text = value < 10 ? String(format: "%.1f", value) : String(format: "%.0f", value)
+        return text.replacingOccurrences(of: ".", with: ",")
     }
 }
 
