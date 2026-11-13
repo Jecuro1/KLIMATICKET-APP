@@ -359,6 +359,10 @@ final class CockpitModel {
         } else if let lastError, scheduler.failures(.position) > 0 || scheduler.failures(.details) > 0 {
             next.note = LiveMessage.text(for: lastError)
         }
+        // Reduce Motion holds a fixed top-down view: said, so "Verfolgen" in the switcher is not a promise the camera does not keep.
+        if reduceMotion, feed.session.mode == .follow, next.note == nil {
+            next.note = "Bewegung reduzieren ist an: Die Kamera schaut fest von oben, Norden oben."
+        }
         if next != hud { hud = next }
         updateLines(frame: frame)
     }
