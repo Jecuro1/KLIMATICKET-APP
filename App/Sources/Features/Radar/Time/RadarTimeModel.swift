@@ -296,8 +296,8 @@ final class RadarTimeModel {
     /// request on its way; each gives its snapshot back to the scheduler.
     func run(service: any RadarService, live: RadarModel) async {
         self.live = live
-        // The loop ran before and was stopped while away from now: the app was in the background, the cockpit was open or the phone was
-        // offline, maybe for many minutes. The Zeitreise starts once more: the network path is asked again, snapshots older than ten
+        // The loop ran before and was stopped while away from now: the app was in the background or the cockpit was open, maybe for many
+        // minutes (offline ends the Zeitreise, `suspend`). The Zeitreise starts once more: the network path is asked again, snapshots older than ten
         // minutes are planned again (once; fresher ones stay, `RadarTimeScheduler.begin`), and the time-lapse keeps its place from now,
         // not from the moment it stopped (it would otherwise run behind the scrubber's range). Before review 2 nothing was loaded again:
         // after a long pause the picture stayed on old delays, only "Stand der Verspätungen: vor 25 Min" said so.

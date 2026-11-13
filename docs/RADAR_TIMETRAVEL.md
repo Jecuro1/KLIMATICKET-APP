@@ -181,7 +181,7 @@ Es staut sich nichts: höchstens 2 gleichzeitig (über Mobilfunk 1), und eine An
 **Offline.** Meldet das System keine Verbindung (Tunnel, Funkloch, Flugmodus), ist `timetableUnavailable` `.offline`: Die Schleife endet mit allen Anfragen unterwegs, die Zeitreise geht zurück zu „Jetzt“
 (offline zeigt das Radar keine Züge), **das Geladene bleibt**. Bis Review 2 warf jeder Abbruch der Verbindung alles weg; im Zug durch Tunnel hieß das jedes Mal bis 22 MB neu.
 
-**Zurück aus dem Hintergrund** (oder aus dem Cockpit, oder wieder online). Die Schleife beginnt neu und mit ihr die Zeitreise: Der Netzwerkpfad wird neu gefragt, Momentaufnahmen, die älter als zehn Minuten sind,
+**Zurück aus dem Hintergrund** (oder aus dem Cockpit). Die Schleife beginnt neu und mit ihr die Zeitreise: Der Netzwerkpfad wird neu gefragt, Momentaufnahmen, die älter als zehn Minuten sind,
 kommen **einmal** neu (frischere bleiben), „jetzt“ kommt neu, wenn das Live-Radar ganz Österreich nicht frisch hält. Bis sie da sind, steht „Stand der Verspätungen: vor 15 Min“ in der Karte und „Zeitreise lädt 3/12“.
 Bis Review 2 kam nichts neu: Nach einer Viertelstunde im Hintergrund blieb das Bild auf alten Verspätungen, nur die Alterszeile sagte es. Ein laufender Zeitraffer behält seinen Platz **von jetzt aus**
 (vorher lief er nach langer Pause um diese Zeit hinter dem Bereich des Reglers her). Ein ruhender Regler behält seine Uhrzeit; ist sie aus dem Bereich gefallen, steht er am linken Rand.
