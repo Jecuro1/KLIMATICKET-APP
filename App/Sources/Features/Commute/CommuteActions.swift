@@ -103,6 +103,17 @@ struct CommuteActions {
 
 /// Prefilling the plan from a saved route („Meine Routen“) and a guess.
 enum CommuteSetup {
+    /// The Übersicht asks „Ist das dein Arbeitsweg?“ only for a confident guess with two app stations (else „Ja, merken“ would
+    /// end in „Stammstrecke fehlt“), not declined in the last 30 days, and not the stored route of a mode that is switched off.
+    static func invitation(guess: CommuteGuess?, settings: CommuteSettings, now: Date) -> CommuteGuess? {
+        guard let guess, guess.confidence == .high, !settings.isEnabled,
+              guess.origin.stationID?.isEmpty == false, guess.destination.stationID?.isEmpty == false,
+              !settings.isDeclined(guess.pairKey, now: now) else { return nil }
+        if let origin = settings.origin, let destination = settings.destination,
+           CommuteDetector.pairKey(origin, destination) == guess.pairKey { return nil }
+        return guess
+    }
+
     /// A saved route between the guess's two stations, either direction (outbound first).
     @MainActor
     static func savedRoute(for guess: CommuteGuess, in routes: [FavoriteRouteEntity]) -> FavoriteRouteEntity? {

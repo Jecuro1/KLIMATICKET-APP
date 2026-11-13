@@ -97,7 +97,9 @@ struct StopDeparturesSection: View {
         case .empty:
             CommuteNotice(symbol: "moon.zzz", text: "In den nächsten \(StopBoardDepartures.minutes) Minuten fährt hier nichts ab.")
         case .failed:
-            CommuteNotice(symbol: "exclamationmark.icloud", text: "ÖBB-Auskunft gerade nicht erreichbar – versucht es in einer Minute wieder.")
+            CommuteNotice(symbol: "exclamationmark.icloud", text: "ÖBB-Auskunft gerade nicht erreichbar – neuer Versuch in einer Minute.")
+        case .unknownStop:
+            CommuteNotice(symbol: "questionmark.circle", text: "Für diese Haltestelle findet die ÖBB-Auskunft keine Abfahrtstafel.")
         case .live(let snapshot):
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(snapshot.rows.enumerated()), id: \.element.id) { index, row in

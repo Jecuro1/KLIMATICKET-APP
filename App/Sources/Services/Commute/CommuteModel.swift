@@ -18,8 +18,10 @@ final class CommuteModel {
         case offline
         /// Live data is not available (consent, switch, kill switch).
         case unavailable
-        /// The search found nothing (or a station could not be matched).
+        /// The search found nothing.
         case noConnection
+        /// The ÖBB search does not know one of the two stations: asked once per route, not every minute.
+        case unknownStation
         /// Anything else (rate limit, server error): the last rows stay.
         case failed
     }
@@ -103,6 +105,8 @@ final class CommuteModel {
         let direction = direction(for: slot)
         let key = FetchKey(direction: direction, slotDeparture: slot.departure)
         if key == rowsKey, !CommuteSearch.mayRefresh(lastFetch: fetchedAt, now: now()) { return }
+        // A station the ÖBB search cannot match stays unmatched until the route changes (`settingsChanged`).
+        if key == rowsKey, phase == .failed(.unknownStation) { return }
         guard !isFetching else { return }
         if key != rowsKey {
             rows = []
@@ -155,9 +159,14 @@ final class CommuteModel {
         let linker = app.live.linker
         do {
             return try await CommuteSearch.connections(timetable: timetable, at: now()) {
-                (try await linker.hafasLocation(for: from), try await linker.hafasLocation(for: to))
+                do {
+                    return (try await linker.hafasLocation(for: from), try await linker.hafasLocation(for: to))
+                } catch LiveError.hafas(code: "LOCATION", _) {
+                    throw CommuteUnknownStation()
+                }
             }
         } catch LiveError.hafas(code: "LOCATION", _) {
+            // The search refused a cached location: forget both, the next refresh matches them again.
             await linker.invalidate(stationID: from.id)
             await linker.invalidate(stationID: to.id)
             throw LiveError.noConnection
@@ -171,6 +180,7 @@ final class CommuteModel {
 
     private static func failure(_ error: Error) -> Failure {
         if let commute = error as? CommuteLiveError, commute == .consentRequired { return .unavailable }
+        if error is CommuteUnknownStation { return .unknownStation }
         guard let live = error as? LiveError else { return .failed }
         switch live {
         case .offline: return .offline
@@ -187,8 +197,9 @@ final class CommuteModel {
         if settings.isActive { focusTick &+= 1 } else { showsSetup = true }
     }
 
-    /// The settings changed (route, plan, mode): the rows belong to the old ones.
+    /// The settings changed (route, plan, mode): the rows – and Siri's copy of them – belong to the old ones.
     func settingsChanged() {
+        CommuteSnapshotStore.save(nil)
         rows = []
         journeys = [:]
         fetchedAt = nil
@@ -215,6 +226,9 @@ final class CommuteModel {
         CommuteLogQueue.clear()
     }
 }
+
+/// The station match found no ÖBB candidate for one end of the route.
+struct CommuteUnknownStation: Error {}
 
 // MARK: - Snapshot for Siri
 

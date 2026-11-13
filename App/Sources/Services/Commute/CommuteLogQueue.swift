@@ -42,11 +42,30 @@ enum CommuteLogQueue {
         }
     }
 
+    /// Ingests run one after the other: the scene's activation and the intent can both ask while a station lookup is awaited,
+    /// and two overlapping runs would read the same queue and save every ride twice. A finishing run hands its turn to the next
+    /// waiter directly (`isIngesting` stays true), so no third caller can slip in between.
+    @MainActor private static var isIngesting = false
+    @MainActor private static var waiting: [CheckedContinuation<Void, Never>] = []
+
     /// Turns the queued logs into rides. Returns the rides added. A log whose stations cannot be found yet (the place index
     /// is still loading) stays queued; one older than a week is dropped. On a failed save everything stays queued.
     @MainActor
     @discardableResult
     static func ingest(context: ModelContext, app: AppState, showsToast: Bool = true) async -> [TripEntity] {
+        if isIngesting {
+            await withCheckedContinuation { waiting.append($0) }
+        } else {
+            isIngesting = true
+        }
+        defer {
+            if waiting.isEmpty { isIngesting = false } else { waiting.removeFirst().resume() }
+        }
+        return await ingestQueued(context: context, app: app, showsToast: showsToast)
+    }
+
+    @MainActor
+    private static func ingestQueued(context: ModelContext, app: AppState, showsToast: Bool) async -> [TripEntity] {
         let items = pending()
         guard !items.isEmpty else { return [] }
         let settings = CommuteSettingsStore.shared.settings
@@ -66,15 +85,11 @@ enum CommuteLogQueue {
                                   isRoundTrip: item.isRoundTrip, travelClass: app.settings.defaultTravelClass, companions: 0,
                                   states: value.states, note: "")
             trip.priceSourceRaw = value.priceSource.rawValue
-            context.insert(trip)
             inserted.append(trip)
             done.append(item)
         }
         guard !done.isEmpty else { return [] }
-        guard inserted.isEmpty || repo.commit() else {
-            for trip in inserted { context.delete(trip) }
-            return []
-        }
+        guard repo.addCommuteTrips(inserted) else { return [] }
         // Only what was handled leaves the queue; a log Siri added meanwhile stays.
         let handled = Set(done.map(\.id))
         keep(pending().filter { !handled.contains($0.id) })

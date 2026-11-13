@@ -6,6 +6,11 @@ import KlimaCore
 // switched off, kill switch, offline); the linker – and with it the live client stack – is only touched after that gate. The
 // request shares the app-wide `RequestThrottle` (40 requests per minute, 0,3 s apart). Demo runs use the demo timetable.
 
+/// The stop could not be matched to an ÖBB station (LocMatch found no candidate near it).
+enum StopDepartureError: Error, Equatable {
+    case unknownStop
+}
+
 @MainActor
 struct LiveStopDepartureProvider {
     let live: LiveDataService
@@ -19,8 +24,14 @@ struct LiveStopDepartureProvider {
         }
         let linker = live.linker
         do {
-            return try await StopBoardDepartures.load(timetable: timetable, at: date) { try await linker.hafasLocation(for: station) }
+            return try await StopBoardDepartures.load(timetable: timetable, at: date) {
+                // No candidate for the stop: the section says so once instead of repeating the station search every minute.
+                do { return try await linker.hafasLocation(for: station) } catch LiveError.hafas(code: "LOCATION", _) {
+                    throw StopDepartureError.unknownStop
+                }
+            }
         } catch LiveError.hafas(code: "LOCATION", _) {
+            // The board refused a cached location: forget it, the next load matches the stop again.
             await linker.invalidate(stationID: station.id)
             throw LiveError.noConnection
         }

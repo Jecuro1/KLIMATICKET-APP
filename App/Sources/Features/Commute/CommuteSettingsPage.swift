@@ -83,7 +83,7 @@ struct CommuteSettingsPage: View {
             Button("Entfernen", role: .destructive) { removeRoute() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Der Pendel-Modus wird ausgeschaltet und vergisst Strecke, Wochentage und Zeiten. Deine Fahrten bleiben.")
+            Text("Der Pendel-Modus wird ausgeschaltet und vergisst Strecke, Wochentage und Zeiten. Deine Fahrten bleiben. Die Übersicht fragt 30 Tage nicht nach dieser Strecke.")
         }
         .task(id: recentTrips.count) { detect() }
     }
@@ -163,7 +163,7 @@ struct CommuteSettingsPage: View {
             ForEach(Array(usable), id: \.pairKey) { guess in
                 Button { apply(guess) } label: {
                     choiceRow(title: "\(TripRow.short(guess.origin.name)) ⇄ \(TripRow.short(guess.destination.name))",
-                              subtitle: "\(guess.rides) Fahrten in \(guess.weeks) Wochen · \(CommutePlan(weekdays: guess.weekdays).dayText)",
+                              subtitle: "\(guess.trips) Fahrten in \(guess.weeks) Wochen · \(CommutePlan(weekdays: guess.weekdays).dayText)",
                               symbol: "sparkles", isSelected: isCurrent(guess.origin, guess.destination))
                 }
                 .buttonStyle(.plain)
@@ -262,7 +262,7 @@ struct CommuteSettingsPage: View {
         } header: {
             SetSectionHeader(title: "Wann du fährst")
         } footer: {
-            SetFooter(text: "Vor 13 Uhr zeigt die Karte die Hinfahrt, danach die Rückfahrt. Auf der Karte kannst du die Richtung jederzeit tauschen.")
+            SetFooter(text: "Die Karte zeigt die Fahrt, die als Nächste ansteht, und ab 45 Minuten davor die Züge. Auf der Karte kannst du die Richtung tauschen.")
         }
     }
 
@@ -298,7 +298,7 @@ struct CommuteSettingsPage: View {
         } header: {
             SetSectionHeader(title: "Erfassen")
         } footer: {
-            SetFooter(text: "Ohne „Hin und retour“ gilt die Richtung der Tageszeit. Im Formular kannst du vor dem Sichern alles ändern.")
+            SetFooter(text: "Ohne „Hin und retour“ gilt die Richtung der Tageszeit: vor 13 Uhr die Hinfahrt, danach die Rückfahrt. Im Formular kannst du vor dem Sichern alles ändern.")
         }
     }
 
@@ -337,7 +337,7 @@ struct CommuteSettingsPage: View {
         case nil: return ("an", true)
         case .consentUndecided: return ("noch nicht entschieden", false)
         case .declined: return ("aus (nur Offline-Daten)", false)
-        case .switchedOff: return ("Fahrplan live ist aus", false)
+        case .switchedOff: return (FeatureCenter.shared.offlineMode ? "Offline-Modus ist an" : "Fahrplan live ist aus", false)
         case .killSwitch: return ("gerade pausiert", false)
         case .offline: return ("offline", false)
         }
@@ -464,9 +464,12 @@ struct CommuteSettingsPage: View {
 
     private func removeRoute() {
         let declined = settings.declinedPairs
+        let removed = settings.origin.flatMap { origin in settings.destination.map { CommuteDetector.pairKey(origin, $0) } }
         model.store.reset()
-        // A „Nein“ on the invitation stays remembered.
+        // A „Nein“ on the invitation stays remembered – and the removed route counts as one: the Übersicht does not ask
+        // „Ist das dein Arbeitsweg?“ about it right after it was removed (30 days, like „Nein“).
         model.store.update { $0.declinedPairs = declined }
+        if let removed { model.store.decline(pairKey: removed) }
         model.settingsChanged()
         app.showToast("trash.fill", "Stammstrecke entfernt", "Der Pendel-Modus ist aus", haptic: .warning)
     }

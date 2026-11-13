@@ -58,10 +58,10 @@ struct CommuteCardSection: View {
         }
     }
 
-    /// The confident guess that was not declined in the last 30 days.
+    /// The confident guess that was not declined in the last 30 days, that the card could search (both ends are app stations)
+    /// and that is not the route the user already chose and switched off (asking again right after „aus“ would be a loop).
     private var invitation: CommuteGuess? {
-        guard let guess = model.guess, guess.confidence == .high, !model.settings.isDeclined(guess.pairKey, now: model.now()) else { return nil }
-        return guess
+        CommuteSetup.invitation(guess: model.guess, settings: model.settings, now: model.now())
     }
 
     /// Which face shows (the cross-fade between faces).

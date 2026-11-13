@@ -15,9 +15,9 @@ Einstellungsseite, Demo-Szenen).
 
 | Zustand | Wann | Was die Karte zeigt |
 |---|---|---|
-| 1. Einladung | Modus aus, der Erkenner ist sich **sicher** (§2), das Paar wurde nicht in den letzten 30 Tagen abgelehnt | „Ist das dein Arbeitsweg?“, Strecke, die Belege („34 Fahrten an 17 Tagen in 7 Wochen · Mo–Fr · meist 07:20 hin, 17:10 zurück“), „Ja, merken“ / „Nein“. „Nein“ hält 30 Tage still, der Toast bietet „Rückgängig“. |
-| 2. Kompakt | Modus an, außerhalb des Live-Fensters | „Nächste Pendelfahrt heute 17:12“ aus dem Plan, Strecke, „aktualisiert beim Öffnen“, runder „+“-Knopf (Fahrt erfassen). **Keine Abfrage.** |
-| 3. Live | Ab 45 Minuten vor einer geplanten Abfahrt bis 30 Minuten danach | Die nächsten drei Verbindungen: Zeit, Abzeichen („pünktlich“, „+2“, „+5“ bernstein ab 3, „+12“ rot ab 10, „Ausfall“ mit durchgestrichener Zeit, „Fahrplan“ ohne Echtzeit), Linie, Ziel, Ankunft, Umstiege, Gleis (ein geändertes Gleis ist getönt und trägt ein Tausch-Symbol). Darunter „Stand 07:31 · Echtzeit · aktualisiert beim Öffnen“. Oben ein großer Countdown zur frühesten Abfahrt, die noch fährt, und „Richtung tauschen“. |
+| 1. Einladung | Modus aus, der Erkenner ist sich **sicher** (§2), beide Enden sind App-Stationen, das Paar wurde nicht in den letzten 30 Tagen abgelehnt und ist nicht die gespeicherte Strecke eines ausgeschalteten Modus | „Ist das dein Arbeitsweg?“, Strecke, die Belege („34 Fahrten an 17 Tagen in 7 Wochen · Mo–Fr · meist 07:20 hin, 17:10 zurück“ – Fahrten gezählt wie in der Statistik, §2), „Ja, merken“ / „Nein“. „Nein“ hält 30 Tage still, der Toast bietet „Rückgängig“. „Stammstrecke entfernen“ zählt für diese Strecke wie ein „Nein“. |
+| 2. Kompakt | Modus an, außerhalb des Live-Fensters | „Nächste Pendelfahrt heute 17:12“ aus dem Plan, Strecke, wann die Züge kommen („Live ab 16:27“, „Live morgen ab 06:35“; ohne Live-Daten „laut Plan, ohne Live-Daten“), runder „+“-Knopf (Fahrt erfassen). **Keine Abfrage** – deshalb steht hier nicht „aktualisiert beim Öffnen“. |
+| 3. Live | Ab 45 Minuten vor einer geplanten Abfahrt bis 30 Minuten danach | Die nächsten drei Verbindungen: Zeit, Abzeichen („pünktlich“, „+2“, „+5“ bernstein ab 3, „+12“ rot ab 10, „Ausfall“ mit durchgestrichener Zeit, „Fahrplan“ ohne Echtzeit), Linie, Ziel, Ankunft, Umstiege, Gleis (ein geändertes Gleis ist getönt und trägt ein Tausch-Symbol). Darunter „Stand 07:31 · Echtzeit · aktualisiert beim Öffnen“. Oben ein großer Countdown zur frühesten Abfahrt, die noch fährt (liegt sie mehr als eine Minute zurück, bleibt sein Platz leer – kein „jetzt“ für eine halbe Stunde), und „Richtung tauschen“. |
 | 4. Störung | Die erste Verbindung fällt aus oder ist mindestens 10 Minuten spät | Rotes Band: „Dein Zug fällt aus – nächste Verbindung 07:42, Gleis 3“ bzw. „Dein Zug ist 12 Minuten verspätet – schneller: 07:27, Gleis 3“ (§5). Die genannte Verbindung trägt in der Liste „Alternative“. |
 
 Ohne Live-Daten (keine Zustimmung, abgelehnt, Schalter aus, Kill-Switch, offline) zeigt die Karte im Fenster den Plan
@@ -39,7 +39,10 @@ Bei Bedienungshilfen-Schriftgrößen stehen die vier Knöpfe untereinander, der 
 Rein, auf dem Gerät, ohne Speicher. Eingabe: die erfassten Fahrten der letzten **56 Tage**.
 
 - Beide Richtungen eines Paares zählen zusammen (Schlüssel: Stations-ID, sonst der normalisierte Name). Teilstrecken einer Reise
-  (`docs/JOURNEYS.md`) werden zu einer Fahrt vom ersten Start zum letzten Ziel. „Hin und retour“ zählt als zwei Fahrten.
+  (`docs/JOURNEYS.md`) werden zu einer Fahrt vom ersten Start zum letzten Ziel. Für die Regel unten zählt „Hin und retour“ als zwei
+  Fahrten. **Angezeigt** („34 Fahrten“ in Einladung und Vorschlag) wird dagegen die Zahl der erfassten Fahrten so, wie die Statistik
+  sie zählt (`JourneySummary.tripCount`: ein „Hin und retour“-Eintrag und eine Reise mit Etappen sind je eine Fahrt) – sonst nennt die
+  Einladung für dieselben Fahrten doppelt so viele wie die Statistik (`CommuteGuess.trips`, Linux-Test).
 - Ein Paar **qualifiziert** mit mindestens **6 Fahrten** in mindestens **3 verschiedenen Wochen** an mindestens **2 Wochentagen**.
 - **Sicher** (nur dann fragt die Übersicht) ist das meistgefahrene qualifizierte Paar, wenn es mindestens das **1,5-Fache** des
   Zweiten hat; sonst „mittel“ – das erscheint nur als Vorschlag in den Einstellungen.
@@ -57,8 +60,10 @@ Die Zahlen sind die des Plans, **nicht** an echten Verläufen abgestimmt (§9).
   Frühjahrsnacht (02:00–03:00 gibt es nicht) gilt die nächste existierende Zeit, im Herbst die erste.
 - Das Live-Fenster öffnet **45 Minuten** vor einer geplanten Abfahrt und bleibt **30 Minuten** danach offen. Überlappen zwei
   Fenster, gilt das mit der näheren Abfahrt. Ein Fenster über Mitternacht gehört zum Wochentag seiner Abfahrt.
-- Richtung: vor 13 Uhr die Hinfahrt, danach die Rückfahrt – liegen beide Planzeiten auf derselben Seite von 13 Uhr (Spät- oder
-  Nachtschicht), die zeitlich nähere. Auf der Karte lässt sich die Richtung für das laufende Fenster tauschen.
+- Die Karte zeigt die Fahrt, deren Fenster offen ist, sonst die nächste geplante Abfahrt (um 10 Uhr also schon die Rückfahrt um
+  17:12). Auf der Karte lässt sich die Richtung für das laufende Fenster tauschen.
+- „Fahrt erfassen“ und Siri nehmen die Richtung der Tageszeit: vor 13 Uhr die Hinfahrt, danach die Rückfahrt – liegen beide
+  Planzeiten auf derselben Seite von 13 Uhr (Spät- oder Nachtschicht), die zeitlich nähere.
 
 ## 4. Verbindungen (`CommuteStatus`, `CommuteSearch`)
 
@@ -84,7 +89,9 @@ Nur für die erste Verbindung. **Ausfall:** genannt wird die Verbindung derselbe
 - „Pendelfahrt in KlimaBilanz erfassen“ (`CommuteLogIntent`) erfasst die Stammstrecke für jetzt – hin und retour, wenn das gemerkt ist,
   sonst in der Richtung der Tageszeit. Wie die Schnellerfassung der Widgets wird die Anfrage zuerst vorgemerkt
   (`CommuteLogQueue`) und dann über das Repository gespeichert (ein Commit, Widgets, Sync): sofort, wenn die App ihren Speicher offen
-  hat, sonst beim nächsten Öffnen. Der Wert kommt aus derselben Tariflogik wie im Formular (`Repository.facts`).
+  hat, sonst beim nächsten Öffnen. Der Wert kommt aus derselben Tariflogik wie im Formular (`Repository.facts`); gespeichert wird über
+  `Repository.addCommuteTrips`. Zwei Abarbeitungen laufen nie gleichzeitig (Aktivierung der App und Siri zugleich): sonst würde jede
+  vorgemerkte Fahrt zweimal gespeichert.
 - Beide Sätze enthalten den App-Namen (Pflicht für App Shortcuts). Damit sind es 8 von 10 möglichen App Shortcuts.
 
 ## 7. Live-Daten und Rechtsrahmen
@@ -95,7 +102,12 @@ Nur für die erste Verbindung. **Ausfall:** genannt wird die Verbindung derselbe
   das ist `nil` ohne Zustimmung, mit ausgeschaltetem Fahrplan, Kill-Switch oder offline. `CommuteSearch.connections` wirft dann
   `consentRequired`, **bevor** irgendetwas passiert (nicht einmal die Stationssuche); ein Linux-Test prüft, dass dabei keine Anfrage
   entsteht. Die Anfrage selbst läuft durch den gemeinsamen HAFAS-Client und dessen `RequestThrottle` (40 Anfragen je Minute für die
-  ganze App, mindestens 0,3 s Abstand, ehrlicher User-Agent). Eine offene Karte kostet also höchstens 1 von 40 Anfragen je Minute.
+  ganze App, mindestens 0,3 s Abstand, ehrlicher User-Agent). Eine offene Karte kostet eine Suche je Minute; beim ersten Mal kommen bis
+  zu zwei Stationssuchen dazu (danach 30 Tage gemerkt). Findet die ÖBB-Auskunft eine der beiden Stationen nicht, fragt die Karte für
+  diese Strecke nicht mehr jede Minute, sondern sagt es einmal („Wähle sie in den Pendel-Einstellungen neu“). Gesperrt oder gedrosselt
+  (`blocked`, `rateLimited`) hält der gemeinsame Schutzschalter (`LiveHealth`) jede weitere Anfrage zurück.
+- Der **Offline-Modus** (Einstellungen › Funktionen) schaltet alles ab; Karte, Einstellungen und Siri nennen ihn als Grund statt
+  „Fahrplan live ist aus“.
 - Kein Hintergrundabruf, kein BGAppRefresh, keine Mitteilung, kein Widget-Cache. Der Standort wird nicht verwendet.
 - Die letzte Antwort liegt für Siri in den UserDefaults der App (`commute.snapshot.v1`), höchstens 15 Minuten wird sie vorgelesen.
 
@@ -150,9 +162,30 @@ Abfahrtstafel des Fahrplans für diese Station (alle Abfahrten, Ankünfte, ander
   Live-Daten wirft `StopBoardDepartures.load` `consentRequired`, bevor die Station gesucht wird (Linux-Test). Erst danach wird der
   Stations-Abgleich (`StationLinker`) und damit der Live-Client überhaupt angelegt. Eine Anfrage je Laden über die gemeinsame Drossel.
 - Ohne Zustimmung bietet der Abschnitt einmal „Abfahrten live sehen?“ an; abgelehnt oder „Fahrplan live“ aus: Der Abschnitt fehlt
-  ganz. Kill-Switch und offline: eine Zeile mit dem Grund.
+  ganz. Kill-Switch und offline: eine Zeile mit dem Grund. Findet die ÖBB-Suche die Haltestelle nicht, sagt der Abschnitt das einmal
+  („keine Abfahrtstafel“) und fragt für dieses Detail nicht weiter; lehnt nur die Tafel einen gemerkten Ort ab, wird er vergessen und
+  beim nächsten Laden neu gesucht.
 - **Abweichung vom Plan:** Der Plan wollte `StopDepartureProviding` (KlimaCore-Vertrag mit `StopDepartures` und Offline-`LineRef`s)
   umsetzen. Gebaut ist stattdessen eine Abfahrtstafel als `BoardRow`s (`StopBoardSnapshot`), weil Live-Linien sich nicht verlässlich
   auf die Offline-Linien abbilden lassen und die Zeilen so genau wie die Abfahrtstafel des Fahrplans aussehen. Der alte Vertrag bleibt
   unverändert und unbenutzt.
 - Nur auf dem iPhone prüfbar: echte Tafeln über iOS-`URLSession`, Meta-Stationen mit mehreren Haltepunkten, Steige an Busbahnhöfen.
+
+## 13. Review (November 2026)
+
+Ein zweiter Blick auf den fertigen Track hat gefunden und behoben:
+
+- Die Einladung und die Vorschläge nannten „Fahrten“ mit „Hin und retour“ doppelt gezählt – die Statistik zählt dieselben Einträge
+  einfach. Jetzt dieselbe Zahl wie in der Statistik (§2).
+- Nach „Pendel-Modus“ aus oder „Stammstrecke entfernen“ fragte die Übersicht sofort wieder „Ist das dein Arbeitsweg?“ für genau diese
+  Strecke. Jetzt nicht mehr (§1); eine Vermutung ohne App-Stationen wird gar nicht erst angeboten.
+- Die kompakte Karte sagte „aktualisiert beim Öffnen“, obwohl außerhalb des Fensters nichts abgefragt wird; jetzt „Live ab 16:27“.
+- Der Countdown zeigte nach der Abfahrt bis zu 30 Minuten „jetzt“; jetzt bleibt er leer.
+- Der Fußtext „Vor 13 Uhr zeigt die Karte die Hinfahrt“ stimmte nicht (die Karte zeigt die nächste Fahrt); die 13-Uhr-Regel gilt
+  für „Fahrt erfassen“ und Siri und steht jetzt dort.
+- Der Offline-Modus hieß auf der Karte „Fahrplan live ist ausgeschaltet“, und Siri riet, die App zu öffnen; beides nennt ihn jetzt.
+- Siri konnte bis zu 15 Minuten die Züge einer eben geänderten Strecke vorlesen; jede Änderung der Einstellungen verwirft die Antwort.
+- Gleichzeitige Abarbeitung der Siri-Warteschlange hätte Fahrten doppelt speichern können; sie läuft jetzt nacheinander.
+- Unbekannte Station oder Haltestelle: einmal sagen statt jede Minute neu suchen (§7, §12).
+- Die Linienzeichen der drei Zeilen beginnen jetzt auf einer Kante, egal wie breit das Abzeichen ist („pünktlich“ oder „+4“).
+- Symbol-Effekte von Störungsband und Einladung folgen „Bewegung reduzieren“.

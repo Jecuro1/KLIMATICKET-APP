@@ -12,6 +12,8 @@ enum DeparturesState: Equatable {
     case live(StopBoardSnapshot)
     case empty
     case failed
+    /// The ÖBB timetable does not know this stop (the station match found no candidate): asked once, not every minute.
+    case unknownStop
 }
 
 /// Feature flags of the stop detail.
@@ -34,6 +36,8 @@ final class StopDetailModel {
     /// MARK: commute – when the last board answer (or empty answer) arrived; the section asks at most once a minute.
     @ObservationIgnored private var lastDepartureFetch: Date?
     @ObservationIgnored private var isLoadingDepartures = false
+    /// MARK: commute – the stop has no ÖBB board (see `DeparturesState.unknownStop`): this detail stops asking.
+    @ObservationIgnored private var stopIsUnknown = false
 
     init(placeID: String) {
         self.placeID = placeID
@@ -65,7 +69,7 @@ final class StopDetailModel {
             departures = .unavailable(reason)
             return
         }
-        guard StopBoardDepartures.mayRefresh(lastFetch: lastDepartureFetch, now: Date()), !isLoadingDepartures else { return }
+        guard !stopIsUnknown, StopBoardDepartures.mayRefresh(lastFetch: lastDepartureFetch, now: Date()), !isLoadingDepartures else { return }
         isLoadingDepartures = true
         defer { isLoadingDepartures = false }
         switch departures {
@@ -80,6 +84,10 @@ final class StopDetailModel {
             if departures == .loading { departures = .unavailable(nil) }
         } catch let error as CommuteLiveError where error == .consentRequired {
             departures = .unavailable(live.timetableUnavailable)
+        } catch StopDepartureError.unknownStop {
+            // A stop the ÖBB search cannot match stays unmatched: asking every minute would only repeat the station search.
+            stopIsUnknown = true
+            withMotion(Motion.smooth) { departures = .unknownStop }
         } catch {
             // Older rows stay (their age line says how old); without rows the section says it failed.
             if case .live = departures { return }

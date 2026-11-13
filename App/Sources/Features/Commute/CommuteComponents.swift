@@ -22,7 +22,8 @@ struct CommuteRouteTitle: View {
 
 /// The minutes to the next departure as a big rolling number: „12 Min.“, „1:05 Std.“, „jetzt“. Next to the route at regular
 /// sizes (number over unit), on one baseline under it at accessibility sizes. The plan's time says so to VoiceOver; on screen
-/// the card's plan line says it.
+/// the card's plan line says it. A departure more than a minute ago is not counted at all (the window stays open 30 minutes
+/// after it, and „jetzt“ for half an hour would be wrong): the countdown then leaves its place empty.
 struct CommuteCountdown: View {
     var target: Date
     var now: Date
@@ -31,7 +32,19 @@ struct CommuteCountdown: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// Shown at all: the target is ahead or left less than a minute ago (`CommuteStatus.graceSeconds`).
+    static func isShown(target: Date, now: Date) -> Bool {
+        target.timeIntervalSince(now) >= -CommuteStatus.graceSeconds
+    }
+
     var body: some View {
+        if Self.isShown(target: target, now: now) {
+            counter
+        }
+    }
+
+    @ViewBuilder
+    private var counter: some View {
         let seconds = target.timeIntervalSince(now)
         let minutes = max(0, Int((seconds / 60).rounded(.down)))
         let layout = typeSize.isAccessibilitySize ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 6))
@@ -139,6 +152,9 @@ struct CommuteConnectionRow: View {
     var isFirst = false
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// One width for the time column of every row – the widest badge („pünktlich“) included – so the line plates of the three
+    /// rows start on one edge whatever the badge says.
+    @ScaledMetric(relativeTo: .caption) private var timeColumnWidth: CGFloat = 74
 
     var body: some View {
         let stacked = typeSize.isAccessibilitySize
@@ -154,7 +170,7 @@ struct CommuteConnectionRow: View {
                 }
             } else {
                 HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                    timeColumn.frame(minWidth: 66, alignment: .leading)
+                    timeColumn.frame(minWidth: timeColumnWidth, alignment: .leading)
                     lineColumn.frame(maxWidth: .infinity, alignment: .leading)
                     if let platform = row.platform, !row.isCancelled { platformBox(platform) }
                 }
@@ -267,7 +283,7 @@ struct CommuteDisruptionBanner: View {
             Image(systemName: advice.reason == .cancelled ? "xmark.octagon.fill" : "exclamationmark.triangle.fill")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Theme.negative)
-                .symbolEffect(.bounce, value: advice.affected.id)
+                .symbolBounce(on: advice.affected.id)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

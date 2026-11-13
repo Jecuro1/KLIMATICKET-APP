@@ -71,7 +71,9 @@ enum CommuteAnswer {
         }
         let consent = UserDefaults.standard.string(forKey: "liveConsent") ?? "undecided"
         let timetableOn = UserDefaults.standard.object(forKey: "liveTimetableEnabled") as? Bool ?? true
+        // The Offline-Modus (Einstellungen › Funktionen) switches every live request off: opening the app would not help.
+        let liveOn = consent == "granted" && timetableOn && !FeatureCenter.shared.offlineMode
         return CommuteSpeech.planned(slot: slot, origin: TripRow.short(origin.name), destination: TripRow.short(destination.name),
-                                     now: now, calendar: .vienna, hint: consent == "granted" && timetableOn ? .openApp : .liveOff)
+                                     now: now, calendar: .vienna, hint: liveOn ? .openApp : .liveOff)
     }
 }

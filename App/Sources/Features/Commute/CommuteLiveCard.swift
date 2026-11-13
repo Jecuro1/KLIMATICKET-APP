@@ -113,7 +113,9 @@ struct CommuteLiveCard: View {
         case .failed(.unavailable) where rows.isEmpty:
             CommuteNotice(symbol: "antenna.radiowaves.left.and.right.slash", text: "Live-Daten sind gerade nicht erreichbar.")
         case .failed(.failed) where rows.isEmpty:
-            CommuteNotice(symbol: "exclamationmark.icloud", text: "ÖBB-Auskunft gerade nicht erreichbar – versucht es in einer Minute wieder.")
+            CommuteNotice(symbol: "exclamationmark.icloud", text: "ÖBB-Auskunft gerade nicht erreichbar – neuer Versuch in einer Minute.")
+        case .failed(.unknownStation) where rows.isEmpty:
+            CommuteNotice(symbol: "questionmark.circle", text: "Die ÖBB-Auskunft findet eine deiner Stationen nicht. Wähle sie in den Pendel-Einstellungen neu.")
         case .failed(.offline) where rows.isEmpty:
             CommuteNotice(symbol: "wifi.slash", text: "Offline – laut Plan um \(CommutePlan.clockText(model.settings.plan.minute(for: direction))).")
         default:
@@ -219,7 +221,11 @@ struct CommutePlanBody: View {
     }
 
     static func reason(_ unavailable: LiveDataService.Unavailable) -> String {
-        switch unavailable {
+        // The Offline-Modus (Einstellungen › Funktionen) reports itself as „switched off“: name it, not „Fahrplan live“.
+        if unavailable == .switchedOff, FeatureCenter.shared.offlineMode {
+            return "Der Offline-Modus ist an – die Karte zeigt deinen Plan."
+        }
+        return switch unavailable {
         case .consentUndecided, .declined: "Live-Daten sind aus – die Karte zeigt deinen Plan. Einschalten kannst du sie unter Einstellungen › Live-Daten."
         case .switchedOff: "Fahrplan live ist ausgeschaltet – die Karte zeigt deinen Plan."
         case .killSwitch(let notice): notice ?? "Live-Daten sind gerade pausiert – die Karte zeigt deinen Plan."

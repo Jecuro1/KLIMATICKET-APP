@@ -14,6 +14,7 @@ struct CommuteInviteCard: View {
     var onDecline: () -> Void
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.m, tint: Theme.glacier) {
@@ -23,6 +24,7 @@ struct CommuteInviteCard: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Theme.accentText)
                         .symbolEffect(.pulse, options: .nonRepeating)
+                        .symbolEffectsRemoved(reduceMotion || MotionPolicy.isStatic)
                         .accessibilityHidden(true)
                     Kicker(text: "Pendel-Modus", color: Theme.accentText)
                 }
@@ -76,9 +78,10 @@ struct CommuteInviteCard: View {
         .controlSize(.large)
     }
 
-    /// „34 Fahrten an 17 Tagen in 7 Wochen · Mo–Fr · meist 07:20 hin, 17:10 zurück“.
+    /// „34 Fahrten an 17 Tagen in 7 Wochen · Mo–Fr · meist 07:20 hin, 17:10 zurück“ – the trips counted like Statistik counts
+    /// them (a „Hin und retour“ is one Fahrt), so the two never disagree about the same rides.
     private var evidence: String {
-        var parts = ["\(guess.rides) Fahrten an \(guess.days) Tagen in \(guess.weeks) Wochen"]
+        var parts = ["\(guess.trips) \(guess.trips == 1 ? "Fahrt" : "Fahrten") an \(guess.days) Tagen in \(guess.weeks) Wochen"]
         parts.append(CommutePlan(weekdays: guess.weekdays).dayText)
         if let out = guess.outboundMinute, let back = guess.returnMinute {
             parts.append("meist \(CommutePlan.clockText(out)) hin, \(CommutePlan.clockText(back)) zurück")
@@ -120,7 +123,7 @@ struct CommuteCompactCard: View {
                             .monospacedDigit()
                             .fixedSize(horizontal: false, vertical: true)
                         if let ends {
-                            Text("\(TripRow.short(ends.from.name)) → \(TripRow.short(ends.to.name)) · aktualisiert beim Öffnen")
+                            Text("\(TripRow.short(ends.from.name)) → \(TripRow.short(ends.to.name)) · \(liveNote)")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -148,6 +151,17 @@ struct CommuteCompactCard: View {
             Button("Rückfahrt planen") { actions.planReturn(shown: slot.direction, now: now) }
             Button("Pendel-Einstellungen") { model.showsSetup = true }
         }
+    }
+
+    /// Outside the window nothing is asked, so nothing is „updated“ by opening the app: the line says when the trains come –
+    /// „Live ab 16:27“, „Live morgen ab 06:35“, „Live Mo ab 06:35“ (45 minutes before the plan's departure) – or that the card
+    /// stays with the plan without live data.
+    private var liveNote: String {
+        guard model.liveUnavailable(app.live) == nil else { return "laut Plan, ohne Live-Daten" }
+        let opens = slot.departure.addingTimeInterval(-Double(CommuteWindow.leadMinutes * 60))
+        let clock = CommutePlan.clockText(CommuteWindow.minuteOfDay(opens, calendar: .vienna))
+        let day = CommuteWindow.dayText(opens, now: now, calendar: .vienna).split(separator: " ").first.map(String.init) ?? ""
+        return day == "heute" || day.isEmpty ? "Live ab \(clock)" : "Live \(day) ab \(clock)"
     }
 
     @ViewBuilder
