@@ -92,7 +92,7 @@ final class CockpitFeedTests: XCTestCase {
         XCTAssertEqual(scheduler.next(now: at(0)), .request(.position))
         XCTAssertEqual(scheduler.next(now: at(0.5)), .request(.details))
         // Both are on their way: nothing more until one answers or its interval is over.
-        XCTAssertEqual(scheduler.next(now: at(1)), .wait(until: at(0).addingTimeInterval(90)), "both are on their way: nothing before one answers or times out")
+        XCTAssertEqual(scheduler.next(now: at(1)), .wait(until: at(0).addingTimeInterval(150)), "both are on their way: nothing before one answers or times out")
     }
 
     func testThePositionComesEveryTwentySeconds() {
@@ -170,7 +170,8 @@ final class CockpitFeedTests: XCTestCase {
         scheduler.recordAnswer(.position, at: at(1))
         scheduler.recordAnswer(.details, at: at(1))
         XCTAssertEqual(scheduler.next(now: at(40), lost: true), .request(.position))
-        XCTAssertEqual(scheduler.next(now: at(46), lost: true), .request(.details), "45 s instead of 3 minutes")
+        XCTAssertNotEqual(scheduler.next(now: at(46), lost: true), .request(.details), "not within the 60 s the client keeps an answer")
+        XCTAssertEqual(scheduler.next(now: at(61), lost: true), .request(.details), "60 s instead of 3 minutes")
     }
 
     func testNothingIsAskedOnceTheRunHasEnded() {
@@ -183,9 +184,9 @@ final class CockpitFeedTests: XCTestCase {
         XCTAssertEqual(scheduler.next(now: at(0)), .request(.position))
         XCTAssertEqual(scheduler.next(now: at(0)), .request(.details))
         scheduler.recordAnswer(.details, at: at(1))
-        XCTAssertEqual(scheduler.next(now: at(30)), .wait(until: at(0).addingTimeInterval(90)), "the position is still on its way")
-        XCTAssertEqual(scheduler.next(now: at(89)), .wait(until: at(0).addingTimeInterval(90)))
-        XCTAssertEqual(scheduler.next(now: at(91)), .request(.position))
+        XCTAssertEqual(scheduler.next(now: at(30)), .wait(until: at(0).addingTimeInterval(150)), "the position is still on its way")
+        XCTAssertEqual(scheduler.next(now: at(149)), .wait(until: at(0).addingTimeInterval(150)))
+        XCTAssertEqual(scheduler.next(now: at(151)), .request(.position))
     }
 
     func testCancelledMeansDueAgain() {
@@ -437,5 +438,106 @@ final class CockpitFeedTests: XCTestCase {
         feed.tick(now: base.addingTimeInterval(41))
         XCTAssertEqual(feed.session.state, .ended)
         XCTAssertEqual(feed.frame(now: base.addingTimeInterval(42))?.summary?.phase, .arrived(stop: "Halt 2"))
+    }
+
+    // MARK: Review 2: old answers, the background, stale markers
+
+    func testACachedDetailsAnswerIsAsOldAsItsRequest() throws {
+        // The trip sheet loaded the details at +5 s (with the train's `pos`); the cockpit opens at +50 s and its first call gets the same answer
+        // out of the client's cache. It is applied with the time of its request, not with the time of the call.
+        var feed = CockpitFeed(vehicle: vehicle(lon: 15.50), seenAt: at(0), now: at(50))
+        var cached = details()
+        cached.currentPosition = F.point(15.505)
+        cached.fetchedAt = at(5)
+        feed.applyDetails(cached, at: try XCTUnwrap(cached.fetchedAt))
+        XCTAssertEqual(feed.session.lastPositionAt, at(0), "5 s after the radar's position: the radar's is used, the cached one is not a position of now")
+        // The fresh radar answer of the cockpit's first round is taken, not dropped as older than a position stamped a moment later.
+        feed.applyRadar(snapshot([vehicle(lon: 15.60)]), requestedAt: at(50))
+        let frame = try XCTUnwrap(feed.frame(now: at(100)))   // the marker is one interval (50 s) behind the latest answer
+        XCTAssertEqual(frame.coordinate.longitude, 15.60, accuracy: 1e-4)
+        XCTAssertEqual(frame.fixAge ?? -1, 50, accuracy: 1e-6)
+    }
+
+    func testTheSameCachedAnswerTwiceDoesNotKeepALostTrainAlive() throws {
+        var feed = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(0), details: details(), detailsAt: at(0))
+        var trip = details()
+        trip.currentPosition = F.point(15.52)
+        feed.applyDetails(trip, at: at(60))   // fresh: the radar has had no position for 60 s
+        XCTAssertEqual(feed.session.lastPositionAt, at(60))
+        feed.applyDetails(trip, at: at(60))   // the client's cached copy, 45 s later: the same time of request
+        feed.tick(now: at(60 + 120))
+        XCTAssertEqual(feed.session.state, .lost, "a cached copy is no new position")
+    }
+
+    func testAnOlderPositionNeverReplacesANewerOne() throws {
+        var feed = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(0), details: details(), detailsAt: at(0))
+        var trip = details()
+        trip.currentPosition = F.point(15.55)
+        feed.applyDetails(trip, at: at(61))
+        feed.applyRadar(snapshot([vehicle(lon: 15.54)]), requestedAt: at(60))   // asked a second earlier, arrived later
+        let frame = try XCTUnwrap(feed.frame(now: at(200)))
+        XCTAssertEqual(frame.coordinate.longitude, 15.55, accuracy: 1e-4)
+    }
+
+    func testBackFromTheBackgroundNearTheEndTheRunIsNotEndedBeforeAnAnswer() {
+        // The train was 2.2 km before its last stop when the app went to the background; five minutes later nothing has been asked.
+        let base = F.at(93)
+        var feed = CockpitFeed(vehicle: vehicle(lon: 16.97), seenAt: base, now: base, details: details(), detailsAt: base)
+        feed.pauseLostClock(at: base.addingTimeInterval(120))
+        feed.tick(now: base.addingTimeInterval(121))
+        XCTAssertNotEqual(feed.session.state, .ended, "time alone is no evidence that the train left the radar")
+        XCTAssertNotEqual(feed.session.state, .lost, "nothing was asked: not lost either")
+        XCTAssertTrue(try XCTUnwrap(feed.frame(now: base.addingTimeInterval(121))).isStale, "the marker is grey until the answer comes")
+        // The first answer does not list it: now it has been taken off the radar.
+        feed.applyRadar(snapshot([]), requestedAt: base.addingTimeInterval(122))
+        feed.tick(now: base.addingTimeInterval(123))
+        XCTAssertEqual(feed.session.state, .ended)
+    }
+
+    func testAMarkerOlderThanTwoMinutesIsStaleUntilTheNextAnswer() throws {
+        var feed = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(0), details: details(), detailsAt: at(0))
+        XCTAssertFalse(try XCTUnwrap(feed.frame(now: at(119))).isStale)
+        feed.pauseLostClock(at: at(300))
+        feed.tick(now: at(300))
+        let old = try XCTUnwrap(feed.frame(now: at(300)))
+        XCTAssertEqual(old.state, .following)
+        XCTAssertTrue(old.isStale, "five minutes old: where the train was, not where it is")
+        feed.applyRadar(snapshot([vehicle(lon: 15.6)]), requestedAt: at(301))
+        XCTAssertFalse(try XCTUnwrap(feed.frame(now: at(302))).isStale)
+    }
+
+    func testALostTrainIsStaleAndAnEndedRunIsNot() throws {
+        var lost = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(0), details: details(), detailsAt: at(0))
+        lost.applyRadar(snapshot([]), requestedAt: at(100))
+        lost.tick(now: at(121))
+        XCTAssertTrue(try XCTUnwrap(lost.frame(now: at(121))).isStale)
+        let base = F.at(94)
+        var ended = CockpitFeed(vehicle: vehicle(lon: 17.0), seenAt: base, now: base, details: details(), detailsAt: base)
+        ended.tick(now: base.addingTimeInterval(1))
+        XCTAssertEqual(ended.session.state, .ended)
+        XCTAssertFalse(try XCTUnwrap(ended.frame(now: base.addingTimeInterval(600))).isStale, "the banner says the run has ended")
+    }
+
+    func testLostDetailsComeOnceAMinuteFromTheAnswerNeverFromTheClientsCache() {
+        var scheduler = CockpitScheduler()
+        _ = scheduler.next(now: at(0)); _ = scheduler.next(now: at(0))
+        scheduler.recordAnswer(.position, at: at(0))
+        scheduler.recordAnswer(.details, at: at(1.5))   // reported with the time the answer came back
+        XCTAssertEqual(scheduler.next(now: at(30), lost: true), .request(.position))
+        scheduler.recordAnswer(.position, at: at(30))
+        XCTAssertEqual(scheduler.next(now: at(55), lost: true), .wait(until: at(60)))
+        XCTAssertEqual(scheduler.next(now: at(61.4), lost: true), .request(.position))
+        XCTAssertNotEqual(scheduler.next(now: at(61.4), lost: true), .request(.details), "the client keeps an answer for 60 s from its arrival")
+        XCTAssertEqual(scheduler.next(now: at(61.5), lost: true), .request(.details))
+    }
+
+    func testASlowRequestIsNotAskedASecondTimeWhileTheClientCanStillAnswer() {
+        var scheduler = CockpitScheduler()
+        XCTAssertEqual(scheduler.next(now: at(0)), .request(.position))
+        XCTAssertEqual(scheduler.next(now: at(0)), .request(.details))
+        scheduler.recordAnswer(.details, at: at(1))
+        // Two tries of up to 60 s, 1.5 s between them and the throttle: 131.5 s at the most.
+        XCTAssertEqual(scheduler.next(now: at(131.5)), .wait(until: at(150)))
+        XCTAssertEqual(scheduler.next(now: at(150)), .request(.position))
     }
 }

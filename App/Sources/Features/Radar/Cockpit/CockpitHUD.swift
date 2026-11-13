@@ -103,8 +103,8 @@ struct CockpitHUDCard: View {
                     .motionAnimation(Motion.number, value: CockpitText.clock(eta))
             }
             CockpitDelayChip(text: CockpitText.delayChip(seconds: summary.delaySeconds, state: summary.delayState), state: summary.delayState)
-            if summary.showsCountdown(now: hud.clock), let seconds = summary.secondsToArrival(now: hud.clock),
-               let countdown = CockpitText.countdown(seconds: seconds) {
+            // The countdown; "laut Fahrplan" when the time is the plan and the chip the delay of an earlier stop (`CockpitText.arrivalNote`).
+            if let countdown = CockpitText.arrivalNote(summary, now: hud.clock) {
                 Text(countdown)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textSecondary)
@@ -131,7 +131,7 @@ struct CockpitHUDCard: View {
     /// A train without a position for two minutes is grey on the bar as on the map: the dot marks where it was last seen, not a live place.
     private func progress(_ summary: CockpitSummary, hud: CockpitHUD) -> some View {
         CockpitProgressBar(progress: summary.progress, ticks: summary.stopTicks,
-                           tint: hud.state == .lost ? RadarDelayState.unknown.tint : summary.delayState.tint, glows: hud.state != .lost)
+                           tint: hud.isStale ? RadarDelayState.unknown.tint : summary.delayState.tint, glows: !hud.isStale)
             .accessibilityHidden(true)
     }
 

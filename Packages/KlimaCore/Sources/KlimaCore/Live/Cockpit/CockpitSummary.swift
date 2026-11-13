@@ -57,6 +57,13 @@ public struct CockpitSummary: Sendable, Equatable {
     /// Only the radar's four stops are known (the full run is on its way): the next stop and its time are right, the distance and the
     /// progress along the chain of four stops are not, so neither is shown nor spoken (`CockpitFeed.frame`).
     public var isProvisional = false
+    /// The next stop has no realtime of its own: `eta` is the planned time (nothing is predicted). With a delay carried on from an earlier
+    /// stop, "21:02 +7 min" would read as "arrives 21:02, seven minutes late" and a countdown to 21:02 would be wrong by those minutes; the
+    /// texts say "laut Fahrplan" and "zuletzt" instead (review 2, `CockpitText.arrivalNote`).
+    public var etaIsPlanned = false
+
+    /// The delay shown is the one of an earlier stop, and the time is the planned one.
+    public var delayIsCarried: Bool { etaIsPlanned && delaySeconds != nil && delayState != .cancelled }
 
     /// The wait after which a stop's time counts as passed: the countdown is hidden, not shown negative.
     static let overdueSeconds = 120.0
@@ -83,12 +90,14 @@ public struct CockpitSummary: Sendable, Equatable {
                             state: route.isCancelled ? .cancelled : CockpitRoute.state(forDelay: route.carriedDelay(at: stop.id)),
                             platform: stop.platform, distanceKm: max(stop.km - km, 0))
         }
-        return CockpitSummary(
+        var summary = CockpitSummary(
             phase: route.isCancelled ? .cancelled : phase, lineTitle: lineTitle, destination: destination,
             nextStop: next?.name, nextIsFinal: next.map { $0.id == route.endIndex } ?? false, platform: next?.platform, eta: next?.expected, plannedETA: next.flatMap { $0.plannedArrival ?? $0.plannedDeparture },
             delaySeconds: delay, delayState: state, distanceKm: next.map { max($0.km - km, 0) },
             progress: route.progress(atKm: km), stopTicks: route.stops.filter(\.isServed).map { route.fraction(of: $0) },
             speed: speed, fixAge: fixAge, upcoming: flags, isStraightLine: route.isStraightLine)
+        summary.etaIsPlanned = next.map { $0.ownDelay == nil } ?? false
+        return summary
     }
 
     /// Seconds until the expected arrival: nil without one. Negative once it has passed.
@@ -96,9 +105,10 @@ public struct CockpitSummary: Sendable, Equatable {
         eta.map { $0.timeIntervalSince(now) }
     }
 
-    /// The countdown is shown: there is an arrival, and it has not been past for long.
+    /// The countdown is shown: there is an arrival, and it has not been past for long. Not to a planned time while the train is known to be
+    /// late: that count would be short by the delay.
     public func showsCountdown(now: Date) -> Bool {
-        guard let seconds = secondsToArrival(now: now) else { return false }
+        guard !delayIsCarried, let seconds = secondsToArrival(now: now) else { return false }
         return seconds > -Self.overdueSeconds
     }
 }

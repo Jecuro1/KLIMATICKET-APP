@@ -4,9 +4,11 @@ import Foundation
 // which camera mode is on (follow, bird, free), whether the train is live, lost or its run has ended. The app feeds it the answers of the
 // refresh loop and the user's touches; the views read `state`.
 //
-//   waiting ──answer with position──▶ live ──no position for 2 min──▶ lost ──answer with position──▶ live
+//   waiting ──answer with position──▶ live ──no position for 2 min of asking──▶ lost ──answer with position──▶ live
 //   live / lost / waiting ──final stop reached, or the schedule is over by a margin──▶ ended (final)
 //   camera: follow ⇄ bird; any user move of the map → free; "Zurück zum Zug" → the mode before free.
+// The two minutes count only while the cockpit asks (review 2): time in the background, in Low Power Mode or without live data is no sign that
+// the train has gone, and "Keine Verbindung zu ÖBB" would be untrue then.
 
 public struct CockpitSession: Sendable, Equatable {
     /// Whether the train's position is arriving.
@@ -53,10 +55,16 @@ public struct CockpitSession: Sendable, Equatable {
     public private(set) var lastPositionAt: Date?
     /// The last answer of any kind (the train may not have been in it).
     public private(set) var lastAnswerAt: Date?
+    /// The last answer that did not list the train at all (the radar's box without it, JourneyDetails without a position): the evidence that
+    /// a train near the end of its run has been taken off the radar.
+    public private(set) var lastMissingAt: Date?
+    /// Since when the cockpit has been asking without a break: the clock of "lost" starts here at the earliest (`pauseLostClock`).
+    public private(set) var askingSince: Date
 
     public init(startedAt: Date, mode: CockpitCameraMode = .follow, config: Config = Config()) {
         self.config = config
         self.startedAt = startedAt
+        self.askingSince = startedAt
         self.mode = mode
         if mode.isDriven { drivenMode = mode }
     }
@@ -103,14 +111,23 @@ public struct CockpitSession: Sendable, Equatable {
     // MARK: Link
 
     /// An answer arrived. `hasPosition`: the train was in it. An answer without the train does not make it live, and it does not end a lost
-    /// state; it only shows that the service is reachable.
-    public mutating func answer(at now: Date, hasPosition: Bool) {
+    /// state; it only shows that the service is reachable. `listsTrain`: the answer knows the train even though the cockpit did not take
+    /// its position (JourneyDetails while the radar's position is fresher); default: `hasPosition`.
+    public mutating func answer(at now: Date, hasPosition: Bool, listsTrain: Bool? = nil) {
         guard link != .ended else { return }
         lastAnswerAt = max(lastAnswerAt ?? now, now)
         if hasPosition {
             lastPositionAt = max(lastPositionAt ?? now, now)
             link = .live
         }
+        if !(listsTrain ?? hasPosition) { lastMissingAt = max(lastMissingAt ?? now, now) }
+    }
+
+    /// The cockpit does not ask right now, or starts asking again: in the background (the loop ends with the scene), in Low Power Mode, without
+    /// live data. The time until `now` does not count towards "lost": two minutes without a position start again from here. A train that is
+    /// already lost stays lost until a position comes.
+    public mutating func pauseLostClock(at now: Date) {
+        askingSince = max(askingSince, now)
     }
 
     /// The clock moved on. `atLastStop`: the train stands at the last stop of its run. `scheduleEnd`: when it is due there (with its delay).
@@ -124,7 +141,7 @@ public struct CockpitSession: Sendable, Equatable {
             link = .ended
             return
         }
-        let since = lastPositionAt ?? startedAt
+        let since = max(lastPositionAt ?? startedAt, askingSince)
         if now.timeIntervalSince(since) >= config.lostAfter, link != .lost {
             link = .lost
         }

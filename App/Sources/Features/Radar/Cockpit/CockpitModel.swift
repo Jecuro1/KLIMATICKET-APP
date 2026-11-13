@@ -72,6 +72,8 @@ struct CockpitHUD: Equatable {
     var clock = Date()
     /// Only the radar's four stops are known: the progress is not shown.
     var isProvisional = true
+    /// The marker shows where the train was, not where it is (`CockpitFrame.isStale`): grey, without glow.
+    var isStale = false
     var isStraightLine = false
     var isCancelled = false
     var banner: Banner?
@@ -146,8 +148,10 @@ final class CockpitModel {
         switch launch.scenario {
         case .live, .ended:
             let first = launch.earlier.first
+            // The trip sheet's details are as old as their request (`TripDetails.fetchedAt`; the sheet keeps them five minutes), not as new
+            // as the radar's answer.
             feed = CockpitFeed(vehicle: first?.vehicle ?? launch.vehicle, seenAt: first?.at ?? launch.seenAt, now: now, mode: launch.mode,
-                               details: launch.details, detailsAt: launch.seenAt)
+                               details: launch.details, detailsAt: launch.details?.fetchedAt ?? launch.seenAt)
             if first != nil {
                 for sighting in launch.earlier.dropFirst() { feed.applyRadar(RadarSnapshot(vehicles: [sighting.vehicle]), requestedAt: sighting.at) }
                 feed.applyRadar(RadarSnapshot(vehicles: [launch.vehicle]), requestedAt: launch.seenAt)
@@ -244,12 +248,16 @@ final class CockpitModel {
 
     // MARK: The loop
 
-    /// The one loop of the cockpit, owned by the view: leaving the cockpit cancels it and every request on its way, and each gives its slot back.
-    /// A discarding group: a finished request is gone at once (a plain task group keeps every finished child until it is awaited, about 200 an
-    /// hour here).
+    /// The one loop of the cockpit, owned by the view: leaving the cockpit or the foreground cancels it and every request on its way. A cancelled
+    /// request is due again in the cockpit's own schedule; its slot of the radar's budget stays used (it may have reached the server), as on the
+    /// radar. A discarding group: a finished request is gone at once (a plain task group keeps every finished child until it is awaited, about 200
+    /// an hour here).
     func run() async {
         var last = clock()
         var lastSecond = Date.distantPast
+        // Back from the background (or just opened): nothing was asked in the meantime, so that time is no sign that the train has gone. The
+        // marker is grey while its position is older than two minutes (`CockpitFrame.isStale`), and the position is asked at once.
+        feed.pauseLostClock(at: last)
         await withDiscardingTaskGroup { group in
             while !Task.isCancelled {
                 let now = clock()
@@ -274,10 +282,14 @@ final class CockpitModel {
     }
 
     private func sendDueRequests(now: Date, into group: inout DiscardingTaskGroup) {
-        guard services.radar != nil || services.trip != nil else { return }
-        guard feed.session.state != .ended, now >= holdRequestsUntil else { return }
-        // Low Power Mode pauses the requests, as it does on the radar; "Jetzt aktualisieren" sends one round anyway.
-        if lowPower && !manualRefresh { return }
+        guard feed.session.state != .ended else { return }
+        // No live data, or Low Power Mode (it pauses the requests, as it does on the radar; "Jetzt aktualisieren" sends one round anyway): the
+        // cockpit does not ask, so the time does not count towards "Keine Position mehr" (that banner would say "Keine Verbindung zu ÖBB").
+        guard services.radar != nil || services.trip != nil, !(lowPower && !manualRefresh) else {
+            feed.pauseLostClock(at: now)
+            return
+        }
+        guard now >= holdRequestsUntil else { return }
         let lost = feed.session.state == .lost
         switch scheduler.next(now: now, lost: lost, ended: false) {
         case .request(let kind):
@@ -306,8 +318,11 @@ final class CockpitModel {
                 guard let trip = services.trip else { scheduler.recordCancelled(.details); return }
                 let details = try await trip(feed.tripID)
                 RadarRouteCache.shared.store(details)
-                feed.applyDetails(details, at: requestedAt)
-                scheduler.recordAnswer(.details, at: requestedAt)
+                // The answer is as old as its request: the client hands out the same answer for 60 s (`TripDetails.fetchedAt`), and its
+                // position must not count as one of now.
+                feed.applyDetails(details, at: min(details.fetchedAt ?? requestedAt, requestedAt))
+                // The next one counts from the answer, so it is never the client's cached copy of this one.
+                scheduler.recordAnswer(.details, at: clock())
             }
             answers += 1
             lastError = nil
@@ -362,6 +377,7 @@ final class CockpitModel {
         next.offersReturn = feed.session.offersReturn
         next.clock = now
         next.isProvisional = frame?.isProvisional ?? true
+        next.isStale = frame?.isStale ?? false
         // Straight lines only once the whole run is there: before it, with the radar's four stops, no line is drawn at all.
         next.isStraightLine = frame?.isProvisional == false && frame?.route?.isStraightLine == true
         next.isCancelled = frame?.isCancelled ?? false
@@ -423,15 +439,25 @@ final class CockpitModel {
 }
 
 extension CockpitModel.Services {
-    /// The live cockpit: the radar and the timetable through the gate (consent, switch, kill switch), the radar's budget from the radar view below.
+    /// The live cockpit: the radar and the timetable through the gate (consent, switch, kill switch, connection), the radar's budget from the radar
+    /// view below. Consent and the switches are decided once: they cannot change while the cockpit covers the app, and a kill switch that arrives
+    /// with a new remote config reaches the client itself, which then sends nothing (`LiveError.disabled`). The connection is asked again before
+    /// every request: opened offline, the cockpit asked nothing ever again, even once the connection was back (review 2).
     @MainActor static func live(_ app: AppState, budget: RadarModel?) -> Self {
         var services = CockpitModel.Services()
-        if let reason = app.live.timetableUnavailable {
+        if let reason = app.live.timetableUnavailable, reason != .offline {
             services.unavailable = Self.text(for: reason)
             return services
         }
-        if let radar = app.live.radar { services.radar = { try await radar.radar($0) } }
-        if let timetable = app.live.timetable { services.trip = { try await timetable.trip($0, includePolyline: true) } }
+        let live = app.live
+        services.radar = { query in
+            guard let radar = await live.radar else { throw await Self.closed(live) }
+            return try await radar.radar(query)
+        }
+        services.trip = { tripID in
+            guard let timetable = await live.timetable else { throw await Self.closed(live) }
+            return try await timetable.trip(tripID, includePolyline: true)
+        }
         if !app.live.isDemo, let budget {
             // Without the radar's model there is no budget to ask: wait (nil would mean "taken, send now").
             services.claim = { [weak budget] now in
@@ -441,6 +467,11 @@ extension CockpitModel.Services {
             services.pause = { [weak budget] time in budget?.pauseRadar(until: time) }
         }
         return services
+    }
+
+    /// Why the gate is shut for this request: offline (backs off and comes back), else live data is off (`LiveError.disabled`: a long pause).
+    @MainActor private static func closed(_ live: LiveDataService) -> LiveError {
+        live.timetableUnavailable == .offline ? .offline : .disabled(.oebbHafas)
     }
 
     private static func text(for reason: LiveDataService.Unavailable) -> String {

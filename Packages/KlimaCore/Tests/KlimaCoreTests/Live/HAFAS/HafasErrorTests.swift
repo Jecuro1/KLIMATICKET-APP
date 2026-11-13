@@ -289,6 +289,25 @@ final class HafasErrorTests: XCTestCase {
         XCTAssertTrue(clock.sleeps.allSatisfy { $0 <= 0.3 + 1e-5 }, "\(clock.sleeps)")
     }
 
+    /// Cockpit review 2: an answer out of the 60 s cache keeps the time of its request, so the cockpit does not take its `pos` as one of now.
+    func testTripDetailsCarryTheTimeOfTheirRequestAlsoFromTheCache() async throws {
+        let clock = FakeClock(Self.start)
+        let t = FixtureTransport(routes: [
+            .init(urlSuffix: Self.gate, bodyContains: "\"JourneyDetails\"", response: try Fixture.hafasResponse("journeydetails_rjx133_koralm_polyline")),
+        ])
+        let (client, _) = HafasClient.testClient(t, clock: clock)
+        let first = try await client.trip("jid", includePolyline: true)
+        XCTAssertEqual(first.fetchedAt, Self.start)
+        clock.advance(45)
+        let cached = try await client.trip("jid", includePolyline: true)
+        XCTAssertEqual(t.recorded.count, 1, "the same answer out of the cache")
+        XCTAssertEqual(cached.fetchedAt, Self.start, "45 s old, not new")
+        clock.advance(20)
+        let fresh = try await client.trip("jid", includePolyline: true)
+        XCTAssertEqual(t.recorded.count, 2)
+        XCTAssertEqual(fresh.fetchedAt, Self.start.addingTimeInterval(65))
+    }
+
     func testRefreshBatchAndOtherMethodsDecode() async throws {
         let t = FixtureTransport(routes: [
             .init(urlSuffix: Self.gate, bodyContains: "\"Reconstruction\"", response: try Fixture.hafasResponse("reconstruction_innsbruck_lech_outReconL")),

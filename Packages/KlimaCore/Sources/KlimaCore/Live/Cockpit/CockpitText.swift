@@ -103,6 +103,14 @@ public enum CockpitText {
 
     public static func spokenAge(_ seconds: TimeInterval) -> String { "Stand \(RadarStatusText.spokenAge(seconds))" }
 
+    /// Next to the arrival, where the countdown stands: the countdown, or "laut Fahrplan" when the time is the planned one and the delay next to
+    /// it was reported at an earlier stop (a countdown to the planned time would be short by the delay). nil: nothing.
+    public static func arrivalNote(_ summary: CockpitSummary, now: Date) -> String? {
+        if summary.delayIsCarried { return "laut Fahrplan" }
+        guard summary.showsCountdown(now: now), let seconds = summary.secondsToArrival(now: now) else { return nil }
+        return countdown(seconds: seconds)
+    }
+
     // MARK: Phase
 
     /// The line under the big stop name: what the train is doing.
@@ -190,7 +198,10 @@ public enum CockpitText {
             if let platform = summary.platform { line += ", \(platform.spoken)" }
             parts.append(line)
             if let eta = summary.eta {
-                var arrival = "Ankunft \(clock(eta)) Uhr, \(spokenDelay(seconds: summary.delaySeconds, state: summary.delayState))"
+                // A planned time says so; a delay from an earlier stop is "zuletzt" (the last one reported), not the delay at this stop.
+                let when = summary.etaIsPlanned ? "Ankunft laut Fahrplan" : "Ankunft"
+                let delay = spokenDelay(seconds: summary.delaySeconds, state: summary.delayState)
+                var arrival = "\(when) \(clock(eta)) Uhr, \(summary.delayIsCarried ? "zuletzt \(delay)" : delay)"
                 if summary.showsCountdown(now: now), let seconds = summary.secondsToArrival(now: now), let spoken = spokenCountdown(seconds: seconds) {
                     arrival += ", \(spoken)"
                 }
@@ -219,10 +230,11 @@ public enum CockpitText {
         guard let next = summary.nextStop else { return line }
         var text = "\(line): nächster Halt \(next)"
         if let eta = summary.eta {
-            text += ", Ankunft \(clock(eta))"
+            // "Ankunft 21:06 (+4 min)" is the expected time with its delay; without a realtime for this stop the time is the plan and says so.
+            text += summary.etaIsPlanned ? ", Ankunft laut Fahrplan \(clock(eta))" : ", Ankunft \(clock(eta))"
             if summary.delayState != .unknown, summary.delayState != .cancelled {
                 let chip = delayChip(seconds: summary.delaySeconds, state: summary.delayState)
-                text += " (\(chip))"
+                text += summary.delayIsCarried ? " (zuletzt \(chip))" : " (\(chip))"
             }
         }
         return text + ". Live verfolgt mit KlimaBilanz."

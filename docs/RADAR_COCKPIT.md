@@ -67,6 +67,9 @@ AX5 ganz darunter.)
 
 - „Nächster Halt“ (oder „Ziel“) groß, das Gleis daneben („Gl. 4“, orange umrandet bei Gleiswechsel). Am Ziel: „Ziel erreicht“ über dem Namen des Halts (`CockpitText.headline`).
 - Die Ankunftszeit groß, daneben der Verspätungs-Chip (`pünktlich`, `+4 min`, `−2 min`, `Fällt aus`, `Keine Echtzeit`) und der Countdown („in 12 Min“, „gleich“). Ziffern rollen.
+  Hat der nächste Halt **keine eigene Echtzeit**, ist die Zeit die Planzeit. Trägt der Chip dann die Verspätung eines früheren Halts („+7 min“), steht statt des Countdowns
+  „laut Fahrplan“ (ein Countdown zur Planzeit wäre um die Verspätung zu kurz), VoiceOver sagt „Ankunft laut Fahrplan 21:02 Uhr, zuletzt 7 Minuten verspätet“, „Teilen“ schreibt
+  „Ankunft laut Fahrplan 21:02 (zuletzt +7 min)“ (`CockpitSummary.delayIsCarried`, `CockpitText.arrivalNote`, Review 2). Sonst heißt „21:06 (+4 min)“ immer: erwartet um 21:06, vier Minuten später als geplant.
 - Eine Zeile Phase unter dem nächsten Halt: „Unterwegs“, „Hält in X · weiter um 14:07“, „Steht in X · Abfahrt 14:05“, „Dieser Zug fällt aus“. Ohne nächsten Halt steht die Phase
   groß und die Zeile entfällt (keine Wiederholung derselben Wörter, `CockpitText.subline`).
 - Der Fortschritt der **ganzen** Fahrt als Leiste: gefüllt bis zum Zug, ein Strich für jeden Halt, an dem der Zug hält, der Zug als leuchtender Punkt.
@@ -83,15 +86,21 @@ AX5 ganz darunter.)
 **Zustände** (`CockpitSession`, getestet):
 
 ```
-wartet ──Antwort mit Position──▶ live ──2 Minuten ohne Position──▶ verloren ──Antwort mit Position──▶ live
+wartet ──Antwort mit Position──▶ live ──2 Minuten Fragen ohne Position──▶ verloren ──Antwort mit Position──▶ live
 wartet / live / verloren ──Zug am letzten Halt, oder Fahrplan seit 5 Minuten zu Ende──▶ beendet (endgültig)
 Kamera: Verfolgen ⇄ Vogelperspektive; Finger auf der Karte → Frei; „Zurück zum Zug“ → die Ansicht davor
 ```
 
 - **Keine Position mehr** (verloren): die Marke bleibt, wo sie war, grau und ohne Schein (der Ort, an dem der Zug zuletzt war, keine Live-Position), ebenso der Punkt auf der Fortschritts-Leiste, ein Banner sagt, warum („Die Auskunft meldet den Zug gerade nicht“, wenn Antworten kommen, oder „Keine Verbindung zu ÖBB“,
-  wenn nichts mehr kommt) und seit wann, mit „Erneut versuchen“. Die Anfragen laufen langsamer weiter (alle 30 s), der Zug kann wiederkommen.
+  wenn nichts mehr kommt) und seit wann, mit „Erneut versuchen“. Die Anfragen laufen langsamer weiter (alle 30 s), der Zug kann wiederkommen. Die zwei Minuten zählen nur,
+  solange das Cockpit fragt (`CockpitSession.pauseLostClock`, Review 2): Zeit im Hintergrund, im Stromspar-Modus oder ohne Live-Daten ist kein Zeichen, dass der Zug fehlt, und
+  „Keine Verbindung zu ÖBB“ wäre dann falsch.
+- **Alte Position** (Review 2): Ist die letzte Position älter als zwei Minuten, ohne dass der Zug verloren ist (zurück aus dem Hintergrund, Stromspar-Modus, ohne Live-Daten),
+  ist die Marke ebenso grau und ohne Schein, „Stand vor 5 Min“ steht im Panel, und die Position wird sofort gefragt; mit der Antwort bekommt die Marke ihre Farbe zurück
+  (`CockpitFrame.isStale`). Am Ende der Fahrt bleibt sie farbig: Dort sagt das Banner, was los ist.
 - **Fahrt beendet**: Der Zug steht am letzten Halt, oder er fehlt seit 45 s im Radar, war zuletzt in den letzten 6 km seiner Fahrt und die Ankunftszeit am Ziel steht in höchstens zwei Minuten an oder ist
-  schon erreicht (ein angekommener Zug wird aus dem Radar genommen). **Letzter Halt** ist der letzte, an dem der Zug hält (`CockpitRoute.endIndex`): Sind die letzten Halte abgesagt
+  schon erreicht (ein angekommener Zug wird aus dem Radar genommen). „Fehlt“ heißt: Eine Antwort nach seiner letzten Position hat ihn nicht genannt (`CockpitSession.lastMissingAt`). Die Zeit allein
+  reicht nicht (Review 2: Zurück aus dem Hintergrund nach fünf Minuten war die Fahrt sonst endgültig beendet, bevor überhaupt gefragt war). **Letzter Halt** ist der letzte, an dem der Zug hält (`CockpitRoute.endIndex`): Sind die letzten Halte abgesagt
   („Zug endet in Linz“), endet die Fahrt dort. Dieser Halt ist dann „Ziel“, der Fortschritt endet bei ihm, und die abgesagten Halte danach sind nur eine rote Linie, nie „nächster Halt“.
   (Review 1: Vorher war der abgesagte letzte Halt „Ziel“ mit Ankunftszeit und Verspätung, und ein Zug, der am vorgezogenen Endhalt stand, „hielt“ dort und ging nach zwei Minuten verloren.) Banner „Fahrt beendet · Der Zug hat X erreicht“ mit „Schließen“, keine Anfragen mehr. Der Punkt des Halts unter der Marke wird nicht gezeichnet (MapKit
   ordnet Annotationen selbst und legte ihn in einem Screenshot über den Zug); das gilt für jeden Halt, an dem der Zug steht oder gerade vorbeifährt. Ein Zug, der mitten auf der Strecke verschwindet, ist **nicht** beendet, sondern verloren.
@@ -133,7 +142,8 @@ Was daraus folgt:
 
 1. **Die Polylinie ist da und passt.** Alle 13 Halte liegen auf ihr (`CockpitRoute` lag sie ohne Luftlinie darüber; Länge des Linienzugs 123,1 km = Länge der Fahrt von Halt 1 bis 13). Die Position aus Antwort 1 lag **0 m** neben ihr:
    Der Server legt die berechnete Position auf die Strecke. Deshalb setzt die App die Marke bei höchstens 300 m Abstand auf die Linie (nur Darstellung) und rechnet den Kilometer der Fahrt aus der Projektion.
-2. **`JourneyDetails` hat eine eigene Position (`pos`).** Sie wird nur benutzt, wenn der Radar den Zug länger als 40 s nicht gemeldet hat (zwei Quellen für denselben Moment ließen die Marke hin- und herspringen).
+2. **`JourneyDetails` hat eine eigene Position (`pos`).** Sie wird nur benutzt, wenn der Radar den Zug länger als 40 s nicht gemeldet hat (zwei Quellen für denselben Moment ließen die Marke hin- und herspringen),
+   und sie gilt für die Zeit ihrer **Anfrage** (`TripDetails.fetchedAt`): Der Client gibt dieselbe Antwort 60 s lang aus seinem Zwischenspeicher, auch an das Cockpit, das kurz nach dem Fahrt-Blatt fragt (Review 2).
    Ob `pos` und die Radar-Position zur selben Zeit gleich sind, ist **nicht** gemessen.
 3. **Der kleine Kasten ist billig.** 3 160 Byte statt 18 429 Byte für `JourneyDetails` (und statt 82 920 Byte für den Korridor). Der Filter auf die eigene Produktklasse lässt andere Züge im Kasten weg
    (im Kasten fuhr nur dieser eine Zug der Klasse; in der ersten Antwort war es derselbe). Die Radar-Antwort bringt dazu die Halte mit den frischesten Verspätungen: vier von vier mit Echtzeit.
@@ -150,13 +160,32 @@ läuft er wieder an). An seiner Stelle fragt das Cockpit **einen** Zug:
 | Anfrage | Wann | Was | Größe (Messung) |
 |---|---|---|---|
 | Radar, kleiner Kasten | alle 20 s (verloren: 30 s) | Kasten ±5 km um den Zug (breiter, je älter die Position und je schneller der Zug, höchstens ±30 km), nur seine Produktklasse: Position und die vier Halte mit Verspätung | 3 160 Byte |
-| `JourneyDetails` | sofort, dann alle 3 Minuten (verloren: 45 s) | alle Halte mit Echtzeit, Polylinie, `pos` | 18 429 Byte |
+| `JourneyDetails` | sofort, dann 3 Minuten nach der Antwort (verloren: 60 s) | alle Halte mit Echtzeit, Polylinie, `pos` | 18 429 Byte |
 
 - **Budget:** Beide gehen durch **dasselbe Budget wie der Radar** (`RadarScheduler.claimSlot`: höchstens 24 je Minute, 4 in 10 s, nie zwei innerhalb einer Sekunde). Das Cockpit braucht rund **3,3 Anfragen je Minute**
-  (3 Positionen + 0,33 `JourneyDetails`); der Rest des Budgets bleibt frei. Ein Limit (429) oder ein offener Schutzschalter pausiert Cockpit und Radar zusammen.
-- **Datenmenge:** rund 3 × 60 × 3,2 KB + 20 × 18,4 KB = **0,9 MB je Stunde** (entpackt, nicht auf der Leitung gemessen). Der ganze Österreich-Radar holt 1,8 MB alle 20 s.
+  (3 Positionen + 0,33 `JourneyDetails`), verloren 3 (2 Positionen + 1 `JourneyDetails`); der Rest des Budgets bleibt frei. Ein Limit (429) oder ein offener Schutzschalter pausiert Cockpit und Radar zusammen.
+  Die eine Wiederholung des Clients nach einem Timeout oder einem 502/503/504 (`HafasClient`, nach 1,5 s) zählt **nicht** in diesen 24, aber in den 40 je Minute der ganzen App (`RequestThrottle`): im
+  schlimmsten Fall also 6,7 Anfragen je Minute auf der Leitung. Was keine Geste mehr Anfragen macht (Review 2, im Code nachgesehen): Öffnen und Schließen in schneller Folge (jedes Cockpit fragt durch das Budget
+  des Radar-Modells darunter, das über `RadarBudgetLedger` auch Schließen und Öffnen des Radars überdauert), Wechsel der Kamera (keine Anfrage), Hintergrund und Vordergrund in schneller Folge (eine abgebrochene
+  Anfrage ist im Plan des Cockpits wieder fällig, ihr Platz im Budget bleibt verbraucht, sie kann den Server erreicht haben), „Erneut versuchen“ und „Jetzt aktualisieren“ in Serie (eine Anfrage je Antwort,
+  durch das Budget), zwei Cockpits (der Vollbild-Deckel hat Platz für eines). Ein Treffer im 60-s-Zwischenspeicher des Clients (`JourneyDetails`) braucht einen Platz im Budget, aber keine Anfrage.
+- **Datenmenge** (entpackt; `/gate` packt nach §R11.1 von `docs/OEBB_LIVE.md` nicht, auf der Leitung ist es also etwa gleich viel, für diese Antworten aber nicht einzeln gemessen):
+  - **Normal:** 3 × 3,2 KB + 0,33 × 18,4 KB ≈ **16 KB je Minute**, rund **0,9 MB je Stunde** (3 × 60 × 3,2 KB + 20 × 18,4 KB). Gemessen ist eine Antwort mit einem Fahrzeug.
+  - **Schlimmster Fall (Rechnung, keine Messung):** Der Kasten wächst mit dem Alter der Position bis ±30 km (60 × 60 km, nach etwa 5 bis 6 Minuten ohne Position, wenn auch `JourneyDetails` keine
+    bringt) und nennt alle Fahrzeuge der eigenen Klasse; hat die Linie keine Klasse, alle Schienenfahrzeuge. Ein solcher Kasten um Wien enthält höchstens so viele Züge wie das ganze Achtel Wien und Umland
+    (78 × 145 km, rund 155 Schienenfahrzeuge, gerechnet in §R11.1 von `docs/OEBB_LIVE.md`), bei etwa 2 KB je Fahrzeug also höchstens rund **300 KB je Antwort**; verloren alle 30 s: **höchstens rund
+    0,6 MB je Minute** plus 18 KB `JourneyDetails`. Beim Verfolgen ist der Kasten höchstens rund 13 × 13 km (300 km/h, Position 40 s alt), ein kleiner Teil davon. Zum Vergleich: Der ganze Österreich-Radar
+    holt 1,8 MB alle 20 s (5,4 MB je Minute), und er steht, solange das Cockpit offen ist.
 - **Einwilligung und Schalter:** Ohne Einwilligung, mit ausgeschalteten Live-Daten oder gesetztem Kill-Switch gibt es keine Anfrage (`LiveDataService.radar`/`timetable` sind dann nil); die Ansicht sagt es („Live-Daten sind aus …“).
-  Stromspar-Modus: keine Anfragen, ein Banner mit „Jetzt aktualisieren“. Nichts läuft im Hintergrund: Verlässt die App den Vordergrund, endet die Schleife.
+  Diese drei entscheiden beim Öffnen; ein Kill-Switch, der danach mit der Fern-Konfiguration kommt, erreicht den Client selbst (`LiveError.disabled`, ohne Anfrage). Die **Verbindung** wird vor jeder Anfrage
+  neu gefragt (`CockpitModel.Services.live`, Review 2): Offline geöffnet, fragte das Cockpit vorher nie wieder, auch wenn die Verbindung zurückkam. Jetzt scheitert die Anfrage ohne Netz sofort,
+  weicht aus (15 s, 30 s, 60 s, 2 Minuten) und kommt mit der Verbindung wieder; „Erneut versuchen“ fragt sofort.
+  Stromspar-Modus: keine Anfragen, ein Banner mit „Jetzt aktualisieren“. Nichts läuft im Hintergrund: Verlässt die App den Vordergrund (auch nur kurz, etwa für das Kontrollzentrum), endet die
+  Schleife mit allen Anfragen, und die Karte bekommt keine Kamera mehr. Zurück im Vordergrund ist die Position nach mehr als zwei Minuten grau und wird sofort gefragt, einmal, durch das Budget.
+- **Langsames Netz:** Eine Anfrage wartet höchstens 20 s auf Daten (`timeout` des HAFAS-Profils, die Zeit zwischen zwei Datenpaketen, nicht die ganze Antwort), höchstens 60 s im Ganzen; danach versucht es
+  der Client einmal nach 1,5 s. Die gemessenen 21 s gehören zur Antwort für ganz Österreich (1,8 MB, §R11.1); die Antworten des Cockpits sind 3 bis 18 KB und kamen in 0,2 s. Solange eine Anfrage unterwegs ist,
+  fragt das Cockpit dieselbe Art nicht noch einmal, bis 150 s (länger als der Client im schlimmsten Fall braucht: 131,5 s; vorher 90 s, dann fragte es eine langsame Antwort doppelt). Schlägt sie fehl, weicht es aus;
+  nach zwei Minuten ohne Position sagt das Banner „Keine Verbindung zu ÖBB“.
 - **Antworten zwischen zwei Antworten.** Die Marke läuft **nicht** der Uhr nach, sondern `RadarEstimate` (§R7): Sie zeigt den Zug um das Intervall zwischen den letzten zwei Antworten (mindestens 20 s) zurück und
   bewegt ihn linear von der vorigen zur letzten Position, danach steht sie. Nichts wird vorhergesagt. Daraus folgt: die Marke hinkt der Wirklichkeit um 20 bis 40 s hinterher; „Stand vor X s“ im Panel ist das Alter der
   letzten Antwort, nicht der Marke. Die Marke wird auf die Strecke gesetzt (bei höchstens 300 m Abstand), die Zahlen im Panel (Entfernung, Fortschritt) gehören zur Marke.
@@ -172,7 +201,8 @@ erreicht und die Abfahrt noch nicht erreicht ist (am ersten Halt: bis zur Abfahr
 
 **Ankunft und Verspätung.** Ankunft = Echtzeit, sonst die Planzeit (nichts wird vorhergesagt). Verspätung = die gemeldete des nächsten Halts, sonst die des letzten Halts davor mit Meldung (Verspätungen laufen die Fahrt entlang weiter, wie im Radar, `RadarDelay.currentDelay`),
 sonst keine („Keine Echtzeit“, grau). **5 Minuten und mehr** sind „spät“ (orange), die Regel des Radars (`RadarDelay.lateThresholdSeconds`). Der Chip zeigt die Zahl in Minuten (gerundet), grün bis 4 Minuten.
-Der Countdown entfällt, wenn die Ankunftszeit mehr als zwei Minuten zurückliegt (dann stimmen Zeit und Position nicht mehr zusammen; die Zeit bleibt stehen). Die Entfernung ist die Strecke entlang der Linie.
+Der Countdown entfällt, wenn die Ankunftszeit mehr als zwei Minuten zurückliegt (dann stimmen Zeit und Position nicht mehr zusammen; die Zeit bleibt stehen), und wenn die Zeit die Planzeit ist,
+die Verspätung aber von einem früheren Halt kommt: Dann steht dort „laut Fahrplan“ (§1). Die Entfernung ist die Strecke entlang der Linie.
 
 **Zusammenführen.** Der Radar liefert die vier Halte (Start, zuletzt verlassen, nächster, Ziel) mit den frischesten Verspätungen alle 20 s, `JourneyDetails` alle Halte alle drei Minuten. Ein Ereignis des Radars ersetzt das der Details, wenn
 es für dieselbe Planzeit eine Echtzeit oder eine Absage hat; eine Antwort ohne Echtzeit löscht nie eine Verspätung (`CockpitMerge`). Bis `JourneyDetails` da ist, zeigt das Panel den nächsten Halt und seine Zeit (aus den vier Halten); Strecke und
@@ -182,7 +212,8 @@ Fortschritt erscheinen erst mit der vollen Fahrt, weil der Fortschritt mit vier 
 350 km/h verwirft die Schätzung; ein Halt (unter 2 km/h) zeigt „steht“, und nach einem Halt beginnt die nächste Schätzung neu; ist die letzte Antwort älter als 90 s, ist sie unbekannt. In beiden Fällen zeigt das Panel nichts.
 
 **Anfrage-Kasten und Zeitplan** (`CockpitRequestPlan`, `CockpitScheduler`). Der Kasten ist mindestens 10 × 10 km (der Zug schafft in 20 s bei 250 km/h 1,4 km), wächst mit Alter und Geschwindigkeit und wird auf die Marke und die letzte Antwort
-aufgespannt. Der Zeitplan fragt die Position zuerst, dann die Details; Fehler weichen aus (15 s, 30 s, … bis 2 Minuten), ein hängendes Anfrage-Fenster wird nach 90 s frei, ein Abbruch macht die Anfrage sofort wieder fällig.
+aufgespannt. Der Zeitplan fragt die Position zuerst, dann die Details; Fehler weichen aus (15 s, 30 s, … bis 2 Minuten), ein hängendes Anfrage-Fenster wird nach 150 s frei, ein Abbruch macht die Anfrage sofort wieder fällig.
+Die nächsten Details zählen ab der Antwort, nicht ab der Anfrage: So ist die nächste nie die Kopie aus dem 60-s-Zwischenspeicher des Clients (verloren alle 60 s; vorher 45 s ab der Anfrage, und jede zweite war diese Kopie).
 
 ## 5. Gestaltung
 
@@ -193,12 +224,15 @@ Panel und Banner: `frostedCard` (Inhalt, `DESIGN.md` §2; beim Banner läuft die
 
 ## 6. Tests, Demo, CI
 
-- **Linux-Tests** (`Tests/KlimaCoreTests/Live/Cockpit/`, 139 Fälle): Winkel, Linienzug (Länge, Punkt, Richtung um die Ecke, Projektion im Fenster bei einer Haarnadel, Ausschnitt), Strecke (Halte auf der Polylinie, Luftlinie, Lage:
+- **Linux-Tests** (`Tests/KlimaCoreTests/Live/Cockpit/`, 152 Fälle): Winkel, Linienzug (Länge, Punkt, Richtung um die Ecke, Projektion im Fenster bei einer Haarnadel, Ausschnitt), Strecke (Halte auf der Polylinie, Luftlinie, Lage:
   vor Abfahrt, zwischen, hält, im Anflug, angekommen, nicht bediente Halte, Färbung, Fortschritt), Kamera (Abstand und Neigung nach Geschwindigkeit, Blickpunkt voraus, Ziel je Ansicht, Reduce Motion, Richtung ohne Strecke,
   Regler: kein Peitschen an der Kurve, kurze Seite über Norden, Konvergenz, Schwenk statt Sprung), Geschwindigkeit (zwei Antworten, Glättung, Halt, Neustart, alt, Lücke, Sprung, doppelte und ältere Antwort, Streckenkilometer), Zustandsautomat
   (verloren nach 2 Minuten, zurück, Grund, beendet, endgültig, frei und zurück), Zahlen und Texte (Verspätungsregeln, Countdown, Entfernung, VoiceOver-Satz, Teilen-Text ohne Koordinaten, große Zeile und Zeile darunter ohne Wiederholung), Zusammenführen, Kasten, Zeitplan (Takt, Budget von 3 bis 3,7 je Minute,
   Ausweichen, Pause, Abbruch, Rückkehr), Feed (Marke zwischen zwei Antworten mit dem Nachlauf des Radars, Geschwindigkeit, Verspätung bis in die Zusammenfassung, ältere Antworten, Ende, Verschwinden nahe dem Ziel oder mitten auf der Strecke),
   Review 1: ein Zug, der vorzeitig endet (Ziel, Fortschritt, Ende am letzten bedienten Halt, rote Linie danach, Halt für den Wecker), die vorläufige Zusammenfassung ohne Entfernung und Prozent.
+  Review 2 (13 neue Fälle, §8): Hintergrund und Stromspar-Modus machen den Zug nicht „verloren“, eine Pause beendet „verloren“ nicht, eine Antwort, die den Zug kennt, ist kein Beleg für sein Verschwinden,
+  eine Antwort aus dem Zwischenspeicher gilt für die Zeit ihrer Anfrage, eine ältere Position ersetzt nie eine neuere, zurück aus dem Hintergrund nahe dem Ziel endet die Fahrt erst nach einer Antwort,
+  graue Marke ab zwei Minuten, Details verloren alle 60 s ab der Antwort, keine doppelte langsame Anfrage, „laut Fahrplan“ und „zuletzt“. Dazu in `HafasErrorTests`: `fetchedAt` auch aus dem Zwischenspeicher.
 - **Live-Test** (`RadarCockpitLiveTests`, nicht in der CI): §2.
 - **Szenen** (`-KBScreenshot <name> -KBDemo YES`, ein erfundener Zug auf einer erfundenen Strecke zwischen Wien und Salzburg, Zeiten relativ zu „jetzt“, kein Netz): `radarCockpit` (Verfolgen), `radarCockpitBird`, `radarCockpitFree`
   (mit „Zurück zum Zug“), `radarCockpitAX5`, `radarCockpitEnded`, `radarCockpitLost`, `radarCockpitLostAX5` (verloren bei der größten Schrift: Banner und Panel teilen sich den Bildschirm). Die fahrenden Szenen beginnen mit drei Antworten im Abstand von 20 s (wie das Cockpit nach
@@ -220,3 +254,47 @@ Panel und Banner: `frostedCard` (Inhalt, `DESIGN.md` §2; beim Banner läuft die
 - Ein Finger auf der Karte, während die Kamera fährt: wird die Ansicht sofort „Frei“, ohne dass die Kamera einen Schritt zurückspringt?
 - Neigung und Gelände (`elevation: .realistic`) bei 1,5 bis 8,5 km Abstand; Akku und Wärme nach 20 Minuten Verfolgen.
 - VoiceOver: wird der Satz des Panels höflich aktualisiert, ohne zu stören, und ist die Aktion „Woher die Zahlen kommen“ erreichbar? Reduce Motion: feste Ansicht von oben, keine Bewegung.
+
+## 8. Review 2: Zugang, Budget, Datenmenge, Ehrlichkeit, Akku
+
+Review 2 hat den Code und diese Datei mit einem anderen Blick gelesen als Review 1: Kommt jede Anfrage durch die Einwilligung, den Kill-Switch und das Budget, kann eine Geste das Budget sprengen,
+wie viele Daten fließen, ist jede Zahl und jedes Wort im Cockpit wahr, und läuft etwas, wenn niemand hinschaut. Keine neue Live-Anfrage; die Zahlen in §2 sind gegen das Protokoll des Live-Tests
+geprüft (alle gleich: 82 920 / 18 429 / 3 160 Byte, 1 629 / 198 / 239 ms, 31 Fahrzeuge, 13 Halte mit Echtzeit, 617 Punkte, 123,1 km, 0 m, 3,9 s, 130 m, 120 und 113 km/h, 28 s und 3 s). Im Repository liegen keine
+Fahrzeugdaten: Die Tests und die Demo nutzen erfundene Züge.
+
+**In Ordnung, ohne Änderung:** Jede Anfrage geht durch `LiveDataService` (Einwilligung, Schalter, Kill-Switch) und zusätzlich durch die wirksame Konfiguration des Clients (`LiveError.disabled` ohne Anfrage);
+jede durch einen Platz im Budget des Radars (24 je Minute, 4 in 10 s, eine je Sekunde) und durch `RequestThrottle` (40 je Minute für die App); ein Limit oder ein offener Schutzschalter pausiert Cockpit und Radar;
+ehrlicher User-Agent des Clients; keine Koordinaten und keine Fahrt-ID im Teilen-Text; „geschätzt“ hinter jeder Geschwindigkeit, „keine GPS-Ortung“ im Info-Text; „Keine Echtzeit“ statt „pünktlich“ ohne Meldung.
+Akku: die Schleife hängt an `.task(id: scenePhase == .active)` und endet mit dem Vordergrund, die Marke atmet nur über `ContinuousMotionReader` (nur sichtbar, nie im Stromspar-Modus); kein Timer, kein Display-Link,
+keine `TimelineView`.
+
+**Gefunden und behoben** (Tests in §6):
+
+1. **Eine Antwort aus dem Zwischenspeicher galt als Position von jetzt.** `HafasClient` gibt `JourneyDetails` 60 s lang aus seinem Zwischenspeicher. Das Cockpit fragt beim Öffnen sofort danach, meist wenige
+   Sekunden nach dem Fahrt-Blatt, und bekam dessen Antwort. Es stempelte sie mit der Zeit des Aufrufs: War die Radar-Position älter als 40 s, nahm es die `pos` der alten Antwort als Position von jetzt,
+   „Stand vor 0 s“ war um bis zu eine Minute falsch, die Geschwindigkeit zu klein, und die frische Radar-Antwort derselben Runde wurde als „älter“ verworfen. Verloren fragte es alle 45 s, jede zweite Antwort
+   war diese Kopie, und sie hielt einen verlorenen Zug „live“. Jetzt trägt `TripDetails.fetchedAt` die Zeit der Anfrage, auch aus dem Zwischenspeicher; das Cockpit stempelt damit, zählt die nächsten Details ab der
+   Antwort (verloren alle 60 s), und eine ältere Position ersetzt nie eine neuere.
+2. **Zeit ohne Fragen machte den Zug „verloren“ und beendete Fahrten.** Zurück aus dem Hintergrund nach Minuten (oder nach zwei Minuten Stromspar-Modus) stand sofort „Keine Position mehr · Keine Verbindung
+   zu ÖBB“, obwohl nichts gefragt war, und ein Zug, der zuletzt nahe am Ziel war, galt als angekommen, endgültig, vor der ersten neuen Antwort. Jetzt zählen die zwei Minuten nur, solange das Cockpit fragt,
+   „angekommen nach Verschwinden“ braucht eine Antwort ohne den Zug, und eine Position älter als zwei Minuten ist grau, bis die Antwort kommt (einmal, sofort, durch das Budget).
+3. **Offline geöffnet, fragte das Cockpit nie wieder.** Die Dienste wurden beim Öffnen festgelegt; ohne Verbindung gab es keine, auch nicht, wenn sie zurückkam. Jetzt wird die Verbindung vor jeder Anfrage gefragt.
+4. **Eine langsame Anfrage wurde nach 90 s doppelt gestellt**, obwohl der Client bis 131,5 s antworten kann. Jetzt 150 s, wie beim Radar.
+5. **Eine Planzeit mit der Verspätung eines früheren Halts** stand da wie eine erwartete Zeit („21:02 +7 min · in 15 Min“, der Zug kommt aber um etwa 21:09). Jetzt „laut Fahrplan“ statt des Countdowns,
+   „zuletzt“ in VoiceOver und im Teilen-Text, „Ankunft laut Fahrplan“ auch ohne jede Echtzeit.
+6. **Doku:** Datenmenge je Minute im Normal- und im schlimmsten Fall, Leitung gegen entpackt, die Wiederholung des Clients, langsames Netz, was keine Geste mehr Anfragen macht (§3).
+
+**Nicht geändert, mit Grund:** Der Kasten wächst verloren bis ±30 km (§3, schlimmster Fall rund 0,6 MB je Minute bei Wien): Er findet einen Zug wieder, dessen `JourneyDetails` keine Position bringt, und bleibt weit
+unter dem Radar, der in dieser Zeit steht. Die Schleife läuft auch bei stehendem Zug 20-mal je Sekunde (Stromspar-Modus 8-mal); sie rechnet dann nur die Lage, die Karte bekommt keine neue Kamera (Review 1).
+Ein Wechsel der Verbindung weckt das Cockpit nicht sofort: Nach dem Ausweichen (bis 2 Minuten) oder mit „Erneut versuchen“ fragt es wieder.
+
+**Auf dem iPhone prüfen** (zusätzlich zu §7):
+
+- Anfragen je Minute: Die App zeigt keine Zählung an. Belegt sind die Grenzen (24 und 40 je Minute) durch Tests und Code; auf dem Gerät nur mit einem Werkzeug am Mac (Xcode-Instrument „Network“
+  oder ein Proxy): 10 Minuten Cockpit, erwartet etwa 3 bis 4 Anfragen je Minute an `fahrplan.oebb.at`, nie mehr als 24; mit „Live verfolgen“ zusammen unter 40.
+- Mobilfunk-Datenverbrauch der App (iOS Einstellungen › Mobilfunk) vor und nach 30 Minuten Cockpit: Die Anfragen an ÖBB sind rund 0,5 MB (§3, auf der Leitung nicht gemessen). Die Karte lädt ihre
+  Kacheln und das Gelände über MapKit selbst; das zählt mit und ist bei der schrägen 3D-Karte wahrscheinlich viel mehr (nicht gemessen).
+- Cockpit offen, App 5 Minuten in den Hintergrund, zurück: Marke grau mit „Stand vor 5 Min“, nach etwa einer Sekunde farbig an der neuen Stelle; kein Banner „Keine Position mehr“ dazwischen.
+- Stromspar-Modus an, 3 Minuten warten: Banner „Stromspar-Modus“, Marke grau, kein „Keine Verbindung zu ÖBB“; „Jetzt aktualisieren“ holt genau eine Position.
+- Flugmodus an, Cockpit aus dem Radar öffnen, Flugmodus aus: spätestens nach 2 Minuten (oder sofort mit „Erneut versuchen“) bewegt sich der Zug wieder.
+- Akku und Wärme: 20 Minuten Verfolgen am Akku, danach 20 Minuten Cockpit im Hintergrund: im Hintergrund kein Verbrauch durch die App (iOS Einstellungen › Batterie).

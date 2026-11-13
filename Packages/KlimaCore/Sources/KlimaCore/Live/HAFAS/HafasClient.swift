@@ -117,8 +117,11 @@ public actor HafasClient: TimetableService, RadarService, TrainSearchService {
         try ensureEnabled()
         let key = "\(tripID)|\(includePolyline)"
         if let hit = tripCache.value(for: key, now: clock()) { return hit }
+        // The time of the request travels with the answer, also out of the cache (`TripDetails.fetchedAt`).
+        let askedAt = clock()
         let data = try await send([HafasRequests.journeyDetails(tripID, includePolyline: includePolyline)])
-        let trip = try HafasCodec.trip(from: data)
+        var trip = try HafasCodec.trip(from: data)
+        trip.fetchedAt = askedAt
         tripCache.insert(trip, for: key, now: clock())
         return trip
     }

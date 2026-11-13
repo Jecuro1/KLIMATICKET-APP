@@ -507,10 +507,14 @@ public struct TripDetails: Codable, Sendable, Hashable {
     public var isCancelled: Bool
     public var isPartiallyCancelled: Bool
     public var realtimeUpdatedAt: Date?
+    /// When this answer was asked for (`HafasClient` sets it before the request goes out). The client keeps an answer for 60 s: a second call
+    /// within that time gets the same answer with the same time, so a caller can tell an older answer from a fresh one (the Cockpit-Ansicht must
+    /// not take the `currentPosition` of a cached answer as a position of now, docs/RADAR_COCKPIT.md §8). nil: not from the network (demo, tests).
+    public var fetchedAt: Date?
 
     public init(tripID: String, line: Line? = nil, direction: String? = nil, stopovers: [Stopover] = [], polyline: [GeoPoint]? = nil,
                 currentPosition: GeoPoint? = nil, remarks: [Remark] = [], isCancelled: Bool = false, isPartiallyCancelled: Bool = false,
-                realtimeUpdatedAt: Date? = nil) {
+                realtimeUpdatedAt: Date? = nil, fetchedAt: Date? = nil) {
         self.tripID = tripID
         self.line = line
         self.direction = direction
@@ -521,6 +525,7 @@ public struct TripDetails: Codable, Sendable, Hashable {
         self.isCancelled = isCancelled
         self.isPartiallyCancelled = isPartiallyCancelled
         self.realtimeUpdatedAt = realtimeUpdatedAt
+        self.fetchedAt = fetchedAt
     }
 }
 

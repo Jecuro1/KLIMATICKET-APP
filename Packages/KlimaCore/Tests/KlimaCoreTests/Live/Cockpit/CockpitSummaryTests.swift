@@ -56,6 +56,33 @@ final class CockpitSummaryTests: XCTestCase {
         XCTAssertEqual(s.delaySeconds, 420, "no report for C: the 7 minutes of B carry on")
         XCTAssertEqual(s.delayState, .late)
         XCTAssertEqual(s.eta, F.at(62), "the time stays the planned one: nothing is predicted")
+        // Review 2: "21:02 +7 min" with a countdown to 21:02 would be a train that arrives at 21:02 seven minutes late, in 15 minutes. The
+        // time is the plan and the delay the last one reported: said so, and no countdown that is short by seven minutes.
+        XCTAssertTrue(s.etaIsPlanned)
+        XCTAssertTrue(s.delayIsCarried)
+        XCTAssertFalse(s.showsCountdown(now: F.at(47)))
+        XCTAssertEqual(CockpitText.arrivalNote(s, now: F.at(47)), "laut Fahrplan")
+        XCTAssertTrue(CockpitText.spoken(s, now: F.at(47)).contains("Ankunft laut Fahrplan 21:02 Uhr, zuletzt 7 Minuten verspätet."),
+                      CockpitText.spoken(s, now: F.at(47)))
+        XCTAssertEqual(CockpitText.share(s), "RJX 66 nach Ziel: nächster Halt Halt 2, Ankunft laut Fahrplan 21:02 (zuletzt +7 min). Live verfolgt mit KlimaBilanz.")
+    }
+
+    func testARealtimeArrivalHasItsCountdownAndNoPlanNote() {
+        var stops = F.fourStops()
+        stops[2].arrDelay = 4
+        stops[2].depDelay = 4
+        let route = F.route(stops)
+        let s = summary(route, km: between(route, 1, 2), now: F.at(47))
+        XCTAssertFalse(s.etaIsPlanned)
+        XCTAssertFalse(s.delayIsCarried)
+        XCTAssertEqual(CockpitText.arrivalNote(s, now: F.at(47)), "in 19 Min")
+        // Without any realtime the chip says "Keine Echtzeit" and the countdown to the planned time stays: nothing claims a delay.
+        let plain = F.route()
+        let p = summary(plain, km: between(plain, 1, 2), now: F.at(47))
+        XCTAssertTrue(p.etaIsPlanned)
+        XCTAssertFalse(p.delayIsCarried)
+        XCTAssertEqual(CockpitText.arrivalNote(p, now: F.at(47)), "in 15 Min")
+        XCTAssertTrue(CockpitText.spoken(p, now: F.at(47)).contains("Ankunft laut Fahrplan 21:02 Uhr, ohne Echtzeit-Daten, in 15 Minuten"))
     }
 
     func testNoRealtimeIsUnknown() {
@@ -265,7 +292,8 @@ final class CockpitSummaryTests: XCTestCase {
     func testSharedTextWithoutRealtimeSaysNothingAboutTheDelay() {
         let route = F.route()
         let text = CockpitText.share(summary(route, km: between(route, 1, 2), now: F.at(47)))
-        XCTAssertEqual(text, "RJX 66 nach Ziel: nächster Halt Halt 2, Ankunft 21:02. Live verfolgt mit KlimaBilanz.")
+        XCTAssertEqual(text, "RJX 66 nach Ziel: nächster Halt Halt 2, Ankunft laut Fahrplan 21:02. Live verfolgt mit KlimaBilanz.",
+                       "without a realtime the time is the plan, and the text says so")
     }
 
     func testHonestyNotes() {

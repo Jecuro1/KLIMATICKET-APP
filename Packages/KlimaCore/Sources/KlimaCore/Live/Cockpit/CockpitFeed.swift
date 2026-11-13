@@ -84,12 +84,16 @@ public struct CockpitScheduler: Sendable {
         /// While the train is lost: slower, the train may come back.
         public var lostInterval: TimeInterval = 30
         public var detailsInterval: TimeInterval = 180
-        /// While the train is lost: JourneyDetails carries its position too, so it is asked more often.
-        public var lostDetailsInterval: TimeInterval = 45
+        /// While the train is lost: JourneyDetails carries its position too, so it is asked more often. Counted from the answer (the caller
+        /// reports it with the time it came back), and not shorter than the client keeps an answer (`HafasClient`, 60 s): at 45 s every
+        /// second request was the same answer out of that cache, a slot of the budget for nothing (review 2).
+        public var lostDetailsInterval: TimeInterval = 60
         public var baseBackoff: TimeInterval = 15
         public var maxBackoff: TimeInterval = 120
-        /// A request that never reported back frees its slot after this long.
-        public var requestTimeout: TimeInterval = 90
+        /// A request that never reported back frees its slot after this long: longer than the client can take for one request (two tries of
+        /// at most 60 s, 1.5 s between them, up to 5 s in the throttle before each: 131.5 s), as on the radar (`RadarSchedulerConfig`). At 90 s
+        /// a slow answer that was still loading was asked a second time (review 2).
+        public var requestTimeout: TimeInterval = 150
 
         public init() {}
     }
@@ -233,6 +237,9 @@ public struct CockpitFrame: Sendable {
     public var fixAge: TimeInterval?
     public var state: CockpitSession.State
     public var isCancelled: Bool
+    /// The marker shows where the train was, not where it is: lost, or a position older than two minutes on a run that has not ended
+    /// (back from the background, in Low Power Mode, without live data). Drawn grey and without glow until a fresh answer comes.
+    public var isStale: Bool
 }
 
 /// Where the train is drawn, and which way it points.
@@ -292,6 +299,9 @@ public struct CockpitFeed: Sendable {
     /// An answer of JourneyDetails: every stop, the polyline, and (measured, docs/RADAR_COCKPIT.md §2) the train's own position `pos`. That
     /// position is used only when the radar has not given one for a while (the train was not in its box): two sources for the same
     /// moment would make the marker step back and forth.
+    /// `at` is the time the answer was asked for (`TripDetails.fetchedAt`), not the time it arrived: the client hands out an answer it already
+    /// has for 60 s, and its position is as old as that answer (review 2: stamped with the time of the call, a cached position from the trip sheet
+    /// replaced the radar's fresh one, and "Stand vor 0 s" was wrong by up to a minute).
     public mutating func applyDetails(_ trip: TripDetails, at: Date) {
         // The answer is for the trip that was asked for, whatever form its id comes back in.
         if let known = detailsAt, at < known { return }
@@ -300,13 +310,14 @@ public struct CockpitFeed: Sendable {
         line = trip.line ?? line
         direction = trip.direction ?? direction
         rebuild()
-        if let position = trip.currentPosition, CockpitGeo.isUsable(position),
-           session.lastPositionAt.map({ at.timeIntervalSince($0) > Self.detailsPositionAfter }) ?? true {
+        let usable = trip.currentPosition.flatMap { CockpitGeo.isUsable($0) ? $0 : nil }
+        if let position = usable, session.lastPositionAt.map({ at.timeIntervalSince($0) > Self.detailsPositionAfter }) ?? true {
             ingestPosition(RadarVehicle(tripID: tripID, line: line, direction: direction, coordinate: position, stopovers: radarStops,
                                         isCancelled: radarCancelled || trip.isCancelled), at: at)
             session.answer(at: at, hasPosition: true)
         } else {
-            session.answer(at: at, hasPosition: false)
+            // A position the cockpit does not take (the radar's is fresher) still says that the train is running.
+            session.answer(at: at, hasPosition: false, listsTrain: usable != nil)
         }
     }
 
@@ -328,8 +339,10 @@ public struct CockpitFeed: Sendable {
         ingestPosition(vehicle, at: at)
     }
 
-    /// The position of an answer: into the store (the estimate between two answers), the place along the route, the speed.
+    /// The position of an answer: into the store (the estimate between two answers), the place along the route, the speed. A position older
+    /// than the one the store holds changes nothing (two answers can arrive out of order).
     private mutating func ingestPosition(_ vehicle: RadarVehicle, at: Date) {
+        if let held = store.entries[tripID], at < held.seenAt { return }
         store.merge([vehicle], at: at)
         var km: Double?
         if let route, details != nil {
@@ -359,7 +372,10 @@ public struct CockpitFeed: Sendable {
         // Only the place along the route is needed here: `position`, not a whole frame with its summary and strings.
         if let route, details != nil, let km = position(now: now)?.km {
             if case .arrived = route.situation(atKm: km, now: now) { atEnd = true }
-            if !atEnd, let seen = session.lastPositionAt, now.timeIntervalSince(seen) >= Self.vanishedAfter, let end, now >= end.addingTimeInterval(-120),
+            // Taken off the radar: an answer after the last position did not list the train. Time alone is no evidence (review 2: back from the
+            // background after minutes, nothing had been asked, and the run ended for good before the first new answer).
+            if !atEnd, let seen = session.lastPositionAt, let missing = session.lastMissingAt, missing > seen,
+               now.timeIntervalSince(seen) >= Self.vanishedAfter, let end, now >= end.addingTimeInterval(-120),
                let latest = kmLatest, latest >= route.lastKm - Self.nearEndKm {
                 atEnd = true
             }
@@ -374,6 +390,8 @@ public struct CockpitFeed: Sendable {
     // MARK: Session
 
     public mutating func select(_ mode: CockpitCameraMode) { session.select(mode) }
+    /// The cockpit does not ask right now, or asks again (`CockpitSession.pauseLostClock`).
+    public mutating func pauseLostClock(at now: Date) { session.pauseLostClock(at: now) }
     public mutating func userMovedMap() { session.userMovedMap() }
     public mutating func returnToTrain() { session.returnToTrain() }
 
@@ -471,9 +489,11 @@ public struct CockpitFeed: Sendable {
             }
         }
         let input = cameraInput(context, mode: .follow, reduceMotion: false)
+        let state = session.state
+        let stale = state == .lost || (state != .ended && age >= session.config.lostAfter)
         return CockpitFrame(coordinate: context.place.coordinate, km: context.place.km, isEstimate: context.place.isEstimate, route: route,
                             isProvisional: details == nil, summary: summary, heading: CockpitCameraPlanner.travelHeading(input),
-                            speed: context.reading, fixAge: age, state: session.state, isCancelled: route?.isCancelled ?? radarCancelled)
+                            speed: context.reading, fixAge: age, state: state, isCancelled: route?.isCancelled ?? radarCancelled, isStale: stale)
     }
 
     /// With only the radar's four stops there is no polyline: the train's place on the chain of stops (for the next stop and the delay).

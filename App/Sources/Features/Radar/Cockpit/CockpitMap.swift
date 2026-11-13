@@ -105,7 +105,7 @@ struct CockpitMap: View {
             Annotation(model.line.map { LinePresentation.title($0) } ?? "Zug", coordinate: marker.coordinate.clCoordinate, anchor: .center) {
                 CockpitTrainMarker(line: model.line, state: model.hud.summary?.delayState ?? .unknown, heading: marker.heading,
                                    cameraHeading: userHeading ?? model.camera?.heading ?? 0, isHeld: model.hud.summary.map(isHeld) ?? false,
-                                   isStale: model.hud.state == .lost)
+                                   isStale: model.hud.isStale)
             }
             .annotationTitles(.hidden)
         }
@@ -182,8 +182,8 @@ struct CockpitFlagView: View {
 }
 
 /// The followed train: its line plate on a glowing glass capsule, the glow in the delay tint. The chevron under it points the way the train travels,
-/// relative to the camera (in the follow view that is straight ahead). A train without a position for two minutes (`isStale`) keeps its place,
-/// grey and without glow: the last place it was seen, not a live one.
+/// relative to the camera (in the follow view that is straight ahead). A train without a position for two minutes (`isStale`: lost, or back from
+/// the background with an old one) keeps its place, grey and without glow: the last place it was seen, not a live one.
 struct CockpitTrainMarker: View {
     var line: Line?
     var state: RadarDelayState
