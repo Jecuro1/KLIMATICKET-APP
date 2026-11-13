@@ -39,10 +39,11 @@ sie endet mit der Ansicht, sie pausiert im Stromspar-Modus und folgt dem Schutzs
   sie falsch. Zurück auf „Jetzt“ kommt sie wieder (ohne den Verlauf, der beim Ausblenden endet).
 - **Die Ebene braucht keine Zugpunkte.** Auch mit ausgeschalteter Zug-Ebene lädt das Radar für die Pünktlichkeit; die Zustimmung zu Live-Daten
   (§2) gilt wie vorher: ohne sie lädt nichts und die Ebene zeigt nichts.
-- **Modi und Filter.** Die Zahlen gelten für **Züge und S-Bahnen** (`ProductMask.rail`), auch wenn Bus, Bim oder U-Bahn bei den Verkehrsmitteln an sind: Die
-  Ebene heißt Pünktlichkeit „der Züge“, und eine Busverspätung wäre keine Zugverspätung (Review 1: vorher zählten eingeschaltete Busse und Bims als „Züge“ mit). Die Anfragen
-  folgen den Verkehrsmitteln wie beim Radar; mit Bussen an ist die Antwort größer und eine Kachel kann am Limit abgeschnitten sein (das Panel sagt es, der Scheduler teilt sie).
-  Ist nur Bus, Bim oder U-Bahn an, steht im Panel, dass die Pünktlichkeit nur Züge zählt. Der Filter betrifft die Zugpunkte, nicht die Zahlen; ist er aktiv, sagt das Panel es.
+- **Modi und Filter** (neu mit radar2, `docs/RADAR_MODES.md` §7). Die Zahlen gelten für **alle Züge und S-Bahnen**, die das Radar hält (`ProductMask.rail`),
+  was die Chips auch sagen: Solange die Ebene an ist, fragt die breite Spur des Radars ganz Österreich mit mindestens 4157, auch wenn der S-Bahn-Chip aus
+  ist oder nur Bus an ist; die Pins folgen weiter den Chips. Bus, Bim und U-Bahn fragt die eigene Stadt-Spur, nur nah herangezoomt und nur für Marker,
+  nie für die Zahlen: Die zwei Österreich-Kacheln der Ebene bleiben reine Schiene. Eine Busverspätung wäre keine Zugverspätung (Review 1). Der Filter
+  betrifft die Zugpunkte, nicht die Zahlen; ist er aktiv, sagt das Panel es.
 
 ## 1a. Zugriff, Budget, Datenmenge, Akku (Review 2)
 
@@ -91,10 +92,11 @@ sind zusammen etwa eine solche Antwort.
   immer ganz Österreich. Das ist der Preis von „keine Abhängigkeit vom Kartenausschnitt“ (Auftrag).
 - **Die Wahl bleibt.** Ebenen werden je Gerät gespeichert (`map.layers`): Wer die Pünktlichkeit an lässt, lädt bei jedem Öffnen des Radars
   ganz Österreich. Bei geschlossenem Radar und im Hintergrund lädt nichts.
-- **Bus, Bim, U-Bahn.** Die Ebene zählt nur Züge, die Anfragen folgen aber den Verkehrsmitteln des Radars (§1). Mit Bussen an ist jede
-  Antwort größer (Wien allein: über 1000 Fahrzeuge, 1,67 MB, §R11.1 d), die Kacheln teilen sich, und das Budget von 24 je Minute wird voll
-  genutzt: die letzte Zeile der Tabelle. Nicht geändert (die Busse bleiben auf der Karte, wie man sie eingeschaltet hat); ob die Ebene sie
-  für ihre Dauer abschalten soll, ist eine Entscheidung des Owners.
+- **Bus, Bim, U-Bahn** (neu mit radar2, `docs/RADAR_MODES.md` §3, §7). Die Ebene fragt nur Schiene; Busse, Bims und U-Bahnen kommen über die
+  Stadt-Spur, die nur bei höchstens 0,6° Kartenhöhe und eingeschalteter Zug-Ebene fragt. Mit Bussen an blähen sie die Österreich-Kacheln also nicht
+  mehr auf; die letzte Zeile der Tabelle gilt nur noch für die Stadt-Spur in einer dichten Stadt (Obergrenze 24 × 1000 × 1,7 KB ≈ 41 MB je Minute),
+  und deren Kacheln verlangsamen die zwei Kacheln der Ebene im selben Budget (die Statuskarte sagt den Takt). Damit ist die frühere Frage an den Owner
+  beantwortet, ohne etwas abzuschalten.
 
 **Langsames oder fehlendes Netz.** Das Zeitlimit des Clients sind 20 s **ohne Daten** (`URLRequest.timeoutInterval` ist die Zeit zwischen zwei
 Datenpaketen, nicht die der ganzen Antwort; die ganze Antwort darf 60 s dauern, `timeoutIntervalForResource`). Gemessen wurden 0,4 bis 21,5 s
@@ -383,8 +385,7 @@ Anfragen geben die Kachel frei und behalten den Platz im Budget, kein Zeitgeber 
 
 Nicht geändert, mit Grund:
 
-- Mit Bus, Bim oder U-Bahn an lädt die Ebene ganz Österreich mit allen Fahrzeugen, obwohl sie nur Züge zählt (bis etwa 40 bis 55 MB je Minute entpackt,
-  §1a). Die Busse auf der Karte abzuschalten wäre eine Entscheidung über die Bedienung: Owner.
+- (Erledigt mit radar2:) Mit Bus, Bim oder U-Bahn an lud die Ebene ganz Österreich mit allen Fahrzeugen. Seit den zwei Spuren fragt sie nur Schiene (§1a).
 - Die Überblendung baut bei jeder Änderung bis zu 900 Überlagerungen viermal neu (§4). Ob das auf dem Gerät Akku kostet, zeigt nur ein iPhone (§9a).
 - Ein Gruppenring ist orange, wenn ein Zug darin 5 Minuten oder mehr zu spät ist, auch bei 40 Minuten (die Gruppe kennt nur „verspätet“); die Zahlen in
   Panel und Feld-Blatt sagen es genau.

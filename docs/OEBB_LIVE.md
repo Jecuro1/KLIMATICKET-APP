@@ -2878,3 +2878,30 @@ Hintergrund, offline, Notschalter). Nach jedem Schritt gilt: nie zwei fragende T
 die Pünktlichkeits-Ebene hat ihre Schleife, keine Zeitreise neben der Ebene oder einem anderen Modus, und von überall führen „Cockpit schließen“,
 „zurück in die App“ und „Zurück zu Jetzt“ zum Live-Radar. Der Test prüft die Regel, nicht SwiftUI: Dass `.task(id:)` und `.onChange` auf einem
 iPhone in dieser Reihenfolge laufen, zeigt nur ein Gerät (Geräte-Checklisten in den drei Dokumenten).
+
+### R11.4 Bus, Bim, U-Bahn: zwei Spuren in einem Budget (2026-11-13, radar2)
+
+Ausführlich: `docs/RADAR_MODES.md`. Ein Scheduler, zwei Spuren (`RadarLane`), ein Budget von 24 je Minute (höchstens 4 in 10 s, 1 s Abstand), über
+Ansichten hinweg `RadarBudgetLedger`; mindestens 16 der 40 je Minute bleiben für Fahrplan, Abfahrten und „Live verfolgen“ (`RadarLaneSchedulerTests` (g)).
+
+- **Breite Spur:** Züge (4125) und S-Bahn (32), voreingestellt beide (= 4157 wie bisher), bei eingeschalteter Pünktlichkeit immer 4157 für ganz
+  Österreich. Raster und Takt wie §R11.2 (bis Stufe 6, 20 s/45 s).
+- **Stadt-Spur:** Bus (64), Bim (512), U-Bahn (256); nur bei höchstens 0,6° Kartenhöhe (etwa 67 km), eingeschalteter Zug-Ebene und laufender
+  Live-Schleife; eine Stufe feiner als die breite Spur, Teilung bis Stufe 8 (1,2 × 1,1 km), höchstens 16 Kacheln; alle 20 s im WLAN, alle 60 s über
+  mobile Daten oder im Datensparmodus.
+- Wollen beide Spuren mehr als 24 je Minute, werden alle Kacheln um denselben Faktor langsamer (16 Stadt- und 4 breite Kacheln: etwa 50 s); die
+  Statuskarte sagt es. Die Stadt-Spur schätzt ihre Datenmenge (1,7 KB je Eintrag, unkomprimiert) und sagt sie ab 2 MB je Minute; Obergrenze etwa 41 MB.
+- Keine neue Anfrageart: nur `JourneyGeoPos`. Zustimmung, Schalter, Notschalter, offline, Stromsparmodus, Hintergrund, Zeitreise und Cockpit wirken
+  auf beide Spuren wie in §R11.3.
+
+**Messung (einmalig, 4 Anfragen, Freitag 2026-11-13 21:17 Wien, abends)** – nur Zahlen, keine Fahrten, Linien, Namen oder Koordinaten:
+
+| Abfrage | Fahrzeuge mit Position | abgeschnitten | Bytes | je Eintrag | Sonstiges |
+|---|---|---|---|---|---|
+| Stufe-5-Kachel Wien Stephansplatz, 832 | 264 (Bus 110, Bim 127, U-Bahn 27) | nein | 470 568 | 1782 | 84 % mit Echtzeit, 100 % mit Betreibernamen, 0 % mit `admin`, 4 Betreiber |
+| Wien-Kasten (§R11.1 d), nur 256 | 44 U-Bahnen | nein | 72 020 | 1636 | U-Bahn ohne Echtzeit |
+| Österreich, 2/128/2048 | SEV 107, Schiff 0, Rufbus/Seilbahn 10 | nein | 204 742 | 1749 | alle mit ≥ 2 Halten |
+| Stufe-5-Kachel Graz Hbf, 832 | 24 (Bus 19, Bim 5) | nein | 52 592 | 2191 | 100 % mit Echtzeit |
+
+Folgen: JourneyGeoPos liefert U-Bahn-Positionen; Schiffe waren abends im November nicht messbar (bleiben verborgen); Schienenersatzverkehr und
+Rufbus/Seilbahn liefern Positionen, Chips dafür sind nicht gebaut; Grenzen der Stadt-Spur unverändert (abends nicht repräsentativ).
