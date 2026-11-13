@@ -44,6 +44,88 @@ sie endet mit der Ansicht, sie pausiert im Stromspar-Modus und folgt dem Schutzs
   folgen den Verkehrsmitteln wie beim Radar; mit Bussen an ist die Antwort größer und eine Kachel kann am Limit abgeschnitten sein (das Panel sagt es, der Scheduler teilt sie).
   Ist nur Bus, Bim oder U-Bahn an, steht im Panel, dass die Pünktlichkeit nur Züge zählt. Der Filter betrifft die Zugpunkte, nicht die Zahlen; ist er aktiv, sagt das Panel es.
 
+## 1a. Zugriff, Budget, Datenmenge, Akku (Review 2)
+
+**Tor.** Die Ebene fragt nichts selbst an. Das Radar lädt für sie nur, solange die Ebene an ist, die Live-Daten erlaubt sind
+(`LiveDataService.timetableUnavailable` ist `nil`: Zustimmung, Schalter, Notschalter der Fernkonfiguration, online) und die Zeitreise
+„Jetzt“ zeigt; sonst endet die Schleife (`RadarView.isRunning`). Jede Anfrage geht durch `HafasClient`: Der prüft den Notschalter vor jeder
+Anfrage noch einmal (`LiveError.disabled`, ohne Netz), dann den Schutzschalter (`LiveHealth`: drei Fehler in Folge öffnen ihn für 2 Minuten,
+für die ganze App) und die Drossel (`RequestThrottle`: 40 je Minute für die ganze App, mindestens 0,3 s Abstand, ehrlicher User-Agent).
+
+**Budget.** Normal **6 Anfragen je Minute** (zwei Kacheln alle 20 s). Höchstens 24 je Minute, 4 in 10 s und eine je Sekunde, zusammen mit
+allem, was das Radar sonst anfragt (Zeitreise, Cockpit): ein Budget im Radar-Modell (`RadarScheduler`). Kein Handgriff kommt darüber
+(`HeatBudgetTests`, zehn simulierte Minuten, Antworten nach 3 s, also mehrere Anfragen gleichzeitig unterwegs):
+
+- die Ebene alle 0,75 s ein- und ausschalten (die Ansicht springt zwischen Österreich und Wien: neue Kacheln, Anfragen unterwegs);
+- alle 4 s in den Hintergrund und zurück: Laufende Anfragen werden abgebrochen. Ein abgebrochener Lauf gibt die **Kachel** frei (sie ist
+  wieder fällig), **nicht den Platz im Budget**: Die Anfrage kann den Server schon erreicht haben. Die Drossel der App rechnet genauso;
+- „Jetzt aktualisieren“ (Stromspar-Modus) oder „Erneut versuchen“ zweimal je Sekunde;
+- Zeitreise-Momentaufnahmen und die Kacheln der Ebene im selben Lauf.
+
+Das Budget übersteht das Ausschalten der Ebene, den Wechsel der Verkehrsmittel (`reset()` vergisst die Kacheln, nicht das Budget), Zeitreise,
+Cockpit und Hintergrund. Zwei Radar-Ansichten mit zwei Budgets gibt es nicht: Die App hat ein Fenster (nur iPhone,
+`UIApplicationSupportsMultipleScenes` aus), und Radar und Zugsuche sind Vollbild-Blätter derselben Fahrplan-Ansicht.
+
+**Die Wiederholung des Clients.** Nach einer Zeitüberschreitung oder 502/503/504 fragt `HafasClient` einmal nach 1,5 s nach. Diese zweite
+Anfrage zählt in der Drossel (40) und im Schutzschalter, nicht in den 24 des Radars (§R11.2). Im schlechtesten Fall gehen also 12 statt 6
+Anfragen je Minute an die ÖBB, aber nicht lange: Drei gescheiterte Anfragen in Folge öffnen den Schutzschalter für 2 Minuten. Ein
+Ausweichprofil (nach AUTH, HAMM oder PARSE) wäre eine weitere Anfrage, ebenfalls durch die Drossel.
+
+**Datenmenge.** Gemessen ist nur die Größe **entpackt** (§R11.1): ganz Österreich 1,83 MB in der Abendspitze (923 Züge, Donnerstag 17:08 Uhr),
+etwa 1,2 MB um 22 Uhr (`docs/RADAR_TIMETRAVEL.md`, R12), rund 2 KB je Zug, weil jede Fahrt ihre Halte mitbringt. Die zwei Kacheln der Ebene
+sind zusammen etwa eine solche Antwort.
+
+| Lage | Antworten je Minute | entpackt je Minute | entpackt je Stunde |
+|---|---|---|---|
+| Ebene an, Züge (Standard), Abendspitze | 6 (drei Runden) | etwa 5,5 MB | etwa 330 MB |
+| dasselbe um 22 Uhr (1,22 MB je Runde, R12) | 6 | etwa 3,7 MB | etwa 220 MB |
+| schlimmster Fall nur Züge: „Jetzt aktualisieren“ dauernd getippt | 24 | etwa 22 MB | – |
+| schlimmster Fall mit Bus, Bim oder U-Bahn: Kacheln am Limit geteilt | 24, je bis 1000 Fahrzeuge | etwa 40 bis 55 MB | – |
+
+- **Auf der Leitung** ist es weniger: Die App bittet um gzip. Wie viel weniger, ist **nicht gemessen** (der Linux-`URLSession` des Tests
+  sieht nur entpackte Bytes).
+- **Zoomen spart nichts**, solange die Ebene an ist. Ohne die Ebene lädt das Radar in Wien nur die kleinen Kacheln des Ausschnitts; mit ihr
+  immer ganz Österreich. Das ist der Preis von „keine Abhängigkeit vom Kartenausschnitt“ (Auftrag).
+- **Die Wahl bleibt.** Ebenen werden je Gerät gespeichert (`map.layers`): Wer die Pünktlichkeit an lässt, lädt bei jedem Öffnen des Radars
+  ganz Österreich. Bei geschlossenem Radar und im Hintergrund lädt nichts.
+- **Bus, Bim, U-Bahn.** Die Ebene zählt nur Züge, die Anfragen folgen aber den Verkehrsmitteln des Radars (§1). Mit Bussen an ist jede
+  Antwort größer (Wien allein: über 1000 Fahrzeuge, 1,67 MB, §R11.1 d), die Kacheln teilen sich, und das Budget von 24 je Minute wird voll
+  genutzt: die letzte Zeile der Tabelle. Nicht geändert (die Busse bleiben auf der Karte, wie man sie eingeschaltet hat); ob die Ebene sie
+  für ihre Dauer abschalten soll, ist eine Entscheidung des Owners.
+
+**Langsames oder fehlendes Netz.** Das Zeitlimit des Clients sind 20 s **ohne Daten** (`URLRequest.timeoutInterval` ist die Zeit zwischen zwei
+Datenpaketen, nicht die der ganzen Antwort; die ganze Antwort darf 60 s dauern, `timeoutIntervalForResource`). Gemessen wurden 0,4 bis 21,5 s
+je Antwort; die 21,5 s waren die erste Anfrage mit Verbindungsaufbau und der größten Antwort, Rechenzeit des Servers und Übertragung sind nicht
+getrennt gemessen. Ob es reicht, hängt also daran, wann das erste Byte kommt. Kommt es nach mehr als 20 s:
+
+1. Die Anfrage endet mit Zeitüberschreitung, der Client fragt nach 1,5 s einmal nach (zählt in den 40).
+2. Scheitert auch das, wartet diese Kachel 15 s, dann 30 s, … höchstens 2 Minuten; die andere läuft weiter. Die Züge der Kachel bleiben 60 s
+   auf der Karte und in den Zahlen, das Panel sagt „Für einen Teil des Landes kam keine Antwort. Die Zahlen gelten für die geladenen Gebiete.“
+3. Drei gescheiterte Anfragen in Folge öffnen den Schutzschalter: 2 Minuten keine ÖBB-Anfrage der ganzen App (auch Fahrplan und Abfahrten).
+   Das Panel sagt „Das Radar pausiert. Die Zahlen sind vom letzten Stand.“, darunter steht „Radar pausiert“ mit „Erneut versuchen“.
+
+Es staut sich nichts: höchstens 3 Anfragen gleichzeitig, eine Kachel nie zweimal zugleich, eine Anfrage ohne Ausgang gibt ihre Kachel nach 90 s
+frei. Ohne Netz ist `timetableUnavailable` `.offline`: Die Schleife endet, die Ebene lädt nichts und sagt, dass sie Live-Daten braucht.
+
+**Akku.** Die Ebene hat keinen eigenen Zeitgeber, keinen `TimelineView`, keinen Display-Link und keine Animation, die von selbst weiterläuft. Was läuft:
+
+- die eine Schleife des Radars (`RadarModel.run`, ein Schritt je Sekunde), nur solange das Radar sichtbar und die App aktiv ist
+  (`scenePhase == .active`). Sie endet im Hintergrund, unter dem Cockpit und in der Zeitreise abseits von „Jetzt“; im Stromspar-Modus fragt sie
+  nichts an (die Karte steht, das Radar sagt es);
+- die Neuberechnung der Zahlen bei jeder Antwort und sonst alle 10 s (2 000 Züge unter 1 s im Linux-Debug-Build; auf dem Gerät nicht gemessen);
+- die Überblendung: vier Schritte in 0,35 s nach einer Änderung, eine `Task`, die dann endet; mit „Bewegung reduzieren“ keine;
+- das Warten auf ein zweites Tippen (0,28 s).
+
+**Zurück aus dem Hintergrund.** Die Schleife beginnt neu. Beide Kacheln sind überfällig und werden **je einmal** gefragt (die zweite 1 s nach
+der ersten); nichts wird nachgeholt oder wiederholt. Züge, deren Antwort älter als ihre Aufbewahrung ist (60 s bei Kacheln, die alle 20 s
+kommen), sind weg. Bis Review 2 zählte eine so alte Antwort weiter als „geladen“: Kam nach Minuten die erste neue Antwort, zeigte das Panel die
+Zahlen des halben Landes ohne Hinweis, und der Verlauf nahm sie als vollständigen Moment. Jetzt zählt der Scheduler solche Kacheln
+(`RadarStatus.staleTiles`, dieselbe Regel wie `RadarFrameStore.prune`). Das Panel sagt „Für einen Teil des Landes ist die letzte Antwort zu alt.
+Die Zahlen gelten für die übrigen Gebiete.“ (sind alle zu alt: „Die Daten sind zu alt und zählen nicht mehr. Neue Zahlen kommen mit der nächsten
+Antwort.“), der Verlauf lässt den Moment aus, „Pünktlichkeitskarte teilen“ wartet, bis wieder alles frisch ist, und „Stand vor 4 Min“ zeigt das
+Alter der ältesten Antwort, bis sie ersetzt ist. Dasselbe gilt nach dem Cockpit und nach dem Stromspar-Modus. Auch die Zeitreise nimmt eine so alte
+Antwort nicht mehr als „jetzt“ (`RadarModel.holdsAllOfAustria`).
+
 ## 2. Das Raster
 
 Sechsecke (Spitze oben), Mittelpunkte benachbarter Felder **0,12° Breite** auseinander (13,3 km); ein Feld hat etwa 154 km² und Seiten von 7,7 km.
@@ -92,8 +174,9 @@ Die 300 Sekunden sind `RadarDelay.lateThresholdSeconds`, dieselbe Grenze wie der
   Panel sagt „im Radar-Bereich: Österreich und angrenzende Gebiete“.
 - **Unvollständig.** Sind Kacheln noch nicht da, ausgefallen oder abgeschnitten, sagt das Panel es („Die Zahlen gelten für die geladenen Gebiete“).
 
-Der Hinweis unter den Zahlen sagt immer: Die Verspätung ist die Echtzeit-Verspätung, die die ÖBB für den nächsten Halt meldet, die Positionen sind berechnet,
-Züge ohne Echtzeit-Daten zählen nie als pünktlich.
+Der Hinweis unter den Zahlen sagt immer: Die Verspätung ist die Echtzeit-Verspätung, die die ÖBB für den nächsten Halt meldet (fehlt sie dort, die am letzten
+Halt mit Wert), die Positionen sind berechnet, Züge ohne Echtzeit-Daten zählen nie als pünktlich, und die Zahl ist eine Momentaufnahme dieser App, **keine
+Pünktlichkeitsstatistik der ÖBB** (Review 2: neben der Zahl, die die ÖBB veröffentlicht, läse sich „74 %“ sonst als Widerspruch oder als deren Zahl).
 
 ## 4. Darstellung
 
@@ -115,7 +198,7 @@ Züge ohne Echtzeit-Daten zählen nie als pünktlich.
 - **Eckpunkte nachgeschlagen.** Die Sechsecke ändern sich nie: Ihre Eckpunkte (als Kartenkoordinaten, fünf Größen je Feld) stehen in einer begrenzten Ablage (`RadarHeatGeometry.swift`, höchstens 8 000 Ringe und 2 000 Schraffuren, danach von vorn),
   statt bei jedem Neuaufbau der Karte (alle paar Sekunden) für bis zu 900 Ringe neu gerechnet zu werden (Review 1).
 - **Züge als Punkte.** Mit der Ebene sind die Zugmarker kleine Punkte (grün, orange, rot nach Klasse; die Größe wächst mit der Verspätung, ausgefallene und Züge ohne Echtzeit sind
-  offene Ringe), Gruppen ein kleiner Ring in der Farbe des schlechtesten Zuges **ohne Zahl** (eine Zahl wie „265“ über Wien deckte die Felder zu; die Anzahl steht im gesprochenen Text, ein Tippen zoomt). Ein Tippen auf einen Punkt öffnet das Fahrt-Blatt wie vorher. Die Zahl der Marker bleibt die des Radars (höchstens etwa 130).
+  offene Ringe), Gruppen ein kleiner Ring in der Farbe des schlechtesten Zuges (grau, wenn keiner Echtzeit-Daten hat) **ohne Zahl** (eine Zahl wie „265“ über Wien deckte die Felder zu; die Anzahl steht im gesprochenen Text, ein Tippen zoomt). Ein Tippen auf einen Punkt öffnet das Fahrt-Blatt wie vorher. Die Zahl der Marker bleibt die des Radars (höchstens etwa 130).
 - **Brennpunkte** haben eine Nummer auf der Karte (1 bis 3), in einem **Sechseck** (Review 1: eine runde Zahl sah aus wie die Zahl einer Stationsgruppe der Stationen-Ebene).
 - **Tippen auf ein Feld.** Ein Tippen auf die Karte (es wartet 0,28 s auf ein zweites: Ein Doppeltippen zoomt, und das soll kein Blatt auf- und zumachen; ein Tippen auf einen Zugpunkt, einen Ring oder eine Brennpunkt-Nummer zählt hier nicht, die haben ihre eigene Schaltfläche) sucht das Feld unter dem Finger, sonst das nächste mit Zügen innerhalb einer Fingerbreite (24 pt), mindestens ein Feld; es öffnet ein Blatt:
   Ort, mittlere Verspätung (oder warum das Feld keine Farbe hat), worauf es beruht und alle Züge im Feld, der späteste zuerst. Ein Zug öffnet das Fahrt-Blatt darüber. Das Feld hat einen Rahmen.
@@ -142,8 +225,11 @@ braucht drei Punkte über mindestens eine Minute und mindestens 20 Züge mit Ech
 
 **„Pünktlichkeitskarte teilen“ (Zusatz, gebaut).** Im offenen Panel gibt es „Pünktlichkeitskarte teilen“ (`ShareLink`). Das Bild (`RadarHeatShare`, `ImageRenderer`, 1080 × 1500 px, erst beim Export gerendert wie
 `TktSharePass`) zeigt die Zellen auf nachtblauem Grund, ohne Apple-Basiskarte: die Fläche des Radar-Gebiets flach gezeichnet (Längengrad mit dem Kosinus der Breite), ein Glühen unter scharfen Sechsecken, graue Linien für Felder
-ohne Farbe, dazu die große Zahl, der Balken, die Teile in Worten, „Stand 12. Nov. 2026, 17:08 Uhr · Radar-Bereich Österreich“ und den Hinweis (Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet, ohne
-Echtzeit nie pünktlich, grau = zu wenige Züge, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
+ohne Farbe, dazu die große Zahl, der Balken, die Teile in Worten, „Stand 12. Nov. 2026, 17:08 Uhr“ und den Hinweis (Radar-Bereich Österreich und Grenzgebiete, Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet, ohne
+Echtzeit nie pünktlich, grau = zu wenige Züge, „Eine Momentaufnahme, keine Pünktlichkeitsstatistik der ÖBB“, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
+„Stand“ ist die Zeit der ältesten Antwort hinter den Zahlen, nicht der Moment des Teilens (Review 2: vorher stand dort die Uhrzeit, zu der das Panel gezeichnet wurde, auch wenn die
+Zahlen Minuten alt waren). Angeboten wird das Bild nur, wenn die Zahlen vollständig sind: jede Kachel hat geantwortet, keine ist ausgefallen, abgeschnitten oder zu alt. Ein Bild vom halben Land
+ginge sonst ohne den Hinweis weiter, der das im Panel sagt.
 
 ## 7. Messung (einmalig, vom Owner freigegeben)
 
@@ -159,7 +245,7 @@ Repository gespeichert.
 
 | Messgröße | Wert |
 |---|---|
-| Fahrzeuge in der Antwort (`jnyL`) | 568 (am Abend vorher, 17:08, waren es 923: §R11.1) |
+| Fahrzeuge in der Antwort (`jnyL`) | 568 (am selben Tag um 17:08, in der Abendspitze, waren es 923: §R11.1) |
 | davon mit Echtzeit-Wert (am nächsten Halt, sonst am letzten mit Wert) | **446** (78,5 %) |
 | davon **ohne** Echtzeit-Wert | **122** (21,5 %) |
 | ausgefallen (`isCncl`) | **0** |
@@ -199,6 +285,7 @@ Cluster grau), Verspätungen für die Szene gemacht: ein Verspätungs-Cluster ü
 Tests (Linux, `swift test --package-path Packages/KlimaCore --no-parallel --filter Heat`): `HeatGridTests`, `RadarHeatTests`, `HeatPaintTests`, `RadarHeatTextTests`, `HeatHistoryTests`, dazu `MapLayersTests` (die neue Ebene
 ist aus, ein gespeicherter Wert von vorher liest sich wie vorher). Geprüft: Zell-Ids und Randfälle des Rasters, die Grenzen der Klassen gegen `RadarDelay`, Median, Mindestzahl und die Regel „ohne Echtzeit nie pünktlich“, Rundung,
 Rangfolge der Brennpunkte, leere und Teil-Antworten, Doppelte und fehlerhafte Positionen, Unabhängigkeit von der Reihenfolge der Züge, die Obergrenze für 2 000 Fahrzeuge, die Überblendung, und mit `HeatLoadTests`, dass die Ebene den Scheduler bei zwei Kacheln und 6 Anfragen je Minute hält (zehn simulierte Minuten, auch wenn die Karte jede Viertelsekunde dieselbe Ansicht meldet).
+`HeatBudgetTests` (Review 2): kein Handgriff über 24 je Minute, 4 in 10 s und eine je Sekunde (Ebene an und aus, Hintergrund, „Jetzt aktualisieren“, Zeitreise), und eine Antwort, die älter als ihre Aufbewahrung ist, zählt als zu alt, bis die nächste kommt.
 
 **Perf-Fall.** `radarHeat` in `PerfFeature` (`PerfFeatureScreens.swift`), `RadarHeatPerfTests` (`PerfTests/FeaturePerfTests.swift`) und die Tour-Liste in `scripts/perf_profile.sh`: dieselbe Karte mit der Ebene an (Demo-Szene `heat`), gepannt wie die anderen Karten. Der CI-Job `perf` läuft nur mit `[perf]` oder von Hand und dauert 55 bis 95 Minuten; er wurde für diese Arbeit **nicht** ausgelöst, es gibt also **keine Messung** und keine Baseline. `scripts/perf_compare.py` führt einen Bildschirm, der nur in einem Lauf vorkommt, als „neu“.
 
@@ -215,7 +302,15 @@ der Verlauf (er braucht drei Punkte über eine Minute), das Teilen-Blatt selbst 
 - Wie flüssig die Karte mit bis zu 900 Überlagerungen schiebt und zoomt (die CI-Screenshots zeigen den Stand, nicht die Bildrate); ob die vier Schritte der Überblendung flackern.
 - Ob das Tippen auf die Karte das Zoomen mit zwei Fingern oder das Doppeltippen stört (die Geste läuft gleichzeitig mit denen der Karte).
 - Wie das Glühen auf der dunklen und der hellen Karte bei Sonnenlicht und bei hoher Helligkeit aussieht.
-- Die Laufzeit der Antworten im Mobilfunknetz (§R11) und der Akku bei einer Viertelstunde mit der Ebene an.
+- Die Laufzeit der Antworten im Mobilfunknetz (§R11) und der Akku bei einer Viertelstunde mit der Ebene an (Einstellungen › Batterie: Anteil der App).
+- **Datenmenge auf der Leitung** (§1a, nur entpackt gemessen): In Einstellungen › Mobilfunk den Wert bei KlimaBilanz notieren, 10 Minuten das Radar mit
+  der Ebene auf dem Österreich-Zoom offen lassen (nur Züge), dann wieder ablesen. Erwartet: deutlich unter 55 MB (entpackt), wie viel darunter,
+  sagt gzip. Danach dasselbe einmal in Wien herangezoomt: Mit der Ebene darf es nicht weniger sein (keine Abhängigkeit vom Ausschnitt).
+- **Zurück aus dem Hintergrund** nach mehr als einer Minute: Erst steht „Die Daten sind zu alt …“ (oder „Für einen Teil des Landes …“) und „Stand vor
+  … Min“, dann kommen beide Kacheln je einmal, die Zahlen wieder vollständig, kein Stoß von Anfragen, kein Sprung im Verlauf.
+- **Langsames Netz** (falls in den Entwickler-Einstellungen der Network Link Conditioner zu sehen ist, Profil „Very Bad Network“; sonst ein schwaches
+  Mobilfunknetz): die Hinweise in der Reihenfolge von §1a, kein Hängen der Karte; nach dem Schutzschalter funktioniert der Fahrplan nach 2 Minuten wieder.
+- **Stromspar-Modus:** keine neuen Zahlen, der Hinweis „Stromspar-Modus“, „Jetzt aktualisieren“ holt einmal beide Kacheln.
 - VoiceOver auf dem Gerät: Reihenfolge und Ansagen des Panels.
 
 ## 10. Nicht gebaut, Grenzen
@@ -255,3 +350,36 @@ Nicht behoben, mit Grund:
 - Die Chips der Ebenen-Leiste sind bei fünf Titeln nicht gleich breit (jeder hat die Breite seines Textes plus gleichen Anteil des Rests). Gleiche Breiten bräuchten ein eigenes Layout; die Chips sind lesbar und tippbar.
 - Bei der größten Textgröße (`accessibility5`) füllt die obere Leiste des Radars (Suche, Verkehrsmittel: vorhanden vor dieser Ebene) fast die halbe Karte, und die Ebenen-Leiste ist nur durch Scrollen im Bereich unten zu erreichen. Das ist die Gestaltung des Radars, nicht der Ebene.
 - Tippen auf die Kompass- oder Standort-Schaltfläche der Karte kann bei eingeschalteter Ebene ein Feld in der Nähe öffnen (die Geste läuft neben den Steuerelementen der Karte). Nur auf einem iPhone zu sehen.
+
+## 12. Review 2 (ÖBB-Regeln, Budget, Datenmenge, Ehrlichkeit, Akku)
+
+Geprüft am Code, nicht am Gerät. Ergebnis in §1a; hier, was sich geändert hat:
+
+- **Halbes Land nach dem Hintergrund.** Eine Antwort, deren Züge die Aufbewahrung schon verlassen hatten, zählte weiter als „geladen“. Nach Minuten im
+  Hintergrund (oder unter dem Cockpit, im Stromspar-Modus) zeigte das Panel mit der ersten neuen Antwort die Zahlen einer Hälfte ohne Hinweis, der Verlauf
+  nahm sie als vollständig, und die Zeitreise nahm die alte Antwort als „jetzt“. Jetzt `RadarStatus.staleTiles` mit Hinweis, Verlauf, Teilen und Zeitreise
+  danach (§1a, Tests `HeatBudgetTests`, `RadarHeatTextTests`). Eingeschaltet nach längerer Pause rechnet die Ebene nicht mehr mit Zügen von vor Minuten
+  (`refreshHeat` räumt den Speicher zuerst).
+- **„Stand“ im Teilen-Bild** war die Uhrzeit des Zeichnens, nicht die der Daten; jetzt die der ältesten Antwort. Das Bild gibt es nur bei vollständigen Zahlen (§6).
+- **Keine ÖBB-Statistik.** Panel, Feld-Blatt und Teilen-Bild sagen, dass die Zahl eine Momentaufnahme dieser App ist; der Hinweis nennt auch den Rückgriff
+  auf den letzten Halt mit Echtzeit-Wert (§3).
+- **Grüner Ring ohne Echtzeit.** Ein Gruppenring war grün, sobald kein Zug darin verspätet oder ausgefallen war, auch wenn keiner Echtzeit-Daten hatte.
+  Jetzt ist er dann grau wie der offene Ring eines einzelnen Zuges ohne Echtzeit; grün nur, wenn mindestens ein Zug pünktlich gemeldet ist.
+- **„im Mittel“** im leeren Brennpunkte-Satz behauptete einen Mittelwert; die Regel ist der Median. Jetzt: „Gerade kein Gebiet mit mindestens 3 Zügen mit
+  Echtzeit-Daten und einem Median von 5 Minuten Verspätung oder mehr.“
+- **Datenmenge, Wiederholungen, langsames Netz, Akku** standen nicht im Dokument: §1a, mit dem schlimmsten Fall je Minute.
+- **Messung (§7) gegen das Protokoll des Live-Tests geprüft:** alle Zahlen stimmen (568, 446/122, 331/67/48/0, 74 %, 18,9 Min, 60 s, 298/46/252, 219, 30,
+  167/78/45/8, 36/8/2). „Am Abend vorher“ hieß „fünf Stunden vorher am selben Tag“ und ist korrigiert. Im Repository liegen keine Fahrzeugdaten: Der Test
+  druckt nur Zahlen, die Demo-Züge sind erfunden.
+
+Geprüft und in Ordnung: Tor, Notschalter und Drossel auf jedem Weg (die Ebene hat keinen eigenen), das Budget bei jedem Handgriff (§1a), abgebrochene
+Anfragen geben die Kachel frei und behalten den Platz im Budget, kein Zeitgeber und keine Animation läuft im Hintergrund oder bei geschlossenem Radar,
+„Positionen berechnet“ und „ohne Echtzeit nie pünktlich“ in Panel, Feld-Blatt und Bild, keine Behauptung von GPS oder gemessener Position.
+
+Nicht geändert, mit Grund:
+
+- Mit Bus, Bim oder U-Bahn an lädt die Ebene ganz Österreich mit allen Fahrzeugen, obwohl sie nur Züge zählt (bis etwa 40 bis 55 MB je Minute entpackt,
+  §1a). Die Busse auf der Karte abzuschalten wäre eine Entscheidung über die Bedienung: Owner.
+- Die Überblendung baut bei jeder Änderung bis zu 900 Überlagerungen viermal neu (§4). Ob das auf dem Gerät Akku kostet, zeigt nur ein iPhone (§9a).
+- Ein Gruppenring ist orange, wenn ein Zug darin 5 Minuten oder mehr zu spät ist, auch bei 40 Minuten (die Gruppe kennt nur „verspätet“); die Zahlen in
+  Panel und Feld-Blatt sagen es genau.
