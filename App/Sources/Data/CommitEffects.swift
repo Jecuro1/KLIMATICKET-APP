@@ -34,6 +34,7 @@ enum CommitEffects {
 
     static func scheduleWidgetRefresh(context: ModelContext, app: AppState) {
         observeLifecycle()
+        AutoRunner.shared.didCommit(context: context, app: app)   // MARK: automation – milestones and „Fahrt erfasst“, then the plan
         widgetTarget = Target(context: context, app: app)
         widgetTask?.cancel()
         widgetTask = Task { @MainActor in

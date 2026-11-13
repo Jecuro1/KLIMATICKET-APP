@@ -160,6 +160,7 @@ final class LiveFollowTracker {
             status = next.stage.isFinished ? .finished : .following
             // MARK: exitalarm – every alarm of this run takes the new arrival and delay of its stop
             ExitAlarmService.shared.followUpdated(tripID: target.tripID, stopovers: next.stopovers)
+            AutoRunner.shared.followUpdated(target: target, snapshot: next)   // MARK: automation – the rules read this answer, no request
             await syncActivity(target: target, snapshot: next, now: now, settings: settings)
             persist()
             if settings.isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(

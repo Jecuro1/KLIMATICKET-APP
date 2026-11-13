@@ -157,6 +157,7 @@ struct AlarmsView: View {
         case .liveFollow: "Die Live-Verfolgung endet."
         case .exitAlarm: "Der Aussteige-Wecker wird ausgeschaltet. Die Verfolgung läuft weiter."
         case .weeklySummary: "Der Wochenrückblick ist danach aus."
+        case .automation: "Die Regel wird gelöscht, mit ihren geplanten Mitteilungen."   // MARK: automation
         default: "Diese Erinnerung wird entfernt."
         }
     }

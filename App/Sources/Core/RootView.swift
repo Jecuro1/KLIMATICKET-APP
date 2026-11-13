@@ -110,6 +110,7 @@ struct RootView: View {
         }
         .rideActivityHost()  // MARK: live
         .tripRecorderHost()  // MARK: tripdetect – the full-screen recording screen ("Fahrt aufzeichnen")
+        .autoRulesSheetHost()  // MARK: automation – „Regel ansehen“ from a rule notice opens the rule list
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
@@ -151,6 +152,7 @@ struct RootView: View {
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
                 ExitAlarmService.shared.sceneBecameActive()   // MARK: exitalarm – the clock ran while the app slept
+                AutoRunner.shared.sceneBecameActive(context: context, app: app)   // MARK: automation – log what iOS delivered, plan again
                 Task { await CommuteLogQueue.ingest(context: context, app: app) }   // MARK: commute – Siri's queued „Pendelfahrt erfassen“
                 // MARK: routes – reminders of routes that are gone (deleted here or on another device) do not fire
                 Task { await SavedRouteReminders.reconcile(context: context) }
@@ -612,6 +614,9 @@ struct ScreenshotRouter: View {
         // MARK: commute – Pendel-Modus: invitation, live, delayed, cancelled, without consent, compact, AX5, settings (pinned clock, no network)
         case let commuteScreen where CommuteScreenshotHost.screens.contains(commuteScreen):
             CommuteScreenshotHost(screen: commuteScreen)
+        // MARK: automatik – Automatik: list, editor, Testlauf, log, budget, AX5 (pinned clock, synthetic rules, no notification, no network)
+        case let autoScreen where AutoScreenshotHost.screens.contains(autoScreen):
+            AutoScreenshotHost(screen: autoScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

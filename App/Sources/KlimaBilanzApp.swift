@@ -128,6 +128,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        // MARK: automation – a rule notice in the open app is a toast (and is checked once more), not a banner
+        if let incoming = AutoIncoming(notification) { return await AutoRunner.shared.presentInApp(incoming) }
         // Alarme einsehen (docs/ROUTES_ALARMS.md §2): a notice shown in the app goes into the on-device history.
         let notice = NoticeHistoryStore.notice(from: notification)
         await MainActor.run { NoticeHistoryStore.record(notice) }
@@ -153,6 +155,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             // A response right after the first unlock can arrive before the scene retried opening the store.
             AppDelegate.launch?.store.retryIfNeeded()
             guard let app = AppDelegate.appState, AppDelegate.container != nil else { return }
+            if let incoming = AutoIncoming(response.notification) {   // MARK: automation – Fahrt erfassen, Regel ansehen, Kurzbefehl
+                AutoRunner.shared.handleResponse(incoming, action: action, app: app)
+                return
+            }
             if category == NotificationCategories.followNotice {
                 switch action {
                 case NotificationCategories.followLog:

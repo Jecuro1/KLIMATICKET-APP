@@ -316,6 +316,7 @@ struct Repository {
         app.detection.deleteAllLocationData()
         ExitAlarmService.shared.deleteAll()               // MARK: exitalarm – nothing of an alarm outlives "Alle Daten löschen"
         CommuteModel.shared.deleteAll()                   // MARK: commute – the Stammstrecke, Siri's last answer and queued logs
+        AutoRunner.shared.deleteAll()                     // MARK: automation – the rules, their log and planned notices
     }
 
     /// "Alles löschen" that also reaches the cloud: with a signed-in account every row is tombstoned and uploaded

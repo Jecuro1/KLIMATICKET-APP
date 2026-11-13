@@ -35,6 +35,7 @@ enum NotificationCategories {
                 UNNotificationAction(identifier: exitAlarmSnooze, title: "5 Min später", options: []),
             ],
             intentIdentifiers: [])
-        UNUserNotificationCenter.current().setNotificationCategories([suggestion, follow, exitAlarmCategory])
+        // MARK: automation – „Regel ansehen“ (and „Kurzbefehl starten“ for a rule that offers one), docs/AUTOMATION.md §3
+        UNUserNotificationCenter.current().setNotificationCategories(Set([suggestion, follow, exitAlarmCategory] + AutoNotifications.categories))
     }
 }

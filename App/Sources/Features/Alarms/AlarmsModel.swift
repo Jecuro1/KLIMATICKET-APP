@@ -53,6 +53,7 @@ final class AlarmsModel {
         rows += pausedRows(pendingKeys: Set(groups.keys), titles: titles, now: now)
         if let record = FollowRecordStore.load() { rows.append(liveFollowRow(record, now: now)) }
         rows += exitAlarmRows(now: now)   // MARK: exitalarm
+        rows += AutoAlarmRows.rows(now: now)   // MARK: automation – one row per rule
         rows.append(weeklyRow(enabled: app.settings.weeklySummaryEnabled, now: now))
         items = AlarmSorting.sorted(rows)
 
@@ -148,6 +149,8 @@ final class AlarmsModel {
             if !on { LiveFollowTracker.shared.stop() }
         case .exitAlarm:
             if !on { ExitAlarmService.shared.cancel(String(item.id.dropFirst(Self.exitRowPrefix.count))) }   // MARK: exitalarm
+        case .automation:
+            AutoAlarmRows.setOn(item, on)   // MARK: automation – the rule itself is switched
         case .weeklySummary:
             app.settings.weeklySummaryEnabled = on
             await NotificationService().setWeeklySummary(enabled: on)
@@ -175,6 +178,8 @@ final class AlarmsModel {
             LiveFollowTracker.shared.stop()
         case .exitAlarm:
             ExitAlarmService.shared.cancel(String(item.id.dropFirst(Self.exitRowPrefix.count)))   // MARK: exitalarm
+        case .automation:
+            AutoAlarmRows.remove(item)   // MARK: automation – the rule is deleted
         case .weeklySummary:
             app.settings.weeklySummaryEnabled = false
             await NotificationService().setWeeklySummary(enabled: false)
