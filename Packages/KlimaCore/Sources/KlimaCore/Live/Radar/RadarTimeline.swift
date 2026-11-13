@@ -93,7 +93,13 @@ public struct RadarTimeline: Sendable {
             var parts = observations.map { ($0.schedule, $0.fetchedAt) }
             if let details { parts.append(details) }
             let schedule = RadarSchedule.merged(parts)
-            run = RadarRunPath(schedule: schedule, anchors: observations.compactMap(\.anchor))
+            // Each anchor fitted the stops of its own answer. The merged stops can carry fresher delays: a delay that shrank puts the train
+            // at a stop, or past it, at the time of an older position. Such an anchor would pull it off the platform and back, so every
+            // anchor is checked again against the merged run; one that no longer fits is left out (the timetable decides there).
+            let anchors = observations.compactMap { observation in
+                observation.anchor.flatMap { RadarProjection.validatedAnchor(for: schedule, time: $0.time, coordinate: $0.coordinate) }
+            }
+            run = RadarRunPath(schedule: schedule, anchors: anchors)
             endsAt = run.lastTime ?? observations.last?.time ?? .distantPast
         }
     }

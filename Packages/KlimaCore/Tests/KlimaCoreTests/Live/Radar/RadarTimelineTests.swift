@@ -163,6 +163,28 @@ final class RadarTimelineTests: XCTestCase {
         XCTAssertEqual(timeline.pin(for: "d", at: F.at(40))?.delaySeconds, 360)
     }
 
+    func testAnOlderPositionThatTheFresherDelaysContradictDoesNotPullTheTrainOffItsStop() throws {
+        // The live radar saw the train at minute 31, four minutes late, still 7 km before B (its own answer: arrives at B at 34).
+        // A fresher answer (for minute 50, fetched at 33) reports it on time: at B from 30 to 32. The older position must not pull the
+        // train off the platform at 31 and back (review 1: it arrived, jumped back 7 km and came again), nor send it backwards after B.
+        var timeline = RadarTimeline()
+        let late = F.threeStops(delay: 4)
+        let seen = RadarProjection.position(of: RadarSchedule(F.vehicle("z", stops: late)), anchor: nil, at: F.at(31))?.coordinate
+        F.assertClose(seen, F.point(14.9))
+        timeline.addLive([(vehicle: F.vehicle("z", stops: late, position: seen), time: F.at(31))])
+        timeline.addFrame([answer("z", at: 50, delay: 0)], time: F.at(50), fetchedAt: F.at(33))
+        let atStop = try XCTUnwrap(timeline.pin(for: "z", at: F.at(31)))
+        F.assertClose(atStop.coordinate, F.point(15.0), "it stands at B, as the fresher delays say")
+        XCTAssertEqual(atStop.phase, .atStop(1))
+        var last = 14.0
+        for minute in stride(from: 0.0, through: 62.0, by: 0.5) {
+            let pin = try XCTUnwrap(timeline.pin(for: "z", at: F.at(minute)), "minute \(minute)")
+            XCTAssertGreaterThanOrEqual(pin.coordinate.longitude, last - 1e-9, "minute \(minute): never backwards")
+            last = pin.coordinate.longitude
+        }
+        F.assertClose(timeline.pin(for: "z", at: F.at(50))?.coordinate, F.point(15.0 + 18.0 / 30.0), accuracy: 1e-6, "the fresher answer's own position")
+    }
+
     // MARK: Vehicles that start later, vehicles that are gone
 
     func testATrainThatStartsLaterAppearsFromItsFirstDeparture() throws {
