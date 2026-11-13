@@ -46,9 +46,20 @@ struct TimeBalanceEntryCard: View {
                             .accessibilityHidden(true)
                     }
                     if !balance.isEmpty {
-                        StatsGrowOnView { grow in
-                            TimeBalanceSplitBar(recorded: balance.recordedMinutes, estimated: balance.estimatedMinutes, grow: grow)
-                                .frame(height: 8)
+                        VStack(spacing: 5) {
+                            StatsGrowOnView { grow in
+                                TimeBalanceSplitBar(recorded: balance.recordedMinutes, estimated: balance.estimatedMinutes, grow: grow)
+                                    .frame(height: 8)
+                            }
+                            let shares = TimeBalanceText.splitPercent(balance.recordedShare)
+                            HStack {
+                                Text("\(shares.0) erfasst")
+                                Spacer(minLength: Theme.Spacing.xs)
+                                Text("\(shares.1) geschätzt")
+                            }
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
                         }
                         .accessibilityHidden(true)
                     }
@@ -72,13 +83,8 @@ struct TimeBalanceEntryCard: View {
 
     private func detail(_ balance: TimeBalance) -> String {
         if balance.isEmpty { return "Stunden in Bahn und Bus, Vergleich mit dem Auto, Verspätungen." }
-        var text = "\(TimeBalanceText.carSentence(balance.carMinutes))."
-        if balance.recordedMinutes > 0 {
-            text += " Davon \(Format.percent(balance.recordedShare)) erfasst, der Rest geschätzt."
-        } else {
-            text += " Noch alles geschätzt."
-        }
-        return text
+        return "\(TimeBalanceText.carSentence(balance.carMinutes))."
+
     }
 }
 

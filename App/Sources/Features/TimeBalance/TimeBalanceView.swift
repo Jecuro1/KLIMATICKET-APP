@@ -134,10 +134,11 @@ struct TimeBalanceScreen: View {
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Wie lange du in Bahn und Bus unterwegs warst – und wie lange du mit dem Auto selbst gefahren wärst.")
+            Text("Deine Stunden in Bahn und Bus – und wie lange du mit dem Auto selbst gefahren wärst.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -56,7 +56,7 @@ struct TripEdDurationRow: View {
     }
 
     private var hint: String {
-        if minutes > 0 { return model.isRoundTrip && !model.isJourney ? "Eingetragen · zählt hin und zurück" : "Eingetragen" }
+        if minutes > 0 { return "Eingetragen" }
         if let fromConnection = model.durationFromConnection {
             return "Laut Verbindung \(TimeBalanceText.clock(fromConnection))"
         }

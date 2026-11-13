@@ -17,10 +17,12 @@ struct TimeBalanceHeroCard: View {
                 HStack(alignment: .firstTextBaseline) {
                     Kicker(text: "Unterwegs · \(periodTitle)")
                     Spacer(minLength: Theme.Spacing.xs)
-                    Image(systemName: "hourglass")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.accentText)
-                        .accessibilityHidden(true)
+                    if !typeSize.isAccessibilitySize {
+                        Image(systemName: "hourglass")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accentText)
+                            .accessibilityHidden(true)
+                    }
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     CountUpText(value: parts.value) { Format.number($0, decimals: parts.decimals) }
@@ -64,13 +66,12 @@ struct TimeBalanceHeroCard: View {
 
     @ViewBuilder
     private var legend: some View {
-        let total = max(balance.totalMinutes, 1)
+        let hours = TimeBalanceText.splitShort(balance.recordedMinutes, balance.estimatedMinutes)
+        let shares = TimeBalanceText.splitPercent(balance.recordedShare)
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            legendRow(marker: TimeBalanceSwatch(style: .recorded), title: "Erfasst",
-                      value: balance.recordedMinutes, share: balance.recordedMinutes / total,
+            legendRow(marker: TimeBalanceSwatch(style: .recorded), title: "Erfasst", figure: "\(hours.0) · \(shares.0)",
                       detail: recordedDetail)
-            legendRow(marker: TimeBalanceSwatch(style: .estimated), title: "Geschätzt",
-                      value: balance.estimatedMinutes, share: balance.estimatedMinutes / total,
+            legendRow(marker: TimeBalanceSwatch(style: .estimated), title: "Geschätzt", figure: "\(hours.1) · \(shares.1)",
                       detail: balance.estimatedTripCount > 0
                           ? "\(TimeBalanceText.trips(balance.estimatedTripCount)) ohne Dauer – mit Durchschnittstempo gerechnet"
                           : "Jede Fahrt hat eine Dauer")
@@ -87,8 +88,7 @@ struct TimeBalanceHeroCard: View {
     }
 
     @ViewBuilder
-    private func legendRow(marker: TimeBalanceSwatch, title: String, value: Double, share: Double, detail: String) -> some View {
-        let figure = "\(TimeBalanceText.short(value)) · \(Format.percent(share))"
+    private func legendRow(marker: TimeBalanceSwatch, title: String, figure: String, detail: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
             marker
                 .frame(width: 12, height: 12)

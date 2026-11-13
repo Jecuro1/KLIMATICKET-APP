@@ -140,6 +140,8 @@ struct TimeBalanceFactsRow: View {
     let balance: TimeBalance
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    /// The tile figure grows with the text (Theme.Typography.numberMedium is fixed at 30 pt), so it stays the largest line.
+    @ScaledMetric(relativeTo: .title) private var valueSize: CGFloat = 30
 
     var body: some View {
         let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Theme.Spacing.s))
@@ -186,7 +188,7 @@ struct TimeBalanceFactsRow: View {
                 }
                 Kicker(text: kicker)
                 Text(value)
-                    .font(Theme.Typography.numberMedium)
+                    .font(.system(size: min(valueSize, 64), weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                     .minimumScaleFactor(0.6)
@@ -196,6 +198,7 @@ struct TimeBalanceFactsRow: View {
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                 Spacer(minLength: 0)
             }
             .frame(maxHeight: .infinity, alignment: .topLeading)
@@ -232,32 +235,51 @@ struct TimeBalanceModesCard: View {
 
     private var headline: String {
         guard let first = balance.modes.first else { return "" }
-        return "Am meisten Zeit: \(first.mode.displayName) mit \(Format.percent(first.share))"
+        return "Am meisten Zeit: \(first.mode.displayName) mit \(TimeBalanceText.share(first.share))"
     }
 
+    @ViewBuilder
     private func row(_ share: TimeBalanceModeShare, fraction: Double) -> some View {
+        if typeSize.isAccessibilitySize {
+            // Icon and name on one line, the figure and the bar under them – nothing squeezed beside a 30-pt tile.
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: Theme.Spacing.xs) {
+                    ModeIcon(mode: share.mode, size: 30)
+                        .accessibilityHidden(true)
+                    Text(share.mode.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textPrimary)
+                }
+                Text(figure(share)).font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(Theme.textPrimary)
+                ProgressRail(progress: fraction, height: 6, fill: AnyShapeStyle(Theme.modeColor(share.mode)))
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spoken(share))
+        } else {
+            compactRow(share, fraction: fraction)
+        }
+    }
+
+    private func spoken(_ share: TimeBalanceModeShare) -> String {
+        "\(share.mode.displayName): \(TimeBalanceText.spoken(share.minutes)), \(TimeBalanceText.share(share.share))"
+    }
+
+    private func compactRow(_ share: TimeBalanceModeShare, fraction: Double) -> some View {
         HStack(spacing: Theme.Spacing.s) {
             ModeIcon(mode: share.mode, size: 30)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                if typeSize.isAccessibilitySize {
+                HStack {
                     Text(share.mode.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textPrimary)
+                    Spacer(minLength: Theme.Spacing.xs)
                     Text(figure(share)).font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(Theme.textPrimary)
-                } else {
-                    HStack {
-                        Text(share.mode.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.textPrimary)
-                        Spacer(minLength: Theme.Spacing.xs)
-                        Text(figure(share)).font(.subheadline.weight(.bold)).monospacedDigit().foregroundStyle(Theme.textPrimary)
-                    }
                 }
                 ProgressRail(progress: fraction, height: 6, fill: AnyShapeStyle(Theme.modeColor(share.mode)))
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(share.mode.displayName): \(TimeBalanceText.spoken(share.minutes)), \(Format.percent(share.share))")
+        .accessibilityLabel(spoken(share))
     }
 
     private func figure(_ share: TimeBalanceModeShare) -> String {
-        "\(TimeBalanceText.short(share.minutes)) · \(Format.percent(share.share))"
+        "\(TimeBalanceText.short(share.minutes)) · \(TimeBalanceText.share(share.share))"
     }
 }

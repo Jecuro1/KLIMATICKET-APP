@@ -29,6 +29,36 @@ enum TimeBalanceText {
         return "\(Format.number(p.value, decimals: p.decimals)) \(p.unit)"
     }
 
+    /// The two parts of a sum („erfasst“ / „geschätzt“) so that they add up to the hero's figure: when the sum and both
+    /// parts are whole hours, the hours left over by rounding down go to the larger remainders (largest remainder).
+    static func splitShort(_ first: Double, _ second: Double) -> (String, String) {
+        let total = parts(first + second), a = parts(first), b = parts(second)
+        guard total.unit == "Std.", total.decimals == 0, a.unit == "Std.", a.decimals == 0, b.unit == "Std.", b.decimals == 0 else {
+            return (short(first), short(second))
+        }
+        let hours = [max(0, first) / 60, max(0, second) / 60]
+        var shown = hours.map { $0.rounded(.down) }
+        var missing = max(0, min(2, Int(total.value) - Int(shown[0] + shown[1])))
+        for index in [0, 1].sorted(by: { hours[$0] - shown[$0] > hours[$1] - shown[$1] }) where missing > 0 {
+            shown[index] += 1
+            missing -= 1
+        }
+        return ("\(Format.number(shown[0])) Std.", "\(Format.number(shown[1])) Std.")
+    }
+
+    /// "37 %" / "63 %" that add up to 100 % (a part above 0 never shows as 0 % or 100 %).
+    static func splitPercent(_ firstShare: Double) -> (String, String) {
+        let share = min(max(firstShare.isFinite ? firstShare : 0, 0), 1)
+        var first = Int((share * 100).rounded())
+        if share > 0, share < 1 { first = min(99, max(1, first)) }
+        return ("\(first) %", "\(100 - first) %")
+    }
+
+    /// A mode's share: "< 1 %" instead of "0 %" for a little time.
+    static func share(_ fraction: Double) -> String {
+        fraction > 0 && (fraction * 100).rounded() < 1 ? "< 1 %" : Format.percent(fraction)
+    }
+
     /// "1 Std. 15 Min." · "45 Min." · "3 Std." – one trip.
     static func clock(_ minutes: Double) -> String {
         let total = Int(max(0, minutes.isFinite ? minutes : 0).rounded())

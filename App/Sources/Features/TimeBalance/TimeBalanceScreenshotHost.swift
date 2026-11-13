@@ -99,6 +99,7 @@ struct TimeBalanceScreenshotHost: View {
             NavigationStack { TimeBalanceView(fixture: []) }
         case "timeBalanceDelays":
             NavigationStack { TimeBalanceView(fixture: TimeBalanceDemo.withDelays(trips.map(\.timeInput))) }
+                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.3))
         case "timeBalanceCard":
             NavigationStack {
                 ScrollView {
