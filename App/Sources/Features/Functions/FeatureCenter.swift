@@ -118,7 +118,7 @@ final class FeatureCenter {
     func allowsLink(to id: FeatureID, app: AppState) -> Bool {
         guard !isOn(id, app: app) else { return true }
         let title = id.title
-        app.showToast("eye.slash.fill", "\(title) ist ausgeblendet", "Hier kannst du es wieder einschalten", haptic: .warning)
+        app.showToast("switch.2", "\(title) ist ausgeblendet", "Hier kannst du es wieder einschalten", haptic: .warning)
         // A sheet cannot be presented over Einstellungen: that closes first (like „Fahrt erfassen“ from outside).
         if app.isShowingSettings {
             app.isShowingSettings = false

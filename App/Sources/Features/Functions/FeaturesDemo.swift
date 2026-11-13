@@ -132,7 +132,7 @@ struct FeaturesScreenshotHost: View {
                         while !Task.isCancelled {
                             try? await Task.sleep(for: .milliseconds(900))
                             if app.toast == nil {
-                                app.showToast("eye.slash.fill", "Zug-Radar ist ausgeblendet", "Hier kannst du es wieder einschalten")
+                                app.showToast("switch.2", "Zug-Radar ist ausgeblendet", "Hier kannst du es wieder einschalten")
                             }
                         }
                     }

@@ -69,7 +69,7 @@ extension FeatureRecipient {
         switch self {
         case .oebbTimetable: Theme.glacier
         case .oebbShop: Theme.dawn
-        case .vao: Theme.modeColor(.bus)
+        case .vao: Theme.alpenglow
         case .cloud: Theme.dusk
         case .github: Theme.pine
         case .appleMaps: Theme.modeColor(.sBahn)

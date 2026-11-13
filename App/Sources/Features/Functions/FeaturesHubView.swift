@@ -125,15 +125,17 @@ struct FeaturesHubView: View {
                     withMotion(Motion.smooth) { proxy.scrollTo(note.id, anchor: .center) }
                     flash(note.id)
                 } label: {
-                    Label {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
+                        Image(systemName: "eye.slash")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.summitText)
                         Text(note.text)
                             .font(.subheadline)
                             .foregroundStyle(Theme.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
-                        Image(systemName: "eye.slash.fill")
-                            .foregroundStyle(Theme.summitText)
+                        Spacer(minLength: 0)
                     }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Springt zur Funktion")
@@ -211,9 +213,12 @@ struct FeaturesHubView: View {
 
     private func scrollToFocus(_ proxy: ScrollViewProxy) async {
         guard let target = focus ?? screenshotAnchor else { return }
-        try? await Task.sleep(for: .milliseconds(450))
+        // A sheet first finishes sliding in; the list measures its lazy rows on the way, so a second pass lands exactly.
+        try? await Task.sleep(for: .milliseconds(isSheet ? 650 : 450))
         withMotion(Motion.smooth) { proxy.scrollTo(target, anchor: .center) }
         if focus != nil { flash(target) }
+        try? await Task.sleep(for: .milliseconds(500))
+        withMotion(Motion.smooth) { proxy.scrollTo(target, anchor: .center) }
     }
 
     /// The row lights up for a moment (stays lit in screenshots).

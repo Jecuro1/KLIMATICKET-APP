@@ -19,7 +19,9 @@ struct FeatureHubHero: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.m) {
-            HStack(alignment: .center, spacing: Theme.Spacing.s) {
+            let header = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: Theme.Spacing.s))
+            header {
                 Image(systemName: "switch.2")
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.white)
@@ -37,6 +39,7 @@ struct FeatureHubHero: View {
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -62,16 +65,34 @@ struct FeatureHubHero: View {
                 : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
             layout {
                 if offlineMode {
-                    SetPill(text: "Offline-Modus an", symbol: "wifi.slash", tint: Theme.summitText)
+                    FeatureHeroPill(text: "Offline-Modus an", symbol: "wifi.slash")
                         .motionTransition(.pop)
                 }
                 if hiddenCount > 0 {
-                    SetPill(text: hiddenCount == 1 ? "1 Einstieg ausgeblendet" : "\(hiddenCount) Einstiege ausgeblendet",
-                            symbol: "eye.slash", tint: Theme.summitText)
+                    FeatureHeroPill(text: hiddenCount == 1 ? "1 Einstieg ausgeblendet" : "\(hiddenCount) Einstiege ausgeblendet",
+                                    symbol: "eye.slash")
                         .motionTransition(.pop)
                 }
             }
         }
+    }
+}
+
+/// A state pill of the hero that wraps at large text instead of cutting its words (SetPill stays on one line).
+private struct FeatureHeroPill: View {
+    var text: String
+    var symbol: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Image(systemName: symbol)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Theme.summitText)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Theme.summitText.opacity(0.12), in: .rect(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -133,6 +154,8 @@ private struct FeatureMosaicTile: View {
 struct FeatureOfflineCard: View {
     @Binding var isOn: Bool
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Toggle(isOn: $isOn) {
@@ -145,29 +168,27 @@ struct FeatureOfflineCard: View {
                 Kicker(text: isOn ? "Gestoppt" : "Stoppt")
                     .contentTransition(.opacity)
                 ForEach(FeaturePrivacy.offlineStops, id: \.self) { line in
-                    Label {
-                        Text(line)
-                            .font(.footnote)
-                            .foregroundStyle(Theme.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } icon: {
+                    HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
                         Image(systemName: isOn ? "xmark.circle.fill" : "xmark.circle")
                             .foregroundStyle(isOn ? Theme.summitText : Theme.textTertiary)
                             .contentTransition(.symbolEffect(.replace))
+                        Text(line)
+                            .foregroundStyle(Theme.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .font(.footnote)
                 }
-                Label {
-                    Text(FeaturePrivacy.offlineKeeps)
-                        .font(.footnote)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
                     Image(systemName: "checkmark.circle")
                         .foregroundStyle(Theme.positiveText)
+                    Text(FeaturePrivacy.offlineKeeps)
+                        .foregroundStyle(Theme.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .font(.footnote)
                 .padding(.top, 2)
             }
-            .padding(.leading, Theme.Spacing.xxs)
+            .padding(.leading, typeSize.isAccessibilitySize ? 0 : 42)   // under the label's text, past the icon tile
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityText)
         }
@@ -204,20 +225,28 @@ struct FeatureHubRow: View {
     var body: some View {
         Group {
             if typeSize.isAccessibilitySize {
+                // At accessibility sizes the words get the full width under the icon and the switch.
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     HStack {
                         icon
                         Spacer(minLength: Theme.Spacing.xs)
-                        control
+                        toggle
                     }
-                    texts
+                    heading
+                    details
                 }
             } else {
                 HStack(alignment: .top, spacing: Theme.Spacing.s) {
                     icon
-                    texts
-                    Spacer(minLength: Theme.Spacing.xs)
-                    control
+                    VStack(alignment: .leading, spacing: 3) {
+                        // Only the name and its line share the width with the switch; the state below uses the whole row.
+                        HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+                            heading
+                            Spacer(minLength: Theme.Spacing.xs)
+                            toggle
+                        }
+                        details
+                    }
                 }
             }
         }
@@ -233,7 +262,7 @@ struct FeatureHubRow: View {
         .modifier(FeatureDependencyAction(dependency: dependency, onEnable: onEnableDependency))
         .task {
             guard opensFlowsForScreenshot else { return }
-            try? await Task.sleep(for: .milliseconds(1200))
+            try? await Task.sleep(for: .milliseconds(1400))
             showsFlows = true
         }
     }
@@ -245,16 +274,22 @@ struct FeatureHubRow: View {
             .padding(.top, 1)
     }
 
-    private var texts: some View {
-        VStack(alignment: .leading, spacing: 3) {
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 2) {
             Text(descriptor.title)
                 .font(.body)
                 .foregroundStyle(Theme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(descriptor.line)
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
+        }
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Image(systemName: tone.symbol)
                     .font(.caption2.weight(.bold))
                     .contentTransition(.symbolEffect(.replace))
@@ -264,7 +299,7 @@ struct FeatureHubRow: View {
             }
             .font(.footnote.weight(.semibold))
             .foregroundStyle(tone.color)
-            .padding(.top, 1)
+            .padding(.top, 2)
             if !status.isOn {
                 Text(descriptor.offEffect)
                     .font(.footnote)
@@ -273,22 +308,24 @@ struct FeatureHubRow: View {
                     .motionTransition(.rise)
             }
             if let dependency {
-                Button { onEnableDependency(dependency) } label: {
-                    Label("\(dependency.title) einschalten", systemImage: "power")
-                        .font(.footnote.weight(.semibold))
-                }
-                .buttonStyle(.glass)
-                .controlSize(.small)
-                .padding(.top, 2)
-                .motionTransition(.pop)
+                glassButton("\(dependency.title) einschalten", symbol: "power") { onEnableDependency(dependency) }
+                    .motionTransition(.pop)
+            }
+            if !isToggle {
+                glassButton(status.switchIsOn ? "Einstellungen öffnen" : "Einrichten", symbol: "chevron.right", trailing: true,
+                            action: onOpenPage)
             }
             Button { showsFlows = true } label: {
-                Label("Was wird gesendet?", systemImage: "info.circle")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.accentText)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Image(systemName: "info.circle")
+                    Text("Was wird gesendet?")
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.accentText)
             }
             .buttonStyle(.borderless)
-            .padding(.top, 2)
+            .padding(.top, 1)
             .popover(isPresented: $showsFlows, arrowEdge: .top) {
                 FeatureFlowPopover(descriptor: descriptor)
                     .presentationCompactAdaptation(.popover)
@@ -296,22 +333,26 @@ struct FeatureHubRow: View {
         }
     }
 
+    /// A small glass button in the row („Fahrplan & Echtzeit einschalten“, „Einrichten ›“).
+    private func glassButton(_ title: String, symbol: String, trailing: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if !trailing { Image(systemName: symbol) }
+                Text(title).fixedSize(horizontal: false, vertical: true)
+                if trailing { Image(systemName: symbol).font(.caption.weight(.bold)) }
+            }
+            .font(.footnote.weight(.semibold))
+        }
+        .buttonStyle(.glass)
+        .controlSize(.small)
+        .padding(.top, 2)
+    }
+
     @ViewBuilder
-    private var control: some View {
+    private var toggle: some View {
         if isToggle {
             Toggle(descriptor.title, isOn: Binding(get: { status.switchIsOn }, set: onToggle))
                 .labelsHidden()
-        } else {
-            Button(action: onOpenPage) {
-                HStack(spacing: 4) {
-                    Text(status.switchIsOn ? "An" : "Einrichten")
-                        .font(.subheadline.weight(.semibold))
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.semibold))
-                }
-                .foregroundStyle(Theme.accentText)
-            }
-            .buttonStyle(.borderless)
         }
     }
 

@@ -118,22 +118,23 @@ struct FeaturePrivacyView: View {
     private func recipientSection(_ entry: FeaturePrivacyRecipient, header: String?) -> some View {
         let state = recipientState(entry.recipient)
         return Section {
-            HStack(spacing: Theme.Spacing.s) {
+            HStack(alignment: .top, spacing: Theme.Spacing.s) {
                 SetIconTile(symbol: entry.recipient.symbol, tint: entry.recipient.tint)
-                Text(entry.recipient.title)
-                    .font(.headline)
-                    .foregroundStyle(Theme.textPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Theme.Spacing.xs)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(entry.recipient.title)
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Image(systemName: state.tone.symbol).font(.caption2.weight(.bold))
+                        Text("Jetzt: \(state.text)").fixedSize(horizontal: false, vertical: true)
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(state.tone.color)
+                }
+                Spacer(minLength: 0)
             }
-            .accessibilityElement(children: .combine)
-            .listRowBackground(Theme.surface)
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Image(systemName: state.tone.symbol).font(.caption2.weight(.bold))
-                Text("Jetzt: \(state.text)")
-            }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(state.tone.color)
+            .padding(.vertical, 2)
             .accessibilityElement(children: .combine)
             .listRowBackground(Theme.surface)
             ForEach(entry.items) { item in
