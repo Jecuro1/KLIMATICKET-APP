@@ -89,8 +89,15 @@ sich Farbe, Bewegung oder Zahlen wirklich geändert haben.
 
 **Sicherheitsnetz (Schritt 0).** Bevor es Paletten gab, lasen die sechs Tokens schon über `ThemeRuntime`, nur mit Gletscher. Vergleich mit
 dem Lauf davor (gleiche Szenen `dashboard`, `trips`, `stats`, `ticket`, `settings`, `hero`, hell und dunkel): 7 von 12 Bildern
-pixelgleich, die übrigen mit höchstens 3 von 255 Kanalstufen Abweichung (Rendering-Rauschen, nichts verschoben). Die Perf-Läufe stehen
-in §9.
+pixelgleich, die übrigen mit höchstens 3 von 255 Kanalstufen Abweichung (Rendering-Rauschen, nichts verschoben).
+
+**Perf (Schritt 0).** Zwei `[perf]`-Läufe, vorher (a3ea47b, Artefakt `perf-464`) und mit dem Sicherheitsnetz (32a2647, `perf-465`), liefen
+gleichzeitig auf zwei Runnern; beide stießen an das 95-Minuten-Limit (19 bzw. 14 Tests fertig). Der zweite Runner war insgesamt langsamer:
+Abschnitte des Starts, die vor jeder Ansicht liegen und kein Token lesen, wurden dort ebenso langsamer (`state.services` 292 → 364 ms,
+`relations.built` 261 → 314 ms, Demo-Jahr), der XCTest-Start 4,7 → 5,9 s. Die Scroll-Werte bewegen sich in beide Richtungen
+(z. B. Übersicht-Tour 225 → 120 ms/s, Fahrten-Wischen 182 → 255 ms/s), also im Rauschen dieses Runners. Ein Lesezugriff kostet ein
+ungestörtes `NSLock` und eine Referenz – Nanosekunden je Token. Darum bleibt der Wechsel beim Schließen der Einstellungen; ein sauberer
+A/B-Vergleich auf demselben Runner steht aus (§9).
 
 ## 5. Bewegung
 
@@ -154,8 +161,18 @@ Geprüft (Linux): 34 Tests `swift test --filter Appearance` (Paletten vollständ
 „Bewegung reduzieren“, Haptik-Tabelle über jeden Fall und gleich `Haptic.feedback`, Zahlenbeispiele, Wochenstart 25./26.10.2026,
 Paarung vollständig, Migration, tolerantes Lesen). Typecheck App und Widgets.
 
-Geprüft (CI, Simulator): Screenshots der Szenen `themeSettings`, `themeGallery`, `themeOptions`, `themeAX5`, `themeDash`, `themeStats`,
-`themeStatsFormat`, `themeTicket`, `themeSettingsRow`, `themeIcon`, hell und dunkel; Pixelvergleich Gletscher vorher / nachher (§4).
+Geprüft (CI, Simulator, hell und dunkel angesehen): `themeSettings`, `themeGallery`, `themeOptions`, `themeAX5`, `themeAX5Lower`,
+`themeDash`, `themeDashWeek`, `themeStats`, `themeStatsFormat`, `themeStatsWeek`, `themeTicket`, `themeSettingsRow`, `themeIcon`
+(Artefakte `screenshots-570` und `screenshots-575`). Pixelvergleich Gletscher: Schritt 0 gegen vorher (§4) und nach den Haken im
+Gipfel-Diagramm und im Hero noch einmal `dashboard` und `hero` gegen vorher – pixelgleich bis auf 35 Pixel mit 1 Kanalstufe.
+Nach dem letzten Screenshot-Lauf geändert und nicht mehr fotografiert: das kleine Paletten-Bild im Vorschlag auf der App-Symbol-Seite
+wird jetzt vom großen Bild verkleinert statt beschnitten.
+
+Was die Zahlen-Optionen zeigen: „Immer mit Cent“ ändert in der Statistik oben den Ticketpreis („€ 1.400,00“); die große Ersparnis,
+„von € 1.400“ und die Prognose bleiben ganze Euro (sie runden bewusst). „Sonntag“ ordnet Wochen-Karte, Reise-Kalender und
+Wochentags-Diagramm (Szenen `themeDashWeek`, `themeStatsWeek`).
+
+Nicht sauber gemessen: ein Perf-Vergleich auf demselben Runner (§4).
 
 Nur auf einem echten iPhone prüfbar:
 

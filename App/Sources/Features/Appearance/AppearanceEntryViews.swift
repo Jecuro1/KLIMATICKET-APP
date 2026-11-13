@@ -103,7 +103,10 @@ struct AppearanceThemeSuggestion: View {
         let colors = ThemeRuntime.colors(for: suggested)
         let isActive = look.prefs.palette == suggested
         suggestionLayout {
+            // The palette card's swatch, drawn at its own size and scaled down (its parts would be cut at 44 pt).
             AppearanceSwatch(colors: colors)
+                .frame(width: 140, height: 96)
+                .scaleEffect(64.0 / 140.0)
                 .frame(width: 64, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous))
                 .overlay { RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous).strokeBorder(Theme.separator, lineWidth: 1) }
