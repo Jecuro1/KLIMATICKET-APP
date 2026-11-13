@@ -18,7 +18,7 @@ struct BackupFile: Codable {
     var exportedAt: Date = Date()
     var appVersion: String = AppConfig.appVersion
     var tickets: [TicketDTO]
-    var trips: [TripDTO]
+    var trips: [BackupTripRow]   // MARK: timebalance – the sync row plus optional time keys (docs/TIME_BALANCE.md §5)
     var favorites: [FavoriteDTO]
     /// Absent in version-1 backups.
     var benefits: [BenefitDTO]?
@@ -27,7 +27,7 @@ struct BackupFile: Codable {
         case format, version, exportedAt, appVersion, tickets, trips, favorites, benefits
     }
 
-    init(tickets: [TicketDTO], trips: [TripDTO], favorites: [FavoriteDTO], benefits: [BenefitDTO]?) {
+    init(tickets: [TicketDTO], trips: [BackupTripRow], favorites: [FavoriteDTO], benefits: [BenefitDTO]?) {   // MARK: timebalance
         self.tickets = tickets
         self.trips = trips
         self.favorites = favorites
@@ -43,7 +43,7 @@ struct BackupFile: Codable {
         exportedAt = (try? c.decodeIfPresent(Date.self, forKey: .exportedAt)) ?? Date()
         appVersion = (try? c.decodeIfPresent(String.self, forKey: .appVersion)) ?? ""
         tickets = try c.decode([TicketDTO].self, forKey: .tickets)
-        trips = try c.decode([TripDTO].self, forKey: .trips)
+        trips = try c.decode([BackupTripRow].self, forKey: .trips)   // MARK: timebalance – files without the time keys decode too
         favorites = try c.decode([FavoriteDTO].self, forKey: .favorites)
         benefits = try c.decodeIfPresent([BackupBenefitRow].self, forKey: .benefits)?.map(\.dto)
     }
@@ -75,7 +75,7 @@ enum Backup {
     // builds the file from a background context when a share target asks for it.
     nonisolated static func export(context: ModelContext) throws -> Data {
         let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { TicketDTO($0, userID: "") }
-        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { TripDTO($0, userID: "") }
+        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { BackupTripRow(entity: $0) }   // MARK: timebalance
         let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { FavoriteDTO($0, userID: "") }
         let benefits = try context.fetch(FetchDescriptor<BenefitEntity>()).map { BenefitDTO($0, userID: "") }
         let encoder = JSONEncoder()
@@ -107,8 +107,17 @@ enum Backup {
         // Version-1 rows over existing entities keep the phase-2 columns the file does not know (keepingLocalExtras).
         result.tickets = try merge(file.tickets, context: context, id: \TicketEntity.id, updatedAt: \.updatedAt,
                                    apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
-        result.trips = try merge(file.trips, context: context, id: \TripEntity.id, updatedAt: \.updatedAt,
-                                 apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
+        // MARK: timebalance – a row's time keys go with it (absent in older files: the entity keeps its values)
+        let tripTimes = Dictionary(file.trips.map { ($0.base.id, $0.times) }, uniquingKeysWith: { _, last in last })
+        result.trips = try merge(file.trips.map(\.base), context: context, id: \TripEntity.id, updatedAt: \.updatedAt,
+                                 apply: { row, trip in
+                                     row.keepingLocalExtras(of: trip).apply(to: trip)
+                                     tripTimes[row.id]?.apply(to: trip)
+                                 }, make: { row in
+                                     let trip = row.makeEntity()
+                                     tripTimes[row.id]?.apply(to: trip)
+                                     return trip
+                                 })
         result.favorites = try merge(file.favorites, context: context, id: \FavoriteRouteEntity.id, updatedAt: \.updatedAt,
                                      apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
         result.benefits = try merge(file.benefits ?? [], context: context, id: \BenefitEntity.id, updatedAt: \.updatedAt,
