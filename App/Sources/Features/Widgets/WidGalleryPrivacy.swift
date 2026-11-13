@@ -194,6 +194,8 @@ struct WidPrivacyStage: View {
             Text("Vorschau mit Beispielzeiten")
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(Color.white.opacity(0.62))
+                .multilineTextAlignment(.center)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // the stage's widgets keep their size, so does its note
                 .unredacted()
         }
         .padding(.vertical, Theme.Spacing.l)

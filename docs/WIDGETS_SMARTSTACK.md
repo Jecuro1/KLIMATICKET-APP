@@ -56,7 +56,7 @@ zusammen. Symbol: Berg, nach dem Break-even die Fahne.
 
 | Widget | Punkte |
 |---|---|
-| Nächste Verbindung, Abfahrten | 100 ab 45 Minuten vor der nächsten Abfahrt bis zur Abfahrt, danach in 5 Minuten linear auf 0; sonst 0 |
+| Nächste Verbindung, Abfahrten | 100 ab 45 Minuten vor der nächsten Abfahrt bis zur Abfahrt, danach in 5 Minuten linear auf 0; sonst 0 (jeder Wert gilt bis zum nächsten Eintrag, siehe §7) |
 | Ticket-Restzeit | 30 an jedem der letzten 14 Tage der Gültigkeit (Wiener Kalendertage, letzter Tag eingeschlossen), sonst 0 |
 | Break-even | 60 am Tag der Prognose, solange das Ticket noch nicht rentiert ist, sonst 0 |
 | alle anderen | keine Angabe (das System entscheidet allein) |
@@ -107,10 +107,19 @@ gespeicherten Wahl, die Zeilen der kleinen Live-Aktivität (vor der Abfahrt, unt
 
 ## 7. Vorschau (DEBUG, CI-Szenen)
 
-`SmartWidgetsScreenshotHost`: `widgetsPrivacy` (Abschnitt mit gesperrter Vorschau), `widgetsPrivacyAmounts` (auch Beträge
-verborgen), `widgetsPrivacyAX5`, `widgetsAccessory` (alle Sperrbildschirm-Familien, „neu“ markiert), `widgetsAccessoryLocked`
-(dieselben gesperrt), `liveActivitySmall` (Watch-Bühne mit fünf Zuständen), `widgetsRelevance` (Punkte der Demo-Timelines,
-Uhr auf 07:00 gestellt). Alles Demodaten, kein Netz, kein Systemdialog.
+`SmartWidgetsScreenshotHost`: `widgetsPrivacy` (die Galerie beim Abschnitt, gesperrte Vorschau), `widgetsPrivacyAmounts`
+(auch Beträge verborgen), `widgetsPrivacyAX5`, `widgetsPrivacyAX5Switches` und `widgetsPrivacyAX5Bottom` (größte Schrift: oben, bei den Schaltern,
+beim Hinweis),
+`widgetsAccessory` (alle Sperrbildschirm-Familien, „neu“ markiert), `widgetsAccessoryLocked` (dieselben gesperrt),
+`liveActivitySmall` (Watch-Bühne mit fünf Zuständen), `widgetsRelevance` (Punkte der Demo-Timelines, Uhr auf 07:00 gestellt).
+Alles Demodaten, kein Netz, kein Systemdialog.
+
+Die Vorschau in der App zeichnet den Ring der runden Abfahrts-Widgets als `Gauge`, der alle 30 Sekunden neu berechnet wird:
+Außerhalb von Widgets ist der Kreis-Stil von `ProgressView` ein Lade-Rädchen. Im Widget selbst (Umgebung `widgetFamily ==
+.accessoryCircular`) ist es laut Apple die Kapazitätsanzeige, die das System selbst ablaufen lässt – auf dem Gerät zu prüfen.
+
+Die Punkte gelten jeweils ab ihrem Eintrag bis zum nächsten: Das Abklingen nach der Abfahrt ist in der Timeline eine Stufe
+(100 bis zum nächsten Eintrag, spätestens fünf Minuten nach der Abfahrt 0), keine Rampe.
 
 ## 8. Nur auf dem Gerät prüfbar (offen)
 

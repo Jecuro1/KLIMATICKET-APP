@@ -7,14 +7,14 @@ import KlimaCore
 // §7). The simulator cannot capture widgets, Live Activities or a paired watch, so these scenes draw the same SwiftUI views
 // with demo data, no network and no system prompt. DEBUG builds only.
 // - `widgetsPrivacy`: the gallery at "Gesperrt & privat" (switches and the locked preview, the defaults) ·
-//   `widgetsPrivacyAmounts`: the section alone with amounts hidden too · `widgetsPrivacyAX5`: at the largest text size, `widgetsPrivacyAX5Bottom` scrolled to the switches
+//   `widgetsPrivacyAmounts`: the section alone with amounts hidden too · `widgetsPrivacyAX5`: at the largest text size, `widgetsPrivacyAX5Switches` at the switches, `widgetsPrivacyAX5Bottom` at the note
 // - `widgetsAccessory`: every lock-screen family of every widget · `widgetsAccessoryLocked`: the same while locked
 // - `liveActivitySmall`: the small Live Activity family as the Apple Watch Smart Stack shows it
 // - `widgetsRelevance`: the Smart Stack scores of the demo timelines
 
 struct SmartWidgetsScreenshotHost: View {
     static let screens: Set<String> = [
-        "widgetsPrivacy", "widgetsPrivacyAmounts", "widgetsPrivacyAX5", "widgetsPrivacyAX5Bottom", "widgetsAccessory", "widgetsAccessoryLocked",
+        "widgetsPrivacy", "widgetsPrivacyAmounts", "widgetsPrivacyAX5", "widgetsPrivacyAX5Switches", "widgetsPrivacyAX5Bottom", "widgetsAccessory", "widgetsAccessoryLocked",
         "liveActivitySmall", "widgetsRelevance",
     ]
 
@@ -44,7 +44,7 @@ struct SmartWidgetsScreenshotHost: View {
                 .navigationTitle("Widgets")
                 .navigationBarTitleDisplayMode(.inline)
             }
-            .defaultScrollAnchor(screen.hasSuffix("Bottom") ? .bottom : nil)
+            .defaultScrollAnchor(screen.hasSuffix("Bottom") ? .bottom : (screen.hasSuffix("Switches") ? .center : nil))
             .dynamicTypeSize(screen.hasPrefix("widgetsPrivacyAX5") ? .accessibility5 : .large)
         }
     }

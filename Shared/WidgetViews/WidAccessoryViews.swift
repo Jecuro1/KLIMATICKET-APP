@@ -58,7 +58,7 @@ struct WidDepartureRing: View {
                         .font(.system(size: 9.5, weight: .semibold))
                 }
                 Text(verbatim: WidFormat.clock(time))
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .strikethrough(isCancelled)
                     .lineLimit(1)
@@ -76,7 +76,9 @@ struct WidDepartureRing: View {
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 9)
+            // Inside the ring: the capacity gauge's stroke takes about 14 pt on each side of the 72-pt circle.
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
