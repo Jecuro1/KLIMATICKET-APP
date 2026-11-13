@@ -28,6 +28,7 @@ struct SettingsView: View {
         ScrollViewReader { proxy in
             List {
                 SetAccountSection(screenHeader: SetScreenHeader(kicker: headerKicker, title: "Einstellungen", condense: condense))
+                SetFeaturesSection() // MARK: funktionen – „Funktionen“: jeder Schalter, Offline-Modus, Datenschutz (docs/FUNCTIONS_HUB.md)
                 SetFareSection()
                 SetLiveDataSection() // MARK: planner
                 SetFollowNoticesSection() // MARK: follow – „Live-Mitteilungen“ for „Live verfolgen“ (off until switched on)
