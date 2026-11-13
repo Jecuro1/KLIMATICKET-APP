@@ -2723,6 +2723,8 @@ den Schienen-Antworten mit mehr als 100 Fahrzeugen; die Wien-Antwort mit überwi
 5,8 s; 52 Fahrzeuge: 0,4 s). Die 21,5 s gehören zur ersten Anfrage; das war zugleich die größte Antwort (1,83 MB), Verbindungsaufbau und Größe sind nicht getrennt gemessen.
 **Nicht gemessen:** die Größe auf der Leitung. Der
 Linux-`URLSession` entpackt gzip selbst und blendet `Content-Length` und `Content-Encoding` aus (die App sendet `Accept-Encoding: gzip`).
+Aber `/gate` packt nach §A2.1 gar nicht (keine `Content-Encoding` in den aufgezeichneten Antworten von sechs Methoden, nur `mgate` packt): Auf der Leitung ist es also
+etwa so viel wie entpackt; für `JourneyGeoPos` selbst nicht einzeln angesehen (Zeitreise Review 2, `docs/RADAR_TIMETRAVEL.md` §3a).
 Auch die Laufzeit auf einem iPhone im Mobilfunknetz ist nicht gemessen.
 
 **(d) Wie schnell erreichen Busse das Limit?** Sofort. Wien (24 × 30 km) mit allen Produkten: genau 1000 Fahrzeuge, also am Limit, die
@@ -2763,7 +2765,8 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
   **Gleichzeitig unterwegs:** höchstens 3 Anfragen. Die Schleife, die sie startet, bewegt auch Marker und Statuszeile (jede Sekunde) und wartet
   deshalb nicht auf eine Antwort; eine langsame Antwort (gemessen 0,4 bis 21 s) hält weder die Karte noch die übrigen Kacheln auf. Eine Kachel,
   deren Anfrage noch unterwegs ist, wird nicht ein zweites Mal gefragt, auch nicht über „Jetzt aktualisieren“ (die Antwort unterwegs ist die
-  Aktualisierung); bleibt eine Anfrage 90 s ohne Ausgang, wird die Kachel frei. Geht die Uhr zurück (von Hand gestellt, korrigiert), werden
+  Aktualisierung); bleibt eine Anfrage 150 s ohne Ausgang, wird die Kachel frei (länger als der Client für eine Anfrage samt Wiederholung brauchen kann, 131,5 s; vorher 90 s, Zeitreise Review 2).
+  Das Budget gehört der App, nicht der einzelnen Radar-Ansicht: Eine neu geöffnete Ansicht beginnt mit den Sendezeiten der letzten Minute (`RadarBudgetLedger`, Zeitreise Review 2). Geht die Uhr zurück (von Hand gestellt, korrigiert), werden
   Zeitstempel aus der Zukunft auf „jetzt“ gezogen; sonst stünde das Radar so lange, bis die Uhr sie eingeholt hat.
   **Wiederholung des Clients:** Der Client wiederholt eine Anfrage nach Zeitüberschreitung oder 502/503/504 einmal nach 1,5 s. Diese zweite
   Anfrage zählt in `RequestThrottle` (40 je Minute für die ganze App) und im Schutzschalter (drei Fehler in Folge öffnen ihn für 2 Minuten),

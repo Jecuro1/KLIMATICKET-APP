@@ -64,7 +64,9 @@ allem, was das Radar sonst anfragt (Zeitreise, Cockpit): ein Budget im Radar-Mod
 
 Das Budget übersteht das Ausschalten der Ebene, den Wechsel der Verkehrsmittel (`reset()` vergisst die Kacheln, nicht das Budget), Zeitreise,
 Cockpit und Hintergrund. Zwei Radar-Ansichten mit zwei Budgets gibt es nicht: Die App hat ein Fenster (nur iPhone,
-`UIApplicationSupportsMultipleScenes` aus), und Radar und Zugsuche sind Vollbild-Blätter derselben Fahrplan-Ansicht.
+`UIApplicationSupportsMultipleScenes` aus), und Radar und Zugsuche sind Vollbild-Blätter derselben Fahrplan-Ansicht. Nacheinander geöffnete
+Ansichten hatten bis zur Zeitreise-Review 2 aber je ein frisches Budget (Radar schließen und öffnen, immer wieder); jetzt beginnt jede mit dem der
+letzten (`RadarBudgetLedger`, `docs/RADAR_TIMETRAVEL.md` §3a).
 
 **Die Wiederholung des Clients.** Nach einer Zeitüberschreitung oder 502/503/504 fragt `HafasClient` einmal nach 1,5 s nach. Diese zweite
 Anfrage zählt in der Drossel (40) und im Schutzschalter, nicht in den 24 des Radars (§R11.2). Im schlechtesten Fall gehen also 12 statt 6
@@ -82,8 +84,9 @@ sind zusammen etwa eine solche Antwort.
 | schlimmster Fall nur Züge: „Jetzt aktualisieren“ dauernd getippt | 24 | etwa 22 MB | – |
 | schlimmster Fall mit Bus, Bim oder U-Bahn: Kacheln am Limit geteilt | 24, je bis 1000 Fahrzeuge | etwa 40 bis 55 MB | – |
 
-- **Auf der Leitung** ist es weniger: Die App bittet um gzip. Wie viel weniger, ist **nicht gemessen** (der Linux-`URLSession` des Tests
-  sieht nur entpackte Bytes).
+- **Auf der Leitung** ist es etwa genauso viel: Die App bittet um gzip, aber `/gate` packt nicht (`docs/OEBB_LIVE.md` §A2.1, keine
+  `Content-Encoding` in den aufgezeichneten Antworten; Zeitreise Review 2 hat das bemerkt, vorher stand hier „weniger“). Für `JourneyGeoPos`
+  selbst ist das nicht einzeln angesehen (der Linux-`URLSession` des Tests sieht nur entpackte Bytes).
 - **Zoomen spart nichts**, solange die Ebene an ist. Ohne die Ebene lädt das Radar in Wien nur die kleinen Kacheln des Ausschnitts; mit ihr
   immer ganz Österreich. Das ist der Preis von „keine Abhängigkeit vom Kartenausschnitt“ (Auftrag).
 - **Die Wahl bleibt.** Ebenen werden je Gerät gespeichert (`map.layers`): Wer die Pünktlichkeit an lässt, lädt bei jedem Öffnen des Radars
@@ -106,8 +109,8 @@ getrennt gemessen. Ob es reicht, hängt also daran, wann das erste Byte kommt. K
    „Erneut versuchen“; hat eine Kachel noch ihre Antwort, bleibt es beim Hinweis aus Schritt 2. „Erneut versuchen“ öffnet den Schutzschalter nicht:
    Die Anfrage endet vor der Drossel (`LiveHealth.check`), ohne Netz, und das Radar wartet weiter.
 
-Es staut sich nichts: höchstens 3 Anfragen gleichzeitig, eine Kachel nie zweimal zugleich, eine Anfrage ohne Ausgang gibt ihre Kachel nach 90 s
-frei. Ohne Netz ist `timetableUnavailable` `.offline`: Die Schleife endet, die Ebene lädt nichts und sagt, dass sie Live-Daten braucht.
+Es staut sich nichts: höchstens 3 Anfragen gleichzeitig, eine Kachel nie zweimal zugleich, eine Anfrage ohne Ausgang gibt ihre Kachel nach 150 s
+frei (vorher 90 s, kürzer als der Client samt Wiederholung brauchen kann; Zeitreise Review 2). Ohne Netz ist `timetableUnavailable` `.offline`: Die Schleife endet, die Ebene lädt nichts und sagt, dass sie Live-Daten braucht.
 
 **Akku.** Die Ebene hat keinen eigenen Zeitgeber, keinen `TimelineView`, keinen Display-Link und keine Animation, die von selbst weiterläuft. Was läuft:
 

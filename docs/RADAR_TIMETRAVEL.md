@@ -111,17 +111,90 @@ Der Regler selbst ist lokal. Anfragen gibt es, **sobald die Zeit nicht „Jetzt�
 - **Ruhende Minute.** 0,6 s nachdem der Regler stillsteht (nicht beim Ziehen, nicht beim Abspielen), **eine** Anfrage genau für diese Minute; sie ersetzt die Rechnung dort. Nicht, wenn ein Punkt des Plans oder eine Antwort höchstens 150 s daneben liegt oder die Zeit weniger als 60 s von jetzt weg ist.
   Höchstens 12 solche Anfragen von selbst je Zeitreise, danach nur auf „Genau laden“.
 - **Budget.** Alles geht durch `RadarScheduler.claimSlot`, den Topf des Radars (§R11.2): **höchstens 24 Anfragen je Minute, 4 in 10 Sekunden, mindestens 1 s Abstand**, zusammen mit der Live-Schleife. Ein Test über 10 simulierte Minuten Ziehen, Spielen und Warten, und einer mit abwechselnder
-  Live-Schleife und Zeitreise, prüft alle drei Grenzen. Gleichzeitig unterwegs höchstens 2, auch wenn „Fein laden“ den Plan mitten in der Zeitreise neu macht (die Anfragen unterwegs werden abgewartet, nicht doppelt gestellt). Ratenbegrenzung oder offener Schutzschalter pausieren das ganze Radar (`RadarScheduler.pause`). Fehler: nach 15 s, dann 30 s noch einmal, dann bleibt der Zeitpunkt aus und die Karte sagt es.
+  Live-Schleife und Zeitreise, prüft alle drei Grenzen. Das Budget gilt für die ganze App, nicht je Radar-Ansicht (Review 2, §3a). Gleichzeitig unterwegs höchstens 2 (über Mobilfunk 1), auch wenn „Fein laden“ den Plan mitten in der Zeitreise neu macht (die Anfragen unterwegs werden abgewartet, nicht doppelt gestellt). Ratenbegrenzung oder offener Schutzschalter pausieren das ganze Radar (`RadarScheduler.pause`). Fehler: nach 15 s, dann 30 s noch einmal, dann bleibt der Zeitpunkt aus und die Karte sagt es.
 - **Stromspar-Modus.** Wie das Live-Radar lädt die Zeitreise im Stromspar-Modus nichts; gerechnet wird mit dem, was schon da ist. Die Karte sagt es („Stromspar-Modus. Die Zeitreise lädt nichts nach …“) und bietet „Trotzdem laden“ (gilt, bis das Radar schließt).
 - **Pausieren und Beenden.** Die 20-s-Schleife des Radars **pausiert, solange die Zeit nicht Jetzt ist** (nichts wird für „jetzt“ geladen) und läuft nach „Zurück zu Jetzt“ weiter. Verlässt man das Radar oder schaltet die Zug-Ebene aus, endet die eine Schleife der Zeitreise mit allen Anfragen unterwegs.
   Ohne Zustimmung, bei ausgeschaltetem Schalter oder Notschalter gibt es den Chip nicht (derselbe Zugang wie das Radar). Die Zeitreise ist nur für Züge da (Schiene); sind Bus, Bim oder U-Bahn an, oder ist die Pünktlichkeits-Ebene an, ist sie aus.
   Wer eine dieser Ebenen **während** einer Zeitreise einschaltet, beendet sie (früher wartete die Pünktlichkeits-Ebene still hinter der Zeitreise, Review 1).
-- **Cockpit.** Solange das Cockpit offen ist (`docs/RADAR_COCKPIT.md`), ruht die Schleife der Zeitreise wie die Live-Schleife; danach geht es weiter, wo man war. Aus einer Zeitreise öffnet „Cockpit“ nur einen Zug, den das Live-Radar kennt:
+  **Offline** (Tunnel, Funkloch) endet die Zeitreise wie mit „Zurück zu Jetzt“, das Geladene bleibt aber: Wer innerhalb von zehn Minuten wieder hineingeht, lädt nichts doppelt (Review 2, §3a).
+- **Cockpit.** Solange das Cockpit offen ist (`docs/RADAR_COCKPIT.md`), ruht die Schleife der Zeitreise wie die Live-Schleife; danach geht es weiter, wo man war (Momentaufnahmen, die inzwischen älter als zehn Minuten sind, werden einmal neu geholt, §3a). Aus einer Zeitreise öffnet „Cockpit“ nur einen Zug, den das Live-Radar kennt:
   Ein Zug, der erst später losfährt, hat keine Live-Position, und die berechnete darf nicht als eben gesehene weitergegeben werden.
-- **Datenmenge, ehrlich.** Gemessen 0,3 bis 1,8 MB je Antwort **entpackt** (1,2 MB um 22 Uhr, 1,83 MB in der Abendspitze, §R11.1); die Größe auf der Leitung ist nicht gemessen. Der volle Plan: 12 Antworten, **etwa 14 MB am Abend, bis etwa 22 MB in der Spitze**, jede ruhende Minute dazu 1 bis 2 MB
-  (höchstens 12 von selbst: bis etwa 22 MB mehr). Die Karte sagt: „Bis etwa 22 MB (entpackt, 12 Abfragen). Auf der Leitung ist es weniger.“ (aufgeklappt unter „Wie das berechnet wird“; „bis etwa“, weil 1,8 MB die größte gemessene Antwort ist).
+- **Datenmenge, ehrlich.** Gemessen 0,3 bis 1,8 MB je Antwort (1,2 MB um 22 Uhr, 1,83 MB in der Abendspitze, §R11.1). Das ist auch ungefähr, was über das Netz geht: Die Auskunft (`/gate`) **packt ihre Antworten nicht**,
+  obwohl die App gzip anbietet (`docs/OEBB_LIVE.md` §A2.1: keine `Content-Encoding` in den aufgezeichneten Antworten von sechs Methoden; `JourneyGeoPos` selbst wurde darauf nicht einzeln angesehen, es ist dieselbe Adresse; nur das Ausweich-Profil `mgate` packt).
+  Bis Review 2 sagte die Karte „Auf der Leitung ist es weniger“; das stimmte nicht. Der volle Plan: 12 Antworten, **etwa 14 MB am Abend, bis etwa 22 MB in der Spitze**, jede ruhende Minute dazu 1 bis 2 MB
+  (höchstens 12 von selbst: bis etwa 22 MB mehr). Die Karte sagt: „Bis etwa 22 MB für 12 Zeitpunkte, dazu bis etwa 1,8 MB für jede genau geladene Minute. Die Auskunft schickt die Daten ungepackt.“ (aufgeklappt unter „Wie das berechnet wird“; „bis etwa“, weil 1,8 MB die größte gemessene Antwort ist;
+  vor Review 2 fehlten dort die ruhenden Minuten). Der schlimmste Fall je Minute steht in §3a.
 - **Mobilfunk.** Die App hat keine Einstellung dafür. Beim Start einer Zeitreise fragt sie den Netzwerkpfad einmal ab (`NWPathMonitor`: teuer oder eingeschränkt = Mobilfunk, Hotspot, Datensparmodus; die Karte sagt „Mobile Daten oder Datensparmodus“). Dann gilt der **grobe Plan** (volle Stunden, 3 oder 4 Antworten, eine im Rückblick, wenn die letzte volle Stunde keine halbe Stunde her ist, mit einer für „jetzt“ etwa 5 bis 9 MB entpackt) und es gibt keine
   Anfrage für ruhende Minuten von selbst; die Karte sagt es und bietet „Fein laden“ (voller Plan) und „Genau laden“ (diese Minute). Die Schwelle ist eine Annahme: ob eine Verbindung als „teuer“ gemeldet wird, entscheidet das System; auf einem Mobilfunkvertrag ohne Begrenzung kann man „Fein laden“ tippen.
+  Über eine solche Verbindung kommt **eine Antwort nach der anderen** (Review 2): Auf einer langsamen Leitung bekommt eine Antwort von bis zu 1,8 MB die ganze Geschwindigkeit, statt dass zwei sich sie teilen und beide an die 60 s des Clients stoßen.
+
+## 3a. Zugang, Budget, Datenmenge, langsames Netz, Akku (Review 2)
+
+Geprüft am Code und mit Linux-Tests, nicht auf einem iPhone. Keine neue Anfrage an die ÖBB.
+
+**Tor.** Jede Anfrage der Zeitreise geht über `app.live.radar`: Das gibt es nur mit Zustimmung, eingeschaltetem Schalter „Live-Fahrplan“, ohne Notschalter und online
+(`LiveDataService.timetableUnavailable`). Der Client (`HafasClient.radar`) prüft den Notschalter vor jeder Anfrage noch einmal (`LiveError.disabled`, ohne Netz), dann den Schutzschalter
+(`LiveHealth`: drei Fehler in Folge, 2 Minuten Pause für die ganze App) und die Drossel (`RequestThrottle`: 40 je Minute für die ganze App, ehrlicher User-Agent). Davor steht das Budget des Radars
+(`RadarScheduler.claimSlot`, 24 je Minute, 4 in 10 s, 1 s Abstand). Fällt die Zustimmung, der Schalter oder der Notschalter weg, endet die Zeitreise samt allen Anfragen unterwegs und vergisst alles (`reset`).
+Ohne `claim` (das Radar-Modell ist weg) wird nichts gesendet; vorher hätte ein fehlendes Modell „frei, sofort senden“ bedeutet (dasselbe im Cockpit).
+
+**Budget unter jeder Geste** (`RadarTimeSchedulerTests`, `HeatBudgetTests`):
+
+- Ziehen, Spielen, VoiceOver-Schritte: Anfragen nur für eine ruhende Minute (0,6 s Ruhe), höchstens 12 von selbst je Zeitreise; alles durch `claimSlot`.
+- „Genau laden“, „Fein laden“ dauernd getippt: dieselbe Minute wird nie zweimal gefragt, „Fein laden“ stellt nichts doppelt, was unterwegs ist; jede neue Minute kostet einen Platz im Budget.
+- Zug-Ebene aus und ein, Pünktlichkeit an, Bus an: Die Zeitreise vergisst alles und fängt neu an; das **Budget bleibt** (es gehört dem Radar).
+- Hintergrund und zurück, Cockpit auf und zu: Anfragen unterwegs werden abgebrochen. Ein Abbruch gibt den **Zeitpunkt** frei (er ist wieder fällig), **nicht den Platz im Budget**: Die Anfrage kann den Server erreicht haben.
+- **Radar schließen und wieder öffnen.** Bis Review 2 hatte jede Radar-Ansicht ihr eigenes Budget: Wer das Radar alle paar Sekunden schloss und wieder öffnete und jedes Mal eine Zeitreise begann,
+  schickte mehr als 24 Radar-Anfragen je Minute (nur die Drossel der App mit 40 hielt). Jetzt beginnt jede Ansicht mit dem Budget der letzten (`RadarBudgetLedger`: Sendezeiten der letzten Minute und eine Pause
+  nach einer Ratenbegrenzung). Test `testOpeningTheRadarAgainIsNoFreshBudget`: alle 3 s neu geöffnet, zwei Minuten lang, höchstens 24 je Minute und 4 in 10 s (ohne die Änderung über 24).
+  Screenshot- und Perf-Starts (erfundene Züge, kein Netz) behalten je Ansicht ein Budget wie vorher, damit ihre Radar-Szenen in einem Prozess nicht aufeinander warten.
+- Zwei Radar-Ansichten **gleichzeitig** gibt es nicht: ein Fenster (nur iPhone), Radar und Zugsuche sind Vollbild-Blätter derselben Fahrplan-Ansicht.
+
+**Die Wiederholung des Clients.** Nach einer Zeitüberschreitung oder 502/503/504 fragt `HafasClient` einmal nach 1,5 s nach. Diese zweite Anfrage zählt in der Drossel (40) und im Schutzschalter,
+nicht in den 24 des Radars (§R11.2, wie bei Kacheln). Die Zeitreise selbst versucht einen Zeitpunkt nach 15 s und 30 s noch einmal (diese zählen in den 24). Ein Zeitpunkt kostet also höchstens
+6 Anfragen, bevor er als fehlend gilt; drei gescheiterte Anfragen in Folge öffnen aber vorher den Schutzschalter (2 Minuten keine ÖBB-Anfrage der App) und pausieren das Radar.
+
+**Datenmenge je Minute.** Eine Antwort für ganz Österreich: bis 1,83 MB (Abendspitze), 1,2 MB um 22 Uhr, späte Zeitpunkte weniger (0,3 MB für +3 Std um 22 Uhr). Auf dem Netz etwa genauso viel (ungepackt, §3).
+
+| Lage | Antworten | Datenmenge |
+|---|---|---|
+| Zeitreise beginnt, voller Plan | 12 in etwa 25 s (4 je 10 s) | etwa 14 MB am Abend, bis etwa 22 MB in der Spitze |
+| Regler ruht, Plan geladen | alle 20 Minuten eine (der Bereich wandert mit der Uhr) | unter 0,1 MB je Minute |
+| an immer neuen Minuten loslassen | bis 12 von selbst je Zeitreise, dann nur auf Tippen | bis etwa 22 MB dazu |
+| über Mobilfunk (grober Plan) | 4 oder 5, eine nach der anderen, keine ruhende Minute von selbst | etwa 5 bis 9 MB |
+| schlimmster Fall: das Budget voll (z. B. „Genau laden“ an immer neuen Minuten, oder Zug-Ebene aus und ein und neu beginnen) | 24 je Minute | bis etwa 44 MB je Minute |
+
+Mehr als 24 Antworten je Minute holt das Radar nie, Zeitreise und Live-Schleife zusammen (die Live-Schleife ruht, solange die Zeit nicht „Jetzt“ ist). Die letzte Zeile ist eine Obergrenze, kein üblicher Gebrauch.
+
+**Langsames Netz.** Das Zeitlimit des Clients sind 20 s **ohne Daten** (`URLRequest.timeoutInterval`, die Zeit zwischen zwei Datenpaketen) und 60 s für die ganze Anfrage (`timeoutIntervalForResource`).
+Die Antworten der Messung R12 brauchten 2,1 bis 3,1 s, die langsamste von §R11.1 21,5 s (die erste Anfrage, mit Verbindungsaufbau). Ob das erste Byte nach mehr als 20 s kommt, hängt an der Rechenzeit des Servers;
+gemessen ist das auf einem iPhone nicht. Eine Leitung unter etwa 30 KB/s schafft 1,8 MB nicht in 60 s:
+
+1. Die Anfrage endet mit Zeitüberschreitung; was bis dahin kam, ist verbraucht. Der Client fragt nach 1,5 s einmal nach.
+2. Scheitert auch das, versucht die Zeitreise den Zeitpunkt nach 15 s und 30 s noch einmal, dann bleibt er aus („Ein Zeitpunkt konnte nicht geladen werden …“).
+3. Drei gescheiterte Anfragen in Folge öffnen den Schutzschalter: 2 Minuten keine Anfrage, die Karte rechnet mit dem, was da ist. Bis dahin können auf einer hoffnungslosen Leitung bis etwa 11 MB
+   (3 Anfragen × 2 Versuche × 1,8 MB) angefangen und verworfen worden sein.
+
+Es staut sich nichts: höchstens 2 gleichzeitig (über Mobilfunk 1), und eine Anfrage ohne Ausgang gibt ihren Zeitpunkt erst nach **150 s** frei. Der Client kann für eine Anfrage bis 131,5 s brauchen
+(2 × 60 s, 1,5 s dazwischen, je bis 5 s in der Drossel). Mit den früheren 90 s wurde eine langsame Antwort, die noch lud, ein zweites Mal gefragt, genau auf dem langsamen Netz (Review 2; dasselbe für die Kacheln des Live-Radars).
+
+**Offline.** Meldet das System keine Verbindung (Tunnel, Funkloch, Flugmodus), ist `timetableUnavailable` `.offline`: Die Schleife endet mit allen Anfragen unterwegs, die Zeitreise geht zurück zu „Jetzt“
+(offline zeigt das Radar keine Züge), **das Geladene bleibt**. Bis Review 2 warf jeder Abbruch der Verbindung alles weg; im Zug durch Tunnel hieß das jedes Mal bis 22 MB neu.
+
+**Zurück aus dem Hintergrund** (oder aus dem Cockpit, oder wieder online). Die Schleife beginnt neu und mit ihr die Zeitreise: Der Netzwerkpfad wird neu gefragt, Momentaufnahmen, die älter als zehn Minuten sind,
+kommen **einmal** neu (frischere bleiben), „jetzt“ kommt neu, wenn das Live-Radar ganz Österreich nicht frisch hält. Bis sie da sind, steht „Stand der Verspätungen: vor 15 Min“ in der Karte und „Zeitreise lädt 3/12“.
+Bis Review 2 kam nichts neu: Nach einer Viertelstunde im Hintergrund blieb das Bild auf alten Verspätungen, nur die Alterszeile sagte es. Ein laufender Zeitraffer behält seinen Platz **von jetzt aus**
+(vorher lief er nach langer Pause um diese Zeit hinter dem Bereich des Reglers her). Ein ruhender Regler behält seine Uhrzeit; ist sie aus dem Bereich gefallen, steht er am linken Rand.
+
+**Akku.** Die Zeitreise hat keinen Timer, keinen Display-Link und keine Animation, die von selbst weiterläuft. Was läuft:
+
+- die eine Schleife (`RadarTimeModel.run`), nur solange die Karte offen oder die Zeit nicht „Jetzt“ ist **und** das Radar sichtbar, die App aktiv und kein Cockpit offen ist: viermal je Sekunde, wenn der Regler ruht
+  (die Marker werden dann höchstens alle 2 s neu berechnet und nur gesetzt, wenn sich etwas geändert hat), 12-mal je Sekunde, solange die Marker gleiten oder der Zeitraffer läuft. Im Hintergrund endet sie;
+- der `TimelineView` der Alterszeile (einmal je Sekunde), nur solange die Karte offen und die Zeit nicht „Jetzt“ ist; im Hintergrund hält das System ihn an;
+- das Pulsieren des Uhr-Symbols im Band, nur während der Zeitraffer läuft (mit „Bewegung reduzieren“ keins).
+
+Im Stromspar-Modus lädt die Zeitreise nichts (§3); Gleiten und Zeitraffer laufen, weil man sie selbst startet. Ist die Karte offen und der Regler auf „Jetzt“, läuft die Schleife ohne Arbeit weiter (viermal je Sekunde,
+damit das erste Ziehen sofort antwortet); geschlossen und auf „Jetzt“ läuft nichts.
 
 ## 4. Oberfläche
 
@@ -164,5 +237,15 @@ Die Züge sind **erfunden** (`RadarTimeDemo.swift`: 14 Linien auf den echten Hau
 **Nur auf einem iPhone zu prüfen:** das Gleiten der Marker bei 120 Hz und die Last bei 1 000 Markern (der Entwurf begrenzt auf 12 Bilder je Sekunde und höchstens etwa 130 Gruppen, gemessen ist es nicht), die Haptik, VoiceOver, die Antwortzeit und Größe im Mobilfunknetz (gemessen wurde aus einer Cloud-Sandbox, 21,5 s
 war die langsamste Antwort von §R11.1), ob die Erkennung „Mobilfunk“ im Alltag richtig liegt, die Genauigkeit bei 20 Minuten Abstand der Antworten, tagsüber und in der Spitze (gemessen: Abend, 22 Uhr).
 Dazu (Review 1): ob das Ziehen am Regler bei großen Schriften, wenn der Bereich unten scrollt, nicht mit dem Scrollen kämpft; ob die Spur (drei Überlagerungen, beim Gleiten 12-mal je Sekunde neu gesetzt) auf MapKit flackert und beim Zeitraffer mit dem Zug Schritt hält; der Stromspar-Modus und „Trotzdem laden“ im Alltag. **Offen:** Der gewählte Zug ist ein eigener Marker, kann aber unter der Gruppe seiner Nachbarn liegen: MapKit legt Marker nach ihrer Lage übereinander (der südlichere oben), und die SwiftUI-Karte bietet dafür keine Reihenfolge (dasselbe gilt im Live-Radar).
+
+**Geräte-Checkliste (nur ein iPhone kann das zeigen):**
+
+1. **Datenmenge auf dem Netz.** Einstellungen › Mobilfunk › KlimaBilanz: Zähler notieren, über Mobilfunk mit „Fein laden“ eine volle Zeitreise laden (bis „Zeitreise lädt 12/12“), Zähler wieder lesen. Erwartet: bis etwa 22 MB (die Auskunft packt nicht). Weniger als etwa 15 MB hieße, `JourneyGeoPos` wird doch gepackt: dann den Kartentext anpassen.
+2. **Mobilfunk erkannt.** Über Mobilfunk erscheint „Mobile Daten oder Datensparmodus“, der Plan hat 4 oder 5 Punkte und lädt einen nach dem anderen; im WLAN nicht. Persönlicher Hotspot eines anderen iPhones: ebenfalls „teuer“?
+3. **Tunnel.** Mitten in einer Zeitreise den Flugmodus an und nach 30 s wieder aus: Die Karte klappt zu, das Radar steht auf „Jetzt“. Wieder in die Zeitreise: kein „Zeitreise lädt 0/12“ von vorn (nur die ruhende Minute kommt).
+4. **Hintergrund.** Zeitreise bei +45 Min, App 15 Minuten in den Hintergrund. Zurück: zuerst „Stand der Verspätungen: vor 15 Min“, dann „Zeitreise lädt …“, danach ein Alter unter einer Minute. Ein laufender Zeitraffer läuft im Bereich weiter.
+5. **Schnell auf und zu.** Das Radar zehnmal hintereinander öffnen, in die Zeitreise ziehen und schließen. Danach sofort eine Verbindung im Fahrplan suchen: Sie kommt, ohne „Kurz zu viele Anfragen“ (die Drossel der App hat Platz, weil das Radar bei 24 je Minute bleibt); im Radar erscheint kein „ÖBB bittet um eine kurze Pause“.
+6. **Langsames Netz.** Entwickler › Network Link Conditioner „3G“ oder „Edge“: Die Karte zeigt „Zeitreise lädt“, auf Edge Fehlerzeilen statt eines hängenden Balkens; nach drei Fehlern pausiert das Radar und sagt es.
+7. **Akku.** Zeitreise offen, Regler ruht, 10 Minuten: Einstellungen › Batterie zeigt für KlimaBilanz keinen auffälligen Verbrauch im Hintergrund (es sollte keiner sein).
 
 **Nicht gebaut / gekürzt:** Rückblick über 30 Minuten; Verspätungs-Vorhersage (die Auskunft liefert keine, wir erfinden keine); mehr als vier Halte je Fahrt für alle Züge (das wären 1 000 Anfragen für JourneyDetails, nur für den gewählten Zug); Bus, Bim und U-Bahn (in einer Großstadt ist schon eine Kachel am Limit von 1 000 Fahrzeugen, §R11.1 d; die Datenmenge einer solchen Zeitreise wurde nicht gemessen); eine Fortsetzung nach dem Ende des Zeitraffers (er stoppt bei +3 Std; „Abspielen“ am Ende beginnt bei „Jetzt“).
