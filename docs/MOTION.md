@@ -16,7 +16,8 @@ Code: `Shared/Motion/MotionTokens.swift` (Tokens, auch für Widgets) und `App/So
 4. **Einmal, nicht immer.** Eintritte (Reveal, Count-in) laufen nur beim ersten Erscheinen eines Screens – nie bei
    Aktualisierung, Tab-Wechsel oder Zurück-Scrollen.
 5. **Bestätigung ist spürbar.** Erfolg = Haptik + kurzer Pop, nicht mehr. Feiern nur bei echten Meilensteinen.
-6. **Immer abschaltbar.** Reduce Motion → Überblendungen statt Bewegung. Screenshot-Modus → sofort Endzustand.
+6. **Immer abschaltbar.** Reduce Motion → Überblendungen statt Bewegung. Screenshot-Modus → sofort Endzustand. Look & Feel ›
+   Bewegung „Ruhig“ hält Himmel, Hochzählen, Neigung und schrumpfenden Titel an, „Aus“ ist `MotionPolicy.isStatic` (docs/THEMES.md §5).
 7. **120 Hz oder gar nicht.** Nur Transformationen und Deckkraft animieren; kein Layout, keine Unschärfe über großen Flächen.
 
 ## 2. Tokens (`Motion`)
@@ -111,7 +112,8 @@ CountUpText(value: 77, from: 73) { "\(Int($0)) %" }                             
 .haptic(.milestone, trigger: summary.isPaidOff, when: { old, new in !old && new })
 ```
 
-Alle folgen Einstellungen › Haptik (`AppSettings.hapticsEnabled`) und schweigen im Screenshot-Modus. **Eine Haptik pro
+Alle spielen in der Stufe von Einstellungen › Look & Feel › Haptik (Aus · Dezent · Voll, `HapticTable`, docs/THEMES.md §6) und
+schweigen im Screenshot-Modus; Auswahl-Ticks direkt über `.sensoryFeedback` fragen `selectionHapticsEnabled`. **Eine Haptik pro
 Aktion** – nie Haptik + Toast-Haptik doppelt (der globale Toast spielt `.success` schon selbst).
 
 ## 7. Drücken & Symbole
