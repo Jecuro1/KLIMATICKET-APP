@@ -166,3 +166,17 @@ final class RadarModesLegendTextTests: XCTestCase {
         XCTAssertEqual(RadarModesText.positionNote(isEstimate: true), "Position geschätzt")
     }
 }
+
+// MARK: radarmodes – the words of the sheet and the row
+final class RadarModesSheetTextTests: XCTestCase {
+    func testSheetWords() {
+        XCTAssertEqual(RadarModesText.countNow(180), "gerade 180")
+        XCTAssertEqual(RadarModesText.activeFilter(RadarFilter(onlyLate: true, trainClasses: [.rjx, .rj])), "Filter: RJX, RJ · nur verspätet")
+        XCTAssertEqual(RadarModesText.removeLine("13A"), "13A entfernen")
+        XCTAssertTrue(RadarModesText.groupsFooter.contains("250"))
+        XCTAssertTrue(RadarModesText.labelFooter.contains("80"))
+        XCTAssertEqual(RadarModesText.searchPlaceholder, "Linie oder Zugnummer, z. B. RJX 66 oder 13A")
+        XCTAssertFalse(RadarModesText.searchNoMatch.contains("Kein Zug"), "the search finds buses too")
+        XCTAssertEqual(RadarModesText.filterOff, "Filter aus")
+    }
+}

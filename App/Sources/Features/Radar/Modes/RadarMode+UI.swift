@@ -73,7 +73,37 @@ extension RadarView {
             setModes(RadarModeSelection(Set(RadarMode.allCases)))
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2005, longitude: 16.3720).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 0.045, longitudeDelta: 0.045)))
-            if preset == .modesLegend { showsLegend = true }
+            applyFilterScene(preset)
         }
+    }
+
+    /// The scenes of „Filter & Darstellung“ on the close Wien view.
+    private func applyFilterScene(_ preset: RadarPreset) {
+        switch preset {
+        case .modesLegend:
+            showsLegend = true
+        case .modesDots:   // „Nur Punkte“, Groß, Gruppen aus
+            model.display = RadarDisplay(label: .dots, size: .large, groups: false)
+        case .modesFilter:   // the top of the sheet: Schnellwahl, Verkehrsmittel, Zugart
+            model.filter = RadarFilter(trainClasses: [.rex, .s])
+            openFilterSheet(page: .filter)
+        case .modesFilterLines:   // the lower sections: Linie, Betreiber, Verspätung
+            model.filter = RadarFilter(lines: ["13A", "U6"], onlyRealtime: true)
+            filterScroll = "lines"
+            openFilterSheet(page: .filter)
+        case .modesDisplay:   // the Darstellung page with its preview
+            model.display = RadarDisplay(label: .lineAndDestination, size: .large)
+            openFilterSheet(page: .display)
+        case .modesEmpty:   // a filter that matches nothing: the note says how many there would be, „Filter aus“ on the map
+            model.filter = RadarFilter(lines: ["99X"])
+        default:
+            break
+        }
+    }
+
+    private func openFilterSheet(page: RadarFilterSheet.Page) {
+        filterPage = page
+        filterDetent = .large
+        showsFilter = true
     }
 }

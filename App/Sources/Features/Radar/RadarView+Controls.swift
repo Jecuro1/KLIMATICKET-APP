@@ -34,18 +34,24 @@ extension RadarView {
         VStack(spacing: Theme.Spacing.xs) {
             searchField
             modeChips
+            if model.filter.isActive {   // MARK: radarmodes – a stored filter is always visible
+                RadarActiveFilterRow(filter: model.filter, onOpen: { showsFilter = true },
+                                     onClear: { withMotion(Motion.smooth) { model.filter = RadarFilter() } })
+                    .motionTransition(.drop)
+            }
             if travel.isAway {   // MARK: radartime – "Zeitreise · Prognose aus dem Fahrplan"
                 RadarTimeBanner(travel: travel).motionTransition(.drop)
             }
         }
         .motionAnimation(Motion.smooth, value: travel.isAway)
+        .motionAnimation(Motion.smooth, value: model.filter.isActive)   // MARK: radarmodes
     }
 
     private var searchField: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.textSecondary)
-                TextField("Zugnummer oder Linie, z. B. RJX 66", text: $query)
+                TextField(RadarModesText.searchPlaceholder, text: $query)   // MARK: radarmodes – buses, Bims and U-Bahnen too
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -74,7 +80,7 @@ extension RadarView {
         return GlassCard(padding: Theme.Spacing.s) {
             VStack(alignment: .leading, spacing: 4) {
                 if matches.isEmpty {
-                    Text("Kein Zug in den zuletzt geladenen Ausschnitten gefunden. Zoom heraus, verschieb die Karte oder probier eine andere Nummer.")
+                    Text(RadarModesText.searchNoMatch)   // MARK: radarmodes
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                 }

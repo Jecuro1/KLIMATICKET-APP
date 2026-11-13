@@ -226,9 +226,11 @@ public enum AustrianState: String, CaseIterable, Sendable, Hashable {
 
 // MARK: - Filter sheet
 
-/// The radar filter. The transport mode is not here: it is a server-side product filter (`RadarQuery.products`).
+/// The radar filter. The transport mode is not here: it is a server-side product filter (`RadarQuery.products`). MARK: radarmodes – v2 adds
+/// Zugart, lines, operators and „nur mit Echtzeit“; one matcher (`matches(_:delay:)`, `Modes/RadarFilterCore.swift`) serves the live pins and the
+/// Zeitreise's pins.
 public struct RadarFilter: Sendable, Hashable {
-    /// Line categories ("RJX", "REX", "S", "Bus"); empty = all.
+    /// Line categories ("RJX", "REX", "S", "Bus"); empty = all. The filter of radar v1; the sheet of radar2 sets `trainClasses` and `lines`.
     public var categories: Set<String> = []
     /// Delay states to show; empty = all.
     public var delays: Set<RadarDelayState> = []
@@ -236,23 +238,34 @@ public struct RadarFilter: Sendable, Hashable {
     public var state: AustrianState?
     /// Only trains that are 5 minutes or more late.
     public var onlyLate: Bool = false
+    /// MARK: radarmodes – Zugart (trains and S-Bahnen only; a bus is never hidden by it); empty = all.
+    public var trainClasses: Set<RadarTrainClass> = []
+    /// MARK: radarmodes – lines or train numbers as typed or chosen („RJX 66“, „13A“, „U6“), compared without spaces and case; empty = all.
+    public var lines: Set<String> = []
+    /// MARK: radarmodes – operators by display name (`RadarOperator.name`); empty = all.
+    public var operators: Set<String> = []
+    /// MARK: radarmodes – only vehicles with realtime data (a cancelled one has them).
+    public var onlyRealtime: Bool = false
 
-    public init(categories: Set<String> = [], delays: Set<RadarDelayState> = [], state: AustrianState? = nil, onlyLate: Bool = false) {
+    public init(categories: Set<String> = [], delays: Set<RadarDelayState> = [], state: AustrianState? = nil, onlyLate: Bool = false,
+                trainClasses: Set<RadarTrainClass> = [], lines: Set<String> = [], operators: Set<String> = [], onlyRealtime: Bool = false) {
         self.categories = categories
         self.delays = delays
         self.state = state
         self.onlyLate = onlyLate
+        self.trainClasses = trainClasses
+        self.lines = lines
+        self.operators = operators
+        self.onlyRealtime = onlyRealtime
     }
 
-    public var isActive: Bool { !categories.isEmpty || !delays.isEmpty || state != nil || onlyLate }
+    public var isActive: Bool {
+        !categories.isEmpty || !delays.isEmpty || state != nil || onlyLate || !trainClasses.isEmpty || !lines.isEmpty || !operators.isEmpty
+            || onlyRealtime
+    }
 
     public func matches(_ vehicle: RadarVehicle, now: Date) -> Bool {
-        if !categories.isEmpty, !categories.contains(RadarLine.category(of: vehicle.line)) { return false }
-        let delay = RadarDelay.state(of: vehicle, now: now)
-        if !delays.isEmpty, !delays.contains(delay) { return false }
-        if onlyLate, delay != .late { return false }
-        if let state, AustrianState.guess(for: vehicle) != state { return false }
-        return true
+        matches(vehicle, delay: RadarDelay.state(of: vehicle, now: now))   // MARK: radarmodes – the one matcher
     }
 
     public func apply(_ vehicles: [RadarVehicle], now: Date) -> [RadarVehicle] {
@@ -285,10 +298,13 @@ public struct RadarSearchQuery: Sendable, Hashable {
     public var number: String?
     /// The text without category and number, folded, for stop and direction names.
     public var text: String
+    /// MARK: radarmodes – what was typed, trimmed (for `isLineKey`).
+    public var raw: String
 
     public init?(_ raw: String) {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
+        self.raw = trimmed
         let compact = RadarLine.compact(trimmed)
         let letters = String(compact.prefix { $0.isLetter })
         let digits = String(compact.dropFirst(letters.count).prefix { $0.isNumber })
@@ -301,6 +317,8 @@ public struct RadarSearchQuery: Sendable, Hashable {
     /// With a number: category (when typed) and number must match the line name. Without one: the text is a line
     /// category ("RJX") or a word in a stop name or the direction ("Innsbruck").
     public func matches(_ vehicle: RadarVehicle) -> Bool {
+        // MARK: radarmodes – „13A“, „U6“, „D“: the typed text is a line as a whole (the split into letters and digits does not fit these)
+        if isLineKey(vehicle) { return true }
         if let number {
             if let category, RadarLine.category(of: vehicle.line) != category { return false }
             guard let name = vehicle.line?.name else { return false }
@@ -312,12 +330,24 @@ public struct RadarSearchQuery: Sendable, Hashable {
     }
 }
 
+public extension RadarSearchQuery {
+    /// MARK: radarmodes – the whole typed text is one of the line's keys („13a“ is Bus 13A, „u 6“ is the U6, „S45“ is S 45).
+    func isLineKey(_ vehicle: RadarVehicle) -> Bool {
+        guard let line = vehicle.line else { return false }
+        let typed = RadarLine.compact(raw)
+        return !typed.isEmpty && RadarLine.keys(of: line).contains(typed)
+    }
+}
+
 public enum RadarSearch {
-    /// Matching vehicles, one per line name, ordered by name. Used for the suggestions under the search field.
+    /// Matching vehicles, one per line name, ordered by name; MARK: radarmodes – lines the text names as a whole come first („D“ is the Bim D
+    /// before every stop with a „d“ in its name). Used for the suggestions under the search field.
     public static func suggestions(for query: RadarSearchQuery, in vehicles: [RadarVehicle], limit: Int = 8) -> [RadarVehicle] {
         var seen = Set<String>()
         var result: [RadarVehicle] = []
-        for vehicle in vehicles.sorted(by: { ($0.line?.name ?? "") < ($1.line?.name ?? "") }) where query.matches(vehicle) {
+        let byName = vehicles.sorted(by: { ($0.line?.name ?? "") < ($1.line?.name ?? "") })
+        let ordered = byName.filter { query.isLineKey($0) } + byName.filter { !query.isLineKey($0) }
+        for vehicle in ordered where query.matches(vehicle) {
             let key = vehicle.line.map { RadarLine.compact($0.name) } ?? vehicle.tripID
             guard seen.insert(key).inserted else { continue }
             result.append(vehicle)

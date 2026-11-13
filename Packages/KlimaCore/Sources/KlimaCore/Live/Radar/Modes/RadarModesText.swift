@@ -227,3 +227,58 @@ public extension RadarModesText {
     /// two answers (our own interpolation).
     static func positionNote(isEstimate: Bool) -> String { isEstimate ? "Position geschätzt" : "Position berechnet" }
 }
+
+// MARK: radarmodes – the sheet „Filter & Darstellung“, the active-filter row and the search (docs/RADAR_MODES.md §6, §9)
+public extension RadarModesText {
+    static let sheetTitle = "Filter & Darstellung"
+    static let filterPage = "Filter"
+    static let displayPage = "Darstellung"
+    static let resetAll = "Alles zurücksetzen"
+    static let resetDisplay = "Darstellung zurücksetzen"
+
+    static let quickHeader = "Schnellwahl"
+    static let quickFooter = "Setzt Verkehrsmittel und Filter auf einmal. Du kannst danach alles einzeln ändern."
+    static let modesHeader = "Verkehrsmittel"
+    /// „gerade 180“ next to a mode's switch: the vehicles of that mode on the map now.
+    static func countNow(_ count: Int) -> String { "gerade \(count)" }
+
+    static let trainClassHeader = "Zugart"
+    static let trainClassFooter = "Gilt nur für Züge und S-Bahnen. Ohne Auswahl sind alle zu sehen."
+
+    static let linesHeader = "Linie oder Zugnummer"
+    static let linesPlaceholder = "z. B. RJX 66, S 45, 13A, U6"
+    static let linesSuggestions = "Im Ausschnitt:"
+    static let linesFooter = "Nur diese Linien sind zu sehen. Gefunden wird, was das Radar gerade geladen hat."
+    static func removeLine(_ line: String) -> String { "\(line) entfernen" }
+
+    static let operatorHeader = "Betreiber"
+    static let operatorFooter = "So, wie die Auskunft ihn nennt. Steht dort bei ÖBB-Zügen „Nahreisezug“, zeigt die App „ÖBB“."
+
+    static let delayHeader = "Verspätung"
+    static let delayOnlyLate = "Nur verspätet (ab 5 Min)"
+    static let delayOnlyRealtime = "Nur mit Echtzeit-Daten"
+    static let delayOnTime = "Pünktlich"
+    static let delayCancelled = "Fällt aus"
+    static let delayFooter = "„Nur verspätet“ ersetzt „Pünktlich“ und „Fällt aus“. Ohne Echtzeit-Daten weiß die Auskunft nicht, ob ein Fahrzeug pünktlich ist."
+
+    static let regionHeader = "Region"
+    static let regionPicker = "Bundesland"
+    static let regionAll = "Alle"
+    static let regionFooter = "Schätzung über Haltestellennamen und Richtung. Fahrzeuge ohne eindeutigen Treffer fallen bei einer Region heraus."
+
+    static let previewHeader = "Vorschau"
+    static let labelHeader = "Beschriftung"
+    static let labelFooter = "Das Ziel steht nur bei nahem Zoom und höchstens 80 einzelnen Fahrzeugen dabei."
+    static let sizeHeader = "Größe"
+    static let groupsToggle = "Gruppen zusammenfassen"
+    static let groupsFooter = "„Aus“ gilt bis 250 Fahrzeuge im Ausschnitt, darüber fasst das Radar wieder zusammen. Ohne Gruppen können sich Marker überdecken."
+    static let arrowsToggle = "Richtungspfeil"
+    static let cityRefreshHeader = "Bus, Bim und U-Bahn aktualisieren"
+    static let cityRefreshFooter = "Automatisch heißt: im WLAN alle 20 s, mit mobilen Daten alle 60 s. Jede Aktualisierung holt alle Busse und Bims des Ausschnitts neu."
+
+    /// „Filter: RJX, RJ · nur verspätet“.
+    static func activeFilter(_ filter: RadarFilter) -> String { "Filter: \(filter.summary)" }
+
+    static let searchPlaceholder = "Linie oder Zugnummer, z. B. RJX 66 oder 13A"
+    static let searchNoMatch = "Nichts gefunden in den geladenen Gebieten. Zoom heraus, verschieb die Karte oder probier eine andere Nummer."
+}

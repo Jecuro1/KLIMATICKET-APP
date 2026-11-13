@@ -60,8 +60,16 @@ final class RadarModel {
     @ObservationIgnored var markersOn = true
     /// MARK: radarmodes – the city refresh is 60 s because the connection is metered („Automatisch“).
     var cityMetered = false
+    /// MARK: radarmodes – the connection was metered when the loop started (`resolveCityInterval`); with „Automatisch“ the city lane then asks every 60 s.
+    @ObservationIgnored var pathMetered = false
+    /// MARK: radarmodes – „Darstellung“ (labels, size, groups, arrows, city refresh), persisted by `RadarView` under `radar.display.v1`.
+    var display = RadarDisplay.standard {
+        didSet { if display != oldValue { displayChanged() } }
+    }
     /// MARK: radarmodes – the vehicles the map would show without the filter (the empty-with-filter note).
     private(set) var unfilteredCount = 0
+    /// MARK: radarmodes – single markers among the clusters („Linie und Ziel“ shows the destination up to 80 of them).
+    private(set) var singleCount = 0
     /// „Jetzt aktualisieren“ / „Erneut versuchen“: the loop sends the due tiles even in Low Power Mode until none is due. There is no
     /// second loop for it: one loop, one budget, and it ends with the view.
     @ObservationIgnored private var manualRefresh = false
@@ -265,12 +273,16 @@ final class RadarModel {
         pinsByID = Dictionary(pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         // MARK: radar2 – vehicles a part keeps single (radarmine: remembered lines, the stop panel's arrivals) skip the grouping
         let points = pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) }
-        let single = Set(pins.lazy.filter { self.radar2.keepsSingle($0.vehicle) }.map(\.id))
+        // MARK: radarmodes – „Gruppen zusammenfassen“ off (up to 250 vehicles): every vehicle single; the cell follows the marker size
+        let grouped = display.groups(pinCount: pins.count)
+        let single = grouped ? Set(pins.lazy.filter { self.radar2.keepsSingle($0.vehicle) }.map(\.id)) : Set(pins.map(\.id))
         clusters = RadarClustering.group(
             single.isEmpty ? points : points.filter { !single.contains($0.tripID) },
             cellDegrees: RadarClustering.cellSize(latitudeSpan: spanDegrees, longitudeSpan: box.east - box.west,
-                                                  widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height)))
+                                                  widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height),
+                                                  markerPitch: display.size.markerPitch))
             + points.filter { single.contains($0.tripID) }.map(RadarClustering.single)
+        singleCount = clusters.lazy.filter(\.isSingle).count   // MARK: radarmodes
         updateStatus(at: now)
         refreshHeat(at: now)   // MARK: radarheat – only when an answer came in or ten seconds went by
     }

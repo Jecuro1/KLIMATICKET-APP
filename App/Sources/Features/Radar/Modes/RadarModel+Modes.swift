@@ -49,9 +49,20 @@ extension RadarModel {
     /// „Automatisch“: every 20 s, every 60 s on a metered or constrained path, decided once when the loop starts (the Zeitreise's check).
     /// Screenshot and perf launches take Wi-Fi.
     func resolveCityInterval() async {
-        let metered = LaunchMode.isSandboxed ? false : await RadarMeteredPath.isMetered()
-        cityMetered = metered
-        scheduler.setCityInterval(RadarLanePlan.automaticCityInterval(metered: metered))
+        pathMetered = LaunchMode.isSandboxed ? false : await RadarMeteredPath.isMetered()
+        applyCityRefresh()
+    }
+
+    /// The city refresh of „Darstellung“: „Automatisch“ follows the path, „Alle 20 s“ and „Alle 60 s“ are fixed.
+    func applyCityRefresh() {
+        cityMetered = display.meteredCity(metered: pathMetered)
+        scheduler.setCityInterval(display.cityInterval(metered: pathMetered))
+    }
+
+    /// „Darstellung“ changed: the city refresh, and the groups and their cell size at once.
+    func displayChanged() {
+        applyCityRefresh()
+        rebuildPinsNow()
     }
 
     /// The products the map draws: the chips' modes, without Bus, Bim and U-Bahn while the city lane is out of zoom or off (their vehicles

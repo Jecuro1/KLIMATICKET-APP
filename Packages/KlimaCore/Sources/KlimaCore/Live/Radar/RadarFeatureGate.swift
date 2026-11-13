@@ -27,7 +27,7 @@ public struct RadarFeatureGate: Equatable, Sendable {
 
     public var layers: MapLayerSelection
     public var access: Access
-    /// Only the rail mode is on (the Zeitreise's snapshots are of trains).
+    /// Only Züge and S-Bahn are on (`RadarModeSelection.carriesOnlyTrains`, MARK: radarmodes): the Zeitreise's snapshots are of trains.
     public var railOnly: Bool
     /// The radar is visible and the app is active.
     public var sceneActive: Bool

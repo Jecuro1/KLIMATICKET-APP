@@ -293,11 +293,6 @@ public extension RadarFilter {
     /// The same filter as `matches(_:now:)`, with the delay of the projected pin instead of the one at "now": in a Zeitreise the delay
     /// that counts is the one the train carries at the chosen time.
     func matches(_ pin: RadarTimePin) -> Bool {
-        if !categories.isEmpty, !categories.contains(RadarLine.category(of: pin.vehicle.line)) { return false }
-        let delay = pin.delayState
-        if !delays.isEmpty, !delays.contains(delay) { return false }
-        if onlyLate, delay != .late { return false }
-        if let state, AustrianState.guess(for: pin.vehicle) != state { return false }
-        return true
+        matches(pin.vehicle, delay: pin.delayState)   // MARK: radarmodes – the one matcher (Modes/RadarFilterCore.swift)
     }
 }

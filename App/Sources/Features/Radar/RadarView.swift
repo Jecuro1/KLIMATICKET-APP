@@ -40,6 +40,11 @@ struct RadarView: View {
     @AppStorage("map.layers") var layersRaw = MapLayerSelection.initial.storageValue
     // MARK: radarmodes – the chosen transport modes, per device (docs/RADAR_MODES.md §2); reset in screenshot launches
     @AppStorage(RadarModeSelection.storageKey) var modesRaw = RadarModeSelection.default.storageValue
+    @AppStorage(RadarFilter.storageKey) var filterRaw = ""   // MARK: radarmodes – the filter, per device
+    @AppStorage(RadarDisplay.storageKey) var displayRaw = ""   // MARK: radarmodes – „Darstellung“, per device
+    @State var filterDetent: PresentationDetent = .medium   // MARK: radarmodes – the sheet's height (the CI scenes open it large)
+    @State var filterScroll: String?   // MARK: radarmodes – the CI scene of the lower filter sections
+    @State var filterPage: RadarFilterSheet.Page = .filter   // MARK: radarmodes – the page the sheet opens with
     @State var allStations: [MapStationPin] = []
     /// The stations in view, grouped for the zoom, and their lookup by id. Computed when the camera stops (`refreshStations`), not
     /// in the view body: the body runs every second, and a lookup that is rebuilt per marker is thousands of inserts each time.
@@ -111,14 +116,25 @@ struct RadarView: View {
             }
             .onChange(of: model.pins.count) { _, _ in centerOnFocusedTrip() }
             .sheet(isPresented: $showsFilter) {
-                RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
-                                 modes: Binding(get: { model.modes }, set: { setModes($0) }),   // MARK: radarmodes
-                                 // Selected lines stay in the list even when none of them is on the map right now, so an
-                                 // active line filter is always visible and can be cleared.
-                                 categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
-                                    .union(model.filter.categories).filter { !$0.isEmpty }.sorted(),
-                                 parts: model.radar2)   // MARK: radar2
-                    .presentationDetents([.medium, .large])
+                if RadarFilterRollout.newSheet {
+                    // MARK: radarmodes – „Filter & Darstellung“; chosen lines and operators stay in it even when none is on the map now
+                    RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
+                                     modes: Binding(get: { model.modes }, set: { setModes($0) }),
+                                     display: Binding(get: { model.display }, set: { model.display = $0 }),
+                                     vehicles: model.knownVehicles, counts: model.modeCounts,
+                                     parts: model.radar2,   // MARK: radar2
+                                     page: filterPage, scrollTo: filterScroll)
+                        .presentationDetents([.medium, .large], selection: $filterDetent)
+                } else {
+                    RadarLegacyFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
+                                           modes: Binding(get: { model.modes }, set: { setModes($0) }),
+                                           // Selected lines stay in the list even when none of them is on the map right now, so an
+                                           // active line filter is always visible and can be cleared.
+                                           categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
+                                              .union(model.filter.categories).filter { !$0.isEmpty }.sorted(),
+                                           parts: model.radar2)   // MARK: radar2
+                        .presentationDetents([.medium, .large])
+                }
             }
             .sheet(item: $sheetVehicle, onDismiss: openPendingCockpit) { vehicle in   // MARK: radarcockpit
                 RadarTripSheet(vehicle: vehicle,
@@ -144,6 +160,8 @@ struct RadarView: View {
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
             .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, gate: gate))   // MARK: radartime – paused under the cockpit, like the live loop
             .modifier(Radar2Hooks(parts: model.radar2, access: gate.access, timeOpen: travel.isOpen))   // MARK: radar2
+            .onChange(of: model.filter) { _, filter in filterRaw = filter.storageValue }   // MARK: radarmodes – kept per device
+            .onChange(of: model.display) { _, display in displayRaw = display.storageValue }   // MARK: radarmodes
             .onChange(of: trainsOn, initial: true) { _, on in model.setMarkersOn(on) }   // MARK: radarmodes – the city lane only for drawn markers
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
@@ -274,8 +292,10 @@ struct RadarView: View {
         // simulator: the default radar lost its stations (CI run 43408109942, scene "radar" after the Zeitreise scenes).
         if LaunchMode.isSandboxed { layersRaw = MapLayerSelection.initial.storageValue }
         // MARK: radarmodes – the modes as stored (a screenshot launch starts from the default, like the layers)
-        if LaunchMode.isSandboxed { modesRaw = RadarModeSelection.default.storageValue }
+        if LaunchMode.isSandboxed { modesRaw = RadarModeSelection.default.storageValue; filterRaw = ""; displayRaw = "" }
         model.modes = RadarModeSelection(storage: modesRaw)
+        model.filter = RadarFilter(storage: filterRaw)   // MARK: radarmodes – filter and „Darstellung“ as stored (screenshots: none)
+        model.display = RadarDisplay(storage: displayRaw)
         // "Auf der Karte zeigen" needs the train layer: it is switched on, and the choice stays (the layer bar shows it).
         if focusTripID != nil, !layers.isOn(.trains) { toggleLayer(.trains) }
         dropHeatLayerInScreenshots()   // MARK: radarheat – a scene of another preset does not inherit the layer a heat scene stored
@@ -283,7 +303,7 @@ struct RadarView: View {
         case .live:
             break
         case .filter:
-            model.filter = RadarFilter(categories: ["RJX"])
+            model.filter = RadarFilter(trainClasses: [.rjx])   // MARK: radarmodes – the Zugart chip of the new sheet
             showsFilter = true
         case .search:
             query = "RJX"
@@ -299,7 +319,8 @@ struct RadarView: View {
             applyTimePreset(preset)
         case .heat, .heatPanel, .heatLists, .heatTrend, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)
-        case .modesCity, .modesZoomHint, .modesLegend, .modesCrowded:   // MARK: radarmodes
+        case .modesCity, .modesZoomHint, .modesLegend, .modesCrowded, .modesDots, .modesFilter, .modesFilterLines, .modesDisplay,
+             .modesEmpty:   // MARK: radarmodes
             applyModesPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection(layers: [.stations, .trains, .disruptions, .routes]).storageValue   // radarheat: not the Pünktlichkeit layer

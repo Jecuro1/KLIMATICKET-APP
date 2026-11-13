@@ -46,6 +46,8 @@ enum RadarPreset: String, Sendable {
     case heat, heatPanel, heatLists, heatTrend, heatCell, heatAX5
     // MARK: radarmodes – Bus, Bim and U-Bahn on synthetic city fleets (demo only): Wien close up, Austria with Bus on, the legend, the crowded view
     case modesCity, modesZoomHint, modesLegend, modesCrowded
+    // MARK: radarmodes – „Filter & Darstellung“: dots, the filter sheet (top and lower sections), the Darstellung page, a filter that matches nothing
+    case modesDots, modesFilter, modesFilterLines, modesDisplay, modesEmpty
 
     /// The synthetic dense demo (`DemoRadarService(dense: true)`), only ever used by the CI screenshot hosts.
     var isDenseDemo: Bool { self == .allTrains || self == .allTrainsZoom }
@@ -54,7 +56,9 @@ enum RadarPreset: String, Sendable {
     // MARK: radarheat – the synthetic trains with a delay cluster over Tirol (`RadarHeatDemo.swift`).
     var isHeatDemo: Bool { self == .heat || self == .heatPanel || self == .heatLists || self == .heatTrend || self == .heatCell || self == .heatAX5 }
     // MARK: radarmodes – the synthetic city fleets (`Modes/RadarCityDemo.swift`) with the demo-only fast budget.
-    var isCityDemo: Bool { self == .modesCity || self == .modesZoomHint || self == .modesLegend || self == .modesCrowded }
+    var isCityDemo: Bool {
+        [.modesCity, .modesZoomHint, .modesLegend, .modesCrowded, .modesDots, .modesFilter, .modesFilterLines, .modesDisplay, .modesEmpty].contains(self)
+    }
 }
 
 /// Live copy for failures (Du-Form, no technical codes).

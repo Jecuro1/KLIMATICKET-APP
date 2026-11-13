@@ -84,7 +84,8 @@ extension RadarView {
         if heatOn {
             HeatTrainDot(pin: pin, isSelected: model.selectedTripID == pin.id)
         } else {
-            RadarMarker(pin: pin, isSelected: model.selectedTripID == pin.id, decoration: radar2Decoration(pin))   // MARK: radar2
+            RadarMarker(pin: pin, isSelected: model.selectedTripID == pin.id, style: markerStyle(for: pin),   // MARK: radarmodes – „Darstellung“
+                        decoration: radar2Decoration(pin))   // MARK: radar2
         }
     }
 

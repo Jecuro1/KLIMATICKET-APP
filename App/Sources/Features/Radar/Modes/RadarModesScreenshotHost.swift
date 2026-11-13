@@ -5,7 +5,8 @@ import KlimaCore
 // demo-only fast budget so a city view is fully loaded when it is captured.
 
 struct RadarModesScreenshotHost: View {
-    static let screens: Set<String> = ["radarModesCity", "radarModesZoomHint", "radarModesLegend", "radarModesCrowded", "radarModesAX5"]
+    static let screens: Set<String> = ["radarModesCity", "radarModesZoomHint", "radarModesLegend", "radarModesCrowded", "radarModesAX5",
+                                       "radarModesDots", "radarModesFilter", "radarModesFilterLines", "radarModesDisplay", "radarModesEmpty"]
 
     let screen: String
 
@@ -19,6 +20,16 @@ struct RadarModesScreenshotHost: View {
             RadarView(preset: .modesCrowded)
         case "radarModesAX5":   // chips, counts and notes at the largest text size
             RadarView(preset: .modesCity).dynamicTypeSize(.accessibility5)
+        case "radarModesDots":   // „Nur Punkte“, Groß, Gruppen aus
+            RadarView(preset: .modesDots)
+        case "radarModesFilter":   // „Filter & Darstellung“: Schnellwahl, Verkehrsmittel, Zugart
+            RadarView(preset: .modesFilter)
+        case "radarModesFilterLines":   // Linie, Betreiber, Verspätung
+            RadarView(preset: .modesFilterLines)
+        case "radarModesDisplay":   // the Darstellung page with its preview
+            RadarView(preset: .modesDisplay)
+        case "radarModesEmpty":   // a filter that matches nothing
+            RadarView(preset: .modesEmpty)
         default:   // radarModesCity: Wien with all five modes, the counts line
             RadarView(preset: .modesCity)
         }
