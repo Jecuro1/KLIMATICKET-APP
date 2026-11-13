@@ -127,7 +127,7 @@ extension RadarView {
     /// The layer bar with what each layer needs: the zoom hint, the disruption list, the routes without a place.
     var mapLayerPanel: some View {
         VStack(spacing: Theme.Spacing.xs) {
-            if layers.isOn(.stations), !MapStations.isDrawn(latitudeSpan: model.spanDegrees) {
+            if layers.isOn(.stations), !MapStations.isDrawn(latitudeSpan: model.spanDegrees), !(heatOn && model.heat.isExpanded) {   // MARK: radarheat – the open panel needs the room
                 Text("Zoom näher heran, dann erscheinen die Stationen.")
                     .radarHint()
             }

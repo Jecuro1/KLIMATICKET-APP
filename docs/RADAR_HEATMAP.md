@@ -39,8 +39,10 @@ sie endet mit der Ansicht, sie pausiert im Stromspar-Modus und folgt dem Schutzs
   sie falsch. Zurück auf „Jetzt“ kommt sie wieder (ohne den Verlauf, der beim Ausblenden endet).
 - **Die Ebene braucht keine Zugpunkte.** Auch mit ausgeschalteter Zug-Ebene lädt das Radar für die Pünktlichkeit; die Zustimmung zu Live-Daten
   (§2) gilt wie vorher: ohne sie lädt nichts und die Ebene zeigt nichts.
-- **Modi und Filter.** Die Zahlen gelten für die eingeschalteten Verkehrsmittel (Standard: Schiene), nicht für den Filter: Der Filter betrifft die
-  Zugpunkte. Ist er aktiv, sagt das Panel es.
+- **Modi und Filter.** Die Zahlen gelten für **Züge und S-Bahnen** (`ProductMask.rail`), auch wenn Bus, Bim oder U-Bahn bei den Verkehrsmitteln an sind: Die
+  Ebene heißt Pünktlichkeit „der Züge“, und eine Busverspätung wäre keine Zugverspätung (Review 1: vorher zählten eingeschaltete Busse und Bims als „Züge“ mit). Die Anfragen
+  folgen den Verkehrsmitteln wie beim Radar; mit Bussen an ist die Antwort größer und eine Kachel kann am Limit abgeschnitten sein (das Panel sagt es, der Scheduler teilt sie).
+  Ist nur Bus, Bim oder U-Bahn an, steht im Panel, dass die Pünktlichkeit nur Züge zählt. Der Filter betrifft die Zugpunkte, nicht die Zahlen; ist er aktiv, sagt das Panel es.
 
 ## 2. Das Raster
 
@@ -76,6 +78,7 @@ Die 300 Sekunden sind `RadarDelay.lateThresholdSeconds`, dieselbe Grenze wie der
   sind.** Ein ausgefallener Zug hat Echtzeit-Daten und zählt als nicht pünktlich. **Züge ohne Echtzeit-Daten fehlen in den Prozenten und sind nie
   pünktlich**; sie stehen daneben („412 Züge mit Echtzeit-Daten, 38 ohne“). Ohne einen einzigen Zug mit Echtzeit-Daten steht keine Zahl da.
   Gerundet wird so, dass die Zahl nicht mehr sagt als die Daten: nie 100 %, solange ein Zug zu spät ist; nie 0 %, solange einer pünktlich ist.
+  Eine Position, die nicht auf der Erde liegt (nicht endlich, Breite über ±90°, Länge über ±180°), lässt den Zug aus der Rechnung weg (Review 1; vorher nur nicht endliche).
 - **Ø Verspätung** ist der Mittelwert über die Züge mit 5 Minuten oder mehr. Der **Balken** hat vier Teile (pünktlich, 5 bis 15, über 15, ausgefallen), jeder
   ein Anteil der Züge mit Echtzeit-Daten.
 - **Größte Verspätungen jetzt.** Die fünf Züge mit der größten Verspätung, nur solche ab 5 Minuten, bei gleicher Verspätung nach Fahrt-Id. Sind es
@@ -84,6 +87,7 @@ Die 300 Sekunden sind `RadarDelay.lateThresholdSeconds`, dieselbe Grenze wie der
   Wert) **und** deren Median mindestens 5 Minuten beträgt (ein Feld mit zwölf Zügen, die vier Minuten zu spät sind, ist kein Brennpunkt, auch wenn die Summe hoch ist).
   Ein Feld höchstens zwei Schritte (etwa 27 km) neben einem besseren wird übersprungen: drei Brennpunkte sind drei Orte, nicht ein Korridor, der dreimal zählt (und ihre Nummern auf der Karte liegen nicht übereinander; mit „nur das Nachbarfeld“ lagen sie im ersten Screenshot übereinander). Der Name ist der häufigste nächste Halt der Züge
   im Feld („Raum Jenbach“, bei Gleichstand der erste im Alphabet); er sagt, wo das Feld ungefähr liegt, nicht, wo die Störung ist.
+  Die Zahl neben dem Ort heißt **Median**, nicht Ø (Review 1: „Ø 25 Min“ behauptete einen Mittelwert, gerechnet ist der Median des Feldes); „Ø“ steht nur bei der Landeszahl, die ein Mittelwert ist.
 - **Gebiet der Zahlen.** Das Rechteck des Radars enthält Teile von Bayern, Südtirol, Westungarn und der Slowakei (§R11.1). „Landesweit“ wäre falsch: Das
   Panel sagt „im Radar-Bereich: Österreich und angrenzende Gebiete“.
 - **Unvollständig.** Sind Kacheln noch nicht da, ausgefallen oder abgeschnitten, sagt das Panel es („Die Zahlen gelten für die geladenen Gebiete“).
@@ -105,19 +109,22 @@ Züge ohne Echtzeit-Daten zählen nie als pünktlich.
   liegen auf den Grenzen: bei 5:00 halb grün, halb orange; bei 15:00 halb orange, halb rot. Unter 5 Minuten gewinnt Grün, von 5 bis 15 Orange, darüber Rot (Test über das ganze
   Band). Die Stärke (0,55 bis 1) wächst mit der Zahl der Züge: drei Züge sind eine blasse Farbe, zwölf eine volle. Hell wie dunkel aus denselben Tokens; auf der dunklen Karte (und im
   Kartenstil „Dunkel“) sind es die hellen Dunkelmodus-Töne mit stärkerem Glühen, sie leuchten.
-- **Überblendung.** Kommt eine Antwort, laufen die Farben in vier Schritten (alle 90 ms, gut eine Drittelsekunde) vom alten zum neuen Stand; neue Felder blenden ein, weggefallene aus.
+- **Überblendung.** Kommt eine Antwort, laufen die Farben in vier Schritten über `Motion.Duration.standard` (0,35 s, je 87,5 ms) vom alten zum neuen Stand; neue Felder blenden ein, weggefallene aus.
+  Ein Feld, das grau wird oder eine Farbe bekommt, behält die Farbe seiner farbigen Seite (Review 1: es lief vorher über ein dunkles Zwischenbild, weil „keine Farbe“ Gewichte von 0 hat).
   MapKit-Überlagerungen kann SwiftUI nicht animieren, deshalb Schritte statt einer Feder. Mit „Bewegung reduzieren“ und in Screenshots erscheint der neue Stand sofort.
+- **Eckpunkte nachgeschlagen.** Die Sechsecke ändern sich nie: Ihre Eckpunkte (als Kartenkoordinaten, fünf Größen je Feld) stehen in einer begrenzten Ablage (`RadarHeatGeometry.swift`, höchstens 8 000 Ringe und 2 000 Schraffuren, danach von vorn),
+  statt bei jedem Neuaufbau der Karte (alle paar Sekunden) für bis zu 900 Ringe neu gerechnet zu werden (Review 1).
 - **Züge als Punkte.** Mit der Ebene sind die Zugmarker kleine Punkte (grün, orange, rot nach Klasse; die Größe wächst mit der Verspätung, ausgefallene und Züge ohne Echtzeit sind
   offene Ringe), Gruppen ein kleiner Ring in der Farbe des schlechtesten Zuges **ohne Zahl** (eine Zahl wie „265“ über Wien deckte die Felder zu; die Anzahl steht im gesprochenen Text, ein Tippen zoomt). Ein Tippen auf einen Punkt öffnet das Fahrt-Blatt wie vorher. Die Zahl der Marker bleibt die des Radars (höchstens etwa 130).
-- **Brennpunkte** haben eine Nummer auf der Karte (1 bis 3).
-- **Tippen auf ein Feld.** Ein Tippen auf die Karte sucht das Feld unter dem Finger, sonst das nächste mit Zügen innerhalb einer Fingerbreite (24 pt), mindestens ein Feld; es öffnet ein Blatt:
+- **Brennpunkte** haben eine Nummer auf der Karte (1 bis 3), in einem **Sechseck** (Review 1: eine runde Zahl sah aus wie die Zahl einer Stationsgruppe der Stationen-Ebene).
+- **Tippen auf ein Feld.** Ein Tippen auf die Karte (es wartet 0,28 s auf ein zweites: Ein Doppeltippen zoomt, und das soll kein Blatt auf- und zumachen; ein Tippen auf einen Zugpunkt, einen Ring oder eine Brennpunkt-Nummer zählt hier nicht, die haben ihre eigene Schaltfläche) sucht das Feld unter dem Finger, sonst das nächste mit Zügen innerhalb einer Fingerbreite (24 pt), mindestens ein Feld; es öffnet ein Blatt:
   Ort, mittlere Verspätung (oder warum das Feld keine Farbe hat), worauf es beruht und alle Züge im Feld, der späteste zuerst. Ein Zug öffnet das Fahrt-Blatt darüber. Das Feld hat einen Rahmen.
 
 ## 5. Panel, Bedienung, Zugänglichkeit
 
-Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. Es ist so hoch wie sein Inhalt, höchstens 40 % (zu) oder 62 % (auf, in den Zugänglichkeitsgrößen 80 %) der Karte; was darüber hinausgeht, scrollt in der Karte. Das ist
+Ein Glas-Panel unten (über der Ebenen-Leiste), einklappbar. Es ist so hoch wie sein Inhalt, höchstens 40 % (zu) oder 62 % (auf, in den Zugänglichkeitsgrößen 80 %) der Karte (darunter bleibt Platz für die Ebenen-Leiste und eine Notiz: Review 1, vorher schob das offene Panel die Leiste, mit der man die Ebene wieder ausschaltet, aus dem Bild; der Satz „Zoom näher heran“ der Stationen entfällt, solange das Panel offen ist); was darüber hinausgeht, scrollt in der Karte. Das ist
 nötig: In der größten Textgröße ist der Inhalt mehrere Bildschirme hoch, und eine so hohe Glasfläche wird gar nicht gezeichnet (Screenshots `radarHeatAX5`, Lauf 1: der Text lag ohne Karte auf der Karte). **Zu:** Überschrift „Pünktlich (unter 5 Min)“ mit der großen Zahl, der gestapelte Balken, „412 Züge mit Echtzeit-Daten, 38 ohne“ und
-„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, Ø Verspätung, **Größte Verspätungen jetzt** (fünf Zeilen), **Brennpunkte** (drei Zeilen), der Satz zu grau schraffierten Feldern und „Farbe in 95 von 154 Feldern mit Zügen“, Verlauf,
+„Stand vor 12 s“ (das Alter der ältesten Antwort, gerechnet ab der Anfrage, wie in §R11.2). **Auf:** Legende mit Zahlen, Ø Verspätung, **Größte Verspätungen jetzt** (fünf Zeilen), **Brennpunkte** (drei Zeilen), der Satz zu grauen Feldern („Grau umrandet oder schraffiert“: auf dem Österreich-Zoom ist ein graues Feld nur ein blasser Umriss) und „Farbe in 95 von 154 Feldern mit Zügen“, Verlauf,
 „Pünktlichkeitskarte teilen“ und die Hinweise (die Listen stehen vorn, weil sie das sind, wofür man das Panel öffnet).
 
 - **VoiceOver.** Das Panel liest sich als eine Zusammenfassung (Prozent, Basis, Ø, Teile des Balkens, Stand). Balken und Legende sind für VoiceOver aus (sie würden nur doppeln). Die Zeilen der größten Verspätungen und
@@ -184,6 +191,7 @@ Cluster grau), Verspätungen für die Szene gemacht: ein Verspätungs-Cluster ü
 | `radarHeat` | die Ebene über Österreich, Panel zu |
 | `radarHeatPanel` | das Panel offen |
 | `radarHeatLists` | das offene Panel, gescrollt zu den größten Verspätungen und den Brennpunkten |
+| `radarHeatTrend` | das offene Panel, gescrollt zur Verlaufslinie (erfundene Punkte der letzten 6 Minuten: ein echter Verlauf braucht so lange ein offenes Radar) |
 | `radarHeatCell` | die Karte nah an Tirol, das Blatt des größten Brennpunkts |
 | `radarHeatAX5` | das offene Panel in der größten Textgröße |
 | `radarHeatShare` | das Bild „Pünktlichkeitskarte teilen“ |
@@ -217,3 +225,33 @@ der Verlauf (er braucht drei Punkte über eine Minute), das Teilen-Blatt selbst 
 - Die Verspätung am nächsten Halt ist nicht die Ankunftsverspätung am Ziel; ein Zug kann sie aufholen oder vergrößern.
 - Das Raster ist fest 0,12°. Auf dem Österreich-Zoom sind dünn befahrene Strecken neutral, weil dort weniger als drei Züge je Feld fahren (§7 hat die Zahl).
 - Das Rechteck des Radars enthält Grenzgebiete (§3).
+
+## 11. Review 1 (Korrektheit, Robustheit, Leistung, Gestaltung, Zugänglichkeit)
+
+Gefunden und behoben:
+
+- **Busse und Bims zählten als „Züge“.** Mit Bus oder Bim bei den Verkehrsmitteln rechnete die Ebene alles mit („412 Züge mit Echtzeit-Daten“ über Busse). Jetzt nur `ProductMask.rail` (Züge und S-Bahnen); der Hinweis im Panel sagt es, und
+  ist nur ein Nicht-Zug-Modus an, steht dort, was einzuschalten ist (§1).
+- **„Ø 25 Min“ für einen Median.** Bei den Brennpunkten und im Feld-Blatt hieß der Median „Ø“ bzw. „Mittlere Verspätung“; jetzt „Median“ (§3).
+- **Ebene an ohne Live-Daten: keine Erklärung.** Ohne Zustimmung (oder offline) passierte beim Einschalten von „Pünktlichkeit“ nichts sichtbar, weil der Hinweis „Züge brauchen Live-Daten“ nur bei der Zug-Ebene stand. Er steht jetzt auch bei der Pünktlichkeit.
+- **Ebenen-Leiste aus dem Bild.** Das offene Panel (62 %) plus Satz „Zoom näher heran“ plus Leiste war höher als der Bereich unten (78 %): die Leiste, mit der man die Ebene ausschaltet, lag unter dem Bildschirmrand (CI-Bilder `radarHeatPanel`, `radarHeatLists`). Der Bereich wächst jetzt mit (§5).
+- **Verlauf mit halbem Land.** Der Verlauf nahm auch Momente, in denen erst eine der zwei Kacheln geantwortet hatte; der Anteil sprang dann wegen des fehlenden Gebiets, nicht wegen der Pünktlichkeit. Jetzt nur vollständige Antworten (alle Kacheln da, keine ausgefallen, keine abgeschnitten).
+- **Dunkler Zwischenschritt in der Überblendung.** Ein Feld, das grau wurde oder eine Farbe bekam, lief über Gewichte der Farben, die zusammen weniger als 1 ergaben (dunkel statt blass). Jetzt behält es die Farbe der farbigen Seite; Test dafür.
+- **Positionen außerhalb der Erde.** Eine endliche, aber irrsinnige Breite (1e300) wäre in `Int(rq)` abgestürzt; solche Züge fallen jetzt aus der Rechnung, `HeatGrid.cell(containing:)` gibt für sie nur noch die Ursprungszelle (Tests).
+- **Tippen auf einen Zug öffnete vielleicht auch ein Feld.** Die Tipp-Geste der Karte läuft neben den Schaltflächen der Marker; ein Tipp auf einen Zugpunkt, einen Ring oder eine Brennpunkt-Nummer lässt sie jetzt aus. Und: Ein Doppeltippen (Zoom) öffnete mit dem ersten Tipp ein Blatt; die
+  Auswahl wartet jetzt 0,28 s auf ein zweites Tippen. Beides nur auf einem iPhone zu bestätigen (§9a).
+- **Ein Sechseck-Raster neu gerechnet, alle paar Sekunden.** Siehe §4, „Eckpunkte nachgeschlagen“. Die Karte setzt ihren Inhalt bei jedem Neuaufbau der Ansicht neu zusammen; die Ringe sind jetzt Nachschläge, die Berechnung läuft einmal je Feld.
+- **Texte.** „Gezählt wird … Österreich und angrenzende Gebiete“ nennt jetzt Züge und S-Bahnen und sagt, dass Busse, Bims und U-Bahnen nicht zählen; „Grau schraffiert“ (auf dem Österreich-Zoom stimmte es nicht, dort ist ein graues Feld ein Umriss) heißt „Grau umrandet oder schraffiert“; das Teilen-Bild sagt
+  „Graue Umrisse“ (es zeichnet keine Schraffur). Die Dauer der Überblendung kommt aus `Motion.Duration.standard`.
+- **Brennpunkt-Nummer sah aus wie eine Stationsgruppe.** Auf der dunklen Karte glichen die weißen Kreise der Brennpunkte den Zahlen der Stationsgruppen (CI-Bild `dark-radarHeatCell`); die Nummern sind jetzt Sechsecke.
+- **Teilen-Bild.** Die Felder dafür werden einmal je Antwort berechnet (`RadarHeatModel.drawnCells`), nicht in jedem Neuaufbau des Panels.
+
+Geprüft und in Ordnung: die Klassengrenzen gegen `RadarDelay` (5:00 ist verspätet, 15:00 noch „5 bis 15“), Median und Mindestzahl (3 Züge mit Wert, nicht 3 Züge), „ohne Echtzeit nie pünktlich“, die Rundung (nie 100 % bei einem verspäteten Zug, nie 0 % bei
+einem pünktlichen), Reihenfolge der Züge ändert nichts, Brennpunkte mindestens drei Schritte auseinander, 6 Anfragen je Minute und keine zweite Schleife (`HeatLoadTests`), `RadarModel.run` endet mit der Ansicht und die Überblendung mit der Ebene,
+der Standardbildschirm des Radars (Ebene aus) ist bis auf den fünften Chip der Ebenen-Leiste und eine Tipp-Geste, die nur bei eingeschalteter Ebene etwas tut, unverändert.
+
+Nicht behoben, mit Grund:
+
+- Die Chips der Ebenen-Leiste sind bei fünf Titeln nicht gleich breit (jeder hat die Breite seines Textes plus gleichen Anteil des Rests). Gleiche Breiten bräuchten ein eigenes Layout; die Chips sind lesbar und tippbar.
+- Bei der größten Textgröße (`accessibility5`) füllt die obere Leiste des Radars (Suche, Verkehrsmittel: vorhanden vor dieser Ebene) fast die halbe Karte, und die Ebenen-Leiste ist nur durch Scrollen im Bereich unten zu erreichen. Das ist die Gestaltung des Radars, nicht der Ebene.
+- Tippen auf die Kompass- oder Standort-Schaltfläche der Karte kann bei eingeschalteter Ebene ein Feld in der Nähe öffnen (die Geste läuft neben den Steuerelementen der Karte). Nur auf einem iPhone zu sehen.

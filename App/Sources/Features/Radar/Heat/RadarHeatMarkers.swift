@@ -81,9 +81,10 @@ struct HeatHotspotBadge: View {
         Text("\(spot.rank)")
             .font(.system(size: 13, weight: .heavy, design: .rounded))
             .foregroundStyle(Theme.background)
-            .frame(width: 26, height: 26)
-            .background(Theme.textPrimary, in: .circle)
-            .overlay(Circle().strokeBorder(Theme.background.opacity(0.9), lineWidth: isSelected ? 3 : 1.5))
+            .frame(width: 28, height: 28)
+            // A hexagon like the cells, so a number of the map is never mistaken for a station group (a round bubble with a count).
+            .background(HexagonShape().fill(Theme.textPrimary))
+            .overlay(HexagonShape().stroke(Theme.background.opacity(0.9), lineWidth: isSelected ? 3 : 1.5))
             .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
             .scaleEffect(isSelected ? 1.15 : 1)
             .motionAnimation(Motion.snappy, value: isSelected)

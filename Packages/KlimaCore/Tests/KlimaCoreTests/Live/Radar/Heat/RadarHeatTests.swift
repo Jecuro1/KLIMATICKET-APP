@@ -299,6 +299,15 @@ final class RadarHeatTests: XCTestCase {
         XCTAssertEqual(summary.late, 0, "of two entries with one trip id the first counts")
     }
 
+    func testTrainsBeyondTheGlobeAreLeftOutLikeNonFiniteOnes() {
+        let input = [sample("ok", delay: 0), sample("far", at: GeoPoint(latitude: 1e300, longitude: 12), delay: 600),
+                     sample("lon", at: GeoPoint(latitude: 47, longitude: 400), delay: 600)]
+        let snapshot = RadarHeat.snapshot(input)
+        XCTAssertEqual(snapshot.summary.total, 1)
+        XCTAssertEqual(snapshot.cells.count, 1)
+        XCTAssertNil(snapshot.sample("far"))
+    }
+
     func testTheSamplesOfACellAreListedLatestFirst() {
         let input = [sample("a", delay: 60), sample("b", delay: 900), sample("c", delay: nil), sample("d", cancelled: true), sample("e", delay: 1500)]
         let snapshot = RadarHeat.snapshot(input)

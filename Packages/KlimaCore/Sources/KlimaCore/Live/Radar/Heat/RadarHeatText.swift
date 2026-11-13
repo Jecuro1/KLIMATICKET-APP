@@ -14,7 +14,7 @@ public enum RadarHeatText {
     public static let methodNote = "Die Verspätung ist die Echtzeit-Verspätung, die die ÖBB für den nächsten Halt meldet. Die Positionen sind berechnet, nicht gemessen. Züge ohne Echtzeit-Daten zählen nie als pünktlich: Sie fehlen in den Prozenten."
 
     /// The area the numbers cover: the radar's rectangle holds Austria and some border regions.
-    public static let areaNote = "Gezählt wird im Radar-Bereich: Österreich und angrenzende Gebiete."
+    public static let areaNote = "Gezählt werden Züge und S-Bahnen im Radar-Bereich: Österreich und angrenzende Gebiete. Busse, Bims und U-Bahnen zählen nicht."
 
     public static func trains(_ count: Int) -> String { count == 1 ? "1 Zug" : "\(count) Züge" }
 
@@ -107,8 +107,9 @@ public enum RadarHeatText {
 
     // MARK: Cells and rows
 
-    /// What a cell without colour looks like and why: said once in the legend.
-    public static let neutralLegend = "Grau schraffiert: weniger als \(RadarHeat.minimumSample) Züge mit Echtzeit-Daten, keine Farbe."
+    /// What a cell without colour looks like and why: said once in the legend. On the country view such a cell is a faint grey
+    /// outline, close up it is dashed and hatched: the words fit both.
+    public static let neutralLegend = "Grau umrandet oder schraffiert: weniger als \(RadarHeat.minimumSample) Züge mit Echtzeit-Daten, keine Farbe."
 
     /// "Farbe in 46 von 298 Feldern mit Zügen": how much of the map the rule "mindestens 3 Züge" colours. Nil without trains.
     public static func coverageLine(_ snapshot: HeatSnapshot) -> String? {
@@ -118,12 +119,13 @@ public enum RadarHeatText {
         return "Farbe in \(snapshot.colouredCellCount) von \(populated) \(noun) mit Zügen"
     }
 
-    /// "Ø 12 Min Verspätung" for a coloured cell; the reason for the missing colour otherwise.
+    /// "Mittlere Verspätung (Median) 12 Min" for a coloured cell; the reason for the missing colour otherwise. The value is the median,
+    /// and it says so: "Ø" would be a mean.
     public static func cellTitle(_ cell: HeatCell) -> String {
         guard let median = cell.medianDelaySeconds else {
             return "Zu wenige Züge mit Echtzeit-Daten für eine Farbe (mindestens \(RadarHeat.minimumSample))"
         }
-        return "Mittlere Verspätung \(minutes(median))"
+        return "Mittlere Verspätung (Median) \(minutes(median))"
     }
 
     /// "5 Züge · 3 mit Echtzeit-Daten": what the cell rests on.
@@ -140,9 +142,9 @@ public enum RadarHeatText {
         return "Raum \(name)"
     }
 
-    /// "Mittlere Verspätung 12 Min · 4 von 6 Zügen verspätet".
+    /// "Median 12 Min · 4 von 6 verspätet · 63 Min zusammen" (the median of the cell, not a mean).
     public static func hotspotDetail(_ hotspot: HeatHotspot) -> String {
-        "Ø \(minutes(hotspot.medianDelaySeconds)) · \(hotspot.lateCount) von \(hotspot.sampleCount) verspätet · \(Int(hotspot.delaySumMinutes.rounded())) Min zusammen"
+        "Median \(minutes(hotspot.medianDelaySeconds)) · \(hotspot.lateCount) von \(hotspot.sampleCount) verspätet · \(Int(hotspot.delaySumMinutes.rounded())) Min zusammen"
     }
 
     /// A train in the list of the largest delays or in a cell.
@@ -173,6 +175,9 @@ public enum RadarHeatText {
     }
 
     // MARK: Layer notes
+
+    /// Shown when no mode that carries trains is on: the numbers are about trains and S-Bahnen only.
+    public static let noRailNote = "Die Pünktlichkeit zählt nur Züge und S-Bahnen. Schalte oben „Züge“ oder „S-Bahn“ ein."
 
     /// The note under the panel when the data is incomplete: some tiles are still loading or failed.
     public static func completenessNote(_ status: RadarStatus) -> String? {

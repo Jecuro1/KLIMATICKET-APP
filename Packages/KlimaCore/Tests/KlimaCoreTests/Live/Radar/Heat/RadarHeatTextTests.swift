@@ -67,7 +67,7 @@ final class RadarHeatTextTests: XCTestCase {
         XCTAssertTrue(RadarHeatText.cellTitle(neutral).contains("mindestens 3"))
         var coloured = neutral
         coloured.medianDelaySeconds = 960
-        XCTAssertEqual(RadarHeatText.cellTitle(coloured), "Mittlere Verspätung 16 Min")
+        XCTAssertEqual(RadarHeatText.cellTitle(coloured), "Mittlere Verspätung (Median) 16 Min")
         coloured.cancelledCount = 1
         coloured.noRealtimeCount = 2
         coloured.tripIDs = ["a", "b", "c", "d", "e"]
@@ -93,7 +93,7 @@ final class RadarHeatTextTests: XCTestCase {
         XCTAssertEqual(RadarHeatText.place(""), "Gebiet ohne Haltestelle")
         let spot = HeatHotspot(rank: 1, cellID: HeatCellID(q: 0, r: 0), center: HeatGrid.center(of: HeatCellID(q: 0, r: 0)), placeName: "Jenbach",
                                sampleCount: 6, lateCount: 4, medianDelaySeconds: 840, delaySumMinutes: 63.4)
-        XCTAssertEqual(RadarHeatText.hotspotDetail(spot), "Ø 14 Min · 4 von 6 verspätet · 63 Min zusammen")
+        XCTAssertEqual(RadarHeatText.hotspotDetail(spot), "Median 14 Min · 4 von 6 verspätet · 63 Min zusammen")
     }
 
     func testTrainRows() {
@@ -130,6 +130,13 @@ final class RadarHeatTextTests: XCTestCase {
         var capped = RadarStatus()
         capped.cappedTiles = 1
         XCTAssertNotNil(RadarHeatText.completenessNote(capped))
+    }
+
+    func testTheAreaNoteNamesTrainsAndTheNoRailNoteSaysWhatToSwitchOn() {
+        XCTAssertTrue(RadarHeatText.areaNote.contains("Züge und S-Bahnen"), "the numbers are about trains: buses, trams and subways are not counted")
+        XCTAssertTrue(RadarHeatText.areaNote.contains("Busse"))
+        XCTAssertTrue(RadarHeatText.noRailNote.contains("Züge"))
+        XCTAssertTrue(RadarHeatText.neutralLegend.contains("umrandet oder schraffiert"), "on the country view a grey cell is an outline, close up it is hatched")
     }
 
     func testTheMethodNoteSaysWhatTheNumbersAre() {

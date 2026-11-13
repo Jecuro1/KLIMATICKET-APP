@@ -22,6 +22,7 @@ struct RadarView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) var colorScheme   // MARK: radarheat – read by the Pünktlichkeit layer (RadarView+Heat.swift)
+    @Environment(\.dynamicTypeSize) var heatTypeSize   // MARK: radarheat – the bottom area's limit follows the text size
     @State var model = RadarModel()
     @State var travel = RadarTimeModel()   // MARK: radartime – the time scrubber (docs/RADAR_TIMETRAVEL.md)
     @State var camera: MapCameraPosition = .region(RadarView.austriaRegion)
@@ -268,7 +269,7 @@ struct RadarView: View {
                                                 span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.55)))
         case .timeTravel, .timeTravelPlaying, .timeTravelLoading, .timeTravelChip:   // MARK: radartime
             applyTimePreset(preset)
-        case .heat, .heatPanel, .heatLists, .heatCell, .heatAX5:   // MARK: radarheat
+        case .heat, .heatPanel, .heatLists, .heatTrend, .heatCell, .heatAX5:   // MARK: radarheat
             applyHeatPreset(preset)
         case .layers:   // MARK: map – all layers on, zoomed to Wien so the station markers show (CI screenshots)
             layersRaw = MapLayerSelection(layers: [.stations, .trains, .disruptions, .routes]).storageValue   // radarheat: not the Pünktlichkeit layer

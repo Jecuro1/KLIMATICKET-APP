@@ -43,10 +43,10 @@ struct RadarHeatPanel: View {
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
             .task(id: heat.isExpanded) {
-                // Screenshot scene `radarHeatLists`: the open card shows its lists, not its legend.
-                guard heat.scrollsToLists, heat.isExpanded else { return }
+                // Screenshot scenes `radarHeatLists` and `radarHeatTrend`: the open card shows its lists, or its trend line.
+                guard heat.scrollsToLists || heat.scrollsToTrend, heat.isExpanded else { return }
                 try? await Task.sleep(for: .milliseconds(2500))   // the first answers are in
-                reader.scrollTo("heat.lists", anchor: .top)
+                if heat.scrollsToTrend { reader.scrollTo("heat.trend", anchor: .center) } else { reader.scrollTo("heat.lists", anchor: .top) }
             }
         }
         .frame(maxHeight: contentHeight > 0 ? min(contentHeight, maxHeight) : maxHeight)
@@ -146,10 +146,11 @@ struct RadarHeatPanel: View {
             HeatCellLegend(snapshot: snapshot)
             if heat.history.hasTrend, let caption = heat.history.caption {
                 HeatSparkline(history: heat.history, caption: caption)
+                    .id("heat.trend")
             }
             if !snapshot.isEmpty {
                 // The map of the delay as an image (docs/RADAR_HEATMAP.md §6): the cells on a night-blue ground, no base map, no person.
-                ShareLink(item: RadarHeatShare(cells: HeatLayer.drawCells(from: snapshot), summary: summary, date: Date()),
+                ShareLink(item: RadarHeatShare(cells: heat.drawnCells, summary: summary, date: Date()),
                           preview: SharePreview("Pünktlichkeit der Züge in Österreich",
                                                 image: Image(systemName: "gauge.with.dots.needle.67percent"))) {
                     Label("Pünktlichkeitskarte teilen", systemImage: "square.and.arrow.up")
@@ -236,6 +237,9 @@ struct HeatNotes: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if model.heatHasNoRail {
+                Text(RadarHeatText.noRailNote).foregroundStyle(Theme.summitText)
+            }
             if let incomplete = RadarHeatText.completenessNote(model.status) {
                 Text(incomplete).foregroundStyle(Theme.summitText)
             }

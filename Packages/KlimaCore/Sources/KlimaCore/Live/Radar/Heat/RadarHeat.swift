@@ -255,10 +255,10 @@ public enum RadarHeat {
 
     /// Cells, national numbers, top delays and hot spots from the trains of one moment. A train that appears twice (same trip id)
     /// counts once, the first of the two in the input (the radar's store holds each trip once, so this is a safety net); a train with a
-    /// non-finite position is left out.
+    /// position that is not on the globe (non-finite, beyond ±90° / ±180°) is left out.
     public static func snapshot(_ input: [HeatSample]) -> HeatSnapshot {
         var byID: [String: HeatSample] = [:]
-        for sample in input where sample.coordinate.latitude.isFinite && sample.coordinate.longitude.isFinite {
+        for sample in input where HeatGrid.isValid(sample.coordinate) {
             if byID[sample.tripID] == nil { byID[sample.tripID] = sample }
         }
         guard !byID.isEmpty else { return .empty }

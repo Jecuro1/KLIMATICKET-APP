@@ -7,11 +7,12 @@ import KlimaCore
 //   radarHeat       the layer over Austria, the panel closed
 //   radarHeatPanel  the panel open: legend, the largest delays, the hot spots, the notes
 //   radarHeatLists  the open panel scrolled to the largest delays and the hot spots
+//   radarHeatTrend  the open panel scrolled to the trend line of this session (made-up points: a real trend needs minutes)
 //   radarHeatCell   the map close to Tirol, the cell of the largest hot spot open with its trains
 //   radarHeatAX5    the open panel at the largest text size
 //   radarHeatShare  the image "Pünktlichkeitskarte teilen" (`RadarHeatShareCard`, 360 × 500 pt) on the app's night blue
 struct RadarHeatScreenshotHost: View {
-    static let screens: Set<String> = ["radarHeat", "radarHeatPanel", "radarHeatLists", "radarHeatCell", "radarHeatAX5", "radarHeatShare"]
+    static let screens: Set<String> = ["radarHeat", "radarHeatPanel", "radarHeatLists", "radarHeatTrend", "radarHeatCell", "radarHeatAX5", "radarHeatShare"]
 
     let screen: String
 
@@ -19,6 +20,7 @@ struct RadarHeatScreenshotHost: View {
         switch screen {
         case "radarHeatPanel": .heatPanel
         case "radarHeatLists": .heatLists
+        case "radarHeatTrend": .heatTrend
         case "radarHeatCell": .heatCell
         case "radarHeatAX5": .heatAX5
         default: .heat

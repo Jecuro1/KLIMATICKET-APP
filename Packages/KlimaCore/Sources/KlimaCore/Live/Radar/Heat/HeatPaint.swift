@@ -117,7 +117,14 @@ public enum HeatLayer {
             case let (a?, b?):
                 var cell = b
                 cell.isNeutral = t < 0.5 ? a.isNeutral : b.isNeutral
-                cell.blend = a.blend.mixed(with: b.blend, t)
+                // A neutral cell carries no colour (`HeatBlend.none` has weights of 0): mixing from it would pass through dark, dim
+                // colours. A cell that turns coloured or neutral keeps the colour of its coloured side for the whole fade.
+                switch (a.isNeutral, b.isNeutral) {
+                case (false, false): cell.blend = a.blend.mixed(with: b.blend, t)
+                case (true, false): cell.blend = b.blend
+                case (false, true): cell.blend = a.blend
+                case (true, true): cell.blend = .none
+                }
                 cell.strength = a.strength + (b.strength - a.strength) * t
                 result.append(cell)
             case let (nil, b?):

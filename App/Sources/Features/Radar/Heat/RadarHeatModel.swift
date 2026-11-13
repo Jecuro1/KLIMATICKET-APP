@@ -26,21 +26,28 @@ final class RadarHeatModel {
     var opensFirstHotspot = false
     /// Screenshot scene: the open panel scrolls to the lists of the largest delays and the hot spots.
     var scrollsToLists = false
+    /// Screenshot scene: the open panel scrolls to the trend line.
+    var scrollsToTrend = false
 
     @ObservationIgnored private var target: [HeatDrawCell] = []
     @ObservationIgnored private var fade: Task<Void, Never>?
     @ObservationIgnored private var lastCompute = Date.distantPast
     @ObservationIgnored private var answerPending = false
+    @ObservationIgnored private var pendingTap: Task<Void, Never>?
+
+    /// The cells of the latest snapshot as the map settles on them (without the cross-fade): what the share image draws. Computed once
+    /// per snapshot in `update`, not again in the panel's body.
+    var drawnCells: [HeatDrawCell] { target }
 
     /// A new answer from the server arrived: the next update recomputes at once instead of waiting.
     func noteAnswer() { answerPending = true }
 
     /// Positions and next stops move a little between two answers; the numbers are recomputed at most this often otherwise.
     static let refreshInterval: TimeInterval = 10
-    /// The cross-fade: this many steps, this far apart (about a third of a second). MapKit overlays are not animatable from SwiftUI, so
-    /// the colours move in steps; under Reduce Motion and in screenshots the new state is shown at once.
+    /// The cross-fade: this many steps over `Motion.Duration.standard` (0.35 s, the token of a content change). MapKit overlays are not
+    /// animatable from SwiftUI, so the colours move in steps; under Reduce Motion and in screenshots the new state is shown at once.
     static let fadeSteps = 4
-    static let fadeStep: Duration = .milliseconds(90)
+    static let fadeStep: Duration = .seconds(Motion.Duration.standard / Double(fadeSteps))
 
     func needsUpdate(at now: Date) -> Bool {
         isEnabled && (answerPending || now.timeIntervalSince(lastCompute) >= Self.refreshInterval || now < lastCompute)
@@ -52,6 +59,8 @@ final class RadarHeatModel {
         if !on {
             fade?.cancel()
             fade = nil
+            pendingTap?.cancel()
+            pendingTap = nil
             snapshot = .empty
             shown = []
             target = []
@@ -63,19 +72,56 @@ final class RadarHeatModel {
         }
     }
 
-    /// Takes the trains of one moment: new numbers for the panel, new cells for the map.
-    func update(_ samples: [HeatSample], at now: Date) {
+    /// Takes the trains of one moment: new numbers for the panel, new cells for the map. `isComplete` is true when every tile of the
+    /// country has answered: only then the moment goes into the trend of this session.
+    func update(_ samples: [HeatSample], at now: Date, isComplete: Bool = true) {
         guard isEnabled else { return }
         lastCompute = now
         answerPending = false
         let next = RadarHeat.snapshot(samples)
         if next != snapshot { snapshot = next }
-        history.record(next.summary, at: now)
+        if isComplete { history.record(next.summary, at: now) }
         let cells = HeatLayer.drawCells(from: next)
         if cells != target { crossfade(to: cells) }
         if opensFirstHotspot, selectedCell == nil, let first = next.hotspots.first {
             opensFirstHotspot = false
             selectedCell = first.cellID
+        }
+    }
+
+    /// How long a tap on the map waits for a second tap before it selects: the map zooms in on a double tap, and that should not open
+    /// (and close again) a sheet on its way.
+    static let doubleTapWindow: Duration = .milliseconds(280)
+
+    /// A tap on the map (`id` is nil for a tap on nothing): selects the cell after `doubleTapWindow`, unless a second tap follows within
+    /// it (a double-tap zoom), which cancels the selection and selects nothing, wherever that second tap lands.
+    func selectAfterTap(_ id: HeatCellID?) {
+        if pendingTap != nil {
+            pendingTap?.cancel()
+            pendingTap = nil
+            return
+        }
+        pendingTap = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.doubleTapWindow)
+            guard let self, !Task.isCancelled else { return }
+            self.pendingTap = nil
+            // A tap on nothing closes an open sheet; with none open it changes nothing.
+            if id != nil || self.selectedCell != nil { self.select(id) }
+        }
+    }
+
+    /// Screenshot scene `radarHeatTrend` only: a trend of the last six and a half minutes made up for the scene (a real one needs that
+    /// long an open radar; nothing like it is stored or shown for real).
+    func seedDemoTrend(endingAt end: Date) {
+        for index in 0..<13 {
+            var summary = HeatSummary()
+            let share = 0.74 + 0.065 * Double(index) / 12 + (index % 3 == 1 ? -0.012 : 0.008)
+            summary.total = 950
+            summary.noRealtime = 30
+            summary.onTime = Int(920 * share)
+            summary.delayed = (920 - summary.onTime) * 6 / 10
+            summary.severe = 920 - summary.onTime - summary.delayed
+            history.record(summary, at: end.addingTimeInterval(-30 * Double(13 - index)))
         }
     }
 

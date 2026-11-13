@@ -174,6 +174,23 @@ final class HeatPaintTests: XCTestCase {
         for blend in half.map(\.blend) { XCTAssertEqual(blend.green + blend.orange + blend.red, 1, accuracy: 1e-12) }
     }
 
+    func testACellThatTurnsColouredOrNeutralNeverPassesThroughADimColour() {
+        let neutral = cell(0, .none, neutral: true)
+        let coloured = cell(0, red, strength: 0.7)
+        for step in stride(from: 0.0, through: 1.0, by: 0.125) {
+            for (from, to) in [(neutral, coloured), (coloured, neutral)] {
+                let state = HeatLayer.interpolate(from: [from], to: [to], progress: step)
+                XCTAssertEqual(state.count, 1)
+                let drawn = state[0]
+                if !drawn.isNeutral {
+                    XCTAssertEqual(drawn.blend.red, 1, accuracy: 1e-12, "step \(step): a coloured cell is the full colour, never red at a fraction of it")
+                }
+            }
+        }
+        XCTAssertTrue(HeatLayer.interpolate(from: [neutral], to: [neutral], progress: 0.5)[0].isNeutral)
+        XCTAssertEqual(HeatLayer.interpolate(from: [neutral], to: [neutral], progress: 0.5)[0].blend, HeatBlend.none)
+    }
+
     func testTheFadeFromNothingAndToNothing() {
         let cells = [cell(0, green), cell(1, red)]
         XCTAssertTrue(HeatLayer.interpolate(from: [], to: [], progress: 0.5).isEmpty)

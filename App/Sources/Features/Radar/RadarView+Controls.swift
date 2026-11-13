@@ -132,7 +132,7 @@ extension RadarView {
         VStack(spacing: Theme.Spacing.xs) {
             if heatOn { heatPanel }   // MARK: radarheat – the summary panel, above the layer bar
             if !travel.isOpen { mapLayerPanel }   // MARK: radartime – the open scrubber card leaves the map room: the layer bar waits
-            if layers.isOn(.trains), let reason = app.live.timetableUnavailable {
+            if layers.isOn(.trains) || layers.isOn(.punctuality), let reason = app.live.timetableUnavailable {   // MARK: radarheat – the Pünktlichkeit layer needs the live data as well
                 trainsOffNotice(reason)
             }
             // The train status is only shown while trains are on: with the layer off no request is sent and nothing is pending.

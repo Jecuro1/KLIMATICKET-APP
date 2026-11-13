@@ -54,10 +54,17 @@ public enum HeatGrid {
 
     // MARK: Cells
 
+    /// True for a position on the globe: finite, latitude within ±90°, longitude within ±180°. The aggregation drops every train
+    /// whose position is not (a corrupt answer must not put a train on the map, and must not reach the integer conversion below).
+    public static func isValid(_ point: GeoPoint) -> Bool {
+        point.latitude.isFinite && point.longitude.isFinite && abs(point.latitude) <= 90 && abs(point.longitude) <= 180
+    }
+
     /// The cell a point falls into. Cube rounding: the one centre that is nearest, so every point has exactly one cell and a
-    /// point on an edge goes to one side only. Non-finite coordinates give the origin's cell; callers drop such points first.
+    /// point on an edge goes to one side only. A position that is not valid (`isValid`) gives the origin's cell; callers drop such
+    /// points first (`RadarHeat.snapshot` does), so this is only a guard against a trap in the integer conversion.
     public static func cell(containing point: GeoPoint) -> HeatCellID {
-        guard point.latitude.isFinite, point.longitude.isFinite else { return HeatCellID(q: 0, r: 0) }
+        guard isValid(point) else { return HeatCellID(q: 0, r: 0) }
         let (x, y) = project(point)
         let q = (3.0.squareRoot() / 3 * x - y / 3) / radiusKm
         let r = (2.0 / 3 * y) / radiusKm

@@ -36,13 +36,13 @@ extension RadarView {
                 // Too few trains for a colour: faint grey. Close enough to read the pattern (a cell about 28 points wide) it has a dashed
                 // edge and diagonal hatching; on the country view, where a cell is 18 points, it is a faint outline (the pattern would
                 // only be noise).
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 0.9).map(\.clCoordinate))
+                MapPolygon(coordinates: HeatGeometry.ring(cell.id, scale: 0.9))
                     .foregroundStyle(palette.neutralFill)
                     .stroke(palette.neutralLine.opacity(detailed ? 1 : 0.55),
                             style: detailed ? StrokeStyle(lineWidth: 1, dash: [3, 3]) : StrokeStyle(lineWidth: 0.75))
                     .mapOverlayLevel(level: .aboveRoads)
                 if detailed {
-                    MapPolyline(coordinates: HeatGrid.hatchPath(of: cell.id).map(\.clCoordinate))
+                    MapPolyline(coordinates: HeatGeometry.hatch(cell.id))
                         .stroke(palette.neutralLine, lineWidth: 1)
                         .mapOverlayLevel(level: .aboveRoads)
                 }
@@ -50,20 +50,20 @@ extension RadarView {
                 // Three nested hexagons: a scrim (the cell's ground and bezel), the colour as a wide faint halo (the soft edge), and the
                 // body with its crisp line. The strength of the cell (how many trains it rests on) scales every opacity.
                 let colour = palette.color(cell.blend)
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.12).map(\.clCoordinate))
+                MapPolygon(coordinates: HeatGeometry.ring(cell.id, scale: 1.12))
                     .foregroundStyle(palette.scrim.opacity(palette.scrimOpacity * cell.strength))
                     .mapOverlayLevel(level: .aboveRoads)
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 1.45).map(\.clCoordinate))
+                MapPolygon(coordinates: HeatGeometry.ring(cell.id, scale: 1.45))
                     .foregroundStyle(colour.opacity(palette.haloOpacity * cell.strength))
                     .mapOverlayLevel(level: .aboveRoads)
-                MapPolygon(coordinates: HeatGrid.vertices(of: cell.id, scale: 0.92).map(\.clCoordinate))
+                MapPolygon(coordinates: HeatGeometry.ring(cell.id, scale: 0.92))
                     .foregroundStyle(colour.opacity(palette.bodyOpacity * cell.strength))
                     .stroke(colour.opacity(palette.bodyLine * cell.strength), lineWidth: 1.2)
                     .mapOverlayLevel(level: .aboveRoads)
             }
         }
         if let selected = model.heat.selectedCell {
-            MapPolygon(coordinates: HeatGrid.vertices(of: selected, scale: 1.0).map(\.clCoordinate))
+            MapPolygon(coordinates: HeatGeometry.ring(selected, scale: 1.0))
                 .foregroundStyle(Color.clear)
                 .stroke(Theme.textPrimary, lineWidth: 3)
                 .mapOverlayLevel(level: .aboveRoads)
@@ -105,15 +105,31 @@ extension RadarView {
     func handleMapTap(at point: CGPoint, proxy: MapProxy) {
         // A trip sheet that is up (the map stays touchable behind it) keeps its place: a second sheet cannot be shown over it.
         guard heatOn, sheetVehicle == nil, let coordinate = proxy.convert(point, from: .local) else { return }
+        // The gesture runs alongside the markers' own buttons, so a tap on a train dot, a group ring or a hot spot number would open
+        // a cell as well as the train: it steps aside for them.
+        guard !hitsMarker(at: point, proxy: proxy) else { return }
         let tap = GeoPoint(latitude: coordinate.latitude, longitude: coordinate.longitude)
         // A finger is about 24 points wide: that many kilometres at this zoom, never less than one cell.
         let height = max(Double(model.mapSize.height), 1)
         let kmPerPoint = model.spanDegrees * HeatGrid.kmPerDegreeLatitude / height
         let tolerance = max(HeatGrid.radiusKm, 24 * kmPerPoint)
-        if let cell = RadarHeat.cell(at: tap, in: model.heat.snapshot, toleranceKm: tolerance) {
-            model.heat.select(cell.id)
-        } else if model.heat.selectedCell != nil {
-            model.heat.select(nil)
+        // The selection waits for a possible second tap (the map zooms in on a double tap).
+        model.heat.selectAfterTap(RadarHeat.cell(at: tap, in: model.heat.snapshot, toleranceKm: tolerance)?.id)
+    }
+
+    /// The tap is on a marker of the map that is a button of its own: a hot spot number, or (with the train layer on) a train dot or a
+    /// group ring. 18 points around its centre, a little more than the marker's tap area of 28 to 32.
+    private func hitsMarker(at point: CGPoint, proxy: MapProxy) -> Bool {
+        let reach: CGFloat = 18
+        func near(_ coordinate: GeoPoint) -> Bool {
+            guard let at = proxy.convert(coordinate.clCoordinate, to: .local) else { return false }
+            return abs(at.x - point.x) <= reach && abs(at.y - point.y) <= reach
+        }
+        if model.heat.snapshot.hotspots.contains(where: { near($0.center) }) { return true }
+        guard trainsOn else { return false }
+        return model.clusters.contains { cluster in
+            if cluster.isSingle, let id = cluster.tripIDs.first, let pin = model.pinsByID[id] { return near(pin.coordinate) }
+            return near(cluster.center)
         }
     }
 
@@ -161,10 +177,16 @@ extension RadarView {
             .presentationDetents([.fraction(0.32), .medium, .large])
     }
 
-    /// The bottom area takes more room while the heat panel is up: the card (at most 52 % of the map, scrolling inside) and the layer bar.
+    /// The bottom area takes more room while the heat panel is up: the card (at most 62 % of the map, 80 % at the accessibility sizes,
+    /// scrolling inside, see `RadarHeatPanel.maxHeight`) and under it the layer bar, which must stay reachable: it is how the layer is
+    /// switched off again. The area grows with its content up to the card's own limit plus the room for the bar and a note.
     var statusMaxHeight: CGFloat {
         if travel.isOpen { return max(360, model.mapSize.height * 0.58) }   // MARK: radartime – the open scrubber card
-        return heatOn ? max(360, model.mapSize.height * 0.78) : 360
+        guard heatOn else { return 360 }
+        let mapHeight = max(model.mapSize.height, 560)
+        // Normal sizes: the card at its limit and the room under it for the layer bar and a note. Accessibility sizes: as before, the
+        // whole area scrolls (the card alone is up to 80 % there).
+        return heatTypeSize.isAccessibilitySize ? max(360, model.mapSize.height * 0.78) : max(360, mapHeight * 0.62 + 240)
     }
 
     // MARK: Presets
@@ -185,6 +207,10 @@ extension RadarView {
         case .heatLists:
             model.heat.isExpanded = true
             model.heat.scrollsToLists = true
+        case .heatTrend:   // the open panel at its trend line, which needs six minutes of an open radar: made up for the scene
+            model.heat.isExpanded = true
+            model.heat.scrollsToTrend = true
+            model.heat.seedDemoTrend(endingAt: Date())
         case .heatCell:   // the map close to Tirol, the cell of the largest hot spot open
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 47.28, longitude: 11.55).clCoordinate,
                                                 span: MKCoordinateSpan(latitudeDelta: 1.1, longitudeDelta: 1.5)))

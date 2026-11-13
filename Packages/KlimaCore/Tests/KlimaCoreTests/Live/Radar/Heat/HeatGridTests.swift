@@ -91,6 +91,17 @@ final class HeatGridTests: XCTestCase {
         XCTAssertEqual(HeatGrid.cell(containing: GeoPoint(latitude: 47, longitude: .infinity)), HeatCellID(q: 0, r: 0))
     }
 
+    func testPositionsBeyondTheGlobeAreInvalidAndNeverTrapTheIntegerConversion() {
+        XCTAssertTrue(HeatGrid.isValid(GeoPoint(latitude: 47.3, longitude: 11.7)))
+        XCTAssertTrue(HeatGrid.isValid(GeoPoint(latitude: -90, longitude: 180)))
+        for bad in [GeoPoint(latitude: 90.1, longitude: 0), GeoPoint(latitude: 0, longitude: -180.5), GeoPoint(latitude: 1e300, longitude: 12),
+                    GeoPoint(latitude: 47, longitude: -1e300), GeoPoint(latitude: .nan, longitude: 12), GeoPoint(latitude: 47, longitude: .infinity)] {
+            XCTAssertFalse(HeatGrid.isValid(bad))
+            // A finite 1e300 would overflow `Int(rq)`: it must give the origin cell, not trap.
+            XCTAssertEqual(HeatGrid.cell(containing: bad), HeatCellID(q: 0, r: 0))
+        }
+    }
+
     func testIdsAreSortedRowByRowFromTheSouth() {
         let ids = [HeatCellID(q: 5, r: 1), HeatCellID(q: -2, r: 1), HeatCellID(q: 9, r: -3), HeatCellID(q: 0, r: 0)]
         XCTAssertEqual(ids.sorted(), [HeatCellID(q: 9, r: -3), HeatCellID(q: 0, r: 0), HeatCellID(q: -2, r: 1), HeatCellID(q: 5, r: 1)])

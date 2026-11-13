@@ -29,19 +29,27 @@ extension RadarModel {
         }
     }
 
-    /// Recomputes the layer when an answer came in or ten seconds went by. The trains are all the radar holds (the modes that are on,
-    /// not the filter: the numbers are about the traffic, the filter is about the markers), at the positions the map shows them.
+    /// Recomputes the layer when an answer came in or ten seconds went by. The trains are the trains and S-Bahnen the radar holds (the
+    /// layer is about trains: a bus or a tram that the mode chips ask for does not count, and neither does the marker filter), at the
+    /// positions the map shows them.
     func refreshHeat(at now: Date) {
         guard heat.needsUpdate(at: now) else { return }
-        let mask = products
+        let mask = products.intersection(.rail)
         let samples = store.entries.values.compactMap { entry -> HeatSample? in
             let vehicle = entry.vehicle
-            // A mode that was switched off is gone at once, whatever its retention says (as for the pins).
+            // A mode that was switched off is gone at once, whatever its retention says (as for the pins); buses, trams and
+            // subways never count (a vehicle with an unknown product class is kept, as for the pins).
             if let line = vehicle.line, line.productClass != 0, line.productClass & mask.rawValue == 0 { return nil }
             return HeatSample(vehicle: vehicle, coordinate: RadarEstimate.shown(entry, now: now).coordinate, now: now)
         }
-        heat.update(samples, at: now)
+        // The trend line only takes complete answers: with one of the two tiles still on its way the share would jump for the area
+        // that is missing, not for the punctuality.
+        let complete = status.answeredTiles > 0 && status.pendingTiles == 0 && status.failedTiles == 0 && status.cappedTiles == 0 && !status.isPaused
+        heat.update(samples, at: now, isComplete: complete)
     }
+
+    /// No mode that carries trains is on (only buses, trams or subways): the layer has nothing to count and says so.
+    var heatHasNoRail: Bool { products.intersection(.rail).isEmpty }
 
     /// A vehicle the radar holds, by trip id (the panel's lists and the cell sheet open its trip sheet from the id).
     func vehicle(id: String) -> RadarVehicle? { store.entries[id]?.vehicle }
