@@ -230,6 +230,19 @@ final class WidgetSmartStackTests: XCTestCase {
         XCTAssertEqual(line.countdownTarget, at(2026, 11, 13, 9, 12))
     }
 
+    func testFollowTransferNamesTheStationAndTheNextDeparture() {
+        let line = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: .transfer, plannedDeparture: nil,
+                                            plannedArrival: nil, nextStopTime: nil, delayMinutes: 6,
+                                            transferStation: "Wien Hauptbahnhof", transferDeparture: at(2026, 11, 13, 10, 30),
+                                            updatedAt: nil, isStale: false)
+        XCTAssertEqual(line.headline, "Umstieg 10:30")
+        XCTAssertEqual(line.destination, "Wien Hbf")
+        XCTAssertEqual(line.destinationPrefix, "in")
+        XCTAssertEqual(line.countdownLabel, "Weiter in")
+        XCTAssertEqual(line.countdownTarget, at(2026, 11, 13, 10, 30))
+        XCTAssertEqual(line.spoken, "Umstieg in Wien Hbf, Weiterfahrt um 10:30.")
+    }
+
     func testFollowEndStatesHaveNoCountdown() {
         for stage in [FollowStage.arrived, .cancelled] {
             let line = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: stage, plannedDeparture: nil,

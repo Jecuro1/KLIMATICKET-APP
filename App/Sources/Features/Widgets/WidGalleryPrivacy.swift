@@ -14,6 +14,7 @@ struct WidPrivacySection: View {
     /// The preview shows the locked device (where the switches act) until the user looks at the unlocked one.
     @State private var showsLocked = true
     @State private var changes = 0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// `initialPrivacy`: CI scenes start from a given choice instead of the stored one.
     init(snapshot: WidgetSnapshot, initialPrivacy: WidgetPrivacy? = nil) {
@@ -57,29 +58,48 @@ struct WidPrivacySection: View {
     private var switches: some View {
         GlassCard(padding: Theme.Spacing.m) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                Toggle(isOn: binding(\.hidesRoutesWhenLocked, default: WidgetPrivacy.defaultHidesRoutes)) {
-                    switchLabel(title: "Strecken auf dem Sperrbildschirm verbergen",
-                                detail: "Stationen, Ziele und die Namen deiner Fahrten erscheinen erst nach dem Entsperren.",
-                                symbol: "point.topleft.down.to.point.bottomright.curvepath.fill")
-                }
+                switchRow(binding(\.hidesRoutesWhenLocked, default: WidgetPrivacy.defaultHidesRoutes),
+                          title: "Strecken auf dem Sperrbildschirm verbergen",
+                          detail: "Stationen, Ziele und die Namen deiner Fahrten erscheinen erst nach dem Entsperren.",
+                          symbol: "point.topleft.down.to.point.bottomright.curvepath.fill")
                 Divider()
-                Toggle(isOn: binding(\.hidesAmountsWhenLocked, default: WidgetPrivacy.defaultHidesAmounts)) {
-                    switchLabel(title: "Beträge verbergen",
-                                detail: "Euro-Beträge erscheinen erst nach dem Entsperren. Prozent, Tage und Abfahrtszeiten bleiben sichtbar.",
-                                symbol: "eurosign.circle.fill")
-                }
+                switchRow(binding(\.hidesAmountsWhenLocked, default: WidgetPrivacy.defaultHidesAmounts),
+                          title: "Beträge verbergen",
+                          detail: "Euro-Beträge erscheinen erst nach dem Entsperren. Prozent, Tage und Abfahrtszeiten bleiben sichtbar.",
+                          symbol: "eurosign.circle.fill")
             }
             .tint(Theme.accent)
         }
     }
 
-    private func switchLabel(title: String, detail: String, symbol: String) -> some View {
+    /// Side by side with the switch; at accessibility sizes the words take the full width and the switch sits below
+    /// them, so no word is split.
+    @ViewBuilder
+    private func switchRow(_ isOn: Binding<Bool>, title: String, detail: String, symbol: String) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                switchLabel(title: title, detail: detail, symbol: nil)
+                    .accessibilityHidden(true)
+                Toggle(title, isOn: isOn)
+                    .labelsHidden()
+                    .accessibilityHint(detail)
+            }
+        } else {
+            Toggle(isOn: isOn) {
+                switchLabel(title: title, detail: detail, symbol: symbol)
+            }
+        }
+    }
+
+    private func switchLabel(title: String, detail: String, symbol: String?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.s) {
-            Image(systemName: symbol)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Theme.accent)
-                .frame(minWidth: 24)
-                .accessibilityHidden(true)
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(minWidth: 24)
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.semibold))
@@ -147,28 +167,34 @@ struct WidPrivacyStage: View {
             .foregroundStyle(Color.white.opacity(0.88))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            Text(verbatim: "9:41")
+            // The real time: the example departures below count from it.
+            Text(verbatim: now.formatted(.dateTime.hour().minute().locale(WidFormat.locale)))
                 .font(.system(size: 64, weight: .semibold, design: .rounded))
+                .monospacedDigit()
                 .foregroundStyle(LinearGradient(colors: [Color.white, Color.white.opacity(0.78)], startPoint: .top, endPoint: .bottom))
                 .lineLimit(1)
                 .accessibilityHidden(true)
             HStack(alignment: .center, spacing: 12) {
                 tile(.accessoryCircular) {
-                    NextConnectionWidgetView(title: "Pendeln", state: .fresh(now), items: connections, family: .accessoryCircular)
+                    NextConnectionWidgetView(title: favoriteTitle, state: .fresh(now), items: connections, family: .accessoryCircular)
                 }
                 tile(.accessoryRectangular) {
-                    NextConnectionWidgetView(title: "Pendeln", state: .fresh(now), items: connections, family: .accessoryRectangular)
+                    NextConnectionWidgetView(title: favoriteTitle, state: .fresh(now), items: connections, family: .accessoryRectangular)
                 }
             }
             HStack(alignment: .center, spacing: 12) {
                 tile(.accessoryRectangular) {
-                    DeparturesWidgetView(stationName: "Landeck-Zams", state: .fresh(now), items: departures,
+                    DeparturesWidgetView(stationName: stationName, state: .fresh(now), items: departures,
                                          family: .accessoryRectangular)
                 }
                 tile(.accessoryCircular) {
                     TicketRemainingWidgetView(snapshot: snapshot, family: .accessoryCircular, now: now)
                 }
             }
+            Text("Vorschau mit Beispielzeiten")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.62))
+                .unredacted()
         }
         .padding(.vertical, Theme.Spacing.l)
         .padding(.horizontal, Theme.Spacing.s)
@@ -210,10 +236,18 @@ struct WidPrivacyStage: View {
             }
     }
 
+    /// The user's first favourite and its start (the preview's times are examples); demo names without favourites.
+    private var favoriteTitle: String { snapshot.favorites.first?.title ?? "Pendeln" }
+    private var stationName: String {
+        let from = snapshot.favorites.first?.fromName ?? ""
+        return from.isEmpty ? "Landeck-Zams" : RideNames.short(from)
+    }
+
     private var connections: [WidgetConnection] {
-        WidSamples.connections(now: now).map { connection in
+        let destination = snapshot.favorites.first.map(\.toName).flatMap { $0.isEmpty ? nil : RideNames.short($0) }
+        return WidSamples.connections(now: now).map { connection in
             var copy = connection
-            copy.fromName = "Landeck-Zams"
+            if let destination { copy.toName = destination }
             return copy
         }
     }

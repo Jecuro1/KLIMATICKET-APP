@@ -11,9 +11,11 @@ public struct ActivitySmallLine: Equatable, Sendable {
     public var delay: String?
     /// "Wien Hbf" (shortened station name).
     public var destination: String
+    /// What stands before the destination: "→" for the destination, "in" for the station of a change.
+    public var destinationPrefix: String = "→"
     /// What the countdown counts to; nil when nothing is ahead (arrived, cancelled, ended).
     public var countdownTarget: Date?
-    /// "Abfahrt in", "Ankunft in", "Umstieg in"; for a running ride without arrival "Fahrzeit".
+    /// "Abfahrt in", "Ankunft in", "Weiter in"; for a running ride without arrival "Fahrzeit".
     public var countdownLabel: String
     /// True when the timer counts up from `countdownTarget` (a ride without a known arrival).
     public var countsUp: Bool
@@ -65,13 +67,12 @@ public enum ActivitySmallText {
                                      footnote: stand, spoken: spoken)
         case .transfer:
             let station = transferStation.map(shortStation) ?? destination
-            let headline = [label, transferDeparture.map { "→ \(RealtimePresentation.time($0))" }].compactMap { $0 }
-                .joined(separator: " ")
+            let headline = ["Umstieg", transferDeparture.map(RealtimePresentation.time)].compactMap { $0 }.joined(separator: " ")
             var spoken = "Umstieg in \(station)"
             if let transferDeparture { spoken += ", Weiterfahrt um \(RealtimePresentation.time(transferDeparture))" }
             spoken += "." + spokenStand
-            return ActivitySmallLine(headline: headline, delay: nil, destination: station,
-                                     countdownTarget: transferDeparture, countdownLabel: "Umstieg in", countsUp: false,
+            return ActivitySmallLine(headline: headline, delay: nil, destination: station, destinationPrefix: "in",
+                                     countdownTarget: transferDeparture, countdownLabel: "Weiter in", countsUp: false,
                                      footnote: stand, spoken: spoken)
         case .arrived:
             return ActivitySmallLine(headline: "\(label) angekommen", delay: nil, destination: destination,

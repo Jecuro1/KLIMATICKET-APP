@@ -47,6 +47,10 @@ struct WidgetGalleryView: View {
                     WidStandByStage(snapshot: shown)
                         .reveal(order: 7)
                         .scrollCardTransition()
+                    WidPrivacySection(snapshot: shown)   // MARK: smartwidgets – Gesperrt & privat (docs/WIDGETS_SMARTSTACK.md §1)
+                        .reveal(order: 8)
+                        .scrollCardTransition()
+                        .id(WidGallerySection.privacy)
                     WidControlCenterSection(favorite: shown.favorites.first) { openAddTrip() }
                         .reveal(order: 8)
                         .scrollCardTransition()
@@ -217,6 +221,8 @@ enum WidGallerySection: Hashable {
     case large
     /// Lock screen and StandBy.
     case lock
+    /// "Gesperrt & privat": the lock-screen privacy switches.  // MARK: smartwidgets
+    case privacy
     /// Kontrollzentrum & Aktionstaste (both controls), then Siri.
     case controls
     /// Siri & Kurzbefehle and the how-to guide.

@@ -22,18 +22,30 @@ struct WidDepartureRing: View {
     /// The ring counts down this long before the departure (the Smart Stack window, `WidgetRelevance.departureLead`).
     static let window: TimeInterval = WidgetRelevance.departureLead
 
+    /// `.accessoryCircular` only inside the widget extension (the app's previews pass the family as a parameter).
+    @Environment(\.widgetFamily) private var hostFamily
+
     var body: some View {
         ZStack {
             if isCancelled {
                 Circle()
                     .strokeBorder(.secondary, style: StrokeStyle(lineWidth: 4, dash: [3, 4]))
-            } else {
+            } else if hostFamily == .accessoryCircular {
+                // In a widget the circular style is the capacity gauge, and the system runs it by itself.
                 ProgressView(timerInterval: time.addingTimeInterval(-Self.window)...time, countsDown: true) {
                     EmptyView()
                 } currentValueLabel: {
                     EmptyView()
                 }
                 .progressViewStyle(.circular)
+            } else {
+                // In the app the circular style is a spinner: the previews draw the same ring as a gauge, every 30 s.
+                TimelineView(.periodic(from: Date(), by: 30)) { context in
+                    Gauge(value: Self.remainingShare(of: time, at: context.date)) {
+                        EmptyView()
+                    }
+                    .gaugeStyle(.accessoryCircularCapacity)
+                }
             }
             VStack(spacing: 0) {
                 if let caption {
@@ -68,6 +80,11 @@ struct WidDepartureRing: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken)
+    }
+
+    /// The ring's fill at `now`: 1 up to 45 minutes before the departure, 0 at the departure.
+    static func remainingShare(of departure: Date, at now: Date) -> Double {
+        min(max(departure.timeIntervalSince(now) / window, 0), 1)
     }
 }
 

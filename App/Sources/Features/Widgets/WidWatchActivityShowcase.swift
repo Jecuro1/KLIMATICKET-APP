@@ -148,10 +148,14 @@ struct WidWatchFrame<Content: View>: View {
                 .padding(.trailing, 6)
                 .accessibilityHidden(true)
             WidWatchCard { content }
-            Capsule()
-                .fill(Color.white.opacity(0.22))
-                .frame(width: 28, height: 4)
+            // The next card of the stack peeks out below (empty: only the Live Activity is real here).
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white.opacity(0.1))
+                .frame(width: 160, height: 70)
                 .frame(maxWidth: .infinity)
+                .mask {
+                    LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                }
                 .accessibilityHidden(true)
         }
         .padding(14)
@@ -179,6 +183,10 @@ struct WidWatchCard<Content: View>: View {
             .padding(.vertical, 9)
             .frame(width: 176, height: 84, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.background))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.6)
+            }
             .environment(\.colorScheme, .dark)
     }
 }

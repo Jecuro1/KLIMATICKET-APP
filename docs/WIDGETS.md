@@ -59,10 +59,10 @@ gezeigt. Bike+Ride sagt Fahrradständer schon, deshalb kommt kein zweiter Eintra
 
 | Widget (kind) | Familien | Daten |
 |---|---|---|
-| Nächste Verbindung (`nextConnection`) | sSmall, sMedium, sLarge, aRectangular, aInline | Cache, Konfiguration: Lieblingsfahrt |
-| Abfahrten (`departures`) | sMedium, sLarge, aRectangular, aInline | Cache, Konfiguration: Station (Standard Heimat-Station) |
+| Nächste Verbindung (`nextConnection`) | sSmall, sMedium, sLarge, aCircular, aRectangular, aInline | Cache, Konfiguration: Lieblingsfahrt |
+| Abfahrten (`departures`) | sMedium, sLarge, aCircular, aRectangular, aInline | Cache, Konfiguration: Station (Standard Heimat-Station) |
 | Störungen auf meinen Linien (`disruptions`) | sSmall, sMedium, aRectangular, aInline | Cache |
-| Ticket-Restzeit (`ticketRemaining`) | sSmall, aCircular, aInline | Snapshot |
+| Ticket-Restzeit (`ticketRemaining`) | sSmall, aCircular, aRectangular, aInline | Snapshot |
 | Break-even (`breakEven`) | sSmall, aCircular, aRectangular, aInline | Snapshot (Prognose) |
 | Jahresrückblick (`yearReview`) | sSmall, sMedium | Snapshot; ab Dezember oder in den letzten 30 Tagen, sonst Countdown |
 | Fahrten-Kalender (`heatmap`) | sMedium, sLarge | Snapshot (`heat`), zwölf Wochen, Montag oben |
@@ -97,11 +97,13 @@ ohne Netz. WidgetKit lässt sich im Simulator nicht aufnehmen; die Vorschau erse
 
 1. Gipfel-Fortschritt: als eigenes Widget für Sperrbildschirm und StandBy gebaut; in der Amortisation bleibt er auch.
 2. Heimat-Station ist Standard für „Abfahrten“.
-3. Strecken und Ziele am gesperrten Gerät: derzeit sichtbar. Ein Schalter „Auf dem Sperrbildschirm ausblenden“ fehlt.
+3. Strecken und Ziele am gesperrten Gerät: entschieden – Schalter „Strecken auf dem Sperrbildschirm verbergen“ (Standard an)
+   und „Beträge verbergen“ (Standard aus) in der Widget-Galerie, siehe `WIDGETS_SMARTSTACK.md` §1.
 4. Stationsausstattung: B+R, P+R und Barrierefreiheit aus den Ortsdaten, Aufzug, WC und Fahrradständer aus OpenStreetMap,
    soweit dort erfasst (§3.1).
-5. Inline-Zeile der Amortisation: unverändert (Prozent); die Widersprüche zwischen `DESIGN_FINAL_SYNTHESIS.md` §9.10 und `DESIGN.md` §5.9
-   sind nicht entschieden.
+5. Inline-Zeile der Amortisation: entschieden – „€ 142 bis zum Ziel“, rentiert „Lohnt sich · +€ 37“, höchstens 22 Zeichen
+   (`WIDGETS_SMARTSTACK.md` §2). Ersetzt „73 % rentiert“ (`DESIGN.md` §5.9) und „⛰ noch € 354 · 14. Dez.“
+   (`DESIGN_FINAL_SYNTHESIS.md` §9.10).
 6. WC in der Planner-Ansicht: `OEBB_LIVE.md` §C3.4 ordnet `OC` dem Rollstuhl-Symbol zu (Goldens in `Fixtures/OEBB/ux`). Das
    Widget zeigt `OC` und `OG` als WC (`WidgetCacheBuilder.trainEquipment`). Die Planner-Chips sind unverändert, weil die
    Spezifikation und die Goldens sie festlegen. Ändern müsste man beides zusammen.
@@ -109,4 +111,5 @@ ohne Netz. WidgetKit lässt sich im Simulator nicht aufnehmen; die Vorschau erse
 ## 9. Nicht gebaut
 
 - Watch-Komplikationen: kein watchOS-Target im Projekt (mit einer kostenlosen Apple-ID ist ein zweites Target nicht vorgesehen).
+  Die Live-Aktivitäten haben stattdessen ein kleines Layout für den Smart Stack der gekoppelten Watch (`WIDGETS_SMARTSTACK.md` §5).
 - Via-Favoriten in „Nächste Verbindung“: werden nicht abgefragt (der Cache hätte die Zwischenhalte nicht).

@@ -41,7 +41,11 @@ Bedienung, Frost-Karten für Inhalte.
   Zug?“ per Siri; dazu „Nächste Abfahrten“ im Haltestellen-Detail. Verspätungen nur mit Live-Daten und nur bei offener App; noch nicht auf
   einem iPhone geprüft ([docs/COMMUTE.md](docs/COMMUTE.md))
 - **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
-  einen Cache und machen nie einen Netzaufruf
+  einen Cache und machen nie einen Netzaufruf. „Gesperrt & privat“ verbirgt Strecken (Standard) und auf Wunsch Beträge am gesperrten
+  iPhone; die Widgets melden dem Smart Stack, wann sie gerade wichtig sind (kurz vor der Abfahrt, am Break-even-Tag – die Reihung
+  entscheidet iOS); „Unterwegs“ und „Live verfolgen“ haben ein kleines Layout
+  für den Smart Stack einer gekoppelten Apple Watch, ohne Watch-App (Sperre und Watch noch nicht auf Geräten geprüft,
+  [docs/WIDGETS_SMARTSTACK.md](docs/WIDGETS_SMARTSTACK.md))
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick
 - **Konten** – Anmeldung mit Google, Microsoft oder Apple (je nachdem, was dein Backend eingerichtet hat) und Cloud-Sync zwischen Geräten
   über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal

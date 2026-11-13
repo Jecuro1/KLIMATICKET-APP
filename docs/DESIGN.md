@@ -150,7 +150,8 @@ ab dem du gratis fährst“. Folgeschritte schlicht auf ruhigem Himmel mit Forts
 
 ### 5.9 Widgets
 - Klein: Mini-Gipfel + „73 %“ + „noch € 354“. Mittel: + Prognose „14. Dez.“, Sparkline-Route. Groß: + Favoriten-Knöpfe.
-- Sperrbildschirm: rund `Gauge` (Kapazität, Berg-Symbol), rechteckig „73 % · noch € 354“, inline „73 % rentiert“.
+- Sperrbildschirm: rund `Gauge` (Kapazität, Berg-Symbol), rechteckig „73 % · noch € 354“, inline „€ 354 bis zum Ziel“
+  (rentiert „Lohnt sich · +€ 37“, höchstens 22 Zeichen; Entscheidung in `WIDGETS_SMARTSTACK.md` §2).
 - Schnellerfassung (interaktiv), Kontrollzentrum „Fahrt erfassen“. iOS-26-Render-Modi: Akzent-Elemente `widgetAccentable`.
 
 ## 6. Bewegung & Haptik

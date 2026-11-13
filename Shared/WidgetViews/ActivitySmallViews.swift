@@ -104,7 +104,7 @@ struct ActivitySmallLayout: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
-            Text(verbatim: "→ \(line.destination)")
+            Text(verbatim: "\(line.destinationPrefix) \(line.destination)")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)

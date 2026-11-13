@@ -362,10 +362,11 @@ private struct WidAccessoryInline: View {
                                                  remaining: WidFigures.remaining(snapshot), profit: WidFigures.profit(snapshot))
         Label {
             Text(verbatim: InlineAmortizationText.text(state))
+                .widPrivate(.amount, if: state != .expired)
         } icon: {
             Image(systemName: WidInsight.isPaidOff(snapshot) ? "flag.fill" : "mountain.2.fill")
         }
-        .widPrivate(.amount, if: state != .expired)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(concealsAmounts ? "Amortisation, Betrag verborgen"
                                             : "Amortisation: \(InlineAmortizationText.spoken(state))")
     }
