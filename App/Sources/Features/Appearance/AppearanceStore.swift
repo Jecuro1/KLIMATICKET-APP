@@ -92,8 +92,8 @@ enum AppearanceLaunch {
         let numbers = FormatPrefs(amounts: .cents, weekStart: .sunday, co2: .kilograms)
         switch screen {
         case "themeDash", "themeGallery": return AppearancePrefs(palette: .zirbe)
-        case "themeStats", "themeAX5": return AppearancePrefs(palette: .morgenrot)
-        case "themeStatsFormat": return AppearancePrefs(format: numbers)
+        case "themeStats", "themeAX5", "themeAX5Lower": return AppearancePrefs(palette: .morgenrot)
+        case "themeStatsFormat", "themeStatsWeek", "themeDashWeek": return AppearancePrefs(format: numbers)
         case "themeTicket": return AppearancePrefs(palette: .daemmerung)
         case "themeOptions": return AppearancePrefs(palette: .graphit, motion: .calm, haptics: .subtle, format: numbers)
         case "themeSettingsRow": return AppearancePrefs(palette: .alpengluehen)

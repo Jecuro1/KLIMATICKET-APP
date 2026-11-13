@@ -7,16 +7,20 @@ import KlimaCore
 //   themeGallery       the six palette cards (Zirbe chosen)
 //   themeOptions       Bewegung, Haptik, Zahlen (Graphit, Ruhig, Dezent, Cent, Sonntag, kg)
 //   themeAX5           Look & Feel at the largest text size (Morgenrot)
+//   themeAX5Lower      the same, scrolled to the palettes
 //   themeDash          Übersicht in Zirbe
 //   themeStats         Statistik in Morgenrot
 //   themeStatsFormat   Statistik with Cent, Sonntag and kg (Gletscher)
+//   themeStatsWeek     the same, scrolled to the calendar and the weekday chart
+//   themeDashWeek      Übersicht scrolled to the week card, week from Sunday
 //   themeTicket        Ticket in Dämmerung
 //   themeSettingsRow   Einstellungen › Darstellung with the Look & Feel row (Alpenglühen)
 //   themeIcon          App-Symbol with the "Passendes Theme" suggestion
 
 struct AppearanceScreenshotHost: View {
-    static let screens: Set<String> = ["themeSettings", "themeGallery", "themeOptions", "themeAX5", "themeDash", "themeStats",
-                                       "themeStatsFormat", "themeTicket", "themeSettingsRow", "themeIcon"]
+    static let screens: Set<String> = ["themeSettings", "themeGallery", "themeOptions", "themeAX5", "themeAX5Lower", "themeDash",
+                                       "themeDashWeek", "themeStats", "themeStatsFormat", "themeStatsWeek", "themeTicket",
+                                       "themeSettingsRow", "themeIcon"]
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -32,9 +36,9 @@ struct AppearanceScreenshotHost: View {
     @ViewBuilder
     private var content: some View {
         switch screen {
-        case "themeDash":
+        case "themeDash", "themeDashWeek":
             MainTabView().onAppear { app.selectedTab = .overview }
-        case "themeStats", "themeStatsFormat":
+        case "themeStats", "themeStatsFormat", "themeStatsWeek":
             MainTabView().onAppear { app.selectedTab = .stats }
         case "themeTicket":
             MainTabView().onAppear { app.selectedTab = .ticket }
@@ -48,6 +52,9 @@ struct AppearanceScreenshotHost: View {
             NavigationStack { AppearanceView(screenshotSection: .motion) }
         case "themeAX5":
             NavigationStack { AppearanceView() }
+                .dynamicTypeSize(.accessibility5)
+        case "themeAX5Lower":
+            NavigationStack { AppearanceView(screenshotSection: .palettes) }
                 .dynamicTypeSize(.accessibility5)
         default:
             NavigationStack { AppearanceView() }

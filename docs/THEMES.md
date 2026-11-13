@@ -32,7 +32,9 @@ Himmel je Theme (STRETCH, gestrichen), Wechsel ohne Schließen der Einstellungen
 
 Haken in fremden Dateien, alle mit `MARK: themes`: `Shared/Theme.swift` (sechs Tokens), `MotionPolicy.swift`, `Haptics.swift`,
 `Components.swift` (Toast-Haptik), `Backgrounds.swift` (Himmel), `NumericMotion.swift` (Hochzählen), `MotionTilt.swift` (Neigung),
-`ScrollMotion.swift` (schrumpfender Titel), `Format.swift` (`euro`, `kg`), `DashSupport.swift` und `DashInsights.swift` (Woche),
+`ScrollMotion.swift` (schrumpfender Titel), `SummitChart.swift` (die Route des Gipfel-Diagramms zeichnet die Routen-Stopps der
+Palette), `AmortizationHero.swift` (der Betrag im Urteil: Gletscher behält seinen Verlauf, andere Paletten zeigen `accentText`),
+`Format.swift` (`euro`, `kg`), `DashSupport.swift` und `DashInsights.swift` (Woche),
 `StatsCalc.swift`, `StatsCalendarCard.swift`, `StatsDistributionCards.swift` (Wochenstart), die Auswahl-Ticks in Statistik, Ticket,
 Vorteilen und Fahrt-Editor (`selectionHapticsEnabled`), `AppState.swift` (`AppSettings.look`), `RootView.swift` (Id, Szenen),
 `SetPreferencesSections.swift` (Zeile), `AppIconPickerView.swift` (Vorschlag).
@@ -49,7 +51,8 @@ Vorteilen und Fahrt-Editor (`selectionHapticsEnabled`), `AppState.swift` (`AppSe
 | Graphit | Ruhiges Schiefergrau | `#4A5A72` / `#B8C4D6` | `#3B4A60` / `#CBD5E3` |
 
 Eine Palette ändert genau sechs Tokens: `accent`, `accentText`, `prominentTint`, `routeGradient` (= `progressGradient`, drei Stopps bei
-0 / 55 / 100 %) und `ctaGradient`. Alles andere in `Theme.swift` bleibt `static let`. **Farben mit Bedeutung ändern sich nie**: `positive`
+0 / 55 / 100 %) und `ctaGradient`. Alles andere in `Theme.swift` bleibt `static let`. Zwei Stellen zeichnen die Route mit eigenen Werten und folgen der Palette über
+einen Haken: das Gipfel-Diagramm der Übersicht (`ThemeColorSet.routeLight` / `routeDark`) und der Betrag im Urteil des Heros. **Farben mit Bedeutung ändern sich nie**: `positive`
 (Zirbe-Grün, Gewinn, CO₂), `negative` (Rot), `summit` (Orange, Gipfel), `live` (Echtzeit-Grün) – ein Test liest `Theme.swift` und
 prüft, dass keine davon über die Laufzeit gelesen wird. Die Verkehrsmittel-Farben bleiben ebenfalls. `Theme.glacier` ist die Marken-
 farbe und bleibt; Gletscher reicht genau diese Instanz als `accent` weiter.

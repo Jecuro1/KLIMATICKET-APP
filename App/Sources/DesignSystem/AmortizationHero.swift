@@ -118,7 +118,8 @@ struct AmortizationHero: View {
     private var verdictLine: Text {
         let remaining = Text(SummitFigures.euro(summary.shownRemainingEuro))
             .font(Self.amountFont)
-            .foregroundStyle(Self.amountGradient)
+            // MARK: themes – Gletscher keeps its text-safe gradient; another palette shows its text-safe accent.
+            .foregroundStyle(ThemeRuntime.active == .gletscher ? AnyShapeStyle(Self.amountGradient) : AnyShapeStyle(Theme.accentText))
         let profit = Text("+ " + SummitFigures.euro(summary.shownProfitEuro))
             .font(Self.amountFont)
             .foregroundStyle(Theme.positiveText)

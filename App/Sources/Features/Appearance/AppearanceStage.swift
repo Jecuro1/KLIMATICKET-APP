@@ -56,8 +56,8 @@ struct AppearanceStage: View {
         .overlay { shape.strokeBorder(Color.white.opacity(scheme == .dark ? 0.14 : 0.5), lineWidth: 1) }
         .shadow(color: Color.black.opacity(scheme == .dark ? 0.3 : 0.12), radius: 16, y: 8)
         .environment(\.colorScheme, scheme)
-        // An illustration of fixed proportions: it grows with the text up to xxxLarge; the options below grow on to AX5.
-        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        // An illustration of fixed proportions: it grows with the text up to xLarge; the options below grow on to AX5.
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilitySummary)
         .onChange(of: replay) { _, _ in replayHero() }
@@ -85,6 +85,8 @@ struct AppearanceStage: View {
                 Text(AppearanceFormat.number(heroValue * 100, decimals: 0) + " %")
                     .font(.system(size: 46, weight: .light, design: .rounded).monospacedDigit())
                     .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .fixedSize()
                     .contentTransition(.numericText(value: heroValue))
                     .opacity(heroOpacity)
                     .background {
@@ -93,6 +95,8 @@ struct AppearanceStage: View {
                 Text("amortisiert")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
                 // White on the prominent tint – the last trip, formatted like the app formats amounts.
                 Text("+ " + AppearanceFormat.euro(22.8, prefs: prefs.format))
@@ -174,7 +178,7 @@ struct AppearanceStage: View {
                 VStack(spacing: 4) {
                     Capsule()
                         .fill(Self.demoWeek[day] > 0 ? AnyShapeStyle(colors.accent) : AnyShapeStyle(Theme.surfaceSecondary))
-                        .frame(height: 4 + 26 * Self.demoWeek[day] / maxTrips)
+                        .frame(width: 12, height: 4 + 26 * Self.demoWeek[day] / maxTrips)
                     Text(AppearanceFormat.weekdayShort[day])
                         .font(.caption2.weight(day == order.first ? .bold : .regular))
                         .foregroundStyle(day == order.first ? Theme.textPrimary : Theme.textSecondary)

@@ -212,6 +212,7 @@ struct DashWeekInsightCard: View {
                 legend
             }
         }
+        .metaScreenshotScrollTarget("themeDashWeek")   // MARK: themes – CI: the week card with Wochenstart Sonntag
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Diese Woche")
         .accessibilityValue(accessibilityText)

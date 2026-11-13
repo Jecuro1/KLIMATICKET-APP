@@ -40,6 +40,9 @@ struct AppIconPickerView: View {
                     .reveal(order: 1)
                 activeCaption
                     .reveal(order: 2)
+                AppearanceThemeSuggestion(icon: store.current)   // MARK: themes – „Passendes Theme“ (docs/THEMES.md §8)
+                    .padding(.horizontal, Theme.Spacing.cardGutter)
+                    .reveal(order: 2)
                 choices
                     .reveal(order: 3)
                 Text("iOS bestätigt den Wechsel kurz mit einer Mitteilung. Jedes Symbol hat eine helle, eine dunkle und eine getönte Variante – passend zu deinem Home-Bildschirm.")

@@ -97,17 +97,12 @@ struct SetAppearanceSection: View {
                 SetAppearancePicker(selection: $settings.appearance)
                     .padding(.vertical, Theme.Spacing.xs)
                     .id(SetScrollAnchor.appearance)
+                // MARK: themes – Look & Feel: Farbe, Bewegung, Haptik (it replaces the switch „Haptisches Feedback“), Zahlen
+                AppearanceSettingsRow()
                 // MARK: icons – Einstellungen › Darstellung › App-Symbol
                 if AppIconStore.shared.isSupported {
                     AppIconSettingsRow()
                 }
-                // Turned on, the phone in the tile shakes and you feel the snap it just enabled.
-                Toggle(isOn: $settings.hapticsEnabled) {
-                    SetRowLabel(title: "Haptisches Feedback", subtitle: "Spürbare Bestätigung beim Erfassen",
-                                symbol: "iphone.radiowaves.left.and.right", tint: Theme.alpenglow)
-                        .setSymbolOnEnable(settings.hapticsEnabled, .wiggle)
-                }
-                .haptic(.snap, trigger: settings.hapticsEnabled, when: { _, isOn in isOn })
                 SetOfficialLogosToggle() // MARK: stops
                 NavigationLink {
                     WidgetGalleryView()

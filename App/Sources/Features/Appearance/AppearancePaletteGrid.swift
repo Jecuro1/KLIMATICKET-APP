@@ -18,8 +18,8 @@ struct AppearancePaletteGrid: View {
 
     var body: some View {
         let columns = dynamicTypeSize.isAccessibilitySize
-            ? [GridItem(.flexible())]
-            : [GridItem(.flexible(), spacing: Theme.Spacing.s), GridItem(.flexible(), spacing: Theme.Spacing.s)]
+            ? [GridItem(.flexible(), alignment: .top)]
+            : [GridItem(.flexible(), spacing: Theme.Spacing.s, alignment: .top), GridItem(.flexible(), spacing: Theme.Spacing.s, alignment: .top)]
         LazyVGrid(columns: columns, spacing: Theme.Spacing.m) {
             ForEach(Self.offered) { palette in
                 card(palette)

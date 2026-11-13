@@ -90,7 +90,7 @@ struct AppearanceView: View {
                                              tint: draft.accent, title: \.title, feedback: selectionTick(),
                                              accessibilityName: "CO₂")
                         }
-                        detail("Gilt für Übersicht, Statistik, Fahrten und Ticket. Preise, die immer auf den Cent stehen (Tarif, Fahrtpreis), bleiben so.")
+                        detail("Gilt überall, wo die App die Genauigkeit selbst wählt – etwa beim Ticketpreis und bei Durchschnitten. Gerundete Kennzahlen wie die große Ersparnis bleiben ganze Euro, Fahrtpreise und Tarife bleiben auf den Cent.")
                     }
                     .id(AppearanceSection.numbers)
                     notes

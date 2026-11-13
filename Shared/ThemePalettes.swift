@@ -22,6 +22,9 @@ final class ThemeColorSet: @unchecked Sendable {
     /// The stops of both gradients, for the palette previews in Look & Feel.
     let routeColors: [Color]
     let ctaColors: [Color]
+    /// The route stops resolved for one appearance (charts that draw both modes themselves, e.g. the summit chart).
+    let routeLight: [Color]
+    let routeDark: [Color]
 
     init(_ palette: ThemePalette) {
         self.palette = palette.id
@@ -35,6 +38,8 @@ final class ThemeColorSet: @unchecked Sendable {
         prominentTint = Color(light: palette.prominentTint.light, dark: palette.prominentTint.dark)
         let route = palette.route.map { Color(light: $0.light, dark: $0.dark) }
         routeColors = route
+        routeLight = palette.route.map { Color(hex: $0.light) }
+        routeDark = palette.route.map { Color(hex: $0.dark) }
         routeGradient = LinearGradient(
             stops: zip(route, ThemePalette.routeLocations).map { Gradient.Stop(color: $0.0, location: CGFloat($0.1)) },
             startPoint: .leading, endPoint: .trailing)

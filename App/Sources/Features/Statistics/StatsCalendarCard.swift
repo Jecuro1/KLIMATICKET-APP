@@ -30,6 +30,7 @@ struct StatsCalendarCard: View {
             }
         }
         .haptic(.selection, trigger: selectedDay, when: { _, new in new != nil })
+        .metaScreenshotScrollTarget("themeStatsWeek")   // MARK: themes – CI: Wochenstart Sonntag in calendar and weekday chart
     }
 
     // MARK: Header & footer

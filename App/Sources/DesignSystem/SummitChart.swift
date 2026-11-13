@@ -343,9 +343,11 @@ private struct SummitPalette {
             rimEdge = Color(hex: "#AAC8FF").opacity(0.25)
             topo = Color(hex: "#AAC8FF").opacity(0.13)
             trail = behind ? Color(hex: "#FFAD85").opacity(0.6 + boost) : Color.white.opacity(0.6 + boost)
-            routeStart = Color(hex: "#6CB6FF")
-            routeMid = Color(hex: "#A99FFF")
-            routeEnd = Color(hex: "#FFAD85")
+            // MARK: themes – the route follows the Look & Feel palette (Gletscher: #6CB6FF → #A99FFF → #FFAD85).
+            let route = ThemeRuntime.colors.routeDark
+            routeStart = route[0]
+            routeMid = route[1]
+            routeEnd = route[2]
             pine = Color(hex: "#6BD6A9")
             climberFill = Color(hex: "#0B1730")
             climberRing = profit ? Color(hex: "#6BD6A9") : Color(hex: "#C3B6FF")
@@ -366,9 +368,11 @@ private struct SummitPalette {
             rimEdge = Color.white.opacity(0.7)
             topo = Color(hex: "#5A78AA").opacity(0.15)
             trail = behind ? Color(hex: "#C8622F").opacity(0.6 + boost) : Color(hex: "#1E3C6E").opacity(0.5 + boost)
-            routeStart = Color(hex: "#3B8BE0")
-            routeMid = Color(hex: "#7C79E6")
-            routeEnd = Color(hex: "#F08A5B")
+            // MARK: themes – the route follows the Look & Feel palette (Gletscher: #3B8BE0 → #7C79E6 → #F08A5B).
+            let route = ThemeRuntime.colors.routeLight
+            routeStart = route[0]
+            routeMid = route[1]
+            routeEnd = route[2]
             pine = Color(hex: "#23876A")
             climberFill = Color.white
             climberRing = profit ? Color(hex: "#23876A") : Color(hex: "#6E68E0")

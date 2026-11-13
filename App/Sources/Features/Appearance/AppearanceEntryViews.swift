@@ -32,12 +32,20 @@ struct AppearanceIconSuggestion: View {
     var tint: Color
 
     @Environment(AppState.self) private var app
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// A row; at accessibility sizes the button goes under the name instead of squeezing it.
+    private var suggestionLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
+    }
 
     var body: some View {
         let choice = AppIconChoice(rawValue: AppearancePairing.icon(for: palette).rawValue) ?? .alpin
         let store = AppIconStore.shared
         let isActive = store.current == choice
-        HStack(spacing: Theme.Spacing.s) {
+        suggestionLayout {
             AppIconImage(choice: choice, size: 44)
                 .id(choice)
                 .motionTransition(.pop)
@@ -80,13 +88,21 @@ struct AppearanceThemeSuggestion: View {
     var icon: AppIconChoice
 
     @Environment(AppState.self) private var app
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// A row; at accessibility sizes the button goes under the name instead of squeezing it.
+    private var suggestionLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: Theme.Spacing.s))
+    }
 
     var body: some View {
         let look = app.settings.look
         let suggested = AppearancePairing.palette(for: AppearanceIconID(rawValue: icon.rawValue) ?? .alpin)
         let colors = ThemeRuntime.colors(for: suggested)
         let isActive = look.prefs.palette == suggested
-        HStack(spacing: Theme.Spacing.s) {
+        suggestionLayout {
             AppearanceSwatch(colors: colors)
                 .frame(width: 64, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.modeTile, style: .continuous))
