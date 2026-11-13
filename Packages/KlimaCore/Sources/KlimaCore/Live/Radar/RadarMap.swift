@@ -379,6 +379,13 @@ public enum RadarClustering {
         return max(pitch * longitudeSpan / widthPoints, 0.005)
     }
 
+    /// MARK: radar2 – one vehicle as a marker of its own, never folded into a group (radarmine's remembered lines): the id a single of
+    /// `group` would have, "trip|<trip id>".
+    public static func single(_ point: RadarPoint) -> RadarCluster {
+        RadarCluster(id: "trip|\(point.tripID)", center: point.coordinate, tripIDs: [point.tripID],
+                     lateCount: point.delay == .late ? 1 : 0, cancelledCount: point.delay == .cancelled ? 1 : 0)
+    }
+
     /// Groups points by grid cell. Output is ordered by cell key, so the same input always gives the same ids.
     public static func group(_ points: [RadarPoint], cellDegrees: Double) -> [RadarCluster] {
         guard cellDegrees > 0, cellDegrees.isFinite else { return [] }

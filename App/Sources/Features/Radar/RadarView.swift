@@ -113,7 +113,8 @@ struct RadarView: View {
                                  // Selected lines stay in the list even when none of them is on the map right now, so an
                                  // active line filter is always visible and can be cleared.
                                  categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
-                                    .union(model.filter.categories).filter { !$0.isEmpty }.sorted())
+                                    .union(model.filter.categories).filter { !$0.isEmpty }.sorted(),
+                                 parts: model.radar2)   // MARK: radar2
                     .presentationDetents([.medium, .large])
             }
             .sheet(item: $sheetVehicle, onDismiss: openPendingCockpit) { vehicle in   // MARK: radarcockpit
@@ -126,7 +127,8 @@ struct RadarView: View {
                                onStation: { stop in
                                    showBoard { app.planner.showBoard(live: stop) }
                                },
-                               onCockpit: cockpitEntry(for: vehicle))   // MARK: radarcockpit; radartime – from a Zeitreise only a train the live radar knows
+                               onCockpit: cockpitEntry(for: vehicle),   // MARK: radarcockpit; radartime – from a Zeitreise only a train the live radar knows
+                               radar2: model.radar2)   // MARK: radar2
                     .presentationDetents([.fraction(0.32), .medium, .large])
                     .presentationBackgroundInteraction(.enabled(upThrough: .medium))
             }
@@ -137,6 +139,7 @@ struct RadarView: View {
             .sheet(isPresented: $showsRoutes) { SavedRoutesView() }
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
             .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, gate: gate))   // MARK: radartime – paused under the cockpit, like the live loop
+            .modifier(Radar2Hooks(parts: model.radar2, access: gate.access, timeOpen: travel.isOpen))   // MARK: radar2
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
                 refreshStations(box: model.box, span: model.spanDegrees)
@@ -167,6 +170,7 @@ struct RadarView: View {
             // further south is drawn over the one further north) and SwiftUI's Map has no z-index for annotations (CI screenshot
             // radarAllZoom, run 1: a station bubble over a train bubble). So trains have priority by collision: a station marker
             // that would sit under a train marker is left out (`MapDeclutter`, `visibleStationClusters`).
+            radar2MapContent   // MARK: radar2 – trails, the stop of „Meine“ (drawn under the markers)
             if trainsOn {
             if travel.isAway { timeTrailLayer }   // MARK: radartime
             ForEach(shownClusters) { cluster in   // MARK: radartime – the Zeitreise's pins while away from now

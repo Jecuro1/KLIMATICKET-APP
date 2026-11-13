@@ -12,7 +12,7 @@ final class RadarModel {
     enum Load: Equatable { case idle, loading, loaded, failed(String) }
 
     var modes: Set<RadarMode> = [.rail] {
-        didSet { if modes != oldValue { modesChanged() } }
+        didSet { if modes != oldValue { modesChanged(from: oldValue) } }
     }
     var filter = RadarFilter() {
         didSet { rebuildPins(at: Date()) }
@@ -36,6 +36,7 @@ final class RadarModel {
     var routeTripID: String?
     // MARK: radarheat – the Pünktlichkeit layer (docs/RADAR_HEATMAP.md): numbers, cells and panel state. `RadarModel+Heat.swift`.
     let heat = RadarHeatModel()
+    let radar2 = Radar2Parts()   // MARK: radar2 – the parts of the second radar wave (Radar2/Radar2Seam.swift)
 
     @ObservationIgnored var store = RadarFrameStore()
     /// Starts from the budget the last radar view left (`RadarBudgetLedger`) and writes it back after every change: closing and opening the
@@ -93,10 +94,14 @@ final class RadarModel {
     }
 
     /// The old answers are for other vehicles: the tiles start over, vehicles of a mode that was switched off go at once.
-    private func modesChanged() {
+    private func modesChanged(from old: Set<RadarMode>) {
         generation += 1
         scheduler.reset()
         let mask = products
+        // MARK: radar2 – the classes that were switched off leave the parts as well (radartrail drops their trails)
+        let oldMask = old.reduce(into: ProductMask(rawValue: 0)) { $0.formUnion($1.products) }
+        let removed = oldMask.subtracting(mask)
+        if !removed.isEmpty { radar2.didRemove(products: removed) }
         store.removeAll { vehicle in
             guard let line = vehicle.line, line.productClass != 0 else { return false }
             return line.productClass & mask.rawValue == 0
@@ -139,6 +144,11 @@ final class RadarModel {
                     try? await Task.sleep(for: .seconds(1))
                     continue
                 }
+                // MARK: radar2 – a part's request that is not a tile (radarmine's departures board): one slot of the same budget, the same loop
+                if let job = radar2.dueSideJob(now: now), scheduler.claimSlot(now: now) == nil {
+                    radar2.sideJobStarted(job, at: now)
+                    group.addTask { await self.runSideJob(job) }
+                }
                 switch scheduler.next(now: now) {
                 case .request(let tile):
                     group.addTask { await self.fetch(tile, service) }
@@ -160,8 +170,22 @@ final class RadarModel {
         manualRefresh = true
     }
 
+    // MARK: radar2 – a side job's outcome: a rate limit, an open circuit or the kill switch pause the whole radar as a tile's failure does
+    // (`RadarScheduler.recordFailure`). Never a retry: the part asks again when its job is due again.
+    private func runSideJob(_ job: RadarSideJob) async {
+        guard let error = await job.run(), let live = error as? LiveError else { return }
+        let now = Date()
+        switch live {
+        case .rateLimited(_, let retryAfter): scheduler.pause(until: now.addingTimeInterval(max(retryAfter ?? 20, 10)))
+        case .circuitOpen(_, let until): scheduler.pause(until: max(until, now.addingTimeInterval(10)))
+        case .disabled: scheduler.pause(until: now.addingTimeInterval(300))
+        default: break
+        }
+    }
+
     private func fetch(_ tile: RadarTileKey, _ service: any RadarService) async {
         let asked = generation
+        let askedProducts = products   // MARK: radar2 – what this request asks for (RadarAnswerEvent)
         let requestedAt = Date()
         do {
             let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: requestedAt, products: products,
@@ -174,6 +198,7 @@ final class RadarModel {
             // is what shows an answer cut off at the request cap.
             scheduler.recordAnswer(tile, count: snapshot.answeredCount, at: requestedAt)
             store.merge(snapshot.vehicles, at: requestedAt, retention: scheduler.retention(for: tile))
+            radar2.didMerge(RadarAnswerEvent(tile: tile, vehicles: snapshot.vehicles, requestedAt: requestedAt, products: askedProducts))   // MARK: radar2
             heat.noteAnswer()   // MARK: radarheat
             lastError = nil
         } catch is CancellationError {
@@ -230,10 +255,14 @@ final class RadarModel {
                             bearing: next?.location.coordinate.map { RadarBearing.degrees(from: point, to: $0) })
         }
         pinsByID = Dictionary(pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        // MARK: radar2 – vehicles a part keeps single (radarmine: remembered lines, the stop panel's arrivals) skip the grouping
+        let points = pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) }
+        let single = Set(pins.lazy.filter { self.radar2.keepsSingle($0.vehicle) }.map(\.id))
         clusters = RadarClustering.group(
-            pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) },
+            single.isEmpty ? points : points.filter { !single.contains($0.tripID) },
             cellDegrees: RadarClustering.cellSize(latitudeSpan: spanDegrees, longitudeSpan: box.east - box.west,
                                                   widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height)))
+            + points.filter { single.contains($0.tripID) }.map(RadarClustering.single)
         updateStatus(at: now)
         refreshHeat(at: now)   // MARK: radarheat – only when an answer came in or ten seconds went by
     }

@@ -9,6 +9,8 @@ struct RadarFilterSheet: View {
     @Binding var modes: Set<RadarMode>
     /// Line categories seen in the last answers ("RJX", "REX", "S", …).
     var categories: [String]
+    /// MARK: radar2 – the parts of the second wave add their sections at the end (`Radar2SettingsSections`).
+    var parts: Radar2Parts? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -71,6 +73,8 @@ struct RadarFilterSheet: View {
                     }
                     .disabled(!filter.isActive && modes == [.rail])
                 }
+
+                Radar2SettingsSections(parts: parts)   // MARK: radar2
             }
             .navigationTitle("Filter")
             .navigationBarTitleDisplayMode(.inline)

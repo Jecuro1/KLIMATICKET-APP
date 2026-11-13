@@ -42,6 +42,8 @@ struct RadarTripSheet: View {
     /// MARK: radarcockpit – "Cockpit": the camera follows this train. The sheet closes, the radar opens the full-screen view with the details
     /// this sheet has loaded (stops, polyline) so it can start with the whole run. nil: no Cockpit button (previews, screenshots of the sheet).
     var onCockpit: ((RadarVehicle, TripDetails?) -> Void)?
+    /// MARK: radar2 – the parts of the second wave add their rows under the actions (`Radar2TripRows`). nil: none (screenshots of the sheet).
+    var radar2: Radar2Parts? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(AppState.self) private var app
@@ -66,6 +68,7 @@ struct RadarTripSheet: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     header
                     actions
+                    Radar2TripRows(vehicle: run, parts: radar2)   // MARK: radar2
                     stopsList
                     if loadFailed {
                         Text("Die Route kommt gerade nicht. Die Haltestellen von der Karte bleiben stehen.")

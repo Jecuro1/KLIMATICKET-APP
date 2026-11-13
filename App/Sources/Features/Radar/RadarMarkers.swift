@@ -9,6 +9,8 @@ import KlimaCore
 struct RadarMarker: View {
     var pin: RadarPin
     var isSelected = false
+    /// MARK: radar2 – how a part marks this vehicle (radarmine): dimmed, highlighted, a star or a number. `.plain` changes nothing.
+    var decoration: RadarMarkerDecoration = .plain
 
     var body: some View {
         let mode = pin.vehicle.line?.mode ?? .other
@@ -23,7 +25,7 @@ struct RadarMarker: View {
                 .overlay(Capsule().strokeBorder(pin.delay.tint,
                                                 style: StrokeStyle(lineWidth: 2, dash: pin.isEstimate ? [3, 2] : [])))
                 .shadow(color: .black.opacity(0.25), radius: 3, y: 1)
-            if let bearing = pin.bearing {
+            if let bearing = pin.bearing, decoration.showsArrow {
                 Image(systemName: "location.north.fill")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(Theme.modeColor(mode))
@@ -31,6 +33,9 @@ struct RadarMarker: View {
                     .frame(height: 8)
             }
         }
+        .overlay(alignment: .topTrailing) { RadarDecorationBadge(decoration: decoration) }   // MARK: radar2
+        .background { RadarDecorationHalo(decoration: decoration) }   // MARK: radar2
+        .opacity(decoration.opacity)   // MARK: radar2
         .scaleEffect(isSelected ? 1.18 : 1)
         .motionAnimation(Motion.snappy, value: isSelected)
         .accessibilityElement(children: .ignore)

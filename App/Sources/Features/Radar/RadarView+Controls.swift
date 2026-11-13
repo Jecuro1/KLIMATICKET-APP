@@ -115,6 +115,7 @@ extension RadarView {
     private var modeChips: some View {
         ScrollView(.horizontal) {
             HStack(spacing: Theme.Spacing.xs) {
+                radar2TopBarItems   // MARK: radar2
                 ForEach(RadarMode.allCases) { mode in
                     Chip(title: mode.title, symbol: mode.symbol, isSelected: model.modes.contains(mode)) {
                         model.toggle(mode)
@@ -131,7 +132,8 @@ extension RadarView {
     var statusBar: some View {
         VStack(spacing: Theme.Spacing.xs) {
             if heatOn { heatPanel }   // MARK: radarheat – the summary panel, above the layer bar
-            if !travel.isOpen { mapLayerPanel }   // MARK: radartime – the open scrubber card leaves the map room: the layer bar waits
+            radar2Panel   // MARK: radar2 – a part's panel (radarmine's stop panel)
+            if !travel.isOpen && !radar2PanelIsOpen { mapLayerPanel }   // MARK: radartime, radar2 – an open card leaves the map room: the layer bar waits
             if layers.isOn(.trains) || layers.isOn(.punctuality), let reason = app.live.timetableUnavailable {   // MARK: radarheat – the Pünktlichkeit layer needs the live data as well
                 trainsOffNotice(reason)
             }
@@ -156,6 +158,7 @@ extension RadarView {
                 }
                 if !heatOn { RadarStatusCard(model: model) }   // MARK: radarheat – the panel has its own age and notes
             }
+            radar2StatusNotes   // MARK: radar2 – outside the block above: each note decides itself when it shows (also while away)
             if !model.route.isEmpty {
                 Button("Route ausblenden") {
                     model.route = []

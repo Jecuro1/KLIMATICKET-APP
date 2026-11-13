@@ -84,7 +84,7 @@ extension RadarView {
         if heatOn {
             HeatTrainDot(pin: pin, isSelected: model.selectedTripID == pin.id)
         } else {
-            RadarMarker(pin: pin, isSelected: model.selectedTripID == pin.id)
+            RadarMarker(pin: pin, isSelected: model.selectedTripID == pin.id, decoration: radar2Decoration(pin))   // MARK: radar2
         }
     }
 
@@ -172,7 +172,8 @@ extension RadarView {
                        },
                        onStation: { stop in
                            showBoard { app.planner.showBoard(live: stop) }
-                       })
+                       },
+                       radar2: model.radar2)   // MARK: radar2
             .presentationDetents([.fraction(0.32), .medium, .large])
     }
 
