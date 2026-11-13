@@ -24,7 +24,7 @@ extension TripEditorModel {
     var tripEdFareHint: TripEdFareHint? {
         guard let manualFare, manualFare > 0,
               let verdict = FarePlausibility.check(entered: manualFare, estimate: estimate?.fareEUR) else { return nil }
-        let amount = Format.euro(manualFare)
+        let amount = Format.euroPrecise(manualFare)   // MARK: review-themes – what you typed, to the cent (also at Beträge „Ganze Euro“)
         let route = resolvedFromName.isEmpty || resolvedToName.isEmpty
             ? nil : TripEdFormat.routeTitle(from: resolvedFromName, to: resolvedToName, roundTrip: false)
         switch verdict {

@@ -68,7 +68,8 @@ struct SummitChart: View {
         .onAppear {
             // The route draws once: the climber walks up from the valley on the hero's count-in curve.
             guard climbed != progress else { return }
-            if reduceMotion || MotionPolicy.isStatic {
+            // MARK: review-themes – Bewegung „Ruhig“: the climb is the hero's count-in, so it stands still with it.
+            if reduceMotion || MotionPolicy.isStatic || !AppearanceRuntime.allowsDecoration {
                 climbed = progress
             } else {
                 withAnimation(Motion.countIn.delay(climbDelay)) {

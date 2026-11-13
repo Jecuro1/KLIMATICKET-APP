@@ -25,6 +25,12 @@ final class ThemeColorSet: @unchecked Sendable {
     /// The route stops resolved for one appearance (charts that draw both modes themselves, e.g. the summit chart).
     let routeLight: [Color]
     let routeDark: [Color]
+    /// MARK: review-themes – a figure tinted with the accent right beside Gewinn / Verlust / Gipfel figures (the remaining
+    /// amount in the Übersicht verdict): `accentText`, or `Theme.textPrimary` when the accent looks like one of those colours
+    /// (KlimaCore `ThemeMeaning`: Zirbe, Morgenrot, Alpenglühen), so „Noch € 356“ never reads as a gain or a loss.
+    let besideMeaningText: Color
+    /// MARK: review-themes – `accentText` of the dark appearance whatever the scheme (the black Dynamic Island).
+    let accentTextOnDark: Color
 
     init(_ palette: ThemePalette) {
         self.palette = palette.id
@@ -34,8 +40,11 @@ final class ThemeColorSet: @unchecked Sendable {
         } else {
             accent = Color(light: palette.accent.light, dark: palette.accent.dark)
         }
-        accentText = Color(light: palette.accentText.light, dark: palette.accentText.dark)
+        let text = Color(light: palette.accentText.light, dark: palette.accentText.dark)
+        accentText = text
         prominentTint = Color(light: palette.prominentTint.light, dark: palette.prominentTint.dark)
+        besideMeaningText = ThemeMeaning.echoesMeaning(palette) ? Theme.textPrimary : text   // MARK: review-themes
+        accentTextOnDark = Color(hex: palette.accentText.dark)   // MARK: review-themes
         let route = palette.route.map { Color(light: $0.light, dark: $0.dark) }
         routeColors = route
         routeLight = palette.route.map { Color(hex: $0.light) }

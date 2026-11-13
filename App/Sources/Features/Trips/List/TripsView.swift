@@ -634,7 +634,7 @@ struct TripsView: View {
 
     /// A new trip (count went up, created moments ago – not an undo or a sync of old trips) glows once in its row.
     private func markFreshTrip(oldCount: Int, newCount: Int) {
-        guard newCount > oldCount, !MotionPolicy.isStatic,
+        guard newCount > oldCount, !MotionPolicy.isScreenshot,   // MARK: review-themes – Bewegung „Aus“ still marks the new row
               let newest = trips.max(by: { $0.createdAt < $1.createdAt }),
               Date().timeIntervalSince(newest.createdAt) < 8 else { return }
         let id = newest.journeyID ?? newest.id   // MARK: trips – a journey's row glows as a whole

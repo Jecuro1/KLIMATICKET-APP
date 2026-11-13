@@ -45,7 +45,7 @@ struct AppearanceView: View {
                             .motionTransition(.rise)
                     }
                     card("Farbe", order: 2) {
-                        Text("Für Knöpfe, Schalter, Links, Routen und Fortschritt. Grün, Rot und Orange behalten ihre Bedeutung.")
+                        Text("Für Knöpfe, Schalter, Links, Routen und Fortschritt. Gewinn, Verlust und Gipfel behalten ihre eigenen Farben.")   // MARK: review-themes
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -90,7 +90,8 @@ struct AppearanceView: View {
                                              tint: draft.accent, title: \.title, feedback: selectionTick(),
                                              accessibilityName: "CO₂")
                         }
-                        detail("Gilt überall, wo die App die Genauigkeit selbst wählt – etwa beim Ticketpreis und bei Durchschnitten. Gerundete Kennzahlen wie die große Ersparnis bleiben ganze Euro, Fahrtpreise und Tarife bleiben auf den Cent.")
+                        // MARK: review-themes – says exactly where Beträge applies (docs/THEMES.md §7): Format.euro without a fixed precision.
+                        detail("Beträge gilt, wo die App die Genauigkeit selbst wählt – etwa beim Ticketpreis in der Statistik, bei Tagessummen im Reise-Kalender und der wertvollsten Fahrt. Die großen Zahlen der Übersicht bleiben ganze Euro, Fahrten in Listen und Durchschnitte auf den Cent.")
                     }
                     .id(AppearanceSection.numbers)
                     notes
@@ -248,9 +249,10 @@ struct AppearanceView: View {
 
     private var notes: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            notice("paintpalette", "Grün heißt Gewinn und CO₂, Rot Verlust, Orange Gipfel – in jedem Theme gleich.")
+            // MARK: review-themes – the meaning colours stay; an accent that looks like one leaves the amount beside them neutral.
+            notice("paintpalette", "Gewinn und CO₂ bleiben grün, Verlust rot, der Gipfel orange – in jedem Theme. Ähnelt die Akzentfarbe einer davon, bleibt der Restbetrag in der Übersicht neutral.")
             notice("checkmark.seal", "Jede Palette ist auf Lesbarkeit geprüft: Text in der Akzentfarbe mindestens 4,5 : 1, weiße Schrift auf Knöpfen mindestens 3 : 1 – hell und dunkel.")
-            notice("square.grid.2x2", "Widgets übernehmen die Farbe, wenn iOS sie das nächste Mal neu zeichnet.")
+            notice("square.grid.2x2", "Widgets übernehmen die Farbe, wenn iOS sie das nächste Mal neu zeichnet. Zahlen und Wochenstart bleiben dort wie bisher.")   // MARK: review-themes
         }
         .padding(.horizontal, Theme.Spacing.screen)
     }

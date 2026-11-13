@@ -227,7 +227,7 @@ struct FeaturesHubView: View {
     /// The row lights up for a moment (stays lit in screenshots).
     private func flash(_ id: FeatureID) {
         withMotion(Motion.smooth) { highlighted = id }
-        guard !MotionPolicy.isStatic else { return }
+        guard !MotionPolicy.isScreenshot else { return }   // MARK: review-themes – Bewegung „Aus“ still clears the light
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2.4))
             if highlighted == id { withMotion(Motion.smooth) { highlighted = nil } }

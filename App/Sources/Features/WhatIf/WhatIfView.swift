@@ -88,7 +88,7 @@ struct WhatIfScreen: View {
             }
         }
         .task(id: announcement(result)) {
-            guard !MotionPolicy.isStatic else { return }
+            guard !MotionPolicy.isScreenshot else { return }   // MARK: review-themes – Bewegung „Aus“ keeps VoiceOver announcements
             guard hasAnnounced else {
                 hasAnnounced = true
                 return

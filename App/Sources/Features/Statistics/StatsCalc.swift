@@ -268,7 +268,8 @@ enum StatsCalc {
 
     /// "1.234" or "1,2" with unit "kg" / "t".
     static func co2Parts(_ kg: Double) -> (value: String, unit: String) {
-        kg >= 1000 ? (Format.number(kg / 1000, decimals: 1), "t") : (Format.number(kg), "kg")
+        let parts = AppearanceRuntime.format.co2Parts(kg: kg)   // MARK: review-themes – Zahlen › CO₂ („Immer kg“), same rule as Format.kg
+        return (Format.number(parts.value, decimals: parts.decimals), parts.unit)
     }
 }
 

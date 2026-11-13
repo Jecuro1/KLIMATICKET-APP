@@ -276,7 +276,7 @@ struct RootView: View {
             let repo = Repository(context: context, app: app)
             if let fav = repo.liveFavorites().first(where: { $0.id == id }) {
                 repo.logFavorite(fav)
-                app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(fav.displayTitle) · \(Format.euro(fav.valuePerLog))")   // MARK: trips
+                app.showToast("checkmark.circle.fill", "Fahrt erfasst", "\(fav.displayTitle) · \(Format.euroPrecise(fav.valuePerLog))")   // MARK: trips · review-themes – cents like the same toast in Fahrten
             }
         case "tab":
             if let tab = AppTab(rawValue: url.lastPathComponent) { app.selectedTab = tab }

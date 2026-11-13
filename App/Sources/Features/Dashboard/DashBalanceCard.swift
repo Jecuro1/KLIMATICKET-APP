@@ -225,8 +225,8 @@ struct DashBalanceCard: View {
 
     private var statItems: [DashMiniStat] {
         let co2 = summary.co2SavedKg
-        let co2InTonnes = co2 >= 1000
-        let co2Value = co2InTonnes ? Format.number(co2 / 1000, decimals: 1) : Format.number(co2)
+        let co2Parts = AppearanceRuntime.format.co2Parts(kg: co2)   // MARK: review-themes – Zahlen › CO₂ („Immer kg“), same rule as Format.kg
+        let co2Value = Format.number(co2Parts.value, decimals: co2Parts.decimals)
         return [
             DashMiniStat(id: "trips", value: Format.number(Double(summary.tripCount)), number: Double(summary.tripCount),
                          unit: nil, label: "Fahrten",
@@ -236,7 +236,7 @@ struct DashBalanceCard: View {
                          unit: "km", label: "Kilometer",
                          symbol: "point.topleft.down.to.point.bottomright.curvepath", color: Theme.dusk,
                          accessibilityText: Format.km(summary.distanceKm)),
-            DashMiniStat(id: "co2", value: co2Value, number: co2.rounded(), unit: co2InTonnes ? "t" : "kg", label: "CO₂ gespart",
+            DashMiniStat(id: "co2", value: co2Value, number: co2.rounded(), unit: co2Parts.unit, label: "CO₂ gespart",
                          symbol: "leaf.fill", color: Theme.eco,
                          accessibilityText: "\(Format.kg(co2)) CO₂ gespart"),
         ]

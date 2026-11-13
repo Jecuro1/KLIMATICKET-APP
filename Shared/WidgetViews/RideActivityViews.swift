@@ -873,6 +873,6 @@ enum RidePalette {
     /// "+ € 49,80" – dawn, like the new segment of the rail.
     static func value(_ onDark: Bool) -> Color { onDark ? Color(hex: "#FFAD85") : Theme.summitText }
     /// The percentage after this ride.
-    static func emphasis(_ onDark: Bool) -> Color { onDark ? Color(hex: "#9DD3FF") : Theme.accentText }
+    static func emphasis(_ onDark: Bool) -> Color { onDark ? ThemeRuntime.colors.accentTextOnDark : Theme.accentText }   // MARK: review-themes – the palette's dark text accent (Gletscher: #9DD3FF)
     static func profit(_ onDark: Bool) -> Color { onDark ? Color(hex: "#6BD6A9") : Theme.positiveText }
 }

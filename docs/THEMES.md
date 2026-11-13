@@ -14,12 +14,13 @@ Himmel je Theme (STRETCH, gestrichen), Wechsel ohne Schließen der Einstellungen
 |---|---|
 | `Packages/KlimaCore/Sources/KlimaCore/Appearance/ThemePalette.swift` | die sechs Paletten als Hex-Werte (hell, dunkel), Tokens, Farben mit Bedeutung |
 | `…/Appearance/ThemeContrast.swift` | WCAG-Kontrast, Kartenflächen, die Kontrast-Schranken je Palette, `shippable` |
+| `…/Appearance/ThemeMeaning.swift` | ob der Akzent einer Palette wie Gewinn, Verlust, Gipfel oder Echtzeit aussieht (Farbton-Abstand < 30°) |
 | `…/Appearance/MotionLevel.swift` | Bewegung Voll · Ruhig · Aus und was davon mit „Bewegung reduzieren“ bleibt (`MotionBehavior`) |
 | `…/Appearance/HapticLevel.swift` | Haptik Aus · Dezent · Voll, die Tabelle `HapticTable` über jedes `Haptic`, Migration des alten Schalters |
 | `…/Appearance/FormatPrefs.swift` | Beträge, Wochenstart, CO₂-Einheit, die Beispielzeilen (`AppearanceFormat`) |
 | `…/Appearance/AppearancePrefs.swift` | `theme.v1`: Version, Palette, Bewegung, Haptik, Zahlen; tolerant beim Lesen |
 | `…/Appearance/AppearancePairing.swift` | App-Symbol ↔ Palette |
-| `Tests/KlimaCoreTests/Appearance/` | 34 Linux-Tests (`swift test --filter Appearance`) |
+| `Tests/KlimaCoreTests/Appearance/` | 37 Linux-Tests (`swift test --filter Appearance`) |
 | `Shared/ThemePalettes.swift` | `ThemeColorSet`: die Farben einer Palette, einmal gebaut |
 | `Shared/ThemeRuntime.swift` | welche Palette `Theme.accent` & Co. gerade lesen; Widgets lesen `theme.v1` |
 | `App/Sources/Features/Appearance/AppearanceStore.swift` | Auswahl speichern, beim Schließen anwenden, `-KBTheme`, Szenen |
@@ -33,8 +34,10 @@ Himmel je Theme (STRETCH, gestrichen), Wechsel ohne Schließen der Einstellungen
 Haken in fremden Dateien, alle mit `MARK: themes`: `Shared/Theme.swift` (sechs Tokens), `MotionPolicy.swift`, `Haptics.swift`,
 `Components.swift` (Toast-Haptik), `Backgrounds.swift` (Himmel), `NumericMotion.swift` (Hochzählen), `MotionTilt.swift` (Neigung),
 `ScrollMotion.swift` (schrumpfender Titel), `SummitChart.swift` (die Route des Gipfel-Diagramms zeichnet die Routen-Stopps der
-Palette), `AmortizationHero.swift` (der Betrag im Urteil: Gletscher behält seinen Verlauf, andere Paletten zeigen `accentText`),
-`Format.swift` (`euro`, `kg`), `DashSupport.swift` und `DashInsights.swift` (Woche),
+Palette; bei „Ruhig“ steht der Aufstieg wie das Hochzählen), `AmortizationHero.swift` (der Betrag im Urteil: Gletscher behält seinen
+Verlauf, andere Paletten zeigen `accentText` – oder `textPrimary`, wenn ihr Akzent wie eine Bedeutungsfarbe aussieht, §2),
+`Format.swift` (`euro`, `kg`), `DashSupport.swift` und `DashInsights.swift` (Woche), `DashBalanceCard.swift` und
+`StatsCalc.co2Parts` (CO₂-Einheit), `RideActivityViews.swift` (`RidePalette.emphasis` auf der Dynamic Island),
 `StatsCalc.swift`, `StatsCalendarCard.swift`, `StatsDistributionCards.swift` (Wochenstart), die Auswahl-Ticks in Statistik, Ticket,
 Vorteilen und Fahrt-Editor (`selectionHapticsEnabled`), `AppState.swift` (`AppSettings.look`), `RootView.swift` (Id, Szenen),
 `SetPreferencesSections.swift` (Zeile), `AppIconPickerView.swift` (Vorschlag).
@@ -58,6 +61,13 @@ prüft, dass keine davon über die Laufzeit gelesen wird. Die Verkehrsmittel-Far
 farbe und bleibt; Gletscher reicht genau diese Instanz als `accent` weiter.
 
 Keine Palette übernimmt die Markenfarben der ÖBB oder eines anderen Verkehrsunternehmens.
+
+**Bedeutung trotz ähnlicher Akzente (Review).** Die Bedeutungsfarben bleiben, aber drei Akzente liegen im selben Farbton:
+Zirbe wie Gewinn (Grün, 16° Abstand), Morgenrot wie Gipfel (Orange, 2°), Alpenglühen wie Verlust (Rot, 15–25°). `ThemeMeaning`
+erkennt das (Test `AppearanceMeaningTests`). Wo die App einen Betrag direkt neben Gewinn- und Gipfel-Zahlen in der Akzentfarbe
+zeigte – „Noch € 356 bis zum Break-even“ im Hero –, steht er bei diesen Paletten in `textPrimary`, damit ein Restbetrag nie wie ein
+Gewinn aussieht. Knöpfe, Links und die Route bleiben in der Palettenfarbe; ihre Bedeutung tragen Text und Symbole. Die Seite sagt
+darum „Gewinn, Verlust und Gipfel behalten ihre eigenen Farben“ statt „Grün, Rot und Orange behalten ihre Bedeutung“.
 
 **Ein Farbwert pro Palette und Token.** `ThemeRuntime` baut jede Palette einmal (`ThemeColorSet`, eine Klasse) und gibt immer dieselben
 Instanzen heraus: Zwei Lesezugriffe auf `Theme.accent` sind gleich, Zeilen rendern nicht neu, nur weil eine Farbe frisch gebaut wurde.
@@ -110,6 +120,15 @@ A/B-Vergleich auf demselben Runner steht aus (§9).
 „Bewegung reduzieren“ von iOS gewinnt immer: keine Stufe bringt zurück, was es wegnimmt (Test `testSystemReduceMotionAlwaysWins`).
 Die Haptik hängt nicht an der Bewegung: Screenshot-Läufe schweigen (`MotionPolicy.isScreenshot`), „Aus“ bei Bewegung nicht.
 
+„Ruhig“ hält auch den Aufstieg im Gipfel-Diagramm an, der auf der Kurve des Hochzählens läuft.
+
+**„Aus“ ist nur Bewegung (Review).** `MotionPolicy.isStatic` war vor Look & Feel gleichbedeutend mit „CI-Screenshot“, und fünf
+Stellen nutzten es für Dinge, die keine Animation sind. Mit „Aus“ hätten sie für echte Nutzer so getan, als liefe ein Screenshot:
+Was-wäre-wenn sagte VoiceOver das Ergebnis nicht mehr an, Funktionen ließ eine angesprungene Zeile für immer hervorgehoben, die
+Widget-Vorschau setzte ihr Häkchen nie zurück, das Gipfelbuch markierte neue Medaillen nicht mehr mit „Neu“, und Fahrten markierte
+die neue Zeile nicht. Diese Stellen fragen jetzt `MotionPolicy.isScreenshot`; ihre Bewegung bleibt bei „Aus“ trotzdem weg
+(`withMotion` animiert dann nicht).
+
 ## 6. Haptik
 
 `HapticTable` ordnet jedem `Haptic`-Fall (11, ein Test liest `Haptics.swift`) zu, was gespielt wird. **Voll** ist genau das bisherige
@@ -130,12 +149,21 @@ Auf der Seite spielt die Haptik-Auswahl einmal einen `snap` in der gewählten St
 | Woche beginnt am | Montag (Standard) · Sonntag | `Mo Di Mi Do Fr Sa So` · `So Mo Di Mi Do Fr Sa` |
 | CO₂ | Automatisch (kg unter 1.000 kg, dann t) · Immer kg | `980 kg · 1,2 t` · `1,2 t → 1.240 kg` |
 
-- Beträge betreffen `Format.euro(x)` ohne feste Nachkommastellen. Wer ausdrücklich 0 oder 2 Stellen verlangt (Tarifpreise, Fahrtpreis,
-  `euroPrecise`, die gerundeten Wochen-Deltas), behält sie.
+- Beträge betreffen `Format.euro(x)` ohne feste Nachkommastellen: der Ticketpreis an der Linie der Statistik, die Tagessummen im
+  Reise-Kalender, die wertvollste Fahrt, Tarifpreise im Ticket-Editor und in der Einrichtung, Preisänderungen der Verlängerung,
+  Zusatzpakete, Vorteile („≈ € 12,50“), das Deckblatt des Berichts. Wer ausdrücklich 0 oder 2 Stellen verlangt, behält sie: alle
+  großen Zahlen der Übersicht und der Statistik (ganze Euro), Fahrten in Listen, Schnell-Erfassen, „Fahrt erfasst“, Durchschnitte
+  und „Preis bezahlt“ (`euroPrecise`, auf den Cent). Darum ändert Beträge die Übersicht nicht, und die Vorschau oben auf der Seite
+  zeigt ihre Beträge so, wie die Übersicht sie zeigt (Review: vorher folgten „Wert“, „je Fahrt“ und „+ € 22,80“ der Option, die
+  echte Übersicht aber nicht). Das Beispiel unter der Option zeigt die Wirkung.
 - „Automatisch“ bei CO₂ entscheidet nach den angezeigten, gerundeten Kilogramm: 999,9 kg heißt jetzt „1,0 t“, nicht mehr „1.000 kg“
   (die einzige Änderung gegenüber vorher, Test).
+- CO₂ gilt für `Format.kg` und – seit dem Review – auch für „CO₂ gespart“ in der Übersicht und die CO₂-Karte und das Teilen-Bild der
+  Statistik, die vorher eigene kg/t-Regeln hatten (VoiceOver las in der Übersicht schon „1.240 kg“, während „1,2 t“ dastand).
 - Der Wochenstart gilt für die Wochen-Karte der Übersicht (`DashWeekStats`: welche Tage „diese Woche“ sind und die Reihenfolge der
-  Balken), das Wochentags-Diagramm der Statistik (Reihenfolge) und die Zeilen des Reise-Kalenders. Widgets bleiben bei Montag.
+  Balken), das Wochentags-Diagramm der Statistik (Reihenfolge) und die Zeilen des Reise-Kalenders. Widgets bleiben bei Montag, ebenso
+  die Wochen der Zeitbilanz (Montag bis Sonntag); der Wochenrückblick kommt weiter sonntags um 18 Uhr.
+- Widgets formatieren Zahlen selbst (`WidFormat`) und bleiben bei „Automatisch“; die Seite sagt das unter den Hinweisen.
 - Negative Beträge: „-€ 23,40“ (Formatierer de-AT), Schwelle nach Betrag.
 
 ## 8. Speicher, Widgets, Launch-Argumente
@@ -157,7 +185,8 @@ die App-Symbol-Seite „Passendes Theme“; beides mit einem Knopf „Übernehme
 
 ## 9. Was geprüft ist – und was nicht
 
-Geprüft (Linux): 34 Tests `swift test --filter Appearance` (Paletten vollständig, Kontrast, Bedeutungsfarben gleich, Bewegung gegen
+Geprüft (Linux): 37 Tests `swift test --filter Appearance` (Paletten vollständig, Kontrast, Bedeutungsfarben gleich, Akzente nahe an
+Bedeutungsfarben, Bewegung gegen
 „Bewegung reduzieren“, Haptik-Tabelle über jeden Fall und gleich `Haptic.feedback`, Zahlenbeispiele, Wochenstart 25./26.10.2026,
 Paarung vollständig, Migration, tolerantes Lesen). Typecheck App und Widgets.
 

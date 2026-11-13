@@ -137,7 +137,7 @@ struct WidgetGalleryView: View {
         next.apply(favorite: favorite, date: Date())
         withMotion(Motion.bouncy) { preview = next }
         previewLogs += 1
-        guard !MotionPolicy.isStatic else { return }   // CI screenshot: keep the confirmation
+        guard !MotionPolicy.isScreenshot else { return }   // CI screenshot: keep the confirmation (MARK: review-themes – not Bewegung „Aus“)
         let log = next.recentLog
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2.4))

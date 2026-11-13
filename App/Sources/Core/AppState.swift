@@ -360,7 +360,8 @@ final class AppSettings {
     let look: AppearanceStore
     var hapticsEnabled: Bool {
         get { look.prefs.haptics != .off }
-        set { look.prefs.haptics = newValue ? .full : .off }
+        // MARK: review-themes – switching on (Funktionen) keeps „Dezent“; only „Aus“ becomes „Voll“.
+        set { look.prefs.haptics = newValue ? (look.prefs.haptics == .off ? .full : look.prefs.haptics) : .off }
     }
     /// Selection ticks play only at Haptik „Voll“ („Dezent“ drops them).  // MARK: themes
     var selectionHapticsEnabled: Bool { look.prefs.haptics == .full }

@@ -3,7 +3,9 @@ import KlimaCore
 
 // MARK: themes – the live preview at the top of Look & Feel: a small Übersicht in the palette, motion and number format you are
 // choosing – before it reaches the app. Illustration only (hidden from VoiceOver, one summary label instead); the sun/moon
-// switch is the one control on it. Every figure is a fixed demo value, formatted exactly like the app formats it.
+// switch is the one control on it. Every figure is a fixed demo value, formatted exactly like the Übersicht formats it
+// (MARK: review-themes): its euro figures round on their own (whole euros for the totals, cents for a trip), so Beträge does
+// not move them – the example line under Beträge shows that option; CO₂ and the week follow Zahlen like the Übersicht.
 
 struct AppearanceStage: View {
     var prefs: AppearancePrefs
@@ -25,6 +27,10 @@ struct AppearanceStage: View {
     /// Trips per weekday, Monday first.
     static let demoWeek: [Double] = [2, 3, 1, 3, 4, 1, 0]
 
+    /// The totals in whole euros and a trip in cents – the Übersicht's own precision (`SummitFigures.euro`, `Format.euroPrecise`).
+    static let valueText = AppearanceFormat.euro(demoValue, digits: 0)
+    static let perTripText = AppearanceFormat.euro(demoPerTrip, digits: 2)
+
     @State private var heroValue = AppearanceStage.demoFraction
     @State private var heroOpacity = 1.0
 
@@ -35,8 +41,8 @@ struct AppearanceStage: View {
             topBar(colors)
             heroCard(colors)
             HStack(spacing: Theme.Spacing.xs) {
-                figure(AppearanceFormat.euro(Self.demoValue, prefs: prefs.format), label: "Wert", symbol: "eurosign", tint: Theme.pine)
-                figure(AppearanceFormat.euro(Self.demoPerTrip, prefs: prefs.format), label: "je Fahrt", symbol: "tram.fill",
+                figure(Self.valueText, label: "Wert", symbol: "eurosign", tint: Theme.pine)
+                figure(Self.perTripText, label: "je Fahrt", symbol: "tram.fill",
                        tint: colors.accent)
                 figure(AppearanceFormat.co2(Self.demoCO2, prefs: prefs.format), label: "CO₂", symbol: "leaf.fill", tint: Theme.pine)
             }
@@ -99,7 +105,7 @@ struct AppearanceStage: View {
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 0)
                 // White on the prominent tint – the last trip, formatted like the app formats amounts.
-                Text("+ " + AppearanceFormat.euro(22.8, prefs: prefs.format))
+                Text("+ " + AppearanceFormat.euro(22.8, digits: 2))   // a logged trip: always cents, like the quick log
                     .font(.caption.weight(.bold).monospacedDigit())
                     .foregroundStyle(Theme.onAccent)
                     .lineLimit(1)
@@ -252,8 +258,8 @@ struct AppearanceStage: View {
         let palette = ThemeCatalog.palette(prefs.palette).name
         let mode = scheme == .dark ? "dunkel" : "hell"
         let week = prefs.format.weekStart == .monday ? "Woche ab Montag" : "Woche ab Sonntag"
-        return "Vorschau \(palette), \(mode): Wert \(AppearanceFormat.euro(Self.demoValue, prefs: prefs.format)), "
-            + "je Fahrt \(AppearanceFormat.euro(Self.demoPerTrip, prefs: prefs.format)), "
+        return "Vorschau \(palette), \(mode): Wert \(Self.valueText), "
+            + "je Fahrt \(Self.perTripText), "
             + "CO₂ \(AppearanceFormat.co2(Self.demoCO2, prefs: prefs.format)), \(week)."
     }
 }
@@ -263,10 +269,14 @@ struct AppearanceGlowPulse: View {
     var color: Color
     var trigger: Int
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         if MotionPolicy.isStatic {
             Color.clear
         } else {
+            // MARK: review-themes – Reduce Motion: the bloom only fades, it does not grow.
+            let grows = !reduceMotion
             Capsule()
                 .fill(color)
                 .frame(width: 120, height: 60)
@@ -274,7 +284,7 @@ struct AppearanceGlowPulse: View {
                 .keyframeAnimator(initialValue: 0.0, trigger: trigger) { view, value in
                     view
                         .opacity(value)
-                        .scaleEffect(0.7 + value * 0.5)
+                        .scaleEffect(grows ? 0.7 + value * 0.5 : 1)
                 } keyframes: { _ in
                     CubicKeyframe(0.75, duration: 0.18)
                     CubicKeyframe(0.0, duration: 0.9)

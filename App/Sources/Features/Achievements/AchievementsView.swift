@@ -236,10 +236,11 @@ private struct AchBookScreen: View, Equatable {
     /// Medals earned since the last visit get their moment once the grid has landed: a band of light, a pop with a
     /// ring and a "Neu" tag, one milestone haptic. Reduce Motion: the flash and the tag only.
     private func celebrateFreshUnlocks() async {
-        guard let book, !MotionPolicy.isStatic else { return }
+        // MARK: review-themes – Bewegung „Aus“ still tags new medals „Neu“ (like Reduce Motion, without movement); only CI skips it.
+        guard let book, !MotionPolicy.isScreenshot else { return }
         let earned = AchUnlockMemory.takeFresh(unlocked: book.unlocked.map(\.id), ticketYear: year)
         guard !earned.isEmpty else { return }
-        try? await Task.sleep(for: .milliseconds(reduceMotion ? 200 : 700))
+        try? await Task.sleep(for: .milliseconds(reduceMotion || MotionPolicy.isStatic ? 200 : 700))
         withMotion(Motion.bouncy) {
             fresh = earned
             unlockTick += 1
