@@ -71,26 +71,32 @@ struct CalendarSuggestionCard: View {
         }
     }
 
+    /// "Puffer in min [10][20][30][45]" on one line; the label goes above the chips when they need the whole width (AX sizes).
     private var bufferChips: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.xs) {
-                Text("Puffer")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.textSecondary)
+            HStack(spacing: Theme.Spacing.s) {
+                bufferLabel
                 chips
             }
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                Text("Puffer vor dem Termin")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.textSecondary)
+                bufferLabel
                 chips
             }
         }
     }
 
+    private var bufferLabel: some View {
+        Text("Puffer in min")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.textSecondary)
+            .fixedSize()
+            .accessibilityHidden(true)
+    }
+
+    /// The chips carry only the number (the label says "min"), so four fit next to the label – and on one line at AX5.
     private var chips: some View {
         GlassSegmentedPicker(selection: $buffer, options: CalendarBuffer.options, tint: Theme.dawn) { minutes in
-            Text("\(minutes) min")
+            Text("\(minutes)")
                 .monospacedDigit()
                 .accessibilityLabel("\(minutes) Minuten Puffer")
         }
@@ -102,7 +108,9 @@ struct CalendarSuggestionCard: View {
             Button {
                 CalendarActions(app: app).searchConnection(current)
             } label: {
+                // At accessibility sizes the words get the whole width (no symbol, no hyphenated "Verbin-dung").
                 Label("Verbindung suchen", systemImage: "tram.fill")
+                    .labelStyle(typeSize.isAccessibilitySize ? AnyLabelStyle(.titleOnly) : AnyLabelStyle(.titleAndIcon))
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
             }
@@ -266,7 +274,7 @@ struct CalendarArrivalStrip: View {
                 .stroke(Theme.glacier.opacity(0.45), style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [2, 5]))
                 // The buffer: from the arrival dot to the flag, dawn, scaled by the chosen minutes.
                 Capsule()
-                    .fill(LinearGradient(colors: [Theme.dawn.opacity(0.55), Theme.dawn], startPoint: .leading, endPoint: .trailing))
+                    .fill(LinearGradient(colors: [Theme.dawn2, Theme.dawn], startPoint: .leading, endPoint: .trailing))
                     .frame(width: segmentArea, height: 6)
                     .scaleEffect(x: max(fraction, 0.12), y: 1, anchor: .trailing)
                     .offset(x: width - 12 - segmentArea)
@@ -327,6 +335,16 @@ struct CalendarArrivalStrip: View {
     }
 }
 
+private struct AnyLabelStyle: LabelStyle {
+    private let make: (Configuration) -> AnyView
+
+    init<S: LabelStyle>(_ style: S) {
+        make = { AnyView(style.makeBody(configuration: $0)) }
+    }
+
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
+}
+
 // MARK: - Follow-up card
 
 /// „Warst du gefahren? Salzburg Hbf“ – the day after a suggested event without a logged trip there.
@@ -338,6 +356,35 @@ struct CalendarFollowUpCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var station: String { CalendarText.station(followUp.entry.stationName) }
+
+    private var logButton: some View {
+        Button {
+            CalendarActions(app: app).logTrip(followUp)
+        } label: {
+            Label("Fahrt erfassen", systemImage: "plus")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.glassProminent)
+        .tint(Theme.prominentTint)
+        .accessibilityLabel("Fahrt nach \(station) erfassen")
+    }
+
+    /// Beside „Fahrt erfassen“ only as wide as its word; full width when stacked.
+    private func noButton(fills: Bool) -> some View {
+        Button {
+            CalendarActions(app: app).answerNo(followUp)
+        } label: {
+            Text("Nein")
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .padding(.horizontal, fills ? 0 : Theme.Spacing.m)
+                .frame(maxWidth: fills ? .infinity : nil)
+        }
+        .buttonStyle(.glass)
+        .accessibilityLabel("Nein, nicht nach \(station) gefahren")
+    }
 
     var body: some View {
         GlassCard(padding: Theme.Spacing.m) {
@@ -366,28 +413,16 @@ struct CalendarFollowUpCard: View {
                     Button("Fahrt erfassen") { CalendarActions(app: app).logTrip(followUp) }
                     Button("Nein") { CalendarActions(app: app).answerNo(followUp) }
                 }
-                let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Theme.Spacing.xs))
-                                                          : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
-                layout {
-                    Button {
-                        CalendarActions(app: app).logTrip(followUp)
-                    } label: {
-                        Label("Fahrt erfassen", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
+                // "Fahrt erfassen" takes the room it needs, "Nein" the rest; stacked when they do not fit side by side.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.xs) {
+                        logButton
+                        noButton(fills: false)
                     }
-                    .buttonStyle(.glassProminent)
-                    .tint(Theme.prominentTint)
-                    .accessibilityLabel("Fahrt nach \(station) erfassen")
-                    Button {
-                        CalendarActions(app: app).answerNo(followUp)
-                    } label: {
-                        Text("Nein")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
+                    VStack(spacing: Theme.Spacing.xs) {
+                        logButton
+                        noButton(fills: true)
                     }
-                    .buttonStyle(.glass)
-                    .accessibilityLabel("Nein, nicht nach \(station) gefahren")
                 }
                 .controlSize(.large)
             }

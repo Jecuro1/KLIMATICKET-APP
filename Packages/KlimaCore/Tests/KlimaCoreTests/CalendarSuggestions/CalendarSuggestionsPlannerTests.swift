@@ -68,6 +68,10 @@ final class CalendarSuggestionsPlannerTests: XCTestCase {
         XCTAssertEqual(cards.count, 1)
         XCTAssertEqual(cards.first?.start, F.date("2026-11-20 19:00"))
 
+        // An occurrence too close to reach is not the "next" one: the following week's takes its place.
+        let today = F.event("weekly", "Chorprobe", location: "Innsbruck Hbf", start: "2026-11-19 08:25", series: "series-1")
+        XCTAssertEqual(plan([today] + weekly).first?.start, F.date("2026-11-20 19:00"))
+
         // "Kein Zug" for the next occurrence does not bring the one after it forward.
         var prefs = F.prefs()
         prefs.dismiss(key: weekly[0].key, eventStart: weekly[0].start)

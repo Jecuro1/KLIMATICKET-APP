@@ -15,6 +15,7 @@ struct CalendarSuggestionsSection: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var typeSize
     private var store: CalendarSuggestionStore { .shared }
 
     /// Shown in normal runs and in this track's own CI scenes only.
@@ -33,6 +34,7 @@ struct CalendarSuggestionsSection: View {
                 content
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                     .padding(.top, DashStyle.sectionSpacing)
+                    .reveal(order: 4)   // with the Fahrten-Vorschläge, in reading order (docs/MOTION.md §4)
                     .motionTransition(.rise)
             }
         }
@@ -49,7 +51,8 @@ struct CalendarSuggestionsSection: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: DashStyle.cardSpacing) {
-            SectionHeader(title: "Termine mit Zugfahrt?", actionTitle: "Anpassen") {
+            // At accessibility sizes the header's link would outgrow its title: „Anpassen“ moves under the cards.
+            SectionHeader(title: "Termine mit Zugfahrt?", actionTitle: typeSize.isAccessibilitySize ? nil : "Anpassen") {
                 store.showsSettingsSheet = true
             }
             .padding(.horizontal, DashStyle.headerInset)
@@ -66,6 +69,12 @@ struct CalendarSuggestionsSection: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.textTertiary)
                 .padding(.horizontal, DashStyle.headerInset)
+            if typeSize.isAccessibilitySize {
+                Button("Kalender-Vorschläge anpassen") { store.showsSettingsSheet = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .padding(.horizontal, DashStyle.headerInset)
+            }
         }
     }
 

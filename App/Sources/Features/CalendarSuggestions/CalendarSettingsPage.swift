@@ -9,6 +9,8 @@ import KlimaCore
 struct CalendarSettingsPage: View {
     /// Opened from the Übersicht or klimabilanz://calendar (own sheet with „Fertig“).
     var isSheet = false
+    /// CI scene `calendarSettingsBottom`: scrolls to „Datenschutz“ after the first frame.
+    var screenshotScrollsDown = false
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -17,6 +19,16 @@ struct CalendarSettingsPage: View {
     @State private var changeTick = 0
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list.task {
+                guard screenshotScrollsDown else { return }
+                try? await Task.sleep(for: .milliseconds(600))
+                proxy.scrollTo("privacy", anchor: .bottom)
+            }
+        }
+    }
+
+    private var list: some View {
         List {
             switchSection
             if store.prefs.isEnabled {
@@ -26,7 +38,7 @@ struct CalendarSettingsPage: View {
                     bufferSection
                 }
             }
-            privacySection
+            privacySection.id("privacy")
         }
         .listStyle(.insetGrouped)
         .listSectionSpacing(Theme.Spacing.l)
@@ -331,6 +343,7 @@ struct SetCalendarSection: View {
         } header: {
             SetSectionHeader(title: "Kalender")
         }
+        .onAppear { if !store.isDemo, store.prefs.isEnabled { store.refreshAccess() } }
     }
 
     private var subtitle: String {

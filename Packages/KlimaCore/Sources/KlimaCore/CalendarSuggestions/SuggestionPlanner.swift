@@ -44,10 +44,12 @@ public enum CalendarSuggestionPlanner {
         // Calendars repeat their places (series, the same office, the same station): each location is read once per plan.
         var matches: [String: CalendarPlaceMatch?] = [:]
         for event in candidates {
+            // An occurrence whose arrival has passed is no "next" one any more.
+            let arrival = CalendarBuffer.arrival(eventStart: event.start, bufferMinutes: prefs.bufferMinutes)
+            guard arrival > now else { continue }
             // A series counts once: its next occurrence (dismissing it hides that occurrence, the one after comes back later).
             if let series = event.seriesID, !seenSeries.insert(series).inserted { continue }
-            let arrival = CalendarBuffer.arrival(eventStart: event.start, bufferMinutes: prefs.bufferMinutes)
-            guard arrival > now, let location = event.location else { continue }
+            guard let location = event.location else { continue }
             let found: CalendarPlaceMatch?
             if let cached = matches[location] {
                 found = cached

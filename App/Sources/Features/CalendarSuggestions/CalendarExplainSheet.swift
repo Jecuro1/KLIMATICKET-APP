@@ -69,7 +69,7 @@ struct CalendarExplainSheet: View {
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Dein Termin in Salzburg, dein Zug dorthin: KlimaBilanz schlägt die Fahrt vor, du entscheidest.")
+            Text("Dein Termin in Salzburg, dein Zug dorthin: Die App schlägt die Fahrt vor, du entscheidest.")
                 .font(.body)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

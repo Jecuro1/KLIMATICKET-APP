@@ -42,9 +42,7 @@ struct CalendarScreenshotHost: View {
         case "calendarPicker":
             NavigationStack { CalendarPickerSheet() }
         default:
-            NavigationStack { CalendarSettingsPage() }
-                .defaultScrollAnchor(screen.hasSuffix("Bottom") ? .bottom : nil)
-                .defaultScrollAnchor(screen.hasSuffix("Bottom") ? .bottom : nil, for: .sizeChanges)
+            NavigationStack { CalendarSettingsPage(screenshotScrollsDown: screen.hasSuffix("Bottom")) }
         }
     }
 

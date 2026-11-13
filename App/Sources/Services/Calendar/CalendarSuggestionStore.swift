@@ -86,15 +86,15 @@ final class CalendarSuggestionStore {
     func confirmExplanation() async {
         showsExplanation = false
         update { $0.isEnabled = true }
+        isRequesting = true
+        // The sheet's dismissal first, so neither the system alert nor the picker sheet fights it.
+        if !isDemo { try? await Task.sleep(for: .milliseconds(450)) }
         if access == .notDetermined {
-            isRequesting = true
-            // The sheet's dismissal first, so the system alert does not fight it.
-            try? await Task.sleep(for: .milliseconds(450))
             access = await source.requestFullAccess()
-            isRequesting = false
         } else {
             access = source.currentAccess()
         }
+        isRequesting = false
         reloadCalendars()
         if access == .fullAccess, !offered.isEmpty { showsPicker = true }
         recompute()
@@ -119,10 +119,24 @@ final class CalendarSuggestionStore {
     /// Revoked → the cards disappear, Einstellungen says „verweigert“.
     func refreshAccess() {
         access = source.currentAccess()
-        reloadCalendars()
+        // With the switch off the calendar database stays closed (not even the list of calendars is read).
+        if prefs.isEnabled { reloadCalendars() } else if !offered.isEmpty { offered = [] }
         if access != .fullAccess {
             suggestions = []
             followUps = []
+        }
+    }
+
+    /// klimabilanz://calendar: the settings page as a sheet. The Einstellungen sheet (a second sheet cannot stack on it) closes first.
+    func openSettingsFromLink(closing app: AppState) {
+        guard app.isShowingSettings else {
+            showsSettingsSheet = true
+            return
+        }
+        app.isShowingSettings = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            showsSettingsSheet = true
         }
     }
 
