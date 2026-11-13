@@ -162,8 +162,11 @@ struct CockpitView: View {
     // MARK: Actions
 
     private func openAlarm() {
-        guard let target = model.followVehicle.followTarget else { return }
-        alarmInput = ExitAlarmSheetInput(target: target, stopovers: model.followVehicle.stopovers)
+        let vehicle = model.followVehicle
+        guard let target = vehicle.followTarget else { return }
+        // A train that turns short: the alarm starts with the stop where the cockpit says the run ends, not with the cancelled last stop.
+        alarmInput = ExitAlarmSheetInput(target: target, stopovers: vehicle.stopovers,
+                                         preselectedStopID: CockpitRoute.shortTurnEndID(of: vehicle.stopovers))
     }
 
     private func startFollowing() {

@@ -75,7 +75,8 @@ AX5 ganz darunter.)
   vor etwa 20 bis 40 Sekunden war, `CockpitText.markerNote`; wie die Geschwindigkeit entsteht). Eine Zeile, wenn sie passt; sonst Entfernung und Geschwindigkeit
   über dem Alter; sonst jedes für sich. Solange nur die vier Halte des Radars da sind (vor der ersten Antwort von `JourneyDetails`), steht keine Entfernung da: Entlang der
   Kette aus vier Halten wäre sie geraten.
-- Drei Aktionen: **Aussteige-Wecker** (öffnet das Wecker-Blatt dieses Zuges, `docs/EXIT_ALARM.md`; der Wecker ist auf main), **Live verfolgen** (`LiveFollowTracker`, danach „Wird verfolgt“),
+- Drei Aktionen: **Aussteige-Wecker** (öffnet das Wecker-Blatt dieses Zuges, `docs/EXIT_ALARM.md`; der Wecker ist auf main; endet der Zug vorzeitig, beginnt das Blatt mit dem
+  Halt, an dem die Fahrt endet, nicht mit dem abgesagten letzten, `CockpitRoute.shortTurnEndID`), **Live verfolgen** (`LiveFollowTracker`, danach „Wird verfolgt“),
   **Teilen** (Text mit Linie, nächstem Halt und Ankunft, **ohne** Koordinaten und ohne Fahrt-ID, z. B. „RJX 66 nach Salzburg Hbf: nächster Halt Linz Hbf, Ankunft 20:13 (+6 min). Live verfolgt mit KlimaBilanz.“;
   am Ziel „RJX 66 hat Salzburg Hbf erreicht.“). Ist der Zug am Ziel, die Fahrt beendet oder abgesagt, entfallen Wecker und „Live verfolgen“: Es bleibt „Teilen“.
 
@@ -192,12 +193,12 @@ Panel und Banner: `frostedCard` (Inhalt, `DESIGN.md` §2; beim Banner läuft die
 
 ## 6. Tests, Demo, CI
 
-- **Linux-Tests** (`Tests/KlimaCoreTests/Live/Cockpit/`, 138 Fälle): Winkel, Linienzug (Länge, Punkt, Richtung um die Ecke, Projektion im Fenster bei einer Haarnadel, Ausschnitt), Strecke (Halte auf der Polylinie, Luftlinie, Lage:
+- **Linux-Tests** (`Tests/KlimaCoreTests/Live/Cockpit/`, 139 Fälle): Winkel, Linienzug (Länge, Punkt, Richtung um die Ecke, Projektion im Fenster bei einer Haarnadel, Ausschnitt), Strecke (Halte auf der Polylinie, Luftlinie, Lage:
   vor Abfahrt, zwischen, hält, im Anflug, angekommen, nicht bediente Halte, Färbung, Fortschritt), Kamera (Abstand und Neigung nach Geschwindigkeit, Blickpunkt voraus, Ziel je Ansicht, Reduce Motion, Richtung ohne Strecke,
   Regler: kein Peitschen an der Kurve, kurze Seite über Norden, Konvergenz, Schwenk statt Sprung), Geschwindigkeit (zwei Antworten, Glättung, Halt, Neustart, alt, Lücke, Sprung, doppelte und ältere Antwort, Streckenkilometer), Zustandsautomat
   (verloren nach 2 Minuten, zurück, Grund, beendet, endgültig, frei und zurück), Zahlen und Texte (Verspätungsregeln, Countdown, Entfernung, VoiceOver-Satz, Teilen-Text ohne Koordinaten, große Zeile und Zeile darunter ohne Wiederholung), Zusammenführen, Kasten, Zeitplan (Takt, Budget von 3 bis 3,7 je Minute,
   Ausweichen, Pause, Abbruch, Rückkehr), Feed (Marke zwischen zwei Antworten mit dem Nachlauf des Radars, Geschwindigkeit, Verspätung bis in die Zusammenfassung, ältere Antworten, Ende, Verschwinden nahe dem Ziel oder mitten auf der Strecke),
-  Review 1: ein Zug, der vorzeitig endet (Ziel, Fortschritt, Ende am letzten bedienten Halt, rote Linie danach), die vorläufige Zusammenfassung ohne Entfernung und Prozent.
+  Review 1: ein Zug, der vorzeitig endet (Ziel, Fortschritt, Ende am letzten bedienten Halt, rote Linie danach, Halt für den Wecker), die vorläufige Zusammenfassung ohne Entfernung und Prozent.
 - **Live-Test** (`RadarCockpitLiveTests`, nicht in der CI): §2.
 - **Szenen** (`-KBScreenshot <name> -KBDemo YES`, ein erfundener Zug auf einer erfundenen Strecke zwischen Wien und Salzburg, Zeiten relativ zu „jetzt“, kein Netz): `radarCockpit` (Verfolgen), `radarCockpitBird`, `radarCockpitFree`
   (mit „Zurück zum Zug“), `radarCockpitAX5`, `radarCockpitEnded`, `radarCockpitLost`, `radarCockpitLostAX5` (verloren bei der größten Schrift: Banner und Panel teilen sich den Bildschirm). Die fahrenden Szenen beginnen mit drei Antworten im Abstand von 20 s (wie das Cockpit nach

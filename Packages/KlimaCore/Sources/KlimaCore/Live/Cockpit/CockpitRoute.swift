@@ -149,6 +149,19 @@ public struct CockpitRoute: Sendable {
         self.endIndex = lastServed > 0 ? lastServed : built.count - 1
     }
 
+    /// The stop where a run that turns short ends, as a HAFAS location id: the last stop the train calls at, when the last stop of the list
+    /// is cancelled. nil when the list's last stop is served (the end everyone else uses already). The exit alarm starts with this stop, so
+    /// the alarm and the cockpit name the same end of the run.
+    public static func shortTurnEndID(of stopovers: [Stopover]) -> String? {
+        func cancelled(_ stop: Stopover) -> Bool {
+            let events = [stop.arrival, stop.departure].compactMap { $0 }
+            return !events.isEmpty && events.allSatisfy(\.isCancelled)
+        }
+        guard let last = stopovers.last, cancelled(last) else { return nil }
+        guard let end = stopovers.lastIndex(where: { !$0.passesWithoutStop && !cancelled($0) }), end > 0 else { return nil }
+        return stopovers[end].location.lid
+    }
+
     private static func delay(_ event: StopEvent?) -> Int? {
         guard let event, !event.isCancelled else { return nil }
         return event.delaySeconds

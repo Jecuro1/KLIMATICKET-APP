@@ -213,6 +213,17 @@ final class CockpitRouteTests: XCTestCase {
         XCTAssertEqual(route.lines(atKm: km).ahead.last?.state, .cancelled)
     }
 
+    func testTheShortTurnEndForTheExitAlarm() {
+        var stops = F.fourStops()
+        XCTAssertNil(CockpitRoute.shortTurnEndID(of: F.stopovers(stops)), "the last stop is served: the alarm keeps its own default")
+        stops[3].arrCancelled = true
+        XCTAssertEqual(CockpitRoute.shortTurnEndID(of: F.stopovers(stops)), "cockpit|2")
+        stops[2].arrCancelled = true; stops[2].depCancelled = true
+        stops[1].passes = true
+        XCTAssertNil(CockpitRoute.shortTurnEndID(of: F.stopovers(stops)), "only the first stop is left: no run to end early")
+        XCTAssertNil(CockpitRoute.shortTurnEndID(of: []))
+    }
+
     func testTheEndOfARunWithoutCancelledStopsIsTheLastStop() {
         XCTAssertEqual(F.route().endIndex, 3)
         XCTAssertEqual(F.route(F.fourStops(delay: 0), cancelled: true).endIndex, 3, "a cancelled run keeps its stops")
