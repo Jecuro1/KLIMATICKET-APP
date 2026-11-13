@@ -14,7 +14,7 @@ struct CalendarExplainSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                     hero.reveal(.focus, order: 0)
-                    block(symbol: "calendar.badge.clock", tint: Theme.glacier, title: "Was KlimaBilanz tut",
+                    block(symbol: "calendar.badge.checkmark", tint: Theme.glacier, title: "Was KlimaBilanz tut",
                           lines: ["Es schaut in die nächsten 14 Tage der Kalender, die du auswählst.",
                                   "Steht bei einem Termin ein Bahnhof oder eine Stadt mit Hauptbahnhof, liegt in der Übersicht ein Vorschlag: Ankunft 20 Minuten vor Beginn, mit einem Tipp in den Fahrplan.",
                                   "Am Tag danach fragt es, ob du gefahren bist – erfasst wird nur, was du bestätigst."])

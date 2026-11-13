@@ -79,7 +79,7 @@ struct CalendarSettingsPage: View {
         Section {
             Toggle(isOn: Binding(get: { store.prefs.isEnabled || store.showsExplanation }, set: { store.setEnabled($0) })) {
                 SetRowLabel(title: "Kalender-Vorschläge", subtitle: "Termine mit Ort werden zu Zugfahrt-Vorschlägen in der Übersicht",
-                            symbol: "calendar.badge.clock", tint: Theme.dusk)
+                            symbol: CalendarSymbol.name, tint: CalendarSymbol.tint)
                     .setSymbolOnEnable(store.prefs.isEnabled)
             }
             .disabled(store.isRequesting)
@@ -327,6 +327,12 @@ struct CalendarPickerSheet: View {
 
 // MARK: - Settings entry
 
+/// The feature's tile in Einstellungen: a calendar with a check (the calendar with a clock is Wochenrückblick and Tarifstand).
+enum CalendarSymbol {
+    static let name = "calendar.badge.checkmark"
+    static let tint = Theme.alpenglow
+}
+
 /// The row in Einstellungen: „Kalender-Vorschläge“ with its state.
 struct SetCalendarSection: View {
     @State private var store = CalendarSuggestionStore.shared
@@ -336,7 +342,7 @@ struct SetCalendarSection: View {
             NavigationLink {
                 CalendarSettingsPage()
             } label: {
-                SetRowLabel(title: "Kalender-Vorschläge", subtitle: subtitle, symbol: "calendar.badge.clock", tint: Theme.dusk)
+                SetRowLabel(title: "Kalender-Vorschläge", subtitle: subtitle, symbol: CalendarSymbol.name, tint: CalendarSymbol.tint)
                     .setSymbolOnEnable(store.setupState == .active)
             }
             .listRowBackground(Theme.surface)

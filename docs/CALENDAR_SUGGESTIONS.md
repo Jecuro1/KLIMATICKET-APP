@@ -196,4 +196,4 @@ Der Test `testDemoCalendarYieldsTheThreeExpectedCards` hält das fest.
 CI-Szenen (`CalendarScreenshotHost`, `-KBScreenshot <name> -KBDemo YES`, kein EventKit, keine Systemfrage, kein Netz):
 `calendarSuggestions`, `calendarAX5`, `calendarAX5Bottom`, `calendarWasYouThere`, `calendarSettings`, `calendarSettingsBottom`,
 `calendarDenied`, `calendarRestricted`, `calendarWriteOnly`, `calendarNeedsPermission`, `calendarEmpty`, `calendarExplain`,
-`calendarPicker`.
+`calendarPicker`, `calendarSettingsRow` (die Zeile in Einstellungen zwischen Pendeln und Arbeit & Steuer).

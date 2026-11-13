@@ -10,12 +10,13 @@ import KlimaCore
 // - `calendarDenied`, `calendarRestricted`, `calendarWriteOnly`, `calendarNeedsPermission`, `calendarEmpty` (granted, no calendar):
 //   the page in each permission state
 // - `calendarExplain`: the explanation before the system question · `calendarPicker`: the calendar picker after the grant
+// - `calendarSettingsRow`: the row in Einstellungen between Pendeln and Arbeit & Steuer (the list's own sections, its own style)
 
 struct CalendarScreenshotHost: View {
     static let screens: Set<String> = [
         "calendarSuggestions", "calendarAX5", "calendarAX5Bottom", "calendarWasYouThere", "calendarSettings", "calendarSettingsBottom",
         "calendarDenied", "calendarRestricted", "calendarWriteOnly", "calendarNeedsPermission", "calendarEmpty", "calendarExplain",
-        "calendarPicker",
+        "calendarPicker", "calendarSettingsRow",
     ]
 
     let screen: String
@@ -41,9 +42,28 @@ struct CalendarScreenshotHost: View {
             CalendarExplainSheet(onContinue: {}, onCancel: {})
         case "calendarPicker":
             NavigationStack { CalendarPickerSheet() }
+        case "calendarSettingsRow":
+            NavigationStack { settingsExcerpt }
         default:
             NavigationStack { CalendarSettingsPage(screenshotScrollsDown: screen.hasSuffix("Bottom")) }
         }
+    }
+
+    /// Einstellungen around the row, built from the list's own sections and styled like SettingsView.
+    private var settingsExcerpt: some View {
+        List {
+            SetCommuteSection()
+            SetCalendarSection()
+            WorkSettingsSection()
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(Theme.Spacing.l)
+        .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+        .scrollContentBackground(.hidden)
+        .background { SetBackdrop() }
+        .tint(Theme.accent)
+        .navigationTitle("Einstellungen")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     /// The top of the Übersicht with the section under the header (on the device it sits below the Fahrten-Vorschläge).
@@ -78,7 +98,7 @@ struct CalendarScreenshotHost: View {
         case "calendarEmpty": store.installDemo(access: .fullAccess, enabled: true, calendarIDs: [], calendars: [], events: [])
         case "calendarExplain": store.installDemo(access: .notDetermined, enabled: false, calendarIDs: [])
         case "calendarPicker": store.installDemo(access: .fullAccess, enabled: true, calendarIDs: [CalendarDemoEvents.workCalendarID])
-        case "calendarSettings", "calendarSettingsBottom":
+        case "calendarSettings", "calendarSettingsBottom", "calendarSettingsRow":
             store.installDemo(access: .fullAccess, enabled: true, calendarIDs: Self.calendarIDs)
         case "calendarWasYouThere":
             // Yesterday's card for Innsbruck: no trip was logged there.
