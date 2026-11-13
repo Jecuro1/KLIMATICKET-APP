@@ -96,14 +96,17 @@ struct CommuteActiveCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.scenePhase) private var scenePhase
+    /// The card is (at least a sliver) inside the Übersicht's scroll view; scrolled away, the refreshes pause.
+    @State private var isVisible = true
     private var model: CommuteModel { .shared }
 
     var body: some View {
         switch model.windowState(at: now) {
         case .live(let slot):
             CommuteLiveCard(slot: slot, now: now)
+                .onScrollVisibilityChange(threshold: 0.05) { isVisible = $0 }
                 .task(id: RefreshKey(slot: slot, direction: model.direction(for: slot), generation: app.live.generation,
-                                     active: scenePhase == .active, unavailable: model.liveUnavailable(app.live) != nil)) {
+                                     active: scenePhase == .active && isVisible, unavailable: model.liveUnavailable(app.live) != nil)) {
                     await refreshLoop(slot: slot)
                 }
         case .upcoming(let slot):
@@ -115,10 +118,10 @@ struct CommuteActiveCard: View {
         }
     }
 
-    /// One search when the window opens, the direction changes or the app comes back; then every 60 s while the card is on
-    /// screen and the app is active. Never without live data; paused in Low Power Mode.
+    /// One search when the window opens, the direction changes, the card scrolls back in or the app comes back; then every
+    /// 60 s while the card is on screen and the app is active. Never without live data; the minute refresh pauses in Low Power Mode.
     private func refreshLoop(slot: CommuteSlot) async {
-        guard scenePhase == .active, model.liveUnavailable(app.live) == nil else { return }
+        guard scenePhase == .active, isVisible, model.liveUnavailable(app.live) == nil else { return }
         await model.refresh(app: app, slot: slot)
         guard model.demo == nil else { return }
         while !Task.isCancelled {

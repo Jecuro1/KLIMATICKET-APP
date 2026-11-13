@@ -370,7 +370,7 @@ struct CommuteSettingsPage: View {
         changeTick += 1
         model.store.update { s in
             s.isEnabled = on
-            // Switched on without a route: the confident suggestion is the obvious start.
+            // Switched on without a route: the best suggestion of the trips is the obvious start (it can be changed below).
             if on, !s.hasRoute, let best = candidates.first(where: { $0.origin.stationID != nil && $0.destination.stationID != nil }) {
                 s.source = .suggestion
                 s.origin = best.origin

@@ -58,7 +58,7 @@ struct StopDetailView: View {
                             withMotion(Motion.smooth) { proxy.scrollTo("lines", anchor: .top) }
                         }
                         .reveal(.rise, order: 0)
-                        StopDeparturesSection(state: model.departures)
+                        StopDeparturesSection(model: model).id("departures")   // MARK: commute – „Nächste Abfahrten“ (docs/COMMUTE.md §12)
                         StopLinesSection(ctx: ctx).id("lines").reveal(.rise, order: 1)
                         if !details.facilities.isEmpty {
                             StopFacilitiesSection(facilities: details.facilities, buildDate: model.index?.dataInfo.buildDate)
@@ -123,6 +123,7 @@ struct StopDetailView: View {
         else if screen.hasSuffix("End") { target = ("footer", .bottom) }
         else if screen.hasSuffix("Lines") { target = ("lines", .top) }
         else if screen.hasSuffix("Facilities") { target = ("facilities", .top) }
+        else if screen.hasSuffix("Departures") { target = ("departures", .top) }   // MARK: commute
         else { target = nil }
         guard let target else { return }
         try? await Task.sleep(for: .milliseconds(900))

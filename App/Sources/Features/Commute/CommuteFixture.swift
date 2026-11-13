@@ -47,7 +47,7 @@ enum CommuteFixture {
         var settings = CommuteSettings()
         settings.isEnabled = screen != "commuteSetup"
         // The settings scene shows its choice ticked among the suggestions; the card scenes come from the demo's „Arbeit“ route.
-        settings.source = screen == "commuteSettings" ? .suggestion : .savedRoute
+        settings.source = screen.hasPrefix("commuteSettings") ? .suggestion : .savedRoute
         settings.origin = origin
         settings.destination = destination
         // Mo–Fr plus today, so a scene taken on a weekend still shows the morning.
@@ -58,7 +58,7 @@ enum CommuteFixture {
 
         let morningRows: [Train]
         switch screen {
-        case "commuteDelayed", "commuteAX5":
+        case "commuteDelayed", "commuteAX5", "commuteAX5Bottom":
             morningRows = [Train(hour: 7, minute: 20, category: "RJX", number: "160", direction: "Wien Hbf", delay: 12),
                            Train(hour: 7, minute: 27, category: "RJ", number: "362", direction: "Wien Hbf", delay: 0, platform: "3", minutes: 64),
                            Train(hour: 7, minute: 42, category: "REX", number: "5110", direction: "Innsbruck Hbf", delay: 2, platform: "1", minutes: 86),
@@ -87,7 +87,7 @@ enum CommuteFixture {
                                  mostlyRoundTrips: false, confidence: .high)
         return CommuteDemoScene(now: now, settings: settings,
                                 liveUnavailable: screen == "commuteNoConsent" ? .consentUndecided : nil,
-                                guess: screen == "commuteSetup" || screen == "commuteSettings" ? guess : nil,
+                                guess: screen == "commuteSetup" || screen.hasPrefix("commuteSettings") ? guess : nil,
                                 outbound: morningRows.map { journey($0, day: today, outbound: true) },
                                 inbound: eveningRows.map { journey($0, day: today, outbound: false) })
     }

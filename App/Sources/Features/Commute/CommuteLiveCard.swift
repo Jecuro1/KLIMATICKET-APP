@@ -58,7 +58,7 @@ struct CommuteLiveCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 12.5, weight: .bold))   // the kicker's own fixed size
                         .foregroundStyle(Theme.accentText)
                         .accessibilityHidden(true)
                     Kicker(text: "Pendeln · \(direction.title)", color: Theme.accentText)
@@ -67,6 +67,7 @@ struct CommuteLiveCard: View {
                     CommuteRouteTitle(from: ends.from.name, to: ends.to.name)
                 }
             }
+            .layoutPriority(1)
             if !stacked { Spacer(minLength: Theme.Spacing.xs) }
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 CommuteCountdown(target: countdownTarget(rows: rows, live: live), now: now, isPlan: !live)
@@ -126,17 +127,19 @@ struct CommuteLiveCard: View {
 
     // MARK: Actions
 
+    /// Without live data there is nothing to follow: „Live verfolgen“ is left out instead of shown dimmed.
     private func actionItems(direction: CommuteDirection, first: CommuteRow?) -> [CommuteActionItem] {
         let actions = CommuteActions(app: app)
         let followRow = first.flatMap { actions.followTarget($0) == nil ? nil : $0 }
-        return [
-            CommuteActionItem(title: "Fahrt erfassen", symbol: "plus.circle.fill", isPrimary: true) { actions.logTrip(now: now) },
-            CommuteActionItem(title: "Live verfolgen", symbol: "location.fill", isEnabled: followRow != nil) {
+        var items = [CommuteActionItem(title: "Fahrt erfassen", symbol: "plus.circle.fill", isPrimary: true) { actions.logTrip(now: now) }]
+        if model.liveUnavailable(app.live) == nil {
+            items.append(CommuteActionItem(title: "Live verfolgen", symbol: "location.fill", isEnabled: followRow != nil) {
                 if let followRow { actions.follow(followRow) }
-            },
-            CommuteActionItem(title: "Rückfahrt planen", symbol: "arrow.uturn.backward") { actions.planReturn(shown: direction, now: now) },
-            CommuteActionItem(title: "Verbindung ändern", symbol: "slider.horizontal.3") { actions.changeConnection(shown: direction) },
-        ]
+            })
+        }
+        items.append(CommuteActionItem(title: "Rückfahrt planen", symbol: "arrow.uturn.backward") { actions.planReturn(shown: direction, now: now) })
+        items.append(CommuteActionItem(title: "Verbindung ändern", symbol: "slider.horizontal.3") { actions.changeConnection(shown: direction) })
+        return items
     }
 
     @ViewBuilder

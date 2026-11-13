@@ -20,19 +20,25 @@ struct CommuteRouteTitle: View {
     }
 }
 
-/// The minutes to the next departure as a big rolling number: „12 Min.“, „1:05 Std.“, „jetzt“.
+/// The minutes to the next departure as a big rolling number: „12 Min.“, „1:05 Std.“, „jetzt“. Next to the route at regular
+/// sizes (number over unit), on one baseline under it at accessibility sizes. The plan's time says so to VoiceOver; on screen
+/// the card's plan line says it.
 struct CommuteCountdown: View {
     var target: Date
     var now: Date
-    /// The plan's time (no live data): the caption says so.
+    /// The plan's time (no live data).
     var isPlan: Bool
+
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let seconds = target.timeIntervalSince(now)
         let minutes = max(0, Int((seconds / 60).rounded(.down)))
-        VStack(alignment: .trailing, spacing: 0) {
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 6))
+                                                  : AnyLayout(VStackLayout(alignment: .trailing, spacing: 0))
+        layout {
             Text(value(minutes))
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(.largeTitle, design: .rounded, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(minutes <= 2 ? Theme.summitText : Theme.textPrimary)
                 .contentTransition(.numericText(countsDown: true))
@@ -44,6 +50,7 @@ struct CommuteCountdown: View {
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
         }
+        .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spoken(minutes))
     }
@@ -56,8 +63,7 @@ struct CommuteCountdown: View {
 
     private func caption(_ minutes: Int) -> String {
         if minutes == 0 { return isPlan ? "laut Plan" : "Abfahrt" }
-        let unit = minutes < 60 ? "Min." : "Std."
-        return isPlan ? "\(unit) laut Plan" : unit
+        return minutes < 60 ? "Min." : "Std."
     }
 
     private func spoken(_ minutes: Int) -> String {

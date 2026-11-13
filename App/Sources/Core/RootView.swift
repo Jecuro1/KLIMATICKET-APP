@@ -659,6 +659,7 @@ private struct ScreenshotStopDetail: View {
             if screen.contains("StAnton") { placeID = "at:47:1222" }
             else if screen.contains("Floridsdorf") { placeID = "at:49:334" }
             else if screen.hasPrefix("stopDetailFacilities") { placeID = "at:47:1187" }   // Innsbruck Hbf: facilities
+            else if screen == "stopDetailDepartures" { placeID = "at:47:1187" }   // MARK: commute – Innsbruck Hbf: the demo board fits it
             else if screen.contains("Lech") {
                 placeID = index.search("lech am arlberg post", context: .planner, limit: 10)
                     .first { $0.kind == .stop && $0.state == "V" }?.id ?? "at:48:344"

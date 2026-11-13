@@ -147,6 +147,11 @@ final class CommuteModel {
         guard let from = await Self.station(fromID, app: app), let to = await Self.station(toID, app: app) else {
             throw LiveError.noConnection
         }
+        // Demo runs (-KBDemo): the demo timetable takes the station as it is – the linker (and its lookups) is never built.
+        if app.live.isDemo {
+            let ends = (PlannerModel.demoLocation(from), PlannerModel.demoLocation(to))
+            return try await CommuteSearch.connections(timetable: timetable, at: now()) { ends }
+        }
         let linker = app.live.linker
         do {
             return try await CommuteSearch.connections(timetable: timetable, at: now()) {
