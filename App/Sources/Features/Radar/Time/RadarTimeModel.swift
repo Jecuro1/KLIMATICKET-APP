@@ -371,7 +371,11 @@ final class RadarTimeModel {
             let newTarget = playBase.addingTimeInterval(playOffset)
             target = newTarget
             scheduler.setTarget(newTarget, now: now)
-            if step.reachedEnd { stopPlaying() }
+            if step.reachedEnd {
+                // The CI scene of the time-lapse starts over from the far left, so it still plays whenever it is captured (a capture after
+                // 42 seconds showed it stopped at +3 Std, run 43421276723). Everywhere else it stops at the end.
+                if demo, demoFeatured != nil { playOffset = RadarTimeAxis.minOffset } else { stopPlaying() }
+            }
         } else if let current = target, !returning {
             // The clock moved on past the far left of the scrubber: the target stays on its end. Compared with the edge itself (a whole
             // minute), not with the running clock: a target already on the edge is set again only when the minute changes. Setting it on

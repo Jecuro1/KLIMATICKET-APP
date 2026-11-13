@@ -31,19 +31,27 @@ extension RadarView {
         return radarService
     }
 
-    /// The last ten minutes of the selected train's projected path: one line on a light casing, fading from pale (ten minutes ago) to strong
-    /// (now). Two overlays, not one per minute: they are replaced 12 times a second while the markers glide, and with eleven of them the CI
-    /// capture of the playing scene showed one short piece one to two seconds of playback behind its train (run 43415316339). Review 1 also
+    /// The last ten minutes of the selected train's projected path: a line on a light casing, the older half paler than the newer one. Three
+    /// overlays, not one per minute: they are replaced 12 times a second while the markers glide, and with eleven of them the CI capture of the
+    /// playing scene showed one short piece one to two seconds of playback behind its train (run 43415316339); with two it kept up (run
+    /// 43421276723). A gradient stroke was not drawn at all there (only the casing showed), so the fade is two solid halves. Review 1 also
     /// found the first half of the old trail invisible (18 % on no casing).
     @MapContentBuilder var timeTrailLayer: some MapContent {
         let points = travel.trail.map(\.clCoordinate)
         if points.count > 1 {
             let dark = mapStyle == .dark || colorScheme == .dark
+            let middle = points.count / 2
             MapPolyline(coordinates: points)
                 .stroke(.white.opacity(dark ? 0.30 : 0.85), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
-            MapPolyline(coordinates: points)
-                .stroke(LinearGradient(colors: [Theme.dusk.opacity(0.35), Theme.dusk], startPoint: .leading, endPoint: .trailing),
-                        style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round))
+            if points.count > 2 {   // halves that share the middle point, so the line has no gap
+                MapPolyline(coordinates: Array(points[...middle]))
+                    .stroke(Theme.dusk.opacity(0.5), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                MapPolyline(coordinates: Array(points[middle...]))
+                    .stroke(Theme.dusk, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            } else {
+                MapPolyline(coordinates: points)
+                    .stroke(Theme.dusk, style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            }
         }
     }
 
