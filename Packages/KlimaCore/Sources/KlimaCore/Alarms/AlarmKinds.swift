@@ -21,6 +21,8 @@ public enum AlarmKind: String, CaseIterable, Codable, Sendable, Hashable {
     case weeklySummary
     /// MARK: exitalarm – an armed Aussteige-Wecker (docs/EXIT_ALARM.md). Its notifications are the fallback ring, not rows of their own.
     case exitAlarm
+    /// MARK: automation – a notice of a rule of Einstellungen › Automatik (docs/AUTOMATION.md); one row per rule.
+    case automation
     /// Notices that have no alarm of their own (break-even, trip suggestion, …): history only.
     case other
 
@@ -35,7 +37,8 @@ public enum AlarmKind: String, CaseIterable, Codable, Sendable, Hashable {
         case .objectionLetter: 5
         case .passengerRights: 6
         case .weeklySummary: 7
-        case .other: 8
+        case .automation: 8   // MARK: automation
+        case .other: 9
         }
     }
 }
@@ -52,6 +55,8 @@ public enum AlarmIdentifier {
     public static let weeklySummary = "weekly.summary"
     /// MARK: exitalarm – "exitalarm.<UUID>.<0…2>": the three notifications of one Aussteige-Wecker (the fallback ring).
     public static let exitAlarmPrefix = "exitalarm."
+    /// MARK: automation – "rule.<rule id>.<yyyyMMdd>" planned, "rule.<rule id>.<yyyyMMdd>.<HHmmss>" sent at once (AutoRuleScheduler).
+    public static let rulePrefix = "rule."
 
     /// The kind an identifier belongs to. `.other` for anything the Alarms screen does not manage on its own.
     public static func kind(of identifier: String) -> AlarmKind {
@@ -63,6 +68,7 @@ public enum AlarmIdentifier {
         if identifier.hasPrefix(passengerRightsPrefix) { return .passengerRights }
         if identifier == weeklySummary { return .weeklySummary }
         if identifier.hasPrefix(exitAlarmPrefix) { return .exitAlarm }
+        if identifier.hasPrefix(rulePrefix) { return .automation }   // MARK: automation
         return .other
     }
 
@@ -88,6 +94,8 @@ public enum AlarmIdentifier {
         case .objectionLetter where identifier.hasPrefix(letterPrefix):   // MARK: ticketletters – both reminders are one row
             guard let dot = identifier.lastIndex(of: ".") else { return identifier }
             return String(identifier[..<dot])
+        case .automation:   // MARK: automation – every notice of one rule is one row ("rule.<rule id>")
+            return AutoRuleScheduler.ruleID(of: identifier).map { rulePrefix + $0.uuidString } ?? identifier
         default:
             return identifier
         }

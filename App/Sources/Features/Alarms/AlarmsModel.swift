@@ -43,6 +43,7 @@ final class AlarmsModel {
         let listed = pending.filter { request in
             let kind = AlarmIdentifier.kind(of: request.identifier)
             return kind != .other && kind != .weeklySummary && kind != .liveFollow && kind != .exitAlarm   // MARK: exitalarm – its rows come from the book
+                && kind != .automation   // MARK: automation – one row per rule, from Einstellungen › Automatik
         }
         let groups = Dictionary(grouping: listed) { AlarmIdentifier.groupKey(of: $0.identifier) }
         var rows: [AlarmItem] = []

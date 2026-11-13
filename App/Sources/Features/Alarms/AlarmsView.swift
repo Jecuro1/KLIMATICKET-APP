@@ -306,6 +306,7 @@ extension AlarmKind {
         case .objectionLetter: "envelope.badge.fill"
         case .passengerRights: "banknote.fill"
         case .weeklySummary: "calendar.badge.clock"
+        case .automation: "wand.and.sparkles"   // MARK: automation
         case .other: "bell"
         }
     }
@@ -318,6 +319,7 @@ extension AlarmKind {
         case .ticketRenewal: Theme.gold
         case .objectionLetter: Theme.dawn
         case .passengerRights: Theme.pine
+        case .automation: Theme.dusk   // MARK: automation
         case .other: Theme.textSecondary
         }
     }
