@@ -121,16 +121,16 @@ public struct RadarScheduler: Sendable {
         self.config = config
     }
 
-    /// A scheduler that continues a budget: the send times of the last minute and a pause of an earlier radar view
-    /// (`RadarBudgetLedger`). Its tiles start empty.
+    /// A scheduler that continues a budget: the send times of the last minute of an earlier radar view (`RadarBudgetLedger`). Its tiles
+    /// start empty, and so does its pause: a rate limit or an open circuit is held for the whole app by `LiveHealth`, and a pause after the
+    /// kill switch (5 minutes) must not hold a radar opened again after the switch was lifted.
     public init(config: RadarSchedulerConfig = .standard, budget: RadarBudgetState) {
         self.config = config
         sentAt = budget.sentAt.sorted()
-        pausedUntil = budget.pausedUntil
     }
 
     /// What the budget remembers: handed to the next radar view, so closing and opening the radar again is no fresh budget.
-    public var budgetState: RadarBudgetState { RadarBudgetState(sentAt: sentAt, pausedUntil: pausedUntil) }
+    public var budgetState: RadarBudgetState { RadarBudgetState(sentAt: sentAt) }
 
     // MARK: View
 
@@ -438,14 +438,12 @@ public struct RadarScheduler: Sendable {
 
 // MARK: - The budget across radar views
 
-/// The radar budget's memory: when the last requests went out (the last minute is enough) and a pause (rate limit, open circuit).
+/// The radar budget's memory: when the last requests went out (the last minute is enough).
 public struct RadarBudgetState: Sendable, Equatable {
     public var sentAt: [Date]
-    public var pausedUntil: Date?
 
-    public init(sentAt: [Date] = [], pausedUntil: Date? = nil) {
+    public init(sentAt: [Date] = []) {
         self.sentAt = sentAt
-        self.pausedUntil = pausedUntil
     }
 }
 
@@ -472,7 +470,7 @@ public final class RadarBudgetLedger: @unchecked Sendable {
             defer { lock.unlock() }
             // Only the last minute counts; older send times are dropped so the ledger stays small.
             let newest = newValue.sentAt.max() ?? .distantPast
-            stored = RadarBudgetState(sentAt: newValue.sentAt.filter { newest.timeIntervalSince($0) < 60 }, pausedUntil: newValue.pausedUntil)
+            stored = RadarBudgetState(sentAt: newValue.sentAt.filter { newest.timeIntervalSince($0) < 60 })
         }
     }
 }

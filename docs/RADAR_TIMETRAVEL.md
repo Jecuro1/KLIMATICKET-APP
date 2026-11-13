@@ -145,8 +145,8 @@ Ohne `claim` (das Radar-Modell ist weg) wird nichts gesendet; vorher hätte ein 
 - Zug-Ebene aus und ein, Pünktlichkeit an, Bus an: Die Zeitreise vergisst alles und fängt neu an; das **Budget bleibt** (es gehört dem Radar).
 - Hintergrund und zurück, Cockpit auf und zu: Anfragen unterwegs werden abgebrochen. Ein Abbruch gibt den **Zeitpunkt** frei (er ist wieder fällig), **nicht den Platz im Budget**: Die Anfrage kann den Server erreicht haben.
 - **Radar schließen und wieder öffnen.** Bis Review 2 hatte jede Radar-Ansicht ihr eigenes Budget: Wer das Radar alle paar Sekunden schloss und wieder öffnete und jedes Mal eine Zeitreise begann,
-  schickte mehr als 24 Radar-Anfragen je Minute (nur die Drossel der App mit 40 hielt). Jetzt beginnt jede Ansicht mit dem Budget der letzten (`RadarBudgetLedger`: Sendezeiten der letzten Minute und eine Pause
-  nach einer Ratenbegrenzung). Test `testOpeningTheRadarAgainIsNoFreshBudget`: alle 3 s neu geöffnet, zwei Minuten lang, höchstens 24 je Minute und 4 in 10 s (ohne die Änderung über 24).
+  schickte mehr als 24 Radar-Anfragen je Minute (nur die Drossel der App mit 40 hielt). Jetzt beginnt jede Ansicht mit dem Budget der letzten (`RadarBudgetLedger`: die Sendezeiten der letzten Minute; eine Ratenbegrenzung
+  oder einen offenen Schutzschalter hält ohnehin `LiveHealth` für die ganze App). Test `testOpeningTheRadarAgainIsNoFreshBudget`: alle 3 s neu geöffnet, zwei Minuten lang, höchstens 24 je Minute und 4 in 10 s (ohne die Änderung über 24).
   Screenshot- und Perf-Starts (erfundene Züge, kein Netz) behalten je Ansicht ein Budget wie vorher, damit ihre Radar-Szenen in einem Prozess nicht aufeinander warten.
 - Zwei Radar-Ansichten **gleichzeitig** gibt es nicht: ein Fenster (nur iPhone), Radar und Zugsuche sind Vollbild-Blätter derselben Fahrplan-Ansicht.
 

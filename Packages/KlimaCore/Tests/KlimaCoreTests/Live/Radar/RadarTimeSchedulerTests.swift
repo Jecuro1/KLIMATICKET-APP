@@ -551,14 +551,23 @@ final class RadarTimeSchedulerTests: XCTestCase {
         XCTAssertGreaterThan(after.count, 0)
     }
 
-    func testTheLedgerKeepsOnlyTheLastMinuteAndThePause() {
+    func testTheLedgerKeepsOnlyTheLastMinuteAndNoPause() {
         let ledger = RadarBudgetLedger()
-        let pause = now.addingTimeInterval(20)
-        ledger.state = RadarBudgetState(sentAt: [now.addingTimeInterval(-120), now.addingTimeInterval(-30), now], pausedUntil: pause)
+        ledger.state = RadarBudgetState(sentAt: [now.addingTimeInterval(-120), now.addingTimeInterval(-30), now])
         XCTAssertEqual(ledger.state.sentAt, [now.addingTimeInterval(-30), now])
-        var next = RadarScheduler(budget: ledger.state)
-        XCTAssertEqual(next.claimSlot(now: now.addingTimeInterval(5)), pause, "a rate limit's pause holds the next view too")
-        XCTAssertNil(next.claimSlot(now: now.addingTimeInterval(21)))
+        // A view that paused (here: the kill switch, five minutes) hands on its send times, not its pause: a rate limit or an open circuit
+        // is held for the whole app by LiveHealth, and a radar opened after the switch was lifted must not wait five minutes.
+        var first = RadarScheduler(budget: ledger.state)
+        first.setViewport(.austria, latitudeSpan: 4.2, now: now)
+        if case .request(let tile) = first.next(now: now.addingTimeInterval(1)) {
+            first.recordFailure(tile, error: LiveError.disabled(.oebbHafas), at: now.addingTimeInterval(1))
+        } else { return XCTFail("a tile") }
+        XCTAssertNotNil(first.claimSlot(now: now.addingTimeInterval(3)), "paused in its own view")
+        ledger.state = first.budgetState
+        XCTAssertEqual(ledger.state.sentAt.count, 3)
+        var second = RadarScheduler(budget: ledger.state)
+        XCTAssertNil(second.claimSlot(now: now.addingTimeInterval(3)), "the next view is not paused, only spaced")
+        XCTAssertNotNil(second.claimSlot(now: now.addingTimeInterval(3.5)), "one second between two requests holds across views")
     }
 
     // MARK: Review 1
