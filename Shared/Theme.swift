@@ -22,12 +22,14 @@ enum Theme {
 
     // MARK: Semantic colours
 
-    static let accent = glacier
+    // MARK: themes – accent, accentText, prominentTint, routeGradient, progressGradient and ctaGradient follow the Look & Feel
+    // palette (Shared/ThemeRuntime.swift, docs/THEMES.md); Gletscher hands out exactly the values below. Everything else stays.
+    static var accent: Color { ThemeRuntime.colors.accent }
     static let accentSecondary = dusk
     static let onAccent = Color.white
     // MARK: motion – fill behind white labels (`.glassProminent`, tinted glass buttons). `accent` is a light blue in
     // dark mode (#7CC4FF), where white text on it reads at < 2:1; this stays a deep glacier blue in both appearances.
-    static let prominentTint = Color(light: "#2A7BD4", dark: "#2E78CC")
+    static var prominentTint: Color { ThemeRuntime.colors.prominentTint }   // MARK: themes – Gletscher: #2A7BD4 / #2E78CC
 
     static let background = Color(light: "#E6ECF3", dark: "#08132A")
     static let sheetBackground = Color(light: "#F1F4F8", dark: "#0D1830")
@@ -57,22 +59,17 @@ enum Theme {
     // Text-safe variants of the accents (≥ 4.5:1 on light backgrounds) – use these for small text.
     static let positiveText = Color(light: "#0A6B52", dark: "#6BD6A9")
     static let summitText = Color(light: "#B0501F", dark: "#FFAD85")
-    static let accentText = Color(light: "#1D5FB0", dark: "#9DD3FF")
+    static var accentText: Color { ThemeRuntime.colors.accentText }   // MARK: themes – Gletscher: #1D5FB0 / #9DD3FF
 
     static let celebrationColors: [Color] = [
         Color(hex: "#2A7BD4"), Color(hex: "#7A6FE0"), Color(hex: "#F08A5B"), Color(hex: "#23876A"), Color(hex: "#E2A93B"), Color(hex: "#E86C8A"),
     ]
 
-    /// Route / progress: glacier → dusk → dawn.
-    static let routeGradient = LinearGradient(
-        stops: [.init(color: Color(light: "#3B8BE0", dark: "#6CB6FF"), location: 0),
-                .init(color: Color(light: "#7C79E6", dark: "#A99FFF"), location: 0.55),
-                .init(color: Color(light: "#F08A5B", dark: "#FFAD85"), location: 1)],
-        startPoint: .leading, endPoint: .trailing)
-    static let progressGradient = routeGradient
-    /// Primary CTA (100°): #3A8BE4 → #5C86EA → #7F7EE8.
-    static let ctaGradient = LinearGradient(colors: [Color(hex: "#3A8BE4"), Color(hex: "#5C86EA"), Color(hex: "#7F7EE8")],
-                                            startPoint: .leading, endPoint: .trailing)
+    /// Route / progress: glacier → dusk → dawn (Gletscher: #3B8BE0/#6CB6FF → #7C79E6/#A99FFF @ 55 % → #F08A5B/#FFAD85).
+    static var routeGradient: LinearGradient { ThemeRuntime.colors.routeGradient }   // MARK: themes
+    static var progressGradient: LinearGradient { ThemeRuntime.colors.routeGradient }   // MARK: themes
+    /// Primary CTA (100°), Gletscher: #3A8BE4 → #5C86EA → #7F7EE8.
+    static var ctaGradient: LinearGradient { ThemeRuntime.colors.ctaGradient }   // MARK: themes
 
     // MARK: Transport modes (landscape colours; always paired with icon + label)
 
