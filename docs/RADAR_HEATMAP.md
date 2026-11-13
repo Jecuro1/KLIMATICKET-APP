@@ -228,7 +228,7 @@ braucht drei Punkte über mindestens eine Minute und mindestens 20 Züge mit Ech
 **„Pünktlichkeitskarte teilen“ (Zusatz, gebaut).** Im offenen Panel gibt es „Pünktlichkeitskarte teilen“ (`ShareLink`). Das Bild (`RadarHeatShare`, `ImageRenderer`, 1080 × 1500 px, erst beim Export gerendert wie
 `TktSharePass`) zeigt die Zellen auf nachtblauem Grund, ohne Apple-Basiskarte: die Fläche des Radar-Gebiets flach gezeichnet (Längengrad mit dem Kosinus der Breite), ein Glühen unter scharfen Sechsecken, graue Linien für Felder
 ohne Farbe, dazu die große Zahl, der Balken, die Teile in Worten, „Stand 12. Nov. 2026, 17:08 Uhr“ und den Hinweis (Radar-Bereich Österreich und Grenzgebiete, Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet, ohne
-Echtzeit nie pünktlich, grau = zu wenige Züge, „Eine Momentaufnahme, keine Pünktlichkeitsstatistik der ÖBB“, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
+Echtzeit nie pünktlich, grau = zu wenige Züge, „Momentaufnahme, keine ÖBB-Statistik“, „KlimaBilanz ist eine unabhängige App“). **Keine persönlichen Daten:** keine Fahrt, kein Zugname, kein Ort der Person, kein Konto, kein Logo. Das Bild ist immer dunkel.
 „Stand“ ist die Zeit der ältesten Antwort hinter den Zahlen, nicht der Moment des Teilens (Review 2: vorher stand dort die Uhrzeit, zu der das Panel gezeichnet wurde, auch wenn die
 Zahlen Minuten alt waren). Angeboten wird das Bild nur, wenn die Zahlen vollständig sind: jede Kachel hat geantwortet, keine ist ausgefallen, abgeschnitten oder zu alt. Ein Bild vom halben Land
 ginge sonst ohne den Hinweis weiter, der das im Panel sagt.

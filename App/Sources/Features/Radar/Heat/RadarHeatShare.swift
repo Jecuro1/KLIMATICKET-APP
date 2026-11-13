@@ -60,8 +60,9 @@ struct RadarHeatShareCard: View {
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
             }
+            // 140 points: the footer (review 2 added "keine ÖBB-Statistik") keeps the card's bottom margin; the cells use about 125.
             HeatShareField(cells: cells)
-                .frame(height: 150)
+                .frame(height: 140)
                 .accessibilityHidden(true)
             HeatStackedBar(summary: summary)
             Text(legendLine)
@@ -74,7 +75,7 @@ struct RadarHeatShareCard: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Radar-Bereich Österreich und Grenzgebiete. Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet. Züge ohne Echtzeit-Daten zählen nie als pünktlich. Graue Umrisse: zu wenige Züge für eine Farbe. Eine Momentaufnahme, keine Pünktlichkeitsstatistik der ÖBB. KlimaBilanz ist eine unabhängige App.")
+                Text("Radar-Bereich Österreich und Grenzgebiete. Verspätung am nächsten Halt laut ÖBB-Echtzeit, Positionen berechnet. Züge ohne Echtzeit-Daten zählen nie als pünktlich. Graue Umrisse: zu wenige Züge für eine Farbe. Momentaufnahme, keine ÖBB-Statistik. KlimaBilanz ist eine unabhängige App.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
