@@ -30,7 +30,7 @@ public struct FollowTransfer: Sendable, Hashable, Codable {
     public var plannedDeparture: Date
     /// Line of the next leg, e.g. "RJ 162", when known.
     public var lineName: String?
-    // MARK: anschluss – the guard's estimate of the change (docs/CONNECTION_GUARD.md §6). Optional: records saved before decode as nil.
+    // MARK: radar2-anschluss – the guard's estimate of the change (docs/CONNECTION_GUARD.md §6). Optional: records saved before decode as nil.
     /// Expected departure of the next leg at the station (realtime, else planned), as the Anschluss-Wächter last saw it.
     public var expectedDeparture: Date?
     /// When the guard saw `expectedDeparture`; older than `LiveFollow.transferEstimateLifetime` it is not used any more.
@@ -50,7 +50,7 @@ public struct FollowTransfer: Sendable, Hashable, Codable {
 
     /// The departure the change is counted with at `now`: the guard's expected departure while it is at most
     /// `LiveFollow.transferEstimateLifetime` old, else the planned one (a warning too many rather than one too few).
-    public func departureEstimate(now: Date) -> Date {   // MARK: anschluss
+    public func departureEstimate(now: Date) -> Date {   // MARK: radar2-anschluss
         if let expectedDeparture, let expectedAt, now.timeIntervalSince(expectedAt) <= LiveFollow.transferEstimateLifetime {
             return expectedDeparture
         }

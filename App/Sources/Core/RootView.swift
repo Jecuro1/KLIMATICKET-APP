@@ -635,6 +635,9 @@ struct ScreenshotRouter: View {
         // MARK: funktionen – Funktionen: the hub, Offline-Modus, Datenschutz with counters, a dependency, AX5, the planner offline, a link (demo, no network)
         case let featuresScreen where FeaturesScreenshotHost.screens.contains(featuresScreen):
             FeaturesScreenshotHost(screen: featuresScreen)
+        // MARK: radar2-anschluss – Anschluss-Wächter: every state, the alternatives, the accessory badge, AX5 (synthetic, no network)
+        case let guardScreen where GuardScreenshotHost.screens.contains(guardScreen):
+            GuardScreenshotHost(screen: guardScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

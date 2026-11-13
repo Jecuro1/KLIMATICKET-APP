@@ -55,6 +55,7 @@ final class LiveFollowTracker {
         endActivityNow()
         // MARK: exitalarm – the alarms belong to the follow of their run: another run ends them.
         if let previous = self.target, previous.tripID != target.tripID { ExitAlarmService.shared.followEnded(tripID: previous.tripID) }
+        ConnectionGuardService.shared.followChanged(to: target)   // MARK: radar2-anschluss – the guard stays only for the same trip and change
         self.target = target
         snapshot = nil
         lastNotice = nil
@@ -80,6 +81,7 @@ final class LiveFollowTracker {
         loop = nil
         endActivityNow()
         if let previous = target { ExitAlarmService.shared.followEnded(tripID: previous.tripID) }   // MARK: exitalarm
+        ConnectionGuardService.shared.followEnded()   // MARK: radar2-anschluss – the guard and its record go with the follow
         target = nil
         snapshot = nil
         lastNotice = nil
@@ -112,6 +114,7 @@ final class LiveFollowTracker {
         startedAt = record.startedAt
         updatedAt = record.snapshot?.updatedAt
         fetch = makeFetch(live)
+        ConnectionGuardService.shared.restore(followTripID: record.target.tripID, live: live)   // MARK: radar2-anschluss – loads, never asks
         if resume, loop == nil { loop = Task { [weak self] in await self?.run() } }
     }
 
@@ -161,6 +164,8 @@ final class LiveFollowTracker {
             // MARK: exitalarm – every alarm of this run takes the new arrival and delay of its stop
             ExitAlarmService.shared.followUpdated(tripID: target.tripID, stopovers: next.stopovers)
             await AutoRunner.shared.followUpdated(target: target, snapshot: next)   // MARK: automation – the rules read this answer, no request
+            // MARK: radar2-anschluss – the guard merges the feeder's answer (no request; silent in the background)
+            ConnectionGuardService.shared.followUpdated(target: target, snapshot: next, at: trip.fetchedAt ?? now)
             await syncActivity(target: target, snapshot: next, now: now, settings: settings)
             persist()
             if settings.isEnabled, let next = FollowRefreshPlan.earliestBackgroundRefresh(
@@ -224,6 +229,19 @@ final class LiveFollowTracker {
         let state = FollowLiveState.make(from: snapshot, now: now).with(exitAlarm: ExitAlarmService.shared.activityInfo(now: now))
         let staleDate = FollowRefreshPlan.staleDate(arrival: snapshot.arrivalEstimate, now: now)
         Task { _ = await FollowActivityController.shared.update(id: id, state: state, staleDate: staleDate) }
+    }
+
+    // MARK: radar2-anschluss
+    /// The Anschluss-Wächter's expected connecting departure and walk: the „Anschluss knapp“ notice counts with the same minutes as
+    /// the card while the estimate is fresh (docs/CONNECTION_GUARD.md §6). It asks for nothing.
+    func updateTransferEstimate(expectedDeparture: Date, observedAt: Date, walkMinutes: Int?) {
+        guard var updated = target, var transfer = updated.transfer else { return }
+        transfer.expectedDeparture = expectedDeparture
+        transfer.expectedAt = observedAt
+        transfer.walkMinutes = walkMinutes
+        updated.transfer = transfer
+        target = updated
+        persist()
     }
 
     /// Ends the Live Activity at once (stop, replaced follow, switch off).

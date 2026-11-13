@@ -30,6 +30,7 @@ struct LiveFollowAccessory: View {
                         Text(headline).font(.footnote.weight(.semibold)).foregroundStyle(Theme.textPrimary).lineLimit(1)
                     }
                     Spacer(minLength: 4)
+                    ConnectionGuardBadge(tripID: target.tripID)   // MARK: radar2-anschluss – only while the change is worse than „Sicher“
                     delayBadge
                 }
                 .padding(.horizontal, Theme.Spacing.m)
@@ -75,6 +76,12 @@ struct LiveFollowDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                    // MARK: radar2-anschluss – the Anschluss-Wächter of this follow (draws nothing without a guard)
+                    if let target = tracker.target {
+                        ConnectionGuardCard(target: target, snapshot: tracker.snapshot) {
+                            alarmInput = ExitAlarmSheetInput(target: target, stopovers: tracker.snapshot?.stopovers, preselectedStopID: target.alightStop.lid)
+                        }
+                    }
                     // MARK: exitalarm – the armed alarms of this run and a thin button into the shared sheet
                     if let target = tracker.target {
                         ExitAlarmFollowSection(target: target, snapshot: tracker.snapshot) { stopID in
