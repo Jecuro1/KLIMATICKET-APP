@@ -123,7 +123,7 @@ struct StopDetailView: View {
         else if screen.hasSuffix("End") { target = ("footer", .bottom) }
         else if screen.hasSuffix("Lines") { target = ("lines", .top) }
         else if screen.hasSuffix("Facilities") { target = ("facilities", .top) }
-        else if screen.hasSuffix("Departures") { target = ("departures", .top) }   // MARK: commute
+        else if screen.hasSuffix("Departures") { target = ("departures", .center) }   // MARK: commute
         else { target = nil }
         guard let target else { return }
         try? await Task.sleep(for: .milliseconds(900))

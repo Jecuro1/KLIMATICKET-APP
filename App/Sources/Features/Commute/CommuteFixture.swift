@@ -58,7 +58,7 @@ enum CommuteFixture {
 
         let morningRows: [Train]
         switch screen {
-        case "commuteDelayed", "commuteAX5", "commuteAX5Bottom":
+        case "commuteDelayed", "commuteAX5", "commuteAX5Rows", "commuteAX5Bottom":
             morningRows = [Train(hour: 7, minute: 20, category: "RJX", number: "160", direction: "Wien Hbf", delay: 12),
                            Train(hour: 7, minute: 27, category: "RJ", number: "362", direction: "Wien Hbf", delay: 0, platform: "3", minutes: 64),
                            Train(hour: 7, minute: 42, category: "REX", number: "5110", direction: "Innsbruck Hbf", delay: 2, platform: "1", minutes: 86),

@@ -332,7 +332,8 @@ struct CommuteActionItem: Identifiable {
     var id: String { title }
 }
 
-/// The four quick actions: side by side as icon-over-label tiles, one under the other at accessibility sizes.
+/// The quick actions: side by side as icon-over-label tiles of one height, one under the other at accessibility sizes (there the
+/// labels stop growing at AX2, so „Verbindung“ is never split inside the word).
 struct CommuteActionGrid: View {
     var items: [CommuteActionItem]
 
@@ -345,10 +346,12 @@ struct CommuteActionGrid: View {
                 VStack(spacing: Theme.Spacing.xs) {
                     ForEach(items) { item in button(item, stacked: true) }
                 }
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             } else {
                 HStack(spacing: Theme.Spacing.xs) {
                     ForEach(items) { item in button(item, stacked: false) }
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .haptic(.tap, trigger: tapTick)
@@ -362,7 +365,7 @@ struct CommuteActionGrid: View {
             Group {
                 if stacked {
                     HStack(spacing: Theme.Spacing.s) {
-                        Image(systemName: item.symbol).font(.body.weight(.semibold)).frame(minWidth: 28)
+                        Image(systemName: item.symbol).font(.body.weight(.semibold)).frame(minWidth: 24)
                         Text(item.title).font(.body.weight(.semibold)).multilineTextAlignment(.leading)
                         Spacer(minLength: 0)
                     }
@@ -381,7 +384,7 @@ struct CommuteActionGrid: View {
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 4)
-                    .frame(maxWidth: .infinity, minHeight: 64)
+                    .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity)
                 }
             }
             .foregroundStyle(item.isPrimary ? Theme.onAccent : Theme.textPrimary)

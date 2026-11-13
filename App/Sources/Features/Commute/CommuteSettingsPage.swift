@@ -11,6 +11,8 @@ struct CommuteSettingsPage: View {
     var isSheet = false
     /// CI scenes: the detector's candidates instead of the ones computed from the store.
     var previewCandidates: [CommuteGuess]? = nil
+    /// CI scene `commuteSettingsBottom`: scrolls to „Wann du fährst“ after the first frame.
+    var screenshotScrollsDown = false
 
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -25,9 +27,10 @@ struct CommuteSettingsPage: View {
     private var model: CommuteModel { .shared }
     private var settings: CommuteSettings { model.settings }
 
-    init(isSheet: Bool = false, previewCandidates: [CommuteGuess]? = nil) {
+    init(isSheet: Bool = false, previewCandidates: [CommuteGuess]? = nil, screenshotScrollsDown: Bool = false) {
         self.isSheet = isSheet
         self.previewCandidates = previewCandidates
+        self.screenshotScrollsDown = screenshotScrollsDown
         // Only the detector's window is read (56 days and one day of slack), not the whole history.
         let start = Date().addingTimeInterval(-Double(CommuteDetector.windowDays + 1) * 86_400)
         _recentTrips = Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start },
@@ -35,11 +38,22 @@ struct CommuteSettingsPage: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list
+                .task {
+                    guard screenshotScrollsDown else { return }
+                    try? await Task.sleep(for: .milliseconds(700))
+                    proxy.scrollTo("times", anchor: .top)
+                }
+        }
+    }
+
+    private var list: some View {
         List {
             switchSection
             if settings.isEnabled {
                 routeSection
-                timeSection
+                timeSection.id("times")
                 logSection
                 liveSection
                 siriSection

@@ -17,8 +17,7 @@ enum DeparturesState: Equatable {
 /// Feature flags of the stop detail.
 enum StopFeatureFlags {
     /// The „Nächste Abfahrten“ section. Off: `StopDeparturesSection` renders nothing.
-    /// MARK: commute – CI screenshot and perf runs only, until the section has been reviewed in screenshots; then on for everyone.
-    static var showsDepartures: Bool { LaunchMode.isSandboxed }
+    static let showsDepartures = true   // MARK: commute – reviewed in the stopDetailDepartures screenshots
 }
 
 /// State of one stop detail: loads `StopDetails` from the place index (built in the background at launch).
