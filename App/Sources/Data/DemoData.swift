@@ -100,6 +100,7 @@ enum DemoData {
         PerkDemoData.seed(into: context, ticket: ticket, now: now)
         // MARK: tripmeta – purposes + "Ohne KlimaTicket nicht gefahren" (values unchanged, so the totals stay the same).
         MetaDemoCategories.assign(trips: seeded, favorites: favorites)
+        TimeBalanceDemo.assign(trips: seeded)   // MARK: timebalance – durations and planned arrivals (values and totals unchanged)
         try? context.save()
         print("Demo data: \(count) trips")
     }

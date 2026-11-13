@@ -115,6 +115,7 @@ struct StatsScreen: View {
             .statsCard(order: 2)
         StatsGrowOnView(delay: Motion.Stagger.delay(3)) { StatsModesCard(snapshot: snapshot, grow: $0) }
             .statsCard(order: 3)
+        if TimeBalanceRelease.isLive { TimeBalanceEntryCard(period: snapshot.ticket).statsCard(order: 3) }   // MARK: timebalance – „Zeitbilanz“
         // MARK: tripmeta – "Wofür du fährst" and "Ehrliche Bilanz"
         StatsGrowOnView(delay: Motion.Stagger.delay(4)) { MetaPurposeCard(snapshot: snapshot, grow: $0) }
             .statsCard(order: 4)

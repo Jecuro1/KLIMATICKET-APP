@@ -107,6 +107,7 @@ private struct TripEdSheet: View {
                     }
                     TripEdModePicker(model: model)
                     TripEdDateCard(model: model)
+                    if TimeBalanceRelease.isLive { TripEdDurationRow(model: model) }   // MARK: timebalance – optional „Dauer“ (docs/TIME_BALANCE.md)
                     TripEdPriceCard(model: model, focus: $focus)
                     TripEdImpactCard(model: model)
                     if !model.isJourney {   // MARK: trips – a Live-Fahrt follows one route

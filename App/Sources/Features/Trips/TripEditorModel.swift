@@ -35,6 +35,8 @@ struct TripEdLeg: Identifiable {
     var liveQuote: PriceQuote?
     var liveKey = ""
     var isLoadingLive = false
+    /// „Dauer“ of one direction in minutes, 0 = unknown (TripEdDurationRow, docs/TIME_BALANCE.md).  // MARK: timebalance
+    var durationMinutes = 0
 
     init(mode: TransportMode, vias: [TripEdViaStop] = []) {
         self.mode = mode
@@ -123,6 +125,7 @@ final class TripEditorModel {
                 // An own price stays an own price; an estimated one is kept as saved (see `TripEdLeg.fare`).
                 if trip.isFareManual { leg.manualFare = trip.fareEUR } else { leg.storedFare = trip.fareEUR }
                 leg.storedDistanceKm = trip.distanceKm
+                leg.durationMinutes = trip.durationMinutes   // MARK: timebalance
                 legs.append(leg)
             }
             date = first.date
@@ -378,6 +381,10 @@ final class TripEditorModel {
         guard legs.indices.contains(index) else { return ("", "") }
         return (stops[index].resolvedName, stops[index + 1].resolvedName)
     }
+
+    // MARK: timebalance – „Dauer“ of the selected leg (TripEdDurationRow)
+    var durationMinutes: Int { legs[selectedLeg].durationMinutes }
+    func setDurationMinutes(_ minutes: Int) { legs[selectedLeg].durationMinutes = max(0, minutes) }
 
     func selectLeg(_ index: Int) {
         guard legs.indices.contains(index), index != selectedLeg else { return }
@@ -690,6 +697,7 @@ final class TripEditorModel {
                                   distanceKm: leg.distanceKm, fareEUR: leg.fare)
                 inserted.append(trip)
             }
+            TripEdDurationHook.prepare(trip, leg: leg, index: index, from: from.resolvedName, to: to.resolvedName, date: date, isJourney: isJourney)   // MARK: timebalance
             trip.date = date
             trip.fromName = from.resolvedName
             trip.toName = to.resolvedName

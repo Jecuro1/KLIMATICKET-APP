@@ -111,6 +111,7 @@ struct RootView: View {
         .rideActivityHost()  // MARK: live
         .tripRecorderHost()  // MARK: tripdetect – the full-screen recording screen ("Fahrt aufzeichnen")
         .autoRulesSheetHost()  // MARK: automation – „Regel ansehen“ from a rule notice opens the rule list
+        .timeBalanceLinkHost()  // MARK: timebalance – klimabilanz://timebalance opens the Zeitbilanz in a sheet
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
@@ -256,6 +257,7 @@ struct RootView: View {
     /// klimabilanz://radar – the Zug-Radar   // MARK: widgets
     /// klimabilanz://year[/2026|/ticket] – the year story   // MARK: yearreview
     /// klimabilanz://whatif – „Was wäre wenn?“   // MARK: whatif
+    /// klimabilanz://timebalance – „Zeitbilanz“   // MARK: timebalance
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -291,6 +293,8 @@ struct RootView: View {
             Task { await app.updates.checkIfDue(force: true) }
         case "whatif":   // MARK: whatif
             showsWhatIf = true
+        case "timebalance":   // MARK: timebalance
+            if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open() }
         case "commute":   // MARK: commute – klimabilanz://commute: the card pulses, or the setup opens (docs/COMMUTE.md §1)
             app.selectedTab = .overview
             CommuteModel.shared.openFromLink()
@@ -617,6 +621,9 @@ struct ScreenshotRouter: View {
         // MARK: automatik – Automatik: list, editor, Testlauf, log, budget, AX5 (pinned clock, synthetic rules, no notification, no network)
         case let autoScreen where AutoScreenshotHost.screens.contains(autoScreen):
             AutoScreenshotHost(screen: autoScreen)
+        // MARK: timebalance – Zeitbilanz: ticket year, month, empty, delays, AX5, the Statistik card, the editor's „Dauer“ (demo data, no network)
+        case let balanceScreen where TimeBalanceScreenshotHost.screens.contains(balanceScreen):
+            TimeBalanceScreenshotHost(screen: balanceScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
