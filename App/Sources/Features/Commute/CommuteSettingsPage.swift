@@ -273,6 +273,7 @@ struct CommuteSettingsPage: View {
             SetRowLabel(title: title, subtitle: subtitle, symbol: symbol, tint: tint)
         }
         .environment(\.timeZone, Calendar.vienna.timeZone)
+        .environment(\.locale, Format.locale)   // „07:20“, never „7:20 AM“
     }
 
     static func date(for minute: Int) -> Date {
@@ -315,7 +316,7 @@ struct CommuteSettingsPage: View {
                         .multilineTextAlignment(.trailing)
                 }
                 .accessibilityElement(children: .combine)
-                if app.live.consent == .undecided {
+                if app.live.consent == .undecided, !app.live.isDemo {
                     Button { showsConsent = true } label: {
                         SetRowLabel(title: "Live-Daten einschalten …", subtitle: "Erklärt, was abgefragt wird, und fragt nach deiner Zustimmung",
                                     symbol: "dot.radiowaves.left.and.right", tint: Theme.glacier)

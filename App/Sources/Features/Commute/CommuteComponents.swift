@@ -191,12 +191,16 @@ struct CommuteConnectionRow: View {
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                     .minimumScaleFactor(0.85)
             }
-            HStack(spacing: 6) {
+            // At accessibility sizes the arrival line wraps freely and „Alternative“ gets a line of its own.
+            let sublineLayout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+                                                             : AnyLayout(HStackLayout(spacing: 6))
+            sublineLayout {
                 Text(subline)
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .monospacedDigit()
-                    .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: typeSize.isAccessibilitySize)
                 if isAlternative {
                     Text("Alternative")
                         .font(.caption2.weight(.bold))

@@ -31,8 +31,11 @@ struct CommuteLiveCard: View {
                             .motionTransition(.rise)
                     }
                     rowsBlock(rows: Array(rows.prefix(3)), advice: advice, direction: direction)
-                    CommuteDataAgeLine(fetchedAt: model.fetchedAt, hasRealtime: rows.contains(where: \.hasRealtime),
-                                       isOffline: model.phase == .failed(.offline), isDemo: model.demo != nil || app.live.isDemo)
+                    // The age of an answer – none while the first one loads (the skeleton says that).
+                    if model.fetchedAt != nil, !rows.isEmpty {
+                        CommuteDataAgeLine(fetchedAt: model.fetchedAt, hasRealtime: rows.contains(where: \.hasRealtime),
+                                           isOffline: model.phase == .failed(.offline), isDemo: model.demo != nil || app.live.isDemo)
+                    }
                 }
                 CommuteActionGrid(items: actionItems(direction: direction, first: rows.first { !$0.isCancelled }))
                     .padding(.top, Theme.Spacing.xxs)

@@ -36,6 +36,10 @@ Bedienung, Frost-Karten für Inhalte.
 - **Fahrten erkennen** – „Fahrt aufzeichnen“ (genau, mit Live-Karte und Live Activity) und die optionale **Hintergrund-Erkennung (Beta)**:
   Vorschläge mit ehrlichem Etikett (Vielleicht, Wahrscheinlich, Sicher) in der Übersicht, nie ohne dein Okay erfasst; grobe Standortpunkte
   höchstens 36 Stunden nur auf dem iPhone ([docs/TRIP_DETECTION.md](docs/TRIP_DETECTION.md), mit Geräte-Checkliste und den Grenzen)
+- **Pendel-Modus** – deine Stammstrecke (aus deinen Fahrten erkannt, aus „Meine Routen“ oder zwei Stationen): vor der Abfahrt die nächsten
+  drei Verbindungen mit Verspätung, Gleis und bei Ausfall der nächsten Verbindung, Erfassen mit einem Tipp, „Wann fährt mein nächster
+  Zug?“ per Siri; dazu „Nächste Abfahrten“ im Haltestellen-Detail. Verspätungen nur mit Live-Daten und nur bei offener App; noch nicht auf
+  einem iPhone geprüft ([docs/COMMUTE.md](docs/COMMUTE.md))
 - **Widgets, Sperrbildschirm, StandBy, Kontrollzentrum, Siri & Kurzbefehle** – inkl. interaktiver Schnellerfassung; die Widgets lesen nur
   einen Cache und machen nie einen Netzaufruf
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick

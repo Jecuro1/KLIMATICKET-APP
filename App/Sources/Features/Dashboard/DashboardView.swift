@@ -92,6 +92,7 @@ struct DashboardView: View {
                     }
                     // MARK: yearreview – 1 Dec – 31 Jan, dismissible per year; also when a new ticket has no trip yet but the year has
                     YearReviewSeasonalCard(trips: trips)
+                    CommuteCardSection(trips: trips, savedRoutes: favorites)   // MARK: commute – Pendel-Modus (docs/COMMUTE.md §1)
 
                     if hasTrips || !favorites.isEmpty {
                         // No second "Neue Fahrt" button in the content – the header's "+" and the favourites do that (DESIGN.md §5.1 · 5).

@@ -2830,6 +2830,8 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 
 **Zeitreise (Regler, wo die Züge in 1 oder 2 Stunden sind):** Ein Uhr-Chip auf dem Radar klappt zu einem Regler von −30 Min bis +3 Std auf. Die Positionen werden aus dem Fahrplan, den Verspätungen von jetzt und Momentaufnahmen der Auskunft für andere Zeiten berechnet; die Anfragen laufen durch dasselbe Budget von 24 je Minute (R12: Messung, was eine Antwort für andere Zeiten enthält): `docs/RADAR_TIMETRAVEL.md`.
 
+**Pendel-Modus und „Nächste Abfahrten“ (nicht Teil des Radars):** Die Pendel-Karte der Übersicht (eine TripSearch) und der Abschnitt „Nächste Abfahrten“ im Haltestellen-Detail (ein StationBoard) fragen nur mit Zustimmung, im Vordergrund und solange sie auf dem Bildschirm sind, je höchstens einmal pro Minute über dieselbe Drossel; Siri fragt nie: `docs/COMMUTE.md` §7 und §12.
+
 **Nicht geprüft:** das Zeitlimit des Clients (`hafas.timeout`, 20 s) gegen die langsamste gemessene Antwort (21,5 s, erste Anfrage; die Messung lief über einen
 anderen Weg, ob so eine Antwort auf einem iPhone vorkommt, ist offen: ein Fehlschlag wird einmal wiederholt, die Kachel dann mit Backoff neu versucht); alle
 Produkte zusammen: bei Bussen und Bims in einer Großstadt teilt sich der Baum bis Stufe 6 und braucht viele Anfragen je Runde (das Budget dehnt sie, der Status

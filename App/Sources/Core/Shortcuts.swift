@@ -68,5 +68,25 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
             shortTitle: "Fahrt starten",
             systemImageName: "dot.radiowaves.left.and.right"
         )
+        // MARK: commute – Pendel-Modus (docs/COMMUTE.md §6): no network request from Siri, the card's last answer or the plan
+        AppShortcut(
+            intent: CommuteNextIntent(),
+            phrases: [
+                "Wann fährt mein nächster Zug in \(.applicationName)",
+                "Nächster Pendelzug in \(.applicationName)",
+                "\(.applicationName) nächster Zug",
+            ],
+            shortTitle: "Nächster Pendelzug",
+            systemImageName: "tram.fill"
+        )
+        AppShortcut(
+            intent: CommuteLogIntent(),
+            phrases: [
+                "Pendelfahrt in \(.applicationName) erfassen",
+                "\(.applicationName) Pendelfahrt erfassen",
+            ],
+            shortTitle: "Pendelfahrt erfassen",
+            systemImageName: "point.topleft.down.to.point.bottomright.curvepath"
+        )
     }
 }
