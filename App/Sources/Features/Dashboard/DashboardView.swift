@@ -125,6 +125,7 @@ struct DashboardView: View {
                         insights(snapshot: snapshot)
                             .padding(.horizontal, Theme.Spacing.cardGutter)
                             .padding(.top, DashStyle.sectionSpacing)
+                            .featureGatedAny(.achievementsTeaser, .weekInsight)   // MARK: funktionen – no gap when both are off
                     }
 
                     // MARK: benefits
@@ -133,6 +134,7 @@ struct DashboardView: View {
                         .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)
                         .reveal(order: 8)
                         .scrollCardTransition()
+                        .featureGated(.perksCard)   // MARK: funktionen
                 }
                 .padding(.bottom, Theme.Spacing.xl)
                 .motionAnimation(Motion.smooth, value: suggestions.count + (isRecording ? 1 : 0))
@@ -197,10 +199,12 @@ struct DashboardView: View {
             .zoomSource(id: DashZoomID.gipfelbuch, cornerRadius: Theme.Radius.card)
             .reveal(order: 6)
             .scrollCardTransition()
+            .featureGated(.achievementsTeaser)   // MARK: funktionen
 
             DashWeekInsightCard(stats: DashWeekStats.make(fromNewestFirst: trips))
                 .reveal(order: 7)
                 .scrollCardTransition()
+                .featureGated(.weekInsight)   // MARK: funktionen
         }
     }
 

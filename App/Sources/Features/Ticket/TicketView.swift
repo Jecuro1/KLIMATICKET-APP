@@ -158,6 +158,7 @@ struct TicketView: View {
             PerkSummaryCard()
                 .reveal(order: 5)
                 .scrollCardTransition()
+                .featureGated(.perksCard)   // MARK: funktionen
             // MARK: advisor
             AdvEntryLink(ticket: ticket, trips: trips, scrollProxy: proxy)
                 .reveal(order: 6)

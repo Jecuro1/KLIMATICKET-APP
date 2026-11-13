@@ -113,6 +113,7 @@ struct RootView: View {
         .autoRulesSheetHost()  // MARK: automation – „Regel ansehen“ from a rule notice opens the rule list
         .timeBalanceLinkHost()  // MARK: timebalance – klimabilanz://timebalance opens the Zeitbilanz in a sheet
         .calendarSettingsHost()  // MARK: calendarsuggestions – klimabilanz://calendar and „Anpassen“ open Kalender-Vorschläge in a sheet
+        .featureLinkHost()  // MARK: funktionen – a link to a hidden feature opens its row in Funktionen (docs/FUNCTIONS_HUB.md)
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
@@ -631,6 +632,9 @@ struct ScreenshotRouter: View {
         // MARK: calendarsuggestions – Kalender-Vorschläge: cards, follow-up, settings in every permission state, AX5 (fake calendar, no alert)
         case let calendarScreen where CalendarScreenshotHost.screens.contains(calendarScreen):
             CalendarScreenshotHost(screen: calendarScreen)
+        // MARK: funktionen – Funktionen: the hub, Offline-Modus, Datenschutz with counters, a dependency, AX5, the planner offline, a link (demo, no network)
+        case let featuresScreen where FeaturesScreenshotHost.screens.contains(featuresScreen):
+            FeaturesScreenshotHost(screen: featuresScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

@@ -117,12 +117,15 @@ final class LiveDataService {
         Task { await pushEffectiveConfig() }
     }
 
+    func featureSwitchesChanged() { switchesChanged() }   // MARK: funktionen – the Offline-Modus went on or off (FeatureCenter)
+
     // MARK: Availability
 
     var isTimetableAvailable: Bool { timetableUnavailable == nil }
     var isLivePriceAvailable: Bool { priceUnavailable == nil }
 
     var timetableUnavailable: Unavailable? {
+        if FeatureCenter.shared.offlineMode { return .switchedOff }   // MARK: funktionen – Offline-Modus (docs/FUNCTIONS_HUB.md §4)
         if isDemo { return nil }
         if let reason = consentBlock { return reason }
         if !settings.liveTimetableEnabled { return .switchedOff }
@@ -132,6 +135,7 @@ final class LiveDataService {
     }
 
     var priceUnavailable: Unavailable? {
+        if FeatureCenter.shared.offlineMode { return .switchedOff }   // MARK: funktionen – Offline-Modus
         if isDemo { return nil }
         if let reason = consentBlock { return reason }
         if !settings.livePricesEnabled { return .switchedOff }
@@ -245,7 +249,7 @@ final class LiveDataService {
 
     /// At most every 12 h, only with consent. The URL comes from the update manifest, else from the build.
     func refreshConfigIfDue(manifest: UpdateManifest?) async {
-        guard !isDemo, consent == .granted, store.isDue() else { return }
+        guard !isDemo, consent == .granted, store.isDue(), !FeatureCenter.shared.offlineMode else { return }   // MARK: funktionen
         let url = manifest?.liveConfigURL.flatMap(URL.init(string:)) ?? appConfig.remoteLiveConfig
         guard let url else { return }
         let agent = config.userAgent.replacingOccurrences(of: "{version}", with: AppConfig.appVersion)
@@ -293,7 +297,7 @@ final class LiveDataService {
     /// The config the clients see: a provider is only enabled while its feature is on *and* consent is granted.
     private var effectiveConfig: LiveConfig {
         var c = config
-        let consented = consent == .granted
+        let consented = consent == .granted && !FeatureCenter.shared.offlineMode   // MARK: funktionen – Offline-Modus: every provider off
         let timetable = consented && settings.liveTimetableEnabled
         let priceOn = consented && settings.livePricesEnabled
         c.hafas.enabled = c.hafas.enabled && timetable
@@ -305,6 +309,9 @@ final class LiveDataService {
         c.vao.enabled = c.vao.enabled && priceOn
         return c
     }
+
+    // MARK: funktionen – request counters for Funktionen › Datenschutz (in memory since the launch; empty before the first request)
+    func requestCounters() async -> [LiveProvider: RequestCounters] { guard let stack = stackStorage else { return [:] }; return await stack.throttle.allCounters() }
 
     private func pushEffectiveConfig() async {
         guard let stack = stackStorage else { return }

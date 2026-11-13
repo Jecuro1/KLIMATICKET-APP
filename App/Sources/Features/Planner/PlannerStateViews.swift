@@ -12,6 +12,8 @@ struct PlannerUnavailableView: View {
         switch reason {
         case .consentUndecided:
             LiveConsentCard(style: .card)
+        case .switchedOff where FeatureCenter.shared.offlineMode:   // MARK: funktionen – the Offline-Modus says its own name
+            FeatureOfflinePlannerNotice(onSettings: onSettings)
         case .declined, .switchedOff:
             PlannerNoticeCard(symbol: "antenna.radiowaves.left.and.right.slash", title: "Live-Daten sind aus",
                               message: "Für den Fahrplan fragt KlimaBilanz bei der ÖBB-Fahrplanauskunft ab – das geht erst, wenn du Live-Daten einschaltest. Deine Fahrten und Normalpreise funktionieren weiter offline.",

@@ -69,7 +69,7 @@ struct PlannerHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Spacing.l) {
                     header(model)
-                    trainSearchEntry
+                    trainSearchEntry.featureGated(.trainSearch)   // MARK: funktionen – hidden while „Züge suchen“ is off
                     modePicker(model)
                     if model.mode == .connections {
                         ConnectionsHome(trips: trips, favorites: favorites)
@@ -99,6 +99,7 @@ struct PlannerHomeView: View {
         .onChange(of: model.radarRequested, initial: true) { _, requested in
             guard requested else { return }
             model.radarRequested = false
+            guard FeatureCenter.shared.allowsLink(to: .radar, app: app) else { return }   // MARK: funktionen – radar off: the hub opens
             showsRadar = true
         }
         .sheet(isPresented: $showsDisruptions) { DisruptionsView() }        // MARK: scotty – Störungen
@@ -173,6 +174,7 @@ struct PlannerHomeView: View {
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel("Zug-Radar")
+            .featureGated(.radar)   // MARK: funktionen
             Button { showsDisruptions = true } label: {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 17, weight: .semibold))
@@ -183,6 +185,7 @@ struct PlannerHomeView: View {
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel("Störungen")
+            .featureGated(.disruptions)   // MARK: funktionen
             Button { model.showsOptions = true } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 18, weight: .semibold))

@@ -185,6 +185,7 @@ final class UpdateService {
     /// Checks at most every 6 hours unless forced. Presents the sheet once per new version.
     /// `presents: false` (MARK: settings – Manuell aktualisieren) fetches the release without raising the update sheet.
     func checkIfDue(force: Bool, presents: Bool = true) async {
+        if !force && FeatureCenter.shared.offlineMode { return }   // MARK: funktionen – Offline-Modus: no automatic check, a tap still checks
         let channel = await resolveChannel()
         if channel == .appStore {
             await checkAppStore(force: force)
