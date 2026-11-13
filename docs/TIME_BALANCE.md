@@ -100,7 +100,8 @@ wurden. Ein Pull vom Server überschreibt sie nicht (`TripDTO.apply` setzt sie n
 flache, optionale Schlüssel neben den Sync-Schlüsseln (`TripTimeBackupRow`). Ein älteres Backup ohne die Schlüssel stellt sich wieder
 her: neue Fahrten bekommen die Standardwerte, bestehende behalten ihre Werte. Falsche Typen werden verworfen, Werte außerhalb des
 Bereichs bereinigt – das Wiederherstellen scheitert nie an ihnen. Tests: `TimeBalanceBackupTests` (Export einer Fahrt mit allen
-Feldern → Import → Vergleich; altes JSON ohne Schlüssel; kaputte Werte). **CSV bleibt unverändert**, damit ältere Exporte
+Feldern → Import → Vergleich; altes JSON ohne Schlüssel; kaputte Werte). Einmal zusätzlich mit dem echten `TripDTO` (KlimaCloud) auf Linux nachgestellt: Hin- und Rückweg gleich, ein
+Backup ohne die Schlüssel liest sich, und eine neue Datei liest sich auch als reines `TripDTO` (eine ältere App ignoriert die Schlüssel). **CSV bleibt unverändert**, damit ältere Exporte
 importierbar bleiben.
 
 ## 6. Auto-Vergleich und Wortwahl
@@ -164,6 +165,17 @@ CI-Szenen (`[shots:…]`, `-KBDemo YES`, kein Netzwerk): `timeBalance`, `timeBal
 `tripEditDuration`. Die Demo-Daten (`TimeBalanceDemo.assign`) geben dem Pendelweg St. Anton → Innsbruck bei jeder zweiten Fahrt eine
 planmäßige Ankunft (72 Min.), Innsbruck → Salzburg/Wien ebenso, einigen Fahrten eine eingetragene Dauer; Werte und Summen der Demo
 bleiben gleich.
+
+Was die Screenshot-Läufe gezeigt haben (CI-Läufe 43468668774 und 43473897047, hell und dunkel) und was danach geändert wurde:
+- Die Legende des Helden zeigte 26 + 45 Std. unter „72 Std.“ – jetzt verteilen sich die abgerundeten Stunden nach dem größten Rest
+  (und die Prozente auf 100 %), damit die Teile die große Zahl ergeben.
+- „Bim · 0 %“ bei 21 Minuten – jetzt „< 1 %“.
+- Die Statistik-Karte sagte „Im Auto … gefahren. Davon 37 % erfasst“ (das „davon“ hing am Auto) – jetzt der Auto-Satz und darunter
+  „37 % erfasst · 63 % geschätzt“ am Balken.
+- AX5: die Kachelzahl blieb 30 pt, während ihre Unterzeile riesig wurde – die Zahl wächst jetzt mit, Unterzeilen stoppen bei AX2;
+  Verkehrsmittel-Zeilen stapeln sich; die Kopfzeile und die Zeile unter der großen Zahl stoppen bei AX2.
+- Die Verspätungs-Szene zeigte die Karte nicht (sie liegt unter dem Auto-Vergleich) – die Szene scrollt jetzt dorthin.
+- Danach gingen die drei Einstiege live (`TimeBalanceRelease.isLive`).
 
 ## 10. Nur auf dem Gerät prüfbar / nicht verifiziert
 

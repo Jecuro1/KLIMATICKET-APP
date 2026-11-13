@@ -33,6 +33,9 @@ Bedienung, Frost-Karten für Inhalte.
   und die regionalen Tickets der Bundesländer (80 Tarifvarianten im Katalog; der Tarifstand zeigt, wie aktuell er ist)
 - **Statistik** – Ersparnis-Verlauf mit Prognose, Monatsbilanz, Verkehrsmittel, Wochentage, Reise-Kalender,
   Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, **Was wäre wenn?**, Öffis vs. Auto, CO₂-Bilanz, Österreich-Karte, Jahresbericht als PDF
+- **Zeitbilanz** – deine Stunden in Bahn und Bus, ehrlich getrennt in erfasst (eingetragene Dauer, Abfahrt & Ankunft) und geschätzt
+  (Durchschnittstempo), dazu wie lange du mit dem Auto selbst gefahren wärst, erfasste Verspätungen und die letzten 12 Wochen; optionale
+  „Dauer“ im Fahrt-Editor ([docs/TIME_BALANCE.md](docs/TIME_BALANCE.md))
 - **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen
 - **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
   Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht

@@ -112,7 +112,7 @@ struct TimeBalanceDelayCard: View {
                     .background(Theme.dawn.opacity(0.16), in: .rect(cornerRadius: Theme.Radius.modeTile, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
-                    Kicker(text: "Verspätungen")
+                    Kicker(text: "Pünktlichkeit")
                     Text(TimeBalanceText.delayTitle(delays))
                         .font(.headline)
                         .foregroundStyle(Theme.textPrimary)

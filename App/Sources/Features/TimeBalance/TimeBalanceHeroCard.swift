@@ -43,6 +43,7 @@ struct TimeBalanceHeroCard: View {
                     .monospacedDigit()
                     .contentTransition(.numericText())
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                     .accessibilityHidden(true)
                 StatsGrowOnView(delay: Motion.Stagger.delay(2)) { grow in
                     TimeBalanceSplitBar(recorded: balance.recordedMinutes, estimated: balance.estimatedMinutes, grow: grow)

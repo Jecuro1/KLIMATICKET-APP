@@ -2,10 +2,10 @@ import SwiftUI
 import SwiftData
 import KlimaCore
 
-/// Until the screens were looked at in CI screenshots, the Zeitbilanz's entry points (Statistik card, klimabilanz://timebalance,
-/// the editor's „Dauer“ row) show only in screenshot runs.
+/// The Zeitbilanz's entry points (Statistik card, klimabilanz://timebalance, the editor's „Dauer“ row). They showed only in
+/// screenshot runs until the screens were looked at (two CI runs, light and dark, AX5); `false` hides all three again.
 enum TimeBalanceRelease {
-    static var isLive: Bool { LaunchMode.isScreenshot }
+    static let isLive = true
 }
 
 /// Sample durations for the demo year („Demo ansehen“, screenshots): the commute logged from the Fahrplan (planned arrival),
