@@ -4,41 +4,7 @@ import KlimaCore
 
 // Modes, map styles, presets, pins and failure copy of the Zug-Radar (split from RadarView.swift).
 
-/// Transport modes the radar can show (server-side product filter).
-enum RadarMode: CaseIterable, Identifiable {
-    case rail, suburban, bus, tram, subway
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .rail: "Züge"
-        case .suburban: "S-Bahn"
-        case .bus: "Bus"
-        case .tram: "Bim"
-        case .subway: "U-Bahn"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .rail: "tram.fill"
-        case .suburban: "tram"
-        case .bus: "bus"
-        case .tram: "tram.fill.tunnel"
-        case .subway: "tram.circle"
-        }
-    }
-
-    var products: ProductMask {
-        switch self {
-        case .rail: .rail
-        case .suburban: .suburban
-        case .bus: .bus
-        case .tram: .tram
-        case .subway: .subway
-        }
-    }
-}
+// MARK: radarmodes – the transport modes (`RadarMode`, `RadarModeSelection`) live in KlimaCore; their symbol and colour in `Modes/RadarMode+UI.swift`.
 
 /// Base map styles. The train layer is the same in all of them; „Dunkel“ forces the dark map palette.
 enum RadarMapStyle: String, CaseIterable, Identifiable {

@@ -37,6 +37,8 @@ struct RadarView: View {
     @State private var focusDone = false
     // MARK: map – the layers of the Scotty-style map (docs/OEBB_LIVE.md §R10); the choice is per device
     @AppStorage("map.layers") var layersRaw = MapLayerSelection.initial.storageValue
+    // MARK: radarmodes – the chosen transport modes, per device (docs/RADAR_MODES.md §2); reset in screenshot launches
+    @AppStorage(RadarModeSelection.storageKey) var modesRaw = RadarModeSelection.default.storageValue
     @State var allStations: [MapStationPin] = []
     /// The stations in view, grouped for the zoom, and their lookup by id. Computed when the camera stops (`refreshStations`), not
     /// in the view body: the body runs every second, and a lookup that is rebuilt per marker is thousands of inserts each time.
@@ -56,7 +58,7 @@ struct RadarView: View {
     /// What is on and open, for the rules the live loop, the Pünktlichkeit layer, the Zeitreise and the cockpit share (`RadarFeatureGate`,
     /// docs/OEBB_LIVE.md §R11.3).
     var gate: RadarFeatureGate {
-        RadarFeatureGate(layers: layers, access: liveAccess, railOnly: model.isRailOnly, sceneActive: scenePhase == .active,
+        RadarFeatureGate(layers: layers, access: liveAccess, railOnly: model.carriesOnlyTrains, sceneActive: scenePhase == .active,
                          cockpitOpen: cockpit != nil, timeOpen: travel.isOpen, timeAway: travel.isAway)
     }
 
@@ -109,7 +111,7 @@ struct RadarView: View {
             .onChange(of: model.pins.count) { _, _ in centerOnFocusedTrip() }
             .sheet(isPresented: $showsFilter) {
                 RadarFilterSheet(filter: Binding(get: { model.filter }, set: { model.filter = $0 }),
-                                 modes: Binding(get: { model.modes }, set: { model.modes = $0 }),
+                                 modes: Binding(get: { model.modes }, set: { setModes($0) }),   // MARK: radarmodes
                                  // Selected lines stay in the list even when none of them is on the map right now, so an
                                  // active line filter is always visible and can be cleared.
                                  categories: Set(model.knownVehicles.map { RadarLine.category(of: $0.line) })
@@ -220,7 +222,7 @@ struct RadarView: View {
     }
 
     /// The noun of the summary and the clusters: "Züge" when only rail is on, else "Fahrzeuge" (as the status line says).
-    private var vehicleNoun: String { model.isRailOnly ? "Züge" : "Fahrzeuge" }
+    private var vehicleNoun: String { model.carriesOnlyTrains ? "Züge" : "Fahrzeuge" }
 
     /// The radar service. The dense demo scenes bring their own (synthetic, no network); everything else goes through the gate.
     var radarService: (any RadarService)? {
@@ -267,6 +269,9 @@ struct RadarView: View {
         // per device, and a scene that sets its own (Zeitreise: trains only; Pünktlichkeit) changed the scenes captured after it in the same
         // simulator: the default radar lost its stations (CI run 43408109942, scene "radar" after the Zeitreise scenes).
         if LaunchMode.isSandboxed { layersRaw = MapLayerSelection.initial.storageValue }
+        // MARK: radarmodes – the modes as stored (a screenshot launch starts from the default, like the layers)
+        if LaunchMode.isSandboxed { modesRaw = RadarModeSelection.default.storageValue }
+        model.modes = RadarModeSelection(storage: modesRaw)
         // "Auf der Karte zeigen" needs the train layer: it is switched on, and the choice stays (the layer bar shows it).
         if focusTripID != nil, !layers.isOn(.trains) { toggleLayer(.trains) }
         dropHeatLayerInScreenshots()   // MARK: radarheat – a scene of another preset does not inherit the layer a heat scene stored

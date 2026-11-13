@@ -118,13 +118,14 @@ extension RadarView {
                 radar2TopBarItems   // MARK: radar2
                 ForEach(RadarMode.allCases) { mode in
                     Chip(title: mode.title, symbol: mode.symbol, isSelected: model.modes.contains(mode)) {
-                        model.toggle(mode)
+                        toggleMode(mode)   // MARK: radarmodes – stored per device
                     }
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
         }
         .scrollIndicators(.hidden)
+        .haptic(.selection, trigger: model.modes)   // MARK: radarmodes
     }
 
     // MARK: Status

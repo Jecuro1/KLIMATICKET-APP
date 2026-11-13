@@ -6,7 +6,7 @@ import KlimaCore
 
 struct RadarFilterSheet: View {
     @Binding var filter: RadarFilter
-    @Binding var modes: Set<RadarMode>
+    @Binding var modes: RadarModeSelection
     /// Line categories seen in the last answers ("RJX", "REX", "S", …).
     var categories: [String]
     /// MARK: radar2 – the parts of the second wave add their sections at the end (`Radar2SettingsSections`).
@@ -26,7 +26,7 @@ struct RadarFilterSheet: View {
                 } header: {
                     Text("Verkehrsmittel")
                 } footer: {
-                    Text("Verkehrsmittel fragt ÖBB direkt ab. Mindestens eins bleibt an.")
+                    Text("Das Radar fragt jedes eingeschaltete Verkehrsmittel bei der ÖBB-Auskunft ab. Mindestens eins bleibt an.")
                 }
 
                 Section {
@@ -69,9 +69,9 @@ struct RadarFilterSheet: View {
                 Section {
                     Button("Alles zurücksetzen", role: .destructive) {
                         filter = RadarFilter()
-                        modes = [.rail]
+                        modes = .default
                     }
-                    .disabled(!filter.isActive && modes == [.rail])
+                    .disabled(!filter.isActive && modes == .default)
                 }
 
                 Radar2SettingsSections(parts: parts)   // MARK: radar2
@@ -86,13 +86,7 @@ struct RadarFilterSheet: View {
 
     private func modeBinding(_ mode: RadarMode) -> Binding<Bool> {
         Binding(get: { modes.contains(mode) },
-                set: { on in
-                    if on {
-                        modes.insert(mode)
-                    } else if modes.count > 1 {
-                        modes.remove(mode)
-                    }
-                })
+                set: { on in modes.set(mode, on: on) })   // at least one stays on
     }
 
     private func categoryBinding(_ category: String) -> Binding<Bool> {

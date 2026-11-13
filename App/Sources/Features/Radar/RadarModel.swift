@@ -11,7 +11,8 @@ import KlimaCore
 final class RadarModel {
     enum Load: Equatable { case idle, loading, loaded, failed(String) }
 
-    var modes: Set<RadarMode> = [.rail] {
+    /// MARK: radarmodes – the chosen modes (docs/RADAR_MODES.md §2), persisted by `RadarView` under `radar.modes.v1`. Default {Züge, S-Bahn}.
+    var modes: RadarModeSelection = .default {
         didSet { if modes != oldValue { modesChanged(from: oldValue) } }
     }
     var filter = RadarFilter() {
@@ -57,26 +58,25 @@ final class RadarModel {
     /// second loop for it: one loop, one budget, and it ends with the view.
     @ObservationIgnored private var manualRefresh = false
 
-    var products: ProductMask {
-        modes.reduce(into: ProductMask(rawValue: 0)) { $0.formUnion($1.products) }
-    }
+    var products: ProductMask { modes.products }
 
-    var isRailOnly: Bool { modes == [.rail] }
+    /// MARK: radarmodes – only Züge and S-Bahn are on: the Zeitreise is offered and the status says „Züge“.
+    var carriesOnlyTrains: Bool { modes.carriesOnlyTrains }
 
     /// "12 Züge im Ausschnitt, 3 verspätet": the label of the train layer (VoiceOver).
     var summary: String {
-        RadarSummary.line(count: pins.count, late: pins.filter { $0.delay == .late }.count, rail: isRailOnly)
+        RadarSummary.line(count: pins.count, late: pins.filter { $0.delay == .late }.count, rail: carriesOnlyTrains)
     }
 
     /// The status pill: the vehicles in the visible area and the age of the oldest answer behind them.
     var pillText: String? {
         guard status.answeredTiles > 0 || !pins.isEmpty else { return nil }
-        return RadarStatusText.pill(count: pins.count, rail: isRailOnly, age: status.oldestAnswerAge)
+        return RadarStatusText.pill(count: pins.count, rail: carriesOnlyTrains, age: status.oldestAnswerAge)
     }
 
     /// The notes under the pill: cut-off tiles, a partial failure, a slow refresh.
     var notes: [String] {
-        RadarStatusText.notes(status, rail: isRailOnly, hasVehicles: !pins.isEmpty || status.answeredTiles > 0)
+        RadarStatusText.notes(status, rail: carriesOnlyTrains, hasVehicles: !pins.isEmpty || status.answeredTiles > 0)
     }
 
     /// Every vehicle of the last minutes, whatever the map shows. Search and the filter's line list use it.
@@ -85,22 +85,16 @@ final class RadarModel {
     }
 
     func toggle(_ mode: RadarMode) {
-        if modes.contains(mode) {
-            guard modes.count > 1 else { return }   // at least one mode stays on
-            modes.remove(mode)
-        } else {
-            modes.insert(mode)
-        }
+        modes.toggle(mode)   // at least one mode stays on
     }
 
     /// The old answers are for other vehicles: the tiles start over, vehicles of a mode that was switched off go at once.
-    private func modesChanged(from old: Set<RadarMode>) {
+    private func modesChanged(from old: RadarModeSelection) {
         generation += 1
         scheduler.reset()
         let mask = products
         // MARK: radar2 – the classes that were switched off leave the parts as well (radartrail drops their trails)
-        let oldMask = old.reduce(into: ProductMask(rawValue: 0)) { $0.formUnion($1.products) }
-        let removed = oldMask.subtracting(mask)
+        let removed = old.products.subtracting(mask)
         if !removed.isEmpty { radar2.didRemove(products: removed) }
         store.removeAll { vehicle in
             guard let line = vehicle.line, line.productClass != 0 else { return false }
