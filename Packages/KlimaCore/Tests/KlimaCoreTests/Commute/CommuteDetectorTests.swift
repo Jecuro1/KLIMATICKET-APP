@@ -54,6 +54,24 @@ final class CommuteDetectorTests: XCTestCase {
         XCTAssertNil(guess.returnMinute)
     }
 
+    /// The invitation and the suggestion rows say „N Fahrten“: the same number Statistik shows for the same trips (a round trip
+    /// and a journey with legs are one trip each), not the rides of the qualifying rule.
+    func testShownTripCountMatchesStatistik() throws {
+        var trips: [TripRecord] = []
+        let roundTripDays = [F.at(2026, 11, 2, 7, 0), F.at(2026, 10, 26, 7, 0), F.at(2026, 10, 19, 7, 0)]
+        trips += roundTripDays.map { F.trip(F.linz, F.wien, $0, roundTrip: true) }
+        for day in [F.at(2026, 11, 3, 7, 0), F.at(2026, 10, 27, 7, 0)] {
+            let journey = UUID()
+            trips.append(F.trip(F.linz, F.stPoelten, day, journey: journey, leg: 0))
+            trips.append(F.trip(F.stPoelten, F.wien, day.addingTimeInterval(3600), journey: journey, leg: 1))
+        }
+        trips.append(F.trip(F.wien, F.linz, F.at(2026, 10, 20, 17, 10)))
+        let guess = try XCTUnwrap(CommuteDetector.guess(trips: trips, now: now))
+        XCTAssertEqual(guess.rides, 9, "3 round trips count twice for the rule")
+        XCTAssertEqual(guess.trips, 6)
+        XCTAssertEqual(guess.trips, JourneySummary.tripCount(trips), "the shown count is the Statistik count")
+    }
+
     func testJourneyLegsCountAsOneRideFromFirstStartToLastStop() throws {
         var trips: [TripRecord] = []
         let days = [F.at(2026, 11, 2, 7, 0), F.at(2026, 11, 3, 7, 0), F.at(2026, 10, 26, 7, 0),

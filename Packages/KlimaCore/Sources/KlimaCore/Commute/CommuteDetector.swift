@@ -22,8 +22,11 @@ public struct CommuteGuess: Hashable, Sendable {
     /// Where the commute starts (home), and where it goes.
     public var origin: CommuteEndpoint
     public var destination: CommuteEndpoint
-    /// Rides in the window (a round trip counts as two).
+    /// Rides in the window (a round trip counts as two) – what the qualifying rule counts.
     public var rides: Int
+    /// Logged trips of the pair in the window, counted like Statistik (`JourneySummary.tripCount`: a „Hin und retour“ entry and
+    /// a journey with legs are one trip each). This is the number the app shows as „Fahrten“.
+    public var trips: Int
     public var days: Int
     public var weeks: Int
     public var weekdays: Set<RouteWeekday>
@@ -36,10 +39,11 @@ public struct CommuteGuess: Hashable, Sendable {
     public var confidence: Confidence
 
     public init(origin: CommuteEndpoint, destination: CommuteEndpoint, rides: Int, days: Int, weeks: Int, weekdays: Set<RouteWeekday>,
-                outboundMinute: Int?, returnMinute: Int?, mostlyRoundTrips: Bool, confidence: Confidence) {
+                outboundMinute: Int?, returnMinute: Int?, mostlyRoundTrips: Bool, confidence: Confidence, trips: Int? = nil) {
         self.origin = origin
         self.destination = destination
         self.rides = rides
+        self.trips = trips ?? rides
         self.days = days
         self.weeks = weeks
         self.weekdays = weekdays
@@ -200,7 +204,7 @@ public enum CommuteDetector {
                                 weekdays: weekdays,
                                 outboundMinute: times.map { firstIsOrigin ? $0.first : $0.second },
                                 returnMinute: times.map { firstIsOrigin ? $0.second : $0.first },
-                                mostlyRoundTrips: roundTrips * 2 > entries, confidence: confidence)
+                                mostlyRoundTrips: roundTrips * 2 > entries, confidence: confidence, trips: entries)
         }
     }
 
