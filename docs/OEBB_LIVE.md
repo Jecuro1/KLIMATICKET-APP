@@ -2826,6 +2826,8 @@ Rein in KlimaCore (`Live/Radar/`, Linux-Tests), dünne Oberfläche in `Features/
 
 **Pünktlichkeit (Verspätungs-Heatmap):** Die Ebene „Pünktlichkeit“ lädt über denselben Scheduler und dasselbe Budget ganz Österreich (zwei Kacheln der Stufe 0, 6 Anfragen je Minute) und färbt ein Sechseckraster nach der mittleren Verspätung: `docs/RADAR_HEATMAP.md`.
 
+**Cockpit-Ansicht (die Kamera folgt einem Zug schräg in 3D, mit nächstem Halt, Ankunft und Verspätung):** Der Knopf „Cockpit“ im Fahrt-Blatt öffnet eine Vollbild-Ansicht. Solange sie offen ist, fragt statt des ganzen Radars **ein** Zug: ein kleiner Kasten alle 20 s (3 160 Byte gemessen) und `JourneyDetails` alle 3 Minuten, durch dasselbe Budget von 24 je Minute (Messung mit 3 Anfragen: Polylinie vorhanden, 18 429 Byte): `docs/RADAR_COCKPIT.md`.
+
 **Zeitreise (Regler, wo die Züge in 1 oder 2 Stunden sind):** Ein Uhr-Chip auf dem Radar klappt zu einem Regler von −30 Min bis +3 Std auf. Die Positionen werden aus dem Fahrplan, den Verspätungen von jetzt und Momentaufnahmen der Auskunft für andere Zeiten berechnet; die Anfragen laufen durch dasselbe Budget von 24 je Minute (R12: Messung, was eine Antwort für andere Zeiten enthält): `docs/RADAR_TIMETRAVEL.md`.
 
 **Nicht geprüft:** das Zeitlimit des Clients (`hafas.timeout`, 20 s) gegen die langsamste gemessene Antwort (21,5 s, erste Anfrage; die Messung lief über einen
