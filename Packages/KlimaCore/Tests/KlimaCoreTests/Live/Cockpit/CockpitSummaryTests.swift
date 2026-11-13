@@ -271,5 +271,23 @@ final class CockpitSummaryTests: XCTestCase {
     func testHonestyNotes() {
         XCTAssertTrue(CockpitText.positionNote.contains("keine GPS-Ortung"))
         XCTAssertEqual(CockpitText.straightLineNote, "Luftlinie zwischen den Halten")
+        XCTAssertTrue(CockpitText.markerNote.contains("ohne etwas vorherzusagen"), "the marker is said to lag, not to predict")
+    }
+
+    func testATrainThatTurnsShortHasItsLastServedStopAsZiel() {
+        var stops = F.fourStops(delay: 2)
+        stops[3].arrCancelled = true
+        let route = F.route(stops)
+        let s = summary(route, km: between(route, 1, 2), now: F.at(47))
+        XCTAssertEqual(s.nextStop, "Halt 2")
+        XCTAssertTrue(s.nextIsFinal)
+        XCTAssertEqual(CockpitText.stopLabel(s), "Ziel")
+        XCTAssertEqual(s.upcoming.map(\.id), [2])
+        XCTAssertEqual(s.stopTicks.count, 3)
+        let there = summary(route, km: route.stops[2].km, now: F.at(65))
+        XCTAssertEqual(there.phase, .arrived(stop: "Halt 2"))
+        XCTAssertNil(there.nextStop, "no arrival time of a stop the train does not reach")
+        XCTAssertEqual(there.progress, 1, accuracy: 1e-6)
+        XCTAssertEqual(CockpitText.stopLabel(there), "Ziel erreicht")
     }
 }

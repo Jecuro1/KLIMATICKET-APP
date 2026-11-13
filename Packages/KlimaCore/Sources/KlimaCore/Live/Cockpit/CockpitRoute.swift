@@ -76,6 +76,10 @@ public struct CockpitRoute: Sendable {
     public let isStraightLine: Bool
     /// The whole run is cancelled (`isCncl`).
     public let isCancelled: Bool
+    /// The stop where the run ends: the last stop the train calls at. When the last stops of the list are cancelled (the train turns
+    /// short, "Zug endet in Linz"), the run ends here: the arrival, "Ziel", the progress and "Fahrt beendet" belong to this stop, and the
+    /// cancelled stops after it are only a red line. The last stop of the list when no stop after the first is served.
+    public let endIndex: Int
 
     /// A stop further than this from the polyline means the polyline is not the route between the stops: the straight lines are used.
     static let maxOffRouteKm = 2.0
@@ -141,6 +145,8 @@ public struct CockpitRoute: Sendable {
         self.path = path
         self.isStraightLine = straight
         self.isCancelled = isCancelled
+        let lastServed = built.lastIndex(where: \.isServed) ?? 0
+        self.endIndex = lastServed > 0 ? lastServed : built.count - 1
     }
 
     private static func delay(_ event: StopEvent?) -> Int? {
@@ -151,11 +157,14 @@ public struct CockpitRoute: Sendable {
     // MARK: Geometry
 
     public var firstKm: Double { stops.first?.km ?? 0 }
-    public var lastKm: Double { stops.last?.km ?? 0 }
-    /// Kilometres from the first to the last stop.
+    /// The mark of the stop where the run ends (`endIndex`).
+    public var lastKm: Double { stops[endIndex].km }
+    /// The stop where the run ends.
+    public var endStop: CockpitStop { stops[endIndex] }
+    /// Kilometres from the first stop to the end of the run.
     public var runKm: Double { max(lastKm - firstKm, 0) }
 
-    /// 0 ... 1 along the run, from the first to the last stop.
+    /// 0 ... 1 along the run, from the first stop to the end of the run.
     public func progress(atKm km: Double) -> Double {
         guard runKm > 0 else { return 0 }
         return min(max((km - firstKm) / runKm, 0), 1)
@@ -191,8 +200,8 @@ public struct CockpitRoute: Sendable {
     /// Where the train is, from its position along the route (`km`) and the clock. The position decides which leg it is on; the times
     /// decide whether it stands at a stop (the server holds a standing train at the stop between its arrival and its departure).
     public func situation(atKm km: Double, now: Date) -> CockpitSituation {
-        let lastIndex = stops.count - 1
-        // At the end of the run: the server keeps the train at the last stop.
+        let lastIndex = endIndex
+        // At the end of the run: the server keeps the train at the last stop it calls at.
         if km >= stops[lastIndex].km - Self.arrivedKm { return .arrived(stop: lastIndex) }
         // Close to a stop that the train serves: standing there between its arrival and its departure, or still waiting at the first stop.
         for stop in stops where stop.isServed && abs(km - stop.km) <= Self.atStopKm {
@@ -211,9 +220,9 @@ public struct CockpitRoute: Sendable {
         return .between(from: from, to: nextServed(after: from, km: km) ?? lastIndex)
     }
 
-    /// The first served stop after `index` that lies ahead of `km`.
+    /// The first served stop after `index` that lies ahead of `km`, never one after the end of the run.
     private func nextServed(after index: Int, km: Double) -> Int? {
-        stops.first { $0.id > index && $0.km > km && ($0.isServed || $0.id == stops.count - 1) }?.id
+        stops.first { $0.id > index && $0.id <= endIndex && $0.km > km && ($0.isServed || $0.id == endIndex) }?.id
     }
 
     /// The stop the train will arrive at next: the end of the leg it is on, or the first served stop after the one it stands at. nil at the end.
@@ -228,7 +237,7 @@ public struct CockpitRoute: Sendable {
     /// The served stops the train has still to reach, `limit` at most, nearest first.
     public func upcoming(atKm km: Double, now: Date, limit: Int) -> [CockpitStop] {
         guard let next = nextStopIndex(atKm: km, now: now) else { return [] }
-        return Array(stops.filter { $0.id >= next && ($0.isServed || $0.id == stops.count - 1) }.prefix(max(limit, 0)))
+        return Array(stops.filter { $0.id >= next && $0.id <= endIndex && ($0.isServed || $0.id == endIndex) }.prefix(max(limit, 0)))
     }
 
     // MARK: Tint

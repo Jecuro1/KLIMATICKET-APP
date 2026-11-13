@@ -197,7 +197,9 @@ public struct CockpitScheduler: Sendable {
         pausedUntil = max(pausedUntil ?? .distantPast, time)
     }
 
-    /// "Jetzt aktualisieren": the position is asked at once, whatever the interval says (not past a backoff or a pause).
+    /// "Jetzt aktualisieren", "Erneut versuchen": the position is asked at once, whatever the interval, the backoff or this cockpit's own
+    /// pause say. A rate limit or an open circuit still holds it: the caller sends only through the radar's budget, which carries that
+    /// pause (`RadarScheduler.claimSlot`, `CockpitModel.Services.pause`).
     public mutating func refreshNow() {
         manual = true
         states[.position]?.retryAt = nil
@@ -351,9 +353,11 @@ public struct CockpitFeed: Sendable {
     /// The time moved on: the session decides lost, ended. The run is over when the train stands at its last stop, or when it left the radar
     /// near the end of its run (a train that arrived is taken off the radar).
     public mutating func tick(now: Date) {
-        let end = route.flatMap { $0.stops.last.flatMap { $0.arrival ?? $0.departure } }
+        // The end of the run is the last stop the train calls at (a train that turns short ends there, `CockpitRoute.endIndex`).
+        let end = route.flatMap { $0.endStop.arrival ?? $0.endStop.departure }
         var atEnd = false
-        if let route, details != nil, let frame = frame(now: now), let km = frame.km {
+        // Only the place along the route is needed here: `position`, not a whole frame with its summary and strings.
+        if let route, details != nil, let km = position(now: now)?.km {
             if case .arrived = route.situation(atKm: km, now: now) { atEnd = true }
             if !atEnd, let seen = session.lastPositionAt, now.timeIntervalSince(seen) >= Self.vanishedAfter, let end, now >= end.addingTimeInterval(-120),
                let latest = kmLatest, latest >= route.lastKm - Self.nearEndKm {
@@ -459,6 +463,12 @@ public struct CockpitFeed: Sendable {
         if let route, let km = context.effectiveKm {
             summary = CockpitSummary.make(route: route, km: km, now: now, speed: context.reading, fixAge: age,
                                           lineTitle: line.map { LinePresentation.title($0) } ?? "Zug", destination: direction ?? route.stops.last?.name)
+            if details == nil {
+                // The chain of the radar's four stops is not the route: a distance or a share of the run along it would be a guess
+                // that looks like a measurement.
+                summary?.isProvisional = true
+                summary?.distanceKm = nil
+            }
         }
         let input = cameraInput(context, mode: .follow, reduceMotion: false)
         return CockpitFrame(coordinate: context.place.coordinate, km: context.place.km, isEstimate: context.place.isEstimate, route: route,

@@ -11,6 +11,7 @@ import KlimaCore
 //   radarCockpitAX5     following, at the largest text size: the HUD keeps the essentials
 //   radarCockpitEnded   the train has reached its last stop: "Fahrt beendet"
 //   radarCockpitLost    no position for two and a half minutes: "Keine Position mehr"
+//   radarCockpitLostAX5 the same at the largest text size: the banner and the panel share the screen
 
 enum CockpitDemo {
     struct DemoStop {
@@ -127,7 +128,8 @@ enum CockpitDemo {
 }
 
 struct CockpitScreenshotHost: View {
-    static let screens: Set<String> = ["radarCockpit", "radarCockpitBird", "radarCockpitFree", "radarCockpitAX5", "radarCockpitEnded", "radarCockpitLost"]
+    static let screens: Set<String> = ["radarCockpit", "radarCockpitBird", "radarCockpitFree", "radarCockpitAX5", "radarCockpitEnded", "radarCockpitLost",
+                                       "radarCockpitLostAX5"]
 
     let screen: String
 
@@ -143,7 +145,7 @@ struct CockpitScreenshotHost: View {
             return CockpitDemo.launch(now: now, mode: .free, camera: overview)
         case "radarCockpitEnded":
             return CockpitDemo.launch(now: now, scenario: .ended)
-        case "radarCockpitLost":
+        case "radarCockpitLost", "radarCockpitLostAX5":
             return CockpitDemo.launch(now: now, scenario: .lost)
         default:
             return CockpitDemo.launch(now: now)
@@ -152,6 +154,6 @@ struct CockpitScreenshotHost: View {
 
     var body: some View {
         CockpitView(launch: launch, services: .offline, onClose: {})
-            .dynamicTypeSize(screen == "radarCockpitAX5" ? .accessibility5 : .large)
+            .dynamicTypeSize(screen.hasSuffix("AX5") ? .accessibility5 : .large)
     }
 }

@@ -190,4 +190,35 @@ final class CockpitRouteTests: XCTestCase {
         XCTAssertEqual(route.carriedDelay(at: 3), 240)
         XCTAssertNil(route.carriedDelay(at: 9))
     }
+
+    // MARK: A run that ends early (review 1)
+
+    func testATrainThatTurnsShortEndsAtItsLastServedStop() {
+        var stops = F.fourStops(delay: 2)
+        stops[3].arrCancelled = true      // "Zug endet in Halt 2": the last stop D is cancelled
+        let route = F.route(stops)
+        XCTAssertEqual(route.endIndex, 2)
+        XCTAssertEqual(route.endStop.name, "Halt 2")
+        XCTAssertEqual(route.lastKm, route.stops[2].km)
+        XCTAssertEqual(route.progress(atKm: route.stops[2].km), 1, accuracy: 1e-9)
+        // On the way to C: C is the end, no stop after it is ever "next", the cancelled D is no flag.
+        let km = (route.stops[1].km + route.stops[2].km) / 2
+        XCTAssertEqual(route.nextStopIndex(atKm: km, now: F.at(47)), 2)
+        XCTAssertEqual(route.upcoming(atKm: km, now: F.at(47), limit: 4).map(\.id), [2])
+        // At C the run is over, although the list goes on to D (before: "stands at C", next stop the cancelled D with its time).
+        XCTAssertEqual(route.situation(atKm: route.stops[2].km, now: F.at(65)), .arrived(stop: 2))
+        XCTAssertNil(route.nextStopIndex(atKm: route.stops[2].km, now: F.at(65)))
+        // The cancelled leg is still drawn ahead of the train, red.
+        XCTAssertEqual(route.legs.map(\.state), [.onTime, .onTime, .cancelled])
+        XCTAssertEqual(route.lines(atKm: km).ahead.last?.state, .cancelled)
+    }
+
+    func testTheEndOfARunWithoutCancelledStopsIsTheLastStop() {
+        XCTAssertEqual(F.route().endIndex, 3)
+        XCTAssertEqual(F.route(F.fourStops(delay: 0), cancelled: true).endIndex, 3, "a cancelled run keeps its stops")
+        // Everything after the first stop cancelled: no run to speak of, the list's last stop stays the end.
+        var stops = F.fourStops()
+        for index in 1...3 { stops[index].arrCancelled = true; stops[index].depCancelled = true }
+        XCTAssertEqual(F.route(stops).endIndex, 3)
+    }
 }

@@ -42,7 +42,10 @@ struct CockpitView: View {
                     topBar
                     CockpitModeSwitcher(mode: model.hud.mode) { model.select($0) }
                         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                    // The banners sit in the top bar and grow with it up to AX1: at AX5 a banner of its own size and the AX5 panel
+                    // together are taller than the screen (scene radarCockpitLostAX5).
                     banners
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
                 .padding(.bottom, Theme.Spacing.xs)
@@ -152,7 +155,8 @@ struct CockpitView: View {
         }
         .buttonStyle(.glassProminent)
         .tint(Theme.prominentTint)
-        .transition(.scale(scale: 0.8).combined(with: .opacity))
+        // Through the motion policy: under Reduce Motion it only fades, it does not grow.
+        .motionTransition(.opacity.combined(with: .scale(scale: 0.8)))
     }
 
     // MARK: Actions

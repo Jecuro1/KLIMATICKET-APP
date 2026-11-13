@@ -8,6 +8,9 @@ public enum CockpitText {
 
     /// Under the HUD: where the position comes from.
     public static let positionNote = "Die Position rechnet die Auskunft aus Fahrplan und Echtzeit-Meldungen. Sie ist keine GPS-Ortung."
+    /// Why the marker is behind the latest answer (`RadarEstimate`, docs/RADAR_COCKPIT.md §3): it runs the way between the last two answers
+    /// again, and "Stand vor …" is the age of the latest one, not of the marker.
+    public static let markerNote = "Die Marke fährt den Weg zwischen den letzten zwei Antworten nach, ohne etwas vorherzusagen: Sie zeigt, wo der Zug vor etwa 20 bis 40 Sekunden war. „Stand vor …“ ist das Alter der letzten Antwort."
     /// Under the route when there is no polyline.
     public static let straightLineNote = "Luftlinie zwischen den Halten"
     /// Where the HUD says the speed comes from.
@@ -195,7 +198,7 @@ public enum CockpitText {
             }
             if let km = summary.distanceKm { parts.append("noch \(spokenDistance(km: km))") }
         }
-        parts.append("\(Int((summary.progress * 100).rounded())) Prozent der Strecke")
+        if !summary.isProvisional { parts.append("\(Int((summary.progress * 100).rounded())) Prozent der Strecke") }
         if let speed = spokenSpeed(summary.speed) { parts.append(speed) }
         if let age = summary.fixAge { parts.append(spokenAge(age)) }
         return parts.joined(separator: ". ") + "."

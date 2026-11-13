@@ -134,6 +134,8 @@ final class CockpitModel {
     @ObservationIgnored private var flightCount = 0
     @ObservationIgnored private var began = false
     @ObservationIgnored private var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    /// The planner's camera has stopped moving by more than a hair (`CockpitCamera.isClose`): nothing new for the map.
+    @ObservationIgnored private var cameraSettled = false
     @ObservationIgnored private let launch: CockpitLaunch
 
     init(launch: CockpitLaunch, services: Services, clock: @escaping () -> Date = { Date() }) {
@@ -247,10 +249,12 @@ final class CockpitModel {
     // MARK: The loop
 
     /// The one loop of the cockpit, owned by the view: leaving the cockpit cancels it and every request on its way, and each gives its slot back.
+    /// A discarding group: a finished request is gone at once (a plain task group keeps every finished child until it is awaited, about 200 an
+    /// hour here).
     func run() async {
         var last = clock()
         var lastSecond = Date.distantPast
-        await withTaskGroup(of: Void.self) { group in
+        await withDiscardingTaskGroup { group in
             while !Task.isCancelled {
                 let now = clock()
                 let dt = min(max(now.timeIntervalSince(last), 0), 0.5)
@@ -265,13 +269,15 @@ final class CockpitModel {
                     updateMarker(now: now)
                 }
                 stepCamera(now: now, dt: dt)
-                let interval = (reduceMotion || MotionPolicy.isStatic) ? 1.0 : CockpitCameraController.frameInterval(lowPower: lowPower)
+                // Once the run has ended nothing moves: when the camera has come to rest (or is the user's) the loop only keeps the clock.
+                let resting = feed.session.state == .ended && (cameraSettled || feed.session.mode == .free)
+                let interval = (reduceMotion || MotionPolicy.isStatic || resting) ? 1.0 : CockpitCameraController.frameInterval(lowPower: lowPower)
                 try? await Task.sleep(for: .seconds(interval))
             }
         }
     }
 
-    private func sendDueRequests(now: Date, into group: inout TaskGroup<Void>) {
+    private func sendDueRequests(now: Date, into group: inout DiscardingTaskGroup) {
         guard services.radar != nil || services.trip != nil else { return }
         guard feed.session.state != .ended, now >= holdRequestsUntil else { return }
         // Low Power Mode pauses the requests, as it does on the radar; "Jetzt aktualisieren" sends one round anyway.
@@ -339,7 +345,14 @@ final class CockpitModel {
         guard now >= holdCameraUntil, feed.session.mode != .free else { return }
         guard let input = feed.cameraInput(now: now, mode: feed.session.mode, reduceMotion: reduceMotion) else { return }
         let next = controller.step(input, dt: dt)
-        if next != camera { camera = next }
+        // The glide comes closer to its target by ever smaller steps: a step of less than a hair is not handed to the map (it would
+        // redraw the map 20 times a second for nothing while the train stands).
+        if let camera, camera.isClose(to: next) {
+            cameraSettled = true
+            return
+        }
+        cameraSettled = false
+        camera = next
     }
 
     /// The clock moved on or an answer came in: the HUD, the route lines, the marker.
@@ -363,9 +376,10 @@ final class CockpitModel {
             let since = (feed.session.lastPositionAt ?? feed.session.startedAt).distance(to: now)
             next.banner = .lost(CockpitText.lostDetail(reason: feed.session.lostReason(now: now) ?? .noAnswers, sinceSeconds: since))
         case .ended:
-            var reached = false
-            if case .arrived? = frame?.summary?.phase { reached = true }
-            next.banner = .ended(CockpitText.endedDetail(lastStop: frame?.route?.stops.last?.name, reachedLastStop: reached))
+            // The stop the train reached: the end of its run, which is not the last stop of the list when the train turned short.
+            var reached: String?
+            if case .arrived(let stop)? = frame?.summary?.phase { reached = stop }
+            next.banner = .ended(CockpitText.endedDetail(lastStop: reached, reachedLastStop: reached != nil))
         case .following, .free: next.banner = nil
         }
         if services.radar == nil && services.trip == nil {
@@ -439,6 +453,13 @@ extension CockpitModel.Services {
 }
 
 extension CockpitCamera {
+    /// Within a hair of `other`: about 10 cm, a centimetre of distance, a hundredth of a degree. Nothing on screen moves for that.
+    func isClose(to other: CockpitCamera) -> Bool {
+        abs(center.latitude - other.center.latitude) < 1e-6 && abs(center.longitude - other.center.longitude) < 1e-6
+            && abs(distance - other.distance) < 0.01 && abs(CockpitAngle.delta(from: heading, to: other.heading)) < 0.01
+            && abs(pitch - other.pitch) < 0.01
+    }
+
     var mapCamera: MapCamera {
         MapCamera(centerCoordinate: center.clCoordinate, distance: distance, heading: heading, pitch: pitch)
     }

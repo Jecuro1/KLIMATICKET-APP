@@ -204,10 +204,11 @@ struct CockpitTrainMarker: View {
                     .fill(tint.opacity(0.42))
                     .frame(width: 92, height: 92)
                     .blur(radius: 16)
-                Circle()
+                let ring = Circle()
                     .strokeBorder(tint.opacity(0.55), lineWidth: 2)
                     .frame(width: 70, height: 70)
-                    .pulsingHalo(tint, scale: 1.5, period: 2.4)
+                // The ring breathes while the train moves; standing at a stop or at the end of its run it holds still.
+                if isHeld { ring } else { ring.pulsingHalo(tint, scale: 1.5, period: 2.4) }
             }
             VStack(spacing: 3) {
                 if let line {

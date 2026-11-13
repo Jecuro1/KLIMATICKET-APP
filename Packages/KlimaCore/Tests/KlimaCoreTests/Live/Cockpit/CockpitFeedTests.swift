@@ -405,4 +405,37 @@ final class CockpitFeedTests: XCTestCase {
         let end = route.lines(atKm: route.lastKm)
         XCTAssertTrue(end.ahead.isEmpty)
     }
+
+    // MARK: Review 1
+
+    func testAProvisionalFrameNamesTheNextStopButNoDistanceOrShare() throws {
+        let feed = CockpitFeed(vehicle: vehicle(lon: 15.5), seenAt: at(0), now: at(2))
+        let summary = try XCTUnwrap(feed.frame(now: at(2))?.summary)
+        XCTAssertTrue(summary.isProvisional)
+        XCTAssertEqual(summary.nextStop, "Halt 2")
+        XCTAssertNil(summary.distanceKm, "along the chain of the radar's four stops it would be a guess")
+        let spoken = CockpitText.spoken(summary, now: at(2))
+        XCTAssertTrue(spoken.contains("Nächster Halt Halt 2"))
+        XCTAssertFalse(spoken.contains("Prozent"))
+        XCTAssertFalse(spoken.contains("noch "))
+        var full = feed
+        full.applyDetails(details(), at: at(3))
+        let complete = try XCTUnwrap(full.frame(now: at(3))?.summary)
+        XCTAssertFalse(complete.isProvisional)
+        XCTAssertNotNil(complete.distanceKm)
+        XCTAssertTrue(CockpitText.spoken(complete, now: at(3)).contains("Prozent der Strecke"))
+    }
+
+    func testATrainThatTurnsShortEndsAtItsLastServedStop() {
+        var stops = F.fourStops()
+        stops[3].arrCancelled = true      // the run ends at C
+        let base = F.at(61)
+        var feed = CockpitFeed(vehicle: vehicle(lon: 15.99, stops: stops), seenAt: base, now: base, details: details(stops: stops), detailsAt: base)
+        feed.applyRadar(snapshot([vehicle(lon: 16.0, stops: stops)]), requestedAt: base.addingTimeInterval(20))
+        feed.tick(now: base.addingTimeInterval(30))
+        XCTAssertNotEqual(feed.session.state, .ended, "the marker is still on its way to C")
+        feed.tick(now: base.addingTimeInterval(41))
+        XCTAssertEqual(feed.session.state, .ended)
+        XCTAssertEqual(feed.frame(now: base.addingTimeInterval(42))?.summary?.phase, .arrived(stop: "Halt 2"))
+    }
 }

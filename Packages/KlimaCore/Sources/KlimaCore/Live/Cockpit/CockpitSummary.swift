@@ -33,7 +33,7 @@ public struct CockpitSummary: Sendable, Equatable {
     public var destination: String?
     /// The stop the train will arrive at next; nil once arrived.
     public var nextStop: String?
-    /// The next stop is the last one of the run.
+    /// The next stop is the last one of the run (the last one the train calls at).
     public var nextIsFinal: Bool
     public var platform: PlatformLabel?
     /// Expected arrival there (the realtime when there is one).
@@ -54,6 +54,9 @@ public struct CockpitSummary: Sendable, Equatable {
     public var upcoming: [CockpitStopFlag]
     /// The route is the straight lines between the stops (no polyline).
     public var isStraightLine: Bool
+    /// Only the radar's four stops are known (the full run is on its way): the next stop and its time are right, the distance and the
+    /// progress along the chain of four stops are not, so neither is shown nor spoken (`CockpitFeed.frame`).
+    public var isProvisional = false
 
     /// The wait after which a stop's time counts as passed: the countdown is hidden, not shown negative.
     static let overdueSeconds = 120.0
@@ -82,7 +85,7 @@ public struct CockpitSummary: Sendable, Equatable {
         }
         return CockpitSummary(
             phase: route.isCancelled ? .cancelled : phase, lineTitle: lineTitle, destination: destination,
-            nextStop: next?.name, nextIsFinal: next.map { $0.id == route.stops.count - 1 } ?? false, platform: next?.platform, eta: next?.expected, plannedETA: next.flatMap { $0.plannedArrival ?? $0.plannedDeparture },
+            nextStop: next?.name, nextIsFinal: next.map { $0.id == route.endIndex } ?? false, platform: next?.platform, eta: next?.expected, plannedETA: next.flatMap { $0.plannedArrival ?? $0.plannedDeparture },
             delaySeconds: delay, delayState: state, distanceKm: next.map { max($0.km - km, 0) },
             progress: route.progress(atKm: km), stopTicks: route.stops.filter(\.isServed).map { route.fraction(of: $0) },
             speed: speed, fixAge: fixAge, upcoming: flags, isStraightLine: route.isStraightLine)

@@ -34,7 +34,13 @@ struct CockpitHUDCard: View {
         .padding(Theme.Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frostedCard(cornerRadius: Theme.Radius.card)
-        .popover(isPresented: $showsInfo) { info(hud: hud).presentationCompactAdaptation(.popover) }
+        // A popover; at the accessibility sizes the note is taller than the screen: a sheet that scrolls.
+        .popover(isPresented: $showsInfo) {
+            Group {
+                if typeSize.isAccessibilitySize { ScrollView { info(hud: hud) } } else { info(hud: hud) }
+            }
+            .presentationCompactAdaptation(typeSize.isAccessibilitySize ? .sheet : .popover)
+        }
     }
 
     // MARK: Content
@@ -50,6 +56,8 @@ struct CockpitHUDCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(CockpitText.spoken(summary, now: hud.clock))
         .accessibilityAddTraits(.updatesFrequently)
+        // The info button sits inside this one element (and is not drawn at the accessibility sizes): VoiceOver reaches the note as an action.
+        .accessibilityAction(named: Text(Self.infoTitle)) { showsInfo = true }
         .haptic(.snap, trigger: summary.nextStop)
     }
 
@@ -201,9 +209,11 @@ struct CockpitHUDCard: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Woher die Position kommt")
+            .accessibilityLabel(Self.infoTitle)
         }
     }
+
+    static let infoTitle = "Woher die Zahlen kommen"
 
     private var dot: some View {
         Text("·").foregroundStyle(Theme.textTertiary)
@@ -211,16 +221,17 @@ struct CockpitHUDCard: View {
 
     private func info(hud: CockpitHUD) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            Text("Woher die Zahlen kommen")
+            Text(Self.infoTitle)
                 .font(.headline)
             Text(CockpitText.positionNote)
+            Text(CockpitText.markerNote)
             Text("Die Geschwindigkeit ist der Weg zwischen zwei Positionen geteilt durch die Zeit dazwischen, über etwa eine Minute geglättet, kein Tacho. Steht der Zug, zeigt das Cockpit keine.")
             if hud.isStraightLine { Text("\(CockpitText.straightLineNote): Zu dieser Fahrt hat die Auskunft keine Strecke geliefert.") }
         }
         .font(.subheadline)
         .foregroundStyle(Theme.textPrimary)
         .padding(Theme.Spacing.m)
-        .frame(maxWidth: 340, alignment: .leading)
+        .frame(maxWidth: typeSize.isAccessibilitySize ? .infinity : 340, alignment: .leading)
     }
 
     // MARK: Actions
@@ -255,7 +266,8 @@ struct CockpitHUDCard: View {
         }
     }
 
-    /// At the largest text sizes the three actions are one menu: the card keeps its room for the stop and its time.
+    /// At the largest text sizes the three actions are one menu: the card keeps its room for the stop and its time. The note about where the
+    /// numbers come from is in it too: the row with its info button is not drawn at these sizes.
     private func compactActions(hud: CockpitHUD) -> some View {
         Menu {
             if offersTrainActions(hud) {
@@ -266,6 +278,7 @@ struct CockpitHUDCard: View {
             if let summary = hud.summary {
                 ShareLink(item: CockpitText.share(summary)) { Label("Teilen", systemImage: "square.and.arrow.up") }
             }
+            Button { showsInfo = true } label: { Label(Self.infoTitle, systemImage: "info.circle") }
         } label: {
             Label("Aktionen", systemImage: "ellipsis.circle")
                 .font(.headline)
