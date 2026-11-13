@@ -31,20 +31,19 @@ extension RadarView {
         return radarService
     }
 
-    /// The last ten minutes of the selected train's projected path: ten short pieces on a light casing, the oldest thinner and paler, the
-    /// newest strong. Review 1: without the casing and with the oldest piece at 18 % the first half of the trail was invisible on the map in
-    /// both looks, and the newest half hides under the train's own plate, so the trail looked a few millimetres long (CI run 43408109942).
+    /// The last ten minutes of the selected train's projected path: one line on a light casing, fading from pale (ten minutes ago) to strong
+    /// (now). Two overlays, not one per minute: they are replaced 12 times a second while the markers glide, and with eleven of them the CI
+    /// capture of the playing scene showed one short piece one to two seconds of playback behind its train (run 43415316339). Review 1 also
+    /// found the first half of the old trail invisible (18 % on no casing).
     @MapContentBuilder var timeTrailLayer: some MapContent {
         let points = travel.trail.map(\.clCoordinate)
         if points.count > 1 {
             let dark = mapStyle == .dark || colorScheme == .dark
             MapPolyline(coordinates: points)
                 .stroke(.white.opacity(dark ? 0.30 : 0.85), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
-            ForEach(0..<(points.count - 1), id: \.self) { index in
-                let fade = Double(index + 1) / Double(points.count - 1)
-                MapPolyline(coordinates: [points[index], points[index + 1]])
-                    .stroke(Theme.dusk.opacity(0.45 + 0.55 * fade), style: StrokeStyle(lineWidth: 3.5 + 3 * fade, lineCap: .round, lineJoin: .round))
-            }
+            MapPolyline(coordinates: points)
+                .stroke(LinearGradient(colors: [Theme.dusk.opacity(0.35), Theme.dusk], startPoint: .leading, endPoint: .trailing),
+                        style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round))
         }
     }
 
