@@ -82,6 +82,7 @@ struct WidVerdictLine: View {
             .minimumScaleFactor(0.75)
             .contentTransition(.numericText(value: snapshot.totalValue))
             .invalidatableContent()
+            .widPrivate(.amount)   // MARK: smartwidgets
     }
 
     private var line: Text {
@@ -123,6 +124,7 @@ struct WidForecastBlock: View {
                 .minimumScaleFactor(0.7)
                 .contentTransition(.numericText())
                 .invalidatableContent()
+                .widPrivate(.amount, if: info.isPositive)   // MARK: smartwidgets – "+ € 412" once paid off
             Text(info.caption)
                 .font(.system(size: 11.5, weight: .medium))
                 .foregroundStyle(.widSecondary)
@@ -195,6 +197,7 @@ struct WidProgressFooter: View {
 
     @Environment(\.widgetRenderingMode) private var renderingMode
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     var body: some View {
         HStack(spacing: 7) {
@@ -212,7 +215,7 @@ struct WidProgressFooter: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisiert")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date(), hidingAmounts: concealsAmounts))
     }
 }
 
@@ -261,6 +264,8 @@ struct WidFavoriteButton: View {
     var justLogged: Bool = false
 
     @Environment(\.widPreviewAction) private var previewAction
+    @Environment(\.widConcealsRoutes) private var concealsRoutes   // MARK: smartwidgets
+    @Environment(\.widConcealsAmounts) private var concealsAmounts
 
     var body: some View {
         if isInteractive {
@@ -287,9 +292,11 @@ struct WidFavoriteButton: View {
         }
     }
 
-    private var spokenTitle: String { "\(favorite.title) erfassen" }
+    // MARK: smartwidgets – while the title or the fare is hidden, the sentence leaves it out
+    private var spokenTitle: String { concealsRoutes ? "Lieblingsfahrt erfassen" : "\(favorite.title) erfassen" }
     private var spokenValue: String {
-        justLogged ? "Gerade erfasst, \(WidFormat.euroPrecise(favorite.value))" : WidFormat.euroPrecise(favorite.value)
+        let value = concealsAmounts ? "Betrag verborgen" : WidFormat.euroPrecise(favorite.value)
+        return justLogged ? "Gerade erfasst, \(value)" : value
     }
 }
 
@@ -310,6 +317,7 @@ private struct WidFavoriteLabel: View {
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
+                    .widPrivate(.route)   // MARK: smartwidgets
                 Group {
                     if justLogged {
                         Text("Gerade erfasst")
@@ -317,6 +325,7 @@ private struct WidFavoriteLabel: View {
                     } else {
                         Text(WidFormat.euroPrecise(favorite.value))
                             .foregroundStyle(.widSecondary)
+                            .widPrivate(.amount)   // MARK: smartwidgets
                     }
                 }
                 .font(.system(size: 11.5, weight: .medium))

@@ -207,10 +207,16 @@ enum WidInsight {
         return isExpired(s, now: now) ? "abgelaufen" : "letzter Tag"
     }
 
-    /// VoiceOver summary for whole-widget elements.
-    static func spokenSummary(_ s: WidgetSnapshot, now: Date = Date()) -> String {
+    /// VoiceOver summary for whole-widget elements. `hidingAmounts`: the euro figures are hidden on the locked device
+    /// (docs/WIDGETS_SMARTSTACK.md §1), so the sentence leaves them out.  // MARK: smartwidgets
+    static func spokenSummary(_ s: WidgetSnapshot, now: Date = Date(), hidingAmounts: Bool = false) -> String {
         var parts = ["\(WidFormat.percent(s.amortizedFraction)) amortisiert"]
-        if isPaidOff(s) {
+        if hidingAmounts {
+            parts.append(isPaidOff(s) ? "rentiert, Betrag verborgen" : "Betrag bis zum Break-even verborgen")
+            if !isPaidOff(s), let date = upcomingBreakEven(s, now: now) {
+                parts.append("Prognose \(WidFormat.dayMonth(date))")
+            }
+        } else if isPaidOff(s) {
             parts.append("rentiert, \(WidFormat.euroWhole(WidFigures.profit(s))) im Plus")
         } else {
             parts.append("noch \(WidFormat.euroWhole(WidFigures.remaining(s))) bis zum Break-even")

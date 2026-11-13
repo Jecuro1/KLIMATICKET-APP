@@ -48,6 +48,7 @@ private struct WidAmortizationSmall: View {
     let margins: EdgeInsets
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
@@ -67,7 +68,7 @@ private struct WidAmortizationSmall: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now, hidingAmounts: concealsAmounts))
     }
 }
 
@@ -77,6 +78,7 @@ private struct WidAmortizationMedium: View {
     let margins: EdgeInsets
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
@@ -99,7 +101,7 @@ private struct WidAmortizationMedium: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now, hidingAmounts: concealsAmounts))
     }
 }
 
@@ -110,6 +112,7 @@ private struct WidAmortizationLarge: View {
     let isInteractive: Bool
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     private var isPaidOff: Bool { WidInsight.isPaidOff(snapshot) }
     private var now: Date { entryDate ?? Date() }
@@ -147,7 +150,7 @@ private struct WidAmortizationLarge: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation \(snapshot.ticketName)")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: now, hidingAmounts: concealsAmounts))
     }
 
     private var header: some View {
@@ -177,6 +180,7 @@ private struct WidAmortizationLarge: View {
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+                .widPrivate(.amount, if: !isPaidOff)   // MARK: smartwidgets
             Text(detail)
                 .font(.system(size: 12.5, weight: .medium))
                 .monospacedDigit()
@@ -184,6 +188,7 @@ private struct WidAmortizationLarge: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .contentTransition(.numericText(value: snapshot.totalValue))
+                .widPrivate(.amount)   // MARK: smartwidgets
         }
         .invalidatableContent()
     }
@@ -276,6 +281,7 @@ private struct WidAccessoryCircular: View {
     let snapshot: WidgetSnapshot
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     var body: some View {
         let fraction = snapshot.amortizedFraction.isFinite ? snapshot.amortizedFraction : 0
@@ -296,7 +302,7 @@ private struct WidAccessoryCircular: View {
         .widgetAccentable()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date(), hidingAmounts: concealsAmounts))
     }
 }
 
@@ -305,6 +311,7 @@ private struct WidAccessoryRectangular: View {
     let snapshot: WidgetSnapshot
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
 
     var body: some View {
         let paid = WidInsight.isPaidOff(snapshot)
@@ -327,6 +334,7 @@ private struct WidAccessoryRectangular: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .widPrivate(.amount)   // MARK: smartwidgets
             }
             WidLinearBar(progress: snapshot.amortizedFraction)
                 .frame(height: 5)
@@ -335,25 +343,30 @@ private struct WidAccessoryRectangular: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Amortisation")
-        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))
+        .accessibilityValue(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date(), hidingAmounts: concealsAmounts))
     }
 }
 
-/// "⛰ 73 % rentiert" above the clock.
+/// "€ 354 bis zum Ziel" / "Lohnt sich · +€ 37" above the clock (docs/WIDGETS_SMARTSTACK.md §2, the decision of
+/// docs/WIDGETS.md §8.5; at most 22 characters, `InlineAmortizationText`).  // MARK: smartwidgets
 private struct WidAccessoryInline: View {
     let snapshot: WidgetSnapshot
 
     @Environment(\.widNow) private var entryDate
+    @Environment(\.widConcealsAmounts) private var concealsAmounts
 
     var body: some View {
-        let text: String = WidInsight.isPaidOff(snapshot)
-            ? "Rentiert · + \(WidFormat.euroWhole(WidFigures.profit(snapshot)))"
-            : "\(WidFormat.percent(snapshot.amortizedFraction)) rentiert"
+        let now = entryDate ?? Date()
+        let state = InlineAmortizationText.state(hasTicket: true, isExpired: WidInsight.isExpired(snapshot, now: now),
+                                                 isPaidOff: WidInsight.isPaidOff(snapshot),
+                                                 remaining: WidFigures.remaining(snapshot), profit: WidFigures.profit(snapshot))
         Label {
-            Text(text)
+            Text(verbatim: InlineAmortizationText.text(state))
         } icon: {
-            Image(systemName: "mountain.2.fill")
+            Image(systemName: WidInsight.isPaidOff(snapshot) ? "flag.fill" : "mountain.2.fill")
         }
-        .accessibilityLabel("Amortisation: \(WidInsight.spokenSummary(snapshot, now: entryDate ?? Date()))")
+        .widPrivate(.amount, if: state != .expired)
+        .accessibilityLabel(concealsAmounts ? "Amortisation, Betrag verborgen"
+                                            : "Amortisation: \(InlineAmortizationText.spoken(state))")
     }
 }

@@ -8,7 +8,8 @@ import SwiftUI
 struct RideLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RideActivityAttributes.self) { context in
-            RideLockScreenView(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            // MARK: smartwidgets – the small family (Apple Watch Smart Stack) gets its own layout, the Lock Screen is unchanged
+            RideActivityPresentation(attributes: context.attributes, state: context.state, isStale: context.isStale)
                 .widgetURL(WidDeepLink.overview)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -34,5 +35,6 @@ struct RideLiveActivity: Widget {
             .widgetURL(WidDeepLink.overview)
             .keylineTint(Theme.glacier)
         }
+        .supplementalActivityFamilies([.small])   // MARK: smartwidgets – docs/WIDGETS_SMARTSTACK.md §5
     }
 }

@@ -253,6 +253,7 @@ final class WidgetSmartStackTests: XCTestCase {
         XCTAssertEqual(counting.destination, "Innsbruck Hbf")
         XCTAssertTrue(counting.countsUp)
         XCTAssertEqual(counting.countdownTarget, start)
+        XCTAssertEqual(counting.countdownLabel, "Fahrzeit")
 
         let arriving = ActivitySmallText.ride(modeName: "Zug", lineLabel: "RJX 662", toName: "Innsbruck Hbf",
                                               startedAt: start, expectedArrival: at(2026, 11, 13, 8, 30), phase: .riding,

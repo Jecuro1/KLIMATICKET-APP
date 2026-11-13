@@ -13,7 +13,7 @@ public struct ActivitySmallLine: Equatable, Sendable {
     public var destination: String
     /// What the countdown counts to; nil when nothing is ahead (arrived, cancelled, ended).
     public var countdownTarget: Date?
-    /// "Abfahrt in", "Ankunft in", "Umstieg in"; for a running ride without arrival "Unterwegs seit".
+    /// "Abfahrt in", "Ankunft in", "Umstieg in"; for a running ride without arrival "Fahrzeit".
     public var countdownLabel: String
     /// True when the timer counts up from `countdownTarget` (a ride without a known arrival).
     public var countsUp: Bool
@@ -114,7 +114,7 @@ public enum ActivitySmallText {
                                          spoken: "\(spokenName) nach \(destination), seit \(RealtimePresentation.time(startedAt)) unterwegs, Ankunft um \(RealtimePresentation.time(expectedArrival)).")
             }
             return ActivitySmallLine(headline: headline, delay: nil, destination: destination,
-                                     countdownTarget: startedAt, countdownLabel: "Unterwegs seit", countsUp: true,
+                                     countdownTarget: startedAt, countdownLabel: "Fahrzeit", countsUp: true,
                                      footnote: footnote,
                                      spoken: "\(spokenName) nach \(destination), seit \(RealtimePresentation.time(startedAt)) unterwegs." + (isStale ? " Noch nicht gespeichert." : ""))
         }

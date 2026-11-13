@@ -16,6 +16,7 @@ struct NextConnectionWidgetView: View {
     var viaStops: Bool = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.widConcealsRoutes) private var concealsRoutes   // MARK: smartwidgets
 
     var body: some View {
         if title == nil {
@@ -44,6 +45,8 @@ struct NextConnectionWidgetView: View {
             rectangular
         case .accessoryInline:
             inline
+        case .accessoryCircular:   // MARK: smartwidgets
+            circular
         default:
             medium
         }
@@ -64,6 +67,7 @@ struct NextConnectionWidgetView: View {
                 .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .widPrivate(.route)   // MARK: smartwidgets
             if let first {
                 HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(verbatim: WidFormat.clock(first.departureTime))
@@ -166,6 +170,7 @@ struct NextConnectionWidgetView: View {
                 .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .widPrivate(.route)   // MARK: smartwidgets
         }
     }
 
@@ -178,6 +183,7 @@ struct NextConnectionWidgetView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .widgetAccentable()
+                .widPrivate(.route)   // MARK: smartwidgets
             if let first {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(verbatim: WidFormat.clock(first.departureTime))
@@ -192,17 +198,24 @@ struct NextConnectionWidgetView: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }
-                Text(verbatim: "→ \(first.toName)\(platformSuffix(first))")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                // MARK: smartwidgets – the destination hides on the locked device, the platform stays
+                HStack(spacing: 0) {
+                    Text(verbatim: "→ \(first.toName)")
+                        .lineLimit(1)
+                        .widPrivate(.route)
+                    Text(verbatim: platformSuffix(first))
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .minimumScaleFactor(0.7)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(first.map { WidLiveSpeech.departure(time: $0.departureTime, delay: state.showsDelays ? $0.delayMinutes : nil,
-                                                                lineName: $0.lineName, destination: $0.toName,
+                                                                lineName: $0.lineName, destination: concealsRoutes ? nil : $0.toName,
                                                                 platform: $0.platform, platformChanged: $0.platformChanged,
                                                                 isCancelled: $0.isCancelled) } ?? "")
     }
@@ -210,6 +223,20 @@ struct NextConnectionWidgetView: View {
     private var inline: some View {
         Text(verbatim: inlineText)
             .lineLimit(1)
+    }
+
+    /// The round lock-screen variant: the ring empties over the last 45 minutes before the next train.  // MARK: smartwidgets
+    @ViewBuilder
+    private var circular: some View {
+        if let first {
+            WidDepartureRing(time: first.departureTime, delay: first.delayMinutes, showsDelay: state.showsDelays,
+                             isCancelled: first.isCancelled, caption: nil, modeSymbol: "tram.fill",
+                             spoken: "Nächste Verbindung" + (concealsRoutes ? "" : " \(title ?? "")") + ", "
+                                 + WidLiveSpeech.departure(time: first.departureTime,
+                                                           delay: state.showsDelays ? first.delayMinutes : nil,
+                                                           lineName: first.lineName, destination: nil, platform: first.platform,
+                                                           platformChanged: first.platformChanged, isCancelled: first.isCancelled))
+        }
     }
 
     private var inlineText: String {

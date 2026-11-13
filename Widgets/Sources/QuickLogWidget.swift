@@ -28,6 +28,7 @@ private struct QuickLogEntryView: View {
     var body: some View {
         QuickLogWidgetView(snapshot: entry.snapshot, family: family, margins: WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(url)
             .widgetBrandBackground(family)
     }

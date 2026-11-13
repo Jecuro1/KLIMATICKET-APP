@@ -11,12 +11,12 @@ struct TicketRemainingWidget: Widget {
     static let kind = WidKind.ticketRemaining
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: Self.kind, provider: SnapshotProvider()) { entry in
+        StaticConfiguration(kind: Self.kind, provider: SnapshotProvider(relevance: .ticketEnd)) { entry in   // MARK: smartwidgets
             TicketRemainingEntryView(entry: entry)
         }
         .configurationDisplayName("Ticket-Restzeit")
         .description("Wie viele Tage dein KlimaTicket noch gültig ist.")
-        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline])   // MARK: smartwidgets – rectangular
         .contentMarginsDisabled()
     }
 }
@@ -32,6 +32,7 @@ private struct TicketRemainingEntryView: View {
                                   margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
     }
@@ -42,7 +43,7 @@ struct BreakEvenWidget: Widget {
     static let kind = WidKind.breakEven
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: Self.kind, provider: SnapshotProvider()) { entry in
+        StaticConfiguration(kind: Self.kind, provider: SnapshotProvider(relevance: .breakEven)) { entry in   // MARK: smartwidgets
             BreakEvenEntryView(entry: entry)
         }
         .configurationDisplayName("Break-even")
@@ -63,6 +64,7 @@ private struct BreakEvenEntryView: View {
                             margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
     }
@@ -94,6 +96,7 @@ private struct YearReviewEntryView: View {
                              margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(URL(string: "klimabilanz://year/ticket"))   // MARK: yearreview – the story of the ticket period the widget shows (RootView › handleDeepLink)
             .widgetBrandBackground(family)
     }
@@ -125,6 +128,7 @@ private struct HeatmapEntryView: View {
                           now: entry.date, family: family, margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(WidDeepLink.stats)
             .widgetBrandBackground(family)
     }
@@ -154,6 +158,7 @@ private struct SummitEntryView: View {
     var body: some View {
         SummitWidgetView(snapshot: entry.snapshot, family: family, now: entry.date, margins: WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(WidDeepLink.overview)
             .widgetBrandBackground(family)
     }

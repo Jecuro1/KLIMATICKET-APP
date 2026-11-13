@@ -1,4 +1,5 @@
 import Foundation
+import KlimaCore
 
 /// Compact, Codable summary the app writes for the widgets (App Group UserDefaults).
 /// Shared source file: compiled into both the app and the widget extension.
@@ -57,11 +58,20 @@ struct WidgetSnapshot: Codable, Hashable, Sendable {
     var recentLog: RecentLog? = nil
     /// Trips per day for the last twelve weeks (84 values, oldest first; `WidgetHeatmap`). Optional for older snapshots.
     var heat: [Int]? = nil
+    /// Lock-screen privacy switches of the widget gallery (docs/WIDGETS_SMARTSTACK.md §1). Optional: a snapshot written
+    /// before they existed decodes as the defaults (routes hidden, amounts shown).  // MARK: smartwidgets
+    var hidesRoutesWhenLocked: Bool? = nil
+    var hidesAmountsWhenLocked: Bool? = nil
 
     /// Favourites carried for Siri, Shortcuts, Spotlight and the favourite control (the widgets show up to 4).
     static let maxFavorites = 24
 
     var net: Double { totalValue - ticketPrice }
+
+    /// The two privacy flags as KlimaCore's `WidgetPrivacy` (unset fields read as the defaults).  // MARK: smartwidgets
+    var privacy: WidgetPrivacy {
+        WidgetPrivacy(hidesRoutesWhenLocked: hidesRoutesWhenLocked, hidesAmountsWhenLocked: hidesAmountsWhenLocked)
+    }
 
     /// The button of `favoriteID` confirms a log made a moment ago ("Gerade erfasst").
     func justLogged(_ favoriteID: UUID, at now: Date) -> Bool { recentLog?.confirms(favoriteID, at: now) ?? false }

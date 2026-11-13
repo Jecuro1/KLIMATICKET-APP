@@ -112,6 +112,7 @@ private struct WidQuickLogMedium: View {
                     .foregroundStyle(.widSecondary)
                     .lineLimit(1)
                     .fixedSize()
+                    .widPrivate(.amount)   // MARK: smartwidgets
             }
         }
     }

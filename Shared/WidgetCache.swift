@@ -56,6 +56,15 @@ enum WidgetCache {
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
+    // MARK: Privacy (smartwidgets)
+
+    /// The lock-screen privacy switches as the user set them in the widget gallery; nil until a switch was touched.
+    static var privacy: WidgetPrivacy? { load(WidgetPrivacy.self, key: WidgetCacheKey.privacy) }
+
+    /// Stores the switches (app only). True when the stored value changed.
+    @discardableResult
+    static func setPrivacy(_ value: WidgetPrivacy) -> Bool { write(value, key: WidgetCacheKey.privacy) }
+
     // MARK: Live follow (Live-verfolgen control)
 
     /// Mirror of the followed train: the control shows it on while the app follows a train.

@@ -15,12 +15,13 @@ struct ConnectionEntry: TimelineEntry {
     let items: [WidgetConnection]
     /// The favourite has via stops, which the app does not ask for.
     var viaStops: Bool = false
+    /// Lock-screen privacy the views follow (docs/WIDGETS_SMARTSTACK.md §1).  // MARK: smartwidgets
+    var privacy: WidgetPrivacy = .standard
 
-    var relevance: TimelineEntryRelevance? {
-        guard state.hasTimes, let first = items.first else { return nil }
-        // The Smart Stack shows it shortly before the train leaves.
-        let minutes = first.departureTime.timeIntervalSince(date) / 60
-        return TimelineEntryRelevance(score: (-1.0...30.0).contains(minutes) ? 1 : 0.2)
+    /// Smart Stack: 100 from 45 minutes before the next train, then down to 0 (`WidgetRelevance.departure`).
+    var relevance: TimelineEntryRelevance? {   // MARK: smartwidgets
+        guard state.hasTimes, !viaStops else { return nil }
+        return TimelineEntryRelevance(score: Float(WidgetRelevance.departure(now: date, nextDeparture: items.first?.departureTime)))
     }
 }
 
@@ -34,11 +35,13 @@ struct DepartureEntry: TimelineEntry {
     let facilities: [WidgetFacility]
     let state: WidgetLiveState
     let items: [WidgetDeparture]
+    /// Lock-screen privacy the views follow (docs/WIDGETS_SMARTSTACK.md §1).  // MARK: smartwidgets
+    var privacy: WidgetPrivacy = .standard
 
-    var relevance: TimelineEntryRelevance? {
-        guard state.hasTimes, let first = items.first else { return nil }
-        let minutes = first.departureTime.timeIntervalSince(date) / 60
-        return TimelineEntryRelevance(score: (-1.0...20.0).contains(minutes) ? 0.9 : 0.1)
+    /// Smart Stack: 100 from 45 minutes before the next departure, then down to 0 (`WidgetRelevance.departure`).
+    var relevance: TimelineEntryRelevance? {   // MARK: smartwidgets
+        guard state.hasTimes else { return nil }
+        return TimelineEntryRelevance(score: Float(WidgetRelevance.departure(now: date, nextDeparture: items.first?.departureTime)))
     }
 }
 
@@ -87,14 +90,16 @@ struct NextConnectionProvider: AppIntentTimelineProvider {
     private static func dates(routeID: String?, now: Date) -> [Date] {
         let cache = WidgetCache.connections
         let all = routeID.flatMap { cache?.routes[$0] } ?? []
-        return WidgetTimeline.entryDates(for: all, fetchedAt: cache?.fetchedAt, now: now)
+        let base = WidgetTimeline.entryDates(for: all, fetchedAt: cache?.fetchedAt, now: now)
+        // MARK: smartwidgets – the moments the Smart Stack score changes (45 min before a train, end of its decay)
+        return WidgetRelevance.merged(base, WidgetRelevance.departureChangeDates(all.map(\.departureTime), now: now), limit: 16)
     }
 
     private static func entry(_ configuration: NextConnectionConfigIntent, routeID: String?, at date: Date) -> ConnectionEntry {
         let selection = WidgetSelection.connections(WidgetCache.connections, routeID: routeID, consent: WidgetCache.consent,
                                                     now: date)
         return ConnectionEntry(date: date, title: title(configuration), state: selection.state, items: selection.items,
-                               viaStops: hasViaStops(configuration))
+                               viaStops: hasViaStops(configuration), privacy: WidgetPrivacy.current())   // MARK: smartwidgets
     }
 
     /// The favourite's current name from the snapshot (renamed since the choice), else the name the choice carries.
@@ -144,7 +149,9 @@ struct DepartureProvider: AppIntentTimelineProvider {
     private static func dates(stationID: String?, now: Date) -> [Date] {
         let cache = WidgetCache.departures
         let all = stationID.flatMap { cache?.stations[$0] } ?? []
-        return WidgetTimeline.entryDates(for: all, fetchedAt: cache?.fetchedAt, now: now)
+        let base = WidgetTimeline.entryDates(for: all, fetchedAt: cache?.fetchedAt, now: now)
+        // MARK: smartwidgets – the moments the Smart Stack score changes (45 min before a departure, end of its decay)
+        return WidgetRelevance.merged(base, WidgetRelevance.departureChangeDates(all.map(\.departureTime), now: now), limit: 16)
     }
 
     private static func entry(_ configuration: DeparturesConfigIntent, stationID: String?, at date: Date) -> DepartureEntry {
@@ -153,7 +160,7 @@ struct DepartureProvider: AppIntentTimelineProvider {
         let station = WidgetCache.stations?.stations.first { $0.id == stationID }
         let name = configuration.station?.name ?? station?.name
         return DepartureEntry(date: date, stationID: stationID, stationName: name, facilities: station?.facilities ?? [],
-                              state: selection.state, items: selection.items)
+                              state: selection.state, items: selection.items, privacy: WidgetPrivacy.current())   // MARK: smartwidgets
     }
 }
 

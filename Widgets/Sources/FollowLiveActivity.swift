@@ -8,7 +8,8 @@ import SwiftUI
 struct FollowLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FollowActivityAttributes.self) { context in
-            FollowLockScreenView(attributes: context.attributes, state: context.state, isStale: context.isStale)
+            // MARK: smartwidgets – the small family (Apple Watch Smart Stack) gets its own layout, the Lock Screen is unchanged
+            FollowActivityPresentation(attributes: context.attributes, state: context.state, isStale: context.isStale)
                 .activityBackgroundTint(Theme.background.opacity(0.92))
                 .activitySystemActionForegroundColor(Theme.textPrimary)
                 .widgetURL(WidDeepLink.overview)
@@ -36,5 +37,6 @@ struct FollowLiveActivity: Widget {
             .widgetURL(WidDeepLink.overview)
             .keylineTint(Theme.glacier)
         }
+        .supplementalActivityFamilies([.small])   // MARK: smartwidgets – docs/WIDGETS_SMARTSTACK.md §5
     }
 }

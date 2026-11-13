@@ -27,6 +27,8 @@ struct DeparturesWidgetView: View {
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.widPrivacy) private var privacy   // MARK: smartwidgets
+    @Environment(\.widConcealsRoutes) private var concealsRoutes
 
     @ViewBuilder
     private var content: some View {
@@ -36,10 +38,35 @@ struct DeparturesWidgetView: View {
         case .accessoryRectangular:
             rectangular
         case .accessoryInline:
-            Text(verbatim: "\(stationName ?? "") · \(inlineText)")
-                .lineLimit(1)
+            // MARK: smartwidgets – one text cannot hide only its station: the locked line says "Abfahrten" instead
+            if concealsRoutes {
+                Text(verbatim: "Abfahrten · \(inlineText)")
+                    .lineLimit(1)
+            } else {
+                Text(verbatim: "\(stationName ?? "") · \(inlineText)")
+                    .lineLimit(1)
+                    .privacySensitive(privacy.hidesRoutes)
+            }
+        case .accessoryCircular:   // MARK: smartwidgets
+            circular
         default:
             medium
+        }
+    }
+
+    /// The round lock-screen variant: the next departure's line and time, the ring empties over its last 45 minutes.
+    @ViewBuilder
+    private var circular: some View {   // MARK: smartwidgets
+        if let next = items.first {
+            WidDepartureRing(time: next.departureTime, delay: next.delayMinutes, showsDelay: state.showsDelays,
+                             isCancelled: next.isCancelled, caption: next.lineName, modeSymbol: next.modeSymbol,
+                             spoken: "Abfahrten" + (concealsRoutes ? "" : " \(stationName ?? "")") + ", "
+                                 + WidLiveSpeech.departure(time: next.departureTime,
+                                                           delay: state.showsDelays ? next.delayMinutes : nil,
+                                                           lineName: next.lineName,
+                                                           destination: concealsRoutes ? nil : next.direction,
+                                                           platform: next.platform, platformChanged: next.platformChanged,
+                                                           isCancelled: next.isCancelled))
         }
     }
 
@@ -52,6 +79,7 @@ struct DeparturesWidgetView: View {
                 .foregroundStyle(.widSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+                .widPrivate(.route)   // MARK: smartwidgets
         }
     }
 
@@ -134,6 +162,7 @@ struct DeparturesWidgetView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .widgetAccentable()
+                .widPrivate(.route)   // MARK: smartwidgets
             ForEach(items.prefix(2)) { departure in
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(verbatim: WidFormat.clock(departure.departureTime))

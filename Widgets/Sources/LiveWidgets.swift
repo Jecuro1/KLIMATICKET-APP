@@ -16,7 +16,8 @@ struct NextConnectionWidget: Widget {
         }
         .configurationDisplayName("Nächste Verbindung")
         .description("Die nächsten Verbindungen einer Lieblingsfahrt mit Gleis und Verspätung – aus dem Stand der App.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge,
+                            .accessoryCircular, .accessoryRectangular, .accessoryInline])   // MARK: smartwidgets – circular
         .contentMarginsDisabled()
     }
 }
@@ -32,6 +33,7 @@ private struct NextConnectionEntryView: View {
                                  margins: WidLayout.resolved(contentMargins), viaStops: entry.viaStops)
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(WidDeepLink.planner)
             .widgetBrandBackground(family)
     }
@@ -47,7 +49,8 @@ struct DeparturesWidget: Widget {
         }
         .configurationDisplayName("Abfahrten")
         .description("Die nächsten Abfahrten einer Station – Standard ist deine Heimat-Station.")
-        .supportedFamilies([.systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemMedium, .systemLarge,
+                            .accessoryCircular, .accessoryRectangular, .accessoryInline])   // MARK: smartwidgets – circular
         .contentMarginsDisabled()
     }
 }
@@ -63,6 +66,7 @@ private struct DeparturesEntryView: View {
                              items: entry.items, family: family, margins: WidLayout.resolved(contentMargins))
             .widContent(family, WidLayout.resolved(contentMargins))
             .environment(\.widNow, entry.date)
+            .environment(\.widPrivacy, entry.privacy)   // MARK: smartwidgets
             .widgetURL(entry.stationID.map { WidDeepLink.board(stationID: $0) } ?? WidDeepLink.planner)
             .widgetBrandBackground(family)
     }

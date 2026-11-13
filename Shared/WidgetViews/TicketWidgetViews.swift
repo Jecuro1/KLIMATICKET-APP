@@ -39,6 +39,8 @@ struct TicketRemainingWidgetView: View {
             .accessibilityValue(WidInsight.validityText(s, now: now))
         case .accessoryInline:
             Label(WidInsight.validityText(s, now: now), systemImage: "ticket.fill")
+        case .accessoryRectangular:   // MARK: smartwidgets
+            WidTicketRemainingRectangular(snapshot: s, now: now)
         default:
             VStack(alignment: .leading, spacing: 2) {
                 WidEyebrow(text: "Ticket-Restzeit", symbol: "ticket.fill")
@@ -76,6 +78,8 @@ struct BreakEvenWidgetView: View {
     var now: Date
     var margins: EdgeInsets = WidLayout.defaultMargins
 
+    @Environment(\.widConcealsAmounts) private var concealsAmounts   // MARK: smartwidgets
+
     var body: some View {
         if let snapshot {
             content(snapshot)
@@ -87,6 +91,8 @@ struct BreakEvenWidgetView: View {
     @ViewBuilder
     private func content(_ s: WidgetSnapshot) -> some View {
         let forecast = WidInsight.forecast(s, now: now)
+        // MARK: smartwidgets – once paid off the forecast value is an amount ("+ € 412")
+        let spokenValue = forecast.isPositive && concealsAmounts ? "Betrag verborgen" : forecast.value
         let percent = WidFormat.percentValue(s.amortizedFraction)
         switch family {
         case .accessoryCircular:
@@ -99,7 +105,7 @@ struct BreakEvenWidgetView: View {
             .gaugeStyle(.accessoryCircularCapacity)
             .widgetAccentable()
             .accessibilityLabel("Break-even")
-            .accessibilityValue("\(WidFormat.percent(s.amortizedFraction)) amortisiert. \(forecast.kicker) \(forecast.value)")
+            .accessibilityValue("\(WidFormat.percent(s.amortizedFraction)) amortisiert. \(forecast.kicker) \(spokenValue)")
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
                 Label(forecast.kicker, systemImage: forecast.symbol)
@@ -112,6 +118,7 @@ struct BreakEvenWidgetView: View {
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .widPrivate(.amount, if: forecast.isPositive)   // MARK: smartwidgets
                 WidLinearBar(progress: s.amortizedFraction)
                     .frame(height: 5)
                     .padding(.top, 2)
@@ -121,6 +128,7 @@ struct BreakEvenWidgetView: View {
         case .accessoryInline:
             Label("\(percent) % · \(forecast.kicker) \(forecast.value)", systemImage: "flag.fill")
                 .lineLimit(1)
+                .widPrivate(.amount, if: forecast.isPositive)   // MARK: smartwidgets
         default:
             VStack(alignment: .leading, spacing: 4) {
                 WidEyebrow(text: forecast.kicker, symbol: forecast.symbol,
@@ -131,6 +139,7 @@ struct BreakEvenWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .widgetAccentable()
+                    .widPrivate(.amount, if: forecast.isPositive)   // MARK: smartwidgets
                 Text(verbatim: forecast.caption)
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(.widSecondary)
@@ -194,6 +203,7 @@ struct YearReviewWidgetView: View {
                     .font(.system(size: 12.5, weight: .medium))
                     .foregroundStyle(.widSecondary)
                     .lineLimit(1)
+                    .widPrivate(.amount)   // MARK: smartwidgets
             }
             Spacer(minLength: 0)
             Text(verbatim: "Ticket-Zeitraum · \(s.ticketName)")

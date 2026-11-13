@@ -135,6 +135,8 @@ struct WidDepartureLine: View {
     var showsDelay: Bool = true
     var compact: Bool = false
 
+    @Environment(\.widConcealsRoutes) private var concealsRoutes   // MARK: smartwidgets
+
     var body: some View {
         HStack(spacing: compact ? 4 : 7) {
             Text(verbatim: WidFormat.clock(time))
@@ -164,6 +166,7 @@ struct WidDepartureLine: View {
                     .foregroundStyle(.widSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
+                    .widPrivate(.route)   // MARK: smartwidgets
             }
             Spacer(minLength: 2)
             if isCancelled {
@@ -182,7 +185,7 @@ struct WidDepartureLine: View {
         .monospacedDigit()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(WidLiveSpeech.departure(time: time, delay: showsDelay ? delay : nil, lineName: lineName,
-                                                    destination: destination, platform: platform,
+                                                    destination: concealsRoutes ? nil : destination, platform: platform,
                                                     platformChanged: platformChanged, isCancelled: isCancelled))
     }
 }

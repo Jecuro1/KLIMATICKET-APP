@@ -529,7 +529,9 @@ enum WidgetSnapshotBuilder {
                                         via: fav.viaRaw.isEmpty ? nil : fav.via.map(\.name))   // MARK: via
             },
             sparkline: sparkline,
-            heat: WidgetHeatmap.counts(tripDates: trips.filter { $0.deletedAt == nil }.map(\.date), today: Date())   // MARK: widgets – heatmap
+            heat: WidgetHeatmap.counts(tripDates: trips.filter { $0.deletedAt == nil }.map(\.date), today: Date()),   // MARK: widgets – heatmap
+            hidesRoutesWhenLocked: WidgetPrivacyStore.stored.hidesRoutesWhenLocked,   // MARK: smartwidgets – lock-screen privacy
+            hidesAmountsWhenLocked: WidgetPrivacyStore.stored.hidesAmountsWhenLocked
         )
     }
 }
