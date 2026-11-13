@@ -34,6 +34,8 @@ struct CalendarSuggestionsSection: View {
                 content
                     .padding(.horizontal, Theme.Spacing.cardGutter)
                     .padding(.top, DashStyle.sectionSpacing)
+                    // „Letzte Fahrten“ follows 16 pt below (DashboardView): together one section gap of 24 pt.
+                    .padding(.bottom, Theme.Spacing.xs)
                     .reveal(order: 4)   // with the Fahrten-Vorschläge, in reading order (docs/MOTION.md §4)
                     .motionTransition(.rise)
             }

@@ -112,6 +112,7 @@ struct RootView: View {
         .tripRecorderHost()  // MARK: tripdetect – the full-screen recording screen ("Fahrt aufzeichnen")
         .autoRulesSheetHost()  // MARK: automation – „Regel ansehen“ from a rule notice opens the rule list
         .timeBalanceLinkHost()  // MARK: timebalance – klimabilanz://timebalance opens the Zeitbilanz in a sheet
+        .calendarSettingsHost()  // MARK: calendarsuggestions – klimabilanz://calendar and „Anpassen“ open Kalender-Vorschläge in a sheet
         .task {
             LaunchTrace.mark("root.task")
             await app.live.start()   // MARK: planner – cached config, connectivity and (with consent) the remote kill switch
@@ -258,6 +259,7 @@ struct RootView: View {
     /// klimabilanz://year[/2026|/ticket] – the year story   // MARK: yearreview
     /// klimabilanz://whatif – „Was wäre wenn?“   // MARK: whatif
     /// klimabilanz://timebalance – „Zeitbilanz“   // MARK: timebalance
+    /// klimabilanz://calendar – „Kalender-Vorschläge“   // MARK: calendarsuggestions
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -295,6 +297,8 @@ struct RootView: View {
             showsWhatIf = true
         case "timebalance":   // MARK: timebalance
             if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open() }
+        case "calendar":   // MARK: calendarsuggestions – klimabilanz://calendar: Einstellungen › Kalender-Vorschläge (closes the Einstellungen sheet first)
+            CalendarSuggestionStore.shared.openSettingsFromLink(closing: app)
         case "commute":   // MARK: commute – klimabilanz://commute: the card pulses, or the setup opens (docs/COMMUTE.md §1)
             app.selectedTab = .overview
             CommuteModel.shared.openFromLink()

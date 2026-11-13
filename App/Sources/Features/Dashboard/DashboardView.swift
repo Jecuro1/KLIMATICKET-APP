@@ -111,6 +111,7 @@ struct DashboardView: View {
                             .reveal(order: 4)
                             .motionTransition(.rise)
                     }
+                    CalendarSuggestionsSection(trips: trips)   // MARK: calendarsuggestions – „Termine mit Zugfahrt?“ (docs/CALENDAR_SUGGESTIONS.md §2)
 
                     if !trips.isEmpty {
                         DashRecentTripsSection(trips: Array(trips.prefix(5)))
