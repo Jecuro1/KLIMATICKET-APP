@@ -29,8 +29,11 @@ struct MapLayerBar: View {
             let on = selection.isOn(layer)
             Button { onToggle(layer) } label: {
                 VStack(spacing: 3) {
+                    // One height for every symbol: the pin is taller than the train, and each chip centres its own column, so the five
+                    // titles sat on five baselines (CI screenshots radar and mapLayers, integration run 43464953439).
                     Image(systemName: symbol(layer))
                         .font(.system(size: 16, weight: .semibold))
+                        .frame(height: 20)
                     Text(layer.title)
                         .font(.caption2.weight(.semibold))
                         .multilineTextAlignment(.center)
