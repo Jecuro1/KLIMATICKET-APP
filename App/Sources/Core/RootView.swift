@@ -149,6 +149,7 @@ struct RootView: View {
                 // Cheap, and needed on every activation: quick logs and "Fahrt erfassen" from Control Center / widgets.
                 handleExternalRequests()
                 ExitAlarmService.shared.sceneBecameActive()   // MARK: exitalarm – the clock ran while the app slept
+                Task { await CommuteLogQueue.ingest(context: context, app: app) }   // MARK: commute – Siri's queued „Pendelfahrt erfassen“
                 // MARK: routes – reminders of routes that are gone (deleted here or on another device) do not fire
                 Task { await SavedRouteReminders.reconcile(context: context) }
                 // MARK: ai – the Sunday recap text is written here, in the foreground (docs/LOCAL_AI.md §3)
@@ -597,6 +598,9 @@ struct ScreenshotRouter: View {
         // MARK: tripdetect – Fahrten-Vorschläge, Fahrt aufzeichnen, Erklärung, Einstellungen, Protokoll (synthetic data, no alert)
         case let detectScreen where TripDetectScreenshotHost.screens.contains(detectScreen):
             TripDetectScreenshotHost(screen: detectScreen)
+        // MARK: commute – Pendel-Modus: invitation, live, delayed, cancelled, without consent, compact, AX5, settings (pinned clock, no network)
+        case let commuteScreen where CommuteScreenshotHost.screens.contains(commuteScreen):
+            CommuteScreenshotHost(screen: commuteScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }

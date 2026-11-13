@@ -315,6 +315,7 @@ struct Repository {
         for e in allCandidates() { context.delete(e) }   // MARK: tripdetect – proposals and the memory of dismissed pairs
         app.detection.deleteAllLocationData()
         ExitAlarmService.shared.deleteAll()               // MARK: exitalarm – nothing of an alarm outlives "Alle Daten löschen"
+        CommuteModel.shared.deleteAll()                   // MARK: commute – the Stammstrecke, Siri's last answer and queued logs
     }
 
     /// "Alles löschen" that also reaches the cloud: with a signed-in account every row is tombstoned and uploaded

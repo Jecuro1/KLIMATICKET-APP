@@ -35,6 +35,20 @@ public struct CommuteGuess: Hashable, Sendable {
     public var mostlyRoundTrips: Bool
     public var confidence: Confidence
 
+    public init(origin: CommuteEndpoint, destination: CommuteEndpoint, rides: Int, days: Int, weeks: Int, weekdays: Set<RouteWeekday>,
+                outboundMinute: Int?, returnMinute: Int?, mostlyRoundTrips: Bool, confidence: Confidence) {
+        self.origin = origin
+        self.destination = destination
+        self.rides = rides
+        self.days = days
+        self.weeks = weeks
+        self.weekdays = weekdays
+        self.outboundMinute = outboundMinute
+        self.returnMinute = returnMinute
+        self.mostlyRoundTrips = mostlyRoundTrips
+        self.confidence = confidence
+    }
+
     /// Direction-free identity of the pair (remembering a „Nein“).
     public var pairKey: String { CommuteDetector.pairKey(origin, destination) }
 }
