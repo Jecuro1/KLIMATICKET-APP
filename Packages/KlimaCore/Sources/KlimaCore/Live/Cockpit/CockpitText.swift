@@ -118,6 +118,19 @@ public enum CockpitText {
         }
     }
 
+    /// The big line of the HUD: the next stop; once arrived the stop the train reached (the label above says "Ziel erreicht"); without either
+    /// what the train is doing. Never the same words as the line under it.
+    public static func headline(_ summary: CockpitSummary) -> String {
+        if let next = summary.nextStop { return next }
+        if case .arrived(let stop) = summary.phase { return stop }
+        return phaseLine(summary)
+    }
+
+    /// The line under the big one: what the train is doing, only when the big line is a stop it heads for (else the big line says it).
+    public static func subline(_ summary: CockpitSummary) -> String? {
+        summary.nextStop == nil ? nil : phaseLine(summary)
+    }
+
     /// The small label over the stop name: "Nächster Halt", "Ziel erreicht".
     public static func stopLabel(_ summary: CockpitSummary) -> String {
         switch summary.phase {
@@ -194,7 +207,10 @@ public enum CockpitText {
         if let destination = summary.destination { line += " nach \(destination)" }
         switch summary.phase {
         case .cancelled: return "\(line) fällt aus."
-        case .arrived(let stop): return "\(line) hat \(stop) erreicht."
+        case .arrived(let stop):
+            // "RJX 66 hat Salzburg Hbf erreicht.", not "RJX 66 nach Salzburg Hbf hat Salzburg Hbf erreicht."
+            let who = summary.destination == stop ? summary.lineTitle : line
+            return "\(who) hat \(stop) erreicht."
         default: break
         }
         guard let next = summary.nextStop else { return line }

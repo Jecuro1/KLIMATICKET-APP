@@ -104,6 +104,26 @@ final class CockpitSummaryTests: XCTestCase {
         XCTAssertTrue(s.upcoming.isEmpty)
         XCTAssertEqual(CockpitText.stopLabel(s), "Ziel erreicht")
         XCTAssertEqual(CockpitText.share(s), "RJX 66 nach Ziel hat Halt 3 erreicht.")
+        // The HUD: the label says "Ziel erreicht", the big line the stop, and no line under it repeats the words.
+        XCTAssertEqual(CockpitText.headline(s), "Halt 3")
+        XCTAssertNil(CockpitText.subline(s))
+    }
+
+    func testArrivedAtTheDestinationIsSaidOnce() {
+        let route = F.route()
+        var s = summary(route, km: route.lastKm, now: F.at(96))
+        s.destination = "Halt 3"
+        XCTAssertEqual(CockpitText.share(s), "RJX 66 hat Halt 3 erreicht.")
+    }
+
+    func testHeadlineAndSublineUnderway() {
+        let route = F.route(F.fourStops(delay: 0))
+        let s = summary(route, km: between(route, 0, 1), now: F.at(10))
+        XCTAssertEqual(CockpitText.headline(s), "Halt 1")
+        XCTAssertEqual(CockpitText.subline(s), "Unterwegs")
+        let cancelled = summary(F.route(F.fourStops(delay: 0), cancelled: true), km: between(route, 1, 2), now: F.at(47))
+        XCTAssertEqual(CockpitText.subline(cancelled), cancelled.nextStop == nil ? nil : "Dieser Zug fällt aus")
+        XCTAssertNotEqual(CockpitText.headline(cancelled), CockpitText.subline(cancelled))
     }
 
     func testTheLastStopIsLabelledZiel() {
