@@ -169,6 +169,32 @@ public enum RadarTimeText {
         return minute == 0 ? "\(hour) Uhr" : "\(hour) Uhr \(minute)"
     }
 
+    /// What VoiceOver says for the scrubber and the chip: "22 Uhr 32, in 45 Minuten", "0 Uhr 15, morgen, in 2 Stunden", "Jetzt".
+    public static func spokenValue(target: Date?, now: Date, offset: TimeInterval) -> String {
+        guard let target else { return "Jetzt" }
+        let day = dayNote(for: target, now: now).map { ", \($0)" } ?? ""
+        return "\(spokenClock(target))\(day), \(spokenOffset(RadarTimeAxis.snapped(offset)))"
+    }
+
+    /// The line when an answer of the server lies near the chosen minute (`RadarTimeScheduler.snapshotTime`). Only for this very minute are the
+    /// positions the server's own (the markers are solid then); an answer up to two and a half minutes away is named, and the minute shown
+    /// is calculated from it (the markers stay dashed).
+    public static func snapshotNote(snapshot: Date, target: Date, now: Date) -> String {
+        if abs(snapshot.timeIntervalSince(target)) <= RadarTimePin.solidWithin {
+            return "Für diese Minute hat die Auskunft die Positionen selbst berechnet."
+        }
+        return "Für \(clock(snapshot, now: now)) hat die Auskunft die Positionen selbst berechnet, für \(clock(target, now: now)) rechnet die App von dort aus."
+    }
+
+    /// Low Power Mode: nothing is loaded, the picture is calculated from what is there (the live radar pauses the same way).
+    public static let lowPowerTitle = "Stromspar-Modus"
+    public static let lowPower = "Die Zeitreise lädt nichts nach, solange der Stromspar-Modus an ist. Gerechnet wird mit dem, was schon geladen ist."
+
+    /// The hint of the play button: what one second of the time-lapse is.
+    public static func playHint(_ speed: RadarPlaybackSpeed) -> String {
+        "Eine Sekunde sind \(speed == .x1 ? "fünf" : "zehn") Minuten Fahrplan."
+    }
+
     /// "Stand der Verspätungen: vor 42 s": how old the delays behind the picture are.
     public static func delayAge(_ seconds: TimeInterval) -> String {
         "Stand der Verspätungen: \(RadarStatusText.age(seconds))"
@@ -203,12 +229,12 @@ public enum RadarTimeText {
                     : "\(failed) Zeitpunkte konnten nicht geladen werden. Zügen, die erst später losfahren, fehlen dort Daten."
     }
 
-    /// The volume, honestly: unpacked bytes of the measured answer (docs/OEBB_LIVE.md §R11.1: 1,83 MB for all of Austria). The size on the
-    /// wire is not measured.
+    /// The volume, honestly: unpacked bytes of the largest measured answer (docs/OEBB_LIVE.md §R11.1: 1,83 MB for all of Austria in the
+    /// evening peak; 1,2 MB at 22 Uhr, docs/RADAR_TIMETRAVEL.md §R12), so an upper bound: "bis etwa". The size on the wire is not measured.
     public static func volume(points: Int) -> String {
         let megabytes = Double(points) * RadarTimeScheduler.megabytesPerAnswer
         let text = megabytes < 10 ? String(format: "%.1f", megabytes) : String(format: "%.0f", megabytes)
-        return "Etwa \(text.replacingOccurrences(of: ".", with: ",")) MB (entpackt, \(points) Abfragen). Auf der Leitung ist es weniger."
+        return "Bis etwa \(text.replacingOccurrences(of: ".", with: ",")) MB (entpackt, \(points) Abfragen). Auf der Leitung ist es weniger."
     }
 }
 

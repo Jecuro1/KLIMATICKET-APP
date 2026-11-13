@@ -8,8 +8,16 @@ import KlimaCore
 
 extension RadarView {
     /// The Zeitreise is offered: trains are on and allowed, only trains (the snapshots are of rail vehicles), and the Pünktlichkeit layer
-    /// (about now) is off.
-    var timeAvailable: Bool { trainsOn && !heatOn && model.isRailOnly }
+    /// (about now) is off. Asked of the layer itself, not of `heatOn` (which is off while away): switching the layer on during a Zeitreise
+    /// ends it, so the chip does what it says instead of waiting silently behind the Zeitreise.
+    var timeAvailable: Bool { trainsOn && !layers.isOn(.punctuality) && model.isRailOnly }
+
+    /// The Cockpit follows a train live (docs/RADAR_COCKPIT.md). From a Zeitreise only a train the live radar knows: a train that starts
+    /// later has no live position, and the Zeitreise's calculated one must not be handed on as one that was seen now.
+    func cockpitEntry(for vehicle: RadarVehicle) -> ((RadarVehicle, TripDetails?) -> Void)? {
+        guard !travel.isAway || model.latestVehicle(vehicle.tripID) != nil else { return nil }
+        return { run, details in pendingCockpit = cockpitLaunch(run, details) }
+    }
 
     /// The groups the map draws: the Zeitreise's while away from now, the live radar's otherwise.
     var shownClusters: [RadarCluster] { travel.isAway ? travel.clusters : model.clusters }

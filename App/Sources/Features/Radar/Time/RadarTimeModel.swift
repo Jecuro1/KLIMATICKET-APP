@@ -45,8 +45,14 @@ final class RadarTimeModel {
     /// Some vehicle between two stops is placed on the straight line (always, except the selected train with its route).
     private(set) var hasStraightPins = false
     private(set) var failure: String?
-    /// A snapshot for exactly the shown minute is fetched: the picture there is the server's own.
-    private(set) var hasSnapshotHere = false
+    /// The time of a fetched snapshot within two and a half minutes of the chosen one (the card names it: only for this very minute is the
+    /// picture the server's own).
+    private(set) var snapshotHere: Date?
+    /// Low Power Mode is on: nothing is requested (as in the live radar) until "Trotzdem laden".
+    private(set) var lowPower = ProcessInfo.processInfo.isLowPowerModeEnabled
+    /// The step the user last moved the scrubber to (drag, VoiceOver): the selection haptic follows it, not the clock, so a resting scrubber
+    /// does not tick when the clock passes a five-minute mark.
+    private(set) var userStep = 0
 
     @ObservationIgnored private var timeline = RadarTimeline()
     @ObservationIgnored private var scheduler = RadarTimeScheduler()
@@ -65,6 +71,8 @@ final class RadarTimeModel {
     @ObservationIgnored private var playOffset: TimeInterval = 0
     @ObservationIgnored private var routeCache: (tripID: String, count: Int, route: RadarRoute?)?
     @ObservationIgnored private var lastError: Error?
+    @ObservationIgnored private var loadsInLowPower = false
+    @ObservationIgnored private var lastReplan = Date.distantPast
 
     // MARK: Derived
 
@@ -84,11 +92,10 @@ final class RadarTimeModel {
     var dayNote: String? { target.flatMap { RadarTimeText.dayNote(for: $0, now: clock) } }
     var offsetTitle: String { RadarTimeText.offsetTitle(RadarTimeAxis.snapped(offset)) }
 
-    var spokenValue: String {
-        guard let target else { return "Jetzt" }
-        let day = dayNote.map { ", \($0)" } ?? ""
-        return "\(RadarTimeText.spokenClock(target)) Uhr\(day), \(RadarTimeText.spokenOffset(RadarTimeAxis.snapped(offset)))"
-    }
+    var spokenValue: String { RadarTimeText.spokenValue(target: target, now: clock, offset: offset) }
+
+    /// Low Power Mode holds the requests back (the demo has none to hold).
+    var isHeldByLowPower: Bool { lowPower && !loadsInLowPower && !demo }
 
     var banner: String { RadarTimeText.banner(for: offset) }
 
@@ -118,6 +125,8 @@ final class RadarTimeModel {
         stopPlaying()
         returning = false
         let snapped = RadarTimeAxis.snapped(seconds)
+        let step = RadarTimeAxis.step(for: snapped)
+        if step != userStep { userStep = step }
         if snapped == 0 {
             backToNow()
             return
@@ -194,7 +203,7 @@ final class RadarTimeModel {
         clusters = []
         pinsByID = [:]
         trail = []
-        hasSnapshotHere = false
+        snapshotHere = nil
     }
 
     /// The radar was closed, the train layer went off, another mode came on: everything of the Zeitreise ends.
@@ -209,6 +218,12 @@ final class RadarTimeModel {
         isRefreshingExact = false
         isIncomplete = false
         failure = nil
+        loadsInLowPower = false
+    }
+
+    /// "Trotzdem laden" in Low Power Mode: the plan is loaded after all, until the radar closes or the train layer goes off.
+    func loadDespiteLowPower() {
+        loadsInLowPower = true
     }
 
     /// A metered connection: "Fein laden" fetches the plan every 20 minutes and the resting minutes by themselves after all.
@@ -234,15 +249,18 @@ final class RadarTimeModel {
 
     /// The trip details of the selected train arrived (the trip sheet loaded them): its whole stop list and its route make its path exact.
     func noteDetails(tripID: String) {
-        guard isAway, let details = RadarRouteCache.shared.value(for: tripID), details.stopovers.count > 1,
-              let vehicle = timeline.vehicle(tripID) else {
-            needsRebuild = true
-            return
-        }
+        if isAway { addCachedDetails(tripID) }
+        needsRebuild = true
+    }
+
+    /// The whole stop list of a trip from the trip sheet's cache (five minutes), into the timeline. Also when a Zeitreise starts with a train
+    /// already selected: its sheet loaded the details before.
+    private func addCachedDetails(_ tripID: String) {
+        guard let details = RadarRouteCache.shared.value(for: tripID), details.stopovers.count > 1,
+              let vehicle = timeline.vehicle(tripID) else { return }
         let full = RadarVehicle(tripID: tripID, line: vehicle.line, direction: vehicle.direction, coordinate: vehicle.coordinate,
                                 stopovers: details.stopovers, isCancelled: details.isCancelled)
         timeline.addDetails(full, fetchedAt: Date())
-        needsRebuild = true
     }
 
     // MARK: Demo
@@ -276,13 +294,19 @@ final class RadarTimeModel {
                 last = now
                 if now.timeIntervalSince(clock) >= 1 { clock = now }
                 if isAway, !began { await start(live: live) }
+                let saving = ProcessInfo.processInfo.isLowPowerModeEnabled
+                if saving != lowPower { lowPower = saving }
                 if isAway {
                     advance(elapsed: elapsed, now: now)
-                    switch scheduler.next(now: now, claim: claim(live)) {
-                    case .request(let request):
-                        group.addTask { await self.fetch(request, service) }
-                    case .wait, .idle:
-                        break
+                    if now.timeIntervalSince(lastReplan) >= 60 { replan(now: now) }
+                    // Low Power Mode: no request (the live radar pauses the same way); the picture is calculated from what is loaded.
+                    if !isHeldByLowPower {
+                        switch scheduler.next(now: now, claim: claim(live)) {
+                        case .request(let request):
+                            group.addTask { await self.fetch(request, service) }
+                        case .wait, .idle:
+                            break
+                        }
                     }
                     updateProgress(now: now)
                 }
@@ -319,11 +343,23 @@ final class RadarTimeModel {
         profile = coarse ? .coarse : .fine
         scheduler.allowsAutoExact = !coarse
         timeline.addLive(live.knownEntries(at: now))
-        timeline.prune(now: now)
+        // What the scrubber can reach stays: half an hour back. The snapshots of an earlier Zeitreise still count as fetched for ten
+        // minutes, so pruning at "now" would leave the last half hour without its trains.
+        timeline.prune(forRangeAt: now)
+        if let selected = live.selectedTripID { addCachedDetails(selected) }
         scheduler.begin(now: now, profile: profile, includeNow: !live.holdsAllOfAustria)
+        lastReplan = now
         if let target { scheduler.setTarget(target, now: now) }
         if isPlaying { scheduler.setMoving(true, now: now) }
         needsRebuild = true
+    }
+
+    /// A long Zeitreise: the range moves on with the clock. The plan gets the points that came into it (one every 20 minutes), and what left
+    /// it on the left is dropped from the timeline. Once a minute.
+    private func replan(now: Date) {
+        lastReplan = now
+        scheduler.extendPlan(now: now)
+        timeline.prune(forRangeAt: now)
     }
 
     /// Moves the time: the time-lapse advances the target; the shown time glides after it; on the way back to now the live radar takes over.
@@ -365,8 +401,8 @@ final class RadarTimeModel {
         let incomplete = scheduler.isIncomplete
         if incomplete != isIncomplete { isIncomplete = incomplete }
         if let target {
-            let here = scheduler.hasSnapshot(near: target, now: now)
-            if here != hasSnapshotHere { hasSnapshotHere = here }
+            let here = scheduler.snapshotTime(near: target, now: now)
+            if here != snapshotHere { snapshotHere = here }
         }
         let message: String? = scheduler.progress.failed > 0 && !scheduler.isLoading
             ? RadarTimeText.missing(scheduler.progress.failed)
@@ -481,9 +517,11 @@ enum RadarMeteredPath {
                 if once.take() { continuation.resume(returning: path.isExpensive || path.isConstrained) }
             }
             monitor.start(queue: queue)
-            // No answer in half a second: not metered (the plan is then the fine one, the volume is stated in the card).
+            // No answer in half a second: not metered (the plan is then the fine one, the volume is stated in the card). This runs in any
+            // case and lets go of the handler, which holds the monitor (and the monitor the handler).
             queue.asyncAfter(deadline: .now() + 0.5) {
                 monitor.cancel()
+                monitor.pathUpdateHandler = nil
                 if once.take() { continuation.resume(returning: false) }
             }
         }

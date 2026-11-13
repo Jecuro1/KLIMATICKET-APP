@@ -73,7 +73,9 @@ zwei verschiedene Halte zur selben geplanten Minute sind eine Umleitung, die fri
 liegt zwischen den beiden Wegpunkten um T, nach Zeit gewichtet. Für **den ausgewählten Zug** kommen die ganze Haltestellenliste (JourneyDetails) und die Strecke (Polylinie) dazu: Dann sind alle Halte bekannt und der Weg folgt der Strecke
 (`RadarPathKind.polyline`); sonst ist er die gerade Linie (`.straight`, im Aufklapptext der Karte gesagt: „Luftlinie“).
 
-**Beginn und Ende.** Vor der ersten Abfahrt ist der Zug nicht auf der Karte, **außer** eine Antwort hat ihn am ersten Halt stehen sehen: Dann bleibt er dort bis zur Abfahrt (die Auskunft hat ihn dort gesehen, der Fahrplan hält ihn bis dahin). Nach der Ankunft am Ziel (mit Verspätung) fällt er weg (die Zeit gilt auf die Sekunde).
+**Beginn und Ende.** Vor der ersten Abfahrt ist der Zug nicht auf der Karte, **außer** eine Antwort hat ihn am ersten Halt stehen sehen: Dann bleibt er dort bis zur Abfahrt (die Auskunft hat ihn dort gesehen, der Fahrplan hält ihn bis dahin). Er steht dann **auf** dem Halt, mit dem Pfeil zum nächsten
+(die Position der Antwort liegt oft ein paar hundert Meter daneben, am Bahnsteig; früher kroch der Zug von dort zum Halt, den Pfeil rückwärts, Review 1). Nach der Ankunft am Ziel (mit Verspätung) fällt er weg (die Zeit gilt auf die Sekunde).
+Fehlt eine Fahrt in einer vollständigen Antwort für eine Zeit, ersetzt das nur, was eine ältere Antwort über **diese Minute** sagte (±150 s); aus ihren anderen Antworten wird sie weiter nach Fahrplan bis zum Ziel gerechnet.
 
 **Zeit.** Alles läuft in absoluten Zeiten. Normal- und Sommerzeit, Mitternacht und der Wechsel in der Nacht sind nur Anzeige: „03:30 MESZ“ erscheint, wenn der Versatz zur Uhr von jetzt ein anderer ist; „morgen“ nach Mitternacht (Wiener Kalendertag), „gestern“ beim Rückblick kurz nach Mitternacht.
 Die Plan-Zeiten sind volle 20 Minuten (oder Stunden) der Wiener Uhr; auch über die Zeitumstellung liegen sie 20 echte Minuten auseinander (Test).
@@ -100,18 +102,25 @@ unter 1,5 km, mit einer über 3 km auf einer künstlichen Zickzack-Strecke); ob 
 
 Der Regler selbst ist lokal. Anfragen gibt es, **sobald die Zeit nicht „Jetzt“ ist** (nicht schon beim Öffnen der Karte), und nur diese:
 
-- **Plan (`RadarTimeScheduler`).** Eine Momentaufnahme ganz Österreichs (Schiene, `maxJny` 1000, eine Anfrage) zu jeder vollen 20. Minute von 30 Minuten zurück bis 3 Stunden voraus: **11 Antworten**, dazu eine für „jetzt“, wenn das Radar nicht ganz Österreich hält (Radar-Ansicht herausgezoomt und alle Kacheln beantwortet:
+- **Plan (`RadarTimeScheduler`).** Eine Momentaufnahme ganz Österreichs (Schiene, `maxJny` 1000, eine Anfrage) zu jeder vollen 20. Minute von 30 Minuten zurück bis 3 Stunden voraus: **10 oder 11 Antworten**, dazu eine für „jetzt“, wenn das Radar nicht ganz Österreich hält (Radar-Ansicht herausgezoomt und alle Kacheln beantwortet:
   dann stammen die Fahrzeuge von dort): bis **12**. Angezeigt als „Zeitreise lädt 3/12“; ab der ersten Antwort ist das Bild nutzbar. Reihenfolge: die Antwort, die dem Regler am nächsten liegt, zuerst, dann nach Abstand; sie folgt dem Regler.
   Eine abgeschnittene Antwort (1 000 Einträge) wird durch ihre zwei Hälften (Kacheln der Stufe 0) ersetzt; die Hälften fügen nur Fahrzeuge hinzu und löschen keine.
+  **Lange Zeitreise:** Der Bereich wandert mit der Uhr. Einmal je Minute kommen die Punkte dazu, die rechts in den Bereich gerückt sind (einer je 20 Minuten), und was links herausfällt, wird vergessen (`extendPlan`, `RadarTimeline.prune(forRangeAt:)`);
+  Gelungenes wird nicht noch einmal geholt, Gescheitertes nicht noch einmal versucht. **Wieder hinein** innerhalb von zehn Minuten: Die Zeitleiste behält alles, was der Regler erreicht (30 Minuten zurück), denn die Momentaufnahmen gelten so lange als geladen
+  (früher wurde „jetzt“ als Grenze genommen, und die Züge der letzten halben Stunde, die schon am Ziel waren, fehlten beim Rückblick, Review 1).
 - **Ruhende Minute.** 0,6 s nachdem der Regler stillsteht (nicht beim Ziehen, nicht beim Abspielen), **eine** Anfrage genau für diese Minute; sie ersetzt die Rechnung dort. Nicht, wenn ein Punkt des Plans oder eine Antwort höchstens 150 s daneben liegt oder die Zeit weniger als 60 s von jetzt weg ist.
   Höchstens 12 solche Anfragen von selbst je Zeitreise, danach nur auf „Genau laden“.
 - **Budget.** Alles geht durch `RadarScheduler.claimSlot`, den Topf des Radars (§R11.2): **höchstens 24 Anfragen je Minute, 4 in 10 Sekunden, mindestens 1 s Abstand**, zusammen mit der Live-Schleife. Ein Test über 10 simulierte Minuten Ziehen, Spielen und Warten, und einer mit abwechselnder
-  Live-Schleife und Zeitreise, prüft alle drei Grenzen. Gleichzeitig unterwegs höchstens 2. Ratenbegrenzung oder offener Schutzschalter pausieren das ganze Radar (`RadarScheduler.pause`). Fehler: nach 15 s, dann 30 s noch einmal, dann bleibt der Zeitpunkt aus und die Karte sagt es.
+  Live-Schleife und Zeitreise, prüft alle drei Grenzen. Gleichzeitig unterwegs höchstens 2, auch wenn „Fein laden“ den Plan mitten in der Zeitreise neu macht (die Anfragen unterwegs werden abgewartet, nicht doppelt gestellt). Ratenbegrenzung oder offener Schutzschalter pausieren das ganze Radar (`RadarScheduler.pause`). Fehler: nach 15 s, dann 30 s noch einmal, dann bleibt der Zeitpunkt aus und die Karte sagt es.
+- **Stromspar-Modus.** Wie das Live-Radar lädt die Zeitreise im Stromspar-Modus nichts; gerechnet wird mit dem, was schon da ist. Die Karte sagt es („Stromspar-Modus. Die Zeitreise lädt nichts nach …“) und bietet „Trotzdem laden“ (gilt, bis das Radar schließt).
 - **Pausieren und Beenden.** Die 20-s-Schleife des Radars **pausiert, solange die Zeit nicht Jetzt ist** (nichts wird für „jetzt“ geladen) und läuft nach „Zurück zu Jetzt“ weiter. Verlässt man das Radar oder schaltet die Zug-Ebene aus, endet die eine Schleife der Zeitreise mit allen Anfragen unterwegs.
   Ohne Zustimmung, bei ausgeschaltetem Schalter oder Notschalter gibt es den Chip nicht (derselbe Zugang wie das Radar). Die Zeitreise ist nur für Züge da (Schiene); sind Bus, Bim oder U-Bahn an, oder ist die Pünktlichkeits-Ebene an, ist sie aus.
+  Wer eine dieser Ebenen **während** einer Zeitreise einschaltet, beendet sie (früher wartete die Pünktlichkeits-Ebene still hinter der Zeitreise, Review 1).
+- **Cockpit.** Solange das Cockpit offen ist (`docs/RADAR_COCKPIT.md`), ruht die Schleife der Zeitreise wie die Live-Schleife; danach geht es weiter, wo man war. Aus einer Zeitreise öffnet „Cockpit“ nur einen Zug, den das Live-Radar kennt:
+  Ein Zug, der erst später losfährt, hat keine Live-Position, und die berechnete darf nicht als eben gesehene weitergegeben werden.
 - **Datenmenge, ehrlich.** Gemessen 0,3 bis 1,8 MB je Antwort **entpackt** (1,2 MB um 22 Uhr, 1,83 MB in der Abendspitze, §R11.1); die Größe auf der Leitung ist nicht gemessen. Der volle Plan: 12 Antworten, **etwa 14 MB am Abend, bis etwa 22 MB in der Spitze**, jede ruhende Minute dazu 1 bis 2 MB
-  (höchstens 12 von selbst: bis etwa 22 MB mehr). Die Karte sagt: „Etwa 22 MB (entpackt, 12 Abfragen). Auf der Leitung ist es weniger.“ (aufgeklappt unter „Wie das berechnet wird“).
-- **Mobilfunk.** Die App hat keine Einstellung dafür. Beim Start einer Zeitreise fragt sie den Netzwerkpfad einmal ab (`NWPathMonitor`: teuer oder eingeschränkt = Mobilfunk, Hotspot, Datensparmodus). Dann gilt der **grobe Plan** (volle Stunden, 3 Antworten, keine im Rückblick, mit einer für „jetzt“ etwa 5 bis 7 MB entpackt) und es gibt keine
+  (höchstens 12 von selbst: bis etwa 22 MB mehr). Die Karte sagt: „Bis etwa 22 MB (entpackt, 12 Abfragen). Auf der Leitung ist es weniger.“ (aufgeklappt unter „Wie das berechnet wird“; „bis etwa“, weil 1,8 MB die größte gemessene Antwort ist).
+- **Mobilfunk.** Die App hat keine Einstellung dafür. Beim Start einer Zeitreise fragt sie den Netzwerkpfad einmal ab (`NWPathMonitor`: teuer oder eingeschränkt = Mobilfunk, Hotspot, Datensparmodus; die Karte sagt „Mobile Daten oder Datensparmodus“). Dann gilt der **grobe Plan** (volle Stunden, 3 oder 4 Antworten, eine im Rückblick, wenn die letzte volle Stunde keine halbe Stunde her ist, mit einer für „jetzt“ etwa 5 bis 9 MB entpackt) und es gibt keine
   Anfrage für ruhende Minuten von selbst; die Karte sagt es und bietet „Fein laden“ (voller Plan) und „Genau laden“ (diese Minute). Die Schwelle ist eine Annahme: ob eine Verbindung als „teuer“ gemeldet wird, entscheidet das System; auf einem Mobilfunkvertrag ohne Begrenzung kann man „Fein laden“ tippen.
 
 ## 4. Oberfläche
@@ -119,11 +128,11 @@ Der Regler selbst ist lokal. Anfragen gibt es, **sobald die Zeit nicht „Jetzt�
 - **Chip und Karte.** Der Chip („Jetzt“, oder die Zeit, wenn weg von jetzt, mit einem Knopf „Zurück zu Jetzt“ daneben) und die Karte sind ein Glas, das ineinander übergeht (`GlassMorphGroup`, `Motion.smooth`). Die Karte hat innen kein Glas (Glas auf Glas gibt es nicht): Kopf mit großer
   Zeit (rollende Ziffern), Regler, Knöpfe, Status.
 - **Regler** (`RadarTimeScrubber`): Spur von −30 Min bis +3 Std, Striche alle 15 Minuten (hoch zu jeder Stunde und bei „Jetzt“), Beschriftung „−30, Jetzt, +1, +2, +3 Std“, Griff rastet auf Fünf-Minuten-Schritten ein (Auswahl-Haptik; beim Abspielen keine, einmal beim Start und Ende).
-  **VoiceOver:** einstellbar (nach oben oder unten = ein Schritt), spricht „22 Uhr 32, in 45 Minuten“. **Dynamic Type:** Zeit und Zeilen skalieren, die Knöpfe stapeln sich bei großen Schriften.
+  **VoiceOver:** einstellbar (nach oben oder unten = ein Schritt), spricht „22 Uhr 32, in 45 Minuten“ (`RadarTimeText.spokenValue`, getestet; vor Review 1 sagte es „22 Uhr 32 Uhr“). Die Auswahl-Haptik folgt dem Schritt, den man wählt, nicht der Uhr: Ein ruhender Regler tickt nicht, wenn die Uhr eine Fünf-Minuten-Marke überschreitet. **Dynamic Type:** Zeit und Zeilen skalieren, die Knöpfe stapeln sich bei großen Schriften.
 - **Bewegung** (nur Tokens): Die Marker **gleiten**, wenn der Griff springt oder der Zeitraffer läuft: Die gezeigte Zeit folgt der gewählten mit `RadarTimeGlide` (Zeitkonstante 0,14 s, 12 Bilder je Sekunde, nur solange sie sich bewegt). Spur: die letzten 10 Minuten des **gewählten** Zuges, zehn Stücke, das älteste dünn
   und blass. Himmel: eine weiche Tönung über der Karte (Dämmerung warm, Nacht violett, `RadarDaylight`: Sonnenhöhe für 47,6° N ohne Zeitgleichung, auf etwa 15 Minuten genau; **Anmutung, nichts wird damit behauptet**).
   **Reduce Motion:** kein Gleiten (die gezeigte Zeit folgt sofort), keine Symbol-Effekte; Abspielen funktioniert weiter. Screenshot-Modus: Endzustand sofort.
-- **Marker.** Wie im Radar. Der gestrichelte Ring heißt hier „berechnet“ (alle Positionen außer der Antwort der Auskunft für diese Minute); die Farbe des Rings ist die Verspätung, die der Zug zu dieser Zeit trägt (grün unter 5 Minuten, orange ab 5, rot abgesagt, grau ohne Echtzeit-Daten). Filter und Suche gelten.
+- **Marker.** Wie im Radar. Der gestrichelte Ring heißt hier „berechnet“ (alle Positionen außer der Antwort der Auskunft für diese Minute, auf 30 s); die Farbe des Rings ist die Verspätung, die der Zug zu dieser Zeit trägt (grün unter 5 Minuten, orange ab 5, rot abgesagt, grau ohne Echtzeit-Daten). Filter und Suche gelten.
 
 ## 5. Die Texte (alle getestet, `RadarTimeText`)
 
@@ -137,7 +146,9 @@ Der Regler selbst ist lokal. Anfragen gibt es, **sobald die Zeit nicht „Jetzt�
 | Laden | „Zeitreise lädt 3/12“ mit Balken |
 | Weg | „Zwischen den Halten fahren die Züge auf der Luftlinie. Nur beim gewählten Zug folgt die Spur der Strecke.“ |
 | Ausfall | „Ein Zeitpunkt konnte nicht geladen werden. Zügen, die erst später losfahren, fehlen dort Daten.“ |
-| Genaue Minute | „Für diese Minute hat die Auskunft die Positionen selbst berechnet.“ |
+| Genaue Minute | „Für diese Minute hat die Auskunft die Positionen selbst berechnet.“ (nur, wenn ihre Antwort höchstens 30 s neben der gewählten Zeit liegt: dann sind die Marker durchgezogen) |
+| Antwort daneben | „Für 22:20 hat die Auskunft die Positionen selbst berechnet, für 22:19 rechnet die App von dort aus.“ (eine Antwort bis 150 s daneben; vor Review 1 hieß das ebenfalls „für diese Minute“, während alle Marker gestrichelt waren) |
+| Stromspar-Modus | „Die Zeitreise lädt nichts nach, solange der Stromspar-Modus an ist. Gerechnet wird mit dem, was schon geladen ist.“ |
 
 ## 6. Demo und Screenshots
 
@@ -151,5 +162,6 @@ Die Züge sind **erfunden** (`RadarTimeDemo.swift`: 14 Linien auf den echten Hau
 
 **Nur auf einem iPhone zu prüfen:** das Gleiten der Marker bei 120 Hz und die Last bei 1 000 Markern (der Entwurf begrenzt auf 12 Bilder je Sekunde und höchstens etwa 130 Gruppen, gemessen ist es nicht), die Haptik, VoiceOver, die Antwortzeit und Größe im Mobilfunknetz (gemessen wurde aus einer Cloud-Sandbox, 21,5 s
 war die langsamste Antwort von §R11.1), ob die Erkennung „Mobilfunk“ im Alltag richtig liegt, die Genauigkeit bei 20 Minuten Abstand der Antworten, tagsüber und in der Spitze (gemessen: Abend, 22 Uhr).
+Dazu (Review 1): ob das Ziehen am Regler bei großen Schriften, wenn der Bereich unten scrollt, nicht mit dem Scrollen kämpft; ob die zehn Spurstücke, die beim Gleiten 12-mal je Sekunde neu gesetzt werden, auf MapKit flackern; der Stromspar-Modus und „Trotzdem laden“ im Alltag.
 
 **Nicht gebaut / gekürzt:** Rückblick über 30 Minuten; Verspätungs-Vorhersage (die Auskunft liefert keine, wir erfinden keine); mehr als vier Halte je Fahrt für alle Züge (das wären 1 000 Anfragen für JourneyDetails, nur für den gewählten Zug); Bus, Bim und U-Bahn (in einer Großstadt ist schon eine Kachel am Limit von 1 000 Fahrzeugen, §R11.1 d; die Datenmenge einer solchen Zeitreise wurde nicht gemessen); eine Fortsetzung nach dem Ende des Zeitraffers (er stoppt bei +3 Std; „Abspielen“ am Ende beginnt bei „Jetzt“).

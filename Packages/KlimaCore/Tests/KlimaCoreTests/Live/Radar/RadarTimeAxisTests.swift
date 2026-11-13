@@ -145,6 +145,26 @@ final class RadarTimeAxisTests: XCTestCase {
         XCTAssertEqual(RadarTimeText.spokenClock(F.vienna(2026, 11, 12, 22, 0)), "22 Uhr")
     }
 
+    func testVoiceOverSaysTheTimeOnceWithItsDayAndOffset() {
+        // Review 1: the scrubber said "22 Uhr 32 Uhr" (the clock already carries its "Uhr").
+        let now = F.vienna(2026, 11, 12, 21, 47, 20)
+        let base = RadarTimeAxis.base(now: now)
+        let target = base.addingTimeInterval(2700)
+        XCTAssertEqual(RadarTimeText.spokenValue(target: target, now: now, offset: RadarTimeAxis.offset(of: target, now: now)), "22 Uhr 32, in 45 Minuten")
+        let full = F.vienna(2026, 11, 12, 23, 0)
+        XCTAssertEqual(RadarTimeText.spokenValue(target: full, now: now, offset: full.timeIntervalSince(base)), "23 Uhr, in einer Stunde und 15 Minuten")
+        let tomorrow = F.vienna(2026, 11, 13, 0, 15)
+        XCTAssertEqual(RadarTimeText.spokenValue(target: tomorrow, now: now, offset: tomorrow.timeIntervalSince(base)), "0 Uhr 15, morgen, in 2 Stunden und 30 Minuten")
+        XCTAssertEqual(RadarTimeText.spokenValue(target: nil, now: now, offset: 0), "Jetzt")
+        for minutes in stride(from: -30, through: 180, by: 5) {
+            let value = RadarTimeText.spokenValue(target: base.addingTimeInterval(Double(minutes) * 60), now: now, offset: Double(minutes) * 60)
+            XCTAssertEqual(value.components(separatedBy: "Uhr").count, 2, "one Uhr in \(value)")
+        }
+        XCTAssertEqual(RadarTimeText.playHint(.x1), "Eine Sekunde sind fünf Minuten Fahrplan.")
+        XCTAssertEqual(RadarTimeText.playHint(.x2), "Eine Sekunde sind zehn Minuten Fahrplan.")
+        XCTAssertTrue(RadarTimeText.lowPower.contains("Stromspar-Modus"))
+    }
+
     func testTheLinesSayWhatIsTrue() {
         XCTAssertEqual(RadarTimeText.banner, "Zeitreise · Prognose aus dem Fahrplan")
         XCTAssertEqual(RadarTimeText.banner(for: 600), RadarTimeText.banner)

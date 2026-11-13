@@ -477,9 +477,107 @@ final class RadarTimeSchedulerTests: XCTestCase {
     }
 
     func testTheVolumeIsStatedHonestly() {
-        XCTAssertEqual(RadarTimeText.volume(points: 11), "Etwa 20 MB (entpackt, 11 Abfragen). Auf der Leitung ist es weniger.")
-        XCTAssertEqual(RadarTimeText.volume(points: 3), "Etwa 5,4 MB (entpackt, 3 Abfragen). Auf der Leitung ist es weniger.")
+        // 1.8 MB is the largest answer measured (evening peak); at 22 Uhr it was 1.2 MB. So the number is an upper bound: "bis etwa".
+        XCTAssertEqual(RadarTimeText.volume(points: 11), "Bis etwa 20 MB (entpackt, 11 Abfragen). Auf der Leitung ist es weniger.")
+        XCTAssertEqual(RadarTimeText.volume(points: 3), "Bis etwa 5,4 MB (entpackt, 3 Abfragen). Auf der Leitung ist es weniger.")
         XCTAssertEqual(RadarTimeScheduler.megabytesPerAnswer, 1.8, "the measured 1 831 536 bytes, rounded up")
+    }
+
+    // MARK: Review 1
+
+    func testTheCoarsePlanHasFourPointsWhenTheLastFullHourIsInRange() {
+        // 21:10: the range is 20:40 ... 00:10, so 21:00 (ten minutes back) is a point too.
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: F.vienna(2026, 11, 12, 21, 10), profile: .coarse, includeNow: false)
+        XCTAssertEqual(scheduler.slots.keys.map(\.time).sorted(),
+                       [F.vienna(2026, 11, 12, 21, 0), F.vienna(2026, 11, 12, 22, 0), F.vienna(2026, 11, 12, 23, 0), F.vienna(2026, 11, 13, 0, 0)])
+    }
+
+    func testFeinLadenDuringAZeitreiseKeepsTheRequestsOnTheirWay() {
+        // On a metered connection the coarse plan runs; "Fein laden" starts the fine one while two answers are on their way. They are
+        // awaited, not asked again, and never more than two are on their way at once.
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: now, profile: .coarse, includeNow: false)
+        var clock = now
+        var first: [RadarTimeRequest] = []
+        for _ in 0..<6 {
+            clock = clock.addingTimeInterval(1.1)
+            if case .request(let request) = scheduler.next(now: clock, claim: { _ in nil }) { first.append(request) }
+        }
+        XCTAssertEqual(first.count, 2)
+        XCTAssertEqual(scheduler.inFlightCount, 2)
+        scheduler.begin(now: clock, profile: .fine, includeNow: false)
+        XCTAssertEqual(scheduler.inFlightCount, 2, "still on their way")
+        var more: [RadarTimeRequest] = []
+        for _ in 0..<6 {
+            clock = clock.addingTimeInterval(1.1)
+            if case .request(let request) = scheduler.next(now: clock, claim: { _ in nil }) { more.append(request) }
+        }
+        XCTAssertTrue(more.isEmpty, "two are on their way: nothing more")
+        for request in first { scheduler.recordAnswer(request, answeredCount: 900, now: clock) }
+        XCTAssertEqual(scheduler.progress.loaded, 2, "their answers count for the fine plan: 22:00 and 23:00 are points of it")
+        var sent: [Date] = []
+        for _ in 0..<80 {
+            clock = clock.addingTimeInterval(1.1)
+            if case .request(let request) = scheduler.next(now: clock, claim: { _ in nil }) {
+                sent.append(request.time)
+                scheduler.recordAnswer(request, answeredCount: 900, now: clock)
+            }
+        }
+        XCTAssertFalse(sent.contains { time in first.contains { $0.time == time } }, "nothing is asked twice")
+        XCTAssertEqual(scheduler.progress.loaded, scheduler.progress.total)
+        // Entering a new Zeitreise after leaving one: a request of the old one that never answered is asked afresh.
+        scheduler.end()
+        var fresh = RadarTimeScheduler()
+        fresh.begin(now: now, profile: .coarse, includeNow: false)
+        _ = fresh.next(now: now.addingTimeInterval(1), claim: { _ in nil })
+        XCTAssertEqual(fresh.inFlightCount, 1)
+        fresh.end()
+        fresh.begin(now: now.addingTimeInterval(5), profile: .coarse, includeNow: false)
+        XCTAssertEqual(fresh.inFlightCount, 0)
+    }
+
+    func testTheRangeMovesOnWithTheClockDuringALongZeitreise() {
+        // 21:47: the plan is 21:20 ... 00:40. Twenty minutes later the range is 21:37 ... 01:07: 21:20 is forgotten, 01:00 comes in.
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: now, profile: .fine, includeNow: false)
+        drainPlan(&scheduler, from: now)
+        XCTAssertEqual(scheduler.progress.loaded, 11)
+        let later = now.addingTimeInterval(20 * 60)
+        scheduler.extendPlan(now: later)
+        let times = scheduler.slots.keys.filter { $0.kind == .grid }.map(\.time).sorted()
+        XCTAssertEqual(times.first, F.vienna(2026, 11, 12, 21, 40))
+        XCTAssertEqual(times.last, F.vienna(2026, 11, 13, 1, 0))
+        XCTAssertEqual(scheduler.progress.total, 11)
+        XCTAssertEqual(scheduler.progress.loaded, 10, "the ten still in range are not fetched again")
+        guard case .request(let request) = scheduler.next(now: later, claim: { _ in nil }) else { return XCTFail("the new point") }
+        XCTAssertEqual(request.time, F.vienna(2026, 11, 13, 1, 0))
+        // A point that failed for good is not planned again, and nothing happens outside a Zeitreise.
+        scheduler.recordFailure(request, error: LiveError.disabled(.oebbHafas), now: later)
+        scheduler.extendPlan(now: later.addingTimeInterval(60))
+        XCTAssertEqual(scheduler.progress.failed, 1)
+        XCTAssertEqual(scheduler.next(now: later.addingTimeInterval(61), claim: { _ in nil }), .idle)
+        scheduler.end()
+        scheduler.extendPlan(now: later.addingTimeInterval(3600))
+        XCTAssertEqual(scheduler.progress.total, 11, "not running: the plan stays as it was")
+    }
+
+    func testTheSnapshotNearTheChosenMinuteIsNamedByItsTime() {
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: now, profile: .fine, includeNow: false)
+        drainPlan(&scheduler, from: now)
+        let clock = now.addingTimeInterval(90)
+        XCTAssertEqual(scheduler.snapshotTime(near: F.vienna(2026, 11, 12, 22, 19), now: clock), F.vienna(2026, 11, 12, 22, 20))
+        XCTAssertEqual(scheduler.snapshotTime(near: F.vienna(2026, 11, 12, 22, 20), now: clock), F.vienna(2026, 11, 12, 22, 20))
+        XCTAssertNil(scheduler.snapshotTime(near: F.vienna(2026, 11, 12, 22, 25), now: clock), "five minutes away: none")
+        XCTAssertNil(scheduler.snapshotTime(near: F.vienna(2026, 11, 12, 22, 20), now: clock.addingTimeInterval(700)), "older than ten minutes")
+        XCTAssertTrue(scheduler.hasSnapshot(near: F.vienna(2026, 11, 12, 22, 21), now: clock))
+        // The words: only the very minute is the server's own picture; one minute off it is named.
+        let at2219 = F.vienna(2026, 11, 12, 22, 19), at2220 = F.vienna(2026, 11, 12, 22, 20)
+        XCTAssertEqual(RadarTimeText.snapshotNote(snapshot: at2220, target: at2220, now: now),
+                       "Für diese Minute hat die Auskunft die Positionen selbst berechnet.")
+        XCTAssertEqual(RadarTimeText.snapshotNote(snapshot: at2220, target: at2219, now: now),
+                       "Für 22:20 hat die Auskunft die Positionen selbst berechnet, für 22:19 rechnet die App von dort aus.")
     }
 
     // MARK: Helpers

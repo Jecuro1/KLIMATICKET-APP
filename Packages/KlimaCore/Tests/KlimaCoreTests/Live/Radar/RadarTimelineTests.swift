@@ -313,6 +313,24 @@ final class RadarTimelineTests: XCTestCase {
         XCTAssertEqual(timeline.trips["a"]?.observations.map(\.time), [F.at(-1), F.at(40)], "the newest observation before now is the anchor for everything after")
     }
 
+    func testPruningForAZeitreiseKeepsWhatTheScrubberCanReach() {
+        // Review 1: entering a Zeitreise again pruned at "now", so the trains of the last half hour that had ended were gone while their
+        // snapshots still counted as fetched. The scrubber reaches 30 minutes back: everything from there stays.
+        var timeline = RadarTimeline()
+        let ended = [F.Stop(lon: 14, arr: nil, dep: -40), F.Stop(lon: 15, arr: -10, dep: nil)]
+        timeline.addFrame([answer("ended", at: -30, stops: ended), answer("a", at: -30)], time: F.at(-30), fetchedAt: F.at(0))
+        timeline.addFrame([answer("a", at: -10)], time: F.at(-10), fetchedAt: F.at(0))
+        timeline.addFrame([answer("a", at: 20)], time: F.at(20), fetchedAt: F.at(0))
+        let before = timeline.pin(for: "ended", at: F.at(-20))
+        XCTAssertNotNil(before)
+        timeline.prune(forRangeAt: F.at(5))
+        XCTAssertEqual(timeline.pin(for: "ended", at: F.at(-20))?.coordinate, before?.coordinate, "25 minutes back is in the range")
+        XCTAssertEqual(timeline.trips["a"]?.observations.map(\.time), [F.at(-30), F.at(-10), F.at(20)], "-30 is the newest at the left edge")
+        timeline.prune(forRangeAt: F.at(45))
+        XCTAssertNil(timeline.trips["ended"], "ended 25 minutes before the left edge")
+        XCTAssertEqual(timeline.trips["a"]?.observations.map(\.time), [F.at(-10), F.at(20)])
+    }
+
     // MARK: What the screen needs
 
     func testPinsAreOrderedAndCarryTheDelayStateAtThatTime() throws {

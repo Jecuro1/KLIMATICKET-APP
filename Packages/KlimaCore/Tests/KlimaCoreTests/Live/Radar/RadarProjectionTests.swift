@@ -172,6 +172,23 @@ final class RadarProjectionTests: XCTestCase {
         XCTAssertNil(RadarProjection.validatedAnchor(for: schedule, time: F.at(10), coordinate: F.point(14.5)))
     }
 
+    func testAHeldTrainStandsOnItsFirstStopWithItsArrowForward() throws {
+        // Review 1: the answer put the waiting train 900 m west of its first stop (the platform, not the station's point). It used to creep
+        // east to the stop until departure, a straight-line pin with its arrow pointing west, backwards.
+        let schedule = self.schedule([F.Stop(lon: 14, arr: nil, dep: 25), F.Stop(lon: 15, arr: 55, dep: nil)])
+        let anchor = try XCTUnwrap(RadarProjection.validatedAnchor(for: schedule, time: F.at(10), coordinate: F.point(13.988)))
+        for minute in [10.0, 15, 20, 24.9] {
+            let held = try XCTUnwrap(RadarProjection.position(of: schedule, anchor: anchor, at: F.at(minute)), "minute \(minute)")
+            F.assertClose(held.coordinate, F.point(14.0), "minute \(minute): on the stop")
+            XCTAssertEqual(held.path, .atStop)
+            XCTAssertEqual(held.phase, .atStop(0))
+            XCTAssertEqual(try XCTUnwrap(held.bearing), 90, accuracy: 1, "towards the next stop, east")
+        }
+        let moving = try XCTUnwrap(RadarProjection.position(of: schedule, anchor: anchor, at: F.at(40)))
+        F.assertClose(moving.coordinate, F.point(14.5))
+        XCTAssertEqual(try XCTUnwrap(moving.bearing), 90, accuracy: 1)
+    }
+
     // MARK: Route polyline
 
     func testAlongThePolylineInsteadOfTheStraightLine() throws {

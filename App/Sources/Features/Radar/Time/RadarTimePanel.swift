@@ -216,17 +216,17 @@ struct RadarTimeCard: View {
         .buttonStyle(.pressable(scale: 0.92))
         .haptic(travel.isPlaying ? .start : .stop, trigger: travel.isPlaying)
         .accessibilityLabel(travel.isPlaying ? "Zeitraffer anhalten" : "Zeitraffer abspielen")
-        .accessibilityHint("Eine Sekunde sind fünf Minuten Fahrplan.")
+        .accessibilityHint(RadarTimeText.playHint(travel.speed))
     }
 
     // MARK: What is true
 
     private var meteredNotice: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Mobilfunk: grobe Zeitreise, ein Zeitpunkt je Stunde.", systemImage: "antenna.radiowaves.left.and.right")
+            Label("Mobile Daten oder Datensparmodus: grobe Zeitreise, ein Zeitpunkt je Stunde.", systemImage: "antenna.radiowaves.left.and.right")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
-            Text("So bleibt die Datenmenge klein. Für genau diese Minute lädst du mit \"Genau laden\".")
+            Text("So bleibt die Datenmenge klein. Genau diese Minute lädst du mit „Genau laden“.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
             HStack(spacing: Theme.Spacing.xs) {
@@ -235,6 +235,23 @@ struct RadarTimeCard: View {
             }
         }
         .padding(Theme.Spacing.s)
+        .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
+    }
+
+    /// Low Power Mode: nothing is loaded (as in the live radar), the picture is calculated from what is there. A tap loads after all.
+    private var lowPowerNotice: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(RadarTimeText.lowPowerTitle, systemImage: "battery.25percent")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text(RadarTimeText.lowPower)
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            smallButton("Trotzdem laden", symbol: "arrow.down.circle") { travel.loadDespiteLowPower() }
+        }
+        .padding(Theme.Spacing.s)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.surfaceSecondary, in: RoundedRectangle(cornerRadius: Theme.Radius.chip, style: .continuous))
     }
 
@@ -271,7 +288,9 @@ struct RadarTimeCard: View {
                 .accessibilityLabel(statusSpoken(at: context.date))
                 .accessibilityAddTraits(.updatesFrequently)
             }
-            if travel.isLoading {
+            if travel.isHeldByLowPower {
+                lowPowerNotice
+            } else if travel.isLoading {
                 loadingRow
             } else if let failure = travel.failure {
                 Label(failure, systemImage: "exclamationmark.triangle")
@@ -281,10 +300,14 @@ struct RadarTimeCard: View {
                 Label("Genau diese Minute wird geladen.", systemImage: "scope")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
-            } else if travel.hasSnapshotHere {
-                Label("Für diese Minute hat die Auskunft die Positionen selbst berechnet.", systemImage: "checkmark.seal")
+            } else if let snapshot = travel.snapshotHere, let target = travel.target {
+                // Only the very minute is the server's own picture (solid markers); an answer up to 150 s away is named, not claimed.
+                let exact = abs(snapshot.timeIntervalSince(target)) <= RadarTimePin.solidWithin
+                Label(RadarTimeText.snapshotNote(snapshot: snapshot, target: target, now: travel.clock),
+                      systemImage: exact ? "checkmark.seal" : "scope")
                     .font(.caption)
-                    .foregroundStyle(Theme.positiveText)
+                    .foregroundStyle(exact ? Theme.positiveText : Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             DisclosureGroup("Wie das berechnet wird") {
                 VStack(alignment: .leading, spacing: 6) {
@@ -292,7 +315,7 @@ struct RadarTimeCard: View {
                     if travel.hasStraightPins {
                         Text(RadarTimeText.straightLine)
                     }
-                    Text("Zu jedem Zug kennt die App nur vier Halte: Start, den letzten, den nächsten und das Ziel. Dazwischen rechnet sie zwischen den geladenen Zeitpunkten. Je näher ein geladener Zeitpunkt, desto genauer.")
+                    Text("Aus einer Antwort kennt die App zu jedem Zug nur vier Halte: Start, den letzten, den nächsten und das Ziel (beim gewählten Zug alle, sobald seine Fahrt geladen ist). Dazwischen rechnet sie zwischen den geladenen Zeitpunkten. Je näher ein geladener Zeitpunkt, desto genauer.")
                     Text(travel.volumeNote)
                 }
                 .font(.footnote)
@@ -369,12 +392,17 @@ struct RadarSkyTint: View {
 
     var body: some View {
         let sky = travel.sky
+        // Only while away from now: the live radar's map stays exactly as it was, without a blended layer over it.
         ZStack {
-            Rectangle().fill(Theme.dusk.opacity(0.30 * sky.night))
-            LinearGradient(colors: [Theme.dawn.opacity(0.26 * sky.twilight), .clear], startPoint: .bottom, endPoint: .center)
+            if travel.isAway {
+                ZStack {
+                    Rectangle().fill(Theme.dusk.opacity(0.30 * sky.night))
+                    LinearGradient(colors: [Theme.dawn.opacity(0.26 * sky.twilight), .clear], startPoint: .bottom, endPoint: .center)
+                }
+                .blendMode(.multiply)
+                .transition(.opacity)
+            }
         }
-        .blendMode(.multiply)
-        .opacity(travel.isAway ? 1 : 0)
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)

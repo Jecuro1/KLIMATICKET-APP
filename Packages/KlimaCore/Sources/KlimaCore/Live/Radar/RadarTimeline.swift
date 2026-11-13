@@ -127,8 +127,10 @@ public struct RadarTimeline: Sendable {
     // MARK: Adding answers
 
     /// One answer for `time`. With `isComplete` the answer is the whole truth for that time (a request for all of Austria that was
-    /// not cut off): observations of vehicles it does not contain, near that time and older than it, are removed, so a train that has
-    /// ended or left is not projected on from an older answer. A cut-off or partial answer (one tile of a split) only adds.
+    /// not cut off): observations of vehicles it does not contain, near that time (within `mergeWindow`) and older than it, are removed:
+    /// a refresh for the same minute replaces what an older answer said about that minute. A trip that has other observations is still
+    /// projected along its timetable from them (its end is the destination's arrival). A cut-off or partial answer (one tile of a split)
+    /// only adds.
     public mutating func addFrame(_ vehicles: [RadarVehicle], time: Date, fetchedAt: Date, isComplete: Bool = true) {
         var seen = Set<String>()
         seen.reserveCapacity(vehicles.count)
@@ -216,6 +218,13 @@ public struct RadarTimeline: Sendable {
         guard trips.count > limits.maxTrips else { return }
         let doomed = trips.sorted { $0.value.endsAt < $1.value.endsAt }.prefix(trips.count - limits.maxTrips)
         for (id, _) in doomed { trips[id] = nil }
+    }
+
+    /// What a Zeitreise at `now` can still show: the scrubber reaches half an hour back (`RadarTimeAxis.minOffset`), so everything from
+    /// there on stays. Pruning at `now` itself would drop the trains of the last half hour that have ended, while their snapshots still
+    /// count as fetched (a Zeitreise entered again within ten minutes fetches nothing twice).
+    public mutating func prune(forRangeAt now: Date, grace: TimeInterval = 120) {
+        prune(now: now.addingTimeInterval(RadarTimeAxis.minOffset), grace: grace)
     }
 
     /// Drops what is over: trips whose run ended more than `grace` ago, and observations from before `now` that no later time needs

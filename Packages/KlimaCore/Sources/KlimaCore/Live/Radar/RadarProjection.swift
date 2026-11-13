@@ -234,7 +234,14 @@ public struct RadarRunPath: Sendable {
                 let mid = (low + high) / 2
                 if points[mid].time > anchor.time { high = mid } else { low = mid + 1 }
             }
-            points.insert(Waypoint(time: anchor.time, coordinate: anchor.coordinate, stop: low > 0 ? points[low - 1].stop : 0), at: low)
+            // An answer that saw the train before its first departure held it at its first stop (`validatedAnchor`): it stands on that
+            // stop, not a few hundred metres beside it. Otherwise it would creep towards the stop until it leaves, its arrow pointing back.
+            var coordinate = anchor.coordinate
+            if let first = schedule.stops.first, anchor.time < first.departure,
+               anchor.coordinate.distanceKm(to: first.coordinate) <= RadarProjection.anchorAtStopKm {
+                coordinate = first.coordinate
+            }
+            points.insert(Waypoint(time: anchor.time, coordinate: coordinate, stop: low > 0 ? points[low - 1].stop : 0), at: low)
         }
         waypoints = points
     }

@@ -5,8 +5,9 @@ import Foundation
 // `.request`, then reports the outcome.
 //
 // The plan is a coarse timeline: one snapshot of all rail vehicles of Austria (one request with `maxJny` 1000, answered with up to ~1.8 MB) at
-// every full 20 minutes from half an hour back to three hours ahead (`fine`, 11 answers), or at every full hour on a metered connection (`coarse`,
-// 3 answers), plus one for "now" when the live radar does not already hold all of Austria. The order follows the scrubber: the answer nearest to the
+// every full 20 minutes from half an hour back to three hours ahead (`fine`, 10 or 11 answers), or at every full hour on a metered connection
+// (`coarse`, 3 or 4 answers), plus one for "now" when the live radar does not already hold all of Austria. While a Zeitreise lasts, the plan
+// moves on with the clock (`extendPlan`). The order follows the scrubber: the answer nearest to the
 // chosen time comes first, so the picture is usable long before the last one arrives. When the scrubber has rested (0.6 s), one more
 // snapshot for exactly that minute replaces the projection there.
 //
@@ -14,9 +15,10 @@ import Foundation
 // Zeitreise together never send more than 24 a minute, 4 in 10 seconds, one a second (docs/OEBB_LIVE.md §R11.2).
 
 public enum RadarTimeProfile: Sendable, Equatable {
-    /// Every 20 minutes from half an hour back to three hours ahead: 11 answers.
+    /// Every 20 minutes from half an hour back to three hours ahead: 10 or 11 answers.
     case fine
-    /// Every hour: 3 answers (none in the past). For a metered or constrained connection.
+    /// Every full hour in the same range: 3 or 4 answers (one in the past when the last full hour is less than 30 minutes ago). For a
+    /// metered or constrained connection.
     case coarse
 
     public var gridSeconds: TimeInterval { self == .fine ? 1200 : 3600 }
@@ -133,7 +135,10 @@ public struct RadarTimeScheduler: Sendable {
 
     /// Starts a Zeitreise at `now`. Snapshots that are still fresh from an earlier one stay (nothing is fetched twice); the plan's points
     /// are the full 20 minutes (or hours) up to three hours ahead. `includeNow`: the live radar does not hold all of Austria, so "now" is one more snapshot.
+    /// Called again during a running Zeitreise ("Fein laden"), the requests on their way stay on their way: their answers are awaited, not
+    /// asked a second time.
     public mutating func begin(now: Date, profile: RadarTimeProfile, includeNow: Bool) {
+        let wasActive = isActive
         isActive = true
         self.profile = profile
         pausedUntil = nil
@@ -145,7 +150,8 @@ public struct RadarTimeScheduler: Sendable {
             guard key.time >= now.addingTimeInterval(-config.pastRange - 60) else { return false }
             switch state.phase {
             case .done(let at), .split(let at): return now.timeIntervalSince(at) <= config.freshness
-            case .inFlight, .pending, .failed: return false   // an earlier Zeitreise ended before they finished: asked afresh
+            case .inFlight: return wasActive   // the same Zeitreise: still on its way. An earlier one ended before it finished: asked afresh
+            case .pending, .failed: return false
             }
         }
         for time in Self.gridTimes(from: now.addingTimeInterval(-config.pastRange), through: now.addingTimeInterval(config.range), every: profile.gridSeconds)
@@ -154,6 +160,23 @@ public struct RadarTimeScheduler: Sendable {
         }
         if includeNow, !isCovered(now) {
             slots[RadarTimeSlot(kind: .grid, time: now)] = SlotState()
+        }
+    }
+
+    /// The clock moves on during a long Zeitreise, and the scrubber's range with it: points of the plan that came into the range on the right
+    /// are added (one every 20 minutes, or every hour), points that left it on the left are forgotten (the timeline keeps what they brought).
+    /// A point that failed for good stays failed. Nothing else changes: no counter is reset, nothing fresh is fetched again.
+    public mutating func extendPlan(now: Date) {
+        guard isActive else { return }
+        let start = now.addingTimeInterval(-config.pastRange)
+        slots = slots.filter { key, state in
+            if key.time >= start.addingTimeInterval(-60) { return true }
+            if case .inFlight = state.phase { return true }   // its answer is still awaited
+            return false
+        }
+        for time in Self.gridTimes(from: start, through: now.addingTimeInterval(config.range), every: profile.gridSeconds)
+        where slots[RadarTimeSlot(kind: .grid, time: time)] == nil && !isCovered(time) {
+            slots[RadarTimeSlot(kind: .grid, time: time)] = SlotState()
         }
     }
 
@@ -209,13 +232,28 @@ public struct RadarTimeScheduler: Sendable {
 
     /// True when a snapshot for the minute around `time` is fetched (the picture there is calculated from a fresh answer).
     public func hasSnapshot(near time: Date, now: Date) -> Bool {
-        slots.contains { key, state in
-            guard key.part == nil, abs(key.time.timeIntervalSince(time)) <= config.exactWindow else { return false }
+        snapshotTime(near: time, now: now) != nil
+    }
+
+    /// The time of the fetched, fresh snapshot nearest to `time` within the window (up to 150 s away). The card names it: only when it is
+    /// this very minute is the picture the server's own; up to two and a half minutes away it is calculated from that answer.
+    public func snapshotTime(near time: Date, now: Date) -> Date? {
+        var best: Date?
+        for (key, state) in slots where key.part == nil && abs(key.time.timeIntervalSince(time)) <= config.exactWindow {
             switch state.phase {
-            case .done(let at), .split(let at): return now.timeIntervalSince(at) <= config.freshness
-            default: return false
+            case .done(let at), .split(let at):
+                guard now.timeIntervalSince(at) <= config.freshness else { continue }
+                let distance = abs(key.time.timeIntervalSince(time))
+                if let current = best {
+                    let currentDistance = abs(current.timeIntervalSince(time))
+                    if currentDistance < distance || (currentDistance == distance && current <= key.time) { continue }   // the earlier one on a tie
+                }
+                best = key.time
+            default:
+                continue
             }
         }
+        return best
     }
 
     // MARK: Progress

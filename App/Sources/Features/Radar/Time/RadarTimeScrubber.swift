@@ -49,7 +49,7 @@ struct RadarTimeScrubber: View {
             .frame(height: 40)
             labels
         }
-        .haptic(.selection, trigger: hapticStep)
+        .haptic(.selection, trigger: travel.userStep)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Zeitreise")
         .accessibilityValue(travel.spokenValue)
@@ -62,9 +62,6 @@ struct RadarTimeScrubber: View {
             }
         }
     }
-
-    /// The step the thumb is on, except while the time-lapse plays (one tick a second would be a buzz, not a hint).
-    private var hapticStep: Int? { travel.isPlaying ? nil : travel.step }
 
     // MARK: Parts
 
