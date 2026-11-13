@@ -82,7 +82,7 @@ private final class FeatureDemoClock: @unchecked Sendable {
 struct FeaturesScreenshotHost: View {
     static let screens: Set<String> = [
         "featuresHub", "featuresOffline", "featuresPrivacy", "featuresPrivacyBottom", "featuresDependency", "featuresAX5",
-        "featuresAX5Rows", "featuresPlanner", "featuresLink", "featuresSettingsRow", "featuresRows",
+        "featuresAX5Rows", "featuresPlanner", "featuresLink", "featuresSettingsRow", "featuresRows", "featuresInfo",
     ]
 
     let screen: String
@@ -91,12 +91,16 @@ struct FeaturesScreenshotHost: View {
     @State private var demoCounters: FeatureDemoCounters?
 
     var body: some View {
-        content
-            .dynamicTypeSize(screen.hasPrefix("featuresAX5") ? .accessibility5 : .large)
-            .onAppear {
-                FeatureDemo.install(screen)
-                isReady = true
-            }
+        // The clear layer is always there, so `onAppear` fires before the scene exists (an empty `if` never appears).
+        ZStack {
+            Color.clear
+            content
+        }
+        .dynamicTypeSize(screen.hasPrefix("featuresAX5") ? .accessibility5 : .large)
+        .onAppear {
+            FeatureDemo.install(screen)
+            isReady = true
+        }
     }
 
     @ViewBuilder
@@ -112,6 +116,8 @@ struct FeaturesScreenshotHost: View {
                 .task { demoCounters = await FeatureDemo.counters(now: Date()) }
             case "featuresDependency":
                 NavigationStack { FeaturesHubView(screenshotAnchor: .radar) }
+            case "featuresInfo":
+                NavigationStack { FeaturesHubView(screenshotAnchor: .radar, screenshotFlows: .radar) }
             case "featuresRows", "featuresAX5Rows":
                 NavigationStack { FeaturesHubView(screenshotAnchor: .trainSearch) }
             case "featuresPlanner":

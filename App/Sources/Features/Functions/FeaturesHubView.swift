@@ -11,8 +11,9 @@ struct FeaturesHubView: View {
     var focus: FeatureID? = nil
     /// Presented as a sheet (`FeatureLinkHost`): a „Fertig“ button.
     var isSheet = false
-    /// CI scenes: a row the list scrolls to after the first frame.
+    /// CI scenes: a row the list scrolls to after the first frame, and a row whose „Was wird gesendet?“ opens.
     var screenshotAnchor: FeatureID? = nil
+    var screenshotFlows: FeatureID? = nil
 
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
@@ -172,7 +173,8 @@ struct FeaturesHubView: View {
                               dependency: enableableDependency(status, settings: settings),
                               onToggle: { on in toggle(descriptor.id, on) },
                               onEnableDependency: { dependency in toggle(dependency, true) },
-                              onOpenPage: { openPage = descriptor.id })
+                              onOpenPage: { openPage = descriptor.id },
+                              opensFlowsForScreenshot: descriptor.id == screenshotFlows)
                     .id(descriptor.id)
                     .listRowBackground(highlighted == descriptor.id ? Theme.accent.opacity(0.16) : Theme.surface)
             }

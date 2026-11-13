@@ -192,6 +192,8 @@ struct FeatureHubRow: View {
     var onToggle: (Bool) -> Void
     var onEnableDependency: (FeatureID) -> Void
     var onOpenPage: () -> Void
+    /// CI scene `featuresInfo`: the popover opens after the list has scrolled.
+    var opensFlowsForScreenshot = false
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showsFlows = false
@@ -229,6 +231,11 @@ struct FeatureHubRow: View {
         .accessibilityAction { isToggle ? onToggle(!status.switchIsOn) : onOpenPage() }
         .accessibilityAction(named: "Was wird gesendet?") { showsFlows = true }
         .modifier(FeatureDependencyAction(dependency: dependency, onEnable: onEnableDependency))
+        .task {
+            guard opensFlowsForScreenshot else { return }
+            try? await Task.sleep(for: .milliseconds(1200))
+            showsFlows = true
+        }
     }
 
     private var icon: some View {
