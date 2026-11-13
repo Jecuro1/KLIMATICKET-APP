@@ -28,7 +28,7 @@ struct RadarTimePanel: View {
                         .foregroundStyle(Theme.textPrimary)
                         .morphingGlass(in: .circle, id: "back", namespace: ns)
                         .accessibilityLabel("Zurück zu Jetzt")
-                        .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                        .motionTransition(.pop)   // Reduce Motion: a fade
                     }
                 }
             }
@@ -66,6 +66,12 @@ struct RadarTimeChip: View {
             .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+        // A control on the map, next to the way back: it grows with the text up to a size where both still fit a phone's width (at AX5 the
+        // time and "vor 15 Min" alone were wider than the screen). Long press shows it large; VoiceOver reads the whole value.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        .accessibilityShowsLargeContentViewer {
+            Label(travel.isAway ? "\(travel.clockText), \(travel.offsetTitle)" : "Jetzt", systemImage: "clock.arrow.circlepath")
+        }
         .accessibilityLabel(travel.isAway ? "Zeitreise, \(travel.spokenValue)" : "Zeitreise, jetzt")
         .accessibilityHint("Öffnet den Zeitregler")
     }

@@ -249,6 +249,10 @@ struct RadarView: View {
     }
 
     private func applyPreset() {
+        // MARK: radartime – screenshot and perf launches start every scene from the layers of a fresh install. The layer choice is stored
+        // per device, and a scene that sets its own (Zeitreise: trains only; Pünktlichkeit) changed the scenes captured after it in the same
+        // simulator: the default radar lost its stations (CI run 43408109942, scene "radar" after the Zeitreise scenes).
+        if LaunchMode.isSandboxed { layersRaw = MapLayerSelection.initial.storageValue }
         // "Auf der Karte zeigen" needs the train layer: it is switched on, and the choice stays (the layer bar shows it).
         if focusTripID != nil, !layers.isOn(.trains) { toggleLayer(.trains) }
         dropHeatLayerInScreenshots()   // MARK: radarheat – a scene of another preset does not inherit the layer a heat scene stored

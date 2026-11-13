@@ -31,14 +31,19 @@ extension RadarView {
         return radarService
     }
 
-    /// The last ten minutes of the selected train's projected path: ten short pieces, the oldest faint and thin, the newest strong.
+    /// The last ten minutes of the selected train's projected path: ten short pieces on a light casing, the oldest thinner and paler, the
+    /// newest strong. Review 1: without the casing and with the oldest piece at 18 % the first half of the trail was invisible on the map in
+    /// both looks, and the newest half hides under the train's own plate, so the trail looked a few millimetres long (CI run 43408109942).
     @MapContentBuilder var timeTrailLayer: some MapContent {
         let points = travel.trail.map(\.clCoordinate)
         if points.count > 1 {
+            let dark = mapStyle == .dark || colorScheme == .dark
+            MapPolyline(coordinates: points)
+                .stroke(.white.opacity(dark ? 0.30 : 0.85), style: StrokeStyle(lineWidth: 11, lineCap: .round, lineJoin: .round))
             ForEach(0..<(points.count - 1), id: \.self) { index in
                 let fade = Double(index + 1) / Double(points.count - 1)
                 MapPolyline(coordinates: [points[index], points[index + 1]])
-                    .stroke(Theme.dusk.opacity(0.18 + 0.82 * fade), style: StrokeStyle(lineWidth: 2 + 4 * fade, lineCap: .round, lineJoin: .round))
+                    .stroke(Theme.dusk.opacity(0.45 + 0.55 * fade), style: StrokeStyle(lineWidth: 3.5 + 3 * fade, lineCap: .round, lineJoin: .round))
             }
         }
     }
@@ -50,8 +55,10 @@ extension RadarView {
         travel.demo = true
         switch preset {
         case .timeTravelPlaying:
+            // Close enough that ten minutes of a fast train (about 22 km) are a trail longer than its plate (review 1: at a span of one
+            // degree the trail was one plate long and hid under it and its neighbours).
             camera = .region(MKCoordinateRegion(center: GeoPoint(latitude: 48.2, longitude: 15.6).clCoordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)))
+                                                span: MKCoordinateSpan(latitudeDelta: 0.4, longitudeDelta: 0.6)))
             travel.applyDemo(minutes: -30, playing: true, featured: ("RJX 60", GeoPoint(latitude: 48.2, longitude: 15.6)))
         case .timeTravelLoading:
             travel.applyDemo(minutes: 45, playing: false)

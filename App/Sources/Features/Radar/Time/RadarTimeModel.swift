@@ -58,7 +58,6 @@ final class RadarTimeModel {
     @ObservationIgnored private var scheduler = RadarTimeScheduler()
     @ObservationIgnored private weak var live: RadarModel?
     @ObservationIgnored private var began = false
-    @ObservationIgnored private var meteredChecked = false
     @ObservationIgnored private var userChoseFine = false
     /// Synthetic trains, no network: no budget to keep (the demo service is local).
     @ObservationIgnored var demo = false
@@ -102,9 +101,9 @@ final class RadarTimeModel {
     /// "812 Züge · berechnet für 22:32".
     var pill: String { RadarTimeText.pill(count: pins.count, rail: true, clock: clockText) }
 
-    var summary: String {
-        "\(RadarSummary.line(count: pins.count, late: pins.filter { $0.delay == .late }.count, rail: true)), berechnet für \(clockText)"
-    }
+    /// What VoiceOver says for the map: "74 Züge im Ausschnitt, 12 verspätet, berechnet für 12:17". Stored and set when the picture is rebuilt: the map's
+    /// label reads it, and a computed one (it reads the clock that ticks every second) made the whole map draw again every second.
+    private(set) var summary = ""
 
     /// How old the delays behind the picture are at `date` (the clock keeps running between two rebuilds).
     func delayAge(at date: Date) -> TimeInterval? {
@@ -120,17 +119,16 @@ final class RadarTimeModel {
     func close() { isOpen = false }
     func toggleOpen() { isOpen.toggle() }
 
-    /// The thumb was moved to `seconds` from now. It snaps to the five-minute grid; "Jetzt" (step 0) is the live radar.
+    /// The thumb was moved to `seconds` from now. It snaps to the five-minute grid; "Jetzt" (step 0) is the live radar once the finger lifts
+    /// there (`scrubEnded`). While the finger still moves, "Jetzt" only shows now: ending the Zeitreise at once started and stopped the live
+    /// radar with every pass over it (its status card popping in and out under the finger, under Reduce Motion a live round each time).
     func scrub(to seconds: TimeInterval) {
         stopPlaying()
         returning = false
         let snapped = RadarTimeAxis.snapped(seconds)
         let step = RadarTimeAxis.step(for: snapped)
         if step != userStep { userStep = step }
-        if snapped == 0 {
-            backToNow()
-            return
-        }
+        if snapped == 0, !isAway { return }   // touched at "Jetzt": the live radar stays the picture
         let newTarget = RadarTimeAxis.target(base: RadarTimeAxis.base(now: Date()), offset: snapped)
         if newTarget == target {   // a drag reports many positions on the same step
             scheduler.setMoving(true, now: Date())
@@ -139,8 +137,12 @@ final class RadarTimeModel {
         set(target: newTarget, moving: true)
     }
 
-    /// The finger was lifted: the rest timer for the minute's own snapshot starts.
+    /// The finger was lifted: at "Jetzt" the live radar takes over, elsewhere the rest timer for the minute's own snapshot starts.
     func scrubEnded() {
+        if isAway, !isPlaying, step == 0 {
+            backToNow()
+            return
+        }
         scheduler.setMoving(isPlaying, now: Date())
     }
 
@@ -287,7 +289,8 @@ final class RadarTimeModel {
     func run(service: any RadarService, live: RadarModel) async {
         self.live = live
         var last = Date()
-        await withTaskGroup(of: Void.self) { group in
+        // Discarding: a request that has answered is let go at once, instead of waiting in the group until the Zeitreise ends.
+        await withDiscardingTaskGroup { group in
             while !Task.isCancelled {
                 let now = Date()
                 let elapsed = min(now.timeIntervalSince(last), 0.5)
@@ -330,13 +333,11 @@ final class RadarTimeModel {
         return { [weak live] now in live?.claimRequestSlot(now: now) }
     }
 
-    /// The Zeitreise starts: the live radar's vehicles are the first snapshot, the plan is made, a metered connection is asked once.
+    /// The Zeitreise starts: the live radar's vehicles are the first snapshot, the network path is asked, the plan is made.
     private func start(live: RadarModel) async {
         began = true
-        if !meteredChecked {
-            meteredChecked = true
-            isMetered = demo ? false : await RadarMeteredPath.isMetered()
-        }
+        // Asked at every start, not once per radar: the radar can stay open from the Wi-Fi at home to the mobile network outside.
+        isMetered = demo ? false : await RadarMeteredPath.isMetered()
         guard isAway else { began = false; return }
         let now = Date()
         let coarse = isMetered && !userChoseFine
@@ -371,11 +372,15 @@ final class RadarTimeModel {
             target = newTarget
             scheduler.setTarget(newTarget, now: now)
             if step.reachedEnd { stopPlaying() }
-        } else if let current = target, current < now.addingTimeInterval(RadarTimeAxis.minOffset), !returning {
-            // The clock moved on past the far left of the scrubber: the target stays on its end.
-            let clamped = RadarTimeAxis.base(now: now).addingTimeInterval(RadarTimeAxis.minOffset)
-            target = clamped
-            scheduler.setTarget(clamped, now: now)
+        } else if let current = target, !returning {
+            // The clock moved on past the far left of the scrubber: the target stays on its end. Compared with the edge itself (a whole
+            // minute), not with the running clock: a target already on the edge is set again only when the minute changes. Setting it on
+            // every tick (four times a second) made every view that reads it, the whole map among them, draw again.
+            let edge = RadarTimeAxis.base(now: now).addingTimeInterval(RadarTimeAxis.minOffset)
+            if current < edge {
+                target = edge
+                scheduler.setTarget(edge, now: now)
+            }
         }
         guard let target else { return }
         if MotionPolicy.isStatic || MotionPolicy.prefersReducedMotion {
@@ -460,8 +465,11 @@ final class RadarTimeModel {
             built.append(RadarPin(vehicle: pin.vehicle, coordinate: pin.coordinate, isEstimate: pin.isCalculated, delay: pin.delayState,
                                   delaySeconds: pin.delaySeconds, bearing: pin.bearing))
         }
-        pins = built
-        pinsByID = Dictionary(built.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        // Unchanged pins (a resting scrubber, rebuilt every two seconds) are not set again: the map would draw all its markers anew.
+        if built != pins {
+            pins = built
+            pinsByID = Dictionary(built.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        }
         // The selected train stays a marker of its own, so its trail ends at it and not in a bubble.
         let cell = RadarClustering.cellSize(latitudeSpan: live.spanDegrees, longitudeSpan: box.east - box.west,
                                             widthPoints: Double(live.mapSize.width), heightPoints: Double(live.mapSize.height))
@@ -471,7 +479,9 @@ final class RadarTimeModel {
         if let selectedID, let pin = pinsByID[selectedID] {
             groups += RadarClustering.group([point(pin)], cellDegrees: cell)
         }
-        clusters = groups
+        if groups != clusters { clusters = groups }
+        let spoken = "\(RadarSummary.line(count: built.count, late: built.filter { $0.delay == .late }.count, rail: true)), berechnet für \(clockText)"
+        if spoken != summary { summary = spoken }
         if straight != hasStraightPins { hasStraightPins = straight }
         // The CI scene keeps one train selected so the trail shows (the same tap a user does): the one of this line nearest to a point, so the
         // selection follows the time-lapse and stays in the picture.
@@ -482,7 +492,8 @@ final class RadarTimeModel {
                 live.selectedTripID = pin.id
             }
         }
-        trail = live.selectedTripID.map { timeline.trail(for: $0, endingAt: shown, route: routes[$0]) } ?? []
+        let newTrail = live.selectedTripID.map { timeline.trail(for: $0, endingAt: shown, route: routes[$0]) } ?? []
+        if newTrail != trail { trail = newTrail }
         delayReference = timeline.delayDataAge(at: shown, now: now).map { ($0, now) }
         let light = RadarDaylight.sample(at: shown)
         if light != sky { sky = light }
@@ -491,7 +502,7 @@ final class RadarTimeModel {
 
 // MARK: - Metered connection
 
-/// Is the connection metered: cellular, a hotspot, or Low Data Mode? Asked once when a Zeitreise starts. A Zeitreise loads up to 20 MB
+/// Is the connection metered: cellular, a hotspot, or Low Data Mode? Asked whenever a Zeitreise starts. A Zeitreise loads up to 20 MB
 /// (unpacked, docs/RADAR_TIMETRAVEL.md §R12), so a metered connection gets the coarse plan and no snapshot for a resting minute by itself.
 enum RadarMeteredPath {
     #if canImport(Network)
