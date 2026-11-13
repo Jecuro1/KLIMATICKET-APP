@@ -29,11 +29,11 @@ final class AppearanceStore {
     @ObservationIgnored private let defaults: UserDefaults?
 
     /// `defaults`: the App Group defaults (or nil: not stored). `legacyHapticsEnabled`: the old switch „Haptisches Feedback“,
-    /// carried over the first time. `forcedPalette`: `-KBTheme` / a screenshot scene (applied, never stored).
-    init(defaults: UserDefaults?, legacyHapticsEnabled: Bool?, forcedPalette: ThemePaletteID? = AppearanceLaunch.forcedPalette) {
+    /// carried over the first time. A screenshot scene and `-KBTheme` adjust the launch (applied, never stored).
+    init(defaults: UserDefaults?, legacyHapticsEnabled: Bool?) {
         self.defaults = defaults
         var prefs = AppearancePrefs.load(defaults?.data(forKey: AppearancePrefs.storageKey), legacyHapticsEnabled: legacyHapticsEnabled)
-        if let forcedPalette { prefs.palette = forcedPalette }
+        AppearanceLaunch.adjust(&prefs)
         self.prefs = prefs
         applied = prefs
         Self.activate(prefs)
@@ -80,21 +80,24 @@ final class AppearanceStore {
 
 /// Launch arguments of Look & Feel (CI and perf runs).
 enum AppearanceLaunch {
-    /// `-KBTheme zirbe`, or the palette a screenshot scene is about (`themeDash` → Zirbe, …). Applied, never stored.
-    static var forcedPalette: ThemePaletteID? {
-        if let raw = UserDefaults.standard.string(forKey: "KBTheme"), let id = ThemePaletteID(rawValue: raw) { return id }
-        return LaunchMode.screenshotScreen.flatMap(screenshotPalette(for:))
+    /// The screenshot scene's choices, then `-KBTheme <id>` on top. Applied for this launch, never stored.
+    static func adjust(_ prefs: inout AppearancePrefs) {
+        if let screen = LaunchMode.screenshotScreen, let scene = screenshotPrefs(for: screen) { prefs = scene }
+        if let raw = UserDefaults.standard.string(forKey: "KBTheme"), let id = ThemePaletteID(rawValue: raw) { prefs.palette = id }
     }
 
-    /// The capture script passes no extra arguments per scene, so each theme scene names its palette here.
-    static func screenshotPalette(for screen: String) -> ThemePaletteID? {
+    /// The capture script passes no extra arguments per scene, so each theme scene (AppearanceScreenshotHost) names its
+    /// choices here – the same as `-KBTheme <id>` would.
+    static func screenshotPrefs(for screen: String) -> AppearancePrefs? {
+        let numbers = FormatPrefs(amounts: .cents, weekStart: .sunday, co2: .kilograms)
         switch screen {
-        case "themeDash": .zirbe
-        case "themeStats": .morgenrot
-        case "themeTicket": .daemmerung
-        case "themeTrips": .alpengluehen
-        case "themeSettingsGraphit": .graphit
-        default: nil
+        case "themeDash", "themeGallery": return AppearancePrefs(palette: .zirbe)
+        case "themeStats", "themeAX5": return AppearancePrefs(palette: .morgenrot)
+        case "themeStatsFormat": return AppearancePrefs(format: numbers)
+        case "themeTicket": return AppearancePrefs(palette: .daemmerung)
+        case "themeOptions": return AppearancePrefs(palette: .graphit, motion: .calm, haptics: .subtle, format: numbers)
+        case "themeSettingsRow": return AppearancePrefs(palette: .alpengluehen)
+        default: return nil
         }
     }
 }

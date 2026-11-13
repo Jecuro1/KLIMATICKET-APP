@@ -597,6 +597,9 @@ struct ScreenshotRouter: View {
         // MARK: exitalarm – „Aussteige-Wecker“: sheet, location explanation, armed, approaching, fired, passed, settings (demo, no network)
         case let exitAlarmScreen where ExitAlarmScreenshotHost.screens.contains(exitAlarmScreen):
             ExitAlarmScreenshotHost(screen: exitAlarmScreen)
+        // MARK: themes – Look & Feel: the screen, the palettes, the options, AX5, tabs in other palettes (demo data, no network)
+        case let themeScreen where AppearanceScreenshotHost.screens.contains(themeScreen):
+            AppearanceScreenshotHost(screen: themeScreen)
         // MARK: tripdetect – Fahrten-Vorschläge, Fahrt aufzeichnen, Erklärung, Einstellungen, Protokoll (synthetic data, no alert)
         case let detectScreen where TripDetectScreenshotHost.screens.contains(detectScreen):
             TripDetectScreenshotHost(screen: detectScreen)

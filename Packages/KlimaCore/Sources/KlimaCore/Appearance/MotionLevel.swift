@@ -25,8 +25,8 @@ public enum MotionLevel: String, CaseIterable, Codable, Sendable, Identifiable {
     public var detail: String {
         switch self {
         case .full: "Alles bewegt sich wie gestaltet: Himmel, Zahlen, Neigung, Übergänge."
-        case .calm: "Übergänge bleiben. Himmel, hochzählende Zahlen und Neigungseffekte stehen still."
-        case .off: "Keine Animationen – jede Ansicht steht sofort im Endzustand."
+        case .calm: "Übergänge bleiben. Himmel, hochzählende Zahlen, Neigung und der schrumpfende Titel stehen still."
+        case .off: "Keine Animationen der App – jede Ansicht steht sofort fertig da. Übergänge von iOS (Sheets, Seiten) bleiben."
         }
     }
 }
