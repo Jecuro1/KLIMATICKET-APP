@@ -521,6 +521,9 @@ struct ScreenshotRouter: View {
         #if DEBUG
         case let widgetScreen where WidgetPreviewHost.screens.contains(widgetScreen):
             WidgetPreviewHost(screen: widgetScreen)
+        // MARK: smartwidgets – Gesperrt & privat, every lock-screen family, the Apple Watch Smart Stack, the relevance scores
+        case let smartScreen where SmartWidgetsScreenshotHost.screens.contains(smartScreen):
+            SmartWidgetsScreenshotHost(screen: smartScreen)
         #endif
         case "liveActivityPreview":  // MARK: live
             NavigationStack { RideActivityPreviewView() }
