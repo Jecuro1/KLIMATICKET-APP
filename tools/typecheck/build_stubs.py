@@ -64,6 +64,7 @@ MODULES = [
     ("BackgroundTasks", ["FoundationShim"]),  # hand-written (Stubs/BackgroundTasks): app refresh for "Live verfolgen"
     ("FoundationModels", ["FoundationShim"]),  # hand-written (Stubs/FoundationModels): on-device assistant (docs/LOCAL_AI.md)
     ("CoreMotion", ["FoundationShim"]),
+    ("EventKit", ["FoundationShim", "CoreGraphics"]),  # hand-written (Stubs/EventKit): Kalender-Vorschläge (docs/CALENDAR_SUGGESTIONS.md)
     ("MetricKit", ["FoundationShim"]),
     ("ImageIO", ["CoreGraphics", "FoundationShim"]),
     ("MapKit", ["CoreLocation", "UIKit", "FoundationShim"]),

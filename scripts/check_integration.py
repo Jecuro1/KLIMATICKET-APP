@@ -39,6 +39,7 @@ USAGE_STRINGS = [
     (re.compile(r'\bimport\s+AlarmKit\b'), "NSAlarmKitUsageDescription"),
     (re.compile(r'\bCLLocationManager\b'), "NSLocationWhenInUseUsageDescription"),
     (re.compile(r'\brequestAlwaysAuthorization\b'), "NSLocationAlwaysAndWhenInUseUsageDescription"),
+    (re.compile(r'\brequestFullAccessToEvents\b'), "NSCalendarsFullAccessUsageDescription"),   # MARK: calendarsuggestions
 ]
 
 

@@ -75,6 +75,8 @@ targets:
           - location
         # MARK: exitalarm – the system alarm of the Aussteige-Wecker (iOS 26 AlarmKit). Needs no entitlement, only this text.
         NSAlarmKitUsageDescription: "Der Aussteige-Wecker klingelt kurz vor deiner Haltestelle, auch wenn dein iPhone lautlos gestellt ist. KlimaBilanz stellt den Wecker nur, wenn du ihn für eine Fahrt einschaltest."
+        # MARK: calendarsuggestions – Kalender-Vorschläge read events only after their explanation sheet (docs/CALENDAR_SUGGESTIONS.md). No entitlement.
+        NSCalendarsFullAccessUsageDescription: "Kalender-Vorschläge: KlimaBilanz liest Titel, Ort und Zeit deiner Termine der nächsten 14 Tage, nur auf diesem iPhone und nur während die App offen ist, und schlägt dir passende Zugfahrten vor. Titel und Orte werden weder gespeichert noch gesendet."
         BGTaskSchedulerPermittedIdentifiers:
           - com.knitelarlberg.klimabilanz.follow-refresh
         LSApplicationQueriesSchemes:

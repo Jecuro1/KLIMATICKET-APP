@@ -624,6 +624,9 @@ struct ScreenshotRouter: View {
         // MARK: timebalance – Zeitbilanz: ticket year, month, empty, delays, AX5, the Statistik card, the editor's „Dauer“ (demo data, no network)
         case let balanceScreen where TimeBalanceScreenshotHost.screens.contains(balanceScreen):
             TimeBalanceScreenshotHost(screen: balanceScreen)
+        // MARK: calendarsuggestions – Kalender-Vorschläge: cards, follow-up, settings in every permission state, AX5 (fake calendar, no alert)
+        case let calendarScreen where CalendarScreenshotHost.screens.contains(calendarScreen):
+            CalendarScreenshotHost(screen: calendarScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
