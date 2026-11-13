@@ -65,20 +65,18 @@ final class AutoRunner {
         }
     }
 
-    /// After every answer of „Live verfolgen“ (foreground polling and the background refresh). Uses that answer only.
-    func followUpdated(target: LiveFollowTarget, snapshot: LiveFollowSnapshot) {
+    /// After every answer of „Live verfolgen“ (foreground polling and the background refresh). Uses that answer only. Awaited by
+    /// the follow, so a notice of the background refresh is posted before iOS suspends the app again.
+    func followUpdated(target: LiveFollowTarget, snapshot: LiveFollowSnapshot) async {
         guard !isInert else { return }
         let rules = store.book.activeRules.filter { $0.trigger.kind == .followDelay }
         guard !rules.isEmpty else { return }
         let fact = Self.followFact(target: target, snapshot: snapshot, updatedAt: Date())
-        enqueue { [weak self] in
-            guard let self else { return }
-            let now = Date()
-            for rule in rules {
-                let state = AutoState(follow: fact, ledger: self.store.ledger, quietWeekend: self.store.book.quietWeekend)
-                let verdict = AutoRuleEngine.evaluate(rule, event: .followUpdated, state: state, now: now, calendar: self.calendar)
-                await self.handle(verdict, rule: rule, app: AppDelegate.appState)
-            }
+        let now = Date()
+        for rule in rules {
+            let state = AutoState(follow: fact, ledger: store.ledger, quietWeekend: store.book.quietWeekend)
+            let verdict = AutoRuleEngine.evaluate(rule, event: .followUpdated, state: state, now: now, calendar: calendar)
+            await handle(verdict, rule: rule, app: AppDelegate.appState)
         }
     }
 

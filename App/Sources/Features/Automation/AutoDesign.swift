@@ -211,15 +211,16 @@ struct AutoBudgetBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Geplante Mitteilungen")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
-                Spacer(minLength: Theme.Spacing.xs)
-                Text("\(min(used, ceiling)) von \(ceiling)")
-                    .font(.subheadline.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(waiting > 0 ? Theme.summitText : Theme.textSecondary)
-                    .numericValue(Double(used))
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    caption
+                    Spacer(minLength: Theme.Spacing.xs)
+                    count
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    caption
+                    count
+                }
             }
             segments
                 .frame(height: 10)
@@ -234,6 +235,20 @@ struct AutoBudgetBar: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Geplante Mitteilungen: \(min(used, ceiling)) von \(ceiling) Plätzen belegt\(waiting > 0 ? ", \(waiting) warten" : "")")
+    }
+
+    private var caption: some View {
+        Text("Geplante Mitteilungen")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Theme.textPrimary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var count: some View {
+        Text("\(min(used, ceiling)) von \(ceiling)")
+            .font(.subheadline.weight(.semibold).monospacedDigit())
+            .foregroundStyle(waiting > 0 ? Theme.summitText : Theme.textSecondary)
+            .numericValue(Double(used))
     }
 
     private var segments: some View {

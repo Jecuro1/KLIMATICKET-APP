@@ -10,8 +10,8 @@ import KlimaCore
 struct AutoRulesView: View {
     /// Opened from a notice's „Regel ansehen“ (own sheet with a „Fertig“ button).
     var isSheet = false
-    /// CI scene `automationBudget`: the list opens scrolled to nothing but the top.
-    var screenshotOpensEditor: UUID? = nil
+    /// CI scenes: the section the list scrolls to after the first frame ("rules", "templates").
+    var screenshotScrollTarget: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -24,11 +24,22 @@ struct AutoRulesView: View {
     private var runner: AutoRunner { .shared }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list
+                .task {
+                    guard let target = screenshotScrollTarget else { return }
+                    try? await Task.sleep(for: .milliseconds(700))
+                    proxy.scrollTo(target, anchor: .top)
+                }
+        }
+    }
+
+    private var list: some View {
         List {
             heroSection
             noticeSection
-            rulesSection
-            templatesSection
+            rulesSection.id("rules")
+            templatesSection.id("templates")
             logSection
         }
         .listStyle(.insetGrouped)
@@ -59,9 +70,6 @@ struct AutoRulesView: View {
         .onChange(of: scenePhase) { _, phase in
             // Back from the iOS settings: the permission may have changed.
             if phase == .active { Task { await runner.refreshForScreen() } }
-        }
-        .onAppear {
-            if let id = screenshotOpensEditor, let rule = store.rule(id) { editing = AutoEditorRequest(rule: rule, isNew: false) }
         }
     }
 
@@ -408,7 +416,7 @@ struct AutoHeroCard: View {
     private var count: some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             CountUpText(value: Double(activeCount)) { "\(Int($0.rounded()))" }
-                .font(Theme.Typography.numberLarge)
+                .font(.system(.largeTitle, design: .rounded, weight: .bold).monospacedDigit())
                 .foregroundStyle(Theme.textPrimary)
             Text(activeCount == 1 ? "Regel aktiv" : "Regeln aktiv")
                 .font(.headline)

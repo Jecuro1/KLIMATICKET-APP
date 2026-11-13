@@ -12,6 +12,7 @@ import KlimaCore
 // - `automationAX5`: the screen at the largest text size, `automationAX5Rows` scrolled to the rules
 // - `automationListBottom`: the lower part (templates, „Zuletzt ausgelöst“)
 // - `automationEditorBottom`: the editor of „Große Fahrt“ scrolled down (filter, conditions, „Dann“, name)
+// - `automationSettingsRow`: the entry row in Einstellungen under Mitteilungen
 
 enum AutoDemo {
     static let now: Date = {
@@ -109,7 +110,7 @@ enum AutoDemo {
 struct AutoScreenshotHost: View {
     static let screens: Set<String> = [
         "automationList", "automationEditor", "automationTest", "automationLog", "automationBudget", "automationAX5",
-        "automationAX5Rows", "automationListBottom", "automationEditorBottom",
+        "automationAX5Rows", "automationListBottom", "automationEditorBottom", "automationSettingsRow",
     ]
 
     let screen: String
@@ -119,8 +120,6 @@ struct AutoScreenshotHost: View {
         NavigationStack {
             if isReady { content }
         }
-        .defaultScrollAnchor(anchor)
-        .defaultScrollAnchor(anchor, for: .sizeChanges)   // the rows arrive after the first frame
         .dynamicTypeSize(screen.hasPrefix("automationAX5") ? .accessibility5 : .large)
         .onAppear {
             AutoDemo.install(screen)
@@ -128,19 +127,29 @@ struct AutoScreenshotHost: View {
         }
     }
 
-    private var anchor: UnitPoint? {
-        switch screen {
-        case "automationListBottom", "automationEditorBottom": .bottom
-        case "automationAX5Rows": .center
-        default: nil
-        }
-    }
-
     @ViewBuilder
     private var content: some View {
         switch screen {
         case "automationEditorBottom":
-            AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.bigTripID) ?? AutoDemo.rules[4], isNew: false)
+            AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.bigTripID) ?? AutoDemo.rules[4], isNew: false,
+                               screenshotScrollTarget: "conditions")
+        case "automationListBottom":
+            AutoRulesView(screenshotScrollTarget: "templates")
+        case "automationAX5Rows":
+            AutoRulesView(screenshotScrollTarget: "rules")
+        case "automationSettingsRow":
+            // The entry in Einstellungen, under Mitteilungen.
+            List {
+                SetNotificationsSection()
+                SetAutomationSection()
+            }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(Theme.Spacing.l)
+            .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+            .scrollContentBackground(.hidden)
+            .background { SetBackdrop() }
+            .navigationTitle("Einstellungen")
+            .navigationBarTitleDisplayMode(.inline)
         case "automationEditor":
             AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.eveningID) ?? AutoDemo.rules[0], isNew: false)
         case "automationTest":

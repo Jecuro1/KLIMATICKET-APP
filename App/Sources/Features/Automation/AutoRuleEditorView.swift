@@ -10,6 +10,8 @@ struct AutoRuleEditorView: View {
     let isNew: Bool
     /// CI scene `automationTest`: the Testlauf runs once the editor appears.
     var runsTestOnAppear = false
+    /// CI scene `automationEditorBottom`: the section the editor scrolls to after the first frame.
+    var screenshotScrollTarget: String? = nil
 
     @Environment(\.dismiss) private var dismiss
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
@@ -25,19 +27,31 @@ struct AutoRuleEditorView: View {
     private var runner: AutoRunner { .shared }
     private var kind: AutoTriggerKind { draft.trigger.kind }
 
-    init(rule: AutoRule, isNew: Bool, runsTestOnAppear: Bool = false) {
+    init(rule: AutoRule, isNew: Bool, runsTestOnAppear: Bool = false, screenshotScrollTarget: String? = nil) {
         self.isNew = isNew
         self.runsTestOnAppear = runsTestOnAppear
+        self.screenshotScrollTarget = screenshotScrollTarget
         original = rule
         _draft = State(initialValue: rule)
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list
+                .task {
+                    guard let target = screenshotScrollTarget else { return }
+                    try? await Task.sleep(for: .milliseconds(700))
+                    proxy.scrollTo(target, anchor: .top)
+                }
+        }
+    }
+
+    private var list: some View {
         List {
             sentenceSection
             triggerSection
-            if !kind.allowedConditions.isEmpty { conditionSection }
-            actionSection
+            if !kind.allowedConditions.isEmpty { conditionSection.id("conditions") }
+            actionSection.id("action")
             nameSection
             if !isNew { deleteSection }
         }
