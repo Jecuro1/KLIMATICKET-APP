@@ -13,6 +13,7 @@ struct CommuteInviteCard: View {
     var onAccept: () -> Void
     var onDecline: () -> Void
 
+    @Environment(AppState.self) private var app
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -42,7 +43,14 @@ struct CommuteInviteCard: View {
                     .foregroundStyle(Theme.textSecondary)
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Dann zeigt dir die Übersicht vor der Abfahrt die nächsten Züge mit Verspätung, Gleis und einer Alternative.")
+                // The promise matches what the card will show: without live data it is the plan.
+                Group {
+                    if app.live.timetableUnavailable == nil || app.live.isDemo {
+                        Text("Dann zeigt dir die Übersicht vor der Abfahrt die nächsten Züge mit Verspätung, Gleis und einer Alternative.")
+                    } else {
+                        Text("Dann zeigt dir die Übersicht vor der Abfahrt deinen Plan – mit Live-Daten auch Verspätung, Gleis und eine Alternative.")
+                    }
+                }
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -123,11 +131,17 @@ struct CommuteCompactCard: View {
                             .monospacedDigit()
                             .fixedSize(horizontal: false, vertical: true)
                         if let ends {
-                            Text("\(TripRow.short(ends.from.name)) → \(TripRow.short(ends.to.name)) · \(liveNote)")
+                            Text("\(TripRow.short(ends.from.name)) → \(TripRow.short(ends.to.name))")
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        // When the trains come, on a line of its own (it never breaks inside „Live ab 16:27“).
+                        Text(liveNote)
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .monospacedDigit()
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)

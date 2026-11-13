@@ -48,8 +48,12 @@ enum CommuteFixture {
         settings.isEnabled = screen != "commuteSetup"
         // The settings scene shows its choice ticked among the suggestions; the card scenes come from the demo's „Arbeit“ route.
         settings.source = screen.hasPrefix("commuteSettings") ? .suggestion : .savedRoute
-        settings.origin = origin
-        settings.destination = destination
+        // The invitation scene is someone who never set the commute up: no stored route (a stored route of a switched-off mode
+        // is not asked about again, `CommuteSetup.invitation`).
+        if screen != "commuteSetup" {
+            settings.origin = origin
+            settings.destination = destination
+        }
         // Mo–Fr plus today, so a scene taken on a weekend still shows the morning.
         var days = CommutePlan.workdays
         if let weekday = RouteWeekday(calendarWeekday: cal.component(.weekday, from: today)) { days.insert(weekday) }

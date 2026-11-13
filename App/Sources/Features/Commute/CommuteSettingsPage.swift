@@ -21,6 +21,8 @@ struct CommuteSettingsPage: View {
     private var routes: [FavoriteRouteEntity]
 
     @State private var candidates: [CommuteGuess] = []
+    /// The detector has run once: before that the empty-state notice („Noch kein Vorschlag“) would flash for a frame.
+    @State private var hasDetected = false
     @State private var showsConsent = false
     @State private var confirmsRemoval = false
     @State private var changeTick = 0
@@ -31,6 +33,11 @@ struct CommuteSettingsPage: View {
         self.isSheet = isSheet
         self.previewCandidates = previewCandidates
         self.screenshotScrollsDown = screenshotScrollsDown
+        // CI scenes bring their candidates: shown from the first frame, not only after the detector's task ran.
+        if let previewCandidates {
+            _candidates = State(initialValue: previewCandidates)
+            _hasDetected = State(initialValue: true)
+        }
         // Only the detector's window is read (56 days and one day of slack), not the whole history.
         let start = Date().addingTimeInterval(-Double(CommuteDetector.windowDays + 1) * 86_400)
         _recentTrips = Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start },
@@ -156,7 +163,7 @@ struct CommuteSettingsPage: View {
     @ViewBuilder
     private var suggestionRows: some View {
         let usable = candidates.filter { $0.origin.stationID != nil && $0.destination.stationID != nil }.prefix(3)
-        if usable.isEmpty {
+        if usable.isEmpty, hasDetected {
             CommuteNotice(symbol: "sparkle.magnifyingglass",
                           text: "Noch kein Vorschlag. Ab \(CommuteDetector.minRides) Fahrten auf derselben Strecke in \(CommuteDetector.minWeeks) verschiedenen Wochen und an \(CommuteDetector.minWeekdays) Wochentagen schlägt KlimaBilanz sie hier vor.")
         } else {
@@ -376,6 +383,7 @@ struct CommuteSettingsPage: View {
     // MARK: Actions
 
     private func detect() {
+        defer { hasDetected = true }
         if let previewCandidates { candidates = previewCandidates; return }
         let records = recentTrips.map(\.record)
         candidates = CommuteDetector.candidates(trips: records, now: Date(), calendar: .vienna, homeStationID: app.settings.homeStationID)
