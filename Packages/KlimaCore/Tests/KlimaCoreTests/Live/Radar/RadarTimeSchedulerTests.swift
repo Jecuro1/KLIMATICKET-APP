@@ -551,6 +551,36 @@ final class RadarTimeSchedulerTests: XCTestCase {
         XCTAssertGreaterThan(after.count, 0)
     }
 
+    /// Back from the background after a quarter of an hour (the loop starts again and calls `begin` once more, without leaving the Zeitreise):
+    /// every point that is older than ten minutes is asked once more, and only once; after a short pause nothing is asked.
+    func testAZeitreiseResumedAfterTheBackgroundRefreshesOldPointsOnce() {
+        let start = F.vienna(2026, 11, 12, 21, 57)
+        var scheduler = RadarTimeScheduler()
+        scheduler.begin(now: start, profile: .fine, includeNow: false)
+        drainPlan(&scheduler, from: start)
+        XCTAssertEqual(scheduler.progress.loaded, 10)
+        // Two minutes in the background (no new point came into range before 01:00): all fresh, nothing to ask.
+        let soon = start.addingTimeInterval(2 * 60)
+        scheduler.begin(now: soon, profile: .fine, includeNow: false)
+        XCTAssertEqual(scheduler.next(now: soon.addingTimeInterval(1), claim: { _ in nil }), .idle)
+        // A quarter of an hour: the old points come again, each once.
+        let later = start.addingTimeInterval(15 * 60)
+        scheduler.begin(now: later, profile: .fine, includeNow: false)
+        XCTAssertEqual(scheduler.progress.loaded, 0, "older than ten minutes: not counted as loaded")
+        var sent: [Date] = []
+        var clock = later
+        for _ in 0..<80 {
+            clock = clock.addingTimeInterval(1)
+            if case .request(let request) = scheduler.next(now: clock, claim: { _ in nil }) {
+                sent.append(request.time)
+                scheduler.recordAnswer(request, answeredCount: 900, now: clock)
+            }
+        }
+        XCTAssertEqual(sent.count, Set(sent).count, "no point twice")
+        XCTAssertEqual(sent.count, scheduler.progress.total)
+        XCTAssertEqual(scheduler.progress.loaded, scheduler.progress.total)
+    }
+
     func testTheLedgerKeepsOnlyTheLastMinuteAndNoPause() {
         let ledger = RadarBudgetLedger()
         ledger.state = RadarBudgetState(sentAt: [now.addingTimeInterval(-120), now.addingTimeInterval(-30), now])
