@@ -157,6 +157,8 @@ struct TimeBalanceFactsRow: View {
                  detail: weeksDetail, badge: nil,
                  spoken: "Im Schnitt \(TimeBalanceText.spoken(balance.averageMinutesPerWeek)) pro Woche, \(weeksDetail)")
         }
+        // Side by side both tiles take the taller one's height.
+        .fixedSize(horizontal: false, vertical: !typeSize.isAccessibilitySize)
     }
 
     private var weeksDetail: String {
