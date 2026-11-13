@@ -126,7 +126,6 @@ final class CockpitModel {
     @ObservationIgnored private var linesKm: Double?
     @ObservationIgnored private var linesVersion = 0
     @ObservationIgnored private var answers = 0
-    @ObservationIgnored private var userCamera: CockpitCamera?
     @ObservationIgnored private var reduceMotion = false
     @ObservationIgnored private var manualRefresh = false
     @ObservationIgnored private var holdRequestsUntil = Date.distantPast
@@ -223,9 +222,6 @@ final class CockpitModel {
     }
 
     func setReduceMotion(_ value: Bool) { reduceMotion = value }
-
-    /// The map reports where its camera stopped (kept for the way back from the free view).
-    func noteUserCamera(_ camera: CockpitCamera) { userCamera = camera }
 
     /// "Jetzt aktualisieren" (Stromspar-Modus, "Erneut versuchen"): the position is asked at once, as the budget allows.
     func refreshNow() {
@@ -462,10 +458,5 @@ extension CockpitCamera {
 
     var mapCamera: MapCamera {
         MapCamera(centerCoordinate: center.clCoordinate, distance: distance, heading: heading, pitch: pitch)
-    }
-
-    init(_ camera: MapCamera) {
-        self.init(center: GeoPoint(latitude: camera.centerCoordinate.latitude, longitude: camera.centerCoordinate.longitude),
-                  distance: camera.distance, heading: camera.heading, pitch: camera.pitch)
     }
 }

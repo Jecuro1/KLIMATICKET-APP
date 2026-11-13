@@ -297,14 +297,17 @@ struct CockpitDelayChip: View {
     var state: RadarDelayState
 
     var body: some View {
+        // The delay is one of the essentials the panel keeps at AX5: it grows with the text like the arrival next to it (15 pt at the
+        // standard size, as before), up to AX2, where it is twice the size it had at AX5 and the map above keeps its room.
         Text(text)
-            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .font(.system(.subheadline, design: .rounded, weight: .bold))
             .foregroundStyle(textColor)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(state.tint.opacity(0.18), in: .capsule)
             .overlay(Capsule().strokeBorder(state.tint.opacity(0.55), lineWidth: 1))
             .fixedSize()
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 
     private var textColor: Color {

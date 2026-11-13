@@ -101,7 +101,9 @@ Kamera: Verfolgen ⇄ Vogelperspektive; Finger auf der Karte → Frei; „Zurüc
 Halte des Radars da sind, nennt der Satz weder Entfernung noch Prozent der Strecke. Die Karte ist für VoiceOver
 ausgeblendet (sie sagt nichts, was das Panel nicht sagt). **Dynamic Type bis AX5**: Das Panel behält den Halt, die Ankunft mit Chip und Countdown (untereinander), die Phase, wenn der Zug steht, und ein Menü „Aktionen“;
 „Unterwegs“, Fortschritt, Entfernung, Geschwindigkeit und Alter entfallen im Bild, stehen aber im VoiceOver-Satz; „Woher die Zahlen kommen“ steht im Menü „Aktionen“ und öffnet
-sich als Blatt, das scrollt. Der Schalter wird ein Menü. Die Banner (verloren, beendet, Stromspar-Modus) wachsen wie Kopfzeile und Schalter bis AX1 mit (Szene `radarCockpitLostAX5`). Kopfzeile (Linie, Ziel auf bis zu zwei Zeilen)
+sich als Blatt, das scrollt. Der Verspätungs-Chip wächst bis AX2 mit (vorher fest 15 pt: bei AX5 das Kleinste im Panel). Der Schalter wird ein Menü. Die Banner (verloren, beendet,
+Stromspar-Modus) wachsen wie Kopfzeile und Schalter bis AX1 mit. Szene `radarCockpitLostAX5` (Lauf 43433688316): Banner und Panel sind ganz lesbar und überdecken sich nicht, von der Karte
+bleibt bei AX5 mit Banner aber nur ein Streifen, die graue Marke liegt unter dem Panel. Bewusst so: Bei der größten Schrift hat der Text Vorrang vor der Karte. Kopfzeile (Linie, Ziel auf bis zu zwei Zeilen)
 und Schalter wachsen bis zur Größe AX1 mit, wie die Leisten von iOS; der Schließen-Knopf behält sein Symbol in seinem Kreis und zeigt es bei langem Drücken groß (Large Content Viewer). **Reduce Motion**: kein Flug, kein Schwenk, keine pulsierende Marke: eine feste Ansicht von oben
 (Norden oben), die Kamera folgt dem Zug einmal je Sekunde ohne Animation. Solange „Verfolgen“ gewählt ist, sagt ein Hinweis unter dem Schalter
 „Bewegung reduzieren ist an: Die Kamera schaut fest von oben, Norden oben.“, damit der Schalter nichts verspricht, was die Kamera nicht tut. Farbe ist nie der einzige Träger: Chip-Text, Wörter im Banner, Flaggen-Zeiten. Haptik: ein fester Schlag (`snap`), wenn der nächste Halt wechselt; Auswahl beim Schalter.

@@ -53,9 +53,6 @@ struct CockpitMap: View {
         .onChange(of: position.positionedByUser) { _, byUser in
             if byUser { model.userMovedMap() }
         }
-        .onMapCameraChange(frequency: .onEnd) { context in
-            model.noteUserCamera(CockpitCamera(context.camera))
-        }
         // Only in "Frei" and only on a turn of more than two degrees: the driven camera does not write state here 20 times a second.
         .onMapCameraChange(frequency: .continuous) { context in
             guard model.hud.mode == .free else { return }
