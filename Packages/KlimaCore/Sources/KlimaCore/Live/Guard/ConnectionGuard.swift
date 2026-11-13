@@ -196,12 +196,12 @@ public enum ConnectionGuard {
         return (rides[feederRide], rides[feederRide + 1])
     }
 
-    /// The guard can watch this journey for this follow: at least two ride legs, a Reconstruction handle and the follow is
-    /// the first ride (docs/CONNECTION_GUARD.md §2).
-    public static func canWatch(_ journey: Journey, followTripID: String) -> Bool {
+    /// The guard can watch this journey for this follow: a ride after the followed one, a Reconstruction handle, and the follow
+    /// is ride `feederRide` (0: the first ride, as „Live verfolgen“ starts it; docs/CONNECTION_GUARD.md §2).
+    public static func canWatch(_ journey: Journey, followTripID: String, feederRide: Int = 0) -> Bool {
         let rides = journey.rideLegs
-        guard rides.count >= 2, let token = journey.refreshToken, !token.isEmpty else { return false }
-        return rides[0].tripID == followTripID
+        guard feederRide >= 0, rides.count >= feederRide + 2, let token = journey.refreshToken, !token.isEmpty else { return false }
+        return rides[feederRide].tripID == followTripID
     }
 
     /// Walk between the two rides, as the connection detail counts it (`JourneyPresentation.walkMinutes` of every non-ride leg).

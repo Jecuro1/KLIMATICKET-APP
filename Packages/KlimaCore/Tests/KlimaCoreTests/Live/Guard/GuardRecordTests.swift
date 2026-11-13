@@ -77,3 +77,45 @@ final class GuardRecordTests: XCTestCase {
         XCTAssertEqual(updated.createdAt, GuardFixture.record.createdAt)
     }
 }
+
+/// Anschluss-Wächter, stretch „Weiter verfolgen“: after „Umstieg vorbei“ the connecting ride becomes the follow.
+final class GuardContinuationTests: XCTestCase {
+    private func at(_ hhmm: String) -> Date { GuardFixture.at(hhmm) }
+
+    func testContinuationOffersTheConnectingRideWithItsOwnChange() throws {
+        let journey = GuardFixture.journey(laterChange: true)   // RJX 66 → REX 2 (to Linz) → REX 3
+        var engine = GuardEngine(record: GuardRecord(followTripID: "trip-feeder", journey: journey, journeyAt: at("14:00"),
+                                                     products: .klimaTicket, klimaTicketOnly: true, createdAt: at("13:00")))
+        _ = engine.reassess(now: at("14:30"))
+        XCTAssertNil(engine.continuation, "only after „Umstieg vorbei“")
+        _ = engine.reassess(now: at("14:44"))
+        XCTAssertEqual(engine.state, .over)
+        let next = try XCTUnwrap(engine.continuation)
+        XCTAssertEqual(next.target.tripID, "trip-connection")
+        XCTAssertEqual(next.target.alightStop, GuardFixture.linz)
+        XCTAssertEqual(next.target.transfer?.lineName, "REX 3")
+        XCTAssertEqual(next.nextFeederRide, 1)
+        XCTAssertTrue(ConnectionGuard.canWatch(journey, followTripID: "trip-connection", feederRide: 1))
+        XCTAssertFalse(ConnectionGuard.canWatch(journey, followTripID: "trip-connection"))
+        XCTAssertEqual(GuardText.continueButton(next.target.lineName), "REX 2 weiter verfolgen")
+    }
+
+    func testContinuationWithoutAFurtherChange() throws {
+        var engine = GuardEngine(record: GuardFixture.record)   // REX 2 to Wiener Neustadt is the last ride
+        _ = engine.reassess(now: at("14:44"))
+        let next = try XCTUnwrap(engine.continuation)
+        XCTAssertEqual(next.target.tripID, "trip-connection")
+        XCTAssertNil(next.target.transfer)
+        XCTAssertNil(next.nextFeederRide)
+    }
+
+    func testAGuardOnTheSecondRideMergesItsFollow() {
+        let journey = GuardFixture.journey(laterChange: true)
+        let record = GuardRecord(followTripID: "trip-connection", journey: journey, journeyAt: at("14:00"), feederRide: 1,
+                                 products: .klimaTicket, klimaTicketOnly: true, createdAt: at("13:00"))
+        var engine = GuardEngine(record: record)
+        _ = engine.reassess(now: at("14:50"))
+        XCTAssertEqual(engine.assessment?.stationName, "Linz/Donau Hbf")
+        XCTAssertEqual(engine.assessment?.connection.lineName, "REX 3")
+    }
+}

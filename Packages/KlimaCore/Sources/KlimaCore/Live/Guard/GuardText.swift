@@ -185,6 +185,9 @@ public enum GuardText {
     // MARK: Buttons and footer
 
     public static let alternativesButton = "Alternativen ansehen"
+    /// After „Umstieg vorbei“: „REX 41 weiter verfolgen“ (and VoiceOver „REX 41 live verfolgen“).
+    public static func continueButton(_ line: String) -> String { "\(line) weiter verfolgen" }
+    public static func continueSpoken(_ line: String) -> String { "\(line) live verfolgen" }
     public static let alarmButton = "Wecker fürs Umsteigen"
     public static let checkButton = "Jetzt prüfen"
     public static let switchOff = "Wächter aus"

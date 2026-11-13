@@ -86,10 +86,10 @@ public enum GuardAlternatives {
         return max(0, searchSpacing - now.timeIntervalSince(lastSearchAt))
     }
 
-    /// The follow target of an alternative: its first ride leg, with the next ride leg as the change (like the planner's
-    /// „Live verfolgen“), carrying the walk when the journey has one.
-    public static func followTarget(_ journey: Journey) -> LiveFollowTarget? {
-        guard let (a, b) = firstChange(journey) ?? firstRideOnly(journey) else { return nil }
+    /// The follow target of a journey's ride `ride` (0: the first): that ride leg, with the next ride leg as the change (like the
+    /// planner's „Live verfolgen“), carrying the walk when the journey has one.
+    public static func followTarget(_ journey: Journey, ride: Int = 0) -> LiveFollowTarget? {
+        guard let (a, b) = change(journey, after: ride) ?? lastRide(journey, ride: ride) else { return nil }
         let leg = journey.legs[a]
         guard let tripID = leg.tripID else { return nil }
         var transfer: FollowTransfer?
@@ -105,11 +105,14 @@ public enum GuardAlternatives {
                                 plannedDeparture: leg.departure.planned, plannedArrival: leg.arrival.planned, transfer: transfer)
     }
 
-    private static func firstChange(_ journey: Journey) -> (Int, Int?)? {
-        ConnectionGuard.legIndices(journey, feederRide: 0).map { ($0.feeder, $0.connection) }
+    private static func change(_ journey: Journey, after ride: Int) -> (Int, Int?)? {
+        ConnectionGuard.legIndices(journey, feederRide: ride).map { ($0.feeder, $0.connection) }
     }
 
-    private static func firstRideOnly(_ journey: Journey) -> (Int, Int?)? {
-        journey.legs.firstIndex { $0.kind == .ride }.map { ($0, nil) }
+    /// The ride `ride` when it is the journey's last ride (no change after it).
+    private static func lastRide(_ journey: Journey, ride: Int) -> (Int, Int?)? {
+        let rides = journey.legs.indices.filter { journey.legs[$0].kind == .ride }
+        guard ride >= 0, ride < rides.count else { return nil }
+        return (rides[ride], nil)
     }
 }

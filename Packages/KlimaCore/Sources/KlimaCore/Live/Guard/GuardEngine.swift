@@ -124,7 +124,7 @@ public struct GuardEngine: Sendable {
         let previous = assessment?.state
         guard let result = ConnectionGuard.assess(
             journey: record.journey, feederRide: record.feederRide,
-            followSnapshot: record.feederRide == 0 ? followSnapshot : nil, followAt: followAt, journeyAt: record.journeyAt,
+            followSnapshot: followSnapshot, followAt: followAt, journeyAt: record.journeyAt,
             connectionTrip: connectionTrip, connectionTripAt: connectionTripAt, previous: memory, now: now) else { return .none }
         assessment = result.assessment
         memory = result.memory
@@ -136,6 +136,17 @@ public struct GuardEngine: Sendable {
     }
 
     public mutating func setSwitchedOff(_ off: Bool) { record.switchedOff = off }
+
+    // MARK: Weiter verfolgen
+
+    /// After „Umstieg vorbei“: the connecting ride as the next follow (with its own change, if any), and the ride index a new
+    /// guard watches from (nil when the journey ends there).
+    public var continuation: (target: LiveFollowTarget, nextFeederRide: Int?)? {
+        guard assessment?.state == .over,
+              let target = GuardAlternatives.followTarget(record.journey, ride: record.feederRide + 1) else { return nil }
+        let next = record.feederRide + 1
+        return (target, ConnectionGuard.canWatch(record.journey, followTripID: target.tripID, feederRide: next) ? next : nil)
+    }
 
     // MARK: Alternatives
 

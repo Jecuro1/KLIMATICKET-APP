@@ -35,7 +35,8 @@ public struct FollowLiveState: Codable, Hashable, Sendable {
     public var progress: Double
     /// Station where the user changes, when the follow is one leg of a connection.
     public var transferStation: String?
-    /// Planned departure of the next leg, when the user changes.
+    /// Departure of the next leg, when the user changes: the Anschluss-Wächter's expected departure while it is fresh, else the
+    /// planned one (`FollowTransfer.departureEstimate`).
     public var transferDeparture: Date?
     /// Time of the last answer that this state is built from.
     public var updatedAt: Date?
@@ -90,7 +91,8 @@ public struct FollowLiveState: Codable, Hashable, Sendable {
 
         return FollowLiveState(stage: stage, nextStopName: nextName, nextStopTime: nextTime, delayMinutes: delay,
                                platform: platform, progress: progress(of: snapshot), transferStation: snapshot.transfer?.stationName,
-                               transferDeparture: snapshot.transfer?.plannedDeparture, updatedAt: snapshot.updatedAt ?? now)
+                               transferDeparture: snapshot.transfer?.departureEstimate(now: now),   // MARK: radar2-anschluss
+                               updatedAt: snapshot.updatedAt ?? now)
     }
 
     static func progress(of snapshot: LiveFollowSnapshot) -> Double {

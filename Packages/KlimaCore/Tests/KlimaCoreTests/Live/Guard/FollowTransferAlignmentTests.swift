@@ -63,6 +63,15 @@ final class FollowTransferAlignmentTests: XCTestCase {
         XCTAssertFalse(LiveFollow.notices(from: s, to: s, now: at("11:30")).contains { $0.kind == .tightTransfer })
     }
 
+    func testLiveActivityShowsTheExpectedDepartureWhileFresh() {
+        let transfer = FollowTransfer(stationName: "Wien Hbf", plannedDeparture: at("12:10"), expectedDeparture: at("12:14"),
+                                      expectedAt: at("11:25"))
+        XCTAssertEqual(FollowLiveState.make(from: snapshot(transfer), now: at("11:30")).transferDeparture, at("12:14"))
+        XCTAssertEqual(FollowLiveState.make(from: snapshot(transfer), now: at("11:36")).transferDeparture, at("12:10"), "stale: planned")
+        let plain = FollowTransfer(stationName: "Wien Hbf", plannedDeparture: at("12:10"))
+        XCTAssertEqual(FollowLiveState.make(from: snapshot(plain), now: at("11:30")).transferDeparture, at("12:10"))
+    }
+
     func testNoticeMinutesEqualTheCard() {
         // The same arrival and departure through the guard: one number.
         for departureSeconds in stride(from: 0, through: 9 * 60, by: 20) {
