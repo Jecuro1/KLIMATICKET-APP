@@ -142,6 +142,7 @@ struct RadarView: View {
             .modifier(RadarHeatHooks(model: model, isOn: heatOn, cellSheet: heatCellSheet))   // MARK: radarheat
             .modifier(RadarTimeHooks(travel: travel, model: model, service: timeService, gate: gate))   // MARK: radartime – paused under the cockpit, like the live loop
             .modifier(Radar2Hooks(parts: model.radar2, access: gate.access, timeOpen: travel.isOpen))   // MARK: radar2
+            .onChange(of: trainsOn, initial: true) { _, on in model.setMarkersOn(on) }   // MARK: radarmodes – the city lane only for drawn markers
             .task {
                 if allStations.isEmpty { allStations = app.stations.stations.map(stationPin) }
                 refreshStations(box: model.box, span: model.spanDegrees)

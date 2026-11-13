@@ -82,8 +82,53 @@ public struct RadarStatus: Sendable, Equatable {
     public var latitudeSpan = 0.0
     /// The view contains the whole area the radar covers (all of Austria with its margin).
     public var coversCountry = false
+    /// MARK: radarmodes – the city lane (Bus, Bim, U-Bahn; docs/RADAR_MODES.md §3). Every field above is the wide lane's only: the Pünktlichkeit's
+    /// completeness, the Zeitreise's `holdsAllOfAustria` and `RadarStatusText.notes` read them unchanged. `period` and `budgetLimited` above
+    /// include the shared stretch: city tiles slow the wide tiles down as well.
+    public var city = RadarLaneStatus()
 
     public static let empty = RadarStatus()
+}
+
+/// MARK: radarmodes – the status of the city lane, with the same meaning per field as `RadarStatus`.
+public struct RadarLaneStatus: Sendable, Equatable {
+    /// The lane has a view: a city mode is on and its markers are drawn.
+    public var isActive = false
+    /// The lane has a view, but the map shows more than `RadarLanePlan.citySpanLimit`: it asks for nothing until you zoom in.
+    public var outOfZoom = false
+    public var visibleTiles = 0
+    public var answeredTiles = 0
+    public var failedTiles = 0
+    public var pendingTiles = 0
+    /// Tiles on the finest city level (8) still cut off at the request cap.
+    public var cappedTiles = 0
+    /// Tiles that would need a split but stay as they are: the view would need more than `RadarLanePlan.cityMaxTiles` city tiles.
+    public var crowdedTiles = 0
+    public var staleTiles = 0
+    public var oldestAnswerAge: TimeInterval?
+    /// Seconds one round of the lane takes under the shared budget.
+    public var period: TimeInterval = 0
+    public var isPaused = false
+    /// The vehicles of the last answer of each answered visible tile (the data estimate counts them).
+    public var vehicleCounts: [Int] = []
+
+    public init() {}
+}
+
+public extension RadarStatus {
+    /// MARK: radarmodes – one number for the pill and the load state: both lanes together.
+    var anyAnswered: Bool { answeredTiles > 0 || city.answeredTiles > 0 }
+    var anyVisible: Bool { visibleTiles > 0 || city.visibleTiles > 0 }
+    /// The age of the oldest answer behind the map: the older of the two lanes.
+    var oldestAnswerAgeOfBothLanes: TimeInterval? { [oldestAnswerAge, city.oldestAnswerAge].compactMap { $0 }.max() }
+    /// „Radar pausiert“: every lane that has tiles is paused (a lane without tiles does not count).
+    var isPausedOnBothLanes: Bool {
+        let wide = visibleTiles > 0, cityTiles = city.visibleTiles > 0
+        guard wide || cityTiles else { return false }
+        return (!wide || isPaused) && (!cityTiles || city.isPaused)
+    }
+    /// Tiles still to come on either lane.
+    var anyPending: Bool { pendingTiles > 0 || city.pendingTiles > 0 }
 }
 
 public struct RadarScheduler: Sendable {
@@ -116,6 +161,12 @@ public struct RadarScheduler: Sendable {
     private var viewChangedAt: Date?
     private var sentAt: [Date] = []
     private var pausedUntil: Date?
+    // MARK: radarmodes – the city lane's view (nil: off), its span, when it changed, its refresh and its tile cap.
+    private var cityViewport: RadarBox?
+    private var citySpan = 0.0
+    private var cityViewChangedAt: Date?
+    public private(set) var cityInterval = RadarLanePlan.cityIntervalWiFi
+    public var cityMaxTiles = RadarLanePlan.cityMaxTiles
 
     public init(config: RadarSchedulerConfig = .standard) {
         self.config = config
@@ -145,14 +196,89 @@ public struct RadarScheduler: Sendable {
         latitudeSpan = span.isFinite && span > 0 ? span : latitudeSpan
     }
 
+    /// MARK: radarmodes – the wide lane asks for nothing (only Bus, Bim or U-Bahn are on and the Pünktlichkeit layer is off): no wide tile, and
+    /// no „Außerhalb des Radar-Bereichs“ either.
+    public mutating func clearViewport() {
+        viewport = nil
+    }
+
+    /// MARK: radarmodes – the city lane's view: the map's rectangle while a city mode is on and its markers are drawn, nil when it is off. It
+    /// asks only while `span` is at most `RadarLanePlan.citySpanLimit` (else `status.city.outOfZoom`).
+    public mutating func setCityViewport(_ box: RadarBox?, latitudeSpan span: Double, now: Date) {
+        guard let box, box.isValid else {
+            cityViewport = nil
+            return
+        }
+        if box != cityViewport { cityViewChangedAt = now }
+        cityViewport = box
+        citySpan = span.isFinite && span > 0 ? span : citySpan
+    }
+
+    /// MARK: radarmodes – the city lane's refresh (20 s, or 60 s on a metered path or by choice).
+    public mutating func setCityInterval(_ seconds: TimeInterval) {
+        guard seconds.isFinite, seconds > 0 else { return }
+        cityInterval = seconds
+    }
+
+    /// The city lane may ask now: it has a view and the view is close enough.
+    public var cityIsInZoom: Bool { cityViewport != nil && RadarLanePlan.cityInZoom(latitudeSpan: citySpan) }
+
     /// Forgets every tile (the transport modes changed: the old answers are for other vehicles). The request budget stays.
     public mutating func reset() {
         states = [:]
         pausedUntil = nil
     }
 
-    /// The tiles the view needs: tiles of the zoom's level, each replaced by its children when it was cut off at the cap.
+    /// MARK: radarmodes – forgets the tiles of one lane (its modes changed); the other lane, the budget and a pause stay.
+    public mutating func reset(lane: RadarLane) {
+        states = states.filter { $0.key.lane != lane }
+    }
+
+    /// The tiles the view needs: tiles of the zoom's level, each replaced by its children when it was cut off at the cap; then the city
+    /// lane's tiles (`cityTiles`).
     public func visibleTiles() -> [RadarTileKey] {
+        wideTiles() + cityTiles().tiles
+    }
+
+    /// MARK: radarmodes – the city lane's tiles: one level finer than the wide lane, split down to level 8 nearest the centre first, never more
+    /// than `cityMaxTiles`. A tile whose split would need more stays as it is and counts as crowded.
+    public func cityTiles() -> (tiles: [RadarTileKey], crowded: Int) {
+        guard let cityViewport, cityIsInZoom else { return ([], 0) }
+        let centre = cityViewport.center
+        func distance(_ key: RadarTileKey) -> Double {
+            let middle = RadarTileGrid.box(of: key).center
+            return hypot(middle.latitude - centre.latitude, (middle.longitude - centre.longitude) * 0.67)
+        }
+        func nearer(_ a: RadarTileKey, _ b: RadarTileKey) -> Bool {
+            let da = distance(a), db = distance(b)
+            return da != db ? da < db : a < b
+        }
+        let level = RadarTileGrid.cityLevel(forLatitudeSpan: citySpan)
+        var queue = RadarTileGrid.tiles(intersecting: cityViewport, level: level, lane: .city).sorted(by: nearer)
+        var crowded = 0
+        if queue.count > cityMaxTiles {
+            crowded += queue.count - cityMaxTiles
+            queue = Array(queue.prefix(cityMaxTiles))
+        }
+        var result: [RadarTileKey] = []
+        while !queue.isEmpty {
+            let key = queue.removeFirst()
+            if states[key]?.isSplit == true, key.level < RadarTileGrid.cityMaxLevel {
+                let children = RadarTileGrid.children(of: key).filter { RadarTileGrid.box(of: $0).intersects(cityViewport) }
+                if result.count + queue.count + children.count <= cityMaxTiles {
+                    queue.append(contentsOf: children)
+                    queue.sort(by: nearer)
+                    continue
+                }
+                crowded += 1
+            }
+            result.append(key)
+        }
+        return (result, crowded)
+    }
+
+    /// The wide lane's tiles (trains, S-Bahn, the Pünktlichkeit's Austria): exactly the tiles of the radar before the lanes.
+    func wideTiles() -> [RadarTileKey] {
         guard let viewport else { return [] }
         var result: [RadarTileKey] = []
         func resolve(_ key: RadarTileKey) {
@@ -172,8 +298,9 @@ public struct RadarScheduler: Sendable {
 
     // MARK: Intervals and budget
 
-    /// Seconds between two requests of a tile, before the budget stretches it.
+    /// Seconds between two requests of a tile, before the budget stretches it. A city tile: the city refresh (20 or 60 s).
     public func interval(for key: RadarTileKey) -> TimeInterval {
+        if key.lane == .city { return cityInterval }   // MARK: radarmodes
         let dense = (states[key]?.vehicleCount ?? 0) >= config.denseCount
         return dense || latitudeSpan <= config.zoomedInSpan ? config.denseInterval : config.quietInterval
     }
@@ -231,7 +358,8 @@ public struct RadarScheduler: Sendable {
 
         var best: (key: RadarTileKey, ratio: Double, distance: Double)?
         var earliest: Date?
-        let centre = viewport?.center ?? RadarTileGrid.coverage.center
+        let wideCentre = viewport?.center ?? RadarTileGrid.coverage.center
+        let cityCentre = cityViewport?.center ?? wideCentre   // MARK: radarmodes – each lane ranks by its own view's centre
         let stretchFactor = stretch(for: tiles)
         for key in tiles {
             let state = states[key] ?? TileState()
@@ -241,7 +369,8 @@ public struct RadarScheduler: Sendable {
                 dueAt = last.addingTimeInterval(interval(for: key) * stretchFactor)
             } else {
                 // Never asked: due once the view has settled (at once after "Erneut versuchen").
-                dueAt = viewChangedAt.map { $0.addingTimeInterval(config.settleDelay) } ?? .distantPast
+                let changedAt = key.lane == .city ? cityViewChangedAt : viewChangedAt   // MARK: radarmodes
+                dueAt = changedAt.map { $0.addingTimeInterval(config.settleDelay) } ?? .distantPast
             }
             if let retryAt = state.retryAt { dueAt = max(dueAt, retryAt) }
             guard dueAt <= now else {
@@ -251,6 +380,7 @@ public struct RadarScheduler: Sendable {
             // The most overdue tile first; tiles never asked come before all others, the one nearest the centre first.
             let ratio = state.lastRequestAt.map { now.timeIntervalSince($0) / max(interval(for: key), 1) } ?? .infinity
             let middle = RadarTileGrid.box(of: key).center
+            let centre = key.lane == .city ? cityCentre : wideCentre
             let distance = hypot(middle.latitude - centre.latitude, (middle.longitude - centre.longitude) * 0.67)
             if let current = best, ratio < current.ratio || (ratio == current.ratio && distance >= current.distance) { continue }
             best = (key, ratio, distance)
@@ -323,7 +453,7 @@ public struct RadarScheduler: Sendable {
         state.failures = 0
         state.retryAt = nil
         state.isInFlight = false
-        if RadarTiling.isTruncated(count: count), key.level < RadarTileGrid.maxLevel {
+        if RadarTiling.isTruncated(count: count), key.level < RadarTileGrid.finestLevel(for: key.lane) {   // MARK: radarmodes – city tiles to level 8
             state.isSplit = true
         }
         states[key] = state
@@ -385,6 +515,7 @@ public struct RadarScheduler: Sendable {
     public mutating func refreshAll() {
         pausedUntil = nil
         viewChangedAt = nil
+        cityViewChangedAt = nil   // MARK: radarmodes
         for key in visibleTiles() where states[key]?.isInFlight != true {
             states[key, default: TileState()].lastRequestAt = nil
             states[key]?.retryAt = nil
@@ -397,15 +528,37 @@ public struct RadarScheduler: Sendable {
     public func status(now: Date) -> RadarStatus {
         var status = RadarStatus()
         status.latitudeSpan = latitudeSpan
-        let tiles = visibleTiles()
-        status.visibleTiles = tiles.count
+        let wide = wideTiles()
+        let city = cityTiles()
+        let stretchFactor = stretch(for: wide + city.tiles)
+        // MARK: radarmodes – the city lane's status first: it has a view of its own, whether the wide lane has one or not.
+        status.city = laneStatus(city.tiles, stretch: stretchFactor, now: now)
+        status.city.isActive = cityViewport != nil
+        status.city.outOfZoom = cityViewport != nil && !cityIsInZoom
+        status.city.crowdedTiles = city.crowded
+        status.budgetLimited = stretchFactor > 1
+        status.visibleTiles = wide.count
         guard let viewport else { return status }
-        if tiles.isEmpty { status.outsideCoverage = viewport.isValid }
+        if wide.isEmpty { status.outsideCoverage = viewport.isValid }
         let area = RadarTileGrid.coverage
         status.coversCountry = viewport.west <= area.west && viewport.east >= area.east
             && viewport.south <= area.south && viewport.north >= area.north
-        let stretchFactor = stretch(for: tiles)
-        status.budgetLimited = stretchFactor > 1
+        let lane = laneStatus(wide, stretch: stretchFactor, now: now)
+        status.period = lane.period
+        status.answeredTiles = lane.answeredTiles
+        status.failedTiles = lane.failedTiles
+        status.cappedTiles = lane.cappedTiles
+        status.staleTiles = lane.staleTiles
+        status.oldestAnswerAge = lane.oldestAnswerAge
+        status.pendingTiles = lane.pendingTiles
+        status.isPaused = lane.isPaused
+        return status
+    }
+
+    /// The numbers of one lane's visible tiles (the wide lane's are the radar's status as it always was).
+    private func laneStatus(_ tiles: [RadarTileKey], stretch stretchFactor: Double, now: Date) -> RadarLaneStatus {
+        var status = RadarLaneStatus()
+        status.visibleTiles = tiles.count
         status.period = tiles.map { interval(for: $0) * stretchFactor }.max() ?? 0
         var ages: [TimeInterval] = []
         var pending = 0
@@ -415,9 +568,10 @@ public struct RadarScheduler: Sendable {
                 status.failedTiles += 1
             } else if let state, let answered = state.lastAnswerAt {
                 status.answeredTiles += 1
-                if RadarTiling.isTruncated(count: state.vehicleCount ?? 0), key.level >= RadarTileGrid.maxLevel {
+                if RadarTiling.isTruncated(count: state.vehicleCount ?? 0), key.level >= RadarTileGrid.finestLevel(for: key.lane) {
                     status.cappedTiles += 1
                 }
+                if let count = state.vehicleCount { status.vehicleCounts.append(count) }
                 // The same rule as `RadarFrameStore.prune`: an answer older than its retention has left the store.
                 let retention = max(RadarTiling.frameRetention, config.retentionFactor * interval(for: key) * stretchFactor)
                 if now.timeIntervalSince(answered) > retention { status.staleTiles += 1 }

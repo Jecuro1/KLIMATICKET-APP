@@ -22,26 +22,30 @@ extension RadarModel {
     /// What the scheduler is told the view is: the map's, or while the layer is on, all of Austria. Moving or zooming the map then
     /// changes no request.
     func applyViewport(now: Date = Date()) {
+        syncLanes()   // MARK: radarmodes – a lane whose request mask changed (modes, the layer) starts over
         if heat.isEnabled {
             scheduler.setViewport(RadarTileGrid.coverage, latitudeSpan: Self.heatSpan, now: now)
+        } else if laneMasks[.wide]?.isEmpty == true {   // MARK: radarmodes – only Bus, Bim or U-Bahn on: the wide lane asks for nothing
+            scheduler.clearViewport()
         } else {
             scheduler.setViewport(box, latitudeSpan: spanDegrees, now: now)
         }
+        applyCityViewport(now: now)   // MARK: radarmodes – the map's view for Bus, Bim and U-Bahn while their markers are drawn
     }
 
     /// Recomputes the layer when an answer came in or ten seconds went by. The trains are the trains and S-Bahnen the radar holds (the
     /// layer is about trains: a bus or a tram that the mode chips ask for does not count, and neither does the marker filter), at the
-    /// positions the map shows them.
+    /// positions the map shows them. MARK: radarmodes – all trains and S-Bahnen, whatever the chips say: while the layer is on the wide lane asks
+    /// for every one of them (`RadarLanePlan.products`), so the numbers no longer depend on the chips.
     func refreshHeat(at now: Date) {
         guard heat.needsUpdate(at: now) else { return }
         // Trains older than their retention never count: switched on after a while without the loop (the train layer off, the map
         // still), the store can hold the answers of minutes ago until the next rebuild prunes it.
         store.prune(now: now)
-        let mask = products.intersection(.rail)
+        let mask = ProductMask.rail   // MARK: radarmodes
         let samples = store.entries.values.compactMap { entry -> HeatSample? in
             let vehicle = entry.vehicle
-            // A mode that was switched off is gone at once, whatever its retention says (as for the pins); buses, trams and
-            // subways never count (a vehicle with an unknown product class is kept, as for the pins).
+            // Buses, trams and subways never count (a vehicle with an unknown product class is kept, as for the pins).
             if let line = vehicle.line, line.productClass != 0, line.productClass & mask.rawValue == 0 { return nil }
             return HeatSample(vehicle: vehicle, coordinate: RadarEstimate.shown(entry, now: now).coordinate, now: now)
         }
@@ -54,9 +58,6 @@ extension RadarModel {
         // moment the panel was drawn).
         heat.update(samples, at: now, isComplete: complete, dataTime: status.oldestAnswerAge.map { now.addingTimeInterval(-$0) })
     }
-
-    /// No mode that carries trains is on (only buses, trams or subways): the layer has nothing to count and says so.
-    var heatHasNoRail: Bool { products.intersection(.rail).isEmpty }
 
     /// A vehicle the radar holds, by trip id (the panel's lists and the cell sheet open its trip sheet from the id).
     func vehicle(id: String) -> RadarVehicle? { store.entries[id]?.vehicle }

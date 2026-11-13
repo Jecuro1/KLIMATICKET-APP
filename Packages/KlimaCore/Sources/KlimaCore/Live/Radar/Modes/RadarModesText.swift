@@ -1,0 +1,178 @@
+import Foundation
+
+// MARK: radarmodes – every visible string of the radar's modes, lanes, counts, legend and notes (docs/RADAR_MODES.md §9). Honest words only: the
+// positions are calculated by the ÖBB-Auskunft („berechnet“), never GPS; an empty map means the Auskunft knows no vehicle there, never that
+// nothing runs.
+
+public enum RadarModesText {
+    // MARK: Nouns
+
+    /// The label of a mode in the counts line and the legend ("Zug", "S-Bahn", "Bus", "Bim", "U-Bahn"; nil: "Andere").
+    public static func label(_ mode: RadarMode?) -> String {
+        guard let mode else { return "Andere" }
+        switch mode {
+        case .rail: return "Zug"
+        case .suburban: return "S-Bahn"
+        case .bus: return "Bus"
+        case .tram: return "Bim"
+        case .subway: return "U-Bahn"
+        }
+    }
+
+    /// "1 Zug", "21 Züge", "1 Bus", "180 Busse", "3 andere Fahrzeuge", "1 anderes Fahrzeug".
+    public static func counted(_ count: Int, _ mode: RadarMode?) -> String {
+        "\(count) \(count == 1 ? singular(mode) : plural(mode))"
+    }
+
+    public static func singular(_ mode: RadarMode?) -> String {
+        mode == nil ? "anderes Fahrzeug" : label(mode)
+    }
+
+    public static func plural(_ mode: RadarMode?) -> String {
+        guard let mode else { return "andere Fahrzeuge" }
+        switch mode {
+        case .rail: return "Züge"
+        case .suburban: return "S-Bahnen"
+        case .bus: return "Busse"
+        case .tram: return "Bims"
+        case .subway: return "U-Bahnen"
+        }
+    }
+
+    /// "Bus", "Bus und Bim", "Bus, Bim und U-Bahn": the chip titles of the city modes that are on.
+    public static func names(_ modes: [RadarMode]) -> String {
+        list(modes.map(\.title))
+    }
+
+    /// "Busse und Bims", "Busse, Bims und U-Bahnen".
+    public static func pluralNames(_ modes: [RadarMode]) -> String {
+        list(modes.map { plural($0) })
+    }
+
+    static func list(_ words: [String]) -> String {
+        switch words.count {
+        case 0: return ""
+        case 1: return words[0]
+        default: return words.dropLast().joined(separator: ", ") + " und " + words[words.count - 1]
+        }
+    }
+
+    // MARK: Chips
+
+    /// The VoiceOver value of a mode chip: „an“, „aus“, or for a city mode out of zoom „an, erscheint beim Heranzoomen“.
+    public static func chipValue(isOn: Bool, outOfZoom: Bool) -> String {
+        guard isOn else { return "aus" }
+        return outOfZoom ? "an, erscheint beim Heranzoomen" : "an"
+    }
+
+    /// The footer of the Verkehrsmittel section; the km figure follows the span limit (0.6° → 67 km).
+    public static func modesFooter(limit: Double = RadarLanePlan.citySpanLimit) -> String {
+        "Das Radar fragt jedes eingeschaltete Verkehrsmittel bei der ÖBB-Auskunft ab. Bus, Bim und U-Bahn kommen erst, wenn die Karte höchstens " +
+            "etwa \(RadarLanePlan.cityLimitKilometres(limit)) km hoch ist. Mindestens eins bleibt an."
+    }
+
+    // MARK: Notes
+
+    /// „Bus, Bim und U-Bahn erscheinen, wenn du näher heranzoomst.“ – „Bus erscheint, …“ for one mode.
+    public static func zoomHint(_ modes: [RadarMode]) -> String {
+        "\(names(modes)) \(modes.count == 1 ? "erscheint" : "erscheinen"), wenn du näher heranzoomst."
+    }
+
+    /// „Bus, Bim und U-Bahn: 4 von 9 Gebieten geladen.“
+    public static func loading(_ modes: [RadarMode], answered: Int, of total: Int) -> String {
+        "\(names(modes)): \(answered) von \(total) \(total == 1 ? "Gebiet" : "Gebieten") geladen."
+    }
+
+    /// „Für alle Busse und Bims hier bräuchte das Radar mehr Abfragen, als es senden darf. Ein Teil fehlt. Zoom näher heran.“
+    public static func crowded(_ modes: [RadarMode]) -> String {
+        "Für alle \(pluralNames(modes)) hier bräuchte das Radar mehr Abfragen, als es senden darf. Ein Teil fehlt. Zoom näher heran."
+    }
+
+    /// „In 2 kleinen Gebieten fahren mehr Fahrzeuge, als die Auskunft je Abfrage liefert. Ein Teil davon fehlt auf der Karte.“
+    public static func cityCapped(_ tiles: Int) -> String {
+        let where_ = tiles == 1 ? "In einem kleinen Gebiet" : "In \(tiles) kleinen Gebieten"
+        return "\(where_) fahren mehr Fahrzeuge, als die Auskunft je Abfrage liefert. Ein Teil davon fehlt auf der Karte."
+    }
+
+    /// „Bus, Bim und U-Bahn: etwa 12 MB pro Minute (geschätzt).“
+    public static func dataEstimate(_ modes: [RadarMode], megabytes: Int) -> String {
+        "\(names(modes)): etwa \(megabytes) MB pro Minute (geschätzt)."
+    }
+
+    /// „Über mobile Daten kommen Bus, Bim und U-Bahn alle 60 s.“
+    public static func metered(_ modes: [RadarMode], seconds: Int = Int(RadarLanePlan.cityIntervalMetered)) -> String {
+        "Über mobile Daten \(modes.count == 1 ? "kommt" : "kommen") \(names(modes)) alle \(seconds) s."
+    }
+
+    public static let empty = "Die Auskunft kennt in diesem Ausschnitt gerade keine Fahrzeuge."
+
+    /// „Kein Fahrzeug passt zum Filter. Ohne Filter wären es 84.“
+    public static func emptyWithFilter(unfiltered: Int) -> String {
+        "Kein Fahrzeug passt zum Filter. Ohne Filter \(unfiltered == 1 ? "wäre es eins" : "wären es \(unfiltered)")."
+    }
+
+    public static let filterOff = "Filter aus"
+
+    /// Where the Zeitreise's clock chip sits while a city mode is on.
+    public static let timeTravelHint = "Zeitreise gibt es nur mit Zügen und S-Bahn."
+
+    static let partialFailure = "Für einen Teil der Karte kam keine Antwort. Es wird neu versucht."
+
+    /// Everything the radar knows about this moment, for the notes under the pill (most important first).
+    public struct Situation: Equatable, Sendable {
+        public var status: RadarStatus
+        public var selection: RadarModeSelection
+        /// The city refresh came out at 60 s because the connection is metered („Automatisch“).
+        public var meteredCity: Bool
+        public var pinCount: Int
+        /// The vehicles the map would show without the filter (modes, box and zoom applied).
+        public var unfilteredCount: Int
+        public var filterActive: Bool
+
+        public init(status: RadarStatus, selection: RadarModeSelection, meteredCity: Bool = false, pinCount: Int, unfilteredCount: Int,
+                    filterActive: Bool) {
+            self.status = status
+            self.selection = selection
+            self.meteredCity = meteredCity
+            self.pinCount = pinCount
+            self.unfilteredCount = unfilteredCount
+            self.filterActive = filterActive
+        }
+    }
+
+    /// The notes under the pill: the zoom hint, the wide lane's notes (`RadarStatusText`), the city lane's loading, crowded, cut-off and failure
+    /// notes, one cadence note for both lanes, the metered and data notes, and an empty map.
+    public static func notes(_ s: Situation) -> [String] {
+        let status = s.status
+        let city = status.city
+        let cityModes = s.selection.cityModes
+        let cityRuns = city.visibleTiles > 0
+        var notes: [String] = []
+        if city.outOfZoom, !cityModes.isEmpty { notes.append(zoomHint(cityModes)) }
+        // The wide lane's notes; while the city lane runs the cadence note below speaks for both lanes.
+        var wide = status
+        if cityRuns { wide.period = 0 }
+        let hasVehicles = s.pinCount > 0 || status.anyAnswered
+        notes += RadarStatusText.notes(wide, rail: s.selection.carriesOnlyTrains, hasVehicles: hasVehicles)
+        if cityRuns, !cityModes.isEmpty {
+            if city.pendingTiles > 0, !city.isPaused {
+                notes.append(loading(cityModes, answered: city.answeredTiles, of: city.visibleTiles))
+            }
+            if city.crowdedTiles > 0 { notes.append(crowded(cityModes)) }
+            if city.cappedTiles > 0 { notes.append(cityCapped(city.cappedTiles)) }
+            if city.failedTiles > 0, !city.isPaused, !notes.contains(partialFailure) { notes.append(partialFailure) }
+            let period = max(status.answeredTiles > 0 ? status.period : 0, city.answeredTiles > 0 ? city.period : 0)
+            // A refresh of 60 s on a metered path is said by the metered note; the cadence note is for a stretched budget.
+            if period > RadarStatusText.cadenceNoteAbove, status.budgetLimited || !s.meteredCity {
+                notes.append("Dieser Ausschnitt · aktualisiert alle ~\(RadarStatusText.roundedPeriod(period)) s")
+            }
+            if s.meteredCity { notes.append(metered(cityModes)) }
+            let megabytes = RadarDataEstimate.megabytesPerMinute(cityTileCounts: city.vehicleCounts, period: city.period)
+            if let rounded = RadarDataEstimate.noteMegabytes(megabytes) { notes.append(dataEstimate(cityModes, megabytes: rounded)) }
+        }
+        if status.anyAnswered, s.pinCount == 0, !status.anyPending, !status.isPausedOnBothLanes, !status.outsideCoverage {
+            notes.append(s.filterActive && s.unfilteredCount > 0 ? emptyWithFilter(unfiltered: s.unfilteredCount) : empty)
+        }
+        return notes
+    }
+}

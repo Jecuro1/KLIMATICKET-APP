@@ -169,6 +169,7 @@ extension RadarView {
                 .buttonStyle(.bordered)
             }
             if timeAvailable { RadarTimePanel(travel: travel) }   // MARK: radartime – the clock chip, expanding to the scrubber
+            else if timeHintShown { Text(RadarModesText.timeTravelHint).radarHint() }   // MARK: radarmodes – where the clock chip sits
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .frame(maxWidth: .infinity)
@@ -188,7 +189,7 @@ struct RadarStatusCard: View {
         var spoken: String
         if let pill = model.pillText {
             text = pill
-            let age = model.status.oldestAnswerAge.map { ", aktualisiert \(RadarStatusText.spokenAge($0))" } ?? ""
+            let age = model.status.oldestAnswerAgeOfBothLanes.map { ", aktualisiert \(RadarStatusText.spokenAge($0))" } ?? ""   // MARK: radarmodes
             spoken = model.summary + age
         } else {
             text = model.load == .loading ? "Lade Fahrzeuge …" : "Noch keine Positionen"

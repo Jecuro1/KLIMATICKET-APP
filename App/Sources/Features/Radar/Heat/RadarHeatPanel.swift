@@ -239,9 +239,6 @@ struct HeatNotes: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if model.heatHasNoRail {
-                Text(RadarHeatText.noRailNote).foregroundStyle(Theme.summitText)
-            }
             if let incomplete = RadarHeatText.completenessNote(model.status) {
                 Text(incomplete).foregroundStyle(Theme.summitText)
             }

@@ -52,8 +52,16 @@ final class RadarModel {
     @ObservationIgnored private var lastError: Error?
     @ObservationIgnored private var lastRebuild = Date.distantPast
     @ObservationIgnored private var lastPinRebuild = Date.distantPast
-    /// Counts the mode changes: an answer that was asked for before a change is dropped.
-    @ObservationIgnored private var generation = 0
+    /// MARK: radarmodes – counts the changes of each lane's request mask: an answer that was asked for before its lane changed is dropped, an
+    /// answer of the other lane is kept (README F15). `laneMasks`: what each lane asks for now (`RadarModel+Modes.swift`).
+    @ObservationIgnored var laneGenerations: [RadarLane: Int] = [:]
+    @ObservationIgnored var laneMasks: [RadarLane: ProductMask] = [:]
+    /// MARK: radarmodes – the train layer is on, so the city lane's markers are drawn (`setMarkersOn`).
+    @ObservationIgnored var markersOn = true
+    /// MARK: radarmodes – the city refresh is 60 s because the connection is metered („Automatisch“).
+    var cityMetered = false
+    /// MARK: radarmodes – the vehicles the map would show without the filter (the empty-with-filter note).
+    private(set) var unfilteredCount = 0
     /// „Jetzt aktualisieren“ / „Erneut versuchen“: the loop sends the due tiles even in Low Power Mode until none is due. There is no
     /// second loop for it: one loop, one budget, and it ends with the view.
     @ObservationIgnored private var manualRefresh = false
@@ -68,15 +76,17 @@ final class RadarModel {
         RadarSummary.line(count: pins.count, late: pins.filter { $0.delay == .late }.count, rail: carriesOnlyTrains)
     }
 
-    /// The status pill: the vehicles in the visible area and the age of the oldest answer behind them.
+    /// The status pill: the vehicles in the visible area and the age of the oldest answer behind them (MARK: radarmodes – of both lanes).
     var pillText: String? {
-        guard status.answeredTiles > 0 || !pins.isEmpty else { return nil }
-        return RadarStatusText.pill(count: pins.count, rail: carriesOnlyTrains, age: status.oldestAnswerAge)
+        guard status.anyAnswered || !pins.isEmpty else { return nil }
+        return RadarStatusText.pill(count: pins.count, rail: carriesOnlyTrains, age: status.oldestAnswerAgeOfBothLanes)
     }
 
-    /// The notes under the pill: cut-off tiles, a partial failure, a slow refresh.
+    /// The notes under the pill: cut-off tiles, a partial failure, a slow refresh; MARK: radarmodes – the city lane's zoom, loading, crowded,
+    /// cut-off, metered and data notes and an empty map (`RadarModesText.notes`).
     var notes: [String] {
-        RadarStatusText.notes(status, rail: carriesOnlyTrains, hasVehicles: !pins.isEmpty || status.answeredTiles > 0)
+        RadarModesText.notes(.init(status: status, selection: modes, meteredCity: cityMetered, pinCount: pins.count,
+                                   unfilteredCount: unfilteredCount, filterActive: filter.isActive))
     }
 
     /// Every vehicle of the last minutes, whatever the map shows. Search and the filter's line list use it.
@@ -89,18 +99,13 @@ final class RadarModel {
     }
 
     /// The old answers are for other vehicles: the tiles start over, vehicles of a mode that was switched off go at once.
+    /// MARK: radarmodes – only the lane whose request mask changed starts over (`syncLanes`, called by `applyViewport`), and only vehicles that
+    /// no lane asks for any more leave the store: switching the S-Bahn chip off with the Pünktlichkeit on keeps its S-Bahnen for the numbers.
     private func modesChanged(from old: RadarModeSelection) {
-        generation += 1
-        scheduler.reset()
-        let mask = products
         // MARK: radar2 – the classes that were switched off leave the parts as well (radartrail drops their trails)
-        let removed = old.products.subtracting(mask)
+        let removed = old.products.subtracting(products)
         if !removed.isEmpty { radar2.didRemove(products: removed) }
-        store.removeAll { vehicle in
-            guard let line = vehicle.line, line.productClass != 0 else { return false }
-            return line.productClass & mask.rawValue == 0
-        }
-        applyViewport()   // MARK: radarheat – the map's view, or all of Austria while the Pünktlichkeit layer is on
+        applyViewport()   // MARK: radarheat – the map's view, or all of Austria while the Pünktlichkeit layer is on; radarmodes – both lanes
         heat.noteAnswer()
         rebuildPins(at: Date())
     }
@@ -128,6 +133,7 @@ final class RadarModel {
     /// pauses the requests (the clock still runs, so the pins stay where the last answer put them). The requests end with the
     /// task: cancelling it cancels every request on its way, and each gives its tile back to the scheduler.
     func run(_ service: any RadarService) async {
+        await resolveCityInterval()   // MARK: radarmodes – 20 s, or 60 s on a metered path
         applyViewport()   // MARK: radarheat
         await withTaskGroup(of: Void.self) { group in
             while !Task.isCancelled {
@@ -178,13 +184,13 @@ final class RadarModel {
     }
 
     private func fetch(_ tile: RadarTileKey, _ service: any RadarService) async {
-        let asked = generation
-        let askedProducts = products   // MARK: radar2 – what this request asks for (RadarAnswerEvent)
+        let asked = laneGenerations[tile.lane, default: 0]   // MARK: radarmodes – per lane
+        let askedProducts = products(for: tile)   // MARK: radar2, radarmodes – what this request asks for (its lane's mask)
         let requestedAt = Date()
         do {
-            let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: requestedAt, products: products,
+            let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: requestedAt, products: askedProducts,
                                                                maxVehicles: RadarTiling.requestCap))
-            guard asked == generation else { return }   // the modes changed while this was on its way
+            guard asked == laneGenerations[tile.lane, default: 0] else { return }   // its lane's modes changed while this was on its way
             // The positions in the answer are those of `requestedAt` (`RadarQuery.when`), however long the answer took: that is
             // the time they belong to. So a slow answer (up to 21 s measured) is as old in the status as it is, and an answer of
             // an older request never replaces a newer one (`RadarFrameStore.merge`), now that several requests are on their way.
@@ -198,7 +204,7 @@ final class RadarModel {
         } catch is CancellationError {
             scheduler.recordCancelled(tile)
         } catch {
-            guard asked == generation else { return }
+            guard asked == laneGenerations[tile.lane, default: 0] else { return }
             lastError = error
             scheduler.recordFailure(tile, error: error, at: Date())
         }
@@ -220,27 +226,34 @@ final class RadarModel {
 
     private func updateStatus(at now: Date) {
         status = scheduler.status(now: now)
-        if status.isPaused {
+        // MARK: radarmodes – both lanes: paused when every lane with tiles is, loaded when either has an answer
+        if status.isPausedOnBothLanes {
             load = .failed(lastError.map(LiveMessage.text(for:)) ?? "Das hat gerade nicht geklappt. Versuch es gleich noch einmal.")
-        } else if status.answeredTiles > 0 {
+        } else if status.anyAnswered {
             load = .loaded
-        } else if status.visibleTiles > 0 {
+        } else if status.anyVisible {
             load = .loading
         } else {
             load = .idle
         }
     }
 
+    /// MARK: radarmodes – the markers again at once (the train layer went on or off).
+    func rebuildPinsNow() { rebuildPins(at: Date()) }
+
     private func rebuildPins(at now: Date) {
         lastRebuild = now
         lastPinRebuild = now
-        let mask = products
+        // MARK: radarmodes – the chips' mask; Bus, Bim and U-Bahn leave the map at once while the city lane is out of zoom
+        let mask = shownProducts
+        var unfiltered = 0
         pins = store.visible(at: now).compactMap { entry -> RadarPin? in
             let vehicle = entry.vehicle
             // A mode that was switched off is gone at once, whatever its retention says.
             if let line = vehicle.line, line.productClass != 0, line.productClass & mask.rawValue == 0 { return nil }
             let (point, estimate) = RadarEstimate.shown(entry, now: now)
             guard box.contains(point) else { return nil }
+            unfiltered += 1
             guard filter.matches(vehicle, now: now) else { return nil }
             let next = RadarRun.nextStop(of: vehicle, now: now)
             return RadarPin(vehicle: vehicle, coordinate: point, isEstimate: estimate,
@@ -248,6 +261,7 @@ final class RadarModel {
                             delaySeconds: RadarDelay.currentDelay(of: vehicle, now: now),
                             bearing: next?.location.coordinate.map { RadarBearing.degrees(from: point, to: $0) })
         }
+        unfilteredCount = unfiltered
         pinsByID = Dictionary(pins.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         // MARK: radar2 – vehicles a part keeps single (radarmine: remembered lines, the stop panel's arrivals) skip the grouping
         let points = pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) }

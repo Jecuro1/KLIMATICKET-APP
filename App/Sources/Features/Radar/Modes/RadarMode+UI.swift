@@ -23,3 +23,10 @@ extension RadarView {
         modesRaw = modes.storageValue
     }
 }
+
+extension RadarView {
+    /// The Zeitreise's clock chip is missing only because a city mode is on: a short hint takes its place (the rest of the rule is unchanged).
+    var timeHintShown: Bool {
+        trainsOn && !layers.isOn(.punctuality) && !model.carriesOnlyTrains && !travel.isAway
+    }
+}
