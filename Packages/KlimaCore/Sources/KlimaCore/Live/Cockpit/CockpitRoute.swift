@@ -47,6 +47,13 @@ public struct CockpitLeg: Sendable, Hashable, Identifiable {
     public var state: RadarDelayState
 }
 
+/// A piece of the line to draw.
+public struct CockpitLine: Sendable, Hashable, Identifiable {
+    public var id: Int
+    public var points: [GeoPoint]
+    public var state: RadarDelayState
+}
+
 /// Where the train is in its run.
 public enum CockpitSituation: Sendable, Hashable {
     /// At the first stop, before the departure time.
@@ -157,18 +164,23 @@ public struct CockpitRoute: Sendable {
     /// A stop's place on the progress bar, 0 ... 1.
     public func fraction(of stop: CockpitStop) -> Double { progress(atKm: stop.km) }
 
+    /// A marker within this distance of the route is drawn on it.
+    static let snapKm = 0.3
+
     /// The train's kilometre mark for a position: the nearest point of the route, searched in a window around where the train was
     /// (`hintKm`) so a parallel track or a loop cannot catch it. Without a hint the whole route is searched. nil when the position is
     /// more than `maxOffRouteKm` from the route.
     public func km(of position: GeoPoint, hintKm: Double? = nil, windowKm: Double = 12) -> Double? {
-        let hit: (km: Double, offKm: Double)?
         if let hintKm {
-            hit = path.project(position, fromKm: hintKm - 0.5, toKm: hintKm + windowKm)
-        } else {
-            hit = path.project(position)
+            return place(position, fromKm: hintKm - 0.5, toKm: hintKm + windowKm)?.km
         }
-        guard let hit, hit.offKm <= max(Self.maxOffRouteKm, 0.5) else { return nil }
-        return hit.km
+        return place(position)?.km
+    }
+
+    /// The nearest point of the route inside a window of marks: its mark, the point itself and how far off the position is.
+    func place(_ position: GeoPoint, fromKm: Double = 0, toKm: Double = .infinity) -> (km: Double, point: GeoPoint, offKm: Double)? {
+        guard let hit = path.project(position, fromKm: fromKm, toKm: toKm), hit.offKm <= Self.maxOffRouteKm else { return nil }
+        return (hit.km, path.point(atKm: hit.km), hit.offKm)
     }
 
     /// The point on the route at a mark.
@@ -242,6 +254,19 @@ public struct CockpitRoute: Sendable {
             out.append(CockpitLeg(id: index - 1, fromKm: stops[index - 1].km, toKm: stop.km, state: state))
         }
         return out
+    }
+
+    /// The line to draw at the train's place: what it has behind it (from the first stop to the train) and what is ahead, one piece per
+    /// leg, tinted. The leg the train is on is cut at the train.
+    public func lines(atKm km: Double) -> (passed: [GeoPoint], ahead: [CockpitLine]) {
+        let here = min(max(km, firstKm), lastKm)
+        let passed = path.slice(fromKm: firstKm, toKm: here)
+        var ahead: [CockpitLine] = []
+        for leg in legs where leg.toKm > here {
+            let points = path.slice(fromKm: max(leg.fromKm, here), toKm: leg.toKm)
+            if points.count >= 2 { ahead.append(CockpitLine(id: leg.id, points: points, state: leg.state)) }
+        }
+        return (passed, ahead)
     }
 
     /// The delay the train carries at the stop it heads for: that stop's own, else the last reported one before it.

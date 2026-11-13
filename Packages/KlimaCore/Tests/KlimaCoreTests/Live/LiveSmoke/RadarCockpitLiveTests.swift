@@ -107,9 +107,11 @@ final class RadarCockpitLiveTests: XCTestCase {
         let small = RadarBox(north: train.coordinate.latitude + halfLat, west: train.coordinate.longitude - halfLon,
                              south: train.coordinate.latitude - halfLat, east: train.coordinate.longitude + halfLon)
         let insideInFirst = first.vehicles.filter { small.contains($0.coordinate) }.count
+        let sameKindInFirst = first.vehicles.filter { small.contains($0.coordinate) && $0.line?.productClass == train.line?.productClass }.count
         let t3 = Date()
         do {
-            let data = try await client.send([HafasRequests.journeyGeoPos(RadarQuery(box: small, when: t3, products: .rail, maxVehicles: 1000))])
+            let products = CockpitRequestPlan.products(for: train.line)   // the cockpit asks for the train's own kind only
+            let data = try await client.send([HafasRequests.journeyGeoPos(RadarQuery(box: small, when: t3, products: products, maxVehicles: 1000))])
             let second = try HafasCodec.radar(from: data)
             let entry = transport.entries.last
             let seconds = t3.timeIntervalSince(t1)
@@ -124,7 +126,7 @@ final class RadarCockpitLiveTests: XCTestCase {
             }
             print("RADAR_COCKPIT r3 small http=\(entry?.status ?? -1) ms=\(Int((entry?.seconds ?? 0) * 1000)) bytes=\(data.count) vehicles=\(second.vehicles.count) " +
                   "answered=\(second.answeredCount) boxKm=\(String(format: "%.1f x %.1f", halfLat * 2 * 110.6, halfLon * 2 * 74.5)) " +
-                  "sameBoxInFirstAnswer=\(insideInFirst) request#\(transport.requestCount)")
+                  "productClass=\(train.line?.productClass ?? 0) sameBoxInFirstAnswer=\(insideInFirst) ofWhichSameClass=\(sameKindInFirst) request#\(transport.requestCount)")
             print("RADAR_COCKPIT r3 train found=\(same != nil) secondsBetweenRequests=\(String(format: "%.1f", seconds)) movedMeters=\(moved.map { String(Int($0)) } ?? "-") " +
                   "impliedKmh=\(moved.map { String(format: "%.0f", $0 / 1000 / max(seconds, 0.1) * 3600) } ?? "-") scheduleKmh=\(scheduleKmh.map { String(format: "%.0f", $0) } ?? "-") " +
                   "stopsInAnswer=\(same?.stopovers.count ?? 0) stopsWithRealtimeInAnswer=\(same?.stopovers.filter { $0.arrival?.realtime != nil || $0.departure?.realtime != nil }.count ?? 0)")
