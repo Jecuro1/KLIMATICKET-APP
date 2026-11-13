@@ -2841,3 +2841,40 @@ Produkte zusammen: bei Bussen und Bims in einer Großstadt teilt sich der Baum b
 sagt „aktualisiert alle ~X s“), und die Datenmenge dabei ist nicht gemessen; der Lauf auf einem Gerät und im Mobilfunknetz (Datenmenge je Minute: Österreich-weit zwei Antworten mit zusammen
 rund 1,8 MB entpackt alle 20 s; die frühere Fassung holte bis zu vier Antworten mit zusammen bis zu 2,3 MB, die Menge ist also vergleichbar,
 aber jetzt vollständig); die Größe auf der Leitung; Werte über 1000; Zahlen nachts und am Wochenende; der Busbetrieb in Wien nach Teilung.
+
+### R11.3 Zusammenspiel: Pünktlichkeit, Zeitreise, Cockpit (2026-11-13)
+
+Die drei Erweiterungen des Radars (`docs/RADAR_HEATMAP.md`, `docs/RADAR_TIMETRAVEL.md`, `docs/RADAR_COCKPIT.md`) teilen eine Live-Schleife, ein Budget
+und eine Regel, welcher Teil gerade fragen darf: `RadarFeatureGate` in KlimaCore. Die Radar-Ansicht fragt nur dort (`RadarView.gate`).
+
+| Zustand | Live-Schleife (`RadarModel.run`) | Zeitreise-Schleife | Cockpit | Ausschnitt des Schedulers |
+|---|---|---|---|---|
+| Radar mit Zügen | läuft | – | – | die Karte |
+| Pünktlichkeit an (mit oder ohne Züge) | läuft | – (kein Uhr-Chip) | – | ganz Österreich (zwei Kacheln der Stufe 0); Verschieben der Karte ändert keine Anfrage |
+| Zeitreise offen bei „Jetzt“ | läuft | läuft, fragt nichts | – | die Karte |
+| Zeitreise abseits von „Jetzt“ (Karte oder Chip) | ruht | holt Momentaufnahmen | – | – |
+| Cockpit offen (aus dem Radar, der Pünktlichkeit oder einer Zeitreise) | ruht | ruht, die Zeitreise bleibt, wo sie war | ein Zug: kleiner Kasten alle 20 s, `JourneyDetails` alle 3 Min | – |
+| App im Hintergrund | ruht | ruht | – | – |
+
+- **Höchstens ein Teil fragt.** Die Live-Schleife, die Zeitreise abseits von „Jetzt“ oder das Cockpit, nie zwei zugleich. Alle drei nehmen ihren Platz aus
+  demselben Budget des Radars (24 je Minute, höchstens 4 in 10 s, 1 s Abstand; `RadarScheduler.claimSlot`, über Ansichten hinweg `RadarBudgetLedger`),
+  so dass auch ein Zusammentreffen nicht darüber käme (`HeatBudgetTests.testTheZeitreiseAndTheLayerShareOneBudget`,
+  `RadarTimeSchedulerTests.testTheBudgetHoldsWhenTheLiveRadarAndTheZeitreiseAlternate`, `CockpitFeedTests.testTheBudgetOfTheCockpitIsAboutThreeAndAHalfRequestsAMinute`).
+- **Pünktlichkeit und Zeitreise schließen sich aus.** Den Uhr-Chip gibt es nur bei ausgeschalteter Pünktlichkeits-Ebene, nur mit Schiene und nur mit
+  Live-Daten. Die Ebene während einer Zeitreise einschalten (die Ebenen-Leiste steht, sobald die Zeitreise zum Chip zugeklappt ist) beendet die
+  Zeitreise; bis dahin bleibt die Ebene aus, denn ihre Zahlen gehören zu „jetzt“.
+- **Was eine Zeitreise beendet** (`RadarFeatureGate.timeEnding`): Zug-Ebene aus, Pünktlichkeit an, Bus, Bim oder U-Bahn an, keine Zustimmung, Schalter
+  aus, Notschalter: Alles Geladene ist weg (`reset`). Nur offline: Sie endet wie „Zurück zu Jetzt“, das Geladene bleibt (`suspend`). Hintergrund und
+  Cockpit beenden sie nicht.
+- **Cockpit.** Aus einer Zeitreise nur für einen Zug, den das Live-Radar kennt. Den Knopf „Cockpit“ hat das Fahrt-Blatt eines Zugs auf der Karte; das
+  Fahrt-Blatt aus der Liste einer Pünktlichkeits-Zelle (ein Blatt über dem Blatt der Zelle) hat ihn nicht.
+- **Drossel der App.** Jede Anfrage geht durch `HafasClient` und `RequestThrottle` (40 je Minute für die ganze App, 0,3 s Abstand). Das Radar bleibt
+  mit allen drei Teilen bei 24; mindestens 16 je Minute bleiben für Fahrplan, Abfahrtstafeln, „Live verfolgen“, die Pendel-Karte und „Nächste
+  Abfahrten“ (`RadarSchedulerTests.testTheSharedBudgetLeavesRoomForThePlannerAndFollow`).
+
+**Test (Linux):** `RadarFeatureGateTests` geht jeden Zustand durch, den man erreichen kann (84: 48 im Radar, 24 unter dem Cockpit, 12 mit einer
+Zeitreise), und von jedem jeden Schritt, den der Bildschirm dort anbietet (Ebenen, Modi, Zeitreise auf, zu, weg, zurück, Cockpit auf und zu,
+Hintergrund, offline, Notschalter). Nach jedem Schritt gilt: nie zwei fragende Teile, die Live-Schleife ruht in der Zeitreise und unter dem Cockpit,
+die Pünktlichkeits-Ebene hat ihre Schleife, keine Zeitreise neben der Ebene oder einem anderen Modus, und von überall führen „Cockpit schließen“,
+„zurück in die App“ und „Zurück zu Jetzt“ zum Live-Radar. Der Test prüft die Regel, nicht SwiftUI: Dass `.task(id:)` und `.onChange` auf einem
+iPhone in dieser Reihenfolge laufen, zeigt nur ein Gerät (Geräte-Checklisten in den drei Dokumenten).

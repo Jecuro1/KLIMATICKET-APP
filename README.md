@@ -20,6 +20,13 @@ Bedienung, Frost-Karten für Inhalte.
   Zugsuche nach Zugnummer, **Live verfolgen** mit Live Activity, **Zug-Radar** und Karte mit Ebenen, Störungen,
   Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme**. Live-Daten gibt es nur mit deiner Einwilligung und bei geöffneter
   App; im Hintergrund fragt die App höchstens für eine Verfolgung nach, für die du Live-Mitteilungen eingeschaltet hast
+- **Zug-Radar** – alle Züge Österreichs auf der Apple-Karte, mit höchstens 24 Anfragen je Minute ([docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11).
+  Die Ebene **Pünktlichkeit** färbt ein Sechseckraster nach der mittleren Verspätung (eine Momentaufnahme, keine ÖBB-Statistik,
+  [docs/RADAR_HEATMAP.md](docs/RADAR_HEATMAP.md)); die **Zeitreise** zeigt, wo die Züge von 30 Minuten zurück bis 3 Stunden voraus sind, berechnet
+  aus Fahrplan und den Verspätungen von jetzt, nicht gemessen ([docs/RADAR_TIMETRAVEL.md](docs/RADAR_TIMETRAVEL.md)); die **Cockpit-Ansicht**
+  folgt einem Zug schräg in 3D, mit nächstem Halt, Ankunft und Verspätung ([docs/RADAR_COCKPIT.md](docs/RADAR_COCKPIT.md)). Wie die drei
+  zusammenspielen: [docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11.3. Nur mit Live-Daten und bei offener App; die drei sind noch nicht auf einem
+  iPhone geprüft
 - **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (178.013 Relationen zwischen 979 Tarifpunkten, Tarif ab 14.12.2025),
   sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
 - **KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
