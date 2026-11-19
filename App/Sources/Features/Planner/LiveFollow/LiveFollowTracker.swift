@@ -163,7 +163,6 @@ final class LiveFollowTracker {
             status = next.stage.isFinished ? .finished : .following
             // MARK: exitalarm – every alarm of this run takes the new arrival and delay of its stop
             ExitAlarmService.shared.followUpdated(tripID: target.tripID, stopovers: next.stopovers)
-            await AutoRunner.shared.followUpdated(target: target, snapshot: next)   // MARK: automation – the rules read this answer, no request
             // MARK: radar2-anschluss – the guard merges the feeder's answer (no request; silent in the background)
             ConnectionGuardService.shared.followUpdated(target: target, snapshot: next, at: trip.fetchedAt ?? now)
             await syncActivity(target: target, snapshot: next, now: now, settings: settings)
@@ -172,6 +171,9 @@ final class LiveFollowTracker {
                 stage: next.stage, plannedDeparture: target.plannedDeparture, now: now) {
                 FollowBackgroundRefresh.schedule(at: next)
             }
+            // MARK: automation – the rules read this answer, no request. Last, because a rule's notice awaits iOS: a follow
+            // stopped meanwhile must not get its Live Activity, record or background request back afterwards.
+            await AutoRunner.shared.followUpdated(target: target, snapshot: next)
         } catch is CancellationError {
             return
         } catch {

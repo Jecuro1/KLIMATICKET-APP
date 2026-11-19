@@ -65,8 +65,7 @@ final class AutoStore {
                 book.rules.append(rule)
             }
         }
-        let switchedOn = rule.isEnabled && (previous == nil || previous?.isEnabled == false || previous?.trigger != rule.trigger)
-        guard switchedOn else { return }
+        guard AutoLedger.switchesOn(previous: previous, next: rule) else { return }   // the Testlauf asks the same question
         // What happened before the rule was on is not news: reached milestones are remembered, earlier trips are checked.
         let moment = self.now()
         mutateLedger { ledger in

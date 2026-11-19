@@ -17,7 +17,7 @@ enum AutoAlarmRows {
             let normalized = rule.normalized
             return AlarmItem(id: prefix + rule.id.uuidString, kind: .automation, title: normalized.name,
                              detail: AutoText.sentence(normalized),
-                             nextDate: rule.isEnabled ? runner.plan.next(for: rule.id) : nil,
+                             nextDate: rule.isEnabled ? runner.shownPlan.next(for: rule.id) : nil,   // nothing is due without the permission
                              scheduleText: rule.trigger.isScheduled ? nil : AutoText.kindTiming(rule.trigger.kind).autoSentenceStart,
                              isOn: rule.isEnabled)
         }

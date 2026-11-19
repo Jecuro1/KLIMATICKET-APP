@@ -30,6 +30,14 @@ final class AutoRunner {
     /// A plan was made at least once (before that, a row says nothing rather than something wrong).
     private(set) var isPlanned = false
 
+    /// iOS may show the rules' notices. Without it nothing is planned with iOS: a rule with a moment („vor Ablauf“, „Tag
+    /// ohne Fahrt“) then never fires, not even in the open app (it only ever arrives as a planned notice).
+    var notificationsAllowed: Bool { AutoNotifications.isAllowed(authorization) }
+
+    /// The plan as the screens show it (places, „nächste“, Alle Alarme): empty while iOS holds no rule notice because the
+    /// permission is missing – the screen never promises a 19:00 that will not come.
+    var shownPlan: AutoPlan { notificationsAllowed ? plan : AutoPlan() }
+
     @ObservationIgnored private var queue: Task<Void, Never>?
     @ObservationIgnored private var commitTask: Task<Void, Never>?
     @ObservationIgnored private var demoState: AutoState?
@@ -89,7 +97,9 @@ final class AutoRunner {
         }
         enqueue { [weak self] in
             guard let self, let context = AppDelegate.container?.mainContext, let app = AppDelegate.appState else { return }
-            if asksPermission, !self.store.book.activeRules.isEmpty {
+            // Only a rule that reaches its owner through iOS asks (planned ones, Verspätung); milestones and „Fahrt erfasst“
+            // fire after a save in the open app and never need the system prompt.
+            if asksPermission, self.store.book.activeRules.contains(where: { $0.trigger.kind.needsNotifications }) {
                 self.authorization = await AutoNotifications.requestIfUndetermined()
             }
             await self.replan(context: context, app: app)
@@ -107,21 +117,36 @@ final class AutoRunner {
     // MARK: Screens
 
     /// The Testlauf: the engine's own verdict for `rule` now, from the current facts (the follow's last answer included),
-    /// with those facts (the card names what it read).
-    func probe(_ rule: AutoRule) -> AutoProbe {
+    /// with those facts (the card names what it read). `reusing`: the facts of the Testlauf already shown – the editor
+    /// re-judges every change from them instead of reading the store again on each keystroke („Nochmal prüfen“ reads anew).
+    /// A rule that saving would switch on is judged with what switching on remembers (reached milestones), so the Testlauf
+    /// never promises „Würde jetzt auslösen“ for a milestone the saved rule will not celebrate.
+    func probe(_ rule: AutoRule, reusing previous: AutoState? = nil) -> AutoProbe {
         let now = store.now()
-        let facts = freshState(now: now)
-        return AutoProbe(verdict: AutoRuleEngine.evaluate(rule, event: .probe, state: facts, now: now, calendar: calendar), state: facts)
+        let facts = previous ?? freshState(now: now)
+        var judged = facts
+        var asOn = rule.normalized
+        asOn.isEnabled = true
+        if AutoLedger.switchesOn(previous: store.rule(rule.id), next: asOn) {
+            judged.ledger.seedMilestones(rule: asOn, ticket: facts.ticket)
+        }
+        return AutoProbe(verdict: AutoRuleEngine.evaluate(rule, event: .probe, state: judged, now: now, calendar: calendar), state: facts)
+    }
+
+    /// A rule with a moment that cannot reach its owner: iOS holds no notice without the permission.
+    func isBlocked(_ rule: AutoRule) -> Bool {
+        isPlanned && rule.isEnabled && rule.trigger.isScheduled && !notificationsAllowed
     }
 
     /// The line under a rule („nächste: Mo 19:00“).
     func nextLine(_ rule: AutoRule) -> String {
         guard isPlanned else { return "wird geplant …" }
+        if isBlocked(rule) { return AutoText.notificationsBlockedLine(denied: authorization == .denied) }
         return AutoText.nextLine(rule: rule, plan: plan, state: state, now: store.now(), calendar: calendar)
     }
 
     var budgetWarning: String? {
-        AutoText.budgetWarning(plan, ruleNames: Dictionary(store.book.rules.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a }))
+        AutoText.budgetWarning(shownPlan, ruleNames: Dictionary(store.book.rules.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a }))
     }
 
     /// The active ticket's facts (a milestone rule that is switched on remembers what is reached already).
@@ -172,8 +197,9 @@ final class AutoRunner {
                                            now: now)
             let verdict = AutoRuleEngine.evaluate(rule, event: .slotDue(incoming.date), state: facts, now: now, calendar: calendar)
             guard verdict.fires else {
+                // The same words as a notice taken back before it was due („Abgesagt: an diesem Tag ist schon …“).
                 record(id: incoming.identifier, rule: rule, at: now, title: incoming.title,
-                       detail: AutoText.explanation(verdict, calendar: calendar), channel: .cancelled)
+                       detail: "Abgesagt: " + AutoText.reasonText(verdict.reason, now: now, calendar: calendar), channel: .cancelled)
                 return []
             }
         }
@@ -332,6 +358,8 @@ final class AutoRunner {
 
     /// Makes the plan from fresh facts and brings iOS's pending notices in line (only with the permission).
     private func replan(context: ModelContext, app: AppState) async {
+        // The permission first: the rows never show a planned „nächste“ for a moment before it is known whether iOS will hold it.
+        authorization = await AutoNotifications.authorization()
         let now = Date()
         let facts: AutoState
         if store.book.rules.isEmpty {
@@ -345,7 +373,6 @@ final class AutoRunner {
         state = facts
         plan = AutoRuleScheduler.plan(rules: store.book.activeRules, state: facts, now: now, calendar: calendar)
         isPlanned = true
-        authorization = await AutoNotifications.authorization()
         guard AutoNotifications.isAllowed(authorization) else { return }
         let pending = await AutoNotifications.pending()
         guard !pending.isEmpty || !plan.slots.isEmpty else { return }

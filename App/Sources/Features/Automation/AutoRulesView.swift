@@ -83,7 +83,7 @@ struct AutoRulesView: View {
                 Image(systemName: "plus")
             }
             .accessibilityLabel("Neue Regel")
-            .disabled(store.book.rules.count >= AutoRuleBook.maxRules)
+            .disabled(!canAdd)
         }
         if isSheet {
             ToolbarItem(placement: .confirmationAction) {
@@ -92,6 +92,9 @@ struct AutoRulesView: View {
         }
     }
 
+    /// Room for one more rule (a 41st would be dropped by the store – no button offers it).
+    private var canAdd: Bool { store.book.rules.count < AutoRuleBook.maxRules }
+
     // MARK: Hero
 
     private var heroSection: some View {
@@ -99,18 +102,20 @@ struct AutoRulesView: View {
             AutoHeroCard(isEnabled: Binding(get: { store.book.isEnabled }, set: setMaster),
                          activeCount: store.book.isEnabled ? store.book.rules.filter(\.isEnabled).count : 0,
                          nextText: nextText,
-                         used: runner.plan.slots.count,
-                         waiting: runner.plan.overflow.count)
+                         used: runner.shownPlan.slots.count,
+                         waiting: runner.shownPlan.overflow.count)
                 .reveal(order: 0)
                 .listRowBackground(Theme.surface)
         } footer: {
-            SetFooter(text: AutoText.honestyLine + " Sie schreiben nie Fahrten und fragen nichts im Netz ab.")
+            // The background refresh of „Live verfolgen“ is the one moment a rule speaks while the app is neither open nor
+            // delivering a planned notice – said here, so the promise above is the whole truth.
+            SetFooter(text: AutoText.honestyLine + " Verspätungsregeln lesen dazu die Antworten von „Live verfolgen“, auch die, die iOS im Hintergrund abholt. Regeln schreiben nie Fahrten und fragen nichts im Netz ab.")
         }
     }
 
     /// „nächste: heute 19:00 · Abendcheck“ – the soonest planned notice of all rules.
     private var nextText: String? {
-        guard store.book.isEnabled, let slot = runner.plan.slots.first else { return nil }
+        guard store.book.isEnabled, let slot = runner.shownPlan.slots.first else { return nil }
         return "Nächste Mitteilung \(AutoText.whenShort(slot.fireAt, now: store.now(), calendar: .vienna)) · \(slot.ruleName)"
     }
 
@@ -160,6 +165,7 @@ struct AutoRulesView: View {
     private var notices: [NoticeLine] {
         var lines: [NoticeLine] = []
         let hasActive = store.book.isEnabled && store.book.rules.contains(where: \.isEnabled)
+        let needsNotices = store.book.activeRules.contains { $0.trigger.kind.needsNotifications }
         if !store.book.isEnabled {
             lines.append(NoticeLine(id: "off", symbol: "pause.circle.fill", tint: Theme.textSecondary,
                                     text: "Automatik ist aus. Keine Regel löst aus, und nichts ist geplant. Deine Regeln bleiben erhalten."))
@@ -167,12 +173,14 @@ struct AutoRulesView: View {
         if hasActive {
             switch runner.authorization {
             case .denied:
+                // A rule with a moment only ever arrives as a planned notice: without the permission it never fires, not
+                // even in the open app.
                 lines.append(NoticeLine(id: "denied", symbol: "bell.slash.fill", tint: Theme.negativeText,
-                                        text: "Mitteilungen sind in iOS aus. Regeln melden sich dann nur, solange die App offen ist.",
+                                        text: "Mitteilungen sind in iOS aus. Regeln mit Termin (vor Ablauf, Tag ohne Fahrt) melden sich dann gar nicht, die anderen nur, solange die App offen ist.",
                                         opensSettings: true))
-            case .notDetermined:
+            case .notDetermined where needsNotices:
                 lines.append(NoticeLine(id: "ask", symbol: "questionmark.circle", tint: Theme.textSecondary,
-                                        text: "iOS fragt nach der Erlaubnis für Mitteilungen, sobald du eine Regel einschaltest."))
+                                        text: "Regeln mit Termin und Verspätungsregeln brauchen die Erlaubnis für Mitteilungen. iOS fragt danach, wenn du eine davon einschaltest."))
             default:
                 break
             }
@@ -202,7 +210,7 @@ struct AutoRulesView: View {
                 .listRowBackground(Theme.surface)
             }
             ForEach(Array(store.book.rules.enumerated()), id: \.element.id) { index, rule in
-                AutoRuleRow(rule: rule, isMasterOn: store.book.isEnabled, nextLine: runner.nextLine(rule),
+                AutoRuleRow(rule: rule, isMasterOn: store.book.isEnabled, nextLine: runner.nextLine(rule), isBlocked: runner.isBlocked(rule),
                             open: { editing = AutoEditorRequest(rule: rule, isNew: false) },
                             toggle: { on in setEnabled(rule, on) })
                     .reveal(order: index + 1)
@@ -211,12 +219,14 @@ struct AutoRulesView: View {
                         Button(role: .destructive) { pendingDelete = rule } label: { Label("Löschen", systemImage: "trash") }
                     }
                     .swipeActions(edge: .leading) {
-                        Button { duplicate(rule) } label: { Label("Duplizieren", systemImage: "plus.square.on.square") }
-                            .tint(Theme.glacier)
+                        if canAdd {
+                            Button { duplicate(rule) } label: { Label("Duplizieren", systemImage: "plus.square.on.square") }
+                                .tint(Theme.glacier)
+                        }
                     }
                     .contextMenu {
                         Button("Bearbeiten", systemImage: "pencil") { editing = AutoEditorRequest(rule: rule, isNew: false) }
-                        Button("Duplizieren", systemImage: "plus.square.on.square") { duplicate(rule) }
+                        if canAdd { Button("Duplizieren", systemImage: "plus.square.on.square") { duplicate(rule) } }
                         Button("Löschen", systemImage: "trash", role: .destructive) { pendingDelete = rule }
                     }
             }
@@ -276,7 +286,7 @@ struct AutoRulesView: View {
                 store.save(rule, ticket: runner.currentTicket)
             }
         }
-        runner.rulesChanged(asksPermission: on)
+        runner.rulesChanged(asksPermission: on && template.id != AutoTemplates.quietWeekendID)   // „Wochenende ruhig“ never asks
     }
 
     // MARK: Log
@@ -443,6 +453,8 @@ struct AutoRuleRow: View {
     let rule: AutoRule
     var isMasterOn: Bool
     var nextLine: String
+    /// On, but iOS may not show its notices: the state line is a warning, not a promise.
+    var isBlocked = false
     var open: () -> Void
     var toggle: (Bool) -> Void
 
@@ -491,7 +503,7 @@ struct AutoRuleRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .firstTextBaseline, spacing: 5) {
                         if !typeSize.isAccessibilitySize {   // at the largest sizes the symbol would push the words aside
-                            Image(systemName: rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill")
+                            Image(systemName: isBlocked ? "bell.slash.fill" : (rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill"))
                                 .accessibilityHidden(true)
                         }
                         Text(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus"))
@@ -500,7 +512,7 @@ struct AutoRuleRow: View {
                     }
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundStyle(isLive ? Theme.accentText : Theme.textTertiary)
+                    .foregroundStyle(isLive ? (isBlocked ? Theme.negativeText : Theme.accentText) : Theme.textTertiary)
                 }
                 Spacer(minLength: 0)
             }

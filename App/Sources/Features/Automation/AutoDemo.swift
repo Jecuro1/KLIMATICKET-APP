@@ -13,6 +13,8 @@ import KlimaCore
 // - `automationListBottom`: the lower part (templates, „Zuletzt ausgelöst“)
 // - `automationEditorBottom`: the editor of „Große Fahrt“ scrolled down (filter, conditions, „Dann“, name)
 // - `automationSettingsRow`: the entry row in Einstellungen under Mitteilungen
+// - `automationDenied`: the list while Mitteilungen are off in iOS (nothing planned, the rows and the warning say so)
+// - `automationMilestone`: the editor of „Meilensteine feiern“ with the Testlauf (61,4 %: „jetzt 61 %“, 75 % next)
 
 enum AutoDemo {
     static let now: Date = {
@@ -102,7 +104,7 @@ enum AutoDemo {
     static func install(_ screen: String) {
         let book = AutoRuleBook(isEnabled: true, quietWeekend: false, rules: screen == "automationBudget" ? busyRules : rules)
         AutoStore.shared.install(demo: book, log: log, ledger: ledger, now: now)
-        AutoRunner.shared.install(demoState: state, authorization: .authorized)
+        AutoRunner.shared.install(demoState: state, authorization: screen == "automationDenied" ? .denied : .authorized)
     }
 }
 
@@ -111,6 +113,7 @@ struct AutoScreenshotHost: View {
     static let screens: Set<String> = [
         "automationList", "automationEditor", "automationTest", "automationLog", "automationBudget", "automationAX5",
         "automationAX5Rows", "automationListBottom", "automationEditorBottom", "automationSettingsRow",
+        "automationDenied", "automationMilestone",   // MARK: review-automatik
     ]
 
     let screen: String
@@ -156,6 +159,8 @@ struct AutoScreenshotHost: View {
             AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.delayID) ?? AutoDemo.rules[1], isNew: false, runsTestOnAppear: true)
         case "automationLog":
             AutoLogView()
+        case "automationMilestone":
+            AutoRuleEditorView(rule: AutoStore.shared.rule(AutoDemo.milestoneID) ?? AutoDemo.rules[2], isNew: false, runsTestOnAppear: true)
         default:
             AutoRulesView()
         }
@@ -201,7 +206,7 @@ struct SetAutomationSection: View {
         guard !store.book.rules.isEmpty else { return "Eigene Regeln: „Wenn … dann …“" }
         guard store.book.isEnabled else { return "Aus · \(store.book.rules.count) \(store.book.rules.count == 1 ? "Regel" : "Regeln") gespeichert" }
         var text = active == 1 ? "1 Regel aktiv" : "\(active) Regeln aktiv"
-        if let next = runner.plan.slots.first { text += " · nächste \(AutoText.whenShort(next.fireAt, now: store.now(), calendar: .vienna))" }
+        if let next = runner.shownPlan.slots.first { text += " · nächste \(AutoText.whenShort(next.fireAt, now: store.now(), calendar: .vienna))" }
         return text
     }
 }

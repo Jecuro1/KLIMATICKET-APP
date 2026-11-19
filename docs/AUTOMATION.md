@@ -5,7 +5,7 @@ Fahrt 10 Minuten Verspätung hat, dann sag es mir“, „30 Tage vor Ablauf erin
 erfasst ist“. Ein **Testlauf** erklärt, warum eine Regel auslöst oder nicht, und **„Zuletzt ausgelöst“** zeigt, was passiert ist.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/Automation/` (Linux-Tests unter `Tests/KlimaCoreTests/Automation/`,
-`swift test --filter Automation`, 51 Tests), App in `App/Sources/Services/Automation/` (Speicher, Runner, Mitteilungen, Lese-Schnappschuss)
+`swift test --filter Automation`, 58 Tests), App in `App/Sources/Services/Automation/` (Speicher, Runner, Mitteilungen, Lese-Schnappschuss)
 und `App/Sources/Features/Automation/` (Liste, Editor, Testlauf, Protokoll, Demo-Szenen).
 
 ## 1. Das Versprechen (Ehrlichkeit)
@@ -32,7 +32,7 @@ findet nichts.
 | Auslöser | Wann geprüft | Feuert | Bleibt still |
 |---|---|---|---|
 | **Vor Ablauf** (`ticketDeadline`, 1/7/14/30/60 Tage) | vorab geplant, 09:00 Wiener Zeit | am Tag *Ablauftag − N* (Kalendertage, Monatsenden und Sommerzeit korrekt) | kein Ticket, Termin vorbei, Ticket abgelaufen |
-| **Meilenstein** (`milestone`, 25/50/75/100 %) | nach jedem Speichern | wenn ein gewählter Prozentwert der Amortisation des aktiven Tickets erreicht ist und für dieses Ticket noch nicht gemeldet wurde | darunter; schon gemeldet; was beim Einschalten schon erreicht war |
+| **Meilenstein** (`milestone`, 25/50/75/100 %) | nach jedem Speichern | wenn der erfasste Wert den gewählten Anteil des Preises wirklich erreicht hat (dieselbe Schwelle wie das Gipfelbuch) und für dieses Ticket noch nicht gemeldet wurde | darunter; schon gemeldet; was beim Einschalten schon erreicht war; ein abgelaufenes Ticketjahr (z. B. im Ticket-Tab noch gewählt) |
 | **Tag ohne Fahrt** (`dayWithoutTrip`, Wochentage + Uhrzeit) | vorab geplant, 14 Tage | zur Uhrzeit, wenn an dem Tag keine Fahrt erfasst ist | ein Tag mit Fahrt wird abgesagt (§4) |
 | **Verspätung der verfolgten Fahrt** (`followDelay`, 3–30 Min) | bei jeder Antwort von „Live verfolgen“ | wenn die Verspätung **am Ausstieg** (Ankunft, sonst Abfahrt) mindestens den Wert erreicht | darunter; keine Verfolgung; keine Echtzeit für den Ausstieg; Fahrt zu Ende; schon gemeldet |
 | **Fahrt erfasst** (`tripLogged`, Filter: Mindestwert, Verkehrsmittel, Strecke in beide Richtungen) | nach dem Speichern | für eine neu gespeicherte Fahrt (eine Reise mit Etappen zählt als eine Fahrt mit summiertem Wert), die zum Filter passt | Filter passt nicht; Import mit mehr als 3 Fahrten; Fahrten, die älter als 10 Minuten sind (z. B. per Sync) |
@@ -46,6 +46,15 @@ Sonntag meldet sich keine; eine Erinnerung vor Ablauf, die aufs Wochenende fiele
 anbieten* (ein Knopf „Kurzbefehl starten“ öffnet `shortcuts://run-shortcut?name=…` – iOS zeigt dafür die Kurzbefehle-App, das ist
 nie unbemerkt). **Nicht angeboten:** Orts-Auslöser (die 20 Regionen gehören der Fahrterkennung), Aktionen, die Fahrten anlegen oder
 ändern, Skripte.
+
+**Prozent und Euro wie in der Übersicht**: Jede Prozentzahl der Automatik (Zeile, Mitteilung, Testlauf) rundet wie der Gipfel der
+Übersicht (`SummitFigures.percent`): 61,6 % ist „62 %“, nie „100 %“ vor dem Break-even, danach abgerundet. Ausgelöst wird aber erst,
+wenn der Wert die Schwelle wirklich erreicht: bei 49,6 % zeigt die Übersicht 50 %, die Zeile sagt „nächster Meilenstein: 50 % ·
+knapp davor“ und der Testlauf „knapp unter 50 % amortisiert“. Die Grundlage im Testlauf nennt ganze Euro wie die Übersicht
+(„€ 860 von € 1.400“, nie der volle Preis vor dem Break-even).
+
+**Vor Ablauf mit „Wochenende ruhig“**: Rückt die Erinnerung vom Samstag oder Sonntag auf den Freitag, nennt sie die Tage, die dann
+wirklich bleiben („Noch 37 Tage gültig“ statt 36, „läuft morgen ab“ statt „heute“) – dieselbe Zählung wie die Resttage der Übersicht.
 
 **Cooldown** (nur Verspätung und Fahrt erfasst): nach einer Meldung schweigt die Regel 15 Min bis 1 Tag. Verspätungen werden außerdem
 nur einmal je Fahrt gemeldet; erst wenn die Verspätung unter den Wert fällt und wieder steigt, erneut.
@@ -63,8 +72,13 @@ nur einmal je Fahrt gemeldet; erst wenn die Verspätung unter den Wert fällt un
 - Jede Mitteilung trägt den Untertitel „Automatik · <Regelname>“ und die Kategorie mit dem Knopf **„Regel ansehen“** (öffnet die
   Regel-Liste als Blatt). In **Einstellungen › Mitteilungen › Alle Alarme** steht jede Regel als eine Zeile der Art **„Automatik“**
   (Schalter = Regel an/aus, Löschen = Regel löschen); der Verlauf dort zeigt ihre Mitteilungen.
-- Die Erlaubnis fragt iOS, sobald die erste Regel eingeschaltet wird (wie bei den Routen-Erinnerungen) – nie in Screenshot- oder
-  Perf-Läufen. Ohne Erlaubnis meldet sich eine Regel nur, solange die App offen ist; der Bildschirm sagt das und bietet „Einstellungen öffnen“.
+- Die Erlaubnis fragt iOS, sobald die erste Regel eingeschaltet wird, die über iOS kommt (Termin oder Verspätung; wie bei den
+  Routen-Erinnerungen) – nie für Meilenstein und „Fahrt erfasst“ (die melden sich nach dem Speichern in der offenen App), nie für
+  „Wochenende ruhig“, nie in Screenshot- oder Perf-Läufen.
+- **Ohne Erlaubnis** melden sich Regeln mit Termin (vor Ablauf, Tag ohne Fahrt) **gar nicht** – auch nicht bei offener App, denn sie
+  kommen nur als vorab geplante Mitteilung. Der Bildschirm sagt das („Mitteilungen in iOS aus – meldet sich nicht“ statt „nächste:
+  19:00“), zeigt keine belegten Plätze und keine nächste Mitteilung, der Testlauf einer solchen Regel trägt den Hinweis, Alle Alarme
+  zeigt keinen Termin, und es gibt „Einstellungen öffnen“. Die anderen Regeln melden sich dann nur, solange die App offen ist.
 
 ## 4. Abgleich (`AutoRuleScheduler.reconcile`)
 
@@ -93,7 +107,11 @@ also nie etwas anderes als die Entscheidung („Würde jetzt auslösen: Verspät
 Innsbruck Hbf), Bedingungen erfüllt, kein Cooldown“, „Löst nicht aus: erst 3 Min Verspätung, ausgelöst wird ab 5 Min“, „Löst heute
 nicht aus: heute ist schon eine Fahrt erfasst. Nächster Termin: morgen 19:00“), eine Vorschau der Mitteilung und die Grundlage
 („die letzte Antwort von „Live verfolgen“ (RJ 66, 17:41) – keine neue Abfrage“). Ist der Testlauf offen, rechnet er bei jeder
-Änderung neu. Der Text ist auswählbar; VoiceOver liest ihn als einen Satz. Gespeichert wird erst mit „Sichern“.
+Änderung neu – mit den Fakten, die er gelesen hat (kein Lesen des Speichers je Tastendruck; „Nochmal prüfen“ liest neu). Eine Regel,
+die das Sichern einschalten würde (neu, aus, oder Auslöser geändert), beurteilt er so, wie sie eingeschaltet wäre: schon erreichte
+Meilensteine sind dann gemerkt, also sagt er nie „Würde jetzt auslösen“ für einen Meilenstein, den die gesicherte Regel nicht feiert
+(`AutoLedger.switchesOn`, dieselbe Frage wie beim Sichern). Der Text ist auswählbar; VoiceOver liest ihn als einen Satz. Gespeichert
+wird erst mit „Sichern“.
 
 **Zuletzt ausgelöst** (`AutoLogView`): die letzten 30 Ereignisse nach Tagen – „in der App gezeigt“, „als Mitteilung gesendet“,
 „geplant, von iOS zugestellt“ (beim nächsten Öffnen aus der Mitteilungszentrale übernommen), „abgesagt“ – mit Regel, Uhrzeit und Grund.
@@ -136,7 +154,7 @@ Keine SwiftData-Änderung.
 | Stelle | Was |
 |---|---|
 | `Data/CommitEffects.swift` | nach jedem Speichern `AutoRunner.didCommit` (entprellt, 0,6 s) |
-| `Features/Planner/LiveFollow/LiveFollowTracker.swift` | nach jeder Antwort `await AutoRunner.followUpdated` (auch im Hintergrund-Abruf; gewartet, damit die Mitteilung vor dem Einschlafen raus ist) |
+| `Features/Planner/LiveFollow/LiveFollowTracker.swift` | nach jeder Antwort `await AutoRunner.followUpdated` (auch im Hintergrund-Abruf; gewartet, damit die Mitteilung vor dem Einschlafen raus ist) – als letzter Schritt der Antwort, damit eine Verfolgung, die während des Wartens auf iOS beendet wird, nicht danach ihre Live Activity, ihren Datensatz oder ihren Hintergrund-Abruf zurückbekommt |
 | `Core/RootView.swift` | Szene aktiv → `sceneBecameActive` (Protokoll übernehmen, neu planen); Blatt „Regel ansehen“; Screenshot-Szenen |
 | `KlimaBilanzApp.swift` | `willPresent`: Hinweis statt Banner; `didReceive`: Fahrt erfassen, Regel ansehen, Kurzbefehl |
 | `Services/NotificationCategories.swift` | die Kategorien `rule` und `rule.shortcut` |
@@ -153,4 +171,17 @@ Der Runner ist ein eigenes Singleton (`AutoRunner.shared`) statt einer Eigenscha
 System-Mitteilung, keine Abfrage, kein Netz (`AutoDemo.swift`):
 `automationList`, `automationListBottom` (Vorlagen, Protokoll), `automationEditor`, `automationEditorBottom` (Filter, Bedingungen,
 „Dann“), `automationTest` (Testlauf der Verspätungsregel), `automationLog`, `automationBudget` (mehr Termine als Plätze),
-`automationAX5` und `automationAX5Rows` (größte Schrift), `automationSettingsRow` (die Zeile in Einstellungen).
+`automationAX5` und `automationAX5Rows` (größte Schrift), `automationSettingsRow` (die Zeile in Einstellungen),
+`automationDenied` (Mitteilungen in iOS aus), `automationMilestone` (Testlauf von „Meilensteine feiern“: 61 %, € 860 von € 1.400).
+
+## 11. Review (adversarial, November 2026)
+
+Gefunden und behoben: (1) ohne Mitteilungs-Erlaubnis versprachen Liste, Kopf, Plätze, Einstellungen-Zeile und Alle Alarme
+„nächste: 19:00“, und der Hinweis sagte, Regeln meldeten sich dann in der offenen App – Regeln mit Termin melden sich aber gar nicht;
+(2) Prozente abgerundet („jetzt 61 %“, Übersicht „62 %“); (3) der Testlauf einer neuen oder ausgeschalteten Meilenstein-Regel sagte
+„Würde jetzt auslösen“ für Meilensteine, die das Einschalten als erreicht merkt; (4) ein im Ticket-Tab gewähltes altes Ticketjahr
+hätte beim nächsten Speichern „Dein Ticket hat sich rentiert“ gemeldet; (5) eine auf Freitag gerückte Ablauf-Erinnerung sagte „läuft
+morgen ab“ oder „Noch 30 Tage“, obwohl ein bzw. zwei Tage mehr blieben; (6) Meilenstein, „Fahrt erfasst“ und „Wochenende ruhig“
+fragten nach der Mitteilungs-Erlaubnis, obwohl sie keine brauchen; (7) der Testlauf las bei jedem Tastendruck Tickets und Fahrten neu;
+(8) der gewartete Aufruf in `LiveFollowTracker` stand vor Live Activity und Datensatz; (9) „Duplizieren“ bei 40 Regeln tat still
+nichts; (10) der Hinweis-Text verschwieg den Hintergrund-Abruf von „Live verfolgen“. Tests: `AutomationReviewTests`.

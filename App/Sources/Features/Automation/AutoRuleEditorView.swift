@@ -75,8 +75,9 @@ struct AutoRuleEditorView: View {
         .haptic(.success, trigger: savedTick)
         .haptic(.tap, trigger: testTick)
         .onChange(of: draft) { _, _ in
-            // The Testlauf follows every change while it is shown: the explanation is always the verdict of what you see.
-            if probe != nil { probe = runner.probe(draft.normalized) }
+            // The Testlauf follows every change while it is shown: the explanation is always the verdict of what you see. The
+            // facts it read stay (no store read per keystroke); „Nochmal prüfen“ reads them anew.
+            if let shown = probe { probe = runner.probe(draft.normalized, reusing: shown.state) }
         }
         .confirmationDialog("Regel löschen?", isPresented: $confirmsDelete, titleVisibility: .visible) {
             Button("Löschen", role: .destructive, action: delete)
@@ -107,7 +108,7 @@ struct AutoRuleEditorView: View {
                     sentence
                     testButton
                     if let probe {
-                        AutoTestCard(probe: probe, rule: draft.normalized)
+                        AutoTestCard(probe: probe, rule: draft.normalized, permissionNote: permissionNote)
                             .motionTransition(.rise)
                     }
                 }
@@ -184,6 +185,15 @@ struct AutoRuleEditorView: View {
         .tint(Theme.prominentTint)
         .controlSize(.large)
         .accessibilityHint("Zeigt, ob die Regel jetzt auslösen würde und warum")
+    }
+
+    /// A rule with a moment only ever arrives as a planned notice: without the permission it stays silent even in the open
+    /// app, whatever the Testlauf's moment says.
+    private var permissionNote: String? {
+        guard kind.isScheduled, !runner.notificationsAllowed else { return nil }
+        return runner.authorization == .denied
+            ? "Mitteilungen sind in iOS aus – diese Regel meldet sich so gar nicht, auch nicht bei offener App."
+            : "Beim Sichern fragt iOS nach der Erlaubnis für Mitteilungen. Ohne sie meldet sich diese Regel nicht."
     }
 
     private func runTest() {
@@ -509,6 +519,8 @@ struct AutoTimeRow: View {
 struct AutoTestCard: View {
     let probe: AutoProbe
     let rule: AutoRule
+    /// Why a planned rule cannot reach you right now (no permission); nil when it can.
+    var permissionNote: String? = nil
 
     var body: some View {
         let verdict = probe.verdict
@@ -552,6 +564,16 @@ struct AutoTestCard: View {
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let permissionNote {
+                Label {
+                    Text(permissionNote)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "bell.slash.fill").foregroundStyle(Theme.negativeText)
+                }
+            }
         }
         .padding(Theme.Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -588,7 +610,8 @@ struct AutoTestCard: View {
             return "Grundlage: die letzte Antwort von „Live verfolgen“ (\(follow.lineName), \(AutoClock.clockText(AutoClock.minuteOfDay(follow.updatedAt, calendar: .vienna)))) – keine neue Abfrage."
         case .milestone:
             guard let ticket = state.ticket else { return "Grundlage: kein Ticket erfasst." }
-            return "Grundlage: \(ticket.name), \(ticket.percent) % amortisiert (\(AutoText.euro(ticket.value)) von \(AutoText.euro(ticket.price)))."
+            // Percent and whole euros as the Übersicht shows them („€ 860 von € 1.400“).
+            return "Grundlage: \(ticket.name), \(ticket.percent) % amortisiert (\(AutoText.euro(ticket.shownValueEUR)) von \(AutoText.euro(ticket.price.rounded())))."
         case .ticketDeadline:
             guard let ticket = state.ticket else { return "Grundlage: kein Ticket erfasst." }
             return "Grundlage: \(ticket.name), gültig bis \(AutoText.dateText(ticket.end, calendar: .vienna))."
