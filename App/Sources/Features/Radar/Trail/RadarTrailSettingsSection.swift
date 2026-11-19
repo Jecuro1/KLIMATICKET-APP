@@ -20,10 +20,6 @@ struct RadarTrailSettingsSection: View {
     }
 
     var body: some View {
-        if RadarTrailModel.isAvailable { section }
-    }
-
-    private var section: some View {
         Section {
             Picker(RadarTrailText.modeTitle, selection: mode) {
                 ForEach(RadarTrailSetting.Mode.allCases) { mode in

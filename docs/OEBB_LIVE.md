@@ -2910,3 +2910,12 @@ Ansichten hinweg `RadarBudgetLedger`; mindestens 16 der 40 je Minute bleiben fü
 
 Folgen: JourneyGeoPos liefert U-Bahn-Positionen; Schiffe waren abends im November nicht messbar (bleiben verborgen); Schienenersatzverkehr und
 Rufbus/Seilbahn liefern Positionen, Chips dafür sind nicht gebaut; Grenzen der Stadt-Spur unverändert (abends nicht repräsentativ).
+
+### R11.6 Spuren: keine Anfrage, nur Arbeitsspeicher (2026-11-19, radar2)
+
+Ausführlich: `docs/RADAR_TRAILS.md`. Spuren schicken **keine Anfrage** und verbrauchen nichts vom Budget (24 je Minute): sie merken sich nur die
+Positionen der Antworten, die die Live-Schleife ohnehin bekommt (beide Ebenen, zur Anfragezeit), solange das Radar offen ist – im Arbeitsspeicher,
+höchstens die gewählte Länge plus 2 Minuten, 70 Punkte je Fahrt, 4 000 Fahrten, 50 000 Punkte. Nie in eine Datei, die Einstellungen (nur die Wahl
+`radar.trail.v1`), eine Sicherung, ein Protokoll oder eine Anfrage (`RadarTrailSourceGuardTests`). Gelöscht beim Schließen des Radars, wenn der Zugriff
+zugeht (Zustimmung, Schalter, Notschalter, Offline-Modus) und mit „Aus“; offline behalten, aber nicht gezeichnet (keine Marker); während die Zeitreise
+weg von „Jetzt“ ist, ausgeblendet. Die Positionen bleiben berechnet, kein GPS-Verlauf.

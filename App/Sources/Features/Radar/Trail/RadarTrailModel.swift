@@ -29,12 +29,8 @@ final class RadarTrailModel {
         var runs: [[RadarTrailPoint]]
     }
 
-    /// „Spuren“ reach everyone once their screenshots are reviewed; until then only screenshot and perf launches see and record them.
-    static var isAvailable: Bool { LaunchMode.isSandboxed }
-
     init(setting: RadarTrailSetting? = nil) {
-        var setting = setting ?? RadarTrailSettingStore.load()
-        if !Self.isAvailable { setting.mode = .off }
+        let setting = setting ?? RadarTrailSettingStore.load()
         self.setting = setting
         recorder = RadarTrailRecorder(window: setting.window)
     }
@@ -66,7 +62,7 @@ final class RadarTrailModel {
 
     /// A new choice on the Darstellung page. „Aus“ forgets everything and stops recording; a shorter length drops what is older at once.
     func update(_ new: RadarTrailSetting) {
-        guard Self.isAvailable, new != setting else { return }
+        guard new != setting else { return }
         setting = new
         RadarTrailSettingStore.save(new)
         if new.mode == .off {

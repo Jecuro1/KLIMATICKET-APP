@@ -223,7 +223,9 @@ public enum FeatureRegistry {
                 dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst",
                                             when: "solange der Radar offen ist, höchstens 24 Anfragen pro Minute – \(liveAsk)"),
                             FeatureDataFlow(.appleMaps, sends: "der Kartenausschnitt, den du ansiehst",
-                                            when: "solange eine Karte zu sehen ist")])
+                                            when: "solange eine Karte zu sehen ist"),
+                            // MARK: radar2-radartrail – Spuren keep what the radar loaded, in memory only (docs/RADAR_TRAILS.md §3)
+                            .local("Spuren: Positionen, die das Radar geladen hat – nur im Arbeitsspeicher, solange es offen ist")])
         case .trainSearch:
             return FeatureDescriptor(
                 id: id, title: "Züge suchen", line: "Einen Zug über seine Nummer finden, zum Beispiel RJX 66",
