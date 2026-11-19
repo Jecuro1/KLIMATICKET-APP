@@ -163,6 +163,8 @@ Gegenprüfung des Tracks auf `main`. Behoben:
 - **Watch-Zeile**: Die Tönung folgt der Verspätung, die in Zeile 1 steht (vor der Abfahrt die Abfahrtsverspätung, nicht die
   am Ziel); ohne Liniennamen sagt VoiceOver „Zug nach …“ statt „ nach …“ (Linux-Tests).
 - **Vorschau-Uhr** in „Gesperrt & privat“: Wiener Zeit wie alle Zeiten der Widgets.
+- **Watch-Fußzeile** („Stand 15:39“, „Fahrt speichern“) ist immer orange; vorher hing die Farbe an der Verspätung. Die
+  Watch-Seite (nur CI-Szene) sagt „kann … zeigen“ statt „zeigt“: ausprobiert ist es nicht.
 - **Weniger Arbeit in der Extension**: `WidgetPrivacy.current` dekodiert den Snapshot nur noch, wenn der Schlüssel
   `widgets.privacy.v1` nicht beide Schalter enthält (die App schreibt immer beide).
 

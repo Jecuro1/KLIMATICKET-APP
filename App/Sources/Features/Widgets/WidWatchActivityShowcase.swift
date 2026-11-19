@@ -37,7 +37,8 @@ struct WidWatchActivityShowcase: View {
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            Text("Läuft „Unterwegs“ oder „Live verfolgen“, zeigt deine gekoppelte Apple Watch die Fahrt im Smart Stack – ganz ohne eigene Watch-App.")
+            // MARK: review-smartwidgets – "kann": the watch behaviour is Apple's documentation, not tried on a sideloaded build
+            Text("Läuft „Unterwegs“ oder „Live verfolgen“, kann deine gekoppelte Apple Watch die Fahrt im Smart Stack zeigen – ganz ohne eigene Watch-App.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

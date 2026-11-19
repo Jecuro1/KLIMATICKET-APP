@@ -122,9 +122,11 @@ struct ActivitySmallLayout: View {
                 .minimumScaleFactor(0.8)
             }
             if let footnote = line.footnote {
+                // MARK: review-smartwidgets – old data ("Stand 15:39") and "Fahrt speichern" always ask for attention;
+                // the colour no longer depends on the delay
                 Text(verbatim: footnote)
                     .font(.system(size: 11.5, weight: .semibold))
-                    .foregroundStyle(tone == .normal ? Theme.textSecondary : Theme.summitText)
+                    .foregroundStyle(Theme.summitText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
