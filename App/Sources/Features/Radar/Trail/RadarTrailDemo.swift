@@ -20,6 +20,7 @@ enum RadarTrailScene: String, CaseIterable, Sendable {
     /// The setting the scene starts with (screenshot launches never read the stored one).
     var setting: RadarTrailSetting {
         switch self {
+        case .westbahn: RadarTrailSetting(mode: .mine, minutes: 20)
         case .city: RadarTrailSetting(mode: .all, minutes: 5)
         case .tooMany: RadarTrailSetting(mode: .all, minutes: 10)
         default: .standard
@@ -36,14 +37,14 @@ enum RadarTrailDemo {
         var vehicles: [RadarVehicle]
     }
 
-    /// How far back the synthetic history reaches, and its cadence (the radar's 20 s).
-    static let historyMinutes = 10
+    /// How far back the synthetic history reaches (the longest length), and its cadence (the radar's 20 s).
+    static let historyMinutes = 20
     static let step = 20
 
     static let selectedTrip = "demo|radar|RJX66"
     static let followedTrip = "demo|radar|REX92"
     /// Between Amstetten and Wien: RJX 66 west of St. Pölten, REX 92 just out of Wien.
-    static let westbahnCentre = GeoPoint(latitude: 48.17, longitude: 15.74)
+    static let westbahnCentre = GeoPoint(latitude: 48.17, longitude: 15.70)
 
     /// Demo data or a screenshot launch: the only launches whose radar answers come from the synthetic fleets.
     static var prefills: Bool { LaunchMode.isSandboxed || LaunchMode.useDemoData }
@@ -84,12 +85,14 @@ enum RadarTrailDemo {
         return GeoPoint(latitude: place.0, longitude: place.1)
     }
 
-    /// REX 92 left on time and has collected its delay on the way: 0 until four minutes ago, then +3, +6 and the +9 of its stop list.
+    /// REX 92 left Wien on time six minutes ago and has collected its delay on the way, minute by minute, up to the +9 of its stop list.
     static func risingDelay(minutesBack: Double) -> Int {
         switch minutesBack {
-        case 4...: 0
-        case 2..<4: 3
-        case 1..<2: 6
+        case 5...: 0
+        case 4..<5: 2
+        case 3..<4: 4
+        case 2..<3: 5
+        case 1..<2: 7
         default: 9
         }
     }
@@ -104,6 +107,12 @@ enum RadarTrailDemo {
         stop.arrival = shift(stop.arrival)
         stop.departure = shift(stop.departure)
         return stop
+    }
+
+    /// The trip sheet's scenes: the run's own demo details in the sheet's cache before it asks (the demo timetable answers every trip with one
+    /// sample run), so its header and stops say what the radar said.
+    @MainActor static func prepareSheet(now: Date) {
+        if let details = DemoScotty.trip(followedTrip, now: now) { RadarRouteCache.shared.store(details, now: now) }
     }
 
     /// The trip sheet's scenes: one answer of the corridor trains now, with the history before it (as the radar would have recorded it).

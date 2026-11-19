@@ -123,11 +123,12 @@ extension RadarView {
     func applyTrailScene(_ scene: RadarTrailScene) async {
         try? await Task.sleep(for: .milliseconds(250))   // after the preset `onAppear` applies
         switch scene {
-        case .westbahn, .tooMany, .ax5:
+        case .westbahn, .tooMany:
+            layersRaw = MapLayerSelection(layers: [.trains]).storageValue   // only the trains: the scene is about their trails
             camera = .region(MKCoordinateRegion(center: RadarTrailDemo.westbahnCentre.clCoordinate,
-                                                span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 1.5)))
+                                                span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 1.6)))
             model.selectedTripID = RadarTrailDemo.selectedTrip
-        case .city, .sheet, .sheetAX5, .settings:
+        case .city, .sheet, .ax5, .sheetAX5, .settings:
             break
         }
     }

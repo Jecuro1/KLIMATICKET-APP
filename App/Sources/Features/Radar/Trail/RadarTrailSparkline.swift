@@ -8,6 +8,7 @@ import KlimaCore
 struct RadarTrailSparkline: View {
     let series: RadarDelaySeries
     static let height: CGFloat = 44
+    @Environment(\.colorScheme) private var colorScheme
 
     /// The chart's frame in minutes: never above zero at the bottom, at least up to the late threshold plus one at the top.
     private var range: (low: Double, high: Double) {
@@ -39,7 +40,7 @@ struct RadarTrailSparkline: View {
                 ZStack(alignment: .topLeading) {
                     // „pünktlich“: from on time up to the five minutes the markers call late
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Theme.positive.opacity(0.12))
+                        .fill(Theme.positive.opacity(colorScheme == .dark ? 0.2 : 0.12))
                         .frame(width: proxy.size.width, height: max(bandBottom - bandTop, 0))
                         .offset(y: bandTop)
                     Path { path in
