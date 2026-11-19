@@ -13,10 +13,11 @@ struct CommuteActions {
     private var settings: CommuteSettings { model.settings }
 
     /// „Fahrt erfassen“: the editor with the route – round trip when that is the remembered choice (then always from home),
-    /// else the direction of the time of day. The user saves (and can change anything) in the editor.
-    func logTrip(now: Date) {
+    /// else the direction the live card shows (`shown`, „Richtung tauschen“ included), else the direction of the time of day.
+    /// The user saves (and can change anything) in the editor.
+    func logTrip(now: Date, shown: CommuteDirection? = nil) {
         let direction: CommuteDirection = settings.logsRoundTrip
-            ? .outbound : CommuteWindow.direction(at: now, plan: settings.plan, calendar: .vienna)
+            ? .outbound : (shown ?? CommuteWindow.direction(at: now, plan: settings.plan, calendar: .vienna))
         guard let ends = model.ends(direction) else { return }
         var draft = TripDraft()
         draft.fromStationID = ends.from.stationID

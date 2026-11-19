@@ -302,7 +302,7 @@ struct RootView: View {
             CalendarSuggestionStore.shared.openSettingsFromLink(closing: app)
         case "commute":   // MARK: commute – klimabilanz://commute: the card pulses, or the setup opens (docs/COMMUTE.md §1)
             app.selectedTab = .overview
-            CommuteModel.shared.openFromLink()
+            CommuteModel.shared.openFromLink(closing: app)
         // MARK: yearreview – klimabilanz://year · /2026 · /ticket (Jahresrückblick; also the widget's tap)
         case "year":
             // A cover cannot be presented over the open Was-wäre-wenn sheet (it would stay pending): that closes first.

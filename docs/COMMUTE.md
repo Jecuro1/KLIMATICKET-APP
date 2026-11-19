@@ -26,13 +26,15 @@ das öffnet die bekannte Zustimmungskarte des Fahrplans im Blatt. Abgelehnt oder
 Grund; es gibt keine zweite Frage und keine Schleife. Modus an, aber ohne Strecke: „Stammstrecke fehlt“ öffnet die Einrichtung.
 Modus aus und nichts zu fragen: die Übersicht bleibt, wie sie war (kein Platz, kein Abstand).
 
-**Schnellaktionen** (Karte, Kontextmenü der Karte, VoiceOver-Aktionen): „Fahrt erfassen“ (Formular vorbefüllt mit der Strecke, Richtung
-nach Tageszeit oder „Hin und retour“, wenn das die gemerkte Wahl ist; gespeichert wird erst im Formular), „Live verfolgen“ (die
+**Schnellaktionen** (Karte, Kontextmenü der Karte, VoiceOver-Aktionen): „Fahrt erfassen“ (Formular vorbefüllt mit der Strecke: „Hin und
+retour“, wenn das die gemerkte Wahl ist, sonst im Live-Fenster die Richtung, die die Karte zeigt – auch nach „Richtung tauschen“ –,
+außerhalb die der Tageszeit; gespeichert wird erst im Formular), „Live verfolgen“ (die
 bestehende Verfolgung für die erste fahrende Verbindung; nur mit Live-Daten), „Rückfahrt planen“ (Fahrplan in Gegenrichtung zur
 Planzeit, wenn die heute noch kommt) und „Verbindung ändern“ (Fahrplan mit derselben Richtung ab jetzt, alle Optionen des Planers).
 Bei Bedienungshilfen-Schriftgrößen stehen die vier Knöpfe untereinander, der Kopf der Karte ebenfalls.
 
-`klimabilanz://commute` springt zur Übersicht; ist der Modus eingerichtet, pulsiert die Karte einmal, sonst öffnet die Einrichtung.
+`klimabilanz://commute` springt zur Übersicht; ist der Modus eingerichtet, pulsiert die Karte einmal, sonst öffnet die Einrichtung
+(sind die Einstellungen offen, schließen sie sich vorher – ein zweites Blatt darüber ginge nicht auf).
 
 ## 2. Stammstrecke erkennen (`CommuteDetector`)
 
@@ -62,7 +64,8 @@ Die Zahlen sind die des Plans, **nicht** an echten Verläufen abgestimmt (§9).
   Fenster, gilt das mit der näheren Abfahrt. Ein Fenster über Mitternacht gehört zum Wochentag seiner Abfahrt.
 - Die Karte zeigt die Fahrt, deren Fenster offen ist, sonst die nächste geplante Abfahrt (um 10 Uhr also schon die Rückfahrt um
   17:12). Auf der Karte lässt sich die Richtung für das laufende Fenster tauschen.
-- „Fahrt erfassen“ und Siri nehmen die Richtung der Tageszeit: vor 13 Uhr die Hinfahrt, danach die Rückfahrt – liegen beide
+- „Fahrt erfassen“ auf der kompakten Karte und Siri nehmen die Richtung der Tageszeit (auf der Live-Karte die gezeigte Richtung,
+  §1): vor 13 Uhr die Hinfahrt, danach die Rückfahrt – liegen beide
   Planzeiten auf derselben Seite von 13 Uhr (Spät- oder Nachtschicht), die zeitlich nähere.
 
 ## 4. Verbindungen (`CommuteStatus`, `CommuteSearch`)
@@ -97,7 +100,7 @@ Nur für die erste Verbindung. **Ausfall:** genannt wird die Verbindung derselbe
 ## 7. Live-Daten und Rechtsrahmen
 
 - Abfragen nur mit der bestehenden Live-Zustimmung, nur im Vordergrund, nur solange die Karte im Live-Fenster auf dem Bildschirm
-  ist (weggescrollt, anderer Tab oder App im Hintergrund: Pause), höchstens **einmal pro Minute**
+  ist (weggescrollt, anderer Tab, ein Blatt darüber – Einstellungen, Formular, Pendel-Einrichtung – oder App im Hintergrund: Pause), höchstens **einmal pro Minute**
   (`CommuteSearch.minRefreshInterval`), im Stromsparmodus nur beim Öffnen, und nur über `LiveDataService.timetable` –
   das ist `nil` ohne Zustimmung, mit ausgeschaltetem Fahrplan, Kill-Switch oder offline. `CommuteSearch.connections` wirft dann
   `consentRequired`, **bevor** irgendetwas passiert (nicht einmal die Stationssuche); ein Linux-Test prüft, dass dabei keine Anfrage
@@ -130,6 +133,9 @@ Einstellungen, Siri-Antwort und vorgemerkte Siri-Fahrten.
 - Wie gut die Erkennung auf echten Verläufen trifft (die Schwellen sind die des Plans).
 - Ob Siri die deutschen Sätze per Stimme erkennt, und „Wann fährt mein nächster Zug?“ aus der Kurzbefehle-App.
 - „Pendelfahrt erfassen“ bei geschlossener App: vorgemerkt und beim nächsten Öffnen gespeichert.
+- Einstellungen › Pendeln zeigt unter „Vorschlag“ sofort die erkannte(n) Strecke(n) (seit dem zweiten Review beim Zeichnen
+  berechnet, §13; die CI-Szene dazu wurde danach nicht mehr fotografiert).
+- Die Live-Karte pausiert unter einem Blatt (Einstellungen, Formular) und fragt nach dem Schließen einmal neu.
 
 Verspätungen erscheinen nur, während die App offen ist. Ohne Push (kein bezahlter Apple-Developer-Account) lässt sich das nicht ändern.
 
@@ -189,8 +195,21 @@ Ein zweiter Blick auf den fertigen Track hat gefunden und behoben:
 - Unbekannte Station oder Haltestelle: einmal sagen statt jede Minute neu suchen (§7, §12).
 - Die Linienzeichen der drei Zeilen beginnen jetzt auf einer Kante, egal wie breit das Abzeichen ist („pünktlich“ oder „+4“).
 - Symbol-Effekte von Störungsband und Einladung folgen „Bewegung reduzieren“.
-- Einstellungen › Pendeln: Der Erkenner lief in einem `.task` der Liste, und in der CI-Szene kamen seine Vorschläge nie an
-  („Noch kein Vorschlag“ trotz Vorschlag, auch mit nur einem Task). Jetzt läuft er synchron beim Erscheinen der Seite und wenn sich
-  die Zahl der Fahrten ändert; „Noch kein Vorschlag“ erscheint erst, wenn er gelaufen ist. Ob das auf dem iPhone genauso war, ist
-  offen; die Szene `commuteSettings` geht jetzt genau diesen Weg (keine vorgefüllten Kandidaten).
+- Einstellungen › Pendeln: Vorschläge, die erst nach dem Erscheinen der Seite in einen Zustand geschrieben wurden, kamen in der
+  CI-Szene nie in der Liste an (drei Läufe: zwei Varianten mit `.task`, eine mit `onAppear` – weder Vorschlag noch „Noch kein
+  Vorschlag“). Jetzt rechnet die Seite die Vorschläge beim Zeichnen aus ihren Fahrten (`CommuteCandidatesMemo`: einmal je Änderung
+  der Fahrten, des Heimatbahnhofs oder des Tages, nicht bei jedem Neuzeichnen) – schon das erste Bild hat sie, und „Noch kein
+  Vorschlag“ blitzt nie auf. Die CI-Szene bringt ihre Kandidaten mit und zeigt sie damit auf demselben Weg wie Lauf 2 dieses
+  Reviews, der den Vorschlag zeigte. **Nicht mit einem neuen Screenshot geprüft** (die vier Läufe des Reviews waren verbraucht);
+  auf dem iPhone prüfen: Einstellungen › Pendeln öffnen, „Vorschlag“ muss sofort die Strecke(n) zeigen.
 - Die Einladung verspricht Verspätung und Gleis nur, wenn Live-Daten an sind; sonst „deinen Plan – mit Live-Daten auch …“.
+
+Zweiter Durchgang (November 2026):
+
+- Die Live-Karte fragte weiter jede Minute, während ein Blatt sie verdeckte (Einstellungen, das Fahrt-Formular, die eigene
+  Pendel-Einrichtung). Jetzt pausiert sie dort wie beim Wegscrollen (§7) und fragt nach dem Schließen einmal neu.
+- „Fahrt erfassen“ auf der Live-Karte nahm nach „Richtung tauschen“ trotzdem die Richtung der Tageszeit; jetzt die gezeigte (§1).
+- `klimabilanz://commute` bei offenen Einstellungen: die Einrichtung konnte nicht über dem Blatt aufgehen; die Einstellungen
+  schließen sich jetzt vorher.
+- VoiceOver las bei gewählten Wochentagen „ausgewählt“ zweimal; das Tausch-Zeichen am geänderten Gleis nimmt seine Farbe aus den
+  Theme-Farben.

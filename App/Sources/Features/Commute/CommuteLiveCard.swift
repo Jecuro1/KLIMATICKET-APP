@@ -136,7 +136,10 @@ struct CommuteLiveCard: View {
     private func actionItems(direction: CommuteDirection, first: CommuteRow?) -> [CommuteActionItem] {
         let actions = CommuteActions(app: app)
         let followRow = first.flatMap { actions.followTarget($0) == nil ? nil : $0 }
-        var items = [CommuteActionItem(title: "Fahrt erfassen", symbol: "plus.circle.fill", isPrimary: true) { actions.logTrip(now: now) }]
+        // The direction on screen: after „Richtung tauschen“ the card logs what it shows, not the time of day's direction.
+        var items = [CommuteActionItem(title: "Fahrt erfassen", symbol: "plus.circle.fill", isPrimary: true) {
+            actions.logTrip(now: now, shown: direction)
+        }]
         if model.liveUnavailable(app.live) == nil {
             items.append(CommuteActionItem(title: "Live verfolgen", symbol: "location.fill", isEnabled: followRow != nil) {
                 if let followRow { actions.follow(followRow) }

@@ -237,7 +237,7 @@ struct CommuteConnectionRow: View {
                 if platform.changed {
                     Image(systemName: "arrow.triangle.swap")
                         .font(.system(size: 8, weight: .black))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onAccent)
                         .frame(width: 15, height: 15)
                         .background(Theme.dawn, in: .circle)
                         .offset(x: 5, y: -5)

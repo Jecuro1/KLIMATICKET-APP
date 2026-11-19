@@ -96,6 +96,8 @@ struct CommuteActiveCard: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.scenePhase) private var scenePhase
+    /// An app sheet (Einstellungen, the trip editor …) covers the Übersicht: the card is not on screen, the refreshes pause.
+    @Environment(\.ambientSkyPaused) private var isCoveredBySheet
     /// The card is (at least a sliver) inside the Übersicht's scroll view; scrolled away, the refreshes pause.
     @State private var isVisible = true
     private var model: CommuteModel { .shared }
@@ -106,7 +108,7 @@ struct CommuteActiveCard: View {
             CommuteLiveCard(slot: slot, now: now)
                 .onScrollVisibilityChange(threshold: 0.05) { isVisible = $0 }
                 .task(id: RefreshKey(slot: slot, direction: model.direction(for: slot), generation: app.live.generation,
-                                     active: scenePhase == .active && isVisible, unavailable: model.liveUnavailable(app.live) != nil)) {
+                                     active: isOnScreen, unavailable: model.liveUnavailable(app.live) != nil)) {
                     await refreshLoop(slot: slot)
                 }
         case .upcoming(let slot):
@@ -118,10 +120,15 @@ struct CommuteActiveCard: View {
         }
     }
 
-    /// One search when the window opens, the direction changes, the card scrolls back in or the app comes back; then every
-    /// 60 s while the card is on screen and the app is active. Never without live data; the minute refresh pauses in Low Power Mode.
+    /// The app is active, the card is scrolled into view and no sheet covers it (an app sheet, or the card's own setup sheet).
+    private var isOnScreen: Bool {
+        scenePhase == .active && isVisible && !isCoveredBySheet && !model.showsSetup
+    }
+
+    /// One search when the window opens, the direction changes, the card scrolls back in, a sheet closes or the app comes back;
+    /// then every 60 s while the card is on screen. Never without live data; the minute refresh pauses in Low Power Mode.
     private func refreshLoop(slot: CommuteSlot) async {
-        guard scenePhase == .active, isVisible, model.liveUnavailable(app.live) == nil else { return }
+        guard isOnScreen, model.liveUnavailable(app.live) == nil else { return }
         await model.refresh(app: app, slot: slot)
         guard model.demo == nil else { return }
         while !Task.isCancelled {

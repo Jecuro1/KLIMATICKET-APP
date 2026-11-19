@@ -20,9 +20,8 @@ struct CommuteSettingsPage: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
     private var routes: [FavoriteRouteEntity]
 
-    @State private var candidates: [CommuteGuess] = []
-    /// The detector has run once: before that the empty-state notice („Noch kein Vorschlag“) would flash for a frame.
-    @State private var hasDetected = false
+    /// The detector's suggestions, computed while the page renders and kept until the trips change (`CommuteCandidatesMemo`).
+    @State private var memo = CommuteCandidatesMemo()
     @State private var showsConsent = false
     @State private var confirmsRemoval = false
     @State private var changeTick = 0
@@ -33,19 +32,18 @@ struct CommuteSettingsPage: View {
         self.isSheet = isSheet
         self.previewCandidates = previewCandidates
         self.screenshotScrollsDown = screenshotScrollsDown
-        // Only the detector's window is read (56 days and one day of slack), not the whole history.
-        let start = Date().addingTimeInterval(-Double(CommuteDetector.windowDays + 1) * 86_400)
+        // Only the detector's window is read (56 days and one day of slack), not the whole history. From the start of a day, so
+        // the query stays the same when the page is built again (every change of the settings rebuilds the Einstellungen row).
+        let start = Calendar.vienna.startOfDay(for: Date()).addingTimeInterval(-Double(CommuteDetector.windowDays + 1) * 86_400)
         _recentTrips = Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil && $0.date >= start },
                              sort: \TripEntity.date, order: .reverse)
     }
 
     var body: some View {
         ScrollViewReader { proxy in
-            // The detector runs when the page appears and again when the number of recent trips changes – synchronously, not
-            // from a task: in the CI scene a task-driven detector never delivered before the capture (two runs, empty list).
+            // The suggestions are part of the first frame (`candidates`): no state is written after the page appeared – in the
+            // CI scene the list never showed suggestions that arrived that way (three runs: a task, one task, onAppear).
             list
-                .onAppear { detect() }
-                .onChange(of: recentTrips.count) { detect() }
                 .task {
                     guard screenshotScrollsDown else { return }
                     try? await Task.sleep(for: .milliseconds(700))
@@ -161,7 +159,7 @@ struct CommuteSettingsPage: View {
     @ViewBuilder
     private var suggestionRows: some View {
         let usable = candidates.filter { $0.origin.stationID != nil && $0.destination.stationID != nil }.prefix(3)
-        if usable.isEmpty, hasDetected {
+        if usable.isEmpty {
             CommuteNotice(symbol: "sparkle.magnifyingglass",
                           text: "Noch kein Vorschlag. Ab \(CommuteDetector.minRides) Fahrten auf derselben Strecke in \(CommuteDetector.minWeeks) verschiedenen Wochen und an \(CommuteDetector.minWeekdays) Wochentagen schlägt KlimaBilanz sie hier vor.")
         } else {
@@ -303,7 +301,7 @@ struct CommuteSettingsPage: View {
         } header: {
             SetSectionHeader(title: "Erfassen")
         } footer: {
-            SetFooter(text: "Ohne „Hin und retour“ gilt die Richtung der Tageszeit: vor 13 Uhr die Hinfahrt, danach die Rückfahrt. Im Formular kannst du vor dem Sichern alles ändern.")
+            SetFooter(text: "Ohne „Hin und retour“ gilt die Richtung, die die Karte im Live-Fenster zeigt, sonst die der Tageszeit: vor 13 Uhr die Hinfahrt, danach die Rückfahrt. Im Formular kannst du vor dem Sichern alles ändern.")
         }
     }
 
@@ -380,11 +378,11 @@ struct CommuteSettingsPage: View {
 
     // MARK: Actions
 
-    private func detect() {
-        defer { hasDetected = true }
-        if let previewCandidates { candidates = previewCandidates; return }
-        let records = recentTrips.map(\.record)
-        candidates = CommuteDetector.candidates(trips: records, now: Date(), calendar: .vienna, homeStationID: app.settings.homeStationID)
+    /// Every qualifying pair of the recent trips, most ridden first (CI scenes bring theirs). Computed during rendering, once per
+    /// change of the trips – so the first frame already lists them and „Noch kein Vorschlag“ never flashes.
+    private var candidates: [CommuteGuess] {
+        if let previewCandidates { return previewCandidates }
+        return memo.candidates(trips: recentTrips, homeStationID: app.settings.homeStationID)
     }
 
     private func setEnabled(_ on: Bool) {
@@ -481,6 +479,32 @@ struct CommuteSettingsPage: View {
     }
 }
 
+// MARK: - Suggestions
+
+/// The detector's result for the page, kept until the trips (count or newest change), the Heimatbahnhof or the day change. A plain
+/// class on purpose: the page reads it while rendering and nothing observes it, so the redraws of a toggle never run the detector.
+@MainActor
+final class CommuteCandidatesMemo {
+    private struct Key: Equatable {
+        var count: Int
+        var newestChange: Date?
+        var homeStationID: String?
+        var day: Date
+    }
+
+    private var key: Key?
+    private var value: [CommuteGuess] = []
+
+    func candidates(trips: [TripEntity], homeStationID: String?, now: Date = Date()) -> [CommuteGuess] {
+        let key = Key(count: trips.count, newestChange: trips.lazy.map(\.updatedAt).max(), homeStationID: homeStationID,
+                      day: Calendar.vienna.startOfDay(for: now))
+        if key == self.key { return value }
+        value = CommuteDetector.candidates(trips: trips.map(\.record), now: now, calendar: .vienna, homeStationID: homeStationID)
+        self.key = key
+        return value
+    }
+}
+
 // MARK: - Weekdays
 
 /// Mo … So as seven round toggles (the state is in the fill and the check trait, not in colour alone).
@@ -507,7 +531,8 @@ struct CommuteWeekdayPicker: View {
                     }
                     .buttonStyle(.pressable)
                     .accessibilityLabel(Self.longName(day))
-                    .accessibilityValue(on ? "ausgewählt" : "nicht ausgewählt")
+                    // The trait says „ausgewählt“; a value would say it a second time. Off, the value tells it is a choice.
+                    .accessibilityValue(on ? "" : "nicht ausgewählt")
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }

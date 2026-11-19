@@ -192,9 +192,22 @@ final class CommuteModel {
 
     // MARK: Lifecycle
 
-    /// klimabilanz://commute: the card pulses once when the mode is set up, else the setup opens over the Übersicht.
-    func openFromLink() {
-        if settings.isActive { focusTick &+= 1 } else { showsSetup = true }
+    /// klimabilanz://commute: the card pulses once when the mode is set up, else the setup opens over the Übersicht. An open
+    /// Einstellungen sheet closes first – a second sheet cannot appear over it (the same order as klimabilanz://calendar).
+    func openFromLink(closing app: AppState) {
+        if settings.isActive {
+            focusTick &+= 1
+            return
+        }
+        guard app.isShowingSettings else {
+            showsSetup = true
+            return
+        }
+        app.isShowingSettings = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            showsSetup = true
+        }
     }
 
     /// The settings changed (route, plan, mode): the rows – and Siri's copy of them – belong to the old ones.
