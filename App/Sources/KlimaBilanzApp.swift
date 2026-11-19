@@ -48,7 +48,7 @@ struct KlimaBilanzApp: App {
         switch screen {
         case "storeLocked":
             return StoreLoader(previewPhase: .waitingForUnlock)
-        case "storeFailed":
+        case "storeFailed", "storeRecoveryBackup":   // MARK: data – storeRecoveryBackup: with „Aus Sicherung wiederherstellen“
             return StoreLoader(previewPhase: .failed(.init(kind: .unreadable, detail: "NSCocoaErrorDomain 134110 → NSCocoaErrorDomain 134100",
                                                            backup: URL(filePath: "/tmp/StoreBackups/20261009-174512-fehler"),
                                                            backupFiles: [])))

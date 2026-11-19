@@ -103,6 +103,7 @@ struct StoreRecoveryView: View {
                     .buttonStyle(.bordered)
                     .buttonBorderShape(.capsule)
                 }
+                DataHubRecoveryButton(store: store)   // MARK: data – the newest readable backup into a fresh store (docs/DATA_HUB.md §5)
                 Button("Mit leeren Daten neu beginnen …", role: .destructive) { confirmsStartFresh = true }
                     .font(.subheadline)
                     .padding(.top, Theme.Spacing.xs)

@@ -649,6 +649,9 @@ struct ScreenshotRouter: View {
         // MARK: funktionen – Funktionen: the hub, Offline-Modus, Datenschutz with counters, a dependency, AX5, the planner offline, a link (demo, no network)
         case let featuresScreen where FeaturesScreenshotHost.screens.contains(featuresScreen):
             FeaturesScreenshotHost(screen: featuresScreen)
+        // MARK: data – Daten & Sicherung: hub, Exportieren, Sicherungen, the restore preview, the banner at AX5, the round trip (demo files, no network)
+        case let dataScreen where DataHubScreenshotHost.screens.contains(dataScreen):
+            DataHubScreenshotHost(screen: dataScreen)
         // MARK: radar2-anschluss – Anschluss-Wächter: every state, the alternatives, the accessory badge, AX5 (synthetic, no network)
         case let guardScreen where GuardScreenshotHost.screens.contains(guardScreen):
             GuardScreenshotHost(screen: guardScreen)
