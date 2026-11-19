@@ -78,6 +78,11 @@ extension RadarView {
         model.radar2.mine.decoration(for: pin)
     }
 
+    /// The opacity of a group of markers (read by the radar's group bubble, one marked line in `Heat/RadarView+Heat.swift`).
+    func mineGroupOpacity(_ cluster: RadarCluster) -> Double {
+        model.radar2.mine.groupOpacity(cluster.tripIDs) { model.pinsByID[$0]?.vehicle }
+    }
+
     // MARK: Actions
 
     /// „Meine“: opens the panel (the Zeitreise card closes: one bottom panel at a time) or closes it.
@@ -210,11 +215,15 @@ struct RadarMineHooks: ViewModifier {
                 }
             }
             .onChange(of: mine.boardFetchedAt) { _, _ in refreshArrivals() }
-            .onChange(of: shownModes) { _, _ in refreshArrivals() }
+            // The modes go to the model: the loops above run in the closure of their start and would keep an old value.
+            .onChange(of: shownModes, initial: true) { _, modes in
+                mine.shownModes = modes
+                refreshArrivals()
+            }
     }
 
     private func refreshArrivals() {
-        mine.refreshArrivals(held: RadarMineHooks.held(in: model), shownModes: shownModes)
+        mine.refreshArrivals(held: RadarMineHooks.held(in: model))
     }
 
     /// What the radar holds of the board's trips: the drawn position and the time of the answer behind it.

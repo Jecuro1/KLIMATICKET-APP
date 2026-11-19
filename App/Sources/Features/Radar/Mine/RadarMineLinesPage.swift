@@ -54,9 +54,12 @@ struct RadarMineLinesPage: View {
     private var highlightToggle: some View {
         VStack(alignment: .leading, spacing: 2) {
             Toggle(isOn: Binding(get: { mine.file.highlight }, set: { on in withMotion(Motion.smooth) { mine.setHighlight(on) } })) {
-                Label(RadarMineText.highlight, systemImage: "star.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.textPrimary)
+                Label {
+                    Text(RadarMineText.highlight).foregroundStyle(Theme.textPrimary)
+                } icon: {
+                    Image(systemName: "star.fill").foregroundStyle(Theme.gold)
+                }
+                .font(.subheadline.weight(.semibold))
             }
             .tint(Theme.gold)
             Text(RadarMineText.highlightFooter)

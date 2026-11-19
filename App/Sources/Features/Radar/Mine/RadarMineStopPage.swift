@@ -13,7 +13,10 @@ struct RadarMineStopPage: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             if let stop = mine.stop {
                 header(stop)
-                states
+                // The idle pause after 30 minutes appears without a tap (the clock is not observed).
+                TimelineView(.periodic(from: .now, by: 15)) { _ in
+                    VStack(alignment: .leading, spacing: Theme.Spacing.s) { states }
+                }
                 rows
                 RadarMineFooter(lines: [RadarMineText.stopFooter, RadarMineText.maybeTwice])
                 Button {
@@ -130,40 +133,35 @@ struct RadarMineStopPage: View {
     }
 }
 
-/// One departure: number, plate, „13A → Hauptbahnhof“, „in 4 Min“ with the delay, „ab 14:36 · Steig 2“, and where the vehicle is.
+/// One departure: number, plate, „→ Hauptbahnhof“, „in 4 Min“ with the delay, „ab 14:36 · Steig 2“, and where the vehicle is. At accessibility sizes
+/// number and plate sit on their own line and everything below takes the full width (nothing is pushed past the screen's edge).
 private struct RadarMineArrivalRow: View {
     var arrival: RadarStopArrival
     var number: Int?
     var onSelect: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         Button(action: onSelect) {
-            HStack(alignment: .top, spacing: Theme.Spacing.s) {
-                ZStack {
-                    if let number {
-                        RadarMineNumberBadge(number: number, mode: arrival.row.mode, fromBoard: arrival.source == .board)
+            Group {
+                if typeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            badge
+                            PlannerLinePlate(row: arrival.row, size: .m)
+                        }
+                        texts
+                    }
+                } else {
+                    HStack(alignment: .top, spacing: Theme.Spacing.s) {
+                        badge.frame(width: 22)
+                        PlannerLinePlate(row: arrival.row, size: .m)
+                        texts
                     }
                 }
-                .frame(width: 22)
-                PlannerLinePlate(row: arrival.row, size: .m)
-                VStack(alignment: .leading, spacing: 2) {
-                    RadarMineAdaptiveRow {
-                        Text(title)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Theme.textPrimary)
-                            .strikethrough(arrival.isCancelled)
-                            .fixedSize(horizontal: false, vertical: true)
-                    } trailing: {
-                        eta
-                    }
-                    Text(RadarMineText.departure(arrival))
-                        .font(.footnote)
-                        .monospacedDigit()
-                        .foregroundStyle(Theme.textSecondary)
-                    if !arrival.isCancelled { position }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
@@ -172,9 +170,37 @@ private struct RadarMineArrivalRow: View {
         .accessibilityAddTraits(.isButton)
     }
 
+    @ViewBuilder private var badge: some View {
+        if let number {
+            RadarMineNumberBadge(number: number, mode: arrival.row.mode, fromBoard: arrival.source == .board)
+        }
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            RadarMineAdaptiveRow {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .strikethrough(arrival.isCancelled)
+                    .fixedSize(horizontal: false, vertical: true)
+            } trailing: {
+                eta
+            }
+            Text(RadarMineText.departure(arrival))
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if !arrival.isCancelled { position }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The plate names the line; the row names where it goes (a plate „13A“ next to „13A → …“ said it twice, CI screenshots run 1).
     private var title: String {
-        let line = arrival.row.plate.isEmpty ? arrival.row.lineTitle : arrival.row.plate
-        return arrival.row.destination.name.isEmpty ? line : "\(line) → \(arrival.row.destination.name)"
+        let destination = arrival.row.destination.name
+        return destination.isEmpty ? arrival.row.lineTitle : "→ \(destination)"
     }
 
     private var eta: some View {
@@ -194,7 +220,7 @@ private struct RadarMineArrivalRow: View {
                 .padding(.vertical, 2)
                 .background(delayColor.opacity(0.14), in: .capsule)
         }
-        .fixedSize()
+        .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: true)
     }
 
     private var delayColor: Color {
@@ -206,12 +232,12 @@ private struct RadarMineArrivalRow: View {
 
     @ViewBuilder private var position: some View {
         let stale = RadarStopArrivals.isStale(arrival.positionAt, now: Date())
-        HStack(spacing: 4) {
+        Label {
+            Text(stale ? "\(RadarMineText.position(arrival.position)) · \(RadarMineText.positionAge(Date().timeIntervalSince(arrival.positionAt ?? Date())))"
+                       : RadarMineText.position(arrival.position))
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
             Image(systemName: positionSymbol).font(.caption2.weight(.bold))
-            Text(RadarMineText.position(arrival.position))
-            if stale, let at = arrival.positionAt {
-                Text("· \(RadarMineText.positionAge(Date().timeIntervalSince(at)))")
-            }
         }
         .font(.caption)
         .foregroundStyle(stale || arrival.position == .unknown ? Theme.textTertiary : Theme.textSecondary)

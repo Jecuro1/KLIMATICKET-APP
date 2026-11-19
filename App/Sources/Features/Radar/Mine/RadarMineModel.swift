@@ -22,7 +22,9 @@ final class RadarMineModel {
 
     // MARK: Remembered (the file)
 
-    private(set) var file: RadarMineFile
+    private(set) var file: RadarMineFile {
+        didSet { if file.lines != oldValue.lines { cacheLines() } }
+    }
     var lines: RadarMineLines { file.lines }
     var highlightOn: Bool { file.highlight && !file.lines.isEmpty }
 
@@ -62,6 +64,8 @@ final class RadarMineModel {
 
     @ObservationIgnored private(set) var gate = RadarFeatureGate()
     @ObservationIgnored private var lowPower = false
+    /// The modes whose markers are on the map now (a city mode only in zoom): numbers only for these.
+    @ObservationIgnored var shownModes: Set<RadarMode> = Set(RadarModeSelection.default.modes)
     /// „Jetzt aktualisieren“ in Low Power Mode: the job rides the radar's manual round once.
     @ObservationIgnored private var manualRequested = false
     @ObservationIgnored var source: RadarStopBoardSource?
@@ -73,6 +77,9 @@ final class RadarMineModel {
     // MARK: Highlight caches (read for every marker, so never observed)
 
     @ObservationIgnored private var identities: [String: String] = [:]
+    /// The remembered lines as a set (read for every marker; rebuilt when the lines change).
+    @ObservationIgnored private var wholeLineIDs: Set<String> = []
+    @ObservationIgnored private var directedKeys: [RadarLineKey] = []
     @ObservationIgnored private var noIdentity: Set<String> = []
     @ObservationIgnored private var highlightSingles: Set<String> = []
     @ObservationIgnored private var highlightAllSingle = true
@@ -85,6 +92,7 @@ final class RadarMineModel {
         let store = store ?? RadarMineStore.shared
         self.store = store
         file = store.load()
+        cacheLines()
         if let scene = RadarMineDemo.scene { RadarMineDemo.prepare(self, scene: scene) }
     }
 
@@ -120,8 +128,8 @@ final class RadarMineModel {
     /// The vehicle's line is one you remembered (radartrail draws its trail for „Ausgewählte und meine“).
     func remembers(_ vehicle: RadarVehicle) -> Bool {
         guard !file.lines.isEmpty, let id = identity(of: vehicle) else { return false }
-        if file.lines.wholeLineIDs.contains(id) { return true }
-        return file.lines.directedKeys.contains { $0.matches(vehicle) }
+        if wholeLineIDs.contains(id) { return true }
+        return directedKeys.contains { $0.matches(vehicle) }
     }
 
     /// Single markers: the stop page's numbered arrivals, and highlighted vehicles up to the cap (nearest the map's centre).
@@ -255,6 +263,11 @@ final class RadarMineModel {
     func adoptDemo(_ file: RadarMineFile) {
         self.file = file
         save()
+    }
+
+    private func cacheLines() {
+        wholeLineIDs = file.lines.wholeLineIDs
+        directedKeys = file.lines.directedKeys
     }
 
     /// The line identity of a vehicle, cached per trip (a trip never changes its line).
@@ -412,13 +425,13 @@ final class RadarMineModel {
     var isLoadingBoard: Bool { stop != nil && board == nil && boardError == nil && !unknownStop }
 
     /// The rows with the radar's newest positions; numbers for the modes on the map. `held`: what the radar holds of the board's trips.
-    func refreshArrivals(held: [String: RadarHeldVehicle], shownModes: Set<RadarMode>, now: Date = Date()) {
+    func refreshArrivals(held: [String: RadarHeldVehicle], now: Date = Date()) {
         guard let board, let boardFetchedAt else {
             if !arrivals.isEmpty { arrivals = [] }
             return
         }
         let rows = RadarStopArrivals.rows(board: board, fetchedAt: boardFetchedAt, stop: stop?.coordinate, radar: held, now: now)
-        let numbers = RadarStopArrivals.numbers(rows, shownModes: shownModes)
+        let numbers = RadarStopArrivals.numbers(rows, shownModes: self.shownModes)
         var trips: [String: Int] = [:]
         for row in rows where row.source == .radar { if let n = numbers[row.id] { trips[row.tripID] = n } }
         if rows != arrivals { arrivals = rows }
@@ -427,6 +440,13 @@ final class RadarMineModel {
             numberedTrips = trips
             regroup?()
         }
+    }
+
+    /// Groups of markers step back while your lines are highlighted (unless one of yours is inside) or the stop page numbers its arrivals.
+    func groupOpacity(_ tripIDs: [String], vehicle: (String) -> RadarVehicle?) -> Double {
+        if stopPageShown, !numbers.isEmpty { return 0.35 }
+        guard highlightOn else { return 1 }
+        return tripIDs.contains { id in vehicle(id).map(remembers) ?? false } ? 1 : 0.35
     }
 
     /// The trip ids of the board (the view looks only these up in the radar's store).

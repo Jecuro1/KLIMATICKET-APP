@@ -45,6 +45,9 @@ private struct RadarMineTripSheetShot: View {
         let now = Date()
         let fleet = RadarCityDemoFleet.vehicles(now: now)
         vehicle = fleet.first { $0.line?.lineNumber == "13A" && !$0.isCancelled } ?? fleet[0]
+        // Its own synthetic stops in the sheet's cache before it asks (the demo timetable answers every trip with one sample train run).
+        RadarRouteCache.shared.store(TripDetails(tripID: vehicle.tripID, line: vehicle.line, direction: vehicle.direction, stopovers: vehicle.stopovers),
+                                     now: now)
     }
 
     var body: some View {

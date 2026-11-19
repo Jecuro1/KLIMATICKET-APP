@@ -24,19 +24,20 @@ struct RadarMinePanel: View {
                 pagePicker
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { chromeHeight = $0 }
-            // The page takes its own height up to what is left of the cap; a scroll view only asked to fit its content would stay at the cap.
+            // The page takes its own height up to what is left of the cap (measured: inside the radar's bottom scroll view a scroll view would
+            // otherwise take an arbitrary height and cut the page after its first row, CI screenshots run 1).
             ScrollView {
                 page
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
             .scrollBounceBehavior(.basedOnSize)
-            .frame(maxHeight: contentHeight > 0 ? min(contentHeight, listCap) : listCap)
+            .frame(height: contentHeight > 0 ? min(contentHeight, listCap) : min(160, listCap))
         }
         .padding(.horizontal, Theme.Spacing.m)
         .padding(.vertical, Theme.Spacing.s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .frostedCard(cornerRadius: Theme.Radius.card)   // a content card (Reduce Transparency: opaque); its segments are the glass
         .simultaneousGesture(TapGesture().onEnded { mine.interact() })
         .confirmationDialog(RadarMineText.deleteLinesQuestion, isPresented: $confirmLines, titleVisibility: .visible) {
             Button(RadarMineText.delete, role: .destructive) { withMotion(Motion.smooth) { mine.forgetAllLines() } }
@@ -92,7 +93,7 @@ struct RadarMinePanel: View {
             .buttonStyle(.plain)
             .accessibilityLabel(RadarMineText.close)
         }
-        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)   // „Meine Fahrzeuge“ and two buttons stay on one line (AX3 broke the word)
     }
 
     @ViewBuilder private var pagePicker: some View {

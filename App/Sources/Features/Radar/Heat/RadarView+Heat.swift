@@ -95,6 +95,7 @@ extension RadarView {
                            hasOnTime: cluster.tripIDs.contains { model.pinsByID[$0]?.delay == .onTime })
         } else {
             RadarClusterBubble(cluster: cluster, noun: noun)
+                .opacity(mineGroupOpacity(cluster))   // MARK: radar2-radarmine – groups step back while your lines are highlighted
         }
     }
 
