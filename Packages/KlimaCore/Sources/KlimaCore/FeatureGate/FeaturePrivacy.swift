@@ -6,13 +6,15 @@ import Foundation
 
 /// A service of the app that sends data but is no switch of the hub.
 public enum FeatureService: String, CaseIterable, Sendable, Hashable, Identifiable {
-    case accountSync, updateCheck, tariffs, liveConfig
+    // MARK: review-funktionen – serverConfig: `/v1/config` goes out at every launch, with or without an account
+    case accountSync, serverConfig, updateCheck, tariffs, liveConfig
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
         case .accountSync: "Konto & Sync"
+        case .serverConfig: "Server-Einstellungen"
         case .updateCheck: "Update-Prüfung"
         case .tariffs: "Tarife"
         case .liveConfig: "Live-Konfiguration"
@@ -22,8 +24,12 @@ public enum FeatureService: String, CaseIterable, Sendable, Hashable, Identifiab
     public var flow: FeatureDataFlow {
         switch self {
         case .accountSync:
-            FeatureDataFlow(.cloud, sends: "deine Fahrten, Tickets und Favoriten, verschlüsselt übertragen",
+            // MARK: review-funktionen – sync also carries the Vorteile and the display name; the sign-in brings the e-mail address
+            FeatureDataFlow(.cloud, sends: "deine Fahrten, Tickets, Favoriten und Vorteile, dein Anzeigename und die E-Mail-Adresse deiner Anmeldung – verschlüsselt übertragen",
                             when: "nur mit Konto: beim Öffnen der App und nach deinen Änderungen")
+        case .serverConfig:
+            FeatureDataFlow(.cloud, sends: "nichts Persönliches – App- und iOS-Version beim Abruf, welche Anmeldungen und Logo-Pakete es gibt",
+                            when: "beim Start der App und vor jedem Sync, auch ohne Konto")
         case .updateCheck:
             FeatureDataFlow(.github, sends: "nichts Persönliches – nur der Abruf der Versionsliste",
                             when: "beim Öffnen höchstens alle 6 Stunden, wenn „Automatisch prüfen“ an ist, und nach deinem Tipp")
@@ -40,7 +46,7 @@ public enum FeatureService: String, CaseIterable, Sendable, Hashable, Identifiab
     public var stoppedByOfflineMode: Bool {
         switch self {
         case .updateCheck, .liveConfig: true
-        case .accountSync, .tariffs: false
+        case .accountSync, .serverConfig, .tariffs: false
         }
     }
 }
@@ -110,14 +116,58 @@ public enum FeaturePrivacy {
     /// The consent promise (docs/OEBB_LIVE.md §2).
     public static let consentLine = "Live-Daten fragt dein iPhone erst ab, wenn du ihnen zugestimmt hast – direkt bei der ÖBB und der VAO, nie über einen Server von KlimaBilanz."
 
-    /// What the Offline-Modus stops.
+    /// What the Offline-Modus stops. MARK: review-funktionen – it also ends „Live verfolgen“ with its guard and its wake-up alarm
+    /// (LiveFollowTracker: no answer → ExitAlarmService.liveDataOff) and stops the live widgets and the Pendel-Karte's search.
     public static let offlineStops: [String] = [
-        "Fahrplan & Echtzeit, Zug-Radar, Züge suchen, Störungen",
-        "Live-Ticketpreise und Live-Mitteilungen",
+        "Fahrplan & Echtzeit samt Abfahrten, Pendel-Karte live und Live-Widgets",
+        "Zug-Radar, Züge suchen, Störungen und Live-Ticketpreise",
+        "„Live verfolgen“ mit Mitteilungen, Anschluss-Wächter und Aussteige-Wecker",
         "die automatische Update-Prüfung und die Live-Konfiguration",
     ]
-    /// What it does not stop.
-    public static let offlineKeeps = "Konto-Sync, Tarif-Download und Logo-Pakete folgen ihren eigenen Schaltern. Karten laden ihre Kacheln weiter bei Apple."
+    /// What it does not stop – with a server, the short fetch of its settings at launch goes on as well (MARK: review-funktionen).
+    public static func offlineKeeps(cloudConfigured: Bool) -> String {
+        let keeps = cloudConfigured
+            ? "Konto-Sync, Tarif-Download und Logo-Pakete folgen ihren eigenen Schaltern, die Server-Einstellungen kommen weiter beim Start."
+            : "Tarif-Download und Logo-Pakete folgen ihren eigenen Schaltern."
+        return keeps + " Karten laden ihre Kacheln weiter bei Apple."
+    }
+
+    // MARK: review-funktionen – the state of the recipients that are no live provider („Jetzt: …“ on Datenschutz)
+
+    /// How much a recipient gets right now.
+    public enum Activity: Equatable, Sendable {
+        case on, partly, off
+    }
+
+    /// GitHub: tariffs and the update check run by themselves with „Automatisch prüfen“ (the update check not in the
+    /// Offline-Modus); the live configuration comes with the live-data consent at launch, whatever „Automatisch prüfen“ says
+    /// (`LiveDataService.start`), and not in the Offline-Modus. A tap on „Jetzt prüfen“ always asks.
+    public static func githubState(autoCheck: Bool, offlineMode: Bool, liveConsent: Bool) -> (text: String, activity: Activity) {
+        var automatic: [String] = []
+        var onTap: [String] = []
+        if autoCheck { automatic.append("Tarife") } else { onTap.append("Tarife") }
+        if autoCheck && !offlineMode { automatic.append("Updates") } else { onTap.append("Updates") }
+        if liveConsent && !offlineMode { automatic.append("Live-Konfiguration") }
+        guard !automatic.isEmpty else { return ("nur nach deinem Tipp", .off) }
+        let auto = listed(automatic)
+        if onTap.isEmpty { return ("\(auto) automatisch, höchstens alle paar Stunden", .on) }
+        return ("\(auto) automatisch · \(listed(onTap)) nur nach deinem Tipp", .partly)
+    }
+
+    /// The KlimaBilanz server: nothing without one in the build, sync with an account, else the settings at launch (and the logo
+    /// packs while „Offizielle Logos & Wappen“ is on).
+    public static func cloudState(configured: Bool, signedIn: Bool, logosOn: Bool) -> (text: String, activity: Activity) {
+        guard configured else { return ("kein Server eingerichtet – nichts", .off) }
+        if signedIn { return ("angemeldet – Sync an", .on) }
+        return (logosOn ? "ohne Konto – Server-Einstellungen beim Start und Logo-Pakete" : "ohne Konto – nur Server-Einstellungen beim Start",
+                .partly)
+    }
+
+    /// „A“, „A und B“, „A, B und C“.
+    static func listed(_ parts: [String]) -> String {
+        guard parts.count > 1 else { return parts.first ?? "" }
+        return parts.dropLast().joined(separator: ", ") + " und " + (parts.last ?? "")
+    }
     /// The consent stays as it is.
     public static let offlineConsent = "Deine Zustimmung zu Live-Daten bleibt, wie sie ist – schaltest du den Offline-Modus aus, geht alles wie vorher weiter."
 

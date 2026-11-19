@@ -25,6 +25,10 @@ final class FeatureCenter {
     /// CI scenes: wrapped switches shown as if set (the screenshot run's own settings are never written).
     private(set) var demoWrapped: [FeatureID: Bool] = [:]
 
+    /// MARK: review-funktionen – iOS refuses this app's notices: Live-Mitteilungen, Verlängerungs-Erinnerung and Wochenrückblick
+    /// say so in their rows instead of a plain „an“. Read when the hub appears and when the app comes back from iOS Settings.
+    private(set) var notificationsBlocked = false
+
     @ObservationIgnored private let defaults: UserDefaults?
 
     init(defaults: UserDefaults? = LaunchMode.isSandboxed ? nil : .standard) {
@@ -51,7 +55,14 @@ final class FeatureCenter {
             .officialLogos: LogoPackStore.shared.userEnabled,
         ]
         wrapped.merge(demoWrapped) { _, demo in demo }
-        return FeatureContext(wrapped: wrapped, live: liveState(app.live))
+        return FeatureContext(wrapped: wrapped, live: liveState(app.live), notificationsBlocked: notificationsBlocked)
+    }
+
+    /// Reads the notice permission (never asks; screenshot and perf runs keep „not blocked“).
+    func refreshNotificationPermission(app: AppState) async {
+        guard !LaunchMode.isSandboxed else { return }
+        let blocked = await app.notifications.authorizationStatus() == .denied
+        if blocked != notificationsBlocked { notificationsBlocked = blocked }
     }
 
     /// The live layer as the hub tells it (the consent first, then the remote switch, then the connection).
@@ -114,20 +125,21 @@ final class FeatureCenter {
 
     // MARK: Links
 
-    /// A link or a control wants `id`. True when it is on; otherwise the hub opens at its row with a toast, and the caller stops.
+    /// A link or a control wants `id`. True when it is on; otherwise the hub opens with a toast that names what holds the feature
+    /// (MARK: review-funktionen – its switch, the Offline-Modus or what it needs, `FeatureGate.linkNotice`), and the caller stops.
     func allowsLink(to id: FeatureID, app: AppState) -> Bool {
-        guard !isOn(id, app: app) else { return true }
-        let title = id.title
-        app.showToast("switch.2", "\(title) ist ausgeblendet", "Hier kannst du es wieder einschalten", haptic: .warning)
+        guard let notice = FeatureGate.linkNotice(id, settings: settings, context: context(app: app)) else { return true }
+        app.showToast(notice.scrollsToRow ? "switch.2" : "wifi.slash", notice.title, notice.subtitle, haptic: .warning)
+        let request = FeatureLinkRequest(id: id, scrollsToRow: notice.scrollsToRow)
         // A sheet cannot be presented over Einstellungen: that closes first (like „Fahrt erfassen“ from outside).
         if app.isShowingSettings {
             app.isShowingSettings = false
             Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(450))
-                self.linkFocus = FeatureLinkRequest(id: id)
+                self.linkFocus = request
             }
         } else {
-            linkFocus = FeatureLinkRequest(id: id)
+            linkFocus = request
         }
         return false
     }
@@ -145,6 +157,8 @@ final class FeatureCenter {
 /// The hub opened by a link (`FeatureCenter.allowsLink`).
 struct FeatureLinkRequest: Identifiable, Equatable {
     let id: FeatureID
+    /// False while the Offline-Modus holds the feature: its switch is the card at the top, so the hub stays there.
+    var scrollsToRow = true
 }
 
 /// Renewal reminders and the weekly summary need more than their value: a permission when they go on, planned or removed
@@ -203,7 +217,7 @@ private struct FeatureLinkHost: ViewModifier {
 
     func body(content: Content) -> some View {
         content.sheet(item: $center.linkFocus) { request in
-            NavigationStack { FeaturesHubView(focus: request.id, isSheet: true) }
+            NavigationStack { FeaturesHubView(focus: request.scrollsToRow ? request.id : nil, isSheet: true) }
                 .overlay(alignment: .top) {
                     // RootView's toast sits under the sheet: mirror it above, below the navigation bar.
                     ToastOverlay(playsHaptic: false).padding(.top, 56)

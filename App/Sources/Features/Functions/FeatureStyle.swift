@@ -84,9 +84,18 @@ enum FeatureStatusTone {
 
     init(_ status: FeatureStatus) {
         if status.isOn {
-            self = status.waiting == nil ? .on : .waiting
+            self = status.isHeldBack ? .waiting : .on   // MARK: review-funktionen – live data or the notice permission
         } else {
             self = status.offReason == .switchedOff ? .off : .hidden
+        }
+    }
+
+    /// MARK: review-funktionen – how much a recipient of Datenschutz gets right now.
+    init(_ activity: FeaturePrivacy.Activity) {
+        switch activity {
+        case .on: self = .on
+        case .partly: self = .waiting
+        case .off: self = .off
         }
     }
 

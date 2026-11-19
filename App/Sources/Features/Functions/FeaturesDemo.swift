@@ -131,8 +131,10 @@ struct FeaturesScreenshotHost: View {
                         // Keep the toast up for the capture (it fades after 2,6 s).
                         while !Task.isCancelled {
                             try? await Task.sleep(for: .milliseconds(900))
-                            if app.toast == nil {
-                                app.showToast("switch.2", "Zug-Radar ist ausgeblendet", "Hier kannst du es wieder einschalten")
+                            let center = FeatureCenter.shared
+                            if app.toast == nil, let notice = FeatureGate.linkNotice(.radar, settings: center.settings,
+                                                                                      context: center.context(app: app)) {
+                                app.showToast("switch.2", notice.title, notice.subtitle)   // the toast of allowsLink
                             }
                         }
                     }

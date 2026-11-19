@@ -18,6 +18,7 @@ struct FeaturesHubView: View {
     @Environment(AppState.self) private var app
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @State private var query = ""
     @State private var highlighted: FeatureID?
@@ -67,6 +68,12 @@ struct FeaturesHubView: View {
             .haptic(.selection, trigger: changeTick)
             .navigationDestination(item: $openPage) { id in ownPage(id) }
             .task { await scrollToFocus(proxy) }
+            // MARK: review-funktionen – the notice permission, again after a trip to the iOS Settings
+            .task { await center.refreshNotificationPermission(app: app) }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { await center.refreshNotificationPermission(app: app) }
+            }
         }
     }
 
@@ -94,7 +101,8 @@ struct FeaturesHubView: View {
                 .reveal(order: 0)
                 .listRowBackground(Theme.surface)
         } footer: {
-            SetFooter(text: "Was du hier ausschaltest, verschwindet aus der App – nicht grau, sondern weg. Darunter steht immer, was gerade ausgeblendet ist.")
+            // MARK: review-funktionen – not every switch hides something (Haptik, Live-Preise, Erinnerungen change what happens)
+            SetFooter(text: "Knöpfe und Karten einer ausgeschalteten Funktion verschwinden – nicht grau, sondern weg. Darunter steht immer, was gerade ausgeblendet ist.")
         }
     }
 

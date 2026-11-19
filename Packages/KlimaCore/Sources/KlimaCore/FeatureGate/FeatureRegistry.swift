@@ -143,6 +143,9 @@ public struct FeatureDescriptor: Equatable, Sendable, Identifiable {
 
     /// Whether anything of this feature leaves the iPhone.
     public var sendsData: Bool { dataFlows.contains { $0.recipient.isRemote } }
+
+    /// MARK: review-funktionen – it speaks only through notices, so iOS refusing them keeps it quiet while its switch is on.
+    public var usesNotifications: Bool { [.followNotices, .renewalReminders, .weeklySummary].contains(id) }
 }
 
 /// The registry: every feature of the hub in display order.
@@ -192,7 +195,7 @@ public enum FeatureRegistry {
                                             // MARK: radar2-anschluss – the Anschluss-Wächter checks the followed connection (docs/CONNECTION_GUARD.md §4)
                                             sends: "Haltestellen, Zeiten und Zugnummern deiner Suchen; für „In der Nähe“ dein Standort auf rund 100 m gerundet; "
                                                 + "beim Live-Verfolgen einer Verbindung mit Umstieg diese Verbindung und bei Bedarf Umstiegsbahnhof und Ziel",
-                                            when: "wenn du suchst oder eine Live-Ansicht offen ist, für deine Widgets beim Öffnen der App höchstens alle 15 Minuten – \(liveAsk)")])
+                                            when: "wenn du suchst oder eine Live-Ansicht zu sehen ist (auch die Pendel-Karte in ihrem Zeitfenster), für deine Widgets beim Öffnen der App höchstens alle 15 Minuten – \(liveAsk)")])
         case .livePrices:
             return FeatureDescriptor(
                 id: id, title: "Live-Ticketpreise", line: "Standardpreise aus dem ÖBB-Ticketshop und von den Verbünden",
@@ -218,8 +221,9 @@ public enum FeatureRegistry {
                 id: id, title: "Zug-Radar", line: "Züge in Echtzeit auf der Karte",
                 group: .mapRadar, storage: .hub(defaultOn: true), control: .toggle,
                 dependencies: [.liveTimetable], usesLiveData: false,
-                offEffect: "Der Radar-Knopf im Fahrplan ist ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.",
-                hiddenEntry: "der Radar-Knopf im Fahrplan",
+                // MARK: review-funktionen – „Auf der Karte zeigen“ in „Züge suchen“ opened the whole radar while it was off
+                offEffect: "Der Radar-Knopf im Fahrplan und „Auf der Karte zeigen“ in „Züge suchen“ sind ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.",
+                hiddenEntry: "der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“",
                 dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst",
                                             when: "solange der Radar offen ist, höchstens 24 Anfragen pro Minute – \(liveAsk)"),
                             FeatureDataFlow(.appleMaps, sends: "der Kartenausschnitt, den du ansiehst",
@@ -267,7 +271,7 @@ public enum FeatureRegistry {
                 id: id, title: "Vorteile-Karte", line: "Zusatz-Ersparnis durch Vorteile in Übersicht und Ticket",
                 group: .overview, storage: .hub(defaultOn: true), control: .toggle,
                 dependencies: [], usesLiveData: false,
-                offEffect: "Die Vorteile-Karte ist ausgeblendet. Die Vorteilswelt bleibt unter Einstellungen › Vorteile.",
+                offEffect: "Die Vorteile-Karte ist ausgeblendet. Die Vorteilswelt bleibt unter Einstellungen › Vorteile & Fahrgastrechte.",
                 hiddenEntry: "die Vorteile-Karte in Übersicht und Ticket",
                 dataFlows: [.local()])
         case .achievementsTeaser:

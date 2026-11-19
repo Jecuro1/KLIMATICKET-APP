@@ -156,6 +156,10 @@ struct FeatureOfflineCard: View {
     @Binding var isOn: Bool
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(AppState.self) private var app
+
+    /// MARK: review-funktionen – with a server in the build its settings keep coming at launch; the card says so.
+    private var keeps: String { FeaturePrivacy.offlineKeeps(cloudConfigured: app.auth.isCloudAvailable) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -182,7 +186,7 @@ struct FeatureOfflineCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
                     Image(systemName: "checkmark.circle")
                         .foregroundStyle(Theme.positiveText)
-                    Text(FeaturePrivacy.offlineKeeps)
+                    Text(keeps)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -197,7 +201,7 @@ struct FeatureOfflineCard: View {
     }
 
     private var accessibilityText: String {
-        (isOn ? "Gestoppt: " : "Stoppt: ") + FeaturePrivacy.offlineStops.joined(separator: "; ") + ". " + FeaturePrivacy.offlineKeeps
+        (isOn ? "Gestoppt: " : "Stoppt: ") + FeaturePrivacy.offlineStops.joined(separator: "; ") + ". " + keeps
     }
 }
 

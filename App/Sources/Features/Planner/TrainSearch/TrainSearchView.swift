@@ -264,6 +264,7 @@ private struct TrainRunCard: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .featureGated(.radar)   // MARK: review-funktionen – the map is the Zug-Radar: hidden while it is off
             }
         } else {
             Text("Live verfolgen und Karte gibt es am Tag der Fahrt.")

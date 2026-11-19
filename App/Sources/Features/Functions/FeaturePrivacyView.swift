@@ -177,12 +177,16 @@ struct FeaturePrivacyView: View {
             guard switchOn else { return ("aus", .off) }
             if app.live.config.killSwitch { return ("gerade abgeschaltet", .waiting) }
             return ("an – nur wenn du Live-Daten nutzt", .on)
+        // MARK: review-funktionen – without an account the server still gets its settings request at launch; the live
+        // configuration comes with the consent even while „Automatisch prüfen“ is off (FeaturePrivacy, Linux tests)
         case .cloud:
-            if app.auth.isSignedIn { return ("angemeldet – Sync an", .on) }
-            return LogoPackStore.shared.userEnabled ? ("ohne Konto – nur Logo-Pakete", .on) : ("nichts", .off)
+            let state = FeaturePrivacy.cloudState(configured: app.auth.isCloudAvailable, signedIn: app.auth.isSignedIn,
+                                                  logosOn: LogoPackStore.shared.userEnabled)
+            return (state.text, FeatureStatusTone(state.activity))
         case .github:
-            if !s.autoUpdateCheck { return ("nur nach deinem Tipp", .off) }
-            return center.offlineMode ? ("Tarife automatisch, Updates nur nach deinem Tipp", .waiting) : ("automatisch, höchstens alle paar Stunden", .on)
+            let state = FeaturePrivacy.githubState(autoCheck: s.autoUpdateCheck, offlineMode: center.offlineMode,
+                                                   liveConsent: app.live.consent == .granted && !app.live.isDemo)
+            return (state.text, FeatureStatusTone(state.activity))
         case .appleMaps:
             return ("wenn eine Karte zu sehen ist", .on)
         case .device:

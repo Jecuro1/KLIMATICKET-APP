@@ -23,10 +23,14 @@ public struct FeatureContext: Equatable, Sendable {
     /// The switches that live elsewhere (AppSettings, Look & Feel, the logo store, the detection …). A missing value counts as off.
     public var wrapped: [FeatureID: Bool]
     public var live: FeatureLiveState
+    // MARK: review-funktionen – iOS refuses this app's notices (Einstellungen › Mitteilungen in iOS): a feature that only
+    // speaks through notices is on, but nothing arrives – its status line says so instead of a plain „an“.
+    public var notificationsBlocked: Bool
 
-    public init(wrapped: [FeatureID: Bool] = [:], live: FeatureLiveState = .ready) {
+    public init(wrapped: [FeatureID: Bool] = [:], live: FeatureLiveState = .ready, notificationsBlocked: Bool = false) {
         self.wrapped = wrapped
         self.live = live
+        self.notificationsBlocked = notificationsBlocked
     }
 }
 
@@ -48,8 +52,21 @@ public struct FeatureStatus: Equatable, Sendable {
     public let offReason: FeatureOffReason?
     /// On, but the live data it uses cannot be asked right now (consent open, declined, remote off, no internet).
     public let waiting: FeatureLiveState?
+    /// On, but iOS refuses the notices it sends (MARK: review-funktionen).
+    public let noticesBlocked: Bool
 
     public var isOn: Bool { offReason == nil }
+    /// On, but something outside its switch keeps it quiet right now (live data or the notice permission).
+    public var isHeldBack: Bool { isOn && (waiting != nil || noticesBlocked) }
+}
+
+/// MARK: review-funktionen – what a link or a widget control says when it asks for a feature that is off, and where the hub
+/// takes you: to the feature's row (its switch or „… einschalten“ is there), or not at all while the Offline-Modus holds it
+/// (its switch is the card at the top of the hub).
+public struct FeatureLinkNotice: Equatable, Sendable {
+    public let title: String
+    public let subtitle: String
+    public let scrollsToRow: Bool
 }
 
 /// A one-line note of the hub: what is hidden right now and why.
@@ -81,7 +98,7 @@ public enum FeatureGate {
                                visited: Set<FeatureID>) -> FeatureStatus {
         let own = ownSwitch(id, settings: settings, context: context)
         func off(_ reason: FeatureOffReason) -> FeatureStatus {
-            FeatureStatus(id: id, switchIsOn: own, offReason: reason, waiting: nil)
+            FeatureStatus(id: id, switchIsOn: own, offReason: reason, waiting: nil, noticesBlocked: false)
         }
         guard own else { return off(.switchedOff) }
         if settings.offlineMode && isAffectedByOfflineMode(id) { return off(.offlineMode) }
@@ -91,7 +108,8 @@ public enum FeatureGate {
             if !status(dependency, settings: settings, context: context, visited: path).isOn { return off(.needs(dependency)) }
         }
         let waiting: FeatureLiveState? = usesLiveData(id) && context.live != .ready ? context.live : nil
-        return FeatureStatus(id: id, switchIsOn: true, offReason: nil, waiting: waiting)
+        let blocked = id.descriptor.usesNotifications && context.notificationsBlocked   // MARK: review-funktionen
+        return FeatureStatus(id: id, switchIsOn: true, offReason: nil, waiting: waiting, noticesBlocked: blocked)
     }
 
     public static func isOn(_ id: FeatureID, settings: FeatureSettings, context: FeatureContext) -> Bool {
@@ -121,7 +139,7 @@ public enum FeatureGate {
         case .needs(let other): return "\(paused) · braucht \(other.title)"
         case nil:
             switch status.waiting {
-            case nil, .ready?: return "an"
+            case nil, .ready?: return status.noticesBlocked ? "an · Mitteilungen sind in iOS aus" : "an"   // MARK: review-funktionen
             case .consentOpen?: return "an · wartet auf Live-Daten"
             case .declined?: return "an · Live-Daten sind abgelehnt"
             case .remoteOff?: return "an · ÖBB-Abfrage gerade abgeschaltet"
@@ -142,6 +160,25 @@ public enum FeatureGate {
             case .needs(let other): text = "\(descriptor.title) braucht \(other.title) – \(entry) ist ausgeblendet."
             }
             return FeatureHiddenNote(id: descriptor.id, text: text)
+        }
+    }
+
+    /// MARK: review-funktionen – the toast of a link to a feature that is off (nil while it is on): its own switch, the
+    /// Offline-Modus or what it needs – each says where to switch („Hier kannst du die Funktion wieder einschalten“ promised a
+    /// switch the radar row does not have while the Offline-Modus holds it).
+    public static func linkNotice(_ id: FeatureID, settings: FeatureSettings, context: FeatureContext) -> FeatureLinkNotice? {
+        switch status(id, settings: settings, context: context).offReason {
+        case nil:
+            return nil
+        case .switchedOff:
+            return FeatureLinkNotice(title: "\(id.title) ist aus", subtitle: "Hier kannst du die Funktion wieder einschalten",
+                                     scrollsToRow: true)
+        case .offlineMode:
+            return FeatureLinkNotice(title: "Offline-Modus ist an", subtitle: "\(id.title) kommt zurück, sobald du ihn beendest",
+                                     scrollsToRow: false)
+        case .needs(let other):
+            return FeatureLinkNotice(title: "\(id.title) braucht \(other.title)", subtitle: "Hier kannst du \(other.title) einschalten",
+                                     scrollsToRow: true)
         }
     }
 

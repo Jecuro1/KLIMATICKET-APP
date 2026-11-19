@@ -127,11 +127,11 @@ final class FeatureGateTests: XCTestCase {
         XCTAssertTrue(FeatureGate.isOn(.weekInsight, settings: settings, context: ctx))
         XCTAssertEqual(FeatureGate.statusLine(.radar, settings: settings, context: ctx), "ausgeblendet · braucht Fahrplan & Echtzeit")
         XCTAssertEqual(FeatureGate.explain(.radar, settings: settings, context: ctx),
-                       "Zug-Radar braucht „Fahrplan & Echtzeit“. Der Radar-Knopf im Fahrplan ist ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.")
+                       "Zug-Radar braucht „Fahrplan & Echtzeit“. Der Radar-Knopf im Fahrplan und „Auf der Karte zeigen“ in „Züge suchen“ sind ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.")
         XCTAssertEqual(FeatureGate.statusLine(.followNotices, settings: settings, context: context([.liveTimetable: false])),
                        "pausiert · braucht Fahrplan & Echtzeit")
         let notes = FeatureGate.hiddenNotes(settings: settings, context: ctx).map(\.text)
-        XCTAssertEqual(notes.first, "Zug-Radar braucht Fahrplan & Echtzeit – der Radar-Knopf im Fahrplan ist ausgeblendet.")
+        XCTAssertEqual(notes.first, "Zug-Radar braucht Fahrplan & Echtzeit – der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“ ist ausgeblendet.")
         XCTAssertEqual(notes.count, 3)
     }
 
@@ -142,9 +142,9 @@ final class FeatureGateTests: XCTestCase {
         XCTAssertEqual(FeatureGate.status(.radar, settings: settings, context: ctx).offReason, .switchedOff)
         XCTAssertEqual(FeatureGate.statusLine(.radar, settings: settings, context: ctx), "aus")
         XCTAssertEqual(FeatureGate.explain(.radar, settings: settings, context: ctx),
-                       "Zug-Radar ist aus. Der Radar-Knopf im Fahrplan ist ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.")
+                       "Zug-Radar ist aus. Der Radar-Knopf im Fahrplan und „Auf der Karte zeigen“ in „Züge suchen“ sind ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.")
         XCTAssertEqual(FeatureGate.hiddenNotes(settings: settings, context: ctx).first?.text,
-                       "Zug-Radar ist aus – der Radar-Knopf im Fahrplan ist ausgeblendet.")
+                       "Zug-Radar ist aus – der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“ ist ausgeblendet.")
     }
 
     func testOfflineModeWinsOverSwitches() {
@@ -164,7 +164,7 @@ final class FeatureGateTests: XCTestCase {
                        "Der Offline-Modus ist an. Preise kommen aus den Tarif-Tabellen auf dem iPhone.")
         XCTAssertEqual(FeatureGate.hiddenNotes(settings: settings, context: ctx).map(\.id), [.radar, .trainSearch, .disruptions])
         XCTAssertEqual(FeatureGate.hiddenNotes(settings: settings, context: ctx).first?.text,
-                       "Offline-Modus – der Radar-Knopf im Fahrplan ist ausgeblendet.")
+                       "Offline-Modus – der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“ ist ausgeblendet.")
     }
 
     func testWaitingForLiveDataIsOnWithAStatusLine() {
@@ -202,6 +202,83 @@ final class FeatureGateTests: XCTestCase {
                                "Der Offline-Modus ist an. \(d.offEffect)")
             }
         }
+    }
+
+    // MARK: review-funktionen
+
+    func testBlockedNoticesSayWhyAFeatureStaysQuiet() {
+        let settings = FeatureSettings()
+        var ctx = context()
+        ctx.notificationsBlocked = true
+        for id in [FeatureID.renewalReminders, .weeklySummary, .followNotices] {
+            let status = FeatureGate.status(id, settings: settings, context: ctx)
+            XCTAssertTrue(status.isOn, "\(id): the switch is on, the gate does not hide it")
+            XCTAssertTrue(status.noticesBlocked && status.isHeldBack, "\(id)")
+            XCTAssertEqual(FeatureGate.statusLine(id, settings: settings, context: ctx), "an · Mitteilungen sind in iOS aus", "\(id)")
+        }
+        // Features without notices, and a switched-off one, say nothing about them.
+        XCTAssertEqual(FeatureGate.statusLine(.radar, settings: settings, context: ctx), "an")
+        XCTAssertFalse(FeatureGate.status(.haptics, settings: settings, context: ctx).isHeldBack)
+        var off = ctx
+        off.wrapped[.weeklySummary] = false
+        XCTAssertEqual(FeatureGate.statusLine(.weeklySummary, settings: settings, context: off), "aus")
+        // Live data that waits comes first for Live-Mitteilungen.
+        ctx.live = .consentOpen
+        XCTAssertEqual(FeatureGate.statusLine(.followNotices, settings: settings, context: ctx), "an · wartet auf Live-Daten")
+        XCTAssertEqual(FeatureGate.onCount(settings: settings, context: ctx), FeatureID.allCases.count, "held back still counts as on")
+    }
+
+    func testALinkNamesWhatHoldsTheFeatureAndWhereToSwitch() {
+        XCTAssertNil(FeatureGate.linkNotice(.radar, settings: FeatureSettings(), context: context()))
+        var radarOff = FeatureSettings()
+        radarOff.set(.radar, false)
+        XCTAssertEqual(FeatureGate.linkNotice(.radar, settings: radarOff, context: context()),
+                       FeatureLinkNotice(title: "Zug-Radar ist aus", subtitle: "Hier kannst du die Funktion wieder einschalten", scrollsToRow: true))
+        // The Offline-Modus holds a radar whose own switch is on: no row switch to promise, the hub stays at its top.
+        XCTAssertEqual(FeatureGate.linkNotice(.radar, settings: FeatureSettings(offlineMode: true), context: context()),
+                       FeatureLinkNotice(title: "Offline-Modus ist an", subtitle: "Zug-Radar kommt zurück, sobald du ihn beendest",
+                                         scrollsToRow: false))
+        XCTAssertEqual(FeatureGate.linkNotice(.radar, settings: FeatureSettings(), context: context([.liveTimetable: false])),
+                       FeatureLinkNotice(title: "Zug-Radar braucht Fahrplan & Echtzeit", subtitle: "Hier kannst du Fahrplan & Echtzeit einschalten",
+                                         scrollsToRow: true))
+        // Consent is no switch of the hub: the radar opens and says itself why nothing comes.
+        XCTAssertNil(FeatureGate.linkNotice(.radar, settings: FeatureSettings(), context: context(live: .declined)))
+    }
+
+    func testRecipientStatesFollowWhatReallyRuns() {
+        XCTAssertEqual(FeaturePrivacy.githubState(autoCheck: true, offlineMode: false, liveConsent: true).text,
+                       "Tarife, Updates und Live-Konfiguration automatisch, höchstens alle paar Stunden")
+        XCTAssertEqual(FeaturePrivacy.githubState(autoCheck: true, offlineMode: false, liveConsent: false).activity, .on)
+        // „Automatisch prüfen“ off does not stop the live configuration that comes with the consent at launch.
+        let manual = FeaturePrivacy.githubState(autoCheck: false, offlineMode: false, liveConsent: true)
+        XCTAssertEqual(manual.text, "Live-Konfiguration automatisch · Tarife und Updates nur nach deinem Tipp")
+        XCTAssertEqual(manual.activity, .partly)
+        XCTAssertEqual(FeaturePrivacy.githubState(autoCheck: false, offlineMode: false, liveConsent: false).text, "nur nach deinem Tipp")
+        XCTAssertEqual(FeaturePrivacy.githubState(autoCheck: false, offlineMode: true, liveConsent: true).activity, .off)
+        // The Offline-Modus stops the update check and the live configuration, not the tariffs.
+        XCTAssertEqual(FeaturePrivacy.githubState(autoCheck: true, offlineMode: true, liveConsent: true).text,
+                       "Tarife automatisch · Updates nur nach deinem Tipp")
+
+        XCTAssertEqual(FeaturePrivacy.cloudState(configured: false, signedIn: false, logosOn: true).activity, .off)
+        XCTAssertEqual(FeaturePrivacy.cloudState(configured: true, signedIn: true, logosOn: false).text, "angemeldet – Sync an")
+        let guest = FeaturePrivacy.cloudState(configured: true, signedIn: false, logosOn: false)
+        XCTAssertEqual(guest.text, "ohne Konto – nur Server-Einstellungen beim Start", "without an account the settings still go out")
+        XCTAssertEqual(guest.activity, .partly)
+        XCTAssertEqual(FeaturePrivacy.listed(["A"]), "A")
+        XCTAssertEqual(FeaturePrivacy.listed(["A", "B", "C"]), "A, B und C")
+    }
+
+    func testTheServerSettingsAndTheSyncedDataAreNamed() {
+        let cloud = FeaturePrivacy.recipients().first { $0.recipient == .cloud }
+        let titles = cloud?.items.map(\.title) ?? []
+        XCTAssertEqual(titles, ["Offizielle Logos & Wappen", "Konto & Sync", "Server-Einstellungen"])
+        XCTAssertTrue(FeatureService.accountSync.flow.sends.contains("Vorteile"))
+        XCTAssertTrue(FeatureService.serverConfig.flow.when.contains("auch ohne Konto"))
+        XCTAssertFalse(FeatureService.serverConfig.stoppedByOfflineMode)
+        XCTAssertTrue(FeaturePrivacy.offlineKeeps(cloudConfigured: true).contains("Server-Einstellungen"))
+        XCTAssertFalse(FeaturePrivacy.offlineKeeps(cloudConfigured: false).contains("Server"))
+        XCTAssertTrue(FeaturePrivacy.offlineStops.contains { $0.contains("Aussteige-Wecker") }, "the Offline-Modus ends the alarm – say so")
+        XCTAssertTrue(FeatureID.radar.descriptor.hiddenEntry?.contains("Auf der Karte zeigen") == true)
     }
 
     // MARK: Privacy
