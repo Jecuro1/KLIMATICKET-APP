@@ -68,6 +68,7 @@ struct AssistantSettingsView: View {
         .background { SetBackdrop() }
         .navigationTitle("KI auf dem Gerät")
         .navigationBarTitleDisplayMode(.inline)
+        // Both read in the background (`LocalAssistant.refresh`); the card keeps the last state until the answer is in.
         .task { assistant.refresh() }
         .onChange(of: scenePhase) { _, phase in
             // Back from the iOS Settings app: Apple Intelligence may have been switched on in the meantime.
@@ -141,6 +142,12 @@ struct AssistantStatusCopy {
             tint = Theme.textSecondary
             title = "In KlimaBilanz ausgeschaltet"
             detail = "Die KI wird nicht gefragt. Die Regeln arbeiten weiter."
+        case .checking:
+            // Right after launch, until the system has answered (off the main thread): no verdict on device or model yet.
+            symbol = "hourglass"
+            tint = Theme.textSecondary
+            title = "Wird geprüft …"
+            detail = "KlimaBilanz fragt dein Gerät gerade, ob das Modell bereit ist. Bis dahin arbeiten die Regeln."
         }
     }
 }

@@ -8,7 +8,9 @@ import KlimaCore
 @MainActor
 @Observable
 final class LocalAssistant {
-    private(set) var systemState: AssistantSystemState = .modelNotReady
+    /// nil until the system has answered the first probe (`refresh()`, off the main thread): the state reads "Wird geprüft",
+    /// and every feature uses the rules as it does without a model.
+    private(set) var systemState: AssistantSystemState?
     private(set) var supportsGerman = false
     /// Screenshot scenes show a chosen state (demo only).
     private(set) var previewState: AssistantSystemState?
@@ -18,7 +20,11 @@ final class LocalAssistant {
     @ObservationIgnored let isDemo: Bool
     /// Last model answers for the same facts, so a foreground return does not ask the model again (memory only).
     @ObservationIgnored private var recapCache: [String: String] = [:]
+    /// The probe in flight (nil when none runs), and whether another was asked for meanwhile.
+    @ObservationIgnored private var probe: Task<Void, Never>?
+    @ObservationIgnored private var probeAgain = false
 
+    /// Starts the first probe, off the main thread: nothing here waits for FoundationModels before the first frame.
     init(settings: AppSettings, engine: AssistantEngine = AssistantEngineFactory.make(),
          isDemo: Bool = LaunchMode.useDemoData) {
         self.settings = settings
@@ -32,10 +38,13 @@ final class LocalAssistant {
     var isSwitchedOn: Bool { settings.localAIEnabled }
 
     /// The state the Settings page and the sheets show. Demo mode reports an available model unless a scene says otherwise.
-    var effectiveState: AssistantSystemState {
+    var effectiveState: AssistantSystemState? {
         guard isDemo else { return systemState }
         return previewState ?? .available
     }
+
+    /// The system has not answered the first probe yet (never in demo mode).
+    var isChecking: Bool { !isDemo && systemState == nil }
 
     var availability: AssistantAvailability {
         AssistantAvailabilityResolver.resolve(system: effectiveState,
@@ -46,11 +55,34 @@ final class LocalAssistant {
     /// Whether the model may be asked right now.
     private var canUseModel: Bool { !isDemo && availability == .available }
 
-    /// Reads the system state again (the Settings page calls it on appear; Apple Intelligence may have been switched on).
+    /// Reads the system state again: at launch, and when the Settings page appears (Apple Intelligence may have been switched
+    /// on). The read runs on a utility thread, because FoundationModels reads its bundles on the first call, which blocked
+    /// the main thread for seconds before the first frame on a busy device. The last known state stays until the answer is
+    /// in; a call while a probe runs asks once more after it, so a return from the iOS Settings app is never answered by an
+    /// older read.
     func refresh() {
-        let probe = engine.systemState()
-        systemState = probe.state
-        supportsGerman = probe.supportsGerman
+        guard probe == nil else {
+            probeAgain = true
+            return
+        }
+        let engine = self.engine
+        probe = Task { @MainActor [weak self] in
+            let answer = await Task.detached(priority: .utility) { engine.systemState() }.value
+            guard let self else { return }
+            self.systemState = answer.state
+            self.supportsGerman = answer.supportsGerman
+            self.probe = nil
+            if self.probeAgain {
+                self.probeAgain = false
+                self.refresh()
+            }
+        }
+    }
+
+    /// Returns once no probe runs (at once when none does). For follow-up work only: nothing the user waits for calls it,
+    /// so a system that never answers leaves the rules in place instead of hanging a screen.
+    func probeFinished() async {
+        while let running = probe { await running.value }
     }
 
     func showPreview(_ state: AssistantSystemState?) {

@@ -101,7 +101,8 @@ struct AssistantBalanceSheet: View {
                     Button("Fertig") { dismiss() }
                 }
             }
-            .task {
+            // Asked again when the state changes: a sheet opened before the launch probe answered shows the rules first.
+            .task(id: app.assistant.availability) {
                 shown = await app.assistant.explainBalance(facts)
             }
         }
@@ -290,11 +291,17 @@ struct AssistantRouteHint: View {
         var text: AssistantText
     }
 
+    private struct WordingRequest: Equatable {
+        var key: String
+        var availability: AssistantAvailability
+    }
+
     var body: some View {
         TimelineView(.periodic(from: .now, by: 900)) { context in
             if let hint = hint(at: context.date) {
                 card(hint)
-                    .task(id: hint.key) {
+                    // Also when the state changes: a hint shown before the launch probe answered is worded by the rules first.
+                    .task(id: WordingRequest(key: hint.key, availability: app.assistant.availability)) {
                         let text = await app.assistant.routeWording(hint.suggestion, fromName: hint.from.name, toName: hint.to.name)
                         // The task is cancelled when the relation changes; a late answer for the old one is dropped.
                         guard !Task.isCancelled else { return }

@@ -26,12 +26,17 @@ public enum AssistantAvailability: Equatable, Sendable {
     case modelNotReady
     /// Switched off in KlimaBilanz itself (Einstellungen › KI).
     case switchedOff
+    /// The system has not answered yet: it is asked off the main thread right after launch (reading the model's state can
+    /// take seconds on a busy device). The model is not asked in this state; the rules work as in every other one.
+    case checking
 }
 
 public enum AssistantAvailabilityResolver {
     /// Priority: the app switch first, then the device, then the language. The rule-based fallbacks work in every state.
-    public static func resolve(system: AssistantSystemState, supportsGerman: Bool, switchedOn: Bool) -> AssistantAvailability {
+    /// `system` is nil until the system has answered: that reads as `.checking`, never as a missing or unsuitable model.
+    public static func resolve(system: AssistantSystemState?, supportsGerman: Bool, switchedOn: Bool) -> AssistantAvailability {
         guard switchedOn else { return .switchedOff }
+        guard let system else { return .checking }
         switch system {
         case .deviceNotEligible: return .unsupportedDevice
         case .appleIntelligenceNotEnabled: return .notEnabled

@@ -14,6 +14,15 @@ final class AssistantCoreTests: XCTestCase {
         XCTAssertEqual(AssistantAvailabilityResolver.resolve(system: .deviceNotEligible, supportsGerman: false, switchedOn: false), .switchedOff)
     }
 
+    /// Before the launch probe has answered the state is "Wird geprüft": never "available" (no model call), never a missing
+    /// device, language or Apple Intelligence; the app switch still wins.
+    func testAvailabilityBeforeTheSystemAnswered() {
+        XCTAssertEqual(AssistantAvailabilityResolver.resolve(system: nil, supportsGerman: false, switchedOn: true), .checking)
+        XCTAssertEqual(AssistantAvailabilityResolver.resolve(system: nil, supportsGerman: true, switchedOn: true), .checking)
+        XCTAssertEqual(AssistantAvailabilityResolver.resolve(system: nil, supportsGerman: true, switchedOn: false), .switchedOff)
+        XCTAssertEqual(AssistantAvailabilityResolver.resolve(system: nil, supportsGerman: false, switchedOn: false), .switchedOff)
+    }
+
     func testGermanFormatting() {
         XCTAssertEqual(AssistantFormat.euro(1400), "€ 1.400")
         XCTAssertEqual(AssistantFormat.euro(23.5), "€ 23,50")

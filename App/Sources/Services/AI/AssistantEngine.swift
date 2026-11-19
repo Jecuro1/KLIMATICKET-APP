@@ -9,7 +9,8 @@ import FoundationModels
 /// The only place that talks to the on-device model. Everything above it (`LocalAssistant`) works with plain values, so
 /// the rule-based fallbacks and the checks never depend on FoundationModels.
 protocol AssistantEngine: Sendable {
-    /// The system's state for the model and whether German is supported. Cheap; read on demand.
+    /// The system's state for the model and whether German is supported. Not cheap: the first call loads FoundationModels'
+    /// bundles from disk (seconds on a busy device), so `LocalAssistant` calls it off the main thread only. Safe on any thread.
     func systemState() -> (state: AssistantSystemState, supportsGerman: Bool)
     /// Structured fields for a trip query (guided generation). Fields are not trusted: see `TripQueryValidator`.
     func tripQueryFields(for text: String, today: String) async throws -> TripQueryFields

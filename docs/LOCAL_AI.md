@@ -20,7 +20,13 @@ Gerät braucht und was sie nicht kann. Sie ist ehrlich gemeint: Was hier nicht s
 
 ## 2. Verfügbarkeit und was der Nutzer sieht
 
-Quelle: `SystemLanguageModel.default.availability` und `supportsLocale(de_AT)`, beim Öffnen der Einstellungen neu gelesen.
+Quelle: `SystemLanguageModel.default.availability` und `supportsLocale(de_AT)`, gleich nach dem Start und beim Öffnen der
+Einstellungen neu gelesen, beides auf einem Hintergrund-Thread (`LocalAssistant.refresh`): Der erste Aufruf lädt die Bündel
+von FoundationModels von der Platte und hielt auf einem ausgelasteten Gerät den Start sekundenlang vor dem ersten Bild an.
+Bis zur ersten Antwort heißt der Zustand „Wird geprüft …“; das Modell wird dann nicht gefragt, alle Funktionen nehmen die
+Regeln. Der Wochenrückblick eines Kaltstarts steht deshalb zuerst aus den Regeln da und wird, sobald das System ein bereites
+Modell meldet und die App noch im Vordergrund ist, vom Modell neu geschrieben; „Vorschlag für jetzt“ und „Warum lohnt sich
+mein Ticket?“ fragen bei jedem Zustandswechsel neu.
 Die Zustände stehen in Einstellungen › KI auf dem Gerät (`AssistantAvailability`):
 
 | Zustand | Bedeutung | Was passiert |
@@ -31,6 +37,7 @@ Die Zustände stehen in Einstellungen › KI auf dem Gerät (`AssistantAvailabil
 | Deutsch nicht unterstützt | Modell läuft, aber nicht auf Deutsch | Regeln |
 | Modell wird vorbereitet | Erster Start oder Download | Regeln, bis das Modell bereit ist |
 | In KlimaBilanz aus | Schalter „KI nutzen“ aus | Regeln |
+| Wird geprüft … | Das System hat seit dem Start noch nicht geantwortet | Regeln, bis die Antwort da ist |
 
 Der Schalter „KI nutzen“ steht unter Einstellungen › KI und ist standardmäßig an. Aus heißt: Das Modell wird nie gefragt.
 

@@ -165,8 +165,17 @@ final class AppState {
     /// The Sunday notification's text is written here, when the app becomes active, never in the background (docs/LOCAL_AI.md §3).
     func refreshWeeklySummary(trips: [TripRecord]) async {
         guard settings.weeklySummaryEnabled else { return }
-        let recap = await assistant.weeklyRecap(WeeklyRecapFacts.make(trips: trips, now: Date()))
+        let facts = WeeklyRecapFacts.make(trips: trips, now: Date())
+        let checking = assistant.isChecking
+        let recap = await assistant.weeklyRecap(facts)
         await notifications.setWeeklySummary(enabled: true, body: recap.text)
+        // MARK: ai – at a cold start the system has not answered yet, so the text above came from the rules. Once it answers
+        // with a ready model the model writes it, as an earlier launch did – only while the app is still in the foreground.
+        guard checking, recap.source == .rules else { return }
+        await assistant.probeFinished()
+        guard UIApplication.shared.applicationState == .active, settings.weeklySummaryEnabled else { return }
+        let worded = await assistant.weeklyRecap(facts)
+        if worded.source == .model { await notifications.setWeeklySummary(enabled: true, body: worded.text) }
     }
 
     func reloadCatalog() {
