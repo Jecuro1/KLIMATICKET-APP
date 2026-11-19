@@ -22,6 +22,9 @@ struct MapLayerBar: View {
         .padding(Theme.Spacing.xxs)
         .frame(maxWidth: .infinity)
         .glassEffect(.regular, in: .capsule)
+        // MARK: radar2-fix-radarmodes – a bar of controls like a tab bar: it grows with the text up to AX1 and a long press shows a chip large. At AX5
+        // two and a half chips filled the width („Pün…“) and the bar took a fifth of the map's height (radarModesAX5).
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
     private var chips: some View {
@@ -48,6 +51,7 @@ struct MapLayerBar: View {
                 .contentShape(.capsule)
             }
             .buttonStyle(.plain)
+            .accessibilityShowsLargeContentViewer { Label(layer.title, systemImage: symbol(layer)) }   // MARK: radar2-fix-radarmodes
             .accessibilityLabel(layer.title)
             .accessibilityValue(on ? "an" : "aus")
             .accessibilityAddTraits(on ? .isSelected : [])

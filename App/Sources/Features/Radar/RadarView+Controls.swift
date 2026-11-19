@@ -45,13 +45,18 @@ extension RadarView {
         }
         .motionAnimation(Motion.smooth, value: travel.isAway)
         .motionAnimation(Motion.smooth, value: model.filter.isActive)   // MARK: radarmodes
+        // MARK: radar2-fix-radarmodes – the bars over the map grow with the text up to AX2 (the chips up to AX1, as the layer bar and the Cockpit's
+        // switcher): at AX5 the field, two chips and the bottom stack left the map a strip (radarModesAX5).
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 
     private var searchField: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.textSecondary)
-                TextField(RadarModesText.searchPlaceholder, text: $query)   // MARK: radarmodes – buses, Bims and U-Bahnen too
+                // MARK: radarmodes – buses, Bims and U-Bahnen too; radar2-fix-radarmodes – from xLarge on the short one: the long one was shrunk to
+                // fit the field (at AX5 it stood at about 18 pt next to a 53-pt magnifier)
+                TextField(heatTypeSize <= .large ? RadarModesText.searchPlaceholder : RadarModesText.searchPlaceholderShort, text: $query)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -127,9 +132,11 @@ extension RadarView {
                         toggleMode(mode)   // MARK: radarmodes – stored per device
                     }
                     .modifier(RadarModeChipZoom(mode: mode, isOn: model.modes.contains(mode), outOfZoom: model.cityOutOfZoom))   // MARK: radarmodes
+                    .accessibilityShowsLargeContentViewer { Label(mode.title, systemImage: mode.symbol) }   // MARK: radar2-fix-radarmodes
                 }
             }
             .padding(.horizontal, Theme.Spacing.cardGutter)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)   // MARK: radar2-fix-radarmodes – a row of controls: up to AX1, long press shows one large
         }
         .scrollIndicators(.hidden)
         .scrollClipDisabled()   // MARK: radarmodes – the chips' zoom badge reaches over their edge
@@ -142,6 +149,9 @@ extension RadarView {
         VStack(spacing: Theme.Spacing.xs) {
             if heatOn { heatPanel }   // MARK: radarheat – the summary panel, above the layer bar
             radar2Panel   // MARK: radar2 – a part's panel (radarmine's stop panel)
+            // MARK: radar2-fix-radarmodes – the lines and controls of the map grow with the text up to AX2 (the layer bar up to AX1), like the Zeitreise's
+            // chip under them: at AX5 the stack was twice its area, and the counts, the notes and the chip were only reached by scrolling (radarModesAX5).
+            Group {
             if !travel.isOpen && !radar2PanelIsOpen { mapLayerPanel }   // MARK: radartime, radar2 – an open card leaves the map room: the layer bar waits
             if layers.isOn(.trains) || layers.isOn(.punctuality), let reason = app.live.timetableUnavailable {   // MARK: radarheat – the Pünktlichkeit layer needs the live data as well
                 trainsOffNotice(reason)
@@ -176,6 +186,8 @@ extension RadarView {
                 .font(.footnote.weight(.semibold))
                 .buttonStyle(.bordered)
             }
+            }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // MARK: radar2-fix-radarmodes
             if timeAvailable { RadarTimePanel(travel: travel) }   // MARK: radartime – the clock chip, expanding to the scrubber
             else if timeHintShown { Text(RadarModesText.timeTravelHint).radarHint() }   // MARK: radarmodes – where the clock chip sits
         }
@@ -189,10 +201,13 @@ extension RadarView {
 /// true about the tiles (a cut-off tile, a partial failure, tiles still loading, a refresh slower than 25 s: docs/OEBB_LIVE.md §R11).
 /// One glass card: text straight on the map would not be legible between the markers. A view of its own: its age ticks every
 /// second, and only this card is re-evaluated for it, not the map with its markers.
+/// MARK: radar2-fix-radarmodes – at the accessibility sizes (up to AX2, `statusBar`) the card takes the full width, the number and the age stand on
+/// two lines without the symbol („142“ stood alone over „Fahrzeuge · vor 9 s“), „Legende“ sits beside them and the counts and notes use the width.
 struct RadarStatusCard: View {
     var model: RadarModel
     /// MARK: radarmodes – opens „Legende“; nil: no button.
     var onLegend: (() -> Void)? = nil
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let text: String
@@ -205,45 +220,86 @@ struct RadarStatusCard: View {
             text = model.load == .loading ? "Lade Fahrzeuge …" : "Noch keine Positionen"
             spoken = text
         }
-        // MARK: radarmodes – the counts per mode while a city mode is on (they add up to the pill)
-        let counts = model.modes.hasCity && model.pillText != nil ? model.modeCounts : nil
+        // MARK: radarmodes – the counts per mode while a city mode is on (they add up to the pill); radar2-fix-radarmodes – with a filter only the
+        // modes with a vehicle on the map
+        let counts = model.statusModeCounts
         if let counts { spoken += ". " + counts.spoken }
         let notes = model.notes
         if !notes.isEmpty { spoken += ". " + notes.joined(separator: " ") }
-        return HStack(alignment: .top, spacing: Theme.Spacing.xs) {
-            VStack(spacing: 2) {
-                HStack(spacing: Theme.Spacing.xs) {
-                    Image(systemName: "dot.radiowaves.left.and.right")
-                    Text(text).monospacedDigit()   // the age ticks every second: the card keeps its width
+        let large = typeSize.isAccessibilitySize
+        return Group {
+            if large {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+                        largePill(text).accessibilityElement(children: .ignore).accessibilityLabel(spoken).accessibilityAddTraits(.updatesFrequently)
+                        Spacer(minLength: 0)
+                        legendButton
+                    }
+                    details(counts: counts, notes: notes, alignment: .leading)
+                        .accessibilityHidden(true)   // the pill's label says it all, as at the other sizes
                 }
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Theme.textPrimary)
-                if let counts { RadarModeCountsRow(counts: counts).padding(.vertical, 1) }
-                ForEach(notes, id: \.self) { note in
-                    Text(note)
-                        .font(.caption)
-                        .foregroundStyle(Theme.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(spoken)
-            .accessibilityAddTraits(.updatesFrequently)
-            if let onLegend {
-                Button(action: onLegend) {
-                    Image(systemName: "info.circle")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(alignment: .top, spacing: Theme.Spacing.xs) {
+                    VStack(spacing: 2) {
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Image(systemName: "dot.radiowaves.left.and.right")
+                            Text(text).monospacedDigit()   // the age ticks every second: the card keeps its width
+                        }
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(Theme.accentText)
-                        .frame(width: 22, height: 22)
-                        .contentShape(Rectangle().inset(by: -11))
+                        .foregroundStyle(Theme.textPrimary)
+                        details(counts: counts, notes: notes, alignment: .center)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(spoken)
+                    .accessibilityAddTraits(.updatesFrequently)
+                    legendButton
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(RadarModesText.legendTitle)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
+    }
+
+    /// „142 Fahrzeuge“ over „vor 9 s“ when the pill does not fit one line: never a number alone on a line.
+    private func largePill(_ text: String) -> some View {
+        let parts = text.components(separatedBy: " · ")   // `RadarStatusText.pill`: count and noun, then the age
+        return ViewThatFits(in: .horizontal) {
+            Text(text).lineLimit(1)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(parts[0])
+                if parts.count > 1 { Text(parts.dropFirst().joined(separator: " · ")).foregroundStyle(Theme.textSecondary) }
+            }
+        }
+        .monospacedDigit()
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(Theme.textPrimary)
+    }
+
+    @ViewBuilder private func details(counts: RadarModeCounts?, notes: [String], alignment: TextAlignment) -> some View {
+        if let counts { RadarModeCountsRow(counts: counts).padding(.vertical, 1) }
+        ForEach(notes, id: \.self) { note in
+            Text(note)
+                .font(.caption)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(alignment)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder private var legendButton: some View {
+        if let onLegend {
+            Button(action: onLegend) {
+                Image(systemName: "info.circle")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accentText)
+                    .frame(minWidth: 22, minHeight: 22)
+                    .contentShape(Rectangle().inset(by: -11))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(RadarModesText.legendTitle)
+        }
     }
 }
 
@@ -257,5 +313,6 @@ extension View {
             .padding(.horizontal, 12)
             .padding(.vertical, 5)
             .glassEffect(.regular, in: .rect(cornerRadius: 14))
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // MARK: radar2-fix-radarmodes – a line over the map, like the status card
     }
 }

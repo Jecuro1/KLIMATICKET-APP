@@ -61,6 +61,11 @@ Warum zwei Spuren: (a) eine gemischte Antwort am Limit von 1000 drängte die Zü
 Buchführung (README radar2 F14, F15):
 - **Eine Generation je Spur.** Eine Antwort, die vor einem Wechsel ihrer Spur gefragt wurde, fällt weg; eine Antwort der anderen Spur wird
   verbucht und gibt ihre Kachel sofort frei (`RadarLaneSchedulerTests` (l)).
+- **Nie zwei Anfragen für eine Kachel.** Der Wechsel vergisst die Kacheln seiner Spur, aber nicht, dass eine Anfrage noch unterwegs ist
+  (`TileState.isStale`): Bis ihre Antwort da ist (und mit `recordDropped` wegfällt) oder `requestTimeout` vergangen ist, wird die Kachel nicht neu
+  gefragt, und sie zählt zu den höchstens drei Anfragen unterwegs. Danach ist sie sofort fällig, wie eine nie gefragte. Vorher konnte ein Chip-Wechsel
+  dieselbe Kachel ein zweites Mal schicken und kurz vier Anfragen unterwegs haben; das Budget (24 je Minute, 4 in 10 s) hielt auch damals
+  (`RadarSchedulerInFlightResetTests`, Review-Fix).
 - **Was beim Wechsel geht:** Fahrzeuge, deren Klasse keine der beiden Spuren mehr anfragt (Chips ∪ 4157 bei Pünktlichkeit). Die Pins filtern weiter
   nach den Chips. So bleiben die S-Bahnen der Pünktlichkeit, wenn man den S-Bahn-Chip ausschaltet.
 - **Status:** Die bisherigen Felder von `RadarStatus` gelten nur für die breite Spur (Vollständigkeit der Pünktlichkeit, `holdsAllOfAustria` der
@@ -118,7 +123,22 @@ eines Datenzählers auf dem iPhone fehlt (§12).
 - **VoiceOver je Marker:** „Bus 13A, nach Hütteldorf, 6 Minuten verspätet, Position berechnet“; „Position geschätzt“ zwischen zwei Antworten; das
   Hauptwort der Art, wo der Titel keines hat („S-Bahn S 45“, „Straßenbahn D“, „U-Bahn-Linie U6“).
 - **Zählzeile** in der Statuskarte, sobald ein Stadt-Modus an ist: Ziffern gleich breit und rollend (`Motion.number`), ab AX-Größen zwei Spalten,
-  ab AX3 eine Zeile je Art; eine Stadt-Art außerhalb des Zooms fehlt in der Zeile (die Notiz sagt warum, eine „0“ würde behaupten, die Auskunft kenne keine).
+  wenn sie passen, sonst eine Zeile je Art; eine Stadt-Art außerhalb des Zooms fehlt in der Zeile (die Notiz sagt warum, eine „0“ würde behaupten, die
+  Auskunft kenne keine). **Mit Filter** stehen nur die Arten mit mindestens einem Fahrzeug auf der Karte in der Zeile (`withoutEmptyModes`): eine Reihe
+  „Bus 0 · Bim 0“ sagte nichts, was Filterzeile und Leer-Notiz nicht sagen; passt nichts, fehlt die Zeile. Die Zeile ergibt weiter die Zahl der Pille.
+- **Marker überdecken sich nicht.** Das Raster fasst die Fahrzeuge einer Zelle (etwa ein Marker breit) zusammen; zwei Fahrzeuge links und rechts einer
+  Zellgrenze lagen aber übereinander (CI-Screenshot `radarTrails`: S45 unter REX 92 bei Wien). `RadarMarkerOverlap` legt danach in Bildschirm-Einheiten
+  (Mercator wie die Karte) Marker zusammen, die sich berühren würden (näher als 0,8 Marker breit und 0,5 hoch), bis keiner mehr einen anderen berührt.
+  Das gewählte und das verfolgte Fahrzeug (und die gemerkten Linien von „Meine“) bleiben immer Einzelmarker; ein Einzelmarker unter ihrem Schild wird
+  als Punkt in Form und Farbe seines Schilds gezeichnet, an seinem Ort und antippbar. Kein Fahrzeug verschwindet, keines wird verschoben, die Zahlen
+  bleiben gleich (`RadarMarkerOverlapTests`). Mit „Gruppen zusammenfassen: Aus“ bleibt jedes Fahrzeug einzeln, wie gewählt; „Linie und Ziel“ ist breiter
+  als ein Marker und kann sich weiter überdecken (§12).
+- **Große Schrift.** Was über der Karte liegt, wächst mit der Textgröße bis AX2 (Suchfeld, Filterzeile, Statuskarte, Hinweise, „Spuren seit …“, die
+  Zeitreise-Uhr wie schon zuvor), die Leisten mit Schaltern (Verkehrsmittel-Chips, Ebenen) bis AX1 mit dem großen Inhalts-Viewer beim langen Drücken,
+  wie die Tab-Leiste und der Umschalter im Cockpit. Bei AX5 war der Stapel unten doppelt so hoch wie sein Platz: Zählzeile, Notizen und Uhr erreichte
+  man nur durch Blättern, die Ebenen-Leiste zeigte zweieinhalb Chips („Pün…“), die Pille „142“ allein über „Fahrzeuge · vor 9 s“. Jetzt: die Karte
+  über die ganze Breite, „142 Fahrzeuge“ über „vor 9 s“ ohne Symbol, ⓘ daneben, Zählzeile in zwei Spalten; der Platzhalter der Suche ab xLarge
+  „Linie oder Zug“ (der lange wurde auf etwa 18 pt geschrumpft). VoiceOver liest die Karte wie bisher als einen Satz.
 
 ## 6. Filter, Schnellwahl, Darstellung
 
@@ -152,8 +172,8 @@ fragen die Auskunft** (beide Spuren, §3); **alle Filter wirken auf dem iPhone**
 - **Speicherung:** `radar.filter.v1` und `radar.display.v1` als JSON mit `version`, tolerant: unbekannte Schlüssel und Werte fallen weg, Unlesbares
   ist die Voreinstellung; die Kategorien des alten Filters (`categories`, v1) werden zur Zugart, wo sie eine sind. Je Gerät, in der iPhone-Sicherung
   wie jede App-Einstellung, nicht im Export; Screenshot-Starts setzen alle drei zurück.
-- **Suche:** findet jetzt auch „13A“, „U6“ und „D“ (die ganze Linie zuerst), „RJX 66“ und „66“ wie bisher; Platzhalter „Linie oder Zugnummer, z. B.
-  RJX 66 oder 13A“.
+- **Suche:** findet jetzt auch „13A“, „U6“ und „D“ (die ganze Linie zuerst), „RJX 66“ und „66“ wie bisher; Platzhalter „Linie oder Zug, z. B. 13A,
+  RJX 66“, ab Textgröße xLarge „Linie oder Zug“.
 - Das Blatt hat am Ende der Seite „Darstellung“ den Platz für die Abschnitte der anderen radar2-Teile (`Radar2SettingsSections`, „Spuren“ von radartrail).
 
 ## 7. Zusammenspiel mit Pünktlichkeit, Zeitreise, Cockpit
@@ -225,6 +245,11 @@ Dazu Teil B: Zugart, Betreiber, Linien, beide Prüfer gleich auf 20 Fällen, Spe
 (`RadarQuickChoiceTests`), Darstellung (`RadarDisplayTests`), Suche nach „13A“, „U6“, „D“ (`RadarModesSearchTests`), die Demo-Flotte im Scheduler
 (`RadarCityDemoFleetTests`).
 
+Review-Fixes: keine zweite Anfrage für eine Kachel nach einem Chip-Wechsel, höchstens drei unterwegs auch dann, eine späte Antwort gibt eine neuere
+Anfrage nicht frei (`RadarSchedulerInFlightResetTests`); Marker an der Zellgrenze, gewählte und verfolgte Fahrzeuge, keine Überdeckung danach bei
+zufälligen Flotten, jedes Fahrzeug genau einmal, gleich in jeder Reihenfolge (`RadarMarkerOverlapTests`); Zählzeile mit Filter
+(`RadarModeCountsTests`). Große Schrift: Linux-Typprüfung und CI-Screenshots `radarModesAX5`, `radarTrailsAX5`.
+
 Nicht geprüft: das Verhalten auf einem iPhone (§12); Positionen von Schiffen; ob `jid`s zwischen Abfahrtstafel und Radar gleich sind; das Cockpit für
 Bus, Bim und U-Bahn; die Datenmenge mit einem echten Zähler; ob echte JourneyGeoPos-Antworten außer in Wien und Graz zwei Betreiber haben.
 **Nicht gebaut (Stretch):** Chips für Schienenersatzverkehr und Rufbus/Seilbahn (die Messung zeigt Positionen, §8), die Perf-Szene `radarCity`,
@@ -239,6 +264,8 @@ Gruppen in der Farbe des häufigsten Verkehrsmittels, „Nur diese zeigen“ als
 - Bus an in der Österreich-Ansicht: keine Bus-Anfrage, Lupe am Chip; heranzoomen bis unter 67 km: Busse kommen.
 - Filter und Darstellung nach einem Neustart der App noch da; „Filter aus“ in der Zeile auf der Karte; „Nur Punkte“ bei 500 Markern flüssig?
 - „Linie und Ziel“: überdecken sich die Ziele in einer dichten Innenstadt (höchstens 80 Einzelmarker)?
+- AX5: Stapel unten ohne Blättern (Wien mit allen Arten), großer Inhalts-Viewer auf einem Chip und einer Ebene (lang drücken), ein Zug verfolgen und
+  daneben einen Punkt statt eines Schilds sehen.
 
 ## 13. Seam für radarmine/radartrail
 
