@@ -130,7 +130,8 @@ struct WidPrivacySection: View {
 
     private var footnote: some View {
         Label {
-            Text("Gilt für den Sperrbildschirm und StandBy, solange dein iPhone gesperrt ist – iOS blendet die markierten Stellen aus. Live-Aktivitäten („Unterwegs“, „Live verfolgen“) zeigen deine Fahrt weiterhin vollständig.")
+            // MARK: review-smartwidgets – every Live Activity and the favourite control stay complete, not only two of them
+            Text("Gilt für die Widgets auf dem Sperrbildschirm und in StandBy, solange dein iPhone gesperrt ist – iOS blendet die markierten Stellen aus. Live-Aktivitäten und „Lieblingsfahrt erfassen“ im Kontrollzentrum zeigen weiterhin alles.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -167,8 +168,9 @@ struct WidPrivacyStage: View {
             .foregroundStyle(Color.white.opacity(0.88))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            // The real time: the example departures below count from it.
-            Text(verbatim: now.formatted(.dateTime.hour().minute().locale(WidFormat.locale)))
+            // The real time: the example departures below count from it. Vienna time like every time in the widgets
+            // (`WidFormat.clock`), so on a phone in another time zone the clock and the departures still match.  // MARK: review-smartwidgets
+            Text(verbatim: WidFormat.clock(now))
                 .font(.system(size: 64, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(LinearGradient(colors: [Color.white, Color.white.opacity(0.78)], startPoint: .top, endPoint: .bottom))

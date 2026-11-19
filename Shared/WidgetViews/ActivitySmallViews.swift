@@ -75,7 +75,9 @@ struct FollowSmallActivityView: View {
                                             isStale: isStale)
         ActivitySmallLayout(line: line, symbol: "train.side.front.car", timerStart: attributes.startedAt,
                             countUpRange: nil,
-                            tone: state.stage == .cancelled ? .cancelled : ((state.delayMinutes ?? 0) >= 5 ? .late : .normal))
+                            // MARK: review-smartwidgets – the tint follows the delay the headline shows (before departure the
+                            // departure delay, not the arrival delay)
+                            tone: state.stage == .cancelled ? .cancelled : ((line.delayMinutes ?? 0) >= 5 ? .late : .normal))
     }
 }
 

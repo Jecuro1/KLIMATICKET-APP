@@ -23,6 +23,9 @@ public struct ActivitySmallLine: Equatable, Sendable {
     public var footnote: String?
     /// The whole line as one German sentence for VoiceOver.
     public var spoken: String
+    /// The delay the headline shows, in minutes (the departure delay before departure, the arrival delay while riding);
+    /// nil when the headline shows none. The view tints the badge from five minutes on.  // MARK: review-smartwidgets
+    public var delayMinutes: Int? = nil
 }
 
 public enum ActivitySmallText {
@@ -37,6 +40,8 @@ public enum ActivitySmallText {
                               plannedArrival: Date?, nextStopTime: Date?, delayMinutes: Int?, transferStation: String?,
                               transferDeparture: Date?, updatedAt: Date?, isStale: Bool) -> ActivitySmallLine {
         let label = lineLabel(lineName, fallback: "Zug")
+        // MARK: review-smartwidgets – a line without a name is spoken as "Zug", never as " nach Wien Hbf"
+        let spokenName = lineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Zug" : lineName
         let destination = shortStation(alightName)
         let stand = isStale ? updatedAt.map { "Stand \(RealtimePresentation.time($0))" } ?? "Keine aktuellen Daten" : nil
         let spokenStand = isStale ? updatedAt.map { " Stand \(RealtimePresentation.time($0)), keine aktuellen Daten." }
@@ -49,22 +54,22 @@ public enum ActivitySmallText {
             let planned = plannedDeparture ?? effective
             let delayText = delay.flatMap(delayBadge)
             let headline = [label, planned.map(RealtimePresentation.time), delayText].compactMap { $0 }.joined(separator: " ")
-            var spoken = "\(lineName) nach \(destination)"
+            var spoken = "\(spokenName) nach \(destination)"
             if let effective { spoken += ", Abfahrt um \(RealtimePresentation.time(effective))" }
             spoken += spokenDelay(delay) + "." + spokenStand
             return ActivitySmallLine(headline: headline, delay: delayText, destination: destination,
                                      countdownTarget: effective, countdownLabel: "Abfahrt in", countsUp: false,
-                                     footnote: stand, spoken: spoken)
+                                     footnote: stand, spoken: spoken, delayMinutes: delayText == nil ? nil : delay)
         case .riding:
             let effective = plannedArrival.map { arrival in arrival.addingTimeInterval(TimeInterval((delayMinutes ?? 0) * 60)) }
             let delayText = delayMinutes.flatMap(delayBadge)
             let headline = [label, plannedArrival.map(RealtimePresentation.time), delayText].compactMap { $0 }.joined(separator: " ")
-            var spoken = "\(lineName) nach \(destination)"
+            var spoken = "\(spokenName) nach \(destination)"
             if let effective { spoken += ", Ankunft um \(RealtimePresentation.time(effective))" }
             spoken += spokenDelay(delayMinutes) + "." + spokenStand
             return ActivitySmallLine(headline: headline, delay: delayText, destination: destination,
                                      countdownTarget: effective, countdownLabel: "Ankunft in", countsUp: false,
-                                     footnote: stand, spoken: spoken)
+                                     footnote: stand, spoken: spoken, delayMinutes: delayText == nil ? nil : delayMinutes)
         case .transfer:
             let station = transferStation.map(shortStation) ?? destination
             let headline = ["Umstieg", transferDeparture.map(RealtimePresentation.time)].compactMap { $0 }.joined(separator: " ")
@@ -77,11 +82,11 @@ public enum ActivitySmallText {
         case .arrived:
             return ActivitySmallLine(headline: "\(label) angekommen", delay: nil, destination: destination,
                                      countdownTarget: nil, countdownLabel: "", countsUp: false, footnote: nil,
-                                     spoken: "\(lineName) ist in \(destination) angekommen.")
+                                     spoken: "\(spokenName) ist in \(destination) angekommen.")
         case .cancelled:
             return ActivitySmallLine(headline: "\(label) fällt aus", delay: nil, destination: destination,
                                      countdownTarget: nil, countdownLabel: "", countsUp: false, footnote: stand,
-                                     spoken: "\(lineName) nach \(destination) fällt aus." + spokenStand)
+                                     spoken: "\(spokenName) nach \(destination) fällt aus." + spokenStand)
         }
     }
 

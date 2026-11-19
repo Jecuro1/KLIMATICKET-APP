@@ -11,6 +11,8 @@ struct SummitWidgetView: View {
     var margins: EdgeInsets = WidLayout.defaultMargins
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(\.widPrivacy) private var privacy   // MARK: review-smartwidgets – "Beträge verbergen" covers the Gipfel too
+    @Environment(\.widConcealsAmounts) private var concealsAmounts
 
     var body: some View {
         if let snapshot {
@@ -38,17 +40,25 @@ struct SummitWidgetView: View {
                         .foregroundStyle(.widSecondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .widPrivate(.amount)   // MARK: review-smartwidgets
                     Spacer(minLength: 0)
                 }
                 .padding(margins)
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Gipfel-Fortschritt")
-            .accessibilityValue(WidInsight.spokenSummary(s, now: now))
+            .accessibilityValue(WidInsight.spokenSummary(s, now: now, hidingAmounts: concealsAmounts))
         case .accessoryInline:
-            Label("\(WidFormat.percent(s.amortizedFraction)) · \(paid ? "Gipfel erreicht" : "noch \(WidFormat.euroWhole(WidFigures.remaining(s)))")",
-                  systemImage: "mountain.2.fill")
-                .lineLimit(1)
+            // MARK: review-smartwidgets – one text cannot hide only its amount: the locked line says "73 % · Gipfel"
+            if concealsAmounts && !paid {
+                Label("\(WidFormat.percent(s.amortizedFraction)) · Gipfel", systemImage: "mountain.2.fill")
+                    .lineLimit(1)
+            } else {
+                Label("\(WidFormat.percent(s.amortizedFraction)) · \(paid ? "Gipfel erreicht" : "noch \(WidFormat.euroWhole(WidFigures.remaining(s)))")",
+                      systemImage: "mountain.2.fill")
+                    .lineLimit(1)
+                    .privacySensitive(privacy.hidesAmounts && !paid)
+            }
         default:
             VStack(alignment: .leading, spacing: 2) {
                 Label(paid ? "Gipfel erreicht" : "Gipfel", systemImage: "mountain.2.fill")
@@ -66,6 +76,7 @@ struct SummitWidgetView: View {
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .widPrivate(.amount)   // MARK: review-smartwidgets
                 }
                 WidLinearBar(progress: s.amortizedFraction)
                     .frame(height: 5)

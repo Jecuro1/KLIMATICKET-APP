@@ -281,6 +281,44 @@ final class WidgetSmartStackTests: XCTestCase {
         XCTAssertTrue(stale.countsUp)
     }
 
+    // MARK: review-smartwidgets
+
+    /// Before departure the badge is the departure delay (+3), not the arrival delay (+5): the tint follows the badge.
+    func testFollowLineCarriesTheDelayItShows() {
+        let before = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: .beforeDeparture,
+                                              plannedDeparture: at(2026, 11, 13, 7, 42), plannedArrival: at(2026, 11, 13, 10, 12),
+                                              nextStopTime: at(2026, 11, 13, 7, 45), delayMinutes: 5, transferStation: nil,
+                                              transferDeparture: nil, updatedAt: nil, isStale: false)
+        XCTAssertEqual(before.delayMinutes, 3)
+        let riding = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: .riding,
+                                              plannedDeparture: nil, plannedArrival: at(2026, 11, 13, 10, 12), nextStopTime: nil,
+                                              delayMinutes: 6, transferStation: nil, transferDeparture: nil, updatedAt: nil,
+                                              isStale: false)
+        XCTAssertEqual(riding.delayMinutes, 6)
+        let onTime = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: .riding,
+                                              plannedDeparture: nil, plannedArrival: at(2026, 11, 13, 10, 12), nextStopTime: nil,
+                                              delayMinutes: 0, transferStation: nil, transferDeparture: nil, updatedAt: nil,
+                                              isStale: false)
+        XCTAssertNil(onTime.delayMinutes)   // no badge, no tint
+        let transfer = ActivitySmallText.follow(lineName: "RJX 66", alightName: "Wien Hbf", stage: .transfer,
+                                                plannedDeparture: nil, plannedArrival: nil, nextStopTime: nil, delayMinutes: 9,
+                                                transferStation: "Wien Hbf", transferDeparture: at(2026, 11, 13, 10, 30),
+                                                updatedAt: nil, isStale: false)
+        XCTAssertNil(transfer.delayMinutes)
+    }
+
+    /// A follow without a line name is spoken as "Zug", like the headline shows it.
+    func testFollowWithoutLineNameSpeaksTheModeWord() {
+        for stage in [FollowStage.beforeDeparture, .riding, .arrived, .cancelled] {
+            let line = ActivitySmallText.follow(lineName: " ", alightName: "Wien Hbf", stage: stage,
+                                                plannedDeparture: at(2026, 11, 13, 7, 42), plannedArrival: at(2026, 11, 13, 10, 12),
+                                                nextStopTime: nil, delayMinutes: nil, transferStation: nil,
+                                                transferDeparture: nil, updatedAt: nil, isStale: false)
+            XCTAssertTrue(line.spoken.hasPrefix("Zug "), "\(stage): \(line.spoken)")
+            XCTAssertTrue(line.headline.hasPrefix("Zug"), "\(stage): \(line.headline)")
+        }
+    }
+
     func testDelayBadges() {
         XCTAssertEqual(ActivitySmallText.delayBadge(3), "+3")
         XCTAssertNil(ActivitySmallText.delayBadge(0))

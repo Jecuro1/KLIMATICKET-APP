@@ -230,7 +230,7 @@ struct NextConnectionWidgetView: View {
     private var circular: some View {
         if let first {
             WidDepartureRing(time: first.departureTime, delay: first.delayMinutes, showsDelay: state.showsDelays,
-                             isCancelled: first.isCancelled, caption: nil, modeSymbol: "tram.fill",
+                             isCancelled: first.isCancelled, caption: nil, modeSymbol: first.modeSymbol,   // MARK: review-smartwidgets – the train's own mode
                              spoken: "Nächste Verbindung" + (concealsRoutes ? "" : " \(title ?? "")") + ", "
                                  + WidLiveSpeech.departure(time: first.departureTime,
                                                            delay: state.showsDelays ? first.delayMinutes : nil,

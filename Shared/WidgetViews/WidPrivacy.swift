@@ -67,8 +67,12 @@ extension EnvironmentValues {
 
 extension WidgetPrivacy {
     /// The choice the widget extension follows: the app's stored key, else the ticket snapshot's copy, else the
-    /// defaults (`WidgetPrivacy.resolve`).
-    static func current(snapshot: WidgetSnapshot? = WidgetSnapshot.load()) -> WidgetPrivacy {
-        resolve(stored: WidgetCache.privacy, snapshot: snapshot?.privacy)
+    /// defaults (`WidgetPrivacy.resolve`). MARK: review-smartwidgets – the snapshot is decoded only when the key does not
+    /// settle both flags (the app writes both at once, so after the first switch it never is): the live providers ask
+    /// once per timeline entry.
+    static func current(snapshot: @autoclosure () -> WidgetSnapshot? = WidgetSnapshot.load()) -> WidgetPrivacy {
+        let stored = WidgetCache.privacy
+        if let stored, stored.hidesRoutesWhenLocked != nil, stored.hidesAmountsWhenLocked != nil { return stored }
+        return resolve(stored: stored, snapshot: snapshot()?.privacy)
     }
 }

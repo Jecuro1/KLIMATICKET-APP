@@ -98,6 +98,8 @@ struct WidTicketRemainingRectangular: View {
     var body: some View {
         let days = max(WidInsight.daysRemaining(snapshot, now: now), 0)
         let expired = WidInsight.isExpired(snapshot, now: now)
+        // MARK: review-smartwidgets – the last valid day is "Heute · letzter Tag", never "0 Tage" (the app's wording)
+        let lastDay = !expired && days == 0
         VStack(alignment: .leading, spacing: 1) {
             Label("Ticket-Restzeit", systemImage: "ticket.fill")
                 .font(.system(size: 12, weight: .semibold))
@@ -105,14 +107,15 @@ struct WidTicketRemainingRectangular: View {
                 .lineLimit(1)
                 .widgetAccentable()
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(verbatim: expired ? "Abgelaufen" : "\(days)")
+                Text(verbatim: expired ? "Abgelaufen" : (lastDay ? "Heute" : "\(days)"))
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                     .widgetAccentable()
                 Text(verbatim: expired ? WidFormat.dayMonth(snapshot.validUntil)
-                                       : "\(days == 1 ? "Tag" : "Tage") · bis \(WidFormat.dayMonth(snapshot.validUntil))")
+                               : (lastDay ? "letzter Tag"
+                                          : "\(days == 1 ? "Tag" : "Tage") · bis \(WidFormat.dayMonth(snapshot.validUntil))"))
                     .font(.system(size: 13, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -124,6 +127,7 @@ struct WidTicketRemainingRectangular: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ticket-Restzeit")
-        .accessibilityValue("\(WidInsight.validityText(snapshot, now: now)), gültig bis \(WidFormat.dayMonth(snapshot.validUntil))")
+        .accessibilityValue(expired ? "abgelaufen, war gültig bis \(WidFormat.dayMonth(snapshot.validUntil))"   // MARK: review-smartwidgets
+                                    : "\(WidInsight.validityText(snapshot, now: now)), gültig bis \(WidFormat.dayMonth(snapshot.validUntil))")
     }
 }

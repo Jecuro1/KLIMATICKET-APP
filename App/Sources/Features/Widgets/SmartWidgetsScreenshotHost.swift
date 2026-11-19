@@ -16,14 +16,16 @@ struct SmartWidgetsScreenshotHost: View {
     static let screens: Set<String> = [
         "widgetsPrivacy", "widgetsPrivacyAmounts", "widgetsPrivacyAX5", "widgetsPrivacyAX5Switches", "widgetsPrivacyAX5Bottom", "widgetsAccessory", "widgetsAccessoryLocked",
         "liveActivitySmall", "widgetsRelevance",
+        "widgetsAccessoryBottom", "widgetsAccessoryLockedBottom",   // MARK: review-smartwidgets – the lower rows (Gipfel)
     ]
 
     let screen: String
 
     var body: some View {
         switch screen {
-        case "widgetsAccessory", "widgetsAccessoryLocked":
-            WidAccessoryCatalog(showsLocked: screen == "widgetsAccessoryLocked")
+        case "widgetsAccessory", "widgetsAccessoryLocked", "widgetsAccessoryBottom", "widgetsAccessoryLockedBottom":
+            WidAccessoryCatalog(showsLocked: screen.hasPrefix("widgetsAccessoryLocked"))
+                .defaultScrollAnchor(screen.hasSuffix("Bottom") ? .bottom : nil)
         case "liveActivitySmall":
             WidWatchActivityShowcase()
         case "widgetsRelevance":
@@ -85,6 +87,10 @@ private struct WidAccessoryCatalog: View {
                     tile(.accessoryRectangular, new: true) { TicketRemainingWidgetView(snapshot: snapshot, family: .accessoryRectangular, now: now) }
                 }
                 inline { TicketRemainingWidgetView(snapshot: snapshot, family: .accessoryInline, now: now) }
+                // MARK: review-smartwidgets – the last valid day says "Heute · letzter Tag", not "0 Tage"
+                row("Ticket-Restzeit · letzter Tag") {
+                    tile(.accessoryRectangular) { TicketRemainingWidgetView(snapshot: lastDaySnapshot, family: .accessoryRectangular, now: now) }
+                }
                 row("Amortisation") {
                     tile(.accessoryCircular) { AmortizationWidgetView(snapshot: snapshot, family: .accessoryCircular) }
                     tile(.accessoryRectangular) { AmortizationWidgetView(snapshot: snapshot, family: .accessoryRectangular) }
@@ -100,6 +106,7 @@ private struct WidAccessoryCatalog: View {
                     tile(.accessoryRectangular) { DisruptionsWidgetView(state: .fresh(now), items: WidSamples.disruptions, followedLines: ["S 4"], family: .accessoryRectangular) }
                     tile(.accessoryRectangular) { SummitWidgetView(snapshot: snapshot, family: .accessoryRectangular, now: now) }
                 }
+                inline { SummitWidgetView(snapshot: snapshot, family: .accessoryInline, now: now) }   // MARK: review-smartwidgets
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 20)
@@ -120,6 +127,17 @@ private struct WidAccessoryCatalog: View {
 
     private var connections: [WidgetConnection] { WidSamples.connections(now: now) }
     private var departures: [WidgetDeparture] { WidSamples.departures(now: now) }
+
+    /// The sample on its last valid day (Vienna).  // MARK: review-smartwidgets
+    private var lastDaySnapshot: WidgetSnapshot {
+        var last = WidgetSnapshot.sample
+        let calendar = WidInsight.calendar
+        let today = calendar.startOfDay(for: now)
+        last.generatedAt = now
+        last.daysRemaining = 0
+        last.validUntil = calendar.date(byAdding: DateComponents(day: 1, second: -1), to: today) ?? now
+        return last
+    }
 
     /// The sample after the break-even (for the "Lohnt sich" line).
     private var paidSnapshot: WidgetSnapshot {
