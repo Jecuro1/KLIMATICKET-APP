@@ -101,12 +101,11 @@ struct CalendarScreenshotHost: View {
         case "calendarSettings", "calendarSettingsBottom", "calendarSettingsRow":
             store.installDemo(access: .fullAccess, enabled: true, calendarIDs: Self.calendarIDs)
         case "calendarWasYouThere":
-            // Yesterday's card for Innsbruck: no trip was logged there.
-            let yesterday = CalendarDemoEvents.now.addingTimeInterval(-86_400)
-            let arrival = Calendar.vienna.date(bySettingHour: 9, minute: 40, second: 0, of: yesterday) ?? yesterday
+            // Yesterday's workshop at Innsbruck Hbf had a card; no trip was logged there, and the event is still in the calendar.
+            let demo = CalendarDemoEvents.followUp()
             store.installDemo(access: .fullAccess, enabled: true, calendarIDs: Self.calendarIDs,
-                              followUps: ["demo-followup": CalendarFollowUpEntry(stationID: "at:47:1187", stationName: "Innsbruck Hauptbahnhof",
-                                                                                 arrival: arrival)])
+                              events: CalendarDemoEvents.events() + [CalendarDemoEvents.followUpEvent()],
+                              followUps: [demo.key: demo.entry])
         default:
             store.installDemo(access: .fullAccess, enabled: true, calendarIDs: Self.calendarIDs)
         }

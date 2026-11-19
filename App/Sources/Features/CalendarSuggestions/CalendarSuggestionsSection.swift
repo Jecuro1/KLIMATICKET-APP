@@ -49,6 +49,13 @@ struct CalendarSuggestionsSection: View {
             guard scenePhase == .active else { return }
             refresh()
         }
+        // The Übersicht may stay open past a card's arrival, the end of a „Später“ or midnight („Morgen“ becomes „Heute“): plan again
+        // then. One sleeping task, no polling; it ends with the view and does nothing in the background (refresh checks the phase).
+        .task(id: store.nextChange) {
+            guard let next = store.nextChange, !isScreenshotScene else { return }
+            do { try await Task.sleep(for: .seconds(max(1, next.timeIntervalSince(store.now())))) } catch { return }
+            refresh()
+        }
     }
 
     private var content: some View {
@@ -72,10 +79,14 @@ struct CalendarSuggestionsSection: View {
                 .foregroundStyle(Theme.textTertiary)
                 .padding(.horizontal, DashStyle.headerInset)
             if typeSize.isAccessibilitySize {
-                Button("Kalender-Vorschläge anpassen") { store.showsSettingsSheet = true }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.accentText)
-                    .padding(.horizontal, DashStyle.headerInset)
+                Button { store.showsSettingsSheet = true } label: {
+                    Text("Kalender-Vorschläge anpassen")
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.accentText)
+                .padding(.horizontal, DashStyle.headerInset)
             }
         }
     }

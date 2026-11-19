@@ -27,6 +27,9 @@ final class CalendarSuggestionStore {
     var showsSettingsSheet = false
     /// The system question is up (the switch waits for it).
     private(set) var isRequesting = false
+    /// When the cards change by the clock alone (an arrival passes, a „Später“ runs out, midnight): the Übersicht plans again then,
+    /// if it is still open. nil while nothing is planned.
+    private(set) var nextChange: Date?
 
     @ObservationIgnored private var source: CalendarEventSource
     @ObservationIgnored private var catalog: CalendarStationCatalog?
@@ -127,16 +130,24 @@ final class CalendarSuggestionStore {
         }
     }
 
-    /// klimabilanz://calendar: the settings page as a sheet. The Einstellungen sheet (a second sheet cannot stack on it) closes first.
-    func openSettingsFromLink(closing app: AppState) {
-        guard app.isShowingSettings else {
+    /// klimabilanz://calendar: the settings page as a sheet. The app-level sheets (Einstellungen, Gipfelbuch, an optional update,
+    /// Was-wäre-wenn – a second sheet cannot stack on them) close first. Not over the onboarding (the explanation and the system
+    /// question never come before it is done), an open trip editor, the Jahresrückblick or a required update (the same rules as
+    /// klimabilanz://timebalance).
+    func openSettingsFromLink(closing app: AppState, afterSheet: Bool = false) {
+        guard !showsSettingsSheet, app.tripDraft == nil, app.yearReviewRequest == nil,
+              app.settings.onboardingCompleted || LaunchMode.isSandboxed else { return }
+        if app.updates.isPresentingSheet && app.updates.isRequired { return }
+        guard afterSheet || app.isShowingSettings || app.isShowingAchievements || app.updates.isPresentingSheet else {
             showsSettingsSheet = true
             return
         }
         app.isShowingSettings = false
+        app.isShowingAchievements = false
+        app.updates.isPresentingSheet = false
         Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(450))
-            showsSettingsSheet = true
+            try? await Task.sleep(for: .milliseconds(450))   // the sheet's dismissal animation (as for klimabilanz://timebalance)
+            if app.tripDraft == nil, app.yearReviewRequest == nil { showsSettingsSheet = true }
         }
     }
 
@@ -176,7 +187,7 @@ final class CalendarSuggestionStore {
         recompute()
     }
 
-    /// „Nein“ on „Warst du gefahren?“ – or a trip was logged from it.
+    /// „Nein“ on „Warst du gefahren?“.
     func answerFollowUp(_ key: String) {
         update { $0.followUps[key] = nil }
         followUps.removeAll { $0.key == key }
@@ -188,20 +199,26 @@ final class CalendarSuggestionStore {
         guard setupState.showsSuggestions, let stations = lastStations else {
             suggestions = []
             followUps = []
+            nextChange = nil
             return
         }
         let now = now()
         let catalog = currentCatalog(stations)
-        origin = resolveOrigin(stations: stations)
+        let resolved = resolveOrigin(stations: stations)
+        if resolved != origin { origin = resolved }
         let horizon = now.addingTimeInterval(Double(CalendarSuggestionPlanner.windowDays) * 86_400 + 3600)
-        let events = source.events(from: now, to: horizon, calendarIDs: Set(prefs.calendarIDs))
+        // From a few days back: a follow-up may only ask about an event that is still in the calendar (the planner itself takes
+        // only what starts after now).
+        let events = source.events(from: CalendarFollowUpPlanner.readStart(now: now), to: horizon, calendarIDs: Set(prefs.calendarIDs))
         let planned = CalendarSuggestionPlanner.plan(events: events, matcher: CalendarTripMatcher(catalog: catalog), prefs: prefs,
                                                      trips: lastTrips, origin: origin, now: now)
-        // The follow-up may ask about every card shown (station and arrival only).
+        // The follow-up may ask about every card shown (station, arrival and start only) – while its event stays in the calendar.
         var next = prefs
         for s in planned where next.followUps[s.key] == nil {
-            next.followUps[s.key] = CalendarFollowUpEntry(stationID: s.match.station.id, stationName: s.match.station.name, arrival: s.arrival)
+            next.followUps[s.key] = CalendarFollowUpEntry(stationID: s.match.station.id, stationName: s.match.station.name, arrival: s.arrival,
+                                                          eventStart: s.start)
         }
+        next.keepFollowUps(eventKeys: Set(events.map(\.key)))
         next.prune(now: now)
         if next != prefs {
             prefs = next
@@ -210,6 +227,8 @@ final class CalendarSuggestionStore {
         if planned != suggestions { suggestions = planned }
         let pending = CalendarFollowUpPlanner.pending(prefs: prefs, trips: lastTrips, now: now)
         if pending != followUps { followUps = pending }
+        let change = CalendarSuggestionPlanner.nextChange(suggestions: planned, prefs: prefs, now: now)
+        if change != nextChange { nextChange = change }
     }
 
     private func currentCatalog(_ stations: StationIndex) -> CalendarStationCatalog {
@@ -258,12 +277,13 @@ final class CalendarSuggestionStore {
         return prefs
     }
 
-    /// „Alle Daten löschen“-style reset: switch off and forget everything remembered.
-    func forgetEverything() {
-        prefs = CalendarSuggestionPrefs()
-        suggestions = []
+    /// „Alle Daten löschen“ (Repository): every trace of an event goes – „Kein Zug“, „Später“ and the follow-ups with their stations
+    /// and times. The switch, the ticked calendars and the buffer are settings and stay, like the app's other settings.
+    func forgetEvents() {
+        guard !isDemo else { return }
+        update { $0.forgetEvents() }
         followUps = []
-        UserDefaults.standard.removeObject(forKey: Self.prefsKey)
+        recompute()
     }
 
     // MARK: Demo

@@ -300,8 +300,10 @@ struct RootView: View {
             let closesWhatIf = showsWhatIf
             showsWhatIf = false
             if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open(closing: app, afterSheet: closesWhatIf) }
-        case "calendar":   // MARK: calendarsuggestions – klimabilanz://calendar: Einstellungen › Kalender-Vorschläge (closes the Einstellungen sheet first)
-            CalendarSuggestionStore.shared.openSettingsFromLink(closing: app)
+        case "calendar":   // MARK: calendarsuggestions – klimabilanz://calendar: Einstellungen › Kalender-Vorschläge (app-level sheets and Was-wäre-wenn close first)
+            let closesWhatIf = showsWhatIf
+            showsWhatIf = false
+            CalendarSuggestionStore.shared.openSettingsFromLink(closing: app, afterSheet: closesWhatIf)
         case "commute":   // MARK: commute – klimabilanz://commute: the card pulses, or the setup opens (docs/COMMUTE.md §1)
             app.selectedTab = .overview
             CommuteModel.shared.openFromLink(closing: app)

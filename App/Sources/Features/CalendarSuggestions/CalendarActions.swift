@@ -56,6 +56,7 @@ struct CalendarActions {
         app.presentAddTrip(draft)
     }
 
+    /// „Nein“ on „Warst du gefahren?“: the question goes and does not come back.
     func answerNo(_ followUp: CalendarFollowUpPlanner.FollowUp) {
         withMotion(Motion.smooth) { store.answerFollowUp(followUp.key) }
     }
@@ -63,12 +64,25 @@ struct CalendarActions {
 
 /// Dates and places of the cards, against the store's clock (pinned in CI scenes).
 enum CalendarText {
-    /// "Heute", "Morgen", "Sa., 21. Nov."
+    /// "Heute", "Morgen", "Gestern" (the follow-up), "Sa., 21. Nov."
     static func day(_ date: Date, now: Date) -> String {
         let cal = Calendar.vienna
         if cal.isDate(date, inSameDayAs: now) { return "Heute" }
         if let tomorrow = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(date, inSameDayAs: tomorrow) { return "Morgen" }
+        if let yesterday = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(date, inSameDayAs: yesterday) { return "Gestern" }
         return Format.weekdayDayMonth(date)
+    }
+
+    /// The event's title, or „Termin ohne Titel“ (a calendar entry may have none – the card, its buttons and VoiceOver say the same).
+    static func title(_ s: CalendarSuggestion) -> String {
+        let trimmed = s.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Termin ohne Titel" : trimmed
+    }
+
+    /// "Innsbruck Hbf · Gestern, Vorschlag an 09:40" – the day of the event and the arrival the card had proposed (not a time the
+    /// app knows you arrived at).
+    static func followUpLine(_ entry: CalendarFollowUpEntry, now: Date) -> String {
+        "\(station(entry.stationName)) · \(day(entry.day, now: now)), Vorschlag an \(Format.time(entry.arrival))"
     }
 
     /// "Sa., 21. Nov. · 19:30–22:00", "Morgen · 10:00–11:30"; an event over several days ends with its end day.
@@ -100,7 +114,7 @@ enum CalendarText {
         let place = s.match.precision == .station
             ? "Ort erkannt: \(station(s.match.station.name))"
             : "Ort ungefähr: \(s.match.placeText), Ziel \(station(s.match.station.name))"
-        return "\(s.title). \(day(s.start, now: now)) um \(Format.time(s.start)). \(place). "
+        return "\(title(s)). \(day(s.start, now: now)) um \(Format.time(s.start)). \(place). "
             + "Vorgeschlagene Ankunft \(Format.time(s.arrival)), \(s.bufferMinutes) Minuten vor Beginn."
     }
 }

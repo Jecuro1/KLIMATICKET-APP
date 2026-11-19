@@ -1,12 +1,12 @@
 # Kalender-Vorschläge
 
 Stand: Track „Kalender-Vorschläge für Fahrten“ (November 2026). Wer es einschaltet, bekommt in der Übersicht zu Terminen der nächsten
-14 Tage, bei denen ein Bahnhof oder eine Stadt mit Hauptbahnhof steht, einen Zugfahrt-Vorschlag mit Ankunftszeit und einem Tipp in den
+14 Tage, bei denen ein Bahnhof oder ein Ort mit eindeutigem Bahnhof steht, einen Zugfahrt-Vorschlag mit Ankunftszeit und einem Tipp in den
 Fahrplan. Am Tag danach fragt die App, ob du gefahren bist. Alles läuft auf dem iPhone. Dieses Dokument beschreibt, was gebaut ist,
 welche Regeln gelten, was nur ein echtes iPhone zeigt (§8) und was bewusst fehlt (§9).
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/CalendarSuggestions/` (Linux-Tests unter
-`Tests/KlimaCoreTests/CalendarSuggestions/`, `swift test --filter CalendarSuggestions`, 32 Tests), App in
+`Tests/KlimaCoreTests/CalendarSuggestions/`, `swift test --filter CalendarSuggestions`, 42 Tests), App in
 `App/Sources/Services/Calendar/` (EventKit, Zustand, Speicher) und `App/Sources/Features/CalendarSuggestions/` (Karten,
 Einstellungsseite, Erklärung, Demo-Szenen). EventKit wird nur in `App/Sources/Services/Calendar/EventKitSource.swift` importiert.
 
@@ -17,10 +17,12 @@ Einstellungsseite, Erklärung, Demo-Szenen). EventKit wird nur in `App/Sources/S
 - **Erst die Erklärung, dann iOS.** „Einschalten“ zeigt das Blatt „Kalender-Vorschläge“ mit dem Satz *„Wir lesen nur Titel, Ort und Zeit
   deiner Termine, nur auf diesem iPhone, nur während die App offen ist.“* Erst „Verstanden, weiter“ löst die Systemfrage aus
   (`requestFullAccessToEvents`, Vollzugriff zum Lesen).
-- **Lieber kein Vorschlag als ein falscher** (§3): nur eindeutige Bahnhofsnamen und Städte mit Hauptbahnhof. Eine Adresse allein,
+- **Lieber kein Vorschlag als ein falscher** (§3): nur eindeutige Bahnhofsnamen und Orte mit eindeutigem Bahnhof (Hauptbahnhof oder
+  Bahnhof gleichen Namens, dann „ungefähr“ – auch, wenn eine Straße davorsteht: „Mirabellplatz 4, 5020 Salzburg“). Eine Straße ohne Ort,
   „Zoom“, „Büro“ oder ein mehrdeutiger Name bringen keine Karte.
 - **Nichts verlässt das iPhone.** Kein Server, keine KI, keine Statistik, keine Synchronisierung. Gespeichert werden keine Titel und
-  keine Orte (§4). Die ÖBB werden nur gefragt, wenn du bei einer Karte „Verbindung suchen“ tippst **und** Live-Daten erlaubt hast (§6).
+  keine Ortsangaben, nur Prüfwerte und für die Nachfrage der erkannte Bahnhof mit Uhrzeit (§4). Die ÖBB werden nur gefragt, wenn du bei
+  einer Karte „Verbindung suchen“ tippst **und** Live-Daten erlaubt hast (§6).
 
 ## 2. Bildschirme
 
@@ -53,12 +55,16 @@ neue Termine; was du danach an- oder abhakst, gilt.
 - **„Verbindung suchen“**, **„Kein Zug“** (merkt sich das, Toast mit „Rückgängig“), **„Später“** (kommt am nächsten Morgen um 07:00 wieder,
   oder drei Stunden vor der Ankunft, wenn das früher ist, nie früher als in einer Stunde; Toast mit „Rückgängig“).
 
-„Anpassen“ im Kopf öffnet die Einstellungsseite als Blatt; dasselbe macht `klimabilanz://calendar`.
+„Anpassen“ im Kopf öffnet die Einstellungsseite als Blatt; dasselbe macht `klimabilanz://calendar` (nach denselben Regeln wie
+`klimabilanz://timebalance`: Einstellungen, Gipfelbuch, ein optionales Update und Was-wäre-wenn schließen zuerst; nicht während des
+Onboardings, über einem offenen Fahrt-Formular, dem Jahresrückblick oder einem Pflicht-Update).
 
 **„Warst du gefahren? Innsbruck Hbf“** (`CalendarFollowUpCard`, Stretch, gebaut): am ersten und zweiten Tag nach einem Termin, zu dem eine
-Karte gezeigt wurde, wenn an diesem Tag keine Fahrt zu diesem Bahnhof erfasst ist und du nicht „Kein Zug“ gewählt hattest.
-„Fahrt erfassen“ öffnet das Formular vorbefüllt (Von = dein üblicher Start, Nach = der Bahnhof, Datum = Tag des Termins zur
-vorgeschlagenen Ankunftszeit); gespeichert wird erst im Formular. „Nein“ beendet die Frage.
+Karte gezeigt wurde, wenn an diesem Tag (oder am Vorabend, falls die Ankunft vor Mitternacht lag) keine Fahrt zu diesem Bahnhof oder von
+ihm weg erfasst ist, du nicht „Kein Zug“ gewählt hattest **und der Termin noch im Kalender steht** (gelöscht, verschoben oder sein
+Kalender abgehakt → keine Frage). Die Zeile sagt „Innsbruck Hbf · Gestern, Vorschlag an 09:40“ – die Uhrzeit ist die vorgeschlagene
+Ankunft, keine gemessene. „Fahrt erfassen“ öffnet das Formular vorbefüllt (Von = dein üblicher Start, Nach = der Bahnhof, Datum = Tag
+des Termins zur vorgeschlagenen Ankunftszeit); gespeichert wird erst im Formular. „Nein“ beendet die Frage.
 
 **Bedienungshilfen**: Jede Karte ist für VoiceOver ein Element mit dem ganzen Satz („Meeting Linz Hbf. Morgen um 10:00. Ort erkannt: Linz
 Hbf. Vorgeschlagene Ankunft 09:40, 20 Minuten vor Beginn.“) und den Aktionen „Verbindung suchen“, „Kein Zug“, „Später“ – Ausblenden geht
@@ -102,8 +108,8 @@ Nur das Ortsfeld zählt, nicht der Titel („Meeting Linz Hbf“ ohne Ort ergibt
 - von einer **Serie nur das nächste Vorkommen** (Schlüssel: `calendarItemIdentifier` bei Terminen mit Wiederholungsregel). „Kein Zug“ für
   das nächste Vorkommen bringt das übernächste nicht nach vorn; es kommt, wenn das nächste vorbei ist;
 - nichts, wofür „Kein Zug“ oder ein laufendes „Später“ gilt;
-- nichts, was eine erfasste Fahrt an dem Tag schon abdeckt (Ziel = der Bahnhof, nach id oder Name; bei einer Stadt jede Fahrt in diese
-  Stadt, z. B. Salzburg Süd für „Salzburg“);
+- nichts, was eine erfasste Fahrt an dem Tag schon abdeckt (Ziel oder Start = der Bahnhof, nach id oder Name; bei einer Stadt jede Fahrt
+  in diese oder aus dieser Stadt, z. B. Salzburg Süd für „Salzburg“; liegt die Ankunft vor Mitternacht, zählt auch der Vorabend);
 - nichts in der Stadt, in der du startest (der Heimatbahnhof aus den Einstellungen, sonst der häufigste Start der letzten 30 Fahrten):
   ein Termin „1060 Wien“ von Wien Meidling aus braucht keinen Zug; ein genannter Bahnhof („Wien Mitte“) bleibt ein Vorschlag;
 - eine Karte je Bahnhof und Tag; höchstens drei, nach Beginn sortiert.
@@ -124,16 +130,20 @@ Backup-Export, nicht synchronisiert):
 | `bufferMinutes` | 10, 20, 30 oder 45 |
 | `dismissed` | „Kein Zug“: **SHA-256** aus Termin-Kennung und Beginn → Beginn; gelöscht 60 Tage nach dem Termin |
 | `snoozed` | „Später“: derselbe Prüfwert → bis wann; gelöscht, sobald abgelaufen |
-| `followUps` | für „Warst du gefahren?“: Prüfwert → Bahnhof-id, Bahnhofsname (aus der App, nicht aus dem Termin), vorgeschlagene Ankunft; gelöscht zwei Tage nach dem Termin |
+| `followUps` | für „Warst du gefahren?“: Prüfwert → Bahnhof-id, Bahnhofsname (der erkannte Bahnhof der App, nicht der Text des Termins), vorgeschlagene Ankunft, Beginn (`eventStart`, seit dem Review; ältere Einträge ohne); gelöscht zwei Tage nach dem Termin, sofort, wenn der Termin nicht mehr im Kalender steht |
 
 Titel, Ort, Notizen, Teilnehmer oder Kalendernamen werden **nie** gespeichert, protokolliert (`print`, `os_log`) oder gesendet. Die Termine
-selbst leben nur für eine Berechnung im Arbeitsspeicher. Keine SwiftData-Änderung.
+selbst leben nur für eine Berechnung im Arbeitsspeicher. Keine SwiftData-Änderung. „Alle Daten löschen“ (Einstellungen › Daten) löscht
+`dismissed`, `snoozed` und `followUps`; Schalter, Kalenderauswahl und Puffer sind Einstellungen und bleiben.
 
 ## 5. Wann gelesen wird
 
-Nur im Vordergrund und nur mit Schalter an: beim Erscheinen der Übersicht, bei der Rückkehr in die App, wenn sich Fahrten ändern und
-wenn iOS meldet, dass sich die Kalenderdatenbank geändert hat (`EKEventStoreChanged`, nur während die App aktiv ist). Kein Hintergrund-
-abruf, keine Mitteilungen. Wird der Zugriff in den iOS-Einstellungen entzogen, liest die App den Status bei der nächsten Rückkehr neu:
+Nur im Vordergrund und nur mit Schalter an: beim Erscheinen der Übersicht, bei der Rückkehr in die App, wenn sich Fahrten ändern, wenn
+iOS meldet, dass sich die Kalenderdatenbank geändert hat (`EKEventStoreChanged`, nur während die App aktiv ist), und – wenn die Übersicht
+offen bleibt – zum nächsten Zeitpunkt, an dem sich die Karten von selbst ändern (eine Ankunft vergeht, ein „Später“ läuft ab,
+Mitternacht: aus „Morgen“ wird „Heute“; `CalendarSuggestionPlanner.nextChange`, ein schlafender Task, kein Abfragen im Takt). Gelesen
+werden die angehakten Kalender ab drei Tagen zurück bis 14 Tage voraus: die Vergangenheit nur, damit eine Nachfrage weiß, ob ihr Termin
+noch existiert. Kein Hintergrundabruf, keine Mitteilungen. Wird der Zugriff in den iOS-Einstellungen entzogen, liest die App den Status bei der nächsten Rückkehr neu:
 die Karten verschwinden ohne Fehler, die Einstellungen zeigen „Zugriff verweigert“.
 
 `CalendarEventSource` ist die Schnittstelle: `EventKitSource` (echtes iPhone) und `FakeCalendarSource` (Demo, CI, Tests der Zustände).
@@ -197,3 +207,34 @@ CI-Szenen (`CalendarScreenshotHost`, `-KBScreenshot <name> -KBDemo YES`, kein Ev
 `calendarSuggestions`, `calendarAX5`, `calendarAX5Bottom`, `calendarWasYouThere`, `calendarSettings`, `calendarSettingsBottom`,
 `calendarDenied`, `calendarRestricted`, `calendarWriteOnly`, `calendarNeedsPermission`, `calendarEmpty`, `calendarExplain`,
 `calendarPicker`, `calendarSettingsRow` (die Zeile in Einstellungen zwischen Pendeln und Arbeit & Steuer).
+
+## 11. Review (19. 11. 2026)
+
+Gegengeprüft gegen main nach dem Bau. Gefunden und behoben:
+
+- **Nachfrage zu gelöschten oder verschobenen Terminen.** Ein Eintrag für „Warst du gefahren?“ entstand, sobald eine Karte geplant war,
+  und blieb, auch wenn der Termin danach gelöscht, verschoben (neuer Prüfwert) oder sein Kalender abgehakt wurde – am Tag danach fragte
+  die App nach einer Fahrt zu einem Termin, den es nicht mehr gab. Jetzt liest die App ab drei Tagen zurück und behält nur Nachfragen,
+  deren Termin noch da ist (`keepFollowUps`).
+- **Mitternacht.** Ein Termin um 00:10 hat seine Ankunft am Vorabend; eine an diesem Abend erfasste Fahrt deckte ihn nicht ab (Karte blieb,
+  später fragte die App nach). Jetzt zählen beide Tage; die Nachfrage rechnet mit dem Tag des Termins (`eventStart`).
+- **Nur die Rückfahrt erfasst.** Eine Fahrt *vom* Bahnhof am Tag des Termins beantwortet die Nachfrage jetzt auch.
+- **„Alle Daten löschen“** ließ Prüfwerte und Nachfragen (Bahnhof, Uhrzeit) stehen – jetzt werden sie gelöscht.
+- **Veraltete Karten bei offener Übersicht.** Nach Mitternacht stand „Morgen“ statt „Heute“, eine vergangene Ankunft blieb als Vorschlag,
+  ein abgelaufenes „Später“ kam nicht zurück. Jetzt plant die Übersicht zum nächsten solchen Zeitpunkt neu.
+- **Ehrliche Texte.** Der Datenschutz-Satz nannte nur „Kein Zug“; gespeichert werden auch „Später“ und für die Nachfrage Bahnhof und
+  Uhrzeit. „Eine Adresse allein bringt nichts“ stimmte nicht (mit Ort gibt es eine „ungefähr“-Karte) – jetzt „eine Straße ohne Ort“.
+  Die Erklärung nennt den eingestellten Puffer statt fest 20 Minuten und sagt nicht mehr „Danach fragt iOS“, wenn iOS schon entschieden
+  hat. Die Nachfrage sagt „Gestern“ und „Vorschlag an 09:40“ (keine gemessene Ankunft).
+- **`klimabilanz://calendar`** öffnete die Seite auch während des Onboardings und über offenen Blättern (Gipfelbuch, Update,
+  Was-wäre-wenn, Fahrt-Formular); jetzt dieselben Regeln wie die Zeitbilanz.
+- **Kleinigkeiten:** Ein Termin ohne Titel heißt auch in VoiceOver und in den Knopf-Namen „Termin ohne Titel“; „Kalender-Vorschläge
+  anpassen“ bei Bedienungshilfen-Schriftgrößen links bündig.
+
+Geprüft und so gelassen: Zahlen gibt es hier nur als Uhrzeiten und Minuten (keine Euro, kein CO₂, nichts, was Statistik anders rechnen
+könnte); Ankunft = Beginn − Puffer als fester Abstand über die Zeitumstellung (Tests); keine SwiftData-Änderung, kein Schreiben außer
+über das Fahrt-Formular; kein Netz außer dem Fahrplan nach deinem Tipp; keine Systemfrage in CI-Szenen. „Flughafen Wien“ wird als Ort
+„ungefähr“ erkannt, obwohl der Name den Bahnhof nennt – vorsichtig, nicht falsch. `EKEventStore.events(matching:)` läuft auf dem
+Hauptthread (14 Tage der angehakten Kalender); bei sehr großen Exchange-Kalendern auf dem Gerät zu prüfen.
+
+Was nur das iPhone zeigt, steht weiter in §8; dazu: 8. Einen Termin mit Karte löschen oder verschieben – am Tag danach keine Nachfrage.

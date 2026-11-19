@@ -58,8 +58,8 @@ Bedienung, Frost-Karten für Inhalte.
   einem iPhone geprüft ([docs/COMMUTE.md](docs/COMMUTE.md))
 - **Kalender-Vorschläge** (aus, bis du sie einschaltest) – Termine der nächsten 14 Tage mit Bahnhof oder Stadt im Ort werden in der
   Übersicht zu Zugfahrt-Vorschlägen mit Ankunftszeit und einem Tipp in den Fahrplan; am Tag danach „Warst du gefahren?“. Nur eindeutige
-  Bahnhöfe, eine Stadt „ungefähr“ über ihren Hauptbahnhof; gelesen nur auf dem iPhone und bei offener App, Titel und Orte werden nie
-  gespeichert; noch nicht auf einem iPhone geprüft ([docs/CALENDAR_SUGGESTIONS.md](docs/CALENDAR_SUGGESTIONS.md))
+  Bahnhöfe, ein Ort „ungefähr“ über seinen Hauptbahnhof oder gleichnamigen Bahnhof; gelesen nur auf dem iPhone und bei offener App, Titel
+  und Ortsangaben werden nie gespeichert; noch nicht auf einem iPhone geprüft ([docs/CALENDAR_SUGGESTIONS.md](docs/CALENDAR_SUGGESTIONS.md))
 - **Automatik** – eigene Regeln „Wenn … dann …“ auf dem iPhone: vor Ablauf erinnern, Meilensteine feiern, abends erinnern, wenn noch keine
   Fahrt erfasst ist, Verspätung der verfolgten Fahrt melden, nach einer Fahrt ab einem Wert. Ein Testlauf erklärt jede Entscheidung, ein
   Protokoll zeigt, was passiert ist. Regeln laufen nur bei offener App oder als vorab geplante Mitteilung, schreiben nie Fahrten und fragen

@@ -59,7 +59,8 @@ struct CalendarSettingsPage: View {
         .motionAnimation(Motion.smooth, value: store.access)
         .haptic(.selection, trigger: changeTick)
         .sheet(isPresented: $store.showsExplanation) {
-            CalendarExplainSheet(onContinue: { Task { await store.confirmExplanation() } }, onCancel: { store.cancelExplanation() })
+            CalendarExplainSheet(onContinue: { Task { await store.confirmExplanation() } }, onCancel: { store.cancelExplanation() },
+                                 bufferMinutes: store.prefs.bufferMinutes, access: store.access)
                 .interactiveDismissDisabled(store.isRequesting)
         }
         .sheet(isPresented: $store.showsPicker) {
@@ -167,7 +168,7 @@ struct CalendarSettingsPage: View {
         Section {
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 privacyLine("iphone", "Gelesen wird nur auf diesem iPhone, solange KlimaBilanz offen ist – nie im Hintergrund.")
-                privacyLine("tray", "Gespeichert werden keine Titel und keine Orte; für „Kein Zug“ nur ein Prüfwert, höchstens 60 Tage.")
+                privacyLine("tray", "Gespeichert werden keine Titel und keine Ortsangaben – nur Prüfwerte für „Kein Zug“ und „Später“ (höchstens 60 Tage), für „Warst du gefahren?“ Bahnhof und Uhrzeit bis zwei Tage danach.")
                 privacyLine("network.slash", "Kein Server, keine KI, keine Statistik, keine Synchronisierung.")
                 privacyLine("tram", "„Verbindung suchen“ fragt die ÖBB nur mit deiner Live-Daten-Erlaubnis – mit zwei Bahnhöfen und einer Uhrzeit.")
             }

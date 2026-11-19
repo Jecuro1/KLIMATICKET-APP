@@ -8,6 +8,10 @@ import KlimaCore
 struct CalendarExplainSheet: View {
     var onContinue: () -> Void
     var onCancel: () -> Void
+    /// The buffer from Einstellungen (the sheet says the minutes the cards will use).
+    var bufferMinutes = CalendarBuffer.defaultMinutes
+    /// What iOS already allows: the line under the button says whether iOS will ask at all.
+    var access: CalendarAccess = .notDetermined
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,20 +20,20 @@ struct CalendarExplainSheet: View {
                     hero.reveal(.focus, order: 0)
                     block(symbol: "calendar.badge.checkmark", tint: Theme.glacier, title: "Was KlimaBilanz tut",
                           lines: ["Es schaut in die nächsten 14 Tage der Kalender, die du auswählst.",
-                                  "Steht bei einem Termin ein Bahnhof oder eine Stadt mit Hauptbahnhof, liegt in der Übersicht ein Vorschlag: Ankunft 20 Minuten vor Beginn, mit einem Tipp in den Fahrplan.",
+                                  "Steht bei einem Termin ein Bahnhof oder ein Ort mit eindeutigem Bahnhof, liegt in der Übersicht ein Vorschlag: Ankunft \(CalendarBuffer.clamp(bufferMinutes)) Minuten vor Beginn, mit einem Tipp in den Fahrplan.",
                                   "Am Tag danach fragt es, ob du gefahren bist – erfasst wird nur, was du bestätigst."])
                         .reveal(order: 1)
                     block(symbol: "lock.fill", tint: Theme.pine, title: "Was gelesen und was gespeichert wird",
                           lines: ["Wir lesen nur Titel, Ort und Zeit deiner Termine, nur auf diesem iPhone, nur während die App offen ist.",
-                                  "Gespeichert werden keine Titel und keine Orte. Für „Kein Zug“ merkt sich die App nur einen Prüfwert des Termins, höchstens 60 Tage.",
+                                  "Gespeichert werden keine Titel und keine Ortsangaben. Für „Kein Zug“ und „Später“ merkt sich die App nur einen Prüfwert des Termins (höchstens 60 Tage), für „Warst du gefahren?“ den erkannten Bahnhof und die Uhrzeit, bis zwei Tage danach.",
                                   "Nichts davon geht an einen Server, in eine KI, in eine Statistik oder in die Cloud-Synchronisierung."])
                         .reveal(order: 2)
                     block(symbol: "tram.fill", tint: Theme.dusk, title: "Wann die ÖBB gefragt werden",
                           lines: ["Erst wenn du bei einem Vorschlag „Verbindung suchen“ tippst – und nur, wenn du Live-Daten erlaubt hast. Dann gehen zwei Bahnhöfe und eine Uhrzeit an die ÖBB-Fahrplanauskunft, nie der Termin."])
                         .reveal(order: 3)
                     block(symbol: "exclamationmark.triangle.fill", tint: Theme.dawn, title: "Wo es sich irren kann",
-                          lines: ["Lieber kein Vorschlag als ein falscher: Nur eindeutige Bahnhofsnamen zählen. Eine Adresse allein, „Zoom“ oder „Büro“ bringen nichts.",
-                                  "Steht nur eine Stadt im Termin, nimmt die App ihren Hauptbahnhof und schreibt „ungefähr“ dazu."])
+                          lines: ["Lieber kein Vorschlag als ein falscher: Nur eindeutige Bahnhofsnamen zählen. Eine Straße ohne Ort, „Zoom“ oder „Büro“ bringen nichts.",
+                                  "Steht nur ein Ort im Termin – auch mit Straße davor –, nimmt die App seinen Hauptbahnhof oder den Bahnhof gleichen Namens und schreibt „ungefähr“ dazu."])
                         .reveal(order: 4)
                 }
                 .padding(.horizontal, Theme.Spacing.cardGutter)
@@ -43,7 +47,7 @@ struct CalendarExplainSheet: View {
                     Label("Verstanden, weiter", systemImage: "calendar")
                 }
                 .buttonStyle(.primary)
-                Text("Danach fragt iOS, ob KlimaBilanz deine Kalender lesen darf.")
+                Text(nextStep)
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -58,6 +62,16 @@ struct CalendarExplainSheet: View {
             .background(.bar)
         }
         .background { Theme.sheetBackground.ignoresSafeArea() }
+    }
+
+    /// What follows „Verstanden, weiter“ – iOS asks only once.
+    private var nextStep: String {
+        switch access {
+        case .notDetermined: "Danach fragt iOS, ob KlimaBilanz deine Kalender lesen darf."
+        case .fullAccess: "Den Zugriff hast du schon erlaubt – danach wählst du die Kalender."
+        case .denied, .writeOnly: "iOS fragt nicht noch einmal: Lesezugriff gibst du in den iOS-Einstellungen."
+        case .restricted: "Auf diesem iPhone ist der Kalender für Apps gesperrt – iOS fragt nicht."
+        }
     }
 
     private var hero: some View {

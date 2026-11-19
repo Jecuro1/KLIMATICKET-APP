@@ -55,7 +55,7 @@ struct CalendarSuggestionCard: View {
         return layout {
             CalendarDayTile(date: suggestion.start)
             VStack(alignment: .leading, spacing: 4) {
-                Text(suggestion.title.isEmpty ? "Termin ohne Titel" : suggestion.title)
+                Text(CalendarText.title(suggestion))
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(typeSize.isAccessibilitySize ? 4 : 2)
@@ -136,7 +136,7 @@ struct CalendarSuggestionCard: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
-        .accessibilityLabel("Kein Zug zu \(suggestion.title)")
+        .accessibilityLabel("Kein Zug zu \(CalendarText.title(suggestion))")
         .accessibilityHint("Blendet den Vorschlag für diesen Termin aus")
         Button {
             CalendarActions(app: app).snooze(suggestion)
@@ -147,7 +147,7 @@ struct CalendarSuggestionCard: View {
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
-        .accessibilityLabel("Später erinnern an \(suggestion.title)")
+        .accessibilityLabel("Später erinnern an \(CalendarText.title(suggestion))")
     }
 }
 
@@ -400,7 +400,7 @@ struct CalendarFollowUpCard: View {
                         Text("Warst du gefahren?")
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
-                        Text("\(station) · \(CalendarText.day(followUp.entry.arrival, now: now)), an \(Format.time(followUp.entry.arrival))")
+                        Text(CalendarText.followUpLine(followUp.entry, now: now))
                             .font(.subheadline)
                             .monospacedDigit()
                             .foregroundStyle(Theme.textSecondary)
@@ -408,7 +408,8 @@ struct CalendarFollowUpCard: View {
                     }
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Warst du gefahren? \(station), \(CalendarText.day(followUp.entry.arrival, now: now))")
+                .accessibilityLabel("Warst du gefahren? \(station), \(CalendarText.day(followUp.entry.day, now: now)). "
+                                    + "Vorgeschlagen war die Ankunft um \(Format.time(followUp.entry.arrival)).")
                 .accessibilityActions {
                     Button("Fahrt erfassen") { CalendarActions(app: app).logTrip(followUp) }
                     Button("Nein") { CalendarActions(app: app).answerNo(followUp) }
