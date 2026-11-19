@@ -161,7 +161,8 @@ struct CommuteSettingsPage: View {
         let usable = candidates.filter { $0.origin.stationID != nil && $0.destination.stationID != nil }.prefix(3)
         if usable.isEmpty {
             CommuteNotice(symbol: "sparkle.magnifyingglass",
-                          text: "Noch kein Vorschlag. Ab \(CommuteDetector.minRides) Fahrten auf derselben Strecke in \(CommuteDetector.minWeeks) verschiedenen Wochen und an \(CommuteDetector.minWeekdays) Wochentagen schlägt KlimaBilanz sie hier vor.")
+                          // The rule counts rides: a „Hin und retour“ entry is two of them (Statistik counts it as one Fahrt).
+                          text: "Noch kein Vorschlag. Ab \(CommuteDetector.minRides) Fahrten auf derselben Strecke („Hin und retour“ zählt doppelt) in \(CommuteDetector.minWeeks) verschiedenen Wochen und an \(CommuteDetector.minWeekdays) Wochentagen schlägt KlimaBilanz sie hier vor.")
         } else {
             ForEach(Array(usable), id: \.pairKey) { guess in
                 Button { apply(guess) } label: {
