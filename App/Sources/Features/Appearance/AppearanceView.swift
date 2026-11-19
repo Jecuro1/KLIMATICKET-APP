@@ -258,20 +258,31 @@ struct AppearanceView: View {
         .padding(.horizontal, Theme.Spacing.screen)
     }
 
+    // MARK: review-themes – a short title that fits the capsule on one line (the long one wrapped inside the glass); what it
+    // resets is said under it.
     private var resetButton: some View {
-        Button {
-            withMotion(Motion.smooth) {
-                var standard = AppearancePrefs.standard
-                standard.haptics = look.prefs.haptics   // Haptik is its own choice
-                if standard.palette != look.prefs.palette { paletteTick += 1 }
-                look.prefs = standard
+        VStack(spacing: Theme.Spacing.xs) {
+            Button {
+                withMotion(Motion.smooth) {
+                    var standard = AppearancePrefs.standard
+                    standard.haptics = look.prefs.haptics   // Haptik is its own choice
+                    if standard.palette != look.prefs.palette { paletteTick += 1 }
+                    look.prefs = standard
+                }
+            } label: {
+                Label("Auf Standard zurücksetzen", systemImage: "arrow.counterclockwise")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, Theme.Spacing.xs)
             }
-        } label: {
-            Label("Farbe, Bewegung und Zahlen zurücksetzen", systemImage: "arrow.counterclockwise")
-                .font(.subheadline.weight(.semibold))
-                .padding(.horizontal, Theme.Spacing.xs)
+            .buttonStyle(.glass)
+            .accessibilityHint("Setzt Farbe, Bewegung und Zahlen zurück. Die Haptik bleibt.")
+            Text("Farbe, Bewegung und Zahlen – deine Haptik bleibt.")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityHidden(true)
         }
-        .buttonStyle(.glass)
         .padding(.horizontal, Theme.Spacing.cardGutter)
     }
 

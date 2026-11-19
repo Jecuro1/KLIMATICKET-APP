@@ -211,8 +211,12 @@ Geprüft (CI, Simulator, hell und dunkel angesehen): `themeSettings`, `themeGall
 `themeDash`, `themeDashWeek`, `themeStats`, `themeStatsFormat`, `themeStatsWeek`, `themeTicket`, `themeSettingsRow`, `themeIcon`
 (Artefakte `screenshots-570` und `screenshots-575`). Pixelvergleich Gletscher: Schritt 0 gegen vorher (§4) und nach den Haken im
 Gipfel-Diagramm und im Hero noch einmal `dashboard` und `hero` gegen vorher – pixelgleich bis auf 35 Pixel mit 1 Kanalstufe.
-Nach dem letzten Screenshot-Lauf geändert und nicht mehr fotografiert: das kleine Paletten-Bild im Vorschlag auf der App-Symbol-Seite
-wird jetzt vom großen Bild verkleinert statt beschnitten.
+Reviews: `screenshots-640` (`themeDash`, `themeSettings`, `themeOptions`, `themeGallery`, `themeStats`, `themeIcon`, `dashboard`,
+`hero`: der Restbetrag in Zirbe neutral, Gletscher unverändert, das kleine Paletten-Bild auf der App-Symbol-Seite verkleinert statt
+beschnitten), `screenshots-647` (`themeNotes`, `themeOptions`: die neuen Hinweise; der Knopf „Farbe, Bewegung und Zahlen
+zurücksetzen“ brach in der Kapsel um und heißt jetzt „Auf Standard zurücksetzen“ mit einer Zeile darunter) und der Lauf danach
+(`themeNotes`). Die Bewegungs-Korrekturen des zweiten Reviews ändern keinen Screenshot (CI zeigt ohnehin den Endzustand); ob bei
+„Aus“ wirklich nichts mehr hüpft, zeigt nur das Gerät (Punkt 4 unten).
 
 Was die Zahlen-Optionen zeigen: „Immer mit Cent“ ändert in der Statistik oben den Ticketpreis („€ 1.400,00“); die große Ersparnis,
 „von € 1.400“ und die Prognose bleiben ganze Euro (sie runden bewusst). „Sonntag“ ordnet Wochen-Karte, Reise-Kalender und
