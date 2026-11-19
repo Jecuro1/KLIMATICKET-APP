@@ -51,13 +51,17 @@ public enum StopBoardDepartures {
     /// The next `shown` departures still ahead: a run stays until a minute after its (realtime) departure, a cancelled one
     /// until its planned time. Board order (already sorted by effective time).
     public static func snapshot(_ board: Board, now: Date) -> StopBoardSnapshot {
-        let ahead = board.entries.filter { entry in
-            let event = entry.event
-            guard let time = event.isCancelled ? event.planned : (event.realtime ?? event.planned) else { return false }
-            return time >= now.addingTimeInterval(-60)
-        }
+        let ahead = board.entries.filter { isAhead($0, now: now) }
         let rows = ahead.prefix(shown).map { BoardPresentation.row($0, kind: .departures) }
         return StopBoardSnapshot(rows: Array(rows), fetchedAt: now, realtimeUpdatedAt: board.realtimeUpdatedAt, hasMore: ahead.count > shown)
+    }
+
+    // MARK: radar2-radarmine – the rule as its own function, so „Wo bleibt mein Bus?“ keeps the same entries (RadarStopArrivals)
+    /// Still ahead: a run until a minute after its (realtime) departure, a cancelled one until its planned time.
+    public static func isAhead(_ entry: BoardEntry, now: Date) -> Bool {
+        let event = entry.event
+        guard let time = event.isCancelled ? event.planned : (event.realtime ?? event.planned) else { return false }
+        return time >= now.addingTimeInterval(-60)
     }
 
     /// „Stand 07:31 · Echtzeit“ · „Stand 07:31 · Fahrplan“.

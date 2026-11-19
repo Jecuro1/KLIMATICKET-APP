@@ -111,6 +111,10 @@ final class RadarFeatureGateTests: XCTestCase {
             if gate.heatOn { XCTAssertTrue(gate.liveLoopRuns, "the Pünktlichkeit layer has no loop (\(context))", file: file, line: line) }
             XCTAssertEqual(gate.timeLoopRuns, timeActive, "Zeitreise loop (\(context)): \(gate)", file: file, line: line)
         }
+        // MARK: radar2-radarmine – the stop page's board is a side job of the live loop: it asks only inside it, with the train layer on, never in Low
+        // Power Mode, and adds no sender of its own (`RadarMineGateTests` walks every state with the page open and closed).
+        if gate.stopPanelAsks(isOpen: true, lowPower: false) { XCTAssertTrue(gate.liveLoopRuns && gate.trainsOn, "board outside the loop (\(context))", file: file, line: line) }
+        XCTAssertFalse(gate.stopPanelAsks(isOpen: true, lowPower: true), "board in Low Power Mode (\(context))", file: file, line: line)
         // In the background nothing runs.
         if !gate.sceneActive {
             XCTAssertFalse(gate.liveLoopRuns, "live loop in the background (\(context))", file: file, line: line)
