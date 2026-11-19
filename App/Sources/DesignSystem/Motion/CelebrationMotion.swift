@@ -36,13 +36,15 @@ private struct CelebrateModifier<T: Equatable>: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
+        let isStatic = MotionPolicy.isStatic   // MARK: review-themes – Bewegung „Aus“: no pop and no flash (the haptic stays)
+        let still = reduceMotion || isStatic
         content
-            .keyframeAnimator(initialValue: PopValues(), trigger: trigger) { [reduceMotion] view, value in
+            .keyframeAnimator(initialValue: PopValues(), trigger: trigger) { [still, isStatic] view, value in
                 view
-                    .scaleEffect(reduceMotion ? 1 : value.scale)
-                    .rotationEffect(.degrees(reduceMotion ? 0 : value.angle))
-                    .offset(y: reduceMotion ? 0 : value.lift)
-                    .brightness(value.flash)
+                    .scaleEffect(still ? 1 : value.scale)
+                    .rotationEffect(.degrees(still ? 0 : value.angle))
+                    .offset(y: still ? 0 : value.lift)
+                    .brightness(isStatic ? 0 : value.flash)
             } keyframes: { _ in
                 KeyframeTrack(\.scale) {
                     SpringKeyframe(1.18, duration: 0.16, spring: Motion.Springs.snappy)

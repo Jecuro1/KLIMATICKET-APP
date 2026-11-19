@@ -80,7 +80,7 @@ struct PerkBenefitsView: View {
         .navigationDestination(isPresented: $showsPassengerRights) {
             PerkPassengerRightsView()
         }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.35), value: benefits.count)
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.35), value: benefits.count)
         .perkHaptic(.success, trigger: successTick, enabled: haptics)
         .perkHaptic(.warning, trigger: warningTick, enabled: haptics)
     }
@@ -311,7 +311,7 @@ struct PerkBenefitsView: View {
 
     private func delete(_ benefit: BenefitEntity) {
         let title = benefit.title
-        withAnimation(reduceMotion ? nil : .snappy) {
+        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy) {
             Repository(context: context, app: app).deleteBenefit(benefit)
         }
         warningTick += 1
@@ -319,7 +319,7 @@ struct PerkBenefitsView: View {
     }
 
     private func repeatToday(_ benefit: BenefitEntity) {
-        let copy = withAnimation(reduceMotion ? nil : .snappy) {
+        let copy = withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy) {
             Repository(context: context, app: app).repeatBenefit(benefit)
         }
         successTick += 1

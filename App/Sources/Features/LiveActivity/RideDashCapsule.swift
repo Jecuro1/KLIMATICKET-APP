@@ -42,7 +42,7 @@ struct RideDashCapsule: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.summitText)
                     .symbolEffect(.variableColor.iterative.reversing, options: .repeating,
-                                  isActive: !reduceMotion && !LaunchMode.isScreenshot)
+                                  isActive: !reduceMotion && !MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
                 destinationLine(ride)
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)

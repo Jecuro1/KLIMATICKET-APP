@@ -59,7 +59,7 @@ struct PerkEuroNumeral: View {
                 .font(numberFont)
                 .foregroundStyle(Theme.textPrimary)
                 .contentTransition(.numericText(value: amount))
-                .animation(reduceMotion ? nil : .spring(duration: 0.6, bounce: 0.15), value: amount)
+                .animation(reduceMotion || MotionPolicy.isStatic ? nil : .spring(duration: 0.6, bounce: 0.15), value: amount)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.5)
@@ -123,7 +123,7 @@ struct PerkMonthlyChart: View {
         }
         .chartLegend(.hidden)
         .frame(height: height)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: entries.map(\.total))
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .smooth(duration: 0.4), value: entries.map(\.total))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Zusatz-Ersparnis pro Monat")
         .accessibilityValue(accessibilitySummary(entries: entries, months: months))
@@ -353,6 +353,6 @@ struct PerkPressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
+            .animation(MotionPolicy.isStatic ? nil : .spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)
     }
 }

@@ -171,7 +171,7 @@ struct MetaFavoriteEditSheet: View {
     // MARK: Actions
 
     private func select(_ item: TripCategory) {
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.3, extraBounce: 0.06)) {
+        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.3, extraBounce: 0.06)) {
             category = category == item ? nil : item
         }
         tapTick += 1

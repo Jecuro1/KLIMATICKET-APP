@@ -262,7 +262,9 @@ struct YearReviewSavingsPage: View {
     private func celebrateOnce() {
         guard savings.breakEvenDate != nil, !ctx.store.hasCelebrated else { return }
         ctx.store.markCelebrated()
-        guard !MotionPolicy.isStatic else { return }
+        // MARK: review-themes – only CI skips it: at Bewegung „Aus“ the seal plays its milestone haptic without moving (and
+        // ConfettiView draws nothing).
+        guard !MotionPolicy.isScreenshot else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(450))
             sealPop = true

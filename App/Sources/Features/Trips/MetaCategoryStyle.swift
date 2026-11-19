@@ -89,6 +89,7 @@ struct MetaCategoryChip: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(isSelected ? color : Theme.textSecondary)
                     .symbolEffect(.bounce, value: isSelected)
+                    .symbolEffectsRemoved(MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“
                 Text(category.displayName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)

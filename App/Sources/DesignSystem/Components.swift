@@ -270,6 +270,7 @@ struct EmptyStateView: View {
                 .font(.system(size: 44, weight: .light))
                 .foregroundStyle(Theme.accent.gradient)
                 .symbolEffect(.pulse, options: .repeat(2))
+                .symbolEffectsRemoved(MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“
                 .reveal(.pop)   // MARK: motion – staggered entrance (first appearance only)
             Text(title)
                 .font(Theme.Typography.title)
@@ -309,6 +310,7 @@ struct ToastOverlay: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Self.symbolColor(for: toast))
                     .symbolEffect(.bounce, value: toast.id)
+                    .symbolEffectsRemoved(MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“
                 VStack(alignment: .leading, spacing: 1) {
                     Text(toast.title).font(.subheadline.weight(.semibold))
                     if let subtitle = toast.subtitle {

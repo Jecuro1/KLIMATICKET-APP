@@ -22,7 +22,7 @@ struct AchDetailSheet: View {
     private var isUnlocked: Bool { achievement.isUnlocked }
     private var progress: Double { min(max(achievement.progress, 0), 1) }
     private var tierName: String { AchTierStyle.name(tier) }
-    private var animatesMotion: Bool { !reduceMotion && !LaunchMode.isScreenshot }
+    private var animatesMotion: Bool { !reduceMotion && !MotionPolicy.isStatic }   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
     /// Final state from the first frame when nothing animates (Reduce Motion / screenshots) – otherwise
     /// ProgressRail's own `.animation(_:value:)` would still sweep 0 → p when `appeared` flips in `onAppear`.
     /// `appeared` itself stays the haptic trigger.

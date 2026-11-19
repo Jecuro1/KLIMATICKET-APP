@@ -91,7 +91,7 @@ struct AppearanceView: View {
                                              accessibilityName: "CO₂")
                         }
                         // MARK: review-themes – says exactly where Beträge applies (docs/THEMES.md §7): Format.euro without a fixed precision.
-                        detail("Beträge gilt, wo die App die Genauigkeit selbst wählt – etwa beim Ticketpreis in der Statistik, bei Tagessummen im Reise-Kalender und der wertvollsten Fahrt. Die großen Zahlen der Übersicht bleiben ganze Euro, Fahrten in Listen und Durchschnitte auf den Cent.")
+                        detail("Beträge gilt, wo die App die Genauigkeit selbst wählt – etwa beim Ticketpreis in der Statistik, bei Tagessummen im Reise-Kalender und der wertvollsten Fahrt. Die großen Zahlen der Übersicht bleiben ganze Euro, Fahrten und Werte je Fahrt auf den Cent. Der Wochenstart ordnet die Woche der Übersicht, den Reise-Kalender und die Wochentage der Statistik.")
                     }
                     .id(AppearanceSection.numbers)
                     notes
@@ -251,7 +251,8 @@ struct AppearanceView: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             // MARK: review-themes – the meaning colours stay; an accent that looks like one leaves the amount beside them neutral.
             notice("paintpalette", "Gewinn und CO₂ bleiben grün, Verlust rot, der Gipfel orange – in jedem Theme. Ähnelt die Akzentfarbe einer davon, bleibt der Restbetrag in der Übersicht neutral.")
-            notice("checkmark.seal", "Jede Palette ist auf Lesbarkeit geprüft: Text in der Akzentfarbe mindestens 4,5 : 1, weiße Schrift auf Knöpfen mindestens 3 : 1 – hell und dunkel.")
+            // MARK: review-themes – says what the gates test: the text-safe accent 4,5 : 1, the accent itself 3 : 1 (ThemeContrast).
+            notice("checkmark.seal", "Jede Palette ist auf Lesbarkeit geprüft, hell und dunkel: ihre Schriftfarbe mindestens 4,5 : 1, Symbole, Schalter und weiße Schrift auf Knöpfen mindestens 3 : 1.")
             notice("square.grid.2x2", "Widgets übernehmen die Farbe, wenn iOS sie das nächste Mal neu zeichnet. Zahlen und Wochenstart bleiben dort wie bisher.")   // MARK: review-themes
         }
         .padding(.horizontal, Theme.Spacing.screen)

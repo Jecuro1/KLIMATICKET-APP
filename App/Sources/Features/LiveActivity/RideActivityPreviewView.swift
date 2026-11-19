@@ -53,7 +53,7 @@ struct RideActivityPreviewView: View {
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > 64
         } action: { _, isPastHeader in
-            withAnimation(.easeInOut(duration: 0.2)) { showsNavigationTitle = isPastHeader }
+            withMotion(Motion.crossfade) { showsNavigationTitle = isPastHeader }   // MARK: review-themes – Bewegung „Aus“
         }
         .onAppear {
             if sample == nil { sample = RidePreviewSample.make(favorites: favorites, context: context, app: app) }

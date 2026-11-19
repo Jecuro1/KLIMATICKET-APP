@@ -342,7 +342,7 @@ struct PerkPassengerRightsView: View {
 
     private func toggleMonth(_ index: Int) {
         guard let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) else { return }
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) {
+        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.3)) {
             if badMonths.contains(index) { badMonths.remove(index) } else { badMonths.insert(index) }
         }
         PerkRightsStore.setBadMonths(badMonths, ticketID: ticket.id)
@@ -351,7 +351,7 @@ struct PerkPassengerRightsView: View {
 
     private func toggleStep(_ id: Int, ticket: TicketEntity) {
         let wasDone = completedSteps.contains(id)
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.3)) {
+        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.3)) {
             if wasDone { completedSteps.remove(id) } else { completedSteps.insert(id) }
         }
         PerkRightsStore.setCompletedSteps(completedSteps, ticketID: ticket.id)

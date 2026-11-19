@@ -197,7 +197,7 @@ final class CockpitModel {
         let now = clock()
         guard let input = feed.cameraInput(now: now, mode: feed.session.mode, reduceMotion: reduceMotion) else { return }
         let target = CockpitCameraPlanner.target(for: input)
-        fly(to: target, duration: reduceMotion ? 0 : 1.4)
+        fly(to: target, duration: reduceMotion || MotionPolicy.isStatic ? 0 : 1.4)   // MARK: review-themes – Bewegung „Aus“
         controller.reset(to: target)
     }
 

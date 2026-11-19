@@ -619,8 +619,9 @@ private struct SummitHutPop: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.keyframeAnimator(initialValue: 1.0, trigger: passed) { [reduceMotion] view, scale in
-            view.scaleEffect(reduceMotion ? 1 : scale)
+        let still = reduceMotion || MotionPolicy.isStatic   // MARK: review-themes – Bewegung „Aus“: a new trip moves no hut
+        content.keyframeAnimator(initialValue: 1.0, trigger: passed) { [still] view, scale in
+            view.scaleEffect(still ? 1 : scale)
         } keyframes: { _ in
             SpringKeyframe(1.7, duration: 0.14, spring: Motion.Springs.snappy)
             SpringKeyframe(1, duration: 0.45, spring: Motion.Springs.bouncy)
@@ -635,8 +636,9 @@ private struct SummitFlagWave: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.keyframeAnimator(initialValue: 1.0, trigger: reached) { [reduceMotion, anchor] view, stretch in
-            view.scaleEffect(x: reduceMotion ? 1 : stretch, y: 1, anchor: anchor)
+        let still = reduceMotion || MotionPolicy.isStatic   // MARK: review-themes – Bewegung „Aus“: the pennant stays still
+        content.keyframeAnimator(initialValue: 1.0, trigger: reached) { [still, anchor] view, stretch in
+            view.scaleEffect(x: still ? 1 : stretch, y: 1, anchor: anchor)
         } keyframes: { _ in
             CubicKeyframe(0.55, duration: 0.16)
             CubicKeyframe(1.12, duration: 0.18)

@@ -94,8 +94,8 @@ struct MetaTripPurposeSection: View {
                     .transition(.opacity)
             }
         }
-        .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.categorySource)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.category)
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .smooth(duration: 0.25), value: model.categorySource)
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .smooth(duration: 0.25), value: model.category)
     }
 
     private var kicker: some View {
@@ -160,7 +160,7 @@ struct MetaTripPurposeSection: View {
     /// Keeps a selected purpose further right (Urlaub, Besuch …) in view.
     private func reveal(_ category: TripCategory?, in proxy: ScrollViewProxy, animated: Bool) {
         guard let category, let index = TripCategory.allCases.firstIndex(of: category), index > 2 else { return }
-        if animated && !reduceMotion {
+        if animated && !reduceMotion && !MotionPolicy.isStatic {
             withAnimation(.snappy(duration: 0.35)) { proxy.scrollTo(category, anchor: .center) }
         } else {
             proxy.scrollTo(category, anchor: .center)
@@ -168,7 +168,7 @@ struct MetaTripPurposeSection: View {
     }
 
     private func select(_ category: TripCategory) {
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.3, extraBounce: 0.06)) {
+        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.3, extraBounce: 0.06)) {
             model.metaSelect(category)
         }
         tapTick += 1
@@ -194,7 +194,7 @@ struct MetaTripPurposeSection: View {
         Binding(
             get: { model.isInduced },
             set: { isOn in
-                withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { model.isInduced = isOn }
+                withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.25)) { model.isInduced = isOn }
                 tapTick += 1
             }
         )

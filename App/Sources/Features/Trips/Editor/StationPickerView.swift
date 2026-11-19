@@ -254,7 +254,7 @@ struct StationPickerView: View {
 
     /// Asks for "when in use" permission only now (lazily) and lists the nearest stations.
     private func loadNearby() async {
-        withAnimation(.snappy(duration: 0.25)) { nearby = .loading }
+        withMotion(.snappy(duration: 0.25)) { nearby = .loading }   // MARK: review-themes – Bewegung „Aus“ and Reduce Motion
         let service = locator ?? LocationService()
         locator = service
         let wasUndetermined = TripEdLocationAccess.current == .undetermined
@@ -271,7 +271,7 @@ struct StationPickerView: View {
             }
         }
         let access = TripEdLocationAccess.current
-        withAnimation(.snappy(duration: 0.3)) {
+        withMotion(.snappy(duration: 0.3)) {
             if let first = found.first {
                 nearPoint = first.station.location
                 nearby = .loaded(found.map { TripEdNearbyStation(station: $0.station, distanceKm: $0.distanceKm) })

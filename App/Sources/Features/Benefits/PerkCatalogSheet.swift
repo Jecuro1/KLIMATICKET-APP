@@ -99,7 +99,7 @@ struct PerkCatalogSheet: View {
         .background { PerkSheetBackdrop() }
         // Category chips stay put under the search field while the catalogue scrolls beneath them.
         .safeAreaBar(edge: .top) { chips }
-        .animation(reduceMotion ? nil : .snappy(duration: 0.3), value: category)
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy(duration: 0.3), value: category)
     }
 
     private var chips: some View {

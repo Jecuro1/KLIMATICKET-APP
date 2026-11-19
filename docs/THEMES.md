@@ -129,6 +129,19 @@ Widget-Vorschau setzte ihr Häkchen nie zurück, das Gipfelbuch markierte neue M
 die neue Zeile nicht. Diese Stellen fragen jetzt `MotionPolicy.isScreenshot`; ihre Bewegung bleibt bei „Aus“ trotzdem weg
 (`withMotion` animiert dann nicht).
 
+**„Aus“ hält alles an (zweites Review).** Umgekehrt bewegte sich bei „Aus“ noch, was nur den Screenshot-Modus oder nur „Bewegung
+reduzieren“ fragte oder direkt animierte: Konfetti und der „Rentiert!“-Moment, das Hüpfen bei Meilensteinen (`celebrate`, mit
+Helligkeitsblitz), Hütten und Fahne im Gipfel-Diagramm nach einer neuen Fahrt, das Funk-Symbol der laufenden Fahrt, Kartenschwenk und
+Leiste im Atlas, das Medaillen-Detail, das Import-Ergebnis, Symbol-Hüpfer (Hinweis-Toast, Leer-Zustände, Fahrtzweck), der
+Fortschrittsbalken der Fahrt-Zeilen, die Vorteile, Fahrtzweck und Favoriten im Editor, die Ladezeile der Stationssuche, die Titelzeile
+der Live-Activity-Vorschau, „Zurück zum Zug“ im Cockpit und die Überblendung nach der Einrichtung. Sie fragen jetzt
+`MotionPolicy.isStatic` oder gehen über `withMotion`. Der „Rentiert!“-Moment startet bei „Aus“ nicht mehr im Endzustand, sondern
+erscheint ohne Bewegung – so spielt er weiter seine Erfolgs-Haptik; ebenso spielt das Siegel im Jahresrückblick bei „Aus“ seine
+Meilenstein-Haptik (vorher übersprang „Aus“ den ganzen Moment). Gefunden mit einer Suche nach `withAnimation(`, `.animation(`,
+`keyframeAnimator`, `symbolEffect(` und `TimelineView(.animation` im App-Code; was iOS-Steuerelemente selbst animieren (Schalter,
+Auswahl, Listen), bleibt. Der Seitenwechsel der Einrichtung lief schon über `MotionPolicy` (das erste Review hatte ihn zu Unrecht als
+Ausnahme geführt).
+
 ## 6. Haptik
 
 `HapticTable` ordnet jedem `Haptic`-Fall (11, ein Test liest `Haptics.swift`) zu, was gespielt wird. **Voll** ist genau das bisherige
@@ -209,5 +222,6 @@ Nur auf einem echten iPhone prüfbar:
    den Tabs beginnen bewusst neu).
 2. Ein Widget nach dem nächsten Neuzeichnen in der neuen Farbe (Home-Bildschirm, Sperrbildschirm, Live Activity).
 3. Haptik Dezent und Voll fühlbar verschieden; Auswahl-Ticks bei Dezent weg.
-4. Bewegung Ruhig: Himmel steht, Ticket neigt sich nicht; Aus: nichts animiert außer iOS-Übergängen.
+4. Bewegung Ruhig: Himmel steht, Ticket neigt sich nicht, der Gipfel-Aufstieg steht; Aus: nichts animiert außer iOS-Übergängen und
+   iOS-Steuerelementen – auch kein Konfetti, kein Meilenstein-Hüpfen; der „Rentiert!“-Moment vibriert trotzdem.
 5. „Kontrast erhöhen“ mit jeder Palette; Bildlauf bei 120 Hz ohne Ruckeln.

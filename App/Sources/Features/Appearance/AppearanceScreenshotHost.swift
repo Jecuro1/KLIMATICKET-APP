@@ -6,6 +6,7 @@ import KlimaCore
 //   themeSettings      Look & Feel, top (Gletscher)
 //   themeGallery       the six palette cards (Zirbe chosen)
 //   themeOptions       Bewegung, Haptik, Zahlen (Graphit, Ruhig, Dezent, Cent, Sonntag, kg)
+//   themeNotes         the same choices, scrolled to Zahlen, the notes and the reset button (MARK: review-themes)
 //   themeAX5           Look & Feel at the largest text size (Morgenrot)
 //   themeAX5Lower      the same, scrolled to the palettes
 //   themeDash          Übersicht in Zirbe
@@ -20,7 +21,7 @@ import KlimaCore
 struct AppearanceScreenshotHost: View {
     static let screens: Set<String> = ["themeSettings", "themeGallery", "themeOptions", "themeAX5", "themeAX5Lower", "themeDash",
                                        "themeDashWeek", "themeStats", "themeStatsFormat", "themeStatsWeek", "themeTicket",
-                                       "themeSettingsRow", "themeIcon"]
+                                       "themeSettingsRow", "themeIcon", "themeNotes"]
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -50,6 +51,8 @@ struct AppearanceScreenshotHost: View {
             NavigationStack { AppearanceView(screenshotSection: .palettes) }
         case "themeOptions":
             NavigationStack { AppearanceView(screenshotSection: .motion) }
+        case "themeNotes":   // MARK: review-themes
+            NavigationStack { AppearanceView(screenshotSection: .numbers) }
         case "themeAX5":
             NavigationStack { AppearanceView() }
                 .dynamicTypeSize(.accessibility5)

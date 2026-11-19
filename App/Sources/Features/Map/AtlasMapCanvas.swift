@@ -91,11 +91,11 @@ struct AtlasMapCanvas: View {
             AtlasViewport(size: geometry.size, insets: geometry.safeAreaInsets)
         } action: { newValue in
             viewport = newValue
-            reframe(animated: hasFramed && !LaunchMode.isScreenshot)
+            reframe(animated: hasFramed && !MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
             hasFramed = true
         }
         .onChange(of: framing) {
-            reframe(animated: !reduceMotion && !LaunchMode.isScreenshot)
+            reframe(animated: !reduceMotion && !MotionPolicy.isStatic)   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
         }
         .onChange(of: labelKey) {
             placeLabels()

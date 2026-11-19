@@ -9,7 +9,7 @@ struct RepImportResultStep: View {
     @State private var appeared = false
 
     private var summary: RepImportSummary? { model.summary }
-    private var animates: Bool { !(reduceMotion || LaunchMode.isScreenshot) }
+    private var animates: Bool { !(reduceMotion || MotionPolicy.isStatic) }   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
 
     var body: some View {
         hero
@@ -44,6 +44,7 @@ struct RepImportResultStep: View {
                     .foregroundStyle(.white)
                     .contentTransition(.symbolEffect(.replace))
                     .symbolEffect(.bounce, value: model.importRevision)
+                    .symbolEffectsRemoved(!animates)   // MARK: review-themes – Bewegung „Aus“
             }
             .environment(\.colorScheme, .light)
             .accessibilityHidden(true)
@@ -212,7 +213,7 @@ struct RepImpactRail: View {
         }
         .onAppear {
             guard !grown else { return }
-            if reduceMotion || LaunchMode.isScreenshot {
+            if reduceMotion || MotionPolicy.isStatic {   // MARK: review-themes – Bewegung „Aus“ stops it too (isStatic covers CI screenshots)
                 grown = true
             } else {
                 withAnimation(Motion.gentle.delay(0.25)) { grown = true }

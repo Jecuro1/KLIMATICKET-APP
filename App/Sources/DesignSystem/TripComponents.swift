@@ -161,8 +161,8 @@ struct ProgressRail: View {
                 .foregroundStyle(Theme.textSecondary)
             }
         }
-        .animation(.spring(duration: 0.6), value: progress)
-        .animation(.spring(duration: 0.6), value: preview)
+        .animation(MotionPolicy.isStatic ? nil : .spring(duration: 0.6), value: progress)   // MARK: review-themes – Bewegung „Aus“
+        .animation(MotionPolicy.isStatic ? nil : .spring(duration: 0.6), value: preview)
         .accessibilityElement(children: .ignore)
         .accessibilityValue(Format.percent(preview ?? progress))
     }

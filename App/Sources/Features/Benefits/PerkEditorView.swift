@@ -170,12 +170,12 @@ struct PerkEditorView: View {
                 UIPasteboard.general.string = code
                 copyTick += 1
                 let tick = copyTick
-                withAnimation(reduceMotion ? nil : .snappy) { copiedCode = true }
+                withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy) { copiedCode = true }
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(1.8))
                     // Only the latest tap resets the label.
                     guard tick == copyTick else { return }
-                    withAnimation(reduceMotion ? nil : .snappy) { copiedCode = false }
+                    withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy) { copiedCode = false }
                 }
             } label: {
                 Label {
@@ -250,7 +250,7 @@ struct PerkEditorView: View {
                 Spacer(minLength: 0)
                 if amount != partner.typicalSavingEUR {
                     Button("Übernehmen") {
-                        withAnimation(reduceMotion ? nil : .snappy) {
+                        withAnimation(reduceMotion || MotionPolicy.isStatic ? nil : .snappy) {
                             amountText = PerkFormat.editable(partner.typicalSavingEUR)
                         }
                     }
@@ -370,7 +370,7 @@ struct PerkEditorView: View {
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, Theme.Spacing.xs)
         .padding(.bottom, Theme.Spacing.xxs)
-        .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: validationHint)
+        .animation(reduceMotion || MotionPolicy.isStatic ? nil : .smooth(duration: 0.25), value: validationHint)
     }
 
     @ToolbarContentBuilder

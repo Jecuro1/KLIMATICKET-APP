@@ -22,7 +22,7 @@ struct ConfettiView: View {
     private static let maxDelay = 0.5
 
     var body: some View {
-        if reduceMotion || finished {
+        if reduceMotion || finished || MotionPolicy.isStatic {   // MARK: review-themes – Bewegung „Aus“: no confetti
             Color.clear
         } else {
             TimelineView(.animation) { timeline in
@@ -73,7 +73,9 @@ struct BreakEvenCelebration: View {
     var profit: Double
     var onDismiss: () -> Void
 
-    @State private var appear = MotionPolicy.isStatic
+    // MARK: review-themes – only CI starts at the end: at Bewegung „Aus“ the card appears at once (no pop, ring, burst or
+    // confetti) and still plays its success haptic.
+    @State private var appear = MotionPolicy.isScreenshot
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {

@@ -45,7 +45,7 @@ struct RootView: View {
         }
         .appearanceSwitchHost()   // MARK: themes – Farbe, Bewegung, Zahlen switch once Einstellungen has closed
         .environment(\.ambientSkyPaused, isCoveredByAppSheet)
-        .animation(.smooth(duration: 0.5), value: app.settings.onboardingCompleted)
+        .animation(MotionPolicy.isStatic ? nil : .smooth(duration: 0.5), value: app.settings.onboardingCompleted)   // MARK: review-themes
         // MARK: global – the placeholder cross-fades in and out (it used to cut). The fade-out is over long before the
         // rows are replaced (SyncService waits 0,35 s), so no fading screen reads a deleted model.
         .animation(MotionPolicy.isStatic ? nil : Motion.crossfade, value: app.sync.isReplacingLocalData)

@@ -69,7 +69,7 @@ struct AtlasView: View {
     /// For a few seconds after the launch focus was applied, a recomputed summary (stops resolving in the background)
     /// re-applies it – so "top route" / a Top-Strecke ends on the route that is really meant.
     @State private var launchFocusSettlesUntil: Date?
-    @State private var panelShown = LaunchMode.isScreenshot
+    @State private var panelShown = MotionPolicy.isStatic   // MARK: review-themes – Bewegung „Aus“: the panel is simply there
     @State private var panelHeight: CGFloat = 0
     @State private var recenterTick = 0
     /// The full stop database (bus, tram, cable-car stops) is attached to `app.stations` shortly after launch;
