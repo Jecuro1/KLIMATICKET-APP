@@ -77,6 +77,7 @@ final class AppLaunch {
     }
 
     private func storeDidOpen(_ event: StoreLoader.OpenEvent) {
+        if self.app == nil { BackupSettingsSnapshot.applyPendingIfNeeded() }   // MARK: data – a restore's settings, before the stores read them
         let app = self.app ?? makeAppState()
         self.app = app
         if event == .startedFresh {

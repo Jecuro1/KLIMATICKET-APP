@@ -86,6 +86,10 @@ targets:
           - itms-services
         KBAppGroup: group.com.knitelarlberg.klimabilanz
         KBNativeAppleSignIn: $(KB_NATIVE_APPLE_SIGNIN)
+        # MARK: data – Documents/Sicherungen shows in the Files app („Auf meinem iPhone › KlimaBilanz“, docs/DATA_HUB.md §4).
+        # Plain Info.plist keys, no entitlement; only the backups live in Documents (LaunchTrace writes there in CI runs only).
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     entitlements:
       path: App/Supporting/KlimaBilanz.entitlements
       properties:

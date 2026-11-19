@@ -73,6 +73,7 @@ struct RootView: View {
             Button(change.unsyncedItemCount > 0 ? "Durch Konto ersetzen (\(change.unsyncedItemCount) ungesichert)" : "Durch Daten des Kontos ersetzen",
                    role: .destructive) {
                 Task {
+                    _ = await AutoBackupService.shared.safetyBackup(.beforeDelete, container: context.container)   // MARK: data – the device's data first
                     await app.sync.discardLocalDataAndSync(context: context, auth: app.auth)
                     Repository(context: context, app: app).refreshWidgets()
                 }
@@ -147,6 +148,7 @@ struct RootView: View {
             switch phase {
             case .background:
                 returnedFromBackground = true
+                AutoBackupService.shared.runIfDue(container: context.container)   // MARK: data – „Tägliche Sicherung“ (docs/DATA_HUB.md §4)
             case .active:
                 // MARK: dashboardTicket – an expired pinned ticket year gives way to the running one (checked once a day).
                 if TktSelection.releaseStalePin(tickets: tickets, app: app) {

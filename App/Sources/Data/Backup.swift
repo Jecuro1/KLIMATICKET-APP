@@ -22,16 +22,24 @@ struct BackupFile: Codable {
     var favorites: [FavoriteDTO]
     /// Absent in version-1 backups.
     var benefits: [BenefitDTO]?
+    // MARK: data – version 3 (docs/DATA_HUB.md §3): the allow-listed settings and the file's CRC-32. Both optional: a version-2
+    // app ignores the keys, a version-2 file has none of them.
+    var settings: [String: BackupSettingValue]?
+    var checksum: String?
 
     private enum CodingKeys: String, CodingKey {
         case format, version, exportedAt, appVersion, tickets, trips, favorites, benefits
+        case settings, checksum   // MARK: data
     }
 
-    init(tickets: [TicketDTO], trips: [BackupTripRow], favorites: [FavoriteDTO], benefits: [BenefitDTO]?) {   // MARK: timebalance
+    init(tickets: [TicketDTO], trips: [BackupTripRow], favorites: [FavoriteDTO], benefits: [BenefitDTO]?,   // MARK: timebalance
+         settings: [String: BackupSettingValue]? = nil, checksum: String? = nil) {   // MARK: data
         self.tickets = tickets
         self.trips = trips
         self.favorites = favorites
         self.benefits = benefits
+        self.settings = settings
+        self.checksum = checksum
     }
 
     /// Tickets, trips and favourites must be readable; the benefits section is optional and tolerant
@@ -46,6 +54,8 @@ struct BackupFile: Codable {
         trips = try c.decode([BackupTripRow].self, forKey: .trips)   // MARK: timebalance – files without the time keys decode too
         favorites = try c.decode([FavoriteDTO].self, forKey: .favorites)
         benefits = try c.decodeIfPresent([BackupBenefitRow].self, forKey: .benefits)?.map(\.dto)
+        settings = try? c.decodeIfPresent([String: BackupSettingValue].self, forKey: .settings)   // MARK: data – a bad block never blocks the rows
+        checksum = try? c.decodeIfPresent(String.self, forKey: .checksum)
     }
 }
 
@@ -73,15 +83,9 @@ private struct BackupBenefitRow: Decodable {
 enum Backup {
     // MARK: settings – export, temporaryFile and timestampedName are nonisolated: "Backup sichern" (BackupShareItem)
     // builds the file from a background context when a share target asks for it.
+    // MARK: data – version 3: the rows, the allow-listed settings and the checksum (Backup+V3.swift).
     nonisolated static func export(context: ModelContext) throws -> Data {
-        let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { TicketDTO($0, userID: "") }
-        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { BackupTripRow(entity: $0) }   // MARK: timebalance
-        let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { FavoriteDTO($0, userID: "") }
-        let benefits = try context.fetch(FetchDescriptor<BenefitEntity>()).map { BenefitDTO($0, userID: "") }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return try encoder.encode(BackupFile(tickets: tickets, trips: trips, favorites: favorites, benefits: benefits))
+        try exportV3(context: context, settings: BackupSettingsSnapshot.current())
     }
 
     struct ImportResult {

@@ -138,7 +138,7 @@ struct SetDataSection: View {
             Button("Alles löschen", role: .destructive) { deleteAll() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Alle Tickets, Fahrten und Favoriten werden von diesem iPhone gelöscht. Das lässt sich nicht rückgängig machen – sichere vorher ein Backup.")
+            Text("Alle Tickets, Fahrten und Favoriten werden von diesem iPhone gelöscht. Vorher legt KlimaBilanz eine Sicherung in Dateien an (Auf meinem iPhone › KlimaBilanz › Sicherungen).")   // MARK: data
         }
     }
 
@@ -169,7 +169,7 @@ struct SetDataSection: View {
             return
         }
         do {
-            let imported = try Backup.importBackup(data, context: context)
+            let imported = try Backup.restoreChecked(data, context: context)   // MARK: data – a damaged version-3 file is refused untouched
             let repository = Repository(context: context, app: app)
             repository.commit()
             // Restored tickets need their renewal reminders (no-op when reminders are off).
@@ -178,7 +178,8 @@ struct SetDataSection: View {
             }
             app.showToast("checkmark.circle.fill", "Backup wiederhergestellt", imported.summary)
         } catch {
-            app.showToast("exclamationmark.triangle.fill", "Import fehlgeschlagen", "Die Datei ist kein gültiges KlimaBilanz-Backup.")
+            app.showToast("exclamationmark.triangle.fill", "Import fehlgeschlagen",
+                          (error as? DataHubRestoreError)?.errorDescription ?? "Die Datei ist kein gültiges KlimaBilanz-Backup.")   // MARK: data
         }
     }
 
@@ -200,6 +201,20 @@ struct SetDataSection: View {
     private func deleteAll() {
         guard !isDeleting else { return }
         isDeleting = true
+        // MARK: data – a „vor dem Löschen“ backup in Dateien first (docs/DATA_HUB.md §4); when it cannot be written, nothing is deleted.
+        Task {
+            let safety = await AutoBackupService.shared.safetyBackup(.beforeDelete, container: context.container)
+            guard safety.allowsDestructiveStep else {
+                isDeleting = false
+                app.showToast("exclamationmark.triangle.fill", "Nichts gelöscht", "Die Sicherung davor ging nicht – ist der Speicher voll?",
+                              haptic: .warning)
+                return
+            }
+            deleteAllAfterSafetyBackup()
+        }
+    }
+
+    private func deleteAllAfterSafetyBackup() {   // MARK: data
         // The hard delete leaves no ticket behind to cancel its reminders later – do it first.
         let ticketIDs = tickets.map(\.id)
         let notifications = app.notifications
