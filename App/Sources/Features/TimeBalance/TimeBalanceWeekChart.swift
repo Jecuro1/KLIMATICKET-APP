@@ -37,7 +37,7 @@ struct TimeBalanceWeekChartCard: View {
     private var averageHours: Double { balance.averageMinutesPerWeek / 60 }
 
     private var averagePill: some View {
-        Text("Ø \(TimeBalanceText.short(balance.averageMinutesPerWeek))")
+        Text("Ø\(TimeBalanceText.nb)\(TimeBalanceText.short(balance.averageMinutesPerWeek))")
             .font(.caption.weight(.bold))
             .monospacedDigit()
             .foregroundStyle(Theme.textPrimary)

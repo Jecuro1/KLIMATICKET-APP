@@ -59,7 +59,7 @@ enum TimeBalanceDemo {
 
 /// CI screenshot routes of the Zeitbilanz (`-KBScreenshot <screen> -KBDemo YES`, demo data, no network):
 /// - `timeBalance` / `timeBalanceMid` / `timeBalanceBottom`: the demo ticket year (top, the weeks and facts, the end)
-/// - `timeBalanceMonth`: the month view with its stepper
+/// - `timeBalanceMonth`: the month view with its stepper; `timeBalanceMonthMid`: its car card, weeks and facts („über 19 Tage“)
 /// - `timeBalanceEmpty`: a period without trips
 /// - `timeBalanceDelays`: the demo year with recorded delays (fixture)
 /// - `timeBalanceAX5` / `timeBalanceAX5Mid` / `timeBalanceAX5Bottom`: the largest accessibility text size
@@ -67,7 +67,7 @@ enum TimeBalanceDemo {
 /// - `tripEditDuration`: „Fahrt bearbeiten“ with the „Dauer“ wheel open
 struct TimeBalanceScreenshotHost: View {
     static let screens: Set<String> = [
-        "timeBalance", "timeBalanceMid", "timeBalanceBottom", "timeBalanceMonth", "timeBalanceEmpty", "timeBalanceDelays",
+        "timeBalance", "timeBalanceMid", "timeBalanceBottom", "timeBalanceMonth", "timeBalanceMonthMid", "timeBalanceEmpty", "timeBalanceDelays",
         "timeBalanceAX5", "timeBalanceAX5Mid", "timeBalanceAX5Bottom", "timeBalanceCard", "tripEditDuration",
     ]
 
@@ -95,6 +95,9 @@ struct TimeBalanceScreenshotHost: View {
                 .defaultScrollAnchor(.bottom)
         case "timeBalanceMonth":
             NavigationStack { TimeBalanceView(initialKind: .month) }
+        case "timeBalanceMonthMid":   // MARK: review-timebalance
+            NavigationStack { TimeBalanceView(initialKind: .month) }
+                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.6))
         case "timeBalanceEmpty":
             NavigationStack { TimeBalanceView(fixture: []) }
         case "timeBalanceDelays":

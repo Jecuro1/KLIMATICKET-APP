@@ -118,7 +118,7 @@ Urteil (`TimeBalanceCarVerdict`), beide Seiten grob, daher mit Toleranz (5 Minut
 |---|---|
 | Öffi länger | „Mehrzeit im Öffi: +N Std.“ – „Dafür Zeit zum Lesen, Arbeiten oder Entspannen – statt selbst am Steuer.“ **Nie „Zeit gespart“.** |
 | etwa gleich | „Etwa so lang wie mit dem Auto“ |
-| Öffi kürzer | „Zeit gewonnen: N Std.“ – „Grob gerechnet schneller als mit dem Auto – und du musstest nicht selbst fahren.“ |
+| Öffi kürzer | „Zeit gewonnen: N Std.“ – „Schneller als mit dem Auto – und du musstest nicht selbst fahren.“ (das „grob gerechnet“ steht direkt darunter) |
 
 N ist der Abstand der beiden **angezeigten** Zahlen (`TimeBalanceRounding.shownGap`): unter „72 Std.“ und „79 Std.“ steht „7 Std.“,
 nicht die 7,3 Std. zwischen den ungerundeten Werten (Review: der Leser rechnet mit dem, was dasteht). Zeigen beide Balken dieselbe
@@ -156,7 +156,9 @@ das Verspätungs-Tagebuch (delaydiary) baut auf diesen Feldern auf. Die Demo-Dat
   Minuten, unter zehn Stunden auf eine Zehntelstunde, darüber in ganzen Stunden. Die Teile „erfasst“ / „geschätzt“ stehen in der
   Genauigkeit der großen Zahl und ergeben sie genau (größter Rest über die drei Quellen): unter „72 Std.“ also „8 Std.“ und
   „64 Std.“, nicht „8,4 Std.“ und „64 Std.“, und „eingetragen“ + „Abfahrt & Ankunft“ ergeben „erfasst“ (vorher „17 Std.“ + „9,6 Std.“
-  unter „26 Std.“); ein kleiner Teil ohne ganze Stunde heißt „< 1 Std.“. VoiceOver sagt dieselben Teile.
+  unter „26 Std.“). Die Teile stehen auch in der Einheit der großen Zahl: unter „2,1 Std.“ heißt es „0,8 Std.“, nicht „48 Min.“
+  (das sähe genau aus). Ein kleiner Teil ohne ganzen Schritt heißt „< 1 Std.“ bzw. „< 0,1 Std.“. VoiceOver sagt dieselben Teile.
+  Zahl und Einheit stehen mit festem Leerzeichen („79 Fahrten“, „2,3 Std.“ brechen bei AX5 nicht mehr auseinander).
 - **Nach Verkehrsmittel:** direkt beschriftete Balken mit Symbol und Namen.
 - **So rechnen wir:** die drei Quellen, das Auto, was nicht dabei ist.
 
@@ -178,10 +180,16 @@ länger / gleich / kürzer, Gleichheit mit dem Auto-Vergleich, Backup-Schlüssel
 ergeben die angezeigte Summe, auch in 5.000 Zufallspaaren; Abstand der angezeigten Zahlen).
 
 CI-Szenen (`[shots:…]`, `-KBDemo YES`, kein Netzwerk): `timeBalance`, `timeBalanceMid`, `timeBalanceBottom`, `timeBalanceMonth`,
+`timeBalanceMonthMid` (Review: Auto-Karte, Wochen und Kacheln des Monats),
 `timeBalanceEmpty`, `timeBalanceDelays`, `timeBalanceAX5`, `timeBalanceAX5Mid`, `timeBalanceAX5Bottom`, `timeBalanceCard`,
 `tripEditDuration`. Die Demo-Daten (`TimeBalanceDemo.assign`) geben dem Pendelweg St. Anton → Innsbruck bei jeder zweiten Fahrt eine
 planmäßige Ankunft (72 Min.), Innsbruck → Salzburg/Wien ebenso, einigen Fahrten eine eingetragene Dauer; Werte und Summen der Demo
 bleiben gleich.
+
+Review-Screenshots (CI-Lauf 44605347369, hell und dunkel: `timeBalance`, `timeBalanceMid`, `timeBalanceMonth`, `timeBalanceDelays`,
+`timeBalanceAX5Mid`): „Zeit gewonnen: 7 Std.“ unter 72 / 79 Std., Legende 27 + 45 = 72 mit 17 + 10 = 27, „5 von 79 Fahrten“. Der
+Monat zeigte noch „48 Min.“ unter „2,1 Std.“ (Teile in Minuten unter einer Summe in Zehntelstunden) und das doppelte „grob gerechnet“
+im Urteil und darunter – beides danach geändert (§8, §6); bei AX5 brach „79 Fahrten“ zwischen Zahl und Wort um (festes Leerzeichen).
 
 Was die Screenshot-Läufe gezeigt haben (CI-Läufe 43468668774 und 43473897047, hell und dunkel) und was danach geändert wurde:
 - Die Legende des Helden zeigte 26 + 45 Std. unter „72 Std.“ – jetzt verteilen sich die abgerundeten Stunden nach dem größten Rest

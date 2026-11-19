@@ -60,7 +60,7 @@ struct TimeBalanceHeroCard: View {
     }
 
     private var subline: String {
-        "in Bahn, Bus & Co. · \(TimeBalanceText.trips(balance.tripCount)) · Ø \(TimeBalanceText.short(balance.averageMinutesPerWeek)) pro Woche"
+        "in Bahn, Bus & Co. · \(TimeBalanceText.trips(balance.tripCount)) · Ø\(TimeBalanceText.nb)\(TimeBalanceText.short(balance.averageMinutesPerWeek)) pro Woche"
     }
 
     // MARK: Legend

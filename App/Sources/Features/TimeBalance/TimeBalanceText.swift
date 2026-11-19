@@ -5,6 +5,9 @@ import KlimaCore
 enum TimeBalanceText {
     // MARK: Durations
 
+    /// Between a number and its unit, so the two never part at a line break („79 Fahrten“, „2,3 Std.“ at AX5).
+    static let nb = "\u{00A0}"
+
     /// The hero's number and unit: "45" "Min." · "4,5" "Std." · "128" "Std."
     struct Parts: Equatable {
         var value: Double
@@ -20,7 +23,7 @@ enum TimeBalanceText {
     /// "45 Min." · "4,5 Std." · "128 Std." – sums.
     static func short(_ minutes: Double) -> String {
         let p = parts(minutes)
-        return "\(Format.number(p.value, decimals: p.decimals)) \(p.unit)"
+        return "\(Format.number(p.value, decimals: p.decimals))\(nb)\(p.unit)"
     }
 
     /// The hero's legend in the hero's precision (`TimeBalanceRounding.split` over the three sources, largest remainder):
@@ -48,23 +51,39 @@ enum TimeBalanceText {
                       estimatedSpoken: partSpoken(raw[2], shown: shown[2], step: step))
     }
 
-    /// A part that got no whole step of the sum's precision but is not 0: „< 1 Std.“ (or its own minutes under a sum in tenths).
+    /// A part in the sum's unit and precision: under „72 Std.“ whole hours („8 Std.“), under „2,1 Std.“ tenths („0,8 Std.“ –
+    /// never „48 Min.“, which would look exact), under „45 Min.“ minutes. A part above 0 that got no step: „< 1 Std.“,
+    /// „< 0,1 Std.“, „< 1 Min.“.
     private static func partShort(_ raw: Double, shown: Double, step: Double) -> String {
-        guard shown <= 0, raw > 0 else { return short(shown) }
-        switch step {
-        case 60: return "< 1 Std."
-        case 1: return "< 1 Min."
-        default: return short(raw)
+        let hours = step == 1 ? nil : shown / 60
+        if shown <= 0, raw > 0 {
+            switch step {
+            case 60: return "<\(nb)1\(nb)Std."
+            case 6: return "<\(nb)\(Format.number(0.1, decimals: 1))\(nb)Std."
+            default: return "<\(nb)1\(nb)Min."
+            }
         }
+        guard let hours else { return short(shown) }
+        return "\(Format.number(hours, decimals: tenthsDecimals(hours)))\(nb)Std."
     }
 
     private static func partSpoken(_ raw: Double, shown: Double, step: Double) -> String {
-        guard shown <= 0, raw > 0 else { return spoken(shown) }
-        switch step {
-        case 60: return "weniger als 1 Stunde"
-        case 1: return "weniger als 1 Minute"
-        default: return spoken(raw)
+        if shown <= 0, raw > 0 {
+            switch step {
+            case 60: return "weniger als 1 Stunde"
+            case 6: return "weniger als 6 Minuten"
+            default: return "weniger als 1 Minute"
+            }
         }
+        guard step != 1 else { return spoken(shown) }
+        let hours = shown / 60
+        return hours == 1 ? "1 Stunde" : "\(Format.number(hours, decimals: tenthsDecimals(hours))) Stunden"
+    }
+
+    /// 1 for a tenth of an hour that is not whole („0,8“), 0 otherwise („8“).
+    private static func tenthsDecimals(_ hours: Double) -> Int {
+        let tenths = (hours * 10).rounded()
+        return tenths.truncatingRemainder(dividingBy: 10) == 0 ? 0 : 1
     }
 
     /// "37 %" / "63 %" that add up to 100 % (a part above 0 never shows as 0 % or 100 %).
@@ -72,21 +91,21 @@ enum TimeBalanceText {
         let share = min(max(firstShare.isFinite ? firstShare : 0, 0), 1)
         var first = Int((share * 100).rounded())
         if share > 0, share < 1 { first = min(99, max(1, first)) }
-        return ("\(first) %", "\(100 - first) %")
+        return ("\(first)\(nb)%", "\(100 - first)\(nb)%")
     }
 
     /// A mode's share: "< 1 %" instead of "0 %" for a little time.
     static func share(_ fraction: Double) -> String {
-        fraction > 0 && (fraction * 100).rounded() < 1 ? "< 1 %" : Format.percent(fraction)
+        fraction > 0 && (fraction * 100).rounded() < 1 ? "<\(nb)1\(nb)%" : Format.percent(fraction)
     }
 
     /// "1 Std. 15 Min." · "45 Min." · "3 Std." – one trip.
     static func clock(_ minutes: Double) -> String {
         let total = Int(max(0, minutes.isFinite ? minutes : 0).rounded())
         let hours = total / 60, rest = total % 60
-        if hours == 0 { return "\(rest) Min." }
-        if rest == 0 { return "\(Format.number(Double(hours))) Std." }
-        return "\(Format.number(Double(hours))) Std. \(rest) Min."
+        if hours == 0 { return "\(rest)\(nb)Min." }
+        if rest == 0 { return "\(Format.number(Double(hours)))\(nb)Std." }
+        return "\(Format.number(Double(hours)))\(nb)Std. \(rest)\(nb)Min."
     }
 
     /// What VoiceOver says: "4,5 Stunden", "1 Stunde 15 Minuten", "45 Minuten".
@@ -104,14 +123,14 @@ enum TimeBalanceText {
         return p.value == 1 ? "1 Stunde" : "\(Format.number(p.value, decimals: p.decimals)) Stunden"
     }
 
-    static func trips(_ count: Int) -> String { count == 1 ? "1 Fahrt" : "\(Format.number(Double(count))) Fahrten" }
+    static func trips(_ count: Int) -> String { count == 1 ? "1\(nb)Fahrt" : "\(Format.number(Double(count)))\(nb)Fahrten" }
 
     /// What the weekly average is taken over: „in der ersten Woche“ · „über 11 Tage“ · „über 31 Wochen“ (never „über 1 Wochen“).
     static func averageSpan(weeksElapsed weeks: Double) -> String {
         let days = Int((max(0, weeks.isFinite ? weeks : 0) * 7).rounded())
         if days <= 7 { return "in der ersten Woche" }
-        if days < 21 { return "über \(days) Tage" }
-        return "über \(Format.number((Double(days) / 7).rounded(.down))) Wochen"
+        if days < 21 { return "über \(days)\(nb)Tage" }
+        return "über \(Format.number((Double(days) / 7).rounded(.down)))\(nb)Wochen"
     }
 
     // MARK: Car
@@ -140,8 +159,7 @@ enum TimeBalanceText {
                            detail: "Nur ohne selbst zu fahren: die Zeit gehört dir.", symbol: "equal.circle", isGain: false)
         case .transitShorter:
             return Verdict(title: "Zeit gewonnen: \(short(gap))",
-                           detail: "Grob gerechnet schneller als mit dem Auto – und du musstest nicht selbst fahren.", symbol: "hare",
-                           isGain: true)
+                           detail: "Schneller als mit dem Auto – und du musstest nicht selbst fahren.", symbol: "hare", isGain: true)
         }
     }
 
