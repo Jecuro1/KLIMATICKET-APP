@@ -12,19 +12,26 @@ public enum CalendarEventKey {
     }
 }
 
-/// A suggested event the "Warst du gefahren?" card may ask about the day after (station id and name, the planned arrival – no
-/// event text).
+/// A suggested event the "Warst du gefahren?" card may ask about the day after (station id and name, the planned arrival and the
+/// event's start – no event text).
 public struct CalendarFollowUpEntry: Codable, Hashable, Sendable {
     public var stationID: String
     public var stationName: String
-    /// The arrival the card proposed (event start − buffer); its day is the event's day.
+    /// The arrival the card proposed (event start − buffer).
     public var arrival: Date
+    /// The event's start (nil in entries written before the review): its Vienna day is "the day" of the question. Around midnight it
+    /// differs from the arrival's day (an event at 00:10 with 20 minutes buffer arrives the evening before).
+    public var eventStart: Date?
 
-    public init(stationID: String, stationName: String, arrival: Date) {
+    public init(stationID: String, stationName: String, arrival: Date, eventStart: Date? = nil) {
         self.stationID = stationID
         self.stationName = stationName
         self.arrival = arrival
+        self.eventStart = eventStart
     }
+
+    /// The moment the question is about: the event's start, else the arrival.
+    public var day: Date { eventStart ?? arrival }
 }
 
 public struct CalendarSuggestionPrefs: Codable, Equatable, Sendable {
@@ -56,6 +63,21 @@ public struct CalendarSuggestionPrefs: Codable, Equatable, Sendable {
 
     public mutating func undoDismiss(key: String) { dismissed[key] = nil }
 
+    /// A follow-up asks only about an event that is still in the calendar: one that was deleted, moved to another time (its key
+    /// changes) or whose calendar was unticked never gets „Warst du gefahren?“. `eventKeys` are the keys of every event read from the
+    /// selected calendars since `CalendarFollowUpPlanner.readStart`.
+    public mutating func keepFollowUps(eventKeys: Set<String>) {
+        followUps = followUps.filter { eventKeys.contains($0.key) }
+    }
+
+    /// „Alle Daten löschen“: every trace of an event goes (dismissals, snoozes, follow-ups); the switch, the ticked calendars and the
+    /// buffer are settings and stay.
+    public mutating func forgetEvents() {
+        dismissed = [:]
+        snoozed = [:]
+        followUps = [:]
+    }
+
     public mutating func snooze(key: String, until: Date) { snoozed[key] = until }
 
     public func isHidden(key: String, now: Date) -> Bool {
@@ -71,7 +93,7 @@ public struct CalendarSuggestionPrefs: Codable, Equatable, Sendable {
         dismissed = dismissed.filter { $0.value >= cutoff }
         snoozed = snoozed.filter { $0.value > now }
         let lastAskDay = calendar.date(byAdding: .day, value: -CalendarFollowUpPlanner.askDays, to: calendar.startOfDay(for: now)) ?? cutoff
-        followUps = followUps.filter { calendar.startOfDay(for: $0.value.arrival) >= lastAskDay }
+        followUps = followUps.filter { calendar.startOfDay(for: $0.value.day) >= lastAskDay }
     }
 
     // Older or newer builds may lack a key: every field falls back to its default.

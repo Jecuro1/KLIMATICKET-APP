@@ -65,4 +65,22 @@ public enum CalendarDemoEvents {
 
     /// The demo traveller's origin: St. Anton am Arlberg.
     public static let originStationID = "at:47:1222"
+
+    /// Yesterday's workshop at Innsbruck Hbf (10:00, card arrival 09:40): the event the „Warst du gefahren?“ scene asks about. Not one
+    /// of the twelve – it is in the past, so the planner never makes a card of it, but it is still in the calendar, which a follow-up
+    /// needs (`CalendarSuggestionPrefs.keepFollowUps`).
+    public static func followUpEvent(now: Date = now, calendar: Calendar = .vienna) -> CalendarEventInput {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)) ?? now
+        let start = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: yesterday) ?? yesterday
+        return CalendarEventInput(id: "demo-12", title: "Workshop Innsbruck", location: "Innsbruck Hbf", start: start,
+                                  end: start.addingTimeInterval(4 * 3600), calendarID: workCalendarID)
+    }
+
+    /// The follow-up the card of `followUpEvent` left behind (Innsbruck Hbf, arrival 09:40 with the default buffer).
+    public static func followUp(now: Date = now, calendar: Calendar = .vienna) -> (key: String, entry: CalendarFollowUpEntry) {
+        let event = followUpEvent(now: now, calendar: calendar)
+        let arrival = CalendarBuffer.arrival(eventStart: event.start, bufferMinutes: CalendarBuffer.defaultMinutes)
+        return (event.key, CalendarFollowUpEntry(stationID: "at:47:1187", stationName: "Innsbruck Hauptbahnhof", arrival: arrival,
+                                                 eventStart: event.start))
+    }
 }

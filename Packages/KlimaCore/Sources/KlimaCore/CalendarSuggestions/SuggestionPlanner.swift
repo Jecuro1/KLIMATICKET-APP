@@ -60,7 +60,9 @@ public enum CalendarSuggestionPlanner {
             guard let match = found else { continue }
             if let origin, isAtOrigin(match, origin: origin) { continue }
             let stationDay = match.station.id + "|" + String(Int(calendar.startOfDay(for: event.start).timeIntervalSince1970))
-            guard !seenStationDays.contains(stationDay), !tripIndex.covers(match, on: event.start) else { continue }
+            // Around midnight the arrival is on the day before the event (00:10 − 20 min): a trip on either day covers it.
+            guard !seenStationDays.contains(stationDay), !tripIndex.covers(match, on: event.start),
+                  calendar.isDate(arrival, inSameDayAs: event.start) || !tripIndex.covers(match, on: arrival) else { continue }
             let key = event.key
             guard !prefs.isHidden(key: key, now: now) else { continue }
             seenStationDays.insert(stationDay)
@@ -69,6 +71,18 @@ public enum CalendarSuggestionPlanner {
             if out.count == limit { break }
         }
         return out
+    }
+
+    /// The next moment the cards change by the clock alone, while the app stays open on the Übersicht: a card's arrival passes (it
+    /// goes), a „Später“ runs out (it comes back), or midnight in Vienna („Morgen“ becomes „Heute“, a follow-up's day begins).
+    /// Never earlier than a minute from now.
+    public static func nextChange(suggestions: [CalendarSuggestion], prefs: CalendarSuggestionPrefs, now: Date,
+                                  calendar: Calendar = .vienna) -> Date {
+        let today = calendar.startOfDay(for: now)
+        var next = calendar.date(byAdding: .day, value: 1, to: today) ?? now.addingTimeInterval(86_400)
+        for s in suggestions where s.arrival > now { next = min(next, s.arrival) }
+        for until in prefs.snoozed.values where until > now { next = min(next, until) }
+        return max(next, now.addingTimeInterval(60))
     }
 
     /// The matched station is where you start, or – for a town match – the town you start in (Wien Meidling and "1060 Wien").
@@ -84,18 +98,23 @@ public enum CalendarSuggestionPlanner {
 
 /// Logged trips by Vienna day, for "already covered".
 struct TripDayIndex {
-    /// Day → (destination id, destination name key) of each trip that day.
+    /// Day → (station id, station name key) of both ends of each trip that day.
     private var byDay: [Date: [(id: String?, key: String)]] = [:]
     private let calendar: Calendar
 
     init(trips: [TripRecord], calendar: Calendar) {
         self.calendar = calendar
         for trip in trips {
-            byDay[calendar.startOfDay(for: trip.date), default: []].append((trip.toStationID, CalendarStationCatalog.key(trip.toName)))
+            let day = calendar.startOfDay(for: trip.date)
+            byDay[day, default: []].append((trip.toStationID, CalendarStationCatalog.key(trip.toName)))
+            // A trip that starts there that day means you were there too (only the way home was logged, or a „Hin und retour“
+            // written from the far end).
+            byDay[day, default: []].append((trip.fromStationID, CalendarStationCatalog.key(trip.fromName)))
         }
     }
 
-    /// A trip that day ends at the station (same id or name) – for a town match anywhere in the town ("Salzburg Süd" for "Salzburg").
+    /// A trip that day ends or starts at the station (same id or name) – for a town match anywhere in the town ("Salzburg Süd" for
+    /// "Salzburg").
     func covers(_ match: CalendarPlaceMatch, on date: Date) -> Bool {
         covers(stationID: match.station.id, stationName: match.station.name,
                town: match.precision == .town ? CalendarStationCatalog.key(match.placeText) : nil, on: date)
@@ -155,12 +174,20 @@ public enum CalendarFollowUpPlanner {
         let index = TripDayIndex(trips: trips, calendar: calendar)
         var out: [FollowUp] = []
         for (key, entry) in prefs.followUps where prefs.dismissed[key] == nil {
-            let day = calendar.startOfDay(for: entry.arrival)
+            let day = calendar.startOfDay(for: entry.day)
             guard day < today, day >= first else { continue }
-            if index.covers(stationID: entry.stationID, stationName: entry.stationName, town: nil, on: entry.arrival) { continue }
+            // A trip on the event's day or on the arrival's (the evening before an event just after midnight) answers it.
+            if index.covers(stationID: entry.stationID, stationName: entry.stationName, town: nil, on: entry.day)
+                || index.covers(stationID: entry.stationID, stationName: entry.stationName, town: nil, on: entry.arrival) { continue }
             out.append(FollowUp(key: key, entry: entry))
         }
-        out.sort { a, b in a.entry.arrival == b.entry.arrival ? a.key < b.key : a.entry.arrival > b.entry.arrival }
+        out.sort { a, b in a.entry.day == b.entry.day ? a.key < b.key : a.entry.day > b.entry.day }
         return Array(out.prefix(maxCards))
+    }
+
+    /// Where the app starts reading the calendar so that every event a follow-up may still ask about is seen (`keepFollowUps`):
+    /// the start of the day `askDays + 1` days ago.
+    public static func readStart(now: Date, calendar: Calendar = .vienna) -> Date {
+        calendar.date(byAdding: .day, value: -(askDays + 1), to: calendar.startOfDay(for: now)) ?? now.addingTimeInterval(-3 * 86_400)
     }
 }
