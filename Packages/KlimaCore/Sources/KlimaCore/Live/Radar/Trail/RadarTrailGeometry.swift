@@ -62,10 +62,51 @@ public enum RadarTrailGeometry {
     public static let minimumVisiblePoints = 6.0
     static let metersPerDegree = 111_195.0
 
-    /// Metres one screen point stands for at this zoom.
+    /// Metres one screen point stands for at this zoom. MARK: radar2-review-radartrail – always finite: the app turns it into a zoom bucket
+    /// with `Int(…)`, which traps on NaN (`max(NaN, x)` is NaN).
     public static func metersPerPoint(spanDegrees: Double, heightPoints: Double) -> Double {
-        let height = heightPoints > 1 ? heightPoints : 800
-        return max(spanDegrees, 0.000_1) * metersPerDegree / height
+        let height = heightPoints.isFinite && heightPoints > 1 ? heightPoints : 800
+        let span = spanDegrees.isFinite ? max(spanDegrees, 0.000_1) : 1
+        return span * metersPerDegree / height
+    }
+
+    // MARK: radar2-review-radartrail – the marker's own moment and the samples of the chosen length
+
+    /// The moment the drawn marker stands for (`RadarEstimate.shown`): the newest answer once the marker holds there; while it glides between
+    /// the two answers the frame store keeps, the moment its point stands for on that line (the projection inverts the linear interpolation).
+    /// A sample after it lies ahead of the marker: an answer of another tile or a slow one that the frame store did not take (it keeps only
+    /// the newest two) can sit between the two answers the marker glides between, and „until the newest answer“ would draw a spur beyond it.
+    public static func drawnMoment(of entry: RadarFrameStore.Entry, at point: GeoPoint, isEstimate: Bool) -> Date {
+        guard isEstimate, let from = entry.previousCoordinate, let fromAt = entry.previousSeenAt, entry.seenAt > fromAt else {
+            return entry.seenAt
+        }
+        let to = entry.vehicle.coordinate
+        let dLat = to.latitude - from.latitude, dLon = to.longitude - from.longitude
+        let lengthSquared = dLat * dLat + dLon * dLon
+        guard lengthSquared > 0 else { return entry.seenAt }
+        let t = ((point.latitude - from.latitude) * dLat + (point.longitude - from.longitude) * dLon) / lengthSquared
+        guard t.isFinite else { return entry.seenAt.addingTimeInterval(-0.001) }
+        let moment = fromAt.addingTimeInterval(entry.seenAt.timeIntervalSince(fromAt) * min(max(t, 0), 1))
+        // Gliding: always before the newest answer, which lies ahead of the marker.
+        return min(moment, entry.seenAt.addingTimeInterval(-0.001))
+    }
+
+    /// The samples a trail of `length` ending at `until` shows: none after `until`, none that ended before `until - length`, and a stand
+    /// that began before keeps only its part from there on (so the oldest drawn moment is never older than the chosen length).
+    public static func window(_ samples: [RadarTrailSample], length: TimeInterval, until: Date) -> [RadarTrailSample] {
+        let start = until.addingTimeInterval(-max(length, 0))
+        return samples.compactMap { sample in
+            guard sample.from <= until, sample.to >= start else { return nil }
+            guard sample.from < start else { return sample }
+            var clipped = sample
+            clipped.from = start
+            return clipped
+        }
+    }
+
+    /// The oldest moment the drawn lines show (the caption's „seit“): the first point of the oldest piece.
+    public static func oldestMoment(of lines: [RadarTrailLine]) -> Date? {
+        lines.compactMap { $0.points.first?.at }.min()
     }
 
     /// The whole trail of one vehicle: `simplifiedRuns` then `finish`.

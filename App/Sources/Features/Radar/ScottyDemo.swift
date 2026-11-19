@@ -57,7 +57,9 @@ enum DemoScotty {
             ("Innsbruck Hbf", nil, -15, 0, "4"), ("Wörgl Hbf", 18, 19, 0, "3"), ("Salzburg Hbf", 52, 53, 0, "5"),
             ("Attnang-Puchheim", 77, 78, 2, "1"), ("Linz Hbf", 96, 98, 3, "2"), ("Amstetten", 127, 128, 3, "1"), ("Wien Hbf", 152, nil, 3, "11"),
         ]),
-        Run(tripID: "demo|radar|REX92", line: regional("REX 92", number: "92"), direction: "Wiener Neustadt Hbf", stops: [
+        // MARK: radar2-review-radartrail – the run ends in Amstetten, so its direction says Amstetten (the Spuren trip sheet showed „Richtung
+        // Wiener Neustadt Hbf“ over stops that go west)
+        Run(tripID: "demo|radar|REX92", line: regional("REX 92", number: "92"), direction: "Amstetten", stops: [
             ("Wien Hbf", nil, -6, 0, "2"), ("St. Pölten Hbf", 30, 31, 9, "1"), ("Amstetten", 48, nil, 9, "2"),
         ]),
         Run(tripID: "demo|radar|S45", line: suburban("S 45", number: "45"), direction: "Wien Floridsdorf", stops: [

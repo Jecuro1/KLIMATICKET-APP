@@ -114,8 +114,9 @@ final class RadarTrailModel {
     func lines(for tripID: String, until: Date, drawnPoint: GeoPoint, spanDegrees: Double, heightPoints: Double) -> [RadarTrailLine] {
         _ = revision
         guard let tripRevision = recorder.revision(of: tripID) else { return [] }
-        let start = until.addingTimeInterval(-setting.length)
-        let samples = recorder.samples(for: tripID).filter { $0.from <= until && $0.to >= start }
+        // MARK: radar2-review-radartrail – a stand that began before the length keeps only its part inside, so the oldest drawn moment (the
+        // caption's „seit“) is never older than the chosen length
+        let samples = RadarTrailGeometry.window(recorder.samples(for: tripID), length: setting.length, until: until)
         guard let first = samples.first?.from, let last = samples.last?.from else { return [] }
         let scale = RadarTrailGeometry.metersPerPoint(spanDegrees: spanDegrees, heightPoints: heightPoints)
         // Zoom buckets of half an octave: a small zoom keeps the thinned line, the tolerance is the bucket's.

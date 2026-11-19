@@ -18,6 +18,8 @@ struct RadarTrailDrawing {
 
     var choice = RadarTrailPolicy.Choice()
     var trails: [Trail] = []
+    /// The oldest moment the drawn lines show: the caption's „seit“ (MARK: radar2-review-radartrail).
+    var since: Date? { RadarTrailGeometry.oldestMoment(of: trails.flatMap(\.lines)) }
 
     static let empty = RadarTrailDrawing()
 }
@@ -44,9 +46,9 @@ extension RadarView {
         var drawing = RadarTrailDrawing(choice: choice)
         for id in choice.tripIDs {
             guard let pin = model.pinsByID[id], let entry = model.store.entries[id] else { continue }
-            // The marker's moment: between the last two answers while it glides (only answers before the newest count), at the newest answer
-            // once it holds there (`RadarEstimate.shown`).
-            let until = pin.isEstimate ? entry.seenAt.addingTimeInterval(-0.001) : entry.seenAt
+            // The marker's moment: the newest answer once it holds there; while it glides, the moment its point stands for between the last two
+            // answers, so an answer of another tile in between that lies ahead of the marker is left out (MARK: radar2-review-radartrail).
+            let until = RadarTrailGeometry.drawnMoment(of: entry, at: pin.coordinate, isEstimate: pin.isEstimate)
             let lines = trail.lines(for: id, until: until, drawnPoint: pin.coordinate, spanDegrees: model.spanDegrees,
                                     heightPoints: Double(model.mapSize.height)).filter(\.isVisible)
             guard !lines.isEmpty else { continue }
@@ -103,7 +105,7 @@ extension RadarView {
             : trail.holds(model.selectedTripID) || trail.holds(LiveFollowTracker.shared.target?.tripID)
         return RadarTrailPolicy.note(mode: mode, trainsOn: trainsOn, timeAway: travel.isAway, choice: drawing.choice,
                                      drawn: drawing.trails.count, heldForReturn: held, firstRecordedAt: trail.firstRecordedAt, now: Date(),
-                                     length: trail.setting.length)
+                                     length: trail.setting.length, drawnSince: drawing.since)   // MARK: radar2-review-radartrail – „seit“ as drawn
     }
 
     @ViewBuilder var trailStatusNote: some View {

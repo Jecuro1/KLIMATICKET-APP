@@ -30,8 +30,11 @@ oder 20 Minuten.
   stehendes Fahrzeug kostet einen Punkt und zeichnet keine Spur.
 - **Warum die Spur am Marker endet:** Das Radar zeichnet jedes Fahrzeug 20 bis 120 s hinter der Uhr (`RadarEstimate`, gleitend zwischen den letzten
   zwei Antworten). Die jüngste Antwort liegt also *vor* dem Marker. Die Spur lässt jeden Punkt weg, der jünger ist als der gezeichnete Moment, und
-  endet genau am Marker: solange er gleitet, zählen nur Antworten vor der jüngsten; hält er an der jüngsten, zählt sie mit. Nie eine Linie über den
-  Marker hinaus (`RadarTrailGeometryTests`).
+  endet genau am Marker: hält er an der jüngsten Antwort, zählt sie mit; solange er gleitet, ist der Moment der, für den sein Punkt auf der Strecke
+  zwischen den beiden Antworten steht, zwischen denen er gleitet (`RadarTrailGeometry.drawnMoment`). So bleibt auch eine Antwort einer anderen Kachel
+  weg, die zwischen diesen beiden liegt und schon vor dem Marker ist (mit der Pünktlichkeit fragt das Radar ganz Österreich und den Ausschnitt; die
+  Zeit „vor der jüngsten Antwort“ des ersten Baus hätte dort einen Sporn über den Marker hinaus gezeichnet, Review). Nie eine Linie über den Marker
+  hinaus (`RadarTrailGeometryTests`, `RadarTrailReviewTests`).
 - **Lücken:** liegen zwei Punkte mehr als 150 s auseinander (offline, Stromsparmodus, Hintergrund, Zeitreise, eine Kachel ohne Antwort), bricht die
   Linie ab. Auch der Marker wird nicht über eine solche Lücke verbunden.
 - **Ausgedünnt für den Zoom** (Douglas–Peucker): Punkte, die weniger als 2 Bildschirmpunkte (mindestens 10 m) von der Linie abweichen, fallen weg,
@@ -89,8 +92,9 @@ sagt „höchstens 20 Spuren“.
 - **Nur mit genug Daten:** mindestens drei Momente mit Verspätung über mindestens zwei Minuten (ein Stand zählt mit Anfang und Ende); sonst fehlt die
   Zeile ganz – kein leeres Versprechen.
 - Die Linie ist 44 pt hoch bei jeder Schriftgröße, in `Theme.summit`, ein heller Streifen in `Theme.positive` (12 %) markiert „pünktlich“ (unter
-  5 Minuten, die Schwelle der Marker), erster und letzter Wert stehen darunter. Ab AX3 steht die Linie unter dem Text. VoiceOver liest die Zeile als
-  einen Satz: „Verspätung seit 14 Uhr 21 von 3 auf 5 Minuten gestiegen.“
+  5 Minuten, die Schwelle der Marker), erster und letzter Wert stehen darunter. Die Linie steht bei jeder Schriftgröße unter dem Text, so breit wie
+  die Karte (neben dem Text brach die Zeile in den ersten Screenshots in fünf Zeilen um). VoiceOver liest die Zeile als einen Satz: „Verspätung seit
+  14 Uhr 21 von 3 auf 5 Minuten gestiegen.“
 
 ## 6. Warum keine zweite Zeitreise
 
@@ -126,11 +130,14 @@ Bild zeigt eine andere Zeit; die Zeitreise zeichnet ihre eigene, berechnete Spur
 | Hintergrund | ruht, behält (solange iOS die App lebt) | – | – |
 
 **Cockpit:** öffnet sich die Cockpit-Ansicht für einen Zug, bekommt sie dessen aufgenommene Positionen der letzten drei Minuten vor der Antwort, mit
-der sie startet, als frühere Antworten mit (`RadarTrailRecorder.headStart`, `RadarTrailHeadStartTests`: nur dieser Zug, nur jünger als drei Minuten,
-nur davor). So schätzt sie die Geschwindigkeit sofort statt erst nach zwei eigenen Antworten; bisher hatten das nur die Demo-Szenen. Mit „Aus“ gibt es
+der sie startet, als frühere Antworten mit (`RadarTrailRecorder.headStart`, getestet in `RadarTrailRecorderTests`: nur dieser Zug, nur jünger als drei
+Minuten, nur davor). So schätzt sie die Geschwindigkeit sofort statt erst nach zwei eigenen Antworten; bisher hatten das nur die Demo-Szenen. Mit „Aus“ gibt es
 nichts mitzugeben, und das Cockpit startet wie bisher mit einer Antwort.
 
-Die Zeile beginnt nie früher als die gewählte Länge („seit“ ist der spätere von erster Antwort und jetzt minus Länge). VoiceOver: „Spuren zeigen die
+„seit“ ist der älteste Moment, den die gezeichneten Linien zeigen (`RadarTrailGeometry.oldestMoment`): nie früher als die gewählte Länge vor dem
+Marker – ein Stand, der davor begann, zählt erst ab dort (`RadarTrailGeometry.window`). Der erste Bau nahm „jetzt minus Länge“; die Marker stehen aber
+20 bis 120 s hinter der Uhr und halten im Stromsparmodus ihre letzte Antwort, die Linien reichten dann weiter zurück, als die Zeile sagte (Review).
+Ohne gezeichnete Linie gilt der spätere von erster Antwort und jetzt minus Länge. VoiceOver: „Spuren zeigen die
 Positionen, die dieses iPhone seit 14 Uhr 21 bekommen hat. Berechnet, kein GPS-Verlauf.“ Die Linien selbst sind für VoiceOver Dekoration; die Zeile
 trägt die Bedeutung, und nie die Farbe allein.
 
@@ -163,7 +170,7 @@ Szenen (`RadarTrailScreenshotHost`, eine Zeile im `ScreenshotRouter`):
 
 ## 10. Geprüft / nicht geprüft
 
-Geprüft (Linux, `swift test --filter "RadarTrail|RadarDelaySeries"`, 57 Tests): Reihenfolge, Einfügen älterer Antworten, Verdichtung bei 19/21 m und bei
+Geprüft (Linux, `swift test --filter "RadarTrail|RadarDelaySeries"`, 63 Tests, davon 6 aus dem Review in `RadarTrailReviewTests`): Reihenfolge, Einfügen älterer Antworten, Verdichtung bei 19/21 m und bei
 Verspätungswechsel, Fenster auf die Sekunde, Entfernen nach Verkehrsmittel, Löschen, alle drei Obergrenzen, Dauerlauf und Speichergrenze; Ende am
 Marker, Lücke 150/151 s, Ausdünnung (Ecke bleibt, 5-m-Zittern geht, 10-m-Untergrenze, höchstens 30 Punkte, Breitengrad-Maßstab), Hälften, Sichtbarkeit;
 Auswahl (aus, deine bis 12, alle bis 0,5° und 60), Einstellung mit unbekannten Werten, wann gezeichnet, offline/zu, die Zeile unter der Statuskarte;
@@ -176,6 +183,15 @@ Linie bis +9, weil der Demo-Fahrplan jede Fahrt mit derselben Musterfahrt beantw
 „Zu viele Fahrzeuge“ stand über drei Zügen (jetzt nennt er den Grund, der gilt: „Für alle Spuren ist die Karte zu weit.“); bei AX5 schwebte das Symbol
 der Zeile neben dem Text (jetzt ohne Symbol). Auf der Radar-Ansicht selbst liegt die Zeile bei AX5 unter der großen Statuskarte (dort rollt die
 untere Fläche); die AX5-Szenen zeigen die Zeilen und die Fahrtblatt-Zeile darum für sich.
+
+**Review (2026-11-19):** der Moment, an dem die Spur endet, ist jetzt der des Markers selbst (eine Antwort einer anderen Kachel zwischen den beiden,
+zwischen denen er gleitet, zeichnete einen Sporn über ihn hinaus); „seit“ ist der älteste gezeichnete Moment statt „jetzt minus Länge“ (die Linien
+reichen bei 20 bis 120 s Rückstand der Marker weiter zurück); der Zoom-Maßstab ist immer endlich (ein `NaN` hätte in `Int(…)` die App beendet); alle
+480 Zustände des Radar-Tors (Ebenen, Zugriff, Nur-Züge, aktiv, Cockpit, Zeitreise offen/weg) mal den drei Wahlen: gezeichnet nur mit Markern, bei
+„Jetzt“ und mit der Wahl an, ohne neue Antworten nur, wo niemand die Karte sieht (Cockpit, App nicht aktiv), offline und zu nie, die Zeile spricht nie
+von Spuren ohne Marker. Die Demo-Fahrt REX 92 fährt nach Amstetten und heißt jetzt auch so (das Fahrtblatt sagte „Richtung Wiener Neustadt Hbf“ über
+Halten nach Westen). Beide Demo-Züge der Westbahn-Szene sind Züge in derselben Farbe auf derselben Strecke: die Spur von REX 92 (sechs Minuten seit
+Wien) liegt unter seinem Marker und dem der S 45 und ist im Bild nicht von der Spur des RJX 66 zu unterscheiden.
 
 Nicht geprüft: echte Antworten über eine lange Sitzung (Sprünge durch Verspätungsmeldungen, wie oft Kachelgrenzen doppelte Momente liefern);
 MapKit-Kosten mit 60 Spuren beim Schwenken; der Speicher auf einem Gerät; ob iOS die App im Hintergrund lange genug lebt, dass die Lücke sichtbar wird.

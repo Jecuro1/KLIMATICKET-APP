@@ -120,12 +120,14 @@ public enum RadarTrailPolicy {
     }
 
     /// Which note shows. `drawn`: trails on the map now; `heldForReturn`: away from now, whether trails would come back at „Jetzt“ (the
-    /// note is no promise for a radar that never drew one).
+    /// note is no promise for a radar that never drew one). MARK: radar2-review-radartrail – `drawnSince`: the oldest moment the drawn lines
+    /// show (`RadarTrailGeometry.oldestMoment`); when given, „seit“ is exactly that. The markers are drawn 20 to 120 s behind the clock and
+    /// hold their last answer in Low Power Mode, so „now minus the length“ named a later minute than the lines on the map reach back to.
     public static func note(mode: RadarTrailSetting.Mode, trainsOn: Bool, timeAway: Bool, choice: Choice, drawn: Int, heldForReturn: Bool,
-                            firstRecordedAt: Date?, now: Date, length: TimeInterval) -> Note {
+                            firstRecordedAt: Date?, now: Date, length: TimeInterval, drawnSince: Date? = nil) -> Note {
         guard mode != .off, trainsOn else { return .none }
         if timeAway { return heldForReturn ? .onlyNow : .none }
-        let since = firstRecordedAt.map { RadarTrailText.since(firstRecordedAt: $0, now: now, length: length) }
+        let since = drawnSince ?? firstRecordedAt.map { RadarTrailText.since(firstRecordedAt: $0, now: now, length: length) }
         if let limit = choice.limit { return .limited(limit, since: drawn > 0 ? since : nil) }
         guard drawn > 0, let since else { return .none }
         return .caption(since: since)
