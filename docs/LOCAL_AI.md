@@ -26,7 +26,8 @@ von FoundationModels von der Platte und hielt auf einem ausgelasteten Gerät den
 Bis zur ersten Antwort heißt der Zustand „Wird geprüft …“; das Modell wird dann nicht gefragt, alle Funktionen nehmen die
 Regeln. Der Wochenrückblick eines Kaltstarts steht deshalb zuerst aus den Regeln da und wird, sobald das System ein bereites
 Modell meldet und die App noch im Vordergrund ist, vom Modell neu geschrieben; „Vorschlag für jetzt“ und „Warum lohnt sich
-mein Ticket?“ fragen bei jedem Zustandswechsel neu.
+mein Ticket?“ fragen bei jedem Zustandswechsel neu. Nach jedem Warten (auf diese Antwort oder auf das Modell) schreibt nur das
+neueste Öffnen, und nur solange der Wochenrückblick an ist: Wer ihn währenddessen ausschaltet, bekommt ihn nicht wieder geplant.
 Die Zustände stehen in Einstellungen › KI auf dem Gerät (`AssistantAvailability`):
 
 | Zustand | Bedeutung | Was passiert |

@@ -108,6 +108,8 @@ final class AppState {
 
     @ObservationIgnored private var remoteRefresh: Task<Void, Never>?
     @ObservationIgnored private var pendingOutsideDraft: TripDraft?
+    /// Counts `refreshWeeklySummary` calls (MARK: ai): a call still waiting when a newer one starts writes nothing.
+    @ObservationIgnored private var weeklySummaryRun = 0
 
     init(settings: AppSettings? = nil) {
         let bundled = BundledData()
@@ -165,17 +167,27 @@ final class AppState {
     /// The Sunday notification's text is written here, when the app becomes active, never in the background (docs/LOCAL_AI.md §3).
     func refreshWeeklySummary(trips: [TripRecord]) async {
         guard settings.weeklySummaryEnabled else { return }
+        weeklySummaryRun &+= 1
+        let run = weeklySummaryRun
         let facts = WeeklyRecapFacts.make(trips: trips, now: Date())
         let checking = assistant.isChecking
         let recap = await assistant.weeklyRecap(facts)
+        guard mayWriteWeeklySummary(run) else { return }
         await notifications.setWeeklySummary(enabled: true, body: recap.text)
         // MARK: ai – at a cold start the system has not answered yet, so the text above came from the rules. Once it answers
         // with a ready model the model writes it, as an earlier launch did – only while the app is still in the foreground.
         guard checking, recap.source == .rules else { return }
         await assistant.probeFinished()
-        guard UIApplication.shared.applicationState == .active, settings.weeklySummaryEnabled else { return }
+        guard mayWriteWeeklySummary(run), UIApplication.shared.applicationState == .active else { return }
         let worded = await assistant.weeklyRecap(facts)
-        if worded.source == .model { await notifications.setWeeklySummary(enabled: true, body: worded.text) }
+        guard mayWriteWeeklySummary(run), worded.source == .model else { return }
+        await notifications.setWeeklySummary(enabled: true, body: worded.text)
+    }
+
+    /// After a wait (launch probe, model call) only the newest activation writes, and only while the recap is still on:
+    /// a recap switched off meanwhile is not scheduled again, and an older activation's trips never overwrite a newer one's.
+    private func mayWriteWeeklySummary(_ run: Int) -> Bool {
+        run == weeklySummaryRun && settings.weeklySummaryEnabled
     }
 
     func reloadCatalog() {
