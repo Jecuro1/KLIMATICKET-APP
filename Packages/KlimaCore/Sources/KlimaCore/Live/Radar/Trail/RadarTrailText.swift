@@ -31,10 +31,10 @@ public enum RadarTrailText {
         "Spuren zeigen die Positionen, die dieses iPhone seit \(RadarTimeText.spokenClock(since)) bekommen hat. Berechnet, kein GPS-Verlauf."
     }
 
-    /// „Alle im Ausschnitt“ on a map that is too wide or too full.
-    public static func tooMany(hasMine: Bool) -> String {
-        hasMine ? "Zu viele Fahrzeuge für alle Spuren. Gezeigt werden deine. Zoom näher heran."
-            : "Zu viele Fahrzeuge für alle Spuren. Zoom näher heran."
+    /// „Alle im Ausschnitt“ on a map that is too full or too wide; „deine“ only when some are drawn.
+    public static func limited(_ limit: RadarTrailPolicy.Limit, hasMine: Bool) -> String {
+        let reason = limit == .tooMany ? "Zu viele Fahrzeuge für alle Spuren." : "Für alle Spuren ist die Karte zu weit."
+        return hasMine ? "\(reason) Gezeigt werden deine. Zoom näher heran." : "\(reason) Zoom näher heran."
     }
 
     /// The Zeitreise is away from now (only while the setting is on).

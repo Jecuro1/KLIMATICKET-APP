@@ -137,6 +137,7 @@ extension RadarView {
 /// The caption on a glass capsule like the radar's other hints; VoiceOver reads it as one sentence.
 struct RadarTrailNoteView: View {
     let note: RadarTrailPolicy.Note
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         switch note {
@@ -147,24 +148,28 @@ struct RadarTrailNoteView: View {
                 .radarHint()
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(RadarTrailText.spokenCaption(since: since))
-        case .tooMany(let since):
+        case .limited(let limit, let since):
             VStack(spacing: 2) {
-                Text(RadarTrailText.tooMany(hasMine: since != nil))
+                Text(RadarTrailText.limited(limit, hasMine: since != nil))
                 if let since { caption(since) }
             }
             .radarHint()
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(RadarTrailText.tooMany(hasMine: since != nil) + (since.map { " " + RadarTrailText.spokenCaption(since: $0) } ?? ""))
+            .accessibilityLabel(RadarTrailText.limited(limit, hasMine: since != nil)
+                                + (since.map { " " + RadarTrailText.spokenCaption(since: $0) } ?? ""))
         case .onlyNow:
             Text(RadarTrailText.onlyNow).radarHint()
         }
     }
 
+    /// The trail symbol in front of the words; at accessibility sizes the words take the whole width.
     private func caption(_ since: Date) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                .foregroundStyle(Theme.accentText)
-                .accessibilityHidden(true)
+            if !typeSize.isAccessibilitySize {
+                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                    .foregroundStyle(Theme.accentText)
+                    .accessibilityHidden(true)
+            }
             Text(RadarTrailText.caption(since: since))
         }
     }

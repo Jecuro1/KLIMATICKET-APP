@@ -14,7 +14,7 @@ final class RadarTrailPolicyTests: XCTestCase {
         let choice = RadarTrailPolicy.trips(mode: .mine, selected: "t5", followed: "t2", remembered: ["t9", "gone", "t5"], singles: singles,
                                             span: 2)
         XCTAssertEqual(choice.tripIDs, ["t5", "t2", "t9"], "selected first; a trip without a single marker and duplicates are left out")
-        XCTAssertFalse(choice.tooMany)
+        XCTAssertNil(choice.limit)
     }
 
     func testMineIsCappedAtTwelve() {
@@ -29,13 +29,15 @@ final class RadarTrailPolicyTests: XCTestCase {
         let all = RadarTrailPolicy.trips(mode: .all, selected: "t7", followed: nil, remembered: [], singles: sixty, span: 0.5)
         XCTAssertEqual(all.tripIDs.count, 60)
         XCTAssertEqual(all.tripIDs.first, "t7", "the selected trail is drawn first")
-        XCTAssertFalse(all.tooMany)
+        XCTAssertNil(all.limit)
 
         let wide = RadarTrailPolicy.trips(mode: .all, selected: "t7", followed: nil, remembered: [], singles: sixty, span: 0.51)
-        XCTAssertEqual(wide, RadarTrailPolicy.Choice(tripIDs: ["t7"], tooMany: true))
+        XCTAssertEqual(wide, RadarTrailPolicy.Choice(tripIDs: ["t7"], limit: .tooWide), "a wide map is not „zu viele“")
 
         let full = RadarTrailPolicy.trips(mode: .all, selected: nil, followed: "t3", remembered: [], singles: sixty + ["t60"], span: 0.2)
-        XCTAssertEqual(full, RadarTrailPolicy.Choice(tripIDs: ["t3"], tooMany: true))
+        XCTAssertEqual(full, RadarTrailPolicy.Choice(tripIDs: ["t3"], limit: .tooMany))
+        let both = RadarTrailPolicy.trips(mode: .all, selected: nil, followed: nil, remembered: [], singles: sixty + ["t60"], span: 0.8)
+        XCTAssertEqual(both.limit, .tooWide, "zooming in is the first remedy")
     }
 
     func testTheSettingRoundTripsAndToleratesUnknownValues() {
@@ -73,9 +75,9 @@ final class RadarTrailPolicyTests: XCTestCase {
     func testTheNoteUnderTheStatusCard() {
         let t0 = Date(timeIntervalSince1970: 1_795_000_000)
         let now = t0.addingTimeInterval(1_800)
-        func note(mode: RadarTrailSetting.Mode = .mine, trainsOn: Bool = true, away: Bool = false, tooMany: Bool = false, drawn: Int = 2,
+        func note(mode: RadarTrailSetting.Mode = .mine, trainsOn: Bool = true, away: Bool = false, limit: RadarTrailPolicy.Limit? = nil, drawn: Int = 2,
                   held: Bool = true, first: Date? = t0) -> RadarTrailPolicy.Note {
-            RadarTrailPolicy.note(mode: mode, trainsOn: trainsOn, timeAway: away, choice: .init(tripIDs: [], tooMany: tooMany), drawn: drawn,
+            RadarTrailPolicy.note(mode: mode, trainsOn: trainsOn, timeAway: away, choice: .init(tripIDs: [], limit: limit), drawn: drawn,
                                   heldForReturn: held, firstRecordedAt: first, now: now, length: 600)
         }
         XCTAssertEqual(note(), .caption(since: now.addingTimeInterval(-600)), "never earlier than the chosen length")
@@ -86,7 +88,7 @@ final class RadarTrailPolicyTests: XCTestCase {
         XCTAssertEqual(note(away: true), .onlyNow)
         XCTAssertEqual(note(away: true, held: false), .none, "no promise for a radar that never drew a trail")
         XCTAssertEqual(note(mode: .off, away: true), .none)
-        XCTAssertEqual(note(mode: .all, tooMany: true), .tooMany(since: now.addingTimeInterval(-600)))
-        XCTAssertEqual(note(mode: .all, tooMany: true, drawn: 0), .tooMany(since: nil))
+        XCTAssertEqual(note(mode: .all, limit: .tooMany), .limited(.tooMany, since: now.addingTimeInterval(-600)))
+        XCTAssertEqual(note(mode: .all, limit: .tooWide, drawn: 0), .limited(.tooWide, since: nil))
     }
 }

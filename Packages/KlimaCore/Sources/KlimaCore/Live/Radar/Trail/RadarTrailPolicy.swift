@@ -60,15 +60,19 @@ public enum RadarTrailPolicy {
     /// „Ausgewählte und meine“ draws at most this many trails.
     public static let mineLimit = 12
 
+    /// Why „Alle“ draws only „mine“: the map is taller than `allSpanLimit`, or holds more than `allSinglesLimit` single markers. The note
+    /// names the one that holds (a wide map with three trains is not „zu viele Fahrzeuge“).
+    public enum Limit: Equatable, Sendable { case tooWide, tooMany }
+
     public struct Choice: Equatable, Sendable {
         /// The trips whose trail is drawn, in this order (the selected one first).
         public var tripIDs: [String]
         /// „Alle“ was asked for, but the map is too wide or too full: only „mine“ is drawn and the note says why.
-        public var tooMany: Bool
+        public var limit: Limit?
 
-        public init(tripIDs: [String] = [], tooMany: Bool = false) {
+        public init(tripIDs: [String] = [], limit: Limit? = nil) {
             self.tripIDs = tripIDs
-            self.tooMany = tooMany
+            self.limit = limit
         }
     }
 
@@ -83,7 +87,8 @@ public enum RadarTrailPolicy {
             let first = selected.flatMap { singles.contains($0) ? [$0] : nil } ?? []
             return Choice(tripIDs: first + singles.filter { $0 != selected })
         case .all:
-            return Choice(tripIDs: mine(selected: selected, followed: followed, remembered: remembered, singles: singles), tooMany: true)
+            return Choice(tripIDs: mine(selected: selected, followed: followed, remembered: remembered, singles: singles),
+                          limit: span > allSpanLimit ? .tooWide : .tooMany)
         case .mine:
             return Choice(tripIDs: mine(selected: selected, followed: followed, remembered: remembered, singles: singles))
         }
@@ -110,7 +115,7 @@ public enum RadarTrailPolicy {
     public enum Note: Equatable, Sendable {
         case none
         case caption(since: Date)
-        case tooMany(since: Date?)
+        case limited(Limit, since: Date?)
         case onlyNow
     }
 
@@ -121,7 +126,7 @@ public enum RadarTrailPolicy {
         guard mode != .off, trainsOn else { return .none }
         if timeAway { return heldForReturn ? .onlyNow : .none }
         let since = firstRecordedAt.map { RadarTrailText.since(firstRecordedAt: $0, now: now, length: length) }
-        if choice.tooMany { return .tooMany(since: drawn > 0 ? since : nil) }
+        if let limit = choice.limit { return .limited(limit, since: drawn > 0 ? since : nil) }
         guard drawn > 0, let since else { return .none }
         return .caption(since: since)
     }

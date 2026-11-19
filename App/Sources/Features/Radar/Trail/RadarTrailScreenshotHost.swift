@@ -92,7 +92,7 @@ private struct RadarTrailNotesShot: View {
                 ScrollView {
                     VStack(spacing: Theme.Spacing.xs) {
                         RadarTrailNoteView(note: .caption(since: since))
-                        RadarTrailNoteView(note: .tooMany(since: since))
+                        RadarTrailNoteView(note: .limited(.tooWide, since: since))
                         RadarTrailNoteView(note: .onlyNow)
                     }
                     .padding(.horizontal, Theme.Spacing.cardGutter)

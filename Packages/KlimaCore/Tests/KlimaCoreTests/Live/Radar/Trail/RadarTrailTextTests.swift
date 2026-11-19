@@ -23,8 +23,10 @@ final class RadarTrailTextTests: XCTestCase {
         XCTAssertEqual(RadarTrailText.caption(since: at1421), "Spuren seit 14:21 · berechnete Positionen, kein GPS-Verlauf")
         XCTAssertEqual(RadarTrailText.spokenCaption(since: at1421),
                        "Spuren zeigen die Positionen, die dieses iPhone seit 14 Uhr 21 bekommen hat. Berechnet, kein GPS-Verlauf.")
-        XCTAssertEqual(RadarTrailText.tooMany(hasMine: true), "Zu viele Fahrzeuge für alle Spuren. Gezeigt werden deine. Zoom näher heran.")
-        XCTAssertEqual(RadarTrailText.tooMany(hasMine: false), "Zu viele Fahrzeuge für alle Spuren. Zoom näher heran.")
+        XCTAssertEqual(RadarTrailText.limited(.tooMany, hasMine: true), "Zu viele Fahrzeuge für alle Spuren. Gezeigt werden deine. Zoom näher heran.")
+        XCTAssertEqual(RadarTrailText.limited(.tooMany, hasMine: false), "Zu viele Fahrzeuge für alle Spuren. Zoom näher heran.")
+        XCTAssertEqual(RadarTrailText.limited(.tooWide, hasMine: true), "Für alle Spuren ist die Karte zu weit. Gezeigt werden deine. Zoom näher heran.")
+        XCTAssertEqual(RadarTrailText.limited(.tooWide, hasMine: false), "Für alle Spuren ist die Karte zu weit. Zoom näher heran.")
         XCTAssertEqual(RadarTrailText.onlyNow, "Spuren gibt es nur bei „Jetzt“.")
     }
 
@@ -87,7 +89,7 @@ final class RadarTrailTextTests: XCTestCase {
     /// The honesty vocabulary: positions are calculated, never GPS; nothing says it was seen or recorded by ÖBB.
     func testHonestWords() {
         let all = [RadarTrailText.footer, RadarTrailText.caption(since: at1421), RadarTrailText.spokenCaption(since: at1421),
-                   RadarTrailText.tooMany(hasMine: true), RadarTrailText.onlyNow, RadarTrailText.rowTitle, RadarTrailText.sinceLine(at1421)]
+                   RadarTrailText.limited(.tooMany, hasMine: true), RadarTrailText.limited(.tooWide, hasMine: true), RadarTrailText.onlyNow, RadarTrailText.rowTitle, RadarTrailText.sinceLine(at1421)]
         for text in all {
             XCTAssertFalse(text.contains("live gesehen"), text)
             XCTAssertFalse(text.localizedCaseInsensitiveContains("echt"), text)
