@@ -6,7 +6,8 @@ import KlimaCore
 
 struct RadarModesScreenshotHost: View {
     static let screens: Set<String> = ["radarModesCity", "radarModesZoomHint", "radarModesLegend", "radarModesCrowded", "radarModesAX5",
-                                       "radarModesDots", "radarModesFilter", "radarModesFilterLines", "radarModesDisplay", "radarModesEmpty"]
+                                       "radarModesDots", "radarModesFilter", "radarModesFilterLines", "radarModesDisplay", "radarModesEmpty",
+                                       "radarModesStackAX5"]   // MARK: radar2-fix-radarmodes
 
     let screen: String
 
@@ -20,6 +21,8 @@ struct RadarModesScreenshotHost: View {
             RadarView(preset: .modesCrowded)
         case "radarModesAX5":   // chips, counts and notes at the largest text size
             RadarView(preset: .modesCity).dynamicTypeSize(.accessibility5)
+        case "radarModesStackAX5":   // MARK: radar2-fix-radarmodes – the whole bottom stack at AX5: layer bar, status card, „Spuren seit …“, the clock chip
+            RadarTrailScreenshotHost(screen: RadarTrailScene.westbahn.rawValue).dynamicTypeSize(.accessibility5)
         case "radarModesDots":   // „Nur Punkte“, Groß, Gruppen aus
             RadarView(preset: .modesDots)
         case "radarModesFilter":   // „Filter & Darstellung“: Schnellwahl, Verkehrsmittel, Zugart

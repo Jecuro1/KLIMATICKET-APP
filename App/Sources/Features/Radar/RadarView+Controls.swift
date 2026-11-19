@@ -262,15 +262,13 @@ struct RadarStatusCard: View {
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
     }
 
-    /// „142 Fahrzeuge“ over „vor 9 s“ when the pill does not fit one line: never a number alone on a line.
+    /// „142 Fahrzeuge“ over „vor 9 s“: never a number alone on a line. Always two lines at these sizes: one line when it fits would jump between one
+    /// and two lines as the age ticks („vor 9 s“, „vor 10 s“) at the sizes where it just fits.
     private func largePill(_ text: String) -> some View {
         let parts = text.components(separatedBy: " · ")   // `RadarStatusText.pill`: count and noun, then the age
-        return ViewThatFits(in: .horizontal) {
-            Text(text).lineLimit(1)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(parts[0])
-                if parts.count > 1 { Text(parts.dropFirst().joined(separator: " · ")).foregroundStyle(Theme.textSecondary) }
-            }
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(parts[0])
+            if parts.count > 1 { Text(parts.dropFirst().joined(separator: " · ")).foregroundStyle(Theme.textSecondary) }
         }
         .monospacedDigit()
         .font(.footnote.weight(.semibold))

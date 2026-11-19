@@ -138,7 +138,9 @@ eines Datenzählers auf dem iPhone fehlt (§12).
   wie die Tab-Leiste und der Umschalter im Cockpit. Bei AX5 war der Stapel unten doppelt so hoch wie sein Platz: Zählzeile, Notizen und Uhr erreichte
   man nur durch Blättern, die Ebenen-Leiste zeigte zweieinhalb Chips („Pün…“), die Pille „142“ allein über „Fahrzeuge · vor 9 s“. Jetzt: die Karte
   über die ganze Breite, „142 Fahrzeuge“ über „vor 9 s“ ohne Symbol, ⓘ daneben, Zählzeile in zwei Spalten; der Platzhalter der Suche ab xLarge
-  „Linie oder Zug“ (der lange wurde auf etwa 18 pt geschrumpft). VoiceOver liest die Karte wie bisher als einen Satz.
+  „Linie oder Zug“ (der lange wurde auf etwa 18 pt geschrumpft). Passt die Ebenen-Leiste nicht in die Breite, blättert sie seitlich und der letzte
+  sichtbare Chip läuft weich aus (vorher ein harter Schnitt mitten im Wort, „Störu“). Stationsnamen auf der Karte wachsen wie die Ortsnamen des Atlas
+  nur bis xxLarge (bei AX5 deckte „Wien Taubstummengasse“ ein Drittel der Breite). VoiceOver liest die Karte wie bisher als einen Satz.
 
 ## 6. Filter, Schnellwahl, Darstellung
 
@@ -231,7 +233,8 @@ Takt, mobile Daten, Datenmenge, leer, leer mit Filter), Zeitreise-Hinweis, Legen
 - Szenen (`RadarModesScreenshotHost`): `radarModesCity` (Wien nah, alle fünf Arten, Zählzeile), `radarModesZoomHint` (Österreich mit Bus: Hinweis,
   Lupe am Chip), `radarModesLegend`, `radarModesCrowded` (zu dicht, abgeschnitten, Datenmenge), `radarModesAX5`, `radarModesDots` (Nur Punkte, Groß,
   Gruppen aus), `radarModesFilter` (Blatt oben), `radarModesFilterLines` (Linie, Betreiber, Verspätung), `radarModesDisplay` (Darstellung mit Vorschau),
-  `radarModesEmpty` (ein Filter, auf den nichts passt). Die Wien-Szene zeigt 0,02° um Hauptbahnhof und Belvedere statt 0,12°: bei 0,12° (und noch bei 0,045°, erster
+  `radarModesEmpty` (ein Filter, auf den nichts passt), `radarModesStackAX5` (der ganze Stapel unten bei AX5: Ebenen, Statuskarte, „Spuren seit …“, Uhr; die
+  Westbahn-Szene von „Spuren“). Die Wien-Szene zeigt 0,02° um Hauptbahnhof und Belvedere statt 0,12°: bei 0,12° (und noch bei 0,045°, erster
   Screenshot-Lauf) waren fast alle Marker Gruppen von 5 bis 25 und die Schilder nicht zu sehen.
 
 ## 11. Geprüft / nicht geprüft
@@ -248,7 +251,7 @@ Dazu Teil B: Zugart, Betreiber, Linien, beide Prüfer gleich auf 20 Fällen, Spe
 Review-Fixes: keine zweite Anfrage für eine Kachel nach einem Chip-Wechsel, höchstens drei unterwegs auch dann, eine späte Antwort gibt eine neuere
 Anfrage nicht frei (`RadarSchedulerInFlightResetTests`); Marker an der Zellgrenze, gewählte und verfolgte Fahrzeuge, keine Überdeckung danach bei
 zufälligen Flotten, jedes Fahrzeug genau einmal, gleich in jeder Reihenfolge (`RadarMarkerOverlapTests`); Zählzeile mit Filter
-(`RadarModeCountsTests`). Große Schrift: Linux-Typprüfung und CI-Screenshots `radarModesAX5`, `radarTrailsAX5`.
+(`RadarModeCountsTests`). Große Schrift: Linux-Typprüfung und CI-Screenshots `radarModesAX5`, `radarModesStackAX5`, `radarTrailsAX5`.
 
 Nicht geprüft: das Verhalten auf einem iPhone (§12); Positionen von Schiffen; ob `jid`s zwischen Abfahrtstafel und Radar gleich sind; das Cockpit für
 Bus, Bim und U-Bahn; die Datenmenge mit einem echten Zähler; ob echte JourneyGeoPos-Antworten außer in Wien und Graz zwei Betreiber haben.

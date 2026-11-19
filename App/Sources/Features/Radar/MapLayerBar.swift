@@ -8,6 +8,8 @@ import KlimaCore
 struct MapLayerBar: View {
     var selection: MapLayerSelection
     var onToggle: (MapLayer) -> Void
+    /// MARK: radar2-fix-radarmodes – the width of the fade at the end of the scrolling row.
+    private static let fade: CGFloat = 28
 
     var body: some View {
         // MARK: radarheat – five chips: the row of equal chips when every title fits on one line, else the same chips in a row that
@@ -18,6 +20,15 @@ struct MapLayerBar: View {
                 HStack(spacing: Theme.Spacing.xxs) { chips }
             }
             .scrollIndicators(.hidden)
+            // MARK: radar2-fix-radarmodes – the last visible chip fades out instead of ending in a hard cut („Störu|“ read as a cut-off word); the
+            // margin lets the last chip scroll clear of the fade
+            .contentMargins(.trailing, Self.fade, for: .scrollContent)
+            .mask {
+                HStack(spacing: 0) {
+                    Rectangle()
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing).frame(width: Self.fade)
+                }
+            }
         }
         .padding(Theme.Spacing.xxs)
         .frame(maxWidth: .infinity)
@@ -88,6 +99,9 @@ struct StationMapMarker: View {
         }
         .accessibilityLabel("Station \(name)")
         .accessibilityHint("Abfahrten öffnen")
+        // MARK: radar2-fix-radarmodes – a label on the map like the Atlas' and Apple's own place names: up to xxLarge. At AX5 „Wien Taubstummengasse“
+        // was a third of the screen wide and covered markers; `MapDeclutter` reckons with the caption at about this size. VoiceOver reads the name.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
     }
 }
 
@@ -102,5 +116,6 @@ struct StationClusterBubble: View {
             .frame(minWidth: 34, minHeight: 34)
             .glassEffect(.regular, in: .circle)
             .accessibilityLabel("\(count) Stationen, zoom hinein")
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)   // MARK: radar2-fix-radarmodes – a 34-pt bubble on the map, like the vehicles' groups
     }
 }
