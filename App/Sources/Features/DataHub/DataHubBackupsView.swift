@@ -96,7 +96,7 @@ struct DataHubBackupsView: View {
         ShareLink(items: copy.files) {
             HStack(spacing: Theme.Spacing.s) {
                 SetRowLabel(title: copy.title,
-                            subtitle: [copy.date.map(DataHubText.when), DataHubFormat.bytes(copy.size)].compactMap { $0 }.joined(separator: " · "),
+                            subtitle: DataHubText.keep([copy.date.map(DataHubText.when), DataHubFormat.bytes(copy.size)].compactMap { $0 }.joined(separator: " · ")),
                             symbol: "cylinder.split.1x2.fill", tint: Theme.textTertiary)
                 Spacer(minLength: Theme.Spacing.xs)
                 Image(systemName: "square.and.arrow.up")

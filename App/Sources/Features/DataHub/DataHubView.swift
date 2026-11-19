@@ -12,6 +12,7 @@ struct DataHubView: View {
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }) private var trips: [TripEntity]
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
@@ -24,7 +25,8 @@ struct DataHubView: View {
     private var service: AutoBackupService { .shared }
 
     private var counts: DataHubCounts {
-        DataHubCounts(trips: trips.count, tickets: tickets.count, favorites: favorites.count, benefits: benefits.count)
+        DataHubCounts(trips: DataHubCounts.tripCount(trips.map { $0.journeyID?.uuidString }), tickets: tickets.count,
+                      favorites: favorites.count, benefits: benefits.count)
     }
 
     var body: some View {
@@ -50,7 +52,7 @@ struct DataHubView: View {
             .background { SetBackdrop() }
             .tint(Theme.accent)
             .navigationTitle("Daten & Sicherung")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(typeSize.isAccessibilitySize ? .inline : .large)   // the long title would be cut
             .revealScope()
             .motionAnimation(Motion.smooth, value: service.files.map(\.name))
             .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
@@ -147,7 +149,7 @@ struct DataHubView: View {
         let own = service.files
         guard !own.isEmpty else { return "Noch keine – die erste entsteht, wenn du die App verlässt" }
         let size = own.reduce(0) { $0 + $1.size }
-        return "\(DataHubFormat.count(own.count, "Sicherung", "Sicherungen")) · \(DataHubFormat.bytes(size))"
+        return DataHubText.keep("\(DataHubFormat.count(own.count, "Sicherung", "Sicherungen")) · \(DataHubFormat.bytes(size))")
     }
 
     // MARK: Actions

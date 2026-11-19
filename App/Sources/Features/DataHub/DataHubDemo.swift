@@ -69,6 +69,13 @@ enum DataHubDemo {
         return try seal(file)
     }
 
+    /// The name a file from the importer shows (yesterday, 21:40).
+    static func previewName(now: Date = Date()) -> String {
+        let yesterday = Calendar.vienna.date(byAdding: .day, value: -1, to: now) ?? now
+        let at = Calendar.vienna.date(bySettingHour: 21, minute: 40, second: 0, of: yesterday) ?? yesterday
+        return BackupFileName.make(date: at, kind: .daily)
+    }
+
     private static func seal(_ file: BackupFile) throws -> Data {
         var file = file
         file.checksum = BackupChecksum.placeholder
@@ -142,7 +149,7 @@ struct DataHubScreenshotHost: View {
         .onAppear {
             let made = DataHubDemo.install(context: context)
             if screen == "backupPreview", let data = try? DataHubDemo.previewFile(context: context),
-               case .success(let built) = DataHubRestore.makePreview(data: data, title: "Gestern, 21:40 · iPhone von Lena", context: context) {
+               case .success(let built) = DataHubRestore.makePreview(data: data, title: DataHubDemo.previewName(), context: context) {
                 preview = built
             }
             if screen == "dataRoundTrip" { roundTrip = DataHubDemo.roundTrip(context: context) }

@@ -10,6 +10,15 @@ enum DataHubText {
         "\(Format.relativeDay(date)), \(Format.time(date))"
     }
 
+    /// The same inside a sentence: „von gestern, 18:03“.
+    static func whenInline(_ date: Date) -> String {
+        let day = Format.relativeDay(date)
+        return "\(day == "Heute" || day == "Gestern" ? day.lowercased() : day), \(Format.time(date))"
+    }
+
+    /// A line of numbers and words that keeps every number with its word („12 Vorteile“ never breaks after the 12).
+    static func keep(_ text: String) -> String { DataHubCounts.keepingUnits(text) }
+
     /// „Letzte Sicherung heute, 18:03“ / „Noch keine Sicherung“.
     static func lastBackup(_ file: DataHubBackupFile?) -> String {
         guard let file else { return "Noch keine Sicherung auf diesem iPhone" }
@@ -78,10 +87,11 @@ struct DataHubHero: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(counts.line)
-            Text([DataHubFormat.count(counts.tickets, "Ticket", "Tickets"), DataHubFormat.count(counts.favorites, "Favorit", "Favoriten")]
-                .joined(separator: " · ") + (counts.benefits > 0 ? " · " + DataHubFormat.count(counts.benefits, "Vorteil", "Vorteile") : ""))
+            Text(DataHubText.keep([DataHubFormat.count(counts.tickets, "Ticket", "Tickets"), DataHubFormat.count(counts.favorites, "Favorit", "Favoriten")]
+                .joined(separator: " · ") + (counts.benefits > 0 ? " · " + DataHubFormat.count(counts.benefits, "Vorteil", "Vorteile") : "")))
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility3)
                 .accessibilityHidden(true)
             weekStrip
         }
@@ -116,6 +126,7 @@ struct DataHubHero: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(isAutoOn && backedCount > 0 ? Theme.positiveText : Theme.summitText)
                 .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sicherungen an \(backedCount) der letzten 7 Tage. "
@@ -137,8 +148,13 @@ enum DataHubWeekday {
 
 /// The honest banner: where the backups are and what deleting the app does to them. Never truncated – it wraps at every size.
 struct DataHubBanner: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Spacing.s) {
+        // At accessibility sizes the symbol sits above the text, which then has the row's full width.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: Theme.Spacing.s))
+        layout {
             Image(systemName: "iphone.gen3")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.summitText)
@@ -154,9 +170,10 @@ struct DataHubBanner: View {
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, Theme.Spacing.xxs)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .accessibilityElement(children: .combine)
     }
 }
@@ -181,17 +198,19 @@ struct DataHubBackupRow: View {
         if let details {
             if details.canRestore { parts.append(details.counts.line) } else { parts.append(details.problem?.message ?? "") }
         }
-        return parts.joined(separator: " · ")
+        return DataHubText.keep(parts.joined(separator: " · "))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
+            let titleLayout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xxs))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs))
+            titleLayout {
                 Text(file.isForeign ? file.name : title)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: Theme.Spacing.xs)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.xs) }
                 if file.kind.isSafety || file.isForeign {
                     SetPill(text: file.isForeign ? "Eigene Datei" : file.kind.title, symbol: file.isForeign ? "doc" : "shield.lefthalf.filled",
                             tint: Theme.summitText)
@@ -222,27 +241,34 @@ struct DataHubBackupRow: View {
         }
     }
 
+    /// One line with symbols when it fits, then one line of words, then the three under each other – a button never hyphenates.
     private var actions: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
-            : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
-        return layout {
-            Button(action: onCheck) {
-                Label("Prüfen", systemImage: "checkmark.seal")
-            }
-            ShareLink(item: file.url, preview: SharePreview(file.name)) {
-                Label("Teilen", systemImage: "square.and.arrow.up")
-            }
-            Button(action: onRestore) {
-                Label("Wiederherstellen", systemImage: "arrow.counterclockwise")
-            }
-            .disabled(details?.canRestore == false)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.xs) { buttons(symbols: true) }
+            HStack(spacing: Theme.Spacing.xs) { buttons(symbols: false) }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { buttons(symbols: true) }
         }
         .font(.footnote.weight(.semibold))
-        .labelStyle(.titleAndIcon)
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
         .controlSize(.small)
         .tint(Theme.accent)
+    }
+
+    @ViewBuilder
+    private func buttons(symbols: Bool) -> some View {
+        Button(action: onCheck) { actionLabel("Prüfen", "checkmark.seal", symbols) }
+        ShareLink(item: file.url, preview: SharePreview(file.name)) { actionLabel("Teilen", "square.and.arrow.up", symbols) }
+        Button(action: onRestore) { actionLabel("Wiederherstellen", "arrow.counterclockwise", symbols) }
+            .disabled(details?.canRestore == false)
+    }
+
+    private func actionLabel(_ title: String, _ symbol: String, _ withSymbol: Bool) -> some View {
+        HStack(spacing: 4) {
+            if withSymbol { Image(systemName: symbol).imageScale(.small) }
+            Text(title).lineLimit(1)
+        }
+        .fixedSize()
     }
 }
 
@@ -287,7 +313,7 @@ struct DataHubDiffBar: View {
             }
             .frame(height: 8)
             .accessibilityHidden(true)
-            Text(diff.line)
+            Text(DataHubText.keep(diff.line))
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

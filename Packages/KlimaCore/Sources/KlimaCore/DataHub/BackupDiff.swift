@@ -117,7 +117,8 @@ public struct BackupDiff: Hashable, Sendable {
                     case (true, false): diff.added += 1      // deleted here, alive in the newer file: it comes back
                     case (false, false): diff.changed += 1
                     }
-                } else if row.updatedAt == here.updatedAt {
+                } else if Self.sameSecond(row.updatedAt, here.updatedAt) {
+                    // A file stores whole seconds (ISO 8601): the iPhone's 12:00:05.7 and the file's 12:00:05 are the same version.
                     if !row.isDeleted || !here.isDeleted { diff.unchanged += 1 }
                 } else if here.isDeleted && !row.isDeleted {
                     diff.deletedHere += 1
@@ -127,6 +128,10 @@ public struct BackupDiff: Hashable, Sendable {
             }
             return diff
         })
+    }
+
+    static func sameSecond(_ a: Date, _ b: Date) -> Bool {
+        a.timeIntervalSince1970.rounded(.down) == b.timeIntervalSince1970.rounded(.down)
     }
 
     /// „Das ändert sich: 12 neue Fahrten, 3 geänderte, 140 unverändert“ plus the other tables and what stays.

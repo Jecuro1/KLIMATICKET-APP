@@ -57,16 +57,20 @@ extension Backup {
         ]
     }
 
-    /// The visible rows per table (tombstones left out) – the counts a backup row shows.
+    /// The visible rows per table (tombstones left out) – the counts a backup row shows. Fahrten as the app counts them: the legs
+    /// of one journey are one Fahrt (docs/JOURNEYS.md).
     nonisolated static func counts(of file: BackupFile) -> DataHubCounts {
-        DataHubCounts(trips: file.trips.filter { $0.base.deleted_at == nil }.count,
+        DataHubCounts(trips: DataHubCounts.tripCount(file.trips.filter { $0.base.deleted_at == nil }.map { $0.base.journey_id }),
                       tickets: file.tickets.filter { $0.deleted_at == nil }.count,
                       favorites: file.favorites.filter { $0.deleted_at == nil }.count,
                       benefits: (file.benefits ?? []).filter { $0.deleted_at == nil }.count)
     }
 
     nonisolated static func counts(context: ModelContext) -> DataHubCounts {
-        DataHubCounts(trips: (try? context.fetchCount(FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
+        var live = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil })
+        live.propertiesToFetch = [\.journeyID]
+        let journeys = ((try? context.fetch(live)) ?? []).map { $0.journeyID?.uuidString }
+        return DataHubCounts(trips: DataHubCounts.tripCount(journeys),
                       tickets: (try? context.fetchCount(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       favorites: (try? context.fetchCount(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       benefits: (try? context.fetchCount(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0)
@@ -92,12 +96,36 @@ struct DataHubCounts: Hashable, Sendable {
 
     var isEmpty: Bool { trips + tickets + favorites + benefits == 0 }
 
-    /// „123 Fahrten · 2 Tickets · 5 Favoriten“ (Vorteile only when there are some).
+    /// Distinct Fahrten: a trip of its own counts once, the legs of a journey together once (like `JourneySummary.tripCount`).
+    nonisolated static func tripCount(_ journeyIDs: [String?]) -> Int {
+        var journeys = Set<String>()
+        var plain = 0
+        for id in journeyIDs {
+            if let id, !id.isEmpty { journeys.insert(id.lowercased()) } else { plain += 1 }
+        }
+        return plain + journeys.count
+    }
+
+    /// „123 Fahrten · 2 Tickets · 5 Favoriten“ (Vorteile only when there are some); a number never leaves its word at a line end.
     var line: String {
         var parts = [DataHubFormat.count(trips, "Fahrt", "Fahrten"), DataHubFormat.count(tickets, "Ticket", "Tickets"),
                      DataHubFormat.count(favorites, "Favorit", "Favoriten")]
         if benefits > 0 { parts.append(DataHubFormat.count(benefits, "Vorteil", "Vorteile")) }
-        return parts.joined(separator: " · ")
+        return DataHubCounts.keepingUnits(parts.joined(separator: " · "))
+    }
+
+    /// „12 Vorteile“ → „12\u{00A0}Vorteile“: a space after a digit and before a letter does not break (the unit stays with its number).
+    nonisolated static func keepingUnits(_ text: String) -> String {
+        var out = ""
+        let chars = Array(text)
+        for (index, char) in chars.enumerated() {
+            if char == " ", index > 0, index + 1 < chars.count, chars[index - 1].isNumber, chars[index + 1].isLetter {
+                out.append("\u{00A0}")
+            } else {
+                out.append(char)
+            }
+        }
+        return out
     }
 }
 

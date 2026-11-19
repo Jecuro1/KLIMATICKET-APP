@@ -66,12 +66,12 @@ struct DataHubRestoreSheet: View {
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-            Text(preview.diff.headline)
+            Text(DataHubText.keep(preview.diff.headline))
                 .font(.headline)
                 .foregroundStyle(preview.diff.changes > 0 ? Theme.textPrimary : Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
             if let keeps = preview.diff.keepsLine {
-                Text(keeps)
+                Text(DataHubText.keep(keeps))
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -151,9 +151,9 @@ struct DataHubRestoreSheet: View {
     private func fileLine(_ details: DataHubBackupDetails) -> String {
         var parts = ["Format \(details.version)"]
         if let app = details.appVersion, !app.isEmpty { parts.append("KlimaBilanz \(app)") }
-        if let date = details.exportedAt { parts.append("erstellt \(DataHubText.when(date))") }
+        if let date = details.exportedAt { parts.append("erstellt \(DataHubText.whenInline(date))") }
         parts.append(details.counts.line)
-        return parts.joined(separator: " · ")
+        return DataHubText.keep(parts.joined(separator: " · "))
     }
 
     private var actionBar: some View {

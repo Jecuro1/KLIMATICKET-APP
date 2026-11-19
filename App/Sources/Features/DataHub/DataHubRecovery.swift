@@ -42,7 +42,7 @@ struct DataHubRecoveryButton: View {
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
-                Text("Sicherung von \(DataHubText.when(newest.file.date)) · \(newest.details.counts.line)")
+                Text(DataHubText.keep("Sicherung von \(DataHubText.whenInline(newest.file.date)) · \(newest.details.counts.line)"))
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -56,7 +56,7 @@ struct DataHubRecoveryButton: View {
             Button("Wiederherstellen") { restore() }
             Button("Abbrechen", role: .cancel) {}
         } message: {
-            Text("Die bisherigen Daten werden nicht gelöscht, sondern als Kopie auf diesem iPhone aufbewahrt. Dann kommt alles aus der Sicherung von \(newest.map { DataHubText.when($0.file.date) } ?? "") zurück.")
+            Text("Die bisherigen Daten werden nicht gelöscht, sondern als Kopie auf diesem iPhone aufbewahrt. Dann kommt alles aus der Sicherung von \(newest.map { DataHubText.whenInline($0.file.date) } ?? "") zurück.")
         }
         .alert("Wiederherstellen fehlgeschlagen", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
             Button("OK", role: .cancel) {}

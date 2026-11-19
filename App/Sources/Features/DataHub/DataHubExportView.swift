@@ -71,11 +71,11 @@ struct DataHubExportView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(format.title)
                             .foregroundStyle(Theme.textPrimary)
-                        Text(format.line)
+                        Text(format.line.replacingOccurrences(of: " · ", with: "\u{00A0}·\u{00A0}"))   // the type stays with its word
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(preview ?? "Wird gezählt …")
+                        Text(DataHubText.keep(preview ?? "Wird gezählt …"))
                             .font(.footnote.weight(.semibold).monospacedDigit())
                             .foregroundStyle(isEmpty ? Theme.textTertiary : Theme.accentText)
                             .contentTransition(.numericText())

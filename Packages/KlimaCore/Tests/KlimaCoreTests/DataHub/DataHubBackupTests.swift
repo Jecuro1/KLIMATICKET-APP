@@ -225,6 +225,24 @@ final class DataHubDiffTests: XCTestCase {
         XCTAssertNil(diff.keepsLine)
     }
 
+    /// A backup keeps whole seconds; the iPhone keeps fractions. The same version must count as unchanged, not as „hier neuer“
+    /// (the first screenshots said „75 hier neuer“ for a file of the same data).
+    func testWholeSecondsOfAFileAreTheSameVersion() {
+        let a = UUID(), b = UUID(), c = UUID()
+        let current: [BackupTable: [BackupRowStamp]] = [.trips: [
+            .init(id: a, updatedAt: t1.addingTimeInterval(0.73), isDeleted: false),
+            .init(id: b, updatedAt: t1.addingTimeInterval(0.4), isDeleted: true),
+            .init(id: c, updatedAt: t1.addingTimeInterval(1.2), isDeleted: false),
+        ]]
+        let file: [BackupTable: [BackupRowStamp]] = [.trips: [
+            .init(id: a, updatedAt: t1, isDeleted: false),
+            .init(id: b, updatedAt: t1, isDeleted: true),
+            .init(id: c, updatedAt: t1, isDeleted: false),
+        ]]
+        let trips = BackupDiff.make(file: file, current: current).table(.trips)
+        XCTAssertEqual([trips.unchanged, trips.newerHere, trips.changes, trips.deletedHere], [1, 1, 0, 0])
+    }
+
     func testNothingChanges() {
         let id = UUID()
         let rows: [BackupTable: [BackupRowStamp]] = [.favorites: [.init(id: id, updatedAt: t2, isDeleted: false)]]
