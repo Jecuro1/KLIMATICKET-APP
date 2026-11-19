@@ -13,14 +13,8 @@ enum TimeBalanceText {
     }
 
     static func parts(_ minutes: Double) -> Parts {
-        let rounded = max(0, minutes.isFinite ? minutes.rounded() : 0)
-        if rounded < 60 { return Parts(value: rounded, decimals: 0, unit: "Min.") }
-        let hours = rounded / 60
-        if hours < 10 {
-            let tenths = (hours * 10).rounded() / 10
-            return Parts(value: tenths, decimals: tenths == tenths.rounded() ? 0 : 1, unit: "Std.")
-        }
-        return Parts(value: hours.rounded(), decimals: 0, unit: "Std.")
+        let figure = TimeBalanceFigure(minutes: minutes)   // KlimaCore: the rounding every figure of the screen shares
+        return Parts(value: figure.value, decimals: figure.decimals, unit: figure.unit == .minutes ? "Min." : "Std.")
     }
 
     /// "45 Min." · "4,5 Std." · "128 Std." – sums.
@@ -29,21 +23,48 @@ enum TimeBalanceText {
         return "\(Format.number(p.value, decimals: p.decimals)) \(p.unit)"
     }
 
-    /// The two parts of a sum („erfasst“ / „geschätzt“) so that they add up to the hero's figure: when the sum and both
-    /// parts are whole hours, the hours left over by rounding down go to the larger remainders (largest remainder).
-    static func splitShort(_ first: Double, _ second: Double) -> (String, String) {
-        let total = parts(first + second), a = parts(first), b = parts(second)
-        guard total.unit == "Std.", total.decimals == 0, a.unit == "Std.", a.decimals == 0, b.unit == "Std.", b.decimals == 0 else {
-            return (short(first), short(second))
+    /// The hero's legend in the hero's precision (`TimeBalanceRounding.split` over the three sources, largest remainder):
+    /// „eingetragen“ + „Abfahrt & Ankunft“ = „erfasst“, „erfasst“ + „geschätzt“ = the big number. Under „72 Std.“ never
+    /// „8,4 Std.“ + „64 Std.“, and never „17 Std.“ + „9,6 Std.“ under an „erfasst“ of 26.
+    struct Legend {
+        var recorded: String
+        var estimated: String
+        var entered: String
+        var timetable: String
+        var recordedSpoken: String
+        var estimatedSpoken: String
+    }
+
+    static func legend(_ balance: TimeBalance) -> Legend {
+        let raw = [balance.enteredMinutes, balance.timetableMinutes, balance.estimatedMinutes]
+        let shown = TimeBalanceRounding.split(raw)
+        let step = TimeBalanceFigure.stepMinutes(ofShown: TimeBalanceFigure(minutes: raw.reduce(0, +)).shownMinutes)
+        let recordedRaw = raw[0] + raw[1], recordedShown = shown[0] + shown[1]
+        return Legend(recorded: partShort(recordedRaw, shown: recordedShown, step: step),
+                      estimated: partShort(raw[2], shown: shown[2], step: step),
+                      entered: partShort(raw[0], shown: shown[0], step: step),
+                      timetable: partShort(raw[1], shown: shown[1], step: step),
+                      recordedSpoken: partSpoken(recordedRaw, shown: recordedShown, step: step),
+                      estimatedSpoken: partSpoken(raw[2], shown: shown[2], step: step))
+    }
+
+    /// A part that got no whole step of the sum's precision but is not 0: „< 1 Std.“ (or its own minutes under a sum in tenths).
+    private static func partShort(_ raw: Double, shown: Double, step: Double) -> String {
+        guard shown <= 0, raw > 0 else { return short(shown) }
+        switch step {
+        case 60: return "< 1 Std."
+        case 1: return "< 1 Min."
+        default: return short(raw)
         }
-        let hours = [max(0, first) / 60, max(0, second) / 60]
-        var shown = hours.map { $0.rounded(.down) }
-        var missing = max(0, min(2, Int(total.value) - Int(shown[0] + shown[1])))
-        for index in [0, 1].sorted(by: { hours[$0] - shown[$0] > hours[$1] - shown[$1] }) where missing > 0 {
-            shown[index] += 1
-            missing -= 1
+    }
+
+    private static func partSpoken(_ raw: Double, shown: Double, step: Double) -> String {
+        guard shown <= 0, raw > 0 else { return spoken(shown) }
+        switch step {
+        case 60: return "weniger als 1 Stunde"
+        case 1: return "weniger als 1 Minute"
+        default: return spoken(raw)
         }
-        return ("\(Format.number(shown[0])) Std.", "\(Format.number(shown[1])) Std.")
     }
 
     /// "37 %" / "63 %" that add up to 100 % (a part above 0 never shows as 0 % or 100 %).
@@ -85,6 +106,14 @@ enum TimeBalanceText {
 
     static func trips(_ count: Int) -> String { count == 1 ? "1 Fahrt" : "\(Format.number(Double(count))) Fahrten" }
 
+    /// What the weekly average is taken over: „in der ersten Woche“ · „über 11 Tage“ · „über 31 Wochen“ (never „über 1 Wochen“).
+    static func averageSpan(weeksElapsed weeks: Double) -> String {
+        let days = Int((max(0, weeks.isFinite ? weeks : 0) * 7).rounded())
+        if days <= 7 { return "in der ersten Woche" }
+        if days < 21 { return "über \(days) Tage" }
+        return "über \(Format.number((Double(days) / 7).rounded(.down))) Wochen"
+    }
+
     // MARK: Car
 
     struct Verdict {
@@ -95,21 +124,24 @@ enum TimeBalanceText {
         var isGain: Bool
     }
 
-    /// The line under „Im Auto wärst du … selbst gefahren“. Longer rides are „Mehrzeit“, never „Zeit gespart“.
-    static func verdict(_ verdict: TimeBalanceCarVerdict) -> Verdict? {
-        switch verdict {
+    /// The line under „Im Auto wärst du … selbst gefahren“. Longer rides are „Mehrzeit“, never „Zeit gespart“. The gap is
+    /// the difference of the two figures on the card (79 Std. − 72 Std. = „7 Std.“, not the unrounded 7,3).
+    static func verdict(_ balance: TimeBalance) -> Verdict? {
+        let gap = TimeBalanceRounding.shownGap(balance.totalMinutes, balance.carMinutes)
+        switch balance.carVerdict {
         case .unavailable:
             return nil
-        case .transitLonger(let extra):
-            return Verdict(title: "Mehrzeit im Öffi: +\(short(extra))",
+        case .transitLonger:
+            return Verdict(title: "Mehrzeit im Öffi: +\(short(gap))",
                            detail: "Dafür Zeit zum Lesen, Arbeiten oder Entspannen – statt selbst am Steuer.",
                            symbol: "book.pages", isGain: false)
         case .aboutEqual:
             return Verdict(title: "Etwa so lang wie mit dem Auto",
                            detail: "Nur ohne selbst zu fahren: die Zeit gehört dir.", symbol: "equal.circle", isGain: false)
-        case .transitShorter(let gained):
-            return Verdict(title: "Zeit gewonnen: \(short(gained))",
-                           detail: "Schneller als mit dem Auto – und du musstest nicht selbst fahren.", symbol: "hare", isGain: true)
+        case .transitShorter:
+            return Verdict(title: "Zeit gewonnen: \(short(gap))",
+                           detail: "Grob gerechnet schneller als mit dem Auto – und du musstest nicht selbst fahren.", symbol: "hare",
+                           isGain: true)
         }
     }
 
@@ -118,7 +150,8 @@ enum TimeBalanceText {
     // MARK: Delays
 
     static func delayTitle(_ delays: TimeBalanceDelays) -> String {
-        delays.totalMinutes > 0 ? "Verspätungen: \(short(delays.totalMinutes)) verloren" : "Keine Verspätung erfasst"
+        // Recorded and all on time: say so – „keine erfasst“ would read as if nothing had been recorded.
+        delays.totalMinutes > 0 ? "Verspätungen: \(short(delays.totalMinutes)) verloren" : "Pünktlich: keine Zeit verloren"
     }
 
     static func delayDetail(_ delays: TimeBalanceDelays, tripCount: Int) -> String {
@@ -148,7 +181,8 @@ enum TimeBalanceText {
     static func heroSpoken(_ balance: TimeBalance) -> String {
         var text = "\(spoken(balance.totalMinutes)) in Bahn und Bus unterwegs, \(trips(balance.tripCount))"
         if balance.recordedMinutes > 0 {
-            text += ". Davon \(spoken(balance.recordedMinutes)) erfasst, \(spoken(balance.estimatedMinutes)) geschätzt"
+            let parts = legend(balance)
+            text += ". Davon \(parts.recordedSpoken) erfasst, \(parts.estimatedSpoken) geschätzt"
         } else {
             text += ". Alles geschätzt, weil keine Fahrt eine Dauer hat"
         }

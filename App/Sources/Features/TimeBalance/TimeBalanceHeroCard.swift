@@ -67,12 +67,12 @@ struct TimeBalanceHeroCard: View {
 
     @ViewBuilder
     private var legend: some View {
-        let hours = TimeBalanceText.splitShort(balance.recordedMinutes, balance.estimatedMinutes)
+        let figures = TimeBalanceText.legend(balance)
         let shares = TimeBalanceText.splitPercent(balance.recordedShare)
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
-            legendRow(marker: TimeBalanceSwatch(style: .recorded), title: "Erfasst", figure: "\(hours.0) · \(shares.0)",
-                      detail: recordedDetail)
-            legendRow(marker: TimeBalanceSwatch(style: .estimated), title: "Geschätzt", figure: "\(hours.1) · \(shares.1)",
+            legendRow(marker: TimeBalanceSwatch(style: .recorded), title: "Erfasst", figure: "\(figures.recorded) · \(shares.0)",
+                      detail: recordedDetail(figures))
+            legendRow(marker: TimeBalanceSwatch(style: .estimated), title: "Geschätzt", figure: "\(figures.estimated) · \(shares.1)",
                       detail: balance.estimatedTripCount > 0
                           ? "\(TimeBalanceText.trips(balance.estimatedTripCount)) ohne Dauer – mit Durchschnittstempo gerechnet"
                           : "Jede Fahrt hat eine Dauer")
@@ -80,11 +80,12 @@ struct TimeBalanceHeroCard: View {
         .accessibilityHidden(true)
     }
 
-    private var recordedDetail: String {
+    /// The two recorded sources in the legend's precision, so that they add up to its „Erfasst“ figure.
+    private func recordedDetail(_ figures: TimeBalanceText.Legend) -> String {
         if balance.recordedMinutes <= 0 { return "Trag bei einer Fahrt die Dauer ein – dann wird es genauer" }
         var parts: [String] = []
-        if balance.enteredMinutes > 0 { parts.append("eingetragen \(TimeBalanceText.short(balance.enteredMinutes))") }
-        if balance.timetableMinutes > 0 { parts.append("Abfahrt & Ankunft \(TimeBalanceText.short(balance.timetableMinutes))") }
+        if balance.enteredMinutes > 0 { parts.append("eingetragen \(figures.entered)") }
+        if balance.timetableMinutes > 0 { parts.append("Abfahrt & Ankunft \(figures.timetable)") }
         return parts.joined(separator: " · ")
     }
 

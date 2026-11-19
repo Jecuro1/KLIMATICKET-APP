@@ -11,7 +11,7 @@ struct TimeBalanceCarCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let verdict = TimeBalanceText.verdict(balance.carVerdict)
+        let verdict = TimeBalanceText.verdict(balance)
         GlassCard(padding: Theme.Spacing.m + 2) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 StatsCardHeader(kicker: "Öffis vs. Auto · Zeit", title: TimeBalanceText.carSentence(balance.carMinutes)) { EmptyView() }
@@ -44,7 +44,8 @@ struct TimeBalanceCarCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Theme.surfaceSecondary.opacity(0.6), in: .rect(cornerRadius: Theme.Radius.chip, style: .continuous))
                 }
-                Text("Auto: dieselben Fahrten mit Durchschnittstempo, ohne Stau und Parkplatzsuche – derselbe Wert wie im Auto-Vergleich.")
+                // Both sides leave something out – say which, so „Zeit gewonnen“ is not read as door to door.
+                Text("Grob gerechnet: Bahn & Bus ohne Weg zur Haltestelle und Warten, das Auto ohne Stau und Parkplatzsuche – derselbe Autowert wie im Auto-Vergleich.")
                     .font(.caption)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -163,10 +164,7 @@ struct TimeBalanceFactsRow: View {
         .fixedSize(horizontal: false, vertical: !typeSize.isAccessibilitySize)
     }
 
-    private var weeksDetail: String {
-        let weeks = balance.weeksElapsed
-        return weeks < 1.5 ? "in der ersten Woche" : "über \(Format.number(weeks.rounded(.down))) Wochen"
-    }
+    private var weeksDetail: String { TimeBalanceText.averageSpan(weeksElapsed: balance.weeksElapsed) }
 
     private func tile(symbol: String, tint: Color, kicker: String, value: String, detail: String, badge: String?, spoken: String) -> some View {
         GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {

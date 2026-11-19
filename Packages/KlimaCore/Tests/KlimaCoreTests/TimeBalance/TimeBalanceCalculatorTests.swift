@@ -148,6 +148,34 @@ final class TimeBalanceCalculatorTests: XCTestCase {
         XCTAssertEqual(TripDelaySource(storedValue: "live"), .live)
     }
 
+    func testAJourneysDelayCountsOnceWithItsLastRecordedArrival() {
+        let journey = UUID(), partly = UUID()
+        let trips = [
+            // Innsbruck → Salzburg → St. Gilgen: 12 late at the change, 5 late at the destination – 5 lost, one Fahrt.
+            F.trip(F.vienna(2026, 6, 6, 8), duration: 80, journey: journey, leg: 0, delay: 12, delaySource: .live),
+            F.trip(F.vienna(2026, 6, 6, 8), mode: .bus, km: 19, journey: journey, leg: 1, delay: 5, delaySource: .live),
+            // Only the first leg recorded: that is the last recorded arrival.
+            F.trip(F.vienna(2026, 6, 7, 8), journey: partly, leg: 0, delay: 7, delaySource: .manual),
+            F.trip(F.vienna(2026, 6, 7, 8), journey: partly, leg: 1),
+            F.trip(F.vienna(2026, 6, 8, 8), delay: 0, delaySource: .live),
+        ]
+        let balance = F.compute(trips, from: start, to: end, now: now)
+        XCTAssertEqual(balance.tripCount, 3)
+        XCTAssertEqual(balance.delays?.recordedTrips, 3, "a journey is one Fahrt – never more recorded Fahrten than Fahrten")
+        XCTAssertEqual(balance.delays?.totalMinutes, 12)
+        XCTAssertEqual(balance.delays?.delayedTrips, 2)
+        XCTAssertEqual(balance.delays?.longestMinutes, 7)
+    }
+
+    func testRecordedDelaysNeverOutnumberTheFahrten() {
+        let journey = UUID()
+        let legs = (0..<4).map { F.trip(F.vienna(2026, 6, 6, 8), journey: journey, leg: $0, delay: 3, delaySource: .live) }
+        let balance = F.compute(legs, from: start, to: end, now: now)
+        XCTAssertEqual(balance.tripCount, 1)
+        XCTAssertEqual(balance.delays?.recordedTrips, 1)
+        XCTAssertEqual(balance.delays?.totalMinutes, 3)
+    }
+
     func testDelaysDoNotChangeTheRideTime() {
         let plain = F.compute([F.trip(F.vienna(2026, 5, 4, 7), duration: 60)], from: start, to: end, now: now)
         let late = F.compute([F.trip(F.vienna(2026, 5, 4, 7), duration: 60, delay: 15, delaySource: .live)], from: start, to: end, now: now)

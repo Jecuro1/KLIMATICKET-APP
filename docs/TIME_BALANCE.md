@@ -14,7 +14,7 @@ Code: `Packages/KlimaCore/Sources/KlimaCore/TimeBalance/` (Rechenkern, Linux-Tes
 | Einstieg | Wie |
 |---|---|
 | Statistik | Karte „Zeitbilanz“ unter „Verkehrsmittel“ (Zoom in den Bildschirm, gleiches Ticketjahr wie die Statistik) |
-| Deep Link | `klimabilanz://timebalance` (Sheet über dem, was offen ist; aktives Ticketjahr) |
+| Deep Link | `klimabilanz://timebalance` (Sheet, aktives Ticketjahr; Einstellungen, Gipfelbuch, ein optionales Update und Was-wäre-wenn schließen vorher, wie bei `klimabilanz://year`; ein offener Fahrt-Editor, ein Pflicht-Update und der Jahresrückblick werden nie verdeckt, im Onboarding passiert nichts) |
 | Fahrt-Editor | Zeile „Dauer“ unter Datum & Uhrzeit (optional, Standard „Unbekannt“) |
 
 Zeitraum oben: **Ticketjahr** oder **Monat** (Pfeile ‹ › durch die Monate des Ticketjahrs, keiner nach heute). Gezählt werden wie
@@ -64,7 +64,7 @@ Praterstern, 4,5 km U-Bahn: 10 Minuten. Innsbruck → Wien, 476 km: 3 Std. 48 Mi
 Gerade durch die Anker bei 0 km noch ein positives Tempo hat. `TravelTimeModel.isMonotonic` prüft das für jedes Ankerpaar, ein Test
 läuft jedes Verkehrsmittel in 100-m-Schritten bis 700 km ab. Reisen mit Etappen werden Etappe für Etappe geschätzt und addiert.
 
-Die Werte sind gegen typische Fahrpläne plausibel, aber **nicht** gegen echte Fahrpläne vermessen (§10).
+Die Werte sind gegen typische Fahrpläne plausibel, aber **nicht** gegen echte Fahrpläne vermessen (§11).
 
 ## 4. „Dauer“ im Fahrt-Editor
 
@@ -118,12 +118,22 @@ Urteil (`TimeBalanceCarVerdict`), beide Seiten grob, daher mit Toleranz (5 Minut
 |---|---|
 | Öffi länger | „Mehrzeit im Öffi: +N Std.“ – „Dafür Zeit zum Lesen, Arbeiten oder Entspannen – statt selbst am Steuer.“ **Nie „Zeit gespart“.** |
 | etwa gleich | „Etwa so lang wie mit dem Auto“ |
-| Öffi kürzer | „Zeit gewonnen: N Std.“ |
+| Öffi kürzer | „Zeit gewonnen: N Std.“ – „Grob gerechnet schneller als mit dem Auto – und du musstest nicht selbst fahren.“ |
+
+N ist der Abstand der beiden **angezeigten** Zahlen (`TimeBalanceRounding.shownGap`): unter „72 Std.“ und „79 Std.“ steht „7 Std.“,
+nicht die 7,3 Std. zwischen den ungerundeten Werten (Review: der Leser rechnet mit dem, was dasteht). Zeigen beide Balken dieselbe
+Zahl, gilt der ungerundete Abstand. Die Zeile unter der Karte nennt, was **beide** Seiten weglassen: „Grob gerechnet: Bahn & Bus
+ohne Weg zur Haltestelle und Warten, das Auto ohne Stau und Parkplatzsuche“ – sonst läse sich „Zeit gewonnen“ wie von Tür zu Tür
+(Review: vorher stand dort nur, was beim Auto fehlt).
 
 ## 7. Verspätungen
 
 Die Zeile „Verspätungen: Z Std. verloren“ erscheint nur, wenn im Zeitraum mindestens eine Fahrt eine **erfasste** Verspätung hat
-(`delaySourceRaw` gesetzt). Gezählt werden nur diese Fahrten (eine Zahl ohne Quelle zählt nicht), einmal pro Fahrt; die Karte nennt,
+(`delaySourceRaw` gesetzt). Gezählt werden nur diese Fahrten (eine Zahl ohne Quelle zählt nicht), einmal pro Fahrt wie die Fahrten im Helden: eine Reise mit
+Etappen zählt einmal, mit der Verspätung ihrer **letzten erfassten Ankunft** (die Zeit, die am Ziel fehlt – die Verspätung einer
+früheren Etappe kommt nicht dazu, ein Anschluss kann sie geschluckt haben). Review: vorher zählte jede Etappe einzeln, und die Karte
+konnte „3 von 1 Fahrt“ sagen. Sind alle erfassten Fahrten pünktlich, heißt die Zeile „Pünktlich: keine Zeit verloren“ (vorher
+„Keine Verspätung erfasst“, was wie „nichts erfasst“ klang). Die Karte nennt,
 wie viele von wie vielen Fahrten erfasst sind und wie viele verspätet waren. Verspätungen werden **nicht** zu den Stunden oben
 addiert (eine eingetragene Dauer kann sie schon enthalten). In diesem Build gibt es noch keinen Weg, eine Verspätung zu erfassen –
 das Verspätungs-Tagebuch (delaydiary) baut auf diesen Feldern auf. Die Demo-Daten haben deshalb keine Verspätungen; die Szene
@@ -140,7 +150,13 @@ das Verspätungs-Tagebuch (delaydiary) baut auf diesen Feldern auf. Die Demo-Dat
   geschätzt schraffiert darüber, Wochen außerhalb des Zeitraums blass, gestrichelte Linie = Schnitt des Zeitraums, Tipp auf eine
   Woche zeigt ihre Zahlen. Selbst gezeichnet (12 Balken), damit die Schraffur zum Held passt.
 - **Längste Fahrt** (eine Reise mit Etappen zählt als eine Fahrt, Hin und zurück als eine Richtung; „geschätzt“-Plakette) und
-  **Ø pro Woche** (Tage vom Beginn des Zeitraums bis heute ÷ 7, mindestens eine Woche).
+  **Ø pro Woche** (Tage vom Beginn des Zeitraums bis heute ÷ 7, mindestens eine Woche; darunter „in der ersten Woche“, „über 11
+  Tage“ bis drei Wochen, dann „über 31 Wochen“ – nie „über 1 Wochen“).
+- **Zahlen, die zusammengehören** (`TimeBalanceFigure`, `TimeBalanceRounding`, KlimaCore, Linux-Tests): Dauern unter einer Stunde in
+  Minuten, unter zehn Stunden auf eine Zehntelstunde, darüber in ganzen Stunden. Die Teile „erfasst“ / „geschätzt“ stehen in der
+  Genauigkeit der großen Zahl und ergeben sie genau (größter Rest über die drei Quellen): unter „72 Std.“ also „8 Std.“ und
+  „64 Std.“, nicht „8,4 Std.“ und „64 Std.“, und „eingetragen“ + „Abfahrt & Ankunft“ ergeben „erfasst“ (vorher „17 Std.“ + „9,6 Std.“
+  unter „26 Std.“); ein kleiner Teil ohne ganze Stunde heißt „< 1 Std.“. VoiceOver sagt dieselben Teile.
 - **Nach Verkehrsmittel:** direkt beschriftete Balken mit Symbol und Namen.
 - **So rechnen wir:** die drei Quellen, das Auto, was nicht dabei ist.
 
@@ -157,8 +173,9 @@ zwei Reihen); der Monatsschritt ist einstellbar; ab den Bedienungshilfen-Größe
 Linux: `swift test --package-path Packages/KlimaCore --no-parallel --filter TimeBalance` – Reihenfolge und Grenzen der Dauer
 (0, 1, 1440, 1441 Minuten, Mitternacht in Wien), Etappen (vorige Ankunft, fehlende Ankunft, eigenes Datum, Schätzungen addieren),
 Tempomodell (monoton, positiv, Ankerwerte, Stetigkeit), Hin und zurück doppelt, Wochengrenzen (Montag 0:00, Sommerzeit-Anfang 29.3.
-und -Ende 25.10.2026), Verspätungssumme nur aus erfassten Fahrten, Urteil länger / gleich / kürzer, Gleichheit mit dem Auto-Vergleich,
-Backup-Schlüssel.
+und -Ende 25.10.2026), Verspätungssumme nur aus erfassten Fahrten und einmal pro Fahrt (Reise: letzte erfasste Ankunft), Urteil
+länger / gleich / kürzer, Gleichheit mit dem Auto-Vergleich, Backup-Schlüssel, Zahlen einer Karte (`TimeBalanceFiguresTests`: Teile
+ergeben die angezeigte Summe, auch in 5.000 Zufallspaaren; Abstand der angezeigten Zahlen).
 
 CI-Szenen (`[shots:…]`, `-KBDemo YES`, kein Netzwerk): `timeBalance`, `timeBalanceMid`, `timeBalanceBottom`, `timeBalanceMonth`,
 `timeBalanceEmpty`, `timeBalanceDelays`, `timeBalanceAX5`, `timeBalanceAX5Mid`, `timeBalanceAX5Bottom`, `timeBalanceCard`,
@@ -177,7 +194,28 @@ Was die Screenshot-Läufe gezeigt haben (CI-Läufe 43468668774 und 43473897047, 
 - Die Verspätungs-Szene zeigte die Karte nicht (sie liegt unter dem Auto-Vergleich) – die Szene scrollt jetzt dorthin.
 - Danach gingen die drei Einstiege live (`TimeBalanceRelease.isLive`).
 
-## 10. Nur auf dem Gerät prüfbar / nicht verifiziert
+## 10. Review (adversarial, 19.11.2026)
+
+Gefunden und behoben:
+- Verspätungen zählten je Etappe, die Fahrten im Helden je Reise: „X von N Fahrten“ mischte beides (§7).
+- „Zeit gewonnen: 7,3 Std.“ unter „72 Std.“ und „79 Std.“; die Teile der Legende waren nur bei ganzen Stunden auf beiden Seiten
+  abgestimmt (unter „72 Std.“ ging „8,4 Std.“ + „64 Std.“ durch). Jetzt rechnen alle Zahlen einer Karte mit dem, was angezeigt wird
+  (§6, §8).
+- „Zeit gewonnen“ verschwieg, dass Bahn & Bus ohne Weg zur Haltestelle und Warten gerechnet sind (§6).
+- „über 1 Wochen“ zwischen dem 8. und 13. Tag (§8).
+- `klimabilanz://timebalance` über offenen Einstellungen oder Was-wäre-wenn: SwiftUI zeigte das Sheet nicht, und der Merker blieb
+  gesetzt, sodass auch spätere Links nichts taten (§1).
+
+Geprüft und in Ordnung: die drei Felder in `Shared/Models.swift` (nur Standardwerte, keine Umbenennung, kein `@Query`-Prädikat), das
+Backup (alte Dateien, kaputte Werte, keine Schlüssel-Kollision mit `TripDTO`), Schreiben nur über `Repository.saveJourney` (Editor) bzw.
+den Backup-Import, kein Netzwerk, keine Berechtigung, Autostunden = Auto-Vergleich, NaN/Division durch null (alle Quoten geschützt),
+Wochenkanten an Sommerzeit-Tagen, leere und einzelne Fahrt, Bewegung nur über Motion-Tokens.
+
+Offen: Ist das Zeitbilanz-Sheet offen und kommt ein anderer Link (Was-wäre-wenn, Jahresrückblick, Kalender), schließt es nicht von
+selbst – dieselbe Grenze haben alle Sheets der Wurzelansicht. Der Wochenstart aus Look & Feel gilt bewusst nicht für die Wochen der
+Zeitbilanz (docs/THEMES.md).
+
+## 11. Nur auf dem Gerät prüfbar / nicht verifiziert
 
 - **Leichtgewichtige Migration eines echten 1.0.8-Speichers.** CI startet mit frischen bzw. In-Memory-Daten; scheitert das Öffnen,
   greift der StoreLoader-Wiederherstellungsbildschirm. Geräte-Check unten.

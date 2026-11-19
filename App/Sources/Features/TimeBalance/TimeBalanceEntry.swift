@@ -112,7 +112,27 @@ final class TimeBalanceLink {
     static let shared = TimeBalanceLink()
     var isPresented = false
 
-    func open() { isPresented = true }
+    /// Opens the sheet. SwiftUI cannot present it over another sheet (it would stay pending and swallow the next link), so
+    /// app-level sheets – Einstellungen, Gipfelbuch, an optional update, and `afterSheet` (RootView closed Was-wäre-wenn) –
+    /// close first and the Zeitbilanz follows once they are gone, like klimabilanz://year. An open trip editor keeps its
+    /// unsaved input, a required update and the Jahresrückblick are never covered, and during the onboarding there is no
+    /// ticket year to show yet.
+    func open(closing app: AppState, afterSheet: Bool = false) {
+        guard !isPresented, app.tripDraft == nil, app.yearReviewRequest == nil,
+              app.settings.onboardingCompleted || LaunchMode.isSandboxed else { return }
+        if app.updates.isPresentingSheet && app.updates.isRequired { return }
+        guard afterSheet || app.isShowingSettings || app.isShowingAchievements || app.updates.isPresentingSheet else {
+            isPresented = true
+            return
+        }
+        app.isShowingSettings = false
+        app.isShowingAchievements = false
+        app.updates.isPresentingSheet = false
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))   // the sheet's dismissal animation (as for klimabilanz://year)
+            if app.tripDraft == nil, app.yearReviewRequest == nil { self.isPresented = true }
+        }
+    }
 }
 
 extension View {

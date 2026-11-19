@@ -62,10 +62,12 @@ public struct TimeBalanceLongestTrip: Hashable, Sendable {
     public var legCount: Int
 }
 
-/// Recorded arrival delays of the period (trips without a recorded delay are not counted at all).
+/// Recorded arrival delays of the period (trips without a recorded delay are not counted at all). Counted per „Fahrt“ like
+/// `TimeBalance.tripCount`: a journey once, with the delay of its last recorded arrival (the time lost at the destination –
+/// an earlier leg's delay is not added on top, a connection may have absorbed it).
 public struct TimeBalanceDelays: Hashable, Sendable {
     public var totalMinutes: Double
-    /// Trips with a recorded delay (0 included).
+    /// Fahrten with a recorded delay (0 included; a journey once).
     public var recordedTrips: Int
     /// Of those, arrived at least a minute late.
     public var delayedTrips: Int
@@ -143,12 +145,6 @@ public enum TimeBalanceCalculator {
             rides += trip.legs
             byMode[trip.mode, default: 0] += time.minutes
             car += carMinutes(trip, profile: carProfile)
-            if let delay = trip.recordedDelayMinutes {
-                delayRecorded += 1
-                delayTotal += Double(delay)
-                if delay >= 1 { delayLate += 1 }
-                delayLongest = max(delayLongest, delay)
-            }
             let key = trip.journeyID ?? trip.id
             if groups[key] == nil { order.append(key) }
             groups[key, default: []].append(trip)
@@ -163,6 +159,13 @@ public enum TimeBalanceCalculator {
             let times = legs.compactMap { resolved[$0.id] }
             let isEstimated = times.contains { $0.source == .estimated }
             if isEstimated { estimatedTrips += 1 }
+            // A Fahrt's delay: its last recorded arrival (a journey once, like the trip count it is shown against).
+            if let delay = legs.last(where: { $0.recordedDelayMinutes != nil })?.recordedDelayMinutes {
+                delayRecorded += 1
+                delayTotal += Double(delay)
+                if delay >= 1 { delayLate += 1 }
+                delayLongest = max(delayLongest, delay)
+            }
             let minutes = times.reduce(0) { $0 + $1.minutesPerDirection }
             let candidate = TimeBalanceLongestTrip(fromName: first.fromName, toName: last.toName, date: first.date, minutes: minutes,
                                                    isEstimated: isEstimated, legCount: legs.count)

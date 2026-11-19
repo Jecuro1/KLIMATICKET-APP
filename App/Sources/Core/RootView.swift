@@ -296,8 +296,10 @@ struct RootView: View {
             Task { await app.updates.checkIfDue(force: true) }
         case "whatif":   // MARK: whatif
             showsWhatIf = true
-        case "timebalance":   // MARK: timebalance
-            if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open() }
+        case "timebalance":   // MARK: timebalance – Was-wäre-wenn and the app-level sheets close first (like klimabilanz://year)
+            let closesWhatIf = showsWhatIf
+            showsWhatIf = false
+            if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open(closing: app, afterSheet: closesWhatIf) }
         case "calendar":   // MARK: calendarsuggestions – klimabilanz://calendar: Einstellungen › Kalender-Vorschläge (closes the Einstellungen sheet first)
             CalendarSuggestionStore.shared.openSettingsFromLink(closing: app)
         case "commute":   // MARK: commute – klimabilanz://commute: the card pulses, or the setup opens (docs/COMMUTE.md §1)
