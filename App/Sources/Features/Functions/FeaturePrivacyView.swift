@@ -10,6 +10,8 @@ struct FeaturePrivacyView: View {
     var demo: FeatureDemoCounters? = nil
     /// CI scene `featuresPrivacyBottom`: scrolled to the end.
     var screenshotScrollsToEnd = false
+    /// CI scene `featuresPrivacyServer`: scrolled to this recipient's card (MARK: review-funktionen).
+    var screenshotRecipient: FeatureRecipient? = nil
 
     @Environment(AppState.self) private var app
     @State private var counters: [LiveProvider: RequestCounters] = [:]
@@ -22,6 +24,10 @@ struct FeaturePrivacyView: View {
         ScrollViewReader { proxy in
             list
                 .task {
+                    if let screenshotRecipient {
+                        try? await Task.sleep(for: .milliseconds(600))
+                        proxy.scrollTo("recipient.\(screenshotRecipient.rawValue)", anchor: .top)
+                    }
                     guard screenshotScrollsToEnd else { return }
                     try? await Task.sleep(for: .milliseconds(600))
                     proxy.scrollTo("local", anchor: .bottom)
@@ -137,6 +143,7 @@ struct FeaturePrivacyView: View {
             .padding(.vertical, 2)
             .accessibilityElement(children: .combine)
             .listRowBackground(Theme.surface)
+            .id("recipient.\(entry.recipient.rawValue)")
             ForEach(entry.items) { item in
                 VStack(alignment: .leading, spacing: 3) {
                     Text(item.title)

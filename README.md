@@ -75,8 +75,9 @@ Bedienung, Frost-Karten für Inhalte.
   über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
 - **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
 - **Funktionen** – jede Funktion mit eigenem Schalter (Zug-Radar, Züge suchen, Störungen, Vorteile-Karte, Gipfelbuch-Vorschau, „Diese
-  Woche“ und die bestehenden Schalter an einem Ort); was aus ist, verschwindet und wird dort genannt. Ein **Offline-Modus** stoppt alle
-  Live-Daten und die automatische Update-Prüfung, ohne deine Zustimmung zu ändern; der **Datenschutz-Überblick** zeigt, wer was wann
+  Woche“ und die bestehenden Schalter an einem Ort); Knöpfe und Karten einer ausgeschalteten Funktion verschwinden und werden dort
+  genannt. Ein **Offline-Modus** stoppt alle Live-Daten (auch „Live verfolgen“ samt Aussteige-Wecker) und die automatische
+  Update-Prüfung, ohne deine Zustimmung zu ändern; der **Datenschutz-Überblick** zeigt, wer was wann
   bekommt und wie viele Live-Anfragen in dieser Sitzung wirklich hinausgingen. Noch nicht auf einem iPhone geprüft
   ([docs/FUNCTIONS_HUB.md](docs/FUNCTIONS_HUB.md))
 - **Datenschutz** – ohne Konto bleibt alles auf dem iPhone; kein Tracking, keine Werbung

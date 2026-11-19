@@ -180,7 +180,9 @@ nicht im JSON-Backup.
 aus → Radar, Zugsuche, Störungen ausgeblendet, mit Knopf), `featuresAX5`, `featuresAX5Rows`, `featuresPlanner` (Fahrplan im
 Offline-Modus: Karte „Offline-Modus ist an“, keine Radar-, Störungs- und Suchknöpfe), `featuresLink` (`klimabilanz://radar` bei
 ausgeschaltetem Radar), `featuresSettingsRow`; seit dem Review `featuresTrainSearch` (RJX 66 bei ausgeschaltetem Radar: „Live verfolgen“ ohne „Auf der Karte
-zeigen“), `featuresLinkOffline` (der Link im Offline-Modus) und `featuresNoticesBlocked` („an · Mitteilungen sind in iOS aus“).
+zeigen“, darunter „Live verfolgen gibt es am Tag der Fahrt.“ ohne „und Karte“), `featuresLinkOffline` (der Link im Offline-Modus),
+`featuresNoticesBlocked` („an · Mitteilungen sind in iOS aus“ mit „In iOS erlauben“) und `featuresPrivacyServer` (die Karte des
+KlimaBilanz-Servers mit „Server-Einstellungen“).
 Demo-Daten, kein Netz, keine Systemabfrage; die Zähler der Szene macht ein echter
 `RequestThrottle` mit festgehaltener Uhr. Die Szenen schreiben nichts in die Einstellungen des Screenshot-Laufs.
 
@@ -232,7 +234,8 @@ Gegen main geprüft, alles mit `// MARK: review-funktionen`:
   sprang zur Radar-Zeile, die dann keinen Schalter hat. Jetzt nennt er den Grund und bleibt beim Offline-Modus.
 - **Offline-Modus:** Die Liste verschwieg, dass er „Live verfolgen“ samt Anschluss-Wächter und Aussteige-Wecker beendet und Abfahrten,
   Pendel-Karte und Live-Widgets anhält.
-- **„an“ ohne Wirkung:** Mitteilungs-Funktionen sagten „an“, obwohl iOS die Mitteilungen ablehnt.
+- **„an“ ohne Wirkung:** Mitteilungs-Funktionen sagten „an“, obwohl iOS die Mitteilungen ablehnt; jetzt „an · Mitteilungen sind in
+  iOS aus“ mit dem Knopf „In iOS erlauben“ (öffnet die Seite der App in den iOS-Einstellungen; für VoiceOver eine Aktion der Zeile).
 - **Texte:** „Einstellungen › Vorteile“ heißt „Vorteile & Fahrgastrechte“; der Satz über dem Mosaik verspricht nicht mehr, dass jeder
   Schalter etwas ausblendet.
 - Geprüft und in Ordnung: Zähler (ein Throttle für die ganze App, eine abgewiesene Anfrage zählt nicht, keine Division durch 0 im

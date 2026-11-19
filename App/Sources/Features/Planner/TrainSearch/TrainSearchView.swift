@@ -191,6 +191,7 @@ private struct TrainRunCard: View {
     var isActive: Bool
     var onFollow: () -> Void
     var onMap: () -> Void
+    @Environment(AppState.self) private var app   // MARK: review-funktionen – the map is the Zug-Radar
 
     var body: some View {
         GlassCard {
@@ -267,7 +268,7 @@ private struct TrainRunCard: View {
                 .featureGated(.radar)   // MARK: review-funktionen – the map is the Zug-Radar: hidden while it is off
             }
         } else {
-            Text("Live verfolgen und Karte gibt es am Tag der Fahrt.")
+            Text(FeatureCenter.shared.isOn(.radar, app: app) ? "Live verfolgen und Karte gibt es am Tag der Fahrt." : "Live verfolgen gibt es am Tag der Fahrt.")   // MARK: review-funktionen
                 .font(Theme.Typography.caption)
                 .foregroundStyle(Theme.textSecondary)
         }

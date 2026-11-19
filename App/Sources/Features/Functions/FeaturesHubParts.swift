@@ -222,6 +222,7 @@ struct FeatureHubRow: View {
     var opensFlowsForScreenshot = false
 
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.openURL) private var openURL
     @State private var showsFlows = false
 
     private var tone: FeatureStatusTone { FeatureStatusTone(status) }
@@ -265,6 +266,9 @@ struct FeatureHubRow: View {
         .accessibilityAction { isToggle ? onToggle(!status.switchIsOn) : onOpenPage() }
         .accessibilityAction(named: "Was wird gesendet?") { showsFlows = true }
         .modifier(FeatureDependencyAction(dependency: dependency, onEnable: onEnableDependency))
+        .accessibilityActions {
+            if status.noticesBlocked { Button("Mitteilungen in iOS erlauben", action: openSystemSettings) }   // MARK: review-funktionen
+        }
         .task {
             guard opensFlowsForScreenshot else { return }
             try? await Task.sleep(for: .milliseconds(1400))
@@ -316,6 +320,11 @@ struct FeatureHubRow: View {
                 glassButton("\(dependency.title) einschalten", symbol: "power") { onEnableDependency(dependency) }
                     .motionTransition(.pop)
             }
+            // MARK: review-funktionen – a row that says iOS refuses its notices offers the way to allow them
+            if status.noticesBlocked {
+                glassButton("In iOS erlauben", symbol: "gear", action: openSystemSettings)
+                    .motionTransition(.pop)
+            }
             if !isToggle {
                 glassButton(status.switchIsOn ? "Einstellungen öffnen" : "Einrichten", symbol: "chevron.right", trailing: true,
                             action: onOpenPage)
@@ -336,6 +345,11 @@ struct FeatureHubRow: View {
                     .presentationCompactAdaptation(.popover)
             }
         }
+    }
+
+    /// The app's page in the iOS Settings (Mitteilungen erlauben).
+    private func openSystemSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
     }
 
     /// A small glass button in the row („Fahrplan & Echtzeit einschalten“, „Einrichten ›“).

@@ -89,7 +89,7 @@ struct FeaturesScreenshotHost: View {
     static let screens: Set<String> = [
         "featuresHub", "featuresOffline", "featuresPrivacy", "featuresPrivacyBottom", "featuresDependency", "featuresAX5",
         "featuresAX5Rows", "featuresPlanner", "featuresLink", "featuresSettingsRow", "featuresRows", "featuresInfo",
-        "featuresTrainSearch", "featuresLinkOffline", "featuresNoticesBlocked",   // MARK: review-funktionen
+        "featuresTrainSearch", "featuresLinkOffline", "featuresNoticesBlocked", "featuresPrivacyServer",   // MARK: review-funktionen
     ]
 
     let screen: String
@@ -114,10 +114,11 @@ struct FeaturesScreenshotHost: View {
     private var content: some View {
         if isReady {
             switch screen {
-            case "featuresPrivacy", "featuresPrivacyBottom":
+            case "featuresPrivacy", "featuresPrivacyBottom", "featuresPrivacyServer":
                 NavigationStack {
                     if let demoCounters {
-                        FeaturePrivacyScene(counters: demoCounters, scrollsToEnd: screen == "featuresPrivacyBottom")
+                        FeaturePrivacyScene(counters: demoCounters, scrollsToEnd: screen == "featuresPrivacyBottom",
+                                            recipient: screen == "featuresPrivacyServer" ? .cloud : nil)
                     }
                 }
                 .task { demoCounters = await FeatureDemo.counters(now: Date()) }
@@ -175,9 +176,10 @@ struct FeaturesScreenshotHost: View {
 private struct FeaturePrivacyScene: View {
     var counters: FeatureDemoCounters
     var scrollsToEnd: Bool
+    var recipient: FeatureRecipient? = nil
 
     var body: some View {
-        FeaturePrivacyView(demo: counters, screenshotScrollsToEnd: scrollsToEnd)
+        FeaturePrivacyView(demo: counters, screenshotScrollsToEnd: scrollsToEnd, screenshotRecipient: recipient)
     }
 }
 
