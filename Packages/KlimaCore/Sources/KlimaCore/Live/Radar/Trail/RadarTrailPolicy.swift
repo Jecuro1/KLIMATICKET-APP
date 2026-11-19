@@ -105,6 +105,27 @@ public enum RadarTrailPolicy {
         trainsOn && !timeAway && mode != .off
     }
 
+    /// The line under the status card (`RadarTrailText`): nothing, the caption with its start, the „zu viele“ note (with the caption's start
+    /// when „mine“ is still drawn), or, away from now, that trails exist only at „Jetzt“.
+    public enum Note: Equatable, Sendable {
+        case none
+        case caption(since: Date)
+        case tooMany(since: Date?)
+        case onlyNow
+    }
+
+    /// Which note shows. `drawn`: trails on the map now; `heldForReturn`: away from now, whether trails would come back at „Jetzt“ (the
+    /// note is no promise for a radar that never drew one).
+    public static func note(mode: RadarTrailSetting.Mode, trainsOn: Bool, timeAway: Bool, choice: Choice, drawn: Int, heldForReturn: Bool,
+                            firstRecordedAt: Date?, now: Date, length: TimeInterval) -> Note {
+        guard mode != .off, trainsOn else { return .none }
+        if timeAway { return heldForReturn ? .onlyNow : .none }
+        let since = firstRecordedAt.map { RadarTrailText.since(firstRecordedAt: $0, now: now, length: length) }
+        if choice.tooMany { return .tooMany(since: drawn > 0 ? since : nil) }
+        guard drawn > 0, let since else { return .none }
+        return .caption(since: since)
+    }
+
     /// What the radar's access does to the samples: offline keeps them for the return (nothing arrives meanwhile, the missing minutes are a
     /// gap); closed – no consent, „Live-Fahrplan“ off, kill switch, Offline-Modus – clears them.
     public enum AccessEffect: Equatable, Sendable { case keep, clear }
