@@ -62,8 +62,8 @@ Onboardings, über einem offenen Fahrt-Formular, dem Jahresrückblick oder einem
 **„Warst du gefahren? Innsbruck Hbf“** (`CalendarFollowUpCard`, Stretch, gebaut): am ersten und zweiten Tag nach einem Termin, zu dem eine
 Karte gezeigt wurde, wenn an diesem Tag (oder am Vorabend, falls die Ankunft vor Mitternacht lag) keine Fahrt zu diesem Bahnhof oder von
 ihm weg erfasst ist, du nicht „Kein Zug“ gewählt hattest **und der Termin noch im Kalender steht** (gelöscht, verschoben oder sein
-Kalender abgehakt → keine Frage). Die Zeile sagt „Innsbruck Hbf · Gestern, Vorschlag an 09:40“ – die Uhrzeit ist die vorgeschlagene
-Ankunft, keine gemessene. „Fahrt erfassen“ öffnet das Formular vorbefüllt (Von = dein üblicher Start, Nach = der Bahnhof, Datum = Tag
+Kalender abgehakt → keine Frage). Darunter steht „Innsbruck Hbf“ und „Gestern · Vorschlag an 09:40“ – die Uhrzeit ist die
+vorgeschlagene Ankunft, keine gemessene. „Fahrt erfassen“ öffnet das Formular vorbefüllt (Von = dein üblicher Start, Nach = der Bahnhof, Datum = Tag
 des Termins zur vorgeschlagenen Ankunftszeit); gespeichert wird erst im Formular. „Nein“ beendet die Frage.
 
 **Bedienungshilfen**: Jede Karte ist für VoiceOver ein Element mit dem ganzen Satz („Meeting Linz Hbf. Morgen um 10:00. Ort erkannt: Linz
@@ -225,11 +225,17 @@ Gegengeprüft gegen main nach dem Bau. Gefunden und behoben:
 - **Ehrliche Texte.** Der Datenschutz-Satz nannte nur „Kein Zug“; gespeichert werden auch „Später“ und für die Nachfrage Bahnhof und
   Uhrzeit. „Eine Adresse allein bringt nichts“ stimmte nicht (mit Ort gibt es eine „ungefähr“-Karte) – jetzt „eine Straße ohne Ort“.
   Die Erklärung nennt den eingestellten Puffer statt fest 20 Minuten und sagt nicht mehr „Danach fragt iOS“, wenn iOS schon entschieden
-  hat. Die Nachfrage sagt „Gestern“ und „Vorschlag an 09:40“ (keine gemessene Ankunft).
+  hat. Die Nachfrage sagt „Gestern · Vorschlag an 09:40“ (keine gemessene Ankunft) in einer eigenen Zeile unter dem Bahnhof (auf einer
+Zeile stand die Uhrzeit allein in der zweiten).
 - **`klimabilanz://calendar`** öffnete die Seite auch während des Onboardings und über offenen Blättern (Gipfelbuch, Update,
   Was-wäre-wenn, Fahrt-Formular); jetzt dieselben Regeln wie die Zeitbilanz.
-- **Kleinigkeiten:** Ein Termin ohne Titel heißt auch in VoiceOver und in den Knopf-Namen „Termin ohne Titel“; „Kalender-Vorschläge
-  anpassen“ bei Bedienungshilfen-Schriftgrößen links bündig.
+- **Kleinigkeiten:** Ein Termin ohne Titel heißt auch in VoiceOver und in den Knopf-Namen „Termin ohne Titel“; unter den Karten steht bei
+  Bedienungshilfen-Schriftgrößen „Vorschläge anpassen“ links bündig (VoiceOver: „Kalender-Vorschläge anpassen“) – das lange Wort wurde
+  bei AX5 zweimal getrennt.
+
+Screenshots des Reviews (CI-Lauf 44616149271, hell und dunkel): calendarSuggestions, calendarWasYouThere, calendarExplain,
+calendarSettings, calendarSettingsBottom, calendarAX5Bottom, calendarDenied; der zweite Lauf prüft calendarWasYouThere und
+calendarAX5Bottom nach dem Feinschliff. calendarSettings ist in Dunkel nicht mehr leer (der Start hängt seit c675057 nicht mehr).
 
 Geprüft und so gelassen: Zahlen gibt es hier nur als Uhrzeiten und Minuten (keine Euro, kein CO₂, nichts, was Statistik anders rechnen
 könnte); Ankunft = Beginn − Puffer als fester Abstand über die Zeitumstellung (Tests); keine SwiftData-Änderung, kein Schreiben außer

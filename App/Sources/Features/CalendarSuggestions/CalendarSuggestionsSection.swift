@@ -79,11 +79,13 @@ struct CalendarSuggestionsSection: View {
                 .foregroundStyle(Theme.textTertiary)
                 .padding(.horizontal, DashStyle.headerInset)
             if typeSize.isAccessibilitySize {
+                // „Vorschläge anpassen“: both words fit a line at AX5 („Kalender-Vorschläge“ was hyphenated twice).
                 Button { store.showsSettingsSheet = true } label: {
-                    Text("Kalender-Vorschläge anpassen")
+                    Text("Vorschläge anpassen")
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .accessibilityLabel("Kalender-Vorschläge anpassen")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Theme.accentText)
                 .padding(.horizontal, DashStyle.headerInset)

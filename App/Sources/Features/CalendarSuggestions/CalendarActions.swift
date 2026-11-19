@@ -79,10 +79,11 @@ enum CalendarText {
         return trimmed.isEmpty ? "Termin ohne Titel" : trimmed
     }
 
-    /// "Innsbruck Hbf · Gestern, Vorschlag an 09:40" – the day of the event and the arrival the card had proposed (not a time the
-    /// app knows you arrived at).
+    /// "Innsbruck Hbf" over "Gestern · Vorschlag an 09:40" – the day of the event and the arrival the card had proposed (not a time
+    /// the app knows you arrived at). Two lines on purpose: one line wrapped and left the time alone on the second; the time keeps
+    /// its "an" (no-break space).
     static func followUpLine(_ entry: CalendarFollowUpEntry, now: Date) -> String {
-        "\(station(entry.stationName)) · \(day(entry.day, now: now)), Vorschlag an \(Format.time(entry.arrival))"
+        "\(station(entry.stationName))\n\(day(entry.day, now: now)) · Vorschlag an\u{00A0}\(Format.time(entry.arrival))"
     }
 
     /// "Sa., 21. Nov. · 19:30–22:00", "Morgen · 10:00–11:30"; an event over several days ends with its end day.
