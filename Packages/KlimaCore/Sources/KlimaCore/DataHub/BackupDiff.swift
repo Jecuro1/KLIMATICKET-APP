@@ -56,6 +56,8 @@ public struct BackupTableDiff: Hashable, Sendable, Identifiable {
     public var unchanged = 0
     /// Rows the iPhone has newer than the file – the iPhone's version stays.
     public var newerHere = 0
+    /// Rows deleted here after the file was written: the file's older copy does not bring them back.
+    public var deletedHere = 0
 
     public var id: BackupTable { table }
     /// Visible changes.
@@ -69,6 +71,7 @@ public struct BackupTableDiff: Hashable, Sendable, Identifiable {
         if removed > 0 { parts.append("\(removed) entfernt") }
         if unchanged > 0 { parts.append("\(unchanged) unverändert") }
         if newerHere > 0 { parts.append("\(newerHere) hier neuer") }
+        if deletedHere > 0 { parts.append("\(deletedHere) hier gelöscht") }
         return parts.isEmpty ? "nichts dabei" : parts.joined(separator: " · ")
     }
 }
@@ -82,6 +85,7 @@ public struct BackupDiff: Hashable, Sendable {
 
     public var changes: Int { tables.reduce(0) { $0 + $1.changes } }
     public var newerHere: Int { tables.reduce(0) { $0 + $1.newerHere } }
+    public var deletedHere: Int { tables.reduce(0) { $0 + $1.deletedHere } }
 
     /// One rule per row, the merge's rule: unknown → added (or a stored deletion), file newer → changed / removed, equal →
     /// unchanged, iPhone newer → stays. A row that appears twice in the file counts once, with its newest state.
@@ -115,7 +119,9 @@ public struct BackupDiff: Hashable, Sendable {
                     }
                 } else if row.updatedAt == here.updatedAt {
                     if !row.isDeleted || !here.isDeleted { diff.unchanged += 1 }
-                } else if !here.isDeleted || !row.isDeleted {
+                } else if here.isDeleted && !row.isDeleted {
+                    diff.deletedHere += 1
+                } else if !here.isDeleted {
                     diff.newerHere += 1
                 }
             }
@@ -146,11 +152,19 @@ public struct BackupDiff: Hashable, Sendable {
         return text + "."
     }
 
-    /// „2 Einträge sind auf diesem iPhone neuer und bleiben, wie sie sind.“ – nil when there are none.
+    /// „2 Einträge sind auf diesem iPhone neuer und bleiben, wie sie sind.“ and „1 Eintrag, den du hier gelöscht hast, bleibt
+    /// gelöscht.“ – nil when there are none. The merge never undoes a newer change, a deletion included.
     public var keepsLine: String? {
-        guard newerHere > 0 else { return nil }
-        return newerHere == 1 ? "1 Eintrag ist auf diesem iPhone neuer und bleibt, wie er ist."
-            : "\(newerHere) Einträge sind auf diesem iPhone neuer und bleiben, wie sie sind."
+        var sentences: [String] = []
+        if newerHere > 0 {
+            sentences.append(newerHere == 1 ? "1 Eintrag ist auf diesem iPhone neuer und bleibt, wie er ist."
+                             : "\(newerHere) Einträge sind auf diesem iPhone neuer und bleiben, wie sie sind.")
+        }
+        if deletedHere > 0 {
+            sentences.append(deletedHere == 1 ? "1 Eintrag, den du hier nach dieser Sicherung gelöscht hast, bleibt gelöscht."
+                             : "\(deletedHere) Einträge, die du hier nach dieser Sicherung gelöscht hast, bleiben gelöscht.")
+        }
+        return sentences.isEmpty ? nil : sentences.joined(separator: " ")
     }
 
     /// The merge rule in one sentence (under the preview).

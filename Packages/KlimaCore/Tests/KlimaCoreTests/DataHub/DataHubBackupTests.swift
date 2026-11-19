@@ -178,13 +178,14 @@ final class DataHubDiffTests: XCTestCase {
     private let t1 = at(2026, 10, 1), t2 = at(2026, 10, 2), t3 = at(2026, 10, 3)
 
     func testCountsFollowTheMergeRule() {
-        let a = UUID(), b = UUID(), c = UUID(), d = UUID(), e = UUID(), f = UUID(), g = UUID()
+        let a = UUID(), b = UUID(), c = UUID(), d = UUID(), e = UUID(), f = UUID(), g = UUID(), h = UUID()
         let current: [BackupTable: [BackupRowStamp]] = [.trips: [
             .init(id: a, updatedAt: t1, isDeleted: false),
             .init(id: b, updatedAt: t1, isDeleted: false),
             .init(id: c, updatedAt: t2, isDeleted: true),
             .init(id: f, updatedAt: t3, isDeleted: false),
             .init(id: g, updatedAt: t1, isDeleted: false),
+            .init(id: h, updatedAt: t3, isDeleted: true),
         ]]
         let file: [BackupTable: [BackupRowStamp]] = [
             .trips: [
@@ -196,18 +197,21 @@ final class DataHubDiffTests: XCTestCase {
                 .init(id: e, updatedAt: t1, isDeleted: true),    // a deletion the iPhone never saw: nothing visible
                 .init(id: f, updatedAt: t1, isDeleted: false),   // newer here
                 .init(id: g, updatedAt: t2, isDeleted: true),    // deleted in the newer file: removed
+                .init(id: h, updatedAt: t1, isDeleted: false),   // deleted here later: the older copy does not bring it back
             ],
             .tickets: [.init(id: UUID(), updatedAt: t1, isDeleted: false)],
         ]
         let diff = BackupDiff.make(file: file, current: current)
         let trips = diff.table(.trips)
-        XCTAssertEqual([trips.added, trips.changed, trips.removed, trips.deletedInFile, trips.unchanged, trips.newerHere], [2, 1, 1, 1, 1, 1])
+        XCTAssertEqual([trips.added, trips.changed, trips.removed, trips.deletedInFile, trips.unchanged, trips.newerHere, trips.deletedHere],
+                       [2, 1, 1, 1, 1, 1, 1])
         XCTAssertEqual(diff.table(.tickets).added, 1)
         XCTAssertEqual(diff.table(.benefits).changes, 0)
         XCTAssertEqual(diff.changes, 5)
         XCTAssertEqual(diff.headline, "Das ändert sich: 2 neue Fahrten, 1 geänderte, 1 entfernte, 1 unverändert; dazu 1 Ticket.")
-        XCTAssertEqual(diff.keepsLine, "1 Eintrag ist auf diesem iPhone neuer und bleibt, wie er ist.")
-        XCTAssertEqual(trips.line, "2 neu · 1 geändert · 1 entfernt · 1 unverändert · 1 hier neuer")
+        XCTAssertEqual(diff.keepsLine, "1 Eintrag ist auf diesem iPhone neuer und bleibt, wie er ist. "
+                       + "1 Eintrag, den du hier nach dieser Sicherung gelöscht hast, bleibt gelöscht.")
+        XCTAssertEqual(trips.line, "2 neu · 1 geändert · 1 entfernt · 1 unverändert · 1 hier neuer · 1 hier gelöscht")
     }
 
     func testSpecExampleSentence() {
