@@ -28,8 +28,11 @@ enum WidFormat {
 
     static func km(_ value: Double) -> String { "\(number(value, decimals: value < 10 ? 1 : 0)) km" }
 
+    /// MARK: review-themes – the app's „Automatisch“ rule (`FormatPrefs.co2Parts`): decided on the shown kilograms, so 999,6 kg
+    /// reads "1,0 t" in the widget as in the app, never "1.000 kg".
     static func kg(_ value: Double) -> String {
-        value >= 1000 ? "\(number(value / 1000, decimals: 1)) t" : "\(number(value)) kg"
+        let parts = FormatPrefs.standard.co2Parts(kg: value)
+        return "\(number(parts.value, decimals: parts.decimals)) \(parts.unit)"
     }
 
     /// 0.728 → 73. Same rule as the app (`SummitFigures.percent`): never "100 %" before the break-even (99,6 % → 99)

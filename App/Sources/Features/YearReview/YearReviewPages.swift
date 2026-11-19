@@ -735,7 +735,9 @@ struct YearReviewClimatePage: View {
     let ctx: YearReviewPageContext
 
     var body: some View {
-        let parts = StatsCalc.co2Parts(climate.co2SavedKg)
+        // MARK: review-themes – number and unit from one rule (Zahlen › CO₂): with „Immer kg“ the numeral said „1,2 kg“ for 1.240 kg,
+        // and at 999,6 kg „1.000 t“.
+        let parts = AppearanceRuntime.format.co2Parts(kg: climate.co2SavedKg)
         StoryPageScaffold(kind: .climate, symbol: "leaf.fill") {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                 Text("Du hast gespart")
@@ -743,10 +745,9 @@ struct YearReviewClimatePage: View {
                     .foregroundStyle(Theme.textSecondary)
                     .padding(.top, Theme.Spacing.m)
                     .reveal(order: 1)
-                StoryNumeral(value: climate.co2SavedKg >= 1000 ? climate.co2SavedKg / 1000 : climate.co2SavedKg,
-                             from: ctx.start(.climate, climate.co2SavedKg >= 1000 ? climate.co2SavedKg / 1000 : climate.co2SavedKg),
+                StoryNumeral(value: parts.value, from: ctx.start(.climate, parts.value),
                              unit: "\(parts.unit) CO₂", style: AnyShapeStyle(Theme.positiveText)) { value in
-                    Format.number(value, decimals: climate.co2SavedKg >= 1000 ? 1 : 0)
+                    Format.number(value, decimals: parts.decimals)
                 }
                 .reveal(.focus, order: 2)
                 HStack(spacing: Theme.Spacing.xs) {

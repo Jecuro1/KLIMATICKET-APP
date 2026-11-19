@@ -173,6 +173,10 @@ Auf der Seite spielt die Haptik-Auswahl einmal einen `snap` in der gewählten St
   (die einzige Änderung gegenüber vorher, Test).
 - CO₂ gilt für `Format.kg` und – seit dem Review – auch für „CO₂ gespart“ in der Übersicht und die CO₂-Karte und das Teilen-Bild der
   Statistik, die vorher eigene kg/t-Regeln hatten (VoiceOver las in der Übersicht schon „1.240 kg“, während „1,2 t“ dastand).
+- Zweites Review: die große Zahl der Klima-Seite im Jahresrückblick nahm die Einheit schon aus der Option, die Zahl aber aus einer
+  eigenen Regel – mit „Immer kg“ stand dort für 1.240 kg „1,2 kg CO₂“, bei 999,6 kg „1.000 t CO₂“. Zahl und Einheit kommen jetzt aus
+  `FormatPrefs.co2Parts`. Die Widgets rechnen „Automatisch“ jetzt nach derselben Regel wie die App (999,6 kg: „1,0 t“ statt
+  „1.000 kg“).
 - Der Wochenstart gilt für die Wochen-Karte der Übersicht (`DashWeekStats`: welche Tage „diese Woche“ sind und die Reihenfolge der
   Balken), das Wochentags-Diagramm der Statistik (Reihenfolge) und die Zeilen des Reise-Kalenders. Widgets bleiben bei Montag, ebenso
   die Wochen der Zeitbilanz (Montag bis Sonntag); der Wochenrückblick kommt weiter sonntags um 18 Uhr.
