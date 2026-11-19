@@ -64,6 +64,11 @@ public enum AutoTriggerKind: String, CaseIterable, Codable, Sendable, Hashable, 
 
     public var isScheduled: Bool { self == .ticketDeadline || self == .dayWithoutTrip }
 
+    /// Reaches its owner through iOS notifications: the planned ones always, „Verspätung“ while the app is in the
+    /// background. Milestones and „Fahrt erfasst“ fire after a save in the open app (a toast), so switching them on does
+    /// not ask for the notification permission.
+    public var needsNotifications: Bool { isScheduled || self == .followDelay }
+
     /// The trigger a new rule of this kind starts with.
     public var defaultTrigger: AutoTrigger {
         switch self {

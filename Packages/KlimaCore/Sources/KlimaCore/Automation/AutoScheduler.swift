@@ -139,7 +139,7 @@ public enum AutoRuleScheduler {
             guard let ticket = state.ticket,
                   let planned = AutoRuleEngine.deadlineMoment(rule: rule, ticket: ticket, state: state, calendar: calendar),
                   planned.moment > now else { return [] }
-            let reason = AutoReason.deadline(days: deadlineDays(rule), ticketName: ticket.name, end: ticket.end, movedForWeekend: planned.moved)
+            let reason = AutoReason.deadline(days: planned.daysLeft, ticketName: ticket.name, end: ticket.end, movedForWeekend: planned.moved)
             return [slot(rule, at: planned.moment, reason: reason, calendar: calendar)]
         case let .dayWithoutTrip(weekdays, minute):
             guard !weekdays.isEmpty else { return [] }
@@ -208,11 +208,6 @@ public enum AutoRuleScheduler {
 
     private static func earlier(_ a: AutoSlot, _ b: AutoSlot) -> Bool {
         a.fireAt != b.fireAt ? a.fireAt < b.fireAt : a.id < b.id
-    }
-
-    private static func deadlineDays(_ rule: AutoRule) -> Int {
-        if case let .ticketDeadline(days) = rule.trigger { return days }
-        return 0
     }
 
     private static func slot(_ rule: AutoRule, at moment: Date, reason: AutoReason, calendar: Calendar) -> AutoSlot {

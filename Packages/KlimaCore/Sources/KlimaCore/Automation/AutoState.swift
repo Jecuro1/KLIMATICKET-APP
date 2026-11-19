@@ -77,8 +77,30 @@ public struct AutoTicketFact: Hashable, Sendable {
 
     public func isValid(at date: Date) -> Bool { date >= start && date <= end }
 
-    /// Whole percent, rounded down (51.9 % is 51 %, so „50 % erreicht“ is never said too early).
-    public var percent: Int { Int((amortizedFraction * 100 + 1e-9).rounded(.down)) }
+    /// Whole percent as the Übersicht shows it (`SummitFigures.percent`): rounded below the break-even but never „100 %“
+    /// before it (99,6 % is 99 %), rounded down after it (149,7 % is 149 %). So a rule never says „61 %“ while the hero
+    /// says „62 %“.
+    public var percent: Int {
+        guard amortizedFraction.isFinite else { return 0 }
+        let raw = min(max(0, amortizedFraction) * 100, 1_000_000)
+        return Int(amortizedFraction < 1 ? min(99, raw.rounded()) : raw.rounded(.down))
+    }
+
+    /// The value really reached `milestone` percent of the price – the same threshold as the Gipfelbuch's achievements, so
+    /// „50 % geschafft“ is never said before half the price is logged. Between 49,5 % and 50 % the shown percent is 50 % but
+    /// the milestone is still ahead („knapp davor“).
+    public func hasReached(_ milestone: Int) -> Bool {
+        amortizedFraction.isFinite && amortizedFraction * 100 + 1e-9 >= Double(milestone)
+    }
+
+    /// Whole euros of the logged value as the Übersicht shows them („€ 860 von € 1.400“, `SummitFigures.shownTotal`):
+    /// never the full price before the break-even.
+    public var shownValueEUR: Double {
+        let total = max(0, value.rounded())
+        let summit = price.rounded()
+        if amortizedFraction < 1, summit >= 1, total >= summit { return summit - 1 }
+        return total
+    }
 }
 
 /// One logged trip (a journey of several legs is one trip: first start, last destination, summed value).
@@ -200,9 +222,16 @@ public struct AutoLedger: Codable, Hashable, Sendable {
     /// A rule that is switched on remembers what is reached already, so it celebrates what comes next, not the past.
     public mutating func seedMilestones(rule: AutoRule, ticket: AutoTicketFact?) {
         guard case let .milestone(percents) = rule.trigger.normalized, let ticket else { return }
-        let reached = percents.filter { ticket.amortizedFraction * 100 + 1e-9 >= Double($0) }
+        let reached = percents.filter(ticket.hasReached)
         let key = AutoLedger.milestoneKey(ruleID: rule.id, ticketID: ticket.id)
         milestones[key, default: []].formUnion(reached)
+    }
+
+    /// Saving `next` over `previous` switches the rule on (new, was off, or its trigger changed while on): what happened
+    /// before is then not news (`seedMilestones`, the trip watermark). The Testlauf asks the same question, so it never
+    /// promises a firing that switching the rule on takes away.
+    public static func switchesOn(previous: AutoRule?, next: AutoRule) -> Bool {
+        next.isEnabled && (previous == nil || previous?.isEnabled == false || previous?.trigger.normalized != next.trigger.normalized)
     }
 
     /// Applies the changes of a verdict (after its firings were delivered).

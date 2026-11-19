@@ -236,6 +236,8 @@ public enum AutoText {
         case .ticketEnded:
             return "dein Ticket ist abgelaufen"
         case let .milestoneBelow(current, next):
+            // 49,6 % shows as 50 % (the Übersicht's rounding) while the milestone needs the full 50 %.
+            if current >= next { return "knapp unter \(next) % amortisiert, nächster Meilenstein \(next) %" }
             return "erst \(current) % amortisiert, nächster Meilenstein \(next) %"
         case let .milestonesDone(current):
             return "jetzt \(current) % – alle gewählten Meilensteine sind für dieses Ticket schon erreicht"
@@ -338,9 +340,11 @@ public enum AutoText {
             return reasonText(verdict.reason, now: now, calendar: calendar)
         case let .milestone(percents):
             guard let ticket = state.ticket else { return "wartet auf ein Ticket" }
+            guard now <= ticket.end else { return "dein Ticket ist abgelaufen" }
             let done = state.ledger.celebrated(ruleID: rule.id, ticketID: ticket.id)
-            let open = percents.filter { !done.contains($0) && ticket.amortizedFraction * 100 + 1e-9 < Double($0) }
+            let open = percents.filter { !done.contains($0) && !ticket.hasReached($0) }
             guard let next = open.min() else { return "alle Meilensteine erreicht" }
+            if ticket.percent >= next { return "nächster Meilenstein: \(next) % · knapp davor" }
             return "nächster Meilenstein: \(next) % · jetzt \(ticket.percent) %"
         case .followDelay:
             guard let follow = state.follow, !follow.isFinished else { return "wartet auf „Live verfolgen“" }
@@ -349,6 +353,12 @@ public enum AutoText {
         case .tripLogged:
             return "wartet auf die nächste Fahrt"
         }
+    }
+
+    /// The state line of a planned rule („vor Ablauf“, „Tag ohne Fahrt“) while iOS may not show notices: nothing can be
+    /// planned, so it would never fire – not even in the open app.
+    public static func notificationsBlockedLine(denied: Bool) -> String {
+        denied ? "Mitteilungen in iOS aus – meldet sich nicht" : "braucht die Erlaubnis für Mitteilungen"
     }
 
     /// The warning when the rules want more planned notices than they have places. nil while everything fits.

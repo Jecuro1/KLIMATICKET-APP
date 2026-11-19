@@ -124,9 +124,13 @@ final class AutomationEngineTests: XCTestCase {
     }
 
     func testMilestoneBelowStaysSilent() {
-        let verdict = evaluate(F.rule(.milestone(percents: [50])), .committed, AutoState(ticket: F.ticket(fraction: 0.4999)))
+        let verdict = evaluate(F.rule(.milestone(percents: [50])), .committed, AutoState(ticket: F.ticket(fraction: 0.494)))
         XCTAssertFalse(verdict.fires)
         XCTAssertEqual(text(verdict), "Löst nicht aus: erst 49 % amortisiert, nächster Meilenstein 50 %")
+        // 49,99 % shows as 50 % on the Übersicht, but half the price is not logged yet.
+        let close = evaluate(F.rule(.milestone(percents: [50])), .committed, AutoState(ticket: F.ticket(fraction: 0.4999)))
+        XCTAssertFalse(close.fires)
+        XCTAssertEqual(text(close), "Löst nicht aus: knapp unter 50 % amortisiert, nächster Meilenstein 50 %")
         XCTAssertEqual(evaluate(F.rule(.milestone(percents: [50])), .committed, AutoState()).reason, .noTicket)
     }
 

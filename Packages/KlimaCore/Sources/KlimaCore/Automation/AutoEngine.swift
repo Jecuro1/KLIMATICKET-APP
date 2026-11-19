@@ -135,28 +135,32 @@ public enum AutoRuleEngine {
         guard let planned = deadlineMoment(rule: ctx.rule, ticket: ticket, state: ctx.state, calendar: ctx.calendar) else {
             return ctx.silent(.noTicket)
         }
-        let reason = AutoReason.deadline(days: days, ticketName: ticket.name, end: ticket.end, movedForWeekend: planned.moved)
+        let reason = AutoReason.deadline(days: planned.daysLeft, ticketName: ticket.name, end: ticket.end, movedForWeekend: planned.moved)
         if case .slotDue = event { return ctx.fire(reason, conditionsAt: nil) }
         if planned.moment > ctx.now { return ctx.later(planned.moment, reason) }
         return ctx.silent(ctx.now <= ticket.end ? .deadlinePassed(day: planned.moment) : .ticketEnded)
     }
 
     /// 09:00 on the day `daysBefore` calendar days before the ticket's last day. With „Wochenende ruhig“ a Saturday or Sunday
-    /// moves to the Friday before (a deadline must not be skipped).
-    static func deadlineMoment(rule: AutoRule, ticket: AutoTicketFact, state: AutoState, calendar: Calendar) -> (moment: Date, moved: Bool)? {
+    /// moves to the Friday before (a deadline must not be skipped). `daysLeft`: the calendar days from that day to the last
+    /// day – `daysBefore`, or one or two more when the notice moved to Friday (it then says „Noch 32 Tage“, not „30“; the same
+    /// count as the Übersicht's remaining days).
+    static func deadlineMoment(rule: AutoRule, ticket: AutoTicketFact, state: AutoState,
+                               calendar: Calendar) -> (moment: Date, moved: Bool, daysLeft: Int)? {
         guard case let .ticketDeadline(days) = rule.trigger.normalized else { return nil }
         let lastDay = calendar.startOfDay(for: ticket.end)
         guard var day = calendar.date(byAdding: .day, value: -days, to: lastDay) else { return nil }
         var moved = false
+        var daysLeft = days
         if state.quietWeekend {
             switch AutoClock.weekday(day, calendar: calendar) {
-            case .saturday: day = calendar.date(byAdding: .day, value: -1, to: day) ?? day; moved = true
-            case .sunday: day = calendar.date(byAdding: .day, value: -2, to: day) ?? day; moved = true
+            case .saturday: day = calendar.date(byAdding: .day, value: -1, to: day) ?? day; moved = true; daysLeft += 1
+            case .sunday: day = calendar.date(byAdding: .day, value: -2, to: day) ?? day; moved = true; daysLeft += 2
             default: break
             }
         }
         guard let moment = AutoClock.moment(on: day, minuteOfDay: AutoRuleScheduler.deadlineMinute, calendar: calendar) else { return nil }
-        return (moment, moved)
+        return (moment, moved, daysLeft)
     }
 
     // MARK: Milestone
@@ -164,8 +168,11 @@ public enum AutoRuleEngine {
     private static func milestone(percents: Set<Int>, event: AutoEvent, _ ctx: Context) -> AutoVerdict {
         guard event == .committed || event == .probe else { return ctx.silent(.otherEvent) }
         guard let ticket = ctx.state.ticket else { return ctx.silent(.noTicket) }
+        // A past ticket year (still selected in the Ticket tab) has nothing left to celebrate: its milestones were reached
+        // long ago, before the rule could remember them.
+        guard ctx.now <= ticket.end else { return ctx.silent(.ticketEnded) }
         let current = ticket.percent
-        let reached = Set(percents.filter { ticket.amortizedFraction * 100 + 1e-9 >= Double($0) })
+        let reached = Set(percents.filter(ticket.hasReached))
         let done = ctx.state.ledger.celebrated(ruleID: ctx.rule.id, ticketID: ticket.id)
         let fresh = reached.subtracting(done)
         guard let top = fresh.max() else {
