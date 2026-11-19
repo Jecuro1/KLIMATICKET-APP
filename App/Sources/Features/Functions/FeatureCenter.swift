@@ -147,10 +147,11 @@ final class FeatureCenter {
     // MARK: Demo
 
     /// Screenshot scenes: the settings of a scene and wrapped switches to show, in memory only (sandboxed runs store nothing).
-    func installDemo(_ settings: FeatureSettings, wrapped: [FeatureID: Bool] = [:]) {
+    func installDemo(_ settings: FeatureSettings, wrapped: [FeatureID: Bool] = [:], notificationsBlocked: Bool = false) {
         guard LaunchMode.isSandboxed else { return }
         self.settings = settings
         demoWrapped = wrapped
+        self.notificationsBlocked = notificationsBlocked   // MARK: review-funktionen – scene featuresNoticesBlocked
     }
 }
 

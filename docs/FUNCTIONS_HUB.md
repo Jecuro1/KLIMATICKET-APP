@@ -5,12 +5,13 @@ was davon ist an, und was sendet sie wohin?* Jede Funktion hat dort ihren Schalt
 Ganz oben steht der **Offline-Modus**, darunter der **Datenschutz-Überblick** mit den Live-Zählern dieser Sitzung.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/FeatureGate/` (Linux-Tests unter `Tests/KlimaCoreTests/FeatureGate/`,
-`swift test --filter FeatureGate`, 19 Tests), die Zähler in `Live/Transport/RequestThrottle.swift`; App in
+`swift test --filter FeatureGate`, 23 Tests), die Zähler in `Live/Transport/RequestThrottle.swift`; App in
 `App/Sources/Features/Functions/` (Speicher und Regel `FeatureCenter`, Seite, Zeilen, Datenschutz, Demo-Szenen).
 
 ## 1. Das Versprechen
 
-- **Jeder Schalter hat eine sichtbare Wirkung.** Was du ausschaltest, verschwindet aus der App – nicht grau, sondern weg.
+- **Jeder Schalter hat eine sichtbare Wirkung.** Knöpfe und Karten einer ausgeschalteten Funktion verschwinden – nicht grau, sondern
+  weg; Schalter ohne Einstieg (Haptik, Live-Preise, Erinnerungen) ändern, was passiert, und die Zeile sagt was.
 - **Nichts verschwindet stumm.** Solange etwas ausgeblendet ist, steht in Funktionen eine Zeile dazu
   („Zug-Radar ist aus – der Radar-Knopf im Fahrplan ist ausgeblendet.“), und die Zeile der Funktion sagt, was anders ist.
 - **Neue Schalter stehen auf an.** Wer Funktionen nie öffnet, merkt nichts davon.
@@ -26,8 +27,8 @@ Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/FeatureGate/` (Linux-Tests 
 3. **Gerade ausgeblendet** – eine Zeile pro verstecktem Einstieg; ein Tipp springt zur Funktion und lässt ihre Zeile kurz aufleuchten.
 4. **Datenschutz-Überblick** (§5).
 5. **Die Gruppen** Live-Daten, Karte & Radar, Erfassen, Übersicht, Mitteilungen, Darstellung. Jede Zeile: Symbol, Name, eine Zeile,
-   der Zustand als Text („an“, „an · wartet auf Live-Daten“, „aus“, „ausgeblendet · braucht Fahrplan & Echtzeit“, „pausiert ·
-   Offline-Modus“), solange sie aus ist der Satz, was dann anders ist, und **„Was wird gesendet?“** (Popover: Empfänger, was, wann).
+   der Zustand als Text („an“, „an · wartet auf Live-Daten“, „an · Mitteilungen sind in iOS aus“, „aus“, „ausgeblendet · braucht
+   Fahrplan & Echtzeit“, „pausiert · Offline-Modus“), solange sie aus ist der Satz, was dann anders ist, und **„Was wird gesendet?“** (Popover: Empfänger, was, wann).
    Fehlt einer Funktion nur das, was sie braucht, steht direkt in ihrer Zeile „Fahrplan & Echtzeit einschalten“.
    Oben ein Suchfeld („Funktion suchen“).
 
@@ -43,14 +44,16 @@ der Karte“), Hinweis (was anders ist), Doppeltipp schaltet; „Was wird gesend
 3. **etwas, das sie braucht, ist aus** → aus („… · braucht Fahrplan & Echtzeit“),
 4. sonst **an**; nutzt sie Live-Daten und die sind gerade nicht abrufbar, sagt die Zeile warum: „wartet auf Live-Daten“ (Zustimmung
    offen), „Live-Daten sind abgelehnt“, „ÖBB-Abfrage gerade abgeschaltet“ (Fernabschaltung), „kein Internet“. Die Funktion bleibt
-   **an** – ihr Einstieg bleibt sichtbar und zeigt selbst, warum gerade nichts kommt.
+   **an** – ihr Einstieg bleibt sichtbar und zeigt selbst, warum gerade nichts kommt. Ebenso Live-Mitteilungen,
+   Verlängerungs-Erinnerung und Wochenrückblick, wenn iOS die Mitteilungen der App ablehnt: „an · Mitteilungen sind in iOS aus“ (die
+   Seite liest die Erlaubnis beim Öffnen und nach der Rückkehr aus den iOS-Einstellungen; sie fragt nie).
 
 | Funktion | Gruppe | Schalter liegt | braucht | ausgeblendet, solange aus |
 |---|---|---|---|---|
 | Fahrplan & Echtzeit | Live-Daten | Einstellungen › Live-Daten | – | (der Fahrplan zeigt „Live-Daten sind aus“) |
 | Live-Ticketpreise | Live-Daten | Einstellungen › Live-Daten | – | (Preise aus den Tarif-Tabellen) |
 | Live-Mitteilungen | Live-Daten | Einstellungen › Live-Mitteilungen (eigene Seite) | Fahrplan & Echtzeit | – |
-| Zug-Radar | Karte & Radar | **Funktionen** (`features.v1`) | Fahrplan & Echtzeit | der Radar-Knopf im Fahrplan |
+| Zug-Radar | Karte & Radar | **Funktionen** (`features.v1`) | Fahrplan & Echtzeit | der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“ |
 | Züge suchen | Karte & Radar | **Funktionen** | Fahrplan & Echtzeit | das Feld „Züge suchen“ im Fahrplan |
 | Störungen | Karte & Radar | **Funktionen** | Fahrplan & Echtzeit | der Störungen-Knopf im Fahrplan |
 | Hintergrund-Erkennung | Erfassen | Einstellungen › Fahrten erkennen (eigene Seite) | – | – |
@@ -70,13 +73,17 @@ Haptik ist in Funktionen an/aus; „an“ heißt „Voll“, die Stufe „Dezent
 **Hintergrund-Erkennung** brauchen beim Einschalten eine Erlaubnis bzw. eine Erklärung – ihre Zeile zeigt den Zustand und führt auf
 ihre eigene Seite („Einrichten ›“), statt sie ohne diese Schritte einzuschalten.
 
-Bei abgelegten Schaltern bleibt immer ein Weg: die Vorteilswelt unter Einstellungen › Vorteile, das Gipfelbuch in der Statistik.
+Bei abgelegten Schaltern bleibt immer ein Weg: die Vorteilswelt unter Einstellungen › Vorteile & Fahrgastrechte, das Gipfelbuch in der
+Statistik.
 
 ## 4. Offline-Modus
 
-Ein Schalter oben in Funktionen. **Er stoppt:** Fahrplan & Echtzeit, Zug-Radar, Züge suchen, Störungen, Live-Ticketpreise,
-Live-Mitteilungen, die automatische Update-Prüfung und den Abruf der Live-Konfiguration (Fernabschaltung). **Er stoppt nicht:**
-Konto-Sync, Tarif-Download und Logo-Pakete – die folgen ihren eigenen Schaltern; Karten laden ihre Kacheln weiter bei Apple.
+Ein Schalter oben in Funktionen. **Er stoppt:** Fahrplan & Echtzeit samt Abfahrten, Pendel-Karte live und Live-Widgets; Zug-Radar,
+Züge suchen, Störungen, Live-Ticketpreise; „Live verfolgen“ mit Mitteilungen, Anschluss-Wächter und **Aussteige-Wecker** (die nächste
+Antwort fehlt, `LiveFollowTracker` beendet den Wecker wie bei „Live-Daten aus“ – die Karte sagt das, bevor du ihn einschaltest); die
+automatische Update-Prüfung und den Abruf der Live-Konfiguration (Fernabschaltung). **Er stoppt nicht:** Konto-Sync, Tarif-Download und
+Logo-Pakete – die folgen ihren eigenen Schaltern; mit einem Server im Build kommen dessen Einstellungen weiter beim Start
+(`/v1/config`); Karten laden ihre Kacheln weiter bei Apple.
 Die Zustimmung zu Live-Daten bleibt unverändert; aus heißt: alles geht wie vorher weiter.
 
 So wirkt er (alles `// MARK: funktionen`):
@@ -106,8 +113,13 @@ Die Seite liest die Zähler jede Sekunde, solange sie offen ist (ein Actor-Aufru
 | ÖBB-Fahrplanauskunft | Fahrplan & Echtzeit, Live-Mitteilungen, Zug-Radar, Züge suchen, Störungen, Hintergrund-Erkennung | Haltestellen, Zeiten, Zugnummern; für „In der Nähe“ der Standort auf rund 100 m gerundet; beim Radar der Kartenausschnitt; die Zugnummer der Suche; der verfolgte Zug; für einen Vorschlag einmal zwei Haltestellen und die Uhrzeit | nur mit Zustimmung: wenn du suchst oder eine Live-Ansicht offen ist, für die Widgets beim Öffnen höchstens alle 15 Minuten, beim Verfolgen auch im Hintergrund; Radar höchstens 24 pro Minute |
 | ÖBB-Ticketshop | Live-Ticketpreise | Start, Ziel, Tag, Klasse, Ermäßigung | wenn ein Preis angezeigt wird |
 | VAO | Live-Ticketpreise | Start und Ziel im Verbund, Tag | wenn ein Verbundpreis angezeigt wird |
-| KlimaBilanz-Server (Cloudflare) | Konto & Sync, Offizielle Logos | Fahrten, Tickets, Favoriten (nur mit Konto); für Logos nichts Persönliches | beim Öffnen und nach Änderungen; Logo-Paket beim ersten Bedarf |
-| GitHub | Update-Prüfung, Tarife, Live-Konfiguration | nichts Persönliches – nur der Abruf | höchstens alle 6 h (Updates) bzw. 12 h (Tarife, Live-Konfiguration) |
+| KlimaBilanz-Server (Cloudflare) | Konto & Sync, Server-Einstellungen, Offizielle Logos | mit Konto Fahrten, Tickets, Favoriten, Vorteile, Anzeigename und die E-Mail-Adresse der Anmeldung; ohne Konto nur App- und iOS-Version beim Abruf der Server-Einstellungen; für Logos nichts Persönliches | Sync beim Öffnen und nach Änderungen; Server-Einstellungen bei jedem Start und vor jedem Sync, **auch ohne Konto**; Logo-Paket beim ersten Bedarf |
+| GitHub | Update-Prüfung, Tarife, Live-Konfiguration | nichts Persönliches – nur der Abruf | Updates höchstens alle 6 h, Tarife alle 12 h (beide nur mit „Automatisch prüfen“, sonst nach deinem Tipp); Live-Konfiguration alle 12 h mit der Live-Zustimmung beim Start, **auch wenn „Automatisch prüfen“ aus ist** |
+
+„Jetzt: …“ je Empfänger kommt für Server und GitHub aus `FeaturePrivacy.cloudState` / `githubState` (Linux-Tests): ohne Server im
+Build „kein Server eingerichtet – nichts“, ohne Konto „ohne Konto – nur Server-Einstellungen beim Start“ (mit Logos „… und
+Logo-Pakete“); GitHub nennt, was automatisch kommt und was nur nach deinem Tipp („Live-Konfiguration automatisch · Tarife und Updates
+nur nach deinem Tipp“).
 | Apple Karten | Zug-Radar (und jede Karte) | der Kartenausschnitt | solange eine Karte zu sehen ist |
 
 Am Ende „Bleibt auf dem iPhone“ (KI, Vorteile-Karte, Gipfelbuch-Vorschau, Diese Woche, Erinnerungen, Haptik) und die Zeile:
@@ -117,8 +129,11 @@ Am Ende „Bleibt auf dem iPhone“ (KI, Vorteile-Karte, Gipfelbuch-Vorschau, Di
 
 `klimabilanz://radar`, der Radar-Knopf im Kontrollzentrum und „Live verfolgen“ starten (Kontrollzentrum) laufen alle über
 `PlannerModel.radarRequested`. Ist der Zug-Radar aus, öffnet sich statt einer leeren Karte **Funktionen als Blatt**, scrollt zur Zeile
-„Zug-Radar“ und lässt sie aufleuchten; dazu der Hinweis „Zug-Radar ist ausgeblendet – hier kannst du es wieder einschalten“. Ist gerade
-Einstellungen offen, schließt es sich zuerst. Ein Link scheitert so nie stumm.
+„Zug-Radar“ und lässt sie aufleuchten. Der Hinweis nennt, was den Radar hält (`FeatureGate.linkNotice`, Linux-Test): „Zug-Radar ist aus
+– Hier kannst du die Funktion wieder einschalten“, „Zug-Radar braucht Fahrplan & Echtzeit – Hier kannst du Fahrplan & Echtzeit
+einschalten“ (die Zeile hat den Knopf dafür) oder „Offline-Modus ist an – Zug-Radar kommt zurück, sobald du ihn beendest“; im letzten
+Fall bleibt die Seite oben beim Offline-Modus-Schalter, statt zu einer Zeile ohne Schalter zu springen. Ist gerade Einstellungen offen,
+schließt es sich zuerst. Ein Link scheitert so nie stumm.
 
 ## 7. Speicher
 
@@ -134,6 +149,7 @@ nicht im JSON-Backup.
 | Datei | Stelle |
 |---|---|
 | `Features/Planner/PlannerRootView.swift` | Feld „Züge suchen“ · Radar-Knopf · Störungen-Knopf · `radarRequested` (Link/Widget → Funktionen) |
+| `Features/Planner/TrainSearch/TrainSearchView.swift` | „Auf der Karte zeigen“ (der Zug-Radar) – `// MARK: review-funktionen` |
 | `Features/Dashboard/DashboardView.swift` | Gipfelbuch-Zeile · „Diese Woche“ · der Block der beiden (kein Leerraum) · Vorteile-Karte |
 | `Features/Ticket/TicketView.swift` | Vorteile-Karte |
 | `Features/Planner/PlannerStateViews.swift` | „Offline-Modus ist an“ statt „Live-Daten sind aus“ (ein `case`) |
@@ -163,7 +179,9 @@ nicht im JSON-Backup.
 `featuresHub`, `featuresRows`, `featuresInfo` („Was wird gesendet?“ des Zug-Radars offen), `featuresOffline`, `featuresPrivacy`, `featuresPrivacyBottom`, `featuresDependency` (Fahrplan & Echtzeit
 aus → Radar, Zugsuche, Störungen ausgeblendet, mit Knopf), `featuresAX5`, `featuresAX5Rows`, `featuresPlanner` (Fahrplan im
 Offline-Modus: Karte „Offline-Modus ist an“, keine Radar-, Störungs- und Suchknöpfe), `featuresLink` (`klimabilanz://radar` bei
-ausgeschaltetem Radar), `featuresSettingsRow`. Demo-Daten, kein Netz, keine Systemabfrage; die Zähler der Szene macht ein echter
+ausgeschaltetem Radar), `featuresSettingsRow`; seit dem Review `featuresTrainSearch` (RJX 66 bei ausgeschaltetem Radar: „Live verfolgen“ ohne „Auf der Karte
+zeigen“), `featuresLinkOffline` (der Link im Offline-Modus) und `featuresNoticesBlocked` („an · Mitteilungen sind in iOS aus“).
+Demo-Daten, kein Netz, keine Systemabfrage; die Zähler der Szene macht ein echter
 `RequestThrottle` mit festgehaltener Uhr. Die Szenen schreiben nichts in die Einstellungen des Screenshot-Laufs.
 
 Was die Screenshot-Läufe zeigten und was daraufhin geändert wurde: Lauf 1 (CI 43491514123) nahm nur leere Bilder auf – der Szenen-Host
@@ -188,9 +206,36 @@ war dieselbe Szene dunkel in Ordnung.
 4. Verlängerungs-Erinnerung / Wochenrückblick in Funktionen aus und an → unter Mitteilungen derselbe Zustand, „Alle Alarme“ zeigt die
    geplanten Mitteilungen bzw. keine.
 5. VoiceOver: jede Zeile ist ein Element, Doppeltipp schaltet, Aktionen „Was wird gesendet?“ und „Fahrplan & Echtzeit einschalten“.
+6. Zug-Radar aus, „Züge suchen“ → einen Zug von heute suchen: „Live verfolgen“ ist da, „Auf der Karte zeigen“ nicht.
+7. Offline-Modus an, dann `klimabilanz://radar` → Hinweis „Offline-Modus ist an“, Funktionen bleibt oben beim Schalter.
+8. Mitteilungen der App in den iOS-Einstellungen aus → Wochenrückblick und Verlängerungs-Erinnerung sagen „an · Mitteilungen sind in iOS
+   aus“; wieder erlaubt und zurück in die App → „an“.
 
 ## 12. Grenzen
 
 - Die Zähler gelten für Live-Daten. Sync, Updates, Tarife, Logo-Pakete und Apple-Kartenkacheln zählen nicht mit.
 - Was iOS selbst sendet (Karten, Mitteilungen, Apple-Dienste), steht hier nur, soweit die App es auslöst.
 - Widgets und das Kontrollzentrum zeigen ihre Knöpfe weiter; Funktionen fängt den Tipp in der App ab (§6).
+
+## 13. Review (19.11.2026)
+
+Gegen main geprüft, alles mit `// MARK: review-funktionen`:
+
+- **Ein ausgeschalteter Radar war erreichbar:** „Auf der Karte zeigen“ in „Züge suchen“ öffnete den ganzen Zug-Radar (mit seinen bis zu
+  24 Anfragen pro Minute), auch wenn der Radar aus war. Jetzt ausgeblendet; Hinweis, Zeile und Erklärung nennen es.
+- **Datenschutz war beim Server unvollständig:** `/v1/config` geht bei jedem Start an den Worker, auch ohne Konto (App- und iOS-Version
+  im User-Agent) – die Seite sagte „nur mit Konto“ bzw. „Jetzt: nichts“. Neuer Dienst „Server-Einstellungen“; Konto & Sync nennt
+  Vorteile, Anzeigename und E-Mail-Adresse der Anmeldung, die der Sync ebenfalls trägt.
+- **GitHub „nur nach deinem Tipp“ stimmte nicht:** Die Live-Konfiguration kommt mit der Live-Zustimmung beim Start
+  (`LiveDataService.start`), auch wenn „Automatisch prüfen“ aus ist. Der Zustand kommt jetzt aus einer getesteten Regel.
+- **Der Link-Hinweis versprach einen Schalter, den es nicht gab:** Im Offline-Modus sagte er „Hier kannst du es wieder einschalten“ und
+  sprang zur Radar-Zeile, die dann keinen Schalter hat. Jetzt nennt er den Grund und bleibt beim Offline-Modus.
+- **Offline-Modus:** Die Liste verschwieg, dass er „Live verfolgen“ samt Anschluss-Wächter und Aussteige-Wecker beendet und Abfahrten,
+  Pendel-Karte und Live-Widgets anhält.
+- **„an“ ohne Wirkung:** Mitteilungs-Funktionen sagten „an“, obwohl iOS die Mitteilungen ablehnt.
+- **Texte:** „Einstellungen › Vorteile“ heißt „Vorteile & Fahrgastrechte“; der Satz über dem Mosaik verspricht nicht mehr, dass jeder
+  Schalter etwas ausblendet.
+- Geprüft und in Ordnung: Zähler (ein Throttle für die ganze App, eine abgewiesene Anfrage zählt nicht, keine Division durch 0 im
+  Balken), Gate-Kosten im View-Body (Wörterbuch aus gespeicherten Werten, kein Dekodieren), Offline-Modus in allen Live-Wegen
+  (`timetable` ist nil, `effectiveConfig` schaltet die Clients ab, kein Hintergrundabruf bleibt hängen), keine SwiftData-Änderung,
+  Mitteilungs-Schalter schreiben über `Repository`, keine Systemabfrage in Szenen.

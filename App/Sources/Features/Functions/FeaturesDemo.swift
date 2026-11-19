@@ -10,19 +10,25 @@ enum FeatureDemo {
     static func install(_ screen: String) {
         var settings = FeatureSettings()
         var wrapped: [FeatureID: Bool] = [.haptics: true, .weeklySummary: true]
+        var noticesBlocked = false
         switch screen {
         case "featuresOffline", "featuresPlanner":
             settings.offlineMode = true
         case "featuresDependency":
             wrapped[.liveTimetable] = false
             settings.set(.perksCard, false)
-        case "featuresLink":
+        case "featuresLink", "featuresTrainSearch":   // MARK: review-funktionen – the radar off, also for „Züge suchen“
             settings.set(.radar, false)
+        case "featuresLinkOffline":   // MARK: review-funktionen – the link while the Offline-Modus holds the radar
+            settings.offlineMode = true
+        case "featuresNoticesBlocked":   // MARK: review-funktionen – iOS refuses the notices
+            wrapped[.renewalReminders] = true
+            noticesBlocked = true
         default:
             // A lived-in hub: the Vorteile-Karte switched off (one note), the rest as it comes.
             settings.set(.perksCard, false)
         }
-        FeatureCenter.shared.installDemo(settings, wrapped: wrapped)
+        FeatureCenter.shared.installDemo(settings, wrapped: wrapped, notificationsBlocked: noticesBlocked)
     }
 
     /// Counters made by a real `RequestThrottle` on a pinned clock: a search 25 minutes ago, prices, half a minute of radar and
@@ -83,6 +89,7 @@ struct FeaturesScreenshotHost: View {
     static let screens: Set<String> = [
         "featuresHub", "featuresOffline", "featuresPrivacy", "featuresPrivacyBottom", "featuresDependency", "featuresAX5",
         "featuresAX5Rows", "featuresPlanner", "featuresLink", "featuresSettingsRow", "featuresRows", "featuresInfo",
+        "featuresTrainSearch", "featuresLinkOffline", "featuresNoticesBlocked",   // MARK: review-funktionen
     ]
 
     let screen: String
@@ -122,7 +129,12 @@ struct FeaturesScreenshotHost: View {
                 NavigationStack { FeaturesHubView(screenshotAnchor: .trainSearch) }
             case "featuresPlanner":
                 MainTabView().onAppear { app.selectedTab = .planner }
-            case "featuresLink":
+            // MARK: review-funktionen – RJX 66 found with the radar off: „Live verfolgen“ without „Auf der Karte zeigen“
+            case "featuresTrainSearch":
+                TrainSearchView(initialText: "RJX 66", autoSubmit: true)
+            case "featuresNoticesBlocked":
+                NavigationStack { FeaturesHubView(screenshotAnchor: .renewalReminders) }
+            case "featuresLink", "featuresLinkOffline":
                 MainTabView()
                     .task {
                         app.selectedTab = .planner
@@ -134,7 +146,7 @@ struct FeaturesScreenshotHost: View {
                             let center = FeatureCenter.shared
                             if app.toast == nil, let notice = FeatureGate.linkNotice(.radar, settings: center.settings,
                                                                                       context: center.context(app: app)) {
-                                app.showToast("switch.2", notice.title, notice.subtitle)   // the toast of allowsLink
+                                app.showToast(notice.scrollsToRow ? "switch.2" : "wifi.slash", notice.title, notice.subtitle)   // as allowsLink
                             }
                         }
                     }
