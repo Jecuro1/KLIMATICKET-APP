@@ -125,7 +125,18 @@ final class AutomationReviewTests: XCTestCase {
 
     func testOnlyRulesThatReachTheirOwnerThroughIOSNeedThePermission() {
         XCTAssertEqual(AutoTriggerKind.allCases.filter(\.needsNotifications), [.ticketDeadline, .dayWithoutTrip, .followDelay])
-        XCTAssertEqual(AutoText.notificationsBlockedLine(denied: true), "Mitteilungen in iOS aus – meldet sich nicht")
-        XCTAssertEqual(AutoText.notificationsBlockedLine(denied: false), "braucht die Erlaubnis für Mitteilungen")
+        XCTAssertEqual(AutoText.notificationsBlockedLine(denied: true), "Mitteilungen aus – meldet sich nicht")
+        XCTAssertEqual(AutoText.notificationsBlockedLine(denied: false), "braucht Erlaubnis für Mitteilungen")
+    }
+
+    func testANumberKeepsItsUnitOnTheLine() {
+        let nb = "\u{00A0}"
+        XCTAssertEqual(AutoText.keepingUnits("mein Ticket 50, 75 oder 100 % amortisiert ist"), "mein Ticket 50, 75 oder 100\(nb)% amortisiert ist")
+        XCTAssertEqual(AutoText.keepingUnits("Verspätung 12 Min ist mindestens 10 Min (RJ 66, Ausstieg Innsbruck Hbf)"),
+                       "Verspätung 12\(nb)Min ist mindestens 10\(nb)Min (RJ 66, Ausstieg Innsbruck Hbf)")
+        XCTAssertEqual(AutoText.keepingUnits("in 30 Tagen abläuft · Noch 2 Tage · € 860 von € 1.400"),
+                       "in 30\(nb)Tagen abläuft · Noch 2\(nb)Tage · €\(nb)860 von €\(nb)1.400")
+        // „RJ 66“ and „Mo–Fr“ stay as they are; a „Minute“ is not „Min“.
+        XCTAssertEqual(AutoText.keepingUnits("RJ 66 um 19:00, 5 Minuten"), "RJ 66 um 19:00, 5 Minuten")
     }
 }

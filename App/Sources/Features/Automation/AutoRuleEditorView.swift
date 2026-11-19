@@ -538,13 +538,13 @@ struct AutoTestCard: View {
                         .symbolReplaceTransition()
                     VStack(alignment: .leading, spacing: 0) {
                         Kicker(text: "Testlauf · \(AutoClock.clockText(AutoClock.minuteOfDay(verdict.now, calendar: .vienna)))")
-                        Text(split.head)
+                        Text(AutoText.keepingUnits(split.head))
                             .font(.headline)
                             .foregroundStyle(Theme.textPrimary)
                             .contentTransition(.opacity)
                     }
                 }
-                Text(split.tail)
+                Text(AutoText.keepingUnits(split.tail))   // „10 Min“ stays on one line
                     .font(.body)
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -560,7 +560,7 @@ struct AutoTestCard: View {
                     .foregroundStyle(Theme.textSecondary)
                 AutoNoticePreview(title: preview.title, ruleName: rule.name, message: preview.body, timeText: preview.time)
             }
-            Text(basis)
+            Text(AutoText.keepingUnits(basis))
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

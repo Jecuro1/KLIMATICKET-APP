@@ -109,7 +109,7 @@ struct AutoRulesView: View {
         } footer: {
             // The background refresh of „Live verfolgen“ is the one moment a rule speaks while the app is neither open nor
             // delivering a planned notice – said here, so the promise above is the whole truth.
-            SetFooter(text: AutoText.honestyLine + " Verspätungsregeln lesen dazu die Antworten von „Live verfolgen“, auch die, die iOS im Hintergrund abholt. Regeln schreiben nie Fahrten und fragen nichts im Netz ab.")
+            SetFooter(text: AutoText.honestyLine + " Verspätungsregeln lesen dazu die Antworten von „Live verfolgen“, auch im Hintergrund. Sie schreiben nie Fahrten und fragen nichts im Netz ab.")
         }
     }
 
@@ -497,7 +497,7 @@ struct AutoRuleRow: View {
                     Text(rule.name)
                         .font(.headline)
                         .foregroundStyle(isLive ? Theme.textPrimary : Theme.textSecondary)
-                    Text(AutoText.sentence(rule))
+                    Text(AutoText.keepingUnits(AutoText.sentence(rule)))
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -506,7 +506,7 @@ struct AutoRuleRow: View {
                             Image(systemName: isBlocked ? "bell.slash.fill" : (rule.trigger.isScheduled ? "calendar.badge.clock" : "bolt.fill"))
                                 .accessibilityHidden(true)
                         }
-                        Text(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus"))
+                        Text(AutoText.keepingUnits(isLive ? nextLine : (isMasterOn ? "aus" : "Automatik ist aus")))
                             .fixedSize(horizontal: false, vertical: true)
                             .contentTransition(.opacity)
                     }

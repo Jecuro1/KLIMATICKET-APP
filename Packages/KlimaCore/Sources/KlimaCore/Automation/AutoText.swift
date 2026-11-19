@@ -358,7 +358,15 @@ public enum AutoText {
     /// The state line of a planned rule („vor Ablauf“, „Tag ohne Fahrt“) while iOS may not show notices: nothing can be
     /// planned, so it would never fire – not even in the open app.
     public static func notificationsBlockedLine(denied: Bool) -> String {
-        denied ? "Mitteilungen in iOS aus – meldet sich nicht" : "braucht die Erlaubnis für Mitteilungen"
+        denied ? "Mitteilungen aus – meldet sich nicht" : "braucht Erlaubnis für Mitteilungen"
+    }
+
+    /// The text as the screens set it: a number keeps its unit on the same line („10 Min“, „100 %“, „30 Tage“, „€ 860“) –
+    /// a sentence that wraps never leaves „100“ at the end of one line and „%“ at the start of the next. Only the spaces
+    /// change (to no-break spaces); VoiceOver reads the same words.
+    public static func keepingUnits(_ text: String) -> String {
+        text.replacingOccurrences(of: #"(\d) (%|Min\b|Tage|Tagen\b)"#, with: "$1\u{00A0}$2", options: .regularExpression)
+            .replacingOccurrences(of: #"€ (\d)"#, with: "€\u{00A0}$1", options: .regularExpression)
     }
 
     /// The warning when the rules want more planned notices than they have places. nil while everything fits.

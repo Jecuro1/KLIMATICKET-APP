@@ -99,7 +99,7 @@ struct AutoToken: View {
                     .foregroundStyle(tint)
                     .accessibilityHidden(true)
             }
-            Text(text)
+            Text(AutoText.keepingUnits(text))   // „100 %“ never splits at a line end
                 .font(.system(.title3, design: .rounded, weight: .semibold))
                 .foregroundStyle(isPlaceholder ? Theme.textSecondary : Theme.textPrimary)
                 .multilineTextAlignment(.leading)
@@ -287,13 +287,13 @@ struct AutoNoticePreview: View {
                         .font(.caption2)
                         .foregroundStyle(Theme.textSecondary)
                 }
-                Text(title)
+                Text(AutoText.keepingUnits(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                 Text("Automatik · \(ruleName)")
                     .font(.footnote.weight(.medium))
                     .foregroundStyle(Theme.textSecondary)
-                Text(message)
+                Text(AutoText.keepingUnits(message))
                     .font(.footnote)
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)

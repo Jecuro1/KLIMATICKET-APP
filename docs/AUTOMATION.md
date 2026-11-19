@@ -5,7 +5,7 @@ Fahrt 10 Minuten Verspätung hat, dann sag es mir“, „30 Tage vor Ablauf erin
 erfasst ist“. Ein **Testlauf** erklärt, warum eine Regel auslöst oder nicht, und **„Zuletzt ausgelöst“** zeigt, was passiert ist.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/Automation/` (Linux-Tests unter `Tests/KlimaCoreTests/Automation/`,
-`swift test --filter Automation`, 58 Tests), App in `App/Sources/Services/Automation/` (Speicher, Runner, Mitteilungen, Lese-Schnappschuss)
+`swift test --filter Automation`, 59 Tests), App in `App/Sources/Services/Automation/` (Speicher, Runner, Mitteilungen, Lese-Schnappschuss)
 und `App/Sources/Features/Automation/` (Liste, Editor, Testlauf, Protokoll, Demo-Szenen).
 
 ## 1. Das Versprechen (Ehrlichkeit)
@@ -37,8 +37,10 @@ findet nichts.
 | **Verspätung der verfolgten Fahrt** (`followDelay`, 3–30 Min) | bei jeder Antwort von „Live verfolgen“ | wenn die Verspätung **am Ausstieg** (Ankunft, sonst Abfahrt) mindestens den Wert erreicht | darunter; keine Verfolgung; keine Echtzeit für den Ausstieg; Fahrt zu Ende; schon gemeldet |
 | **Fahrt erfasst** (`tripLogged`, Filter: Mindestwert, Verkehrsmittel, Strecke in beide Richtungen) | nach dem Speichern | für eine neu gespeicherte Fahrt (eine Reise mit Etappen zählt als eine Fahrt mit summiertem Wert), die zum Filter passt | Filter passt nicht; Import mit mehr als 3 Fahrten; Fahrten, die älter als 10 Minuten sind (z. B. per Sync) |
 
-**Bedingungen** (je Auslöser nur die sinnvollen): nur an bestimmten Wochentagen, nur zwischen zwei Uhrzeiten (über Mitternacht
-möglich), nur wenn heute noch keine Fahrt erfasst ist, nur mit gültigem Ticket. „Wochenende ruhig“ gilt für alle Regeln: Samstag und
+**Bedingungen** (je Auslöser nur die sinnvollen): nur an bestimmten Wochentagen (Meilenstein, Verspätung, Fahrt erfasst), nur
+zwischen zwei Uhrzeiten (dieselben; über Mitternacht möglich; gleiche Von- und Bis-Zeit gilt als ganzer Tag), nur mit gültigem Ticket
+(Tag ohne Fahrt, Fahrt erfasst). „Nur wenn heute noch keine Fahrt erfasst ist“ steckt im Model, wird aber bei keinem Auslöser
+angeboten: „Tag ohne Fahrt“ prüft das selbst, und nach dem Speichern einer Fahrt hieße es nie etwas. „Wochenende ruhig“ gilt für alle Regeln: Samstag und
 Sonntag meldet sich keine; eine Erinnerung vor Ablauf, die aufs Wochenende fiele, kommt schon am Freitag (eine Frist wird nie verschluckt).
 
 **Aktionen**: *sag es mir* (in der offenen App ein Hinweis mit Haptik, sonst eine lokale Mitteilung; eigener Titel möglich),
@@ -76,7 +78,7 @@ nur einmal je Fahrt gemeldet; erst wenn die Verspätung unter den Wert fällt un
   Routen-Erinnerungen) – nie für Meilenstein und „Fahrt erfasst“ (die melden sich nach dem Speichern in der offenen App), nie für
   „Wochenende ruhig“, nie in Screenshot- oder Perf-Läufen.
 - **Ohne Erlaubnis** melden sich Regeln mit Termin (vor Ablauf, Tag ohne Fahrt) **gar nicht** – auch nicht bei offener App, denn sie
-  kommen nur als vorab geplante Mitteilung. Der Bildschirm sagt das („Mitteilungen in iOS aus – meldet sich nicht“ statt „nächste:
+  kommen nur als vorab geplante Mitteilung. Der Bildschirm sagt das („Mitteilungen aus – meldet sich nicht“ statt „nächste:
   19:00“), zeigt keine belegten Plätze und keine nächste Mitteilung, der Testlauf einer solchen Regel trägt den Hinweis, Alle Alarme
   zeigt keinen Termin, und es gibt „Einstellungen öffnen“. Die anderen Regeln melden sich dann nur, solange die App offen ist.
 
@@ -184,4 +186,6 @@ hätte beim nächsten Speichern „Dein Ticket hat sich rentiert“ gemeldet; (5
 morgen ab“ oder „Noch 30 Tage“, obwohl ein bzw. zwei Tage mehr blieben; (6) Meilenstein, „Fahrt erfasst“ und „Wochenende ruhig“
 fragten nach der Mitteilungs-Erlaubnis, obwohl sie keine brauchen; (7) der Testlauf las bei jedem Tastendruck Tickets und Fahrten neu;
 (8) der gewartete Aufruf in `LiveFollowTracker` stand vor Live Activity und Datensatz; (9) „Duplizieren“ bei 40 Regeln tat still
-nichts; (10) der Hinweis-Text verschwieg den Hintergrund-Abruf von „Live verfolgen“. Tests: `AutomationReviewTests`.
+nichts; (10) der Hinweis-Text verschwieg den Hintergrund-Abruf von „Live verfolgen“; (11) Zahl und Einheit brachen am Zeilenende
+auseinander („100“ / „%“, „10“ / „Min“) – Satz, Testlauf, Vorschau und Zeilen halten sie jetzt zusammen (`AutoText.keepingUnits`);
+(12) Alle Alarme sagte bei fehlender Erlaubnis „kein Termin“ statt des Grundes. Tests: `AutomationReviewTests`.

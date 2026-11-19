@@ -18,9 +18,17 @@ enum AutoAlarmRows {
             return AlarmItem(id: prefix + rule.id.uuidString, kind: .automation, title: normalized.name,
                              detail: AutoText.sentence(normalized),
                              nextDate: rule.isEnabled ? runner.shownPlan.next(for: rule.id) : nil,   // nothing is due without the permission
-                             scheduleText: rule.trigger.isScheduled ? nil : AutoText.kindTiming(rule.trigger.kind).autoSentenceStart,
+                             scheduleText: scheduleText(rule, runner: runner),
                              isOn: rule.isEnabled)
         }
+    }
+
+    /// When a rule speaks: „Nach dem Speichern einer Fahrt“ for an event rule; for a planned one its date (nextDate), or why
+    /// there is none while iOS may not show notices („kein Termin“ would hide the reason).
+    private static func scheduleText(_ rule: AutoRule, runner: AutoRunner) -> String? {
+        guard rule.trigger.isScheduled else { return AutoText.kindTiming(rule.trigger.kind).autoSentenceStart }
+        guard runner.isBlocked(rule) else { return nil }
+        return AutoText.notificationsBlockedLine(denied: runner.authorization == .denied).autoSentenceStart
     }
 
     static func setOn(_ item: AlarmItem, _ on: Bool) {
