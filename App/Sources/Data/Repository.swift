@@ -318,6 +318,7 @@ struct Repository {
         CommuteModel.shared.deleteAll()                   // MARK: commute – the Stammstrecke, Siri's last answer and queued logs
         AutoRunner.shared.deleteAll()                     // MARK: automation – the rules, their log and planned notices
         CalendarSuggestionStore.shared.forgetEvents()     // MARK: calendarsuggestions – „Kein Zug“, „Später“, follow-ups (station, time)
+        RadarMineStore.shared.deleteAll()                 // MARK: radar2-radarmine – remembered lines and the last stops of „Meine Fahrzeuge“
     }
 
     /// "Alles löschen" that also reaches the cloud: with a signed-in account every row is tombstoned and uploaded

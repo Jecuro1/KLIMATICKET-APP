@@ -46,6 +46,36 @@ public struct RadarLineKey: Sendable, Hashable, Identifiable {
         return RadarText.fold(vehicle.direction ?? "") == RadarText.fold(direction)
     }
 
+    /// A line for the plate of a remembered line whose vehicles are not loaded (only the key is stored): „Bus 13A“ → bus 13A, „S 45“ → S-Bahn 45,
+    /// „U6“, „Tram D“, „RJX 66“ → railjet xpress 66. Its title is the key's title again.
+    public var displayLine: Line {
+        let words = title.split(separator: " ").map(String.init)
+        let rest = words.count > 1 ? words.dropFirst().joined(separator: " ") : title
+        switch mode {
+        case .bus:
+            return Line(name: title, category: "Bus", categoryShort: "bus", lineNumber: rest, productClass: 64, mode: .bus)
+        case .tram:
+            return Line(name: title, category: "Tram", categoryShort: "str", lineNumber: rest, productClass: 512, mode: .tram)
+        case .subway:
+            return Line(name: title, category: "U", categoryShort: "U", lineNumber: title, productClass: 256, mode: .metro)
+        case .suburban:
+            return Line(name: title, category: "S", categoryShort: "s", lineNumber: words.count > 1 ? rest : String(title.dropFirst()), productClass: 32,
+                        mode: .sBahn)
+        case .rail:
+            let category = words.first ?? title
+            let cls: Int
+            switch RadarTrainClass.of(category: category) {
+            case .rjx, .rj: cls = 1
+            case .icec: cls = 4
+            case .njen: cls = 8
+            case .wb: cls = 4096
+            default: cls = 16
+            }
+            return Line(name: title, category: category, categoryShort: category, trainNumber: words.count > 1 ? rest : nil, productClass: cls,
+                        mode: .train)
+        }
+    }
+
     // MARK: Identity
 
     public struct Identity: Sendable, Hashable {

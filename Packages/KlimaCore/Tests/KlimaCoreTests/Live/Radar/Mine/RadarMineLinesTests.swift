@@ -65,6 +65,15 @@ final class RadarMineLinesTests: XCTestCase {
         XCTAssertNil(RadarLineKey.area(of: GeoPoint(latitude: .nan, longitude: 16)))
     }
 
+    func testTheDisplayLineOfAKeyGivesItsTitleAndIdentityBack() throws {
+        for key in [RadarLineKey(mode: .bus, compact: "BUS13A", title: "Bus 13A"), RadarLineKey(mode: .suburban, compact: "S45", title: "S 45"),
+                    RadarLineKey(mode: .subway, compact: "U6", title: "U6"), RadarLineKey(mode: .tram, compact: "TRAMD", title: "Tram D"),
+                    RadarLineKey(mode: .rail, compact: "RJX66", title: "RJX 66"), RadarLineKey(mode: .rail, compact: "REX92", title: "REX 92")] {
+            XCTAssertEqual(LinePresentation.title(key.displayLine), key.title)
+            XCTAssertEqual(try XCTUnwrap(RadarLineKey.identity(of: key.displayLine)).id, key.lineID)
+        }
+    }
+
     // MARK: RadarMineLines
 
     func testAddRemoveAndDedupe() {

@@ -2911,6 +2911,27 @@ Ansichten hinweg `RadarBudgetLedger`; mindestens 16 der 40 je Minute bleiben fü
 Folgen: JourneyGeoPos liefert U-Bahn-Positionen; Schiffe waren abends im November nicht messbar (bleiben verborgen); Schienenersatzverkehr und
 Rufbus/Seilbahn liefern Positionen, Chips dafür sind nicht gebaut; Grenzen der Stadt-Spur unverändert (abends nicht repräsentativ).
 
+### R11.5 Meine Fahrzeuge: die Abfahrtstafel als Nebenaufgabe (2026-11-19, radar2)
+
+Ausführlich: `docs/RADAR_MINE.md`. „Linien“ und „In der Nähe“ schicken **keine eigene Anfrage**; sie lesen die Fahrzeuge, die die Kacheln ohnehin liefern.
+Der Standort für „In der Nähe“ wird nur auf einen Tipp gelesen, bleibt im Arbeitsspeicher und wird nie gesendet; das Radar fragt danach die Kacheln
+rund um ihn, wie beim Verschieben der Karte (die Auskunft sieht grob die Gegend – so steht es in der App und im Standort-Text).
+
+- **„Wo bleibt mein Bus?“** fragt für die gewählte Haltestelle **eine StationBoard-Anfrage je 60 s** (30 Minuten, höchstens 12 Einträge, Produkte
+  4989 = Züge, S-Bahn, Bus, Bim, U-Bahn, unabhängig von den Chips), beim ersten Mal davor eine LocMatch-Anfrage (keine für `uic:`-Stationen; 30 Tage
+  auf dem Gerät gemerkt). Jede ist eine **Nebenaufgabe der Live-Schleife** (`Radar2Parts.dueSideJob`) mit **einem eigenen Platz** des Radar-Budgets
+  (`RadarScheduler.claimSlot`): dieselben 24 je Minute, 4 in 10 s, 1 s Abstand; höchstens eine unterwegs; Backoff 15/30/60/120 s; Pause nach 30 Minuten
+  ohne Tipp. Sie läuft nur, wenn `RadarFeatureGate.stopPanelAsks` (Live-Schleife läuft, Ebene „Züge“ an, Seite offen, kein Stromsparmodus) – also nie
+  im Hintergrund, nie während die Zeitreise weg von „Jetzt“ ist, nie unter dem Cockpit, nie ohne Zustimmung, Schalter, offline oder im Offline-Modus.
+  429, offener Schalter und Notschalter pausieren das ganze Radar. Beweis: `RadarMineGateTests` (alle Gate-Zustände, Takt, Budget mit 16 Stadt-Kacheln:
+  mindestens 16 der 40 je Minute bleiben frei).
+- **Positionen der Tafel:** die aufgezeichneten Tafeln (2026-10-09) tragen `pos` auch für Bus, Bim und U-Bahn (Innsbruck Hbf: Bus 11 von 19, Bim 5 von 7;
+  Wien Hbf Ankünfte: Bus 7 von 7, Bim 15 von 17, U-Bahn 6 von 8). Gezeigt mit dem Alter der Tafel, nie hochgerechnet; älter als 2 Minuten grau.
+- **Nicht gemessen:** ob die `jid` der Tafel der des Radars gleicht. Die App ersetzt die Nadel der Tafel nur bei gleicher Fahrt-ID und neuerer
+  Radar-Antwort durch den Radar-Marker und sagt unter jeder Tafel, dass ein Fahrzeug zweimal erscheinen kann.
+- **Gespeichert:** nur gemerkte Linien (Titel, Verkehrsmittel, grob die Gegend) und die letzten fünf Haltestellen in `RadarMine/mine.json`, nicht in der
+  iPhone-Sicherung; Tafel, Positionen und Standort nur im Arbeitsspeicher.
+
 ### R11.6 Spuren: keine Anfrage, nur Arbeitsspeicher (2026-11-19, radar2)
 
 Ausführlich: `docs/RADAR_TRAILS.md`. Spuren schicken **keine Anfrage** und verbrauchen nichts vom Budget (24 je Minute): sie merken sich nur die

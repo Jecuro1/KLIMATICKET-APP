@@ -57,10 +57,13 @@ final class RadarMineSourceGuardTests: XCTestCase {
         }
     }
 
-    func testTheBoardOnlyAsASideJob() throws {
-        for file in try sources() where file.code.contains(".board(") {
-            XCTAssertTrue(file.name.hasSuffix("RadarStopBoardSource.swift") || file.name.contains("Sources/KlimaCore"),
-                          "\(file.name) asks for a board outside the side job's source")
+    func testTheBoardOnlyThroughTheSideJobsSource() throws {
+        // Only `RadarStopBoardSource` (called from the side job in `RadarMineModel.run`) reaches the timetable or the station linker.
+        let words = ["timetable.", "linker.", "TimetableService", "HafasClient", "claimSlot", "RequestThrottle"]
+        for file in try sources() where file.name.hasPrefix("App/") && !file.name.hasSuffix("RadarStopBoardSource.swift") {
+            for word in words {
+                XCTAssertFalse(file.code.contains(word), "\(file.name) uses \(word) outside the side job's source")
+            }
         }
     }
 }

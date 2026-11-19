@@ -101,6 +101,8 @@ public enum RadarMineText {
     public static let noFix = "Dein Standort kam gerade nicht. Versuch es gleich noch einmal."
     public static let retry = "Erneut versuchen"
     public static let relocate = "Neu orten"
+    /// The dot of the invented place in demo and screenshot launches (VoiceOver).
+    public static let demoPlace = "Ort der Vorschau, erfunden"
     public static let nearFooter = "Dein Standort bleibt auf dem iPhone und wird nicht gespeichert. Die Positionen sind berechnet, kein GPS."
 
     /// „Bus 13A → Hauptbahnhof“.
