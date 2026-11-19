@@ -248,3 +248,31 @@ struct SplitMix {
         low + (high - low) * Double(next() >> 11) / Double(1 << 53)
     }
 }
+
+/// The Cockpit's head start: only this train, only the last three minutes, only before the answer the cockpit starts from.
+final class RadarTrailHeadStartTests: XCTestCase {
+    private typealias F = TrailFixture
+
+    func testOnlyYoungSamplesOfTheSameTripBeforeTheCockpitsAnswer() {
+        var recorder = RadarTrailRecorder(window: 3_600)
+        for i in 0..<15 {
+            recorder.record([F.vehicle("a", at: F.point(north: Double(i) * 300)), F.vehicle("b", at: F.point(east: Double(i) * 300))],
+                            at: F.at(Double(i) * 20))
+        }
+        let now = F.at(280), seenAt = F.at(280)
+        let points = recorder.headStart(for: "a", before: seenAt, now: now)
+        XCTAssertEqual(points.first?.at, F.at(100), "nothing older than three minutes")
+        XCTAssertEqual(points.last?.at, F.at(260), "nothing at or after the answer the cockpit starts from")
+        XCTAssertEqual(points.count, 9)
+        XCTAssertTrue(points.allSatisfy { abs($0.coordinate.longitude - F.base.longitude) < 1e-5 }, "only the train's own positions")
+        XCTAssertTrue(recorder.headStart(for: "unknown", before: seenAt, now: now).isEmpty)
+    }
+
+    func testAStandGivesItsFirstAndItsLastMoment() {
+        var recorder = RadarTrailRecorder()
+        recorder.record([F.vehicle("a", at: F.base)], at: F.at(0))
+        recorder.record([F.vehicle("a", at: F.base)], at: F.at(60))
+        recorder.record([F.vehicle("a", at: F.point(north: 500))], at: F.at(80))
+        XCTAssertEqual(recorder.headStart(for: "a", before: F.at(100), now: F.at(100)).map(\.at), [F.at(0), F.at(60), F.at(80)])
+    }
+}

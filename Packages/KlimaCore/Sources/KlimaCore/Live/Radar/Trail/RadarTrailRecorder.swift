@@ -265,3 +265,23 @@ public struct RadarTrailRecorder: Sendable {
         return bytes
     }
 }
+
+// MARK: radartrail – the Cockpit's head start (docs/RADAR_TRAILS.md §7, docs/RADAR_COCKPIT.md): the recorded moments of one train before the
+// answer the cockpit starts from, so its speed estimate begins with real history instead of waiting for two answers of its own.
+
+extension RadarTrailRecorder {
+    /// Only this young: an older position says little about the speed now.
+    public static let headStartAge: TimeInterval = 180
+
+    /// The moments of `tripID` (a stand gives its first and its last), oldest first, younger than `headStartAge` at `now` and before `seenAt`.
+    public func headStart(for tripID: String, before seenAt: Date, now: Date) -> [RadarTrailPoint] {
+        let oldest = now.addingTimeInterval(-Self.headStartAge)
+        var points: [RadarTrailPoint] = []
+        for sample in samples(for: tripID) {
+            for at in sample.to > sample.from ? [sample.from, sample.to] : [sample.from] where at >= oldest && at < seenAt {
+                points.append(RadarTrailPoint(coordinate: sample.coordinate, at: at))
+            }
+        }
+        return points
+    }
+}

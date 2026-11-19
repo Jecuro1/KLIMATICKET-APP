@@ -12,7 +12,9 @@ extension RadarView {
         let seen = model.seenAt(of: run.tripID) ?? Date()
         // The radar's map: centred on its box, as far out as its span (about 100 km a degree of latitude).
         let start = CockpitCamera(center: model.box.center, distance: min(max(model.spanDegrees * 111_000 * 1.7, 4_000), 1_500_000))
-        return CockpitLaunch(vehicle: model.latestVehicle(run.tripID) ?? run, details: details, seenAt: seen, startCamera: start)
+        let latest = model.latestVehicle(run.tripID) ?? run
+        return CockpitLaunch(vehicle: latest, details: details, seenAt: seen, startCamera: start,
+                             earlier: model.radar2.trail.headStart(for: latest, seenAt: seen))   // MARK: radar2-radartrail – the recorded minutes as a head start
     }
 
     /// Called when the trip sheet is gone: now the cockpit may open.

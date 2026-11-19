@@ -22,8 +22,8 @@ struct CockpitLaunch: Identifiable {
     /// A scene that holds its camera (the free scene).
     var staticCamera: CockpitCamera?
     var scenario: Scenario = .live
-    /// Demo scenes only: earlier answers of the radar for this train (oldest first, before `seenAt`), so a scene starts as the live cockpit is
-    /// after a minute: with a speed estimate. The live cockpit starts with the one answer the radar has.
+    /// Earlier answers of the radar for this train (oldest first, before `seenAt`), so the cockpit starts with a speed estimate: in demo scenes
+    /// synthetic ones, in the live radar the positions „Spuren“ recorded in the last three minutes (MARK: radar2-radartrail, docs/RADAR_TRAILS.md §7).
     var earlier: [Sighting] = []
 
     struct Sighting {

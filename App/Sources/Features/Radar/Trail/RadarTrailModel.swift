@@ -140,6 +140,16 @@ final class RadarTrailModel {
         cache = cache.filter { tripIDs.contains($0.key) }
     }
 
+    /// The Cockpit's head start: this train's recorded positions of the last three minutes before the answer it starts from, as earlier
+    /// sightings with the latest answer's stops, so the cockpit's speed estimate begins with them (`RadarTrailRecorder.headStart`).
+    func headStart(for latest: RadarVehicle, seenAt: Date, now: Date = Date()) -> [CockpitLaunch.Sighting] {
+        recorder.headStart(for: latest.tripID, before: seenAt, now: now).map { point in
+            var vehicle = latest
+            vehicle.coordinate = point.coordinate
+            return CockpitLaunch.Sighting(vehicle: vehicle, at: point.at)
+        }
+    }
+
     // MARK: Demo
 
     /// Demo and screenshot launches only, and only for synthetic vehicles (`demo|…`): the minutes before the radar opened, so a trail shows at
