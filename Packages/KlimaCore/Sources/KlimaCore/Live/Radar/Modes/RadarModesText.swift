@@ -282,5 +282,7 @@ public extension RadarModesText {
 
     /// Short enough for the field on a phone (the spec's „Linie oder Zugnummer, z. B. RJX 66 oder 13A“ was cut off on the CI screenshots).
     static let searchPlaceholder = "Linie oder Zug, z. B. 13A, RJX 66"
+    /// MARK: radar2-fix-radarmodes – from xLarge on: the long one no longer fits the field and was shrunk (at AX5 to about 18 pt).
+    static let searchPlaceholderShort = "Linie oder Zug"
     static let searchNoMatch = "Nichts gefunden in den geladenen Gebieten. Zoom heraus, verschieb die Karte oder probier eine andere Nummer."
 }

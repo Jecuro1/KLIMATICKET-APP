@@ -70,6 +70,8 @@ final class RadarModel {
     private(set) var unfilteredCount = 0
     /// MARK: radarmodes – single markers among the clusters („Linie und Ziel“ shows the destination up to 80 of them).
     private(set) var singleCount = 0
+    /// MARK: radar2-fix-radarmodes – single markers drawn as a dot: they would lie under the plate of a kept marker (`RadarMarkerOverlap`).
+    private(set) var compactIDs: Set<String> = []
     /// „Jetzt aktualisieren“ / „Erneut versuchen“: the loop sends the due tiles even in Low Power Mode until none is due. There is no
     /// second loop for it: one loop, one budget, and it ends with the view.
     @ObservationIgnored private var manualRefresh = false
@@ -100,10 +102,6 @@ final class RadarModel {
     /// Every vehicle of the last minutes, whatever the map shows. Search and the filter's line list use it.
     var knownVehicles: [RadarVehicle] {
         store.entries.values.map(\.vehicle).sorted { $0.tripID < $1.tripID }
-    }
-
-    func toggle(_ mode: RadarMode) {
-        modes.toggle(mode)   // at least one mode stays on
     }
 
     /// The old answers are for other vehicles: the tiles start over, vehicles of a mode that was switched off go at once.
@@ -198,7 +196,10 @@ final class RadarModel {
         do {
             let snapshot = try await service.radar(RadarQuery(box: RadarTileGrid.box(of: tile), when: requestedAt, products: askedProducts,
                                                                maxVehicles: RadarTiling.requestCap))
-            guard asked == laneGenerations[tile.lane, default: 0] else { return }   // its lane's modes changed while this was on its way
+            guard asked == laneGenerations[tile.lane, default: 0] else {   // its lane's modes changed while this was on its way
+                scheduler.recordDropped(tile)   // MARK: radar2-fix-radarmodes – the tile is free for its lane's new modes
+                return
+            }
             // The positions in the answer are those of `requestedAt` (`RadarQuery.when`), however long the answer took: that is
             // the time they belong to. So a slow answer (up to 21 s measured) is as old in the status as it is, and an answer of
             // an older request never replaces a newer one (`RadarFrameStore.merge`), now that several requests are on their way.
@@ -212,7 +213,10 @@ final class RadarModel {
         } catch is CancellationError {
             scheduler.recordCancelled(tile)
         } catch {
-            guard asked == laneGenerations[tile.lane, default: 0] else { return }
+            guard asked == laneGenerations[tile.lane, default: 0] else {
+                scheduler.recordDropped(tile)   // MARK: radar2-fix-radarmodes
+                return
+            }
             lastError = error
             scheduler.recordFailure(tile, error: error, at: Date())
         }
@@ -275,13 +279,21 @@ final class RadarModel {
         let points = pins.map { RadarPoint(tripID: $0.id, coordinate: $0.coordinate, delay: $0.delay) }
         // MARK: radarmodes – „Gruppen zusammenfassen“ off (up to 250 vehicles): every vehicle single; the cell follows the marker size
         let grouped = display.groups(pinCount: pins.count)
-        let single = grouped ? Set(pins.lazy.filter { self.radar2.keepsSingle($0.vehicle) }.map(\.id)) : Set(pins.map(\.id))
-        clusters = RadarClustering.group(
-            single.isEmpty ? points : points.filter { !single.contains($0.tripID) },
-            cellDegrees: RadarClustering.cellSize(latitudeSpan: spanDegrees, longitudeSpan: box.east - box.west,
-                                                  widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height),
-                                                  markerPitch: display.size.markerPitch))
+        // MARK: radar2-fix-radarmodes – the selected and the followed vehicle stay single as well: never folded into a number
+        let followed = LiveFollowTracker.shared.target?.tripID
+        let single = grouped ? Set(pins.lazy.filter { self.radar2.keepsSingle($0.vehicle) || $0.id == self.selectedTripID || $0.id == followed }
+                                       .map(\.id))
+                             : Set(pins.map(\.id))
+        let cell = RadarClustering.cellSize(latitudeSpan: spanDegrees, longitudeSpan: box.east - box.west,
+                                            widthPoints: Double(mapSize.width), heightPoints: Double(mapSize.height),
+                                            markerPitch: display.size.markerPitch)
+        let gridded = RadarClustering.group(single.isEmpty ? points : points.filter { !single.contains($0.tripID) }, cellDegrees: cell)
             + points.filter { single.contains($0.tripID) }.map(RadarClustering.single)
+        // MARK: radar2-fix-radarmodes – markers on either side of a cell border no longer cover each other (`RadarMarkerOverlap`)
+        let resolved = grouped ? RadarMarkerOverlap.resolve(gridded, cellDegrees: cell, kept: single)
+                               : RadarMarkerOverlap.Result(clusters: gridded, compact: [])
+        clusters = resolved.clusters
+        if compactIDs != resolved.compact { compactIDs = resolved.compact }
         singleCount = clusters.lazy.filter(\.isSingle).count   // MARK: radarmodes
         updateStatus(at: now)
         refreshHeat(at: now)   // MARK: radarheat – only when an answer came in or ten seconds went by

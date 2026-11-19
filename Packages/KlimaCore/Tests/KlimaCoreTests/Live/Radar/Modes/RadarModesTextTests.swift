@@ -177,6 +177,9 @@ final class RadarModesSheetTextTests: XCTestCase {
         XCTAssertTrue(RadarModesText.labelFooter.contains("80"))
         XCTAssertEqual(RadarModesText.searchPlaceholder, "Linie oder Zug, z. B. 13A, RJX 66")
         XCTAssertLessThanOrEqual(RadarModesText.searchPlaceholder.count, 34, "fits the field on a phone like the old placeholder")
+        // MARK: radar2-fix-radarmodes – the field at the larger sizes (up to AX2): the short one fits its width there
+        XCTAssertEqual(RadarModesText.searchPlaceholderShort, "Linie oder Zug")
+        XCTAssertTrue(RadarModesText.searchPlaceholder.hasPrefix(RadarModesText.searchPlaceholderShort))
         XCTAssertFalse(RadarModesText.searchNoMatch.contains("Kein Zug"), "the search finds buses too")
         XCTAssertEqual(RadarModesText.filterOff, "Filter aus")
     }

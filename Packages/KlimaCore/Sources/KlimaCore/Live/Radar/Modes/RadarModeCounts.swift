@@ -42,6 +42,13 @@ public struct RadarModeCounts: Equatable, Sendable {
 
     public var total: Int { entries.reduce(0) { $0 + $1.count } }
 
+    /// MARK: radar2-fix-radarmodes – the line while a filter is on: only the modes with a vehicle on the map. A filter for one line or „nur verspätet“
+    /// leaves most modes at 0, and a row of „Bus 0 · Bim 0“ says nothing the filter row and the empty note do not. The line still adds up to the pill
+    /// (a 0 adds nothing); with no vehicle at all it is empty and the card shows no line.
+    public var withoutEmptyModes: RadarModeCounts {
+        RadarModeCounts(entries: entries.filter { $0.count > 0 })
+    }
+
     /// "Zug 21 · S-Bahn 28 · Bus 180 · Bim 92 · U-Bahn 12 · Andere 3".
     public var line: String {
         entries.map { "\(RadarModesText.label($0.mode)) \($0.count)" }.joined(separator: " · ")

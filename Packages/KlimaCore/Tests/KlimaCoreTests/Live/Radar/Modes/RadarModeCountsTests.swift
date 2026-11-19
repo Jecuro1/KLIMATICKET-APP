@@ -38,6 +38,20 @@ final class RadarModeCountsTests: XCTestCase {
         }
     }
 
+    // MARK: radar2-fix-radarmodes – with a filter on, the status card lists only the modes with a vehicle on the map
+    func testWithAFilterOnlyModesWithVehiclesStayAndTheLineStillAddsUp() {
+        let classes = [64, 64, 64, 2]   // three buses through „nur verspätet“, one rail replacement bus
+        let counts = RadarModeCounts(productClasses: classes, shownModes: RadarMode.allCases).withoutEmptyModes
+        XCTAssertEqual(counts.line, "Bus 3 · Andere 1")
+        XCTAssertEqual(counts.spoken, "3 Busse, 1 anderes Fahrzeug")
+        XCTAssertEqual(counts.total, classes.count, "still the pill's number")
+        let nothing = RadarModeCounts(productClasses: [], shownModes: RadarMode.allCases).withoutEmptyModes
+        XCTAssertTrue(nothing.entries.isEmpty, "a filter that matches nothing: no line of zeros")
+        XCTAssertEqual(nothing.total, 0)
+        let full = RadarModeCounts(productClasses: [1, 32, 64, 512, 256], shownModes: RadarMode.allCases)
+        XCTAssertEqual(full.withoutEmptyModes, full, "nothing to drop")
+    }
+
     func testSingularForms() {
         let counts = RadarModeCounts(productClasses: [1, 32, 64, 512, 256], shownModes: RadarMode.allCases)
         XCTAssertEqual(counts.spoken, "1 Zug, 1 S-Bahn, 1 Bus, 1 Bim, 1 U-Bahn")

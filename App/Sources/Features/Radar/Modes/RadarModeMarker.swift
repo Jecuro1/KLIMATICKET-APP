@@ -117,10 +117,12 @@ struct RadarDestinationLabel: View {
 }
 
 extension RadarView {
-    /// The marker style of „Darstellung“; the destination only close up and with at most 80 single markers.
+    /// The marker style of „Darstellung“; the destination only close up and with at most 80 single markers. MARK: radar2-fix-radarmodes – a marker
+    /// that would lie under a kept marker's plate (the selected or followed vehicle) is a dot.
     func markerStyle(for pin: RadarPin) -> RadarMarkerStyle {
         let display = model.display
-        let destination = display.showsDestination(latitudeSpan: model.spanDegrees, singles: model.singleCount) ? pin.vehicle.direction : nil
-        return RadarMarkerStyle(size: display.size, dots: display.label == .dots, arrows: display.arrows, destination: destination)
+        let compact = !travel.isAway && model.compactIDs.contains(pin.id)   // the Zeitreise draws its own markers
+        let destination = !compact && display.showsDestination(latitudeSpan: model.spanDegrees, singles: model.singleCount) ? pin.vehicle.direction : nil
+        return RadarMarkerStyle(size: display.size, dots: display.label == .dots || compact, arrows: display.arrows, destination: destination)
     }
 }

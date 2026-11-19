@@ -152,6 +152,19 @@ public struct RadarScheduler: Sendable {
         var requestBefore: Date?
         /// A request for this tile is on its way (set by `next`, cleared by the outcome).
         var isInFlight = false
+        /// MARK: radar2-fix-radarmodes – the request on its way was asked before its lane started over (`reset(lane:)`): its outcome is dropped
+        /// (`recordDropped`), and until it is back (or `requestTimeout` passed) the tile is not asked again: never two requests for one tile at once.
+        var isStale = false
+    }
+
+    /// MARK: radar2-fix-radarmodes – what a tile keeps when its lane starts over: nothing, unless its request is still on its way (`isStale`).
+    private static func keptAfterReset(_ state: TileState) -> TileState? {
+        guard state.isInFlight else { return nil }
+        var kept = TileState()
+        kept.lastRequestAt = state.lastRequestAt
+        kept.isInFlight = true
+        kept.isStale = true
+        return kept
     }
 
     public let config: RadarSchedulerConfig
@@ -223,15 +236,24 @@ public struct RadarScheduler: Sendable {
     /// The city lane may ask now: it has a view and the view is close enough.
     public var cityIsInZoom: Bool { cityViewport != nil && RadarLanePlan.cityInZoom(latitudeSpan: citySpan) }
 
-    /// Forgets every tile (the transport modes changed: the old answers are for other vehicles). The request budget stays.
+    /// Forgets every tile (the transport modes changed: the old answers are for other vehicles). The request budget stays, and so does a
+    /// request still on its way (MARK: radar2-fix-radarmodes – `keptAfterReset`).
     public mutating func reset() {
-        states = [:]
+        states = states.compactMapValues(Self.keptAfterReset)
         pausedUntil = nil
     }
 
-    /// MARK: radarmodes – forgets the tiles of one lane (its modes changed); the other lane, the budget and a pause stay.
+    /// MARK: radarmodes – forgets the tiles of one lane (its modes changed); the other lane, the budget and a pause stay. MARK: radar2-fix-radarmodes –
+    /// a tile whose request is still on its way keeps that it is (`keptAfterReset`): it was forgotten as well, and a second request for it went out
+    /// before the first was back (more than `maxInFlight` on their way).
     public mutating func reset(lane: RadarLane) {
-        states = states.filter { $0.key.lane != lane }
+        states = states.reduce(into: [:]) { kept, entry in
+            if entry.key.lane != lane {
+                kept[entry.key] = entry.value
+            } else if let state = Self.keptAfterReset(entry.value) {
+                kept[entry.key] = state
+            }
+        }
     }
 
     /// The tiles the view needs: tiles of the zoom's level, each replaced by its children when it was cut off at the cap; then the city
@@ -396,6 +418,7 @@ public struct RadarScheduler: Sendable {
         state.requestBefore = state.lastRequestAt
         state.lastRequestAt = now
         state.isInFlight = true
+        state.isStale = false   // MARK: radar2-fix-radarmodes – a stale request that timed out: this one is for the lane's modes now
         states[best.key] = state
         return .request(best.key)
     }
@@ -505,9 +528,21 @@ public struct RadarScheduler: Sendable {
     /// budget stays used, the request may have reached the server.
     public mutating func recordCancelled(_ key: RadarTileKey) {
         guard var state = states[key] else { return }
+        if state.isStale {   // MARK: radar2-fix-radarmodes – asked before its lane started over: never asked for the new modes
+            states[key] = nil
+            return
+        }
         state.lastRequestAt = state.requestBefore
         state.isInFlight = false
         states[key] = state
+    }
+
+    /// MARK: radar2-fix-radarmodes – the outcome (answer or failure) of a request asked before its lane started over came back and is dropped: the
+    /// tile is free again and, never asked for its lane's new modes, due at once. Nothing changes when the tile was asked again since (the old
+    /// request had passed `requestTimeout`): that newer request is still on its way.
+    public mutating func recordDropped(_ key: RadarTileKey) {
+        guard states[key]?.isStale == true else { return }
+        states[key] = nil
     }
 
     /// "Erneut versuchen" and "Jetzt aktualisieren": every visible tile is due at once; backoff and pause are cleared. A tile whose

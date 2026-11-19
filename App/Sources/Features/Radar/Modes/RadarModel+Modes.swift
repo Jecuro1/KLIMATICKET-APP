@@ -84,6 +84,14 @@ extension RadarModel {
                                shownModes: modes.ordered.filter { !$0.isCity || inZoom })
     }
 
+    /// MARK: radar2-fix-radarmodes – the status card's counts line: while a city mode is on and the pill has a number; with a filter on only the modes
+    /// with a vehicle on the map (a row of zeros said nothing), none when the filter matches nothing (the empty note says it).
+    var statusModeCounts: RadarModeCounts? {
+        guard modes.hasCity, pillText != nil else { return nil }
+        let counts = filter.isActive ? modeCounts.withoutEmptyModes : modeCounts
+        return counts.entries.isEmpty ? nil : counts
+    }
+
     /// The CI scenes of the city demo ask with the demo-only fast budget (`RadarSchedulerConfig.forRadar`): a new scheduler, the lanes start over.
     func adopt(schedulerConfig config: RadarSchedulerConfig) {
         guard scheduler.config != config else { return }

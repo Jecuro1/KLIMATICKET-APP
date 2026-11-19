@@ -318,7 +318,8 @@ final class RadarLaneSchedulerTests: XCTestCase {
         scheduler.recordAnswer(wideTile, count: 50, at: t0.addingTimeInterval(elapsed))
         XCTAssertEqual(scheduler.states[wideTile]?.isInFlight, false, "the wide tile is free again at once")
         XCTAssertNotNil(scheduler.states[wideTile]?.lastAnswerAt)
-        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(elapsed)), 0)
+        // MARK: radar2-fix-radarmodes – only the city requests asked before the reset are still on their way (they count until they are back)
+        XCTAssertEqual(scheduler.inFlightCount(now: t0.addingTimeInterval(elapsed)), scheduler.states.values.filter(\.isStale).count)
     }
 
     func testCombinedPauseCountsOnlyLanesWithTiles() {
