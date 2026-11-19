@@ -396,6 +396,13 @@ jobs:
           python3 -m json.tool dist/altstore-source.json > /dev/null
           python3 -m json.tool dist/update.json > /dev/null
 
+      - name: Release .zip (the .ipa with an install note, a download without the GitHub page)
+        if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD: ${{ steps.version.outputs.build }}
+        run: bash scripts/make_release_zip.sh "dist/KlimaBilanz-${VERSION}.ipa" "$VERSION" "$BUILD" "dist/KlimaBilanz-${VERSION}.zip"
+
       - name: Release target commit
         id: target
         if: steps.version.outputs.release == 'true'
@@ -423,6 +430,7 @@ jobs:
           overwrite_files: true
           files: |
             dist/*.ipa
+            dist/*.zip
             dist/update.json
             dist/altstore-source.json
             dist/tariffs.json
@@ -443,6 +451,7 @@ jobs:
           make_latest: true
           files: |
             dist/*.ipa
+            dist/*.zip
             dist/update.json
             dist/altstore-source.json
             dist/tariffs.json

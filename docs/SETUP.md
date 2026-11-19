@@ -72,6 +72,11 @@ CI baut dann die `.ipa`, erstellt `update.json` (In-App-Updater) und `altstore-s
 (AltStore/SideStore). In AltStore/SideStore einmal **Quelle hinzufügen** (Link aus der App unter
 *Einstellungen › Updates*) – ab dann erkennt der Store jede neue Version, und ein Tipp auf „Aktualisieren“ genügt.
 
+Jedes Release bekommt außerdem `KlimaBilanz-<Version>.zip`: die `.ipa` plus `INSTALLIEREN.txt`
+(`scripts/make_release_zip.sh`), zum Weitergeben ohne GitHub-Seite, etwa über einen WeTransfer-Link. Die Dateien-App
+entpackt sie mit einem Tipp. Für ältere Releases hängt der Workflow **Release-ZIP nachreichen** (`release-zip.yml`,
+Eingabe `tag`) die `.zip` nachträglich an; er prüft die `.ipa` vorher gegen die `sha256` aus der `update.json` dieses Releases.
+
 `altstore-source.json` wird vollständig aus der fertigen `.ipa` abgeleitet (`scripts/make_release_metadata.py`):
 Version und Build aus der `Info.plist`, `size` und `sha256` der Datei sowie `appPermissions` – alle Entitlements von App
 und Widget (per `ldid -e` aus den signierten Binaries) und alle `…UsageDescription`-Texte. Genau das prüfen AltStore

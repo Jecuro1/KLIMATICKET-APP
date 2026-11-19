@@ -1,0 +1,47 @@
+name: Release-ZIP nachreichen
+
+# Adds KlimaBilanz-<version>.zip (the release's .ipa plus a short install note, scripts/make_release_zip.sh) to an
+# EXISTING release, e.g. one published before ios.yml attached the .zip itself. New releases get it from ios.yml.
+# The .ipa is checked against the sha256 in that release's own update.json before it is packed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release-Tag, z. B. v1.2.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-zip
+  cancel-in-progress: false
+
+jobs:
+  zip:
+    name: .zip an das Release hängen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pack and upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+){1,2}$ ]] || { echo "::error::tag must look like v1.2.3"; exit 1; }
+          VERSION="${TAG#v}"
+          mkdir -p rel dist
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir rel \
+            --pattern "KlimaBilanz-${VERSION}.ipa" --pattern update.json
+          read -r JV BUILD JSHA < <(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["version"], d["build"], d["sha256"])' rel/update.json)
+          [ "$JV" = "$VERSION" ] || { echo "::error::update.json says $JV, tag is $TAG"; exit 1; }
+          SHA="$(sha256sum "rel/KlimaBilanz-${VERSION}.ipa" | cut -d' ' -f1)"
+          [ "$SHA" = "$JSHA" ] || { echo "::error::sha256 of the .ipa does not match update.json"; exit 1; }
+          bash scripts/make_release_zip.sh "rel/KlimaBilanz-${VERSION}.ipa" "$VERSION" "$BUILD" "dist/KlimaBilanz-${VERSION}.zip"
+          gh release upload "$TAG" "dist/KlimaBilanz-${VERSION}.zip" --repo "$GITHUB_REPOSITORY" --clobber
+          sha256sum "dist/KlimaBilanz-${VERSION}.zip"
