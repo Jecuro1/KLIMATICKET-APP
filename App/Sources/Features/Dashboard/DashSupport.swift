@@ -142,6 +142,8 @@ struct DashWeekStats: Equatable {
         let previousStart = cal.date(byAdding: .day, value: -7, to: weekStart) ?? weekStart
         var stats = DashWeekStats()
         stats.todayIndex = min(6, max(0, cal.dateComponents([.day], from: weekStart, to: today).day ?? 0))
+        // MARK: uebersicht – a journey (Bus → Zug → Bim) is one Fahrt per week, as in Statistik and the KPI „Fahrten diese Woche“.
+        var journeysThisWeek = Set<UUID>(), journeysLastWeek = Set<UUID>()
         for trip in trips {
             let date = trip.date
             guard date >= previousStart else { break }
@@ -149,11 +151,11 @@ struct DashWeekStats: Equatable {
             // Calendar days between local midnights – stays right across the DST switch (23 / 25 h days).
             let offset = cal.dateComponents([.day], from: previousStart, to: cal.startOfDay(for: date)).day ?? -1
             if offset >= 7 && offset < 14 {
-                stats.trips += 1
+                if trip.journeyID.map({ journeysThisWeek.insert($0).inserted }) ?? true { stats.trips += 1 }   // MARK: uebersicht
                 stats.value += trip.totalValue
                 stats.dayValues[offset - 7] += trip.totalValue
             } else if offset >= 0 && offset < 7 {
-                stats.previousTrips += 1
+                if trip.journeyID.map({ journeysLastWeek.insert($0).inserted }) ?? true { stats.previousTrips += 1 }   // MARK: uebersicht
                 stats.previousValue += trip.totalValue
                 stats.previousDayValues[offset] += trip.totalValue
             }

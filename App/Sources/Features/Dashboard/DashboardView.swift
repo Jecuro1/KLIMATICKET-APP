@@ -34,7 +34,8 @@ struct DashboardView: View {
     @State private var condense = ScrollCondense()
 
     /// CI screenshot "dashboardBottom" opens scrolled to the end (Gipfelbuch, „Diese Woche“, Vorteile).
-    private static let screenshotAnchor: UnitPoint? = LaunchMode.screenshotScreen == "dashboardBottom" ? .bottom : nil
+    private static let screenshotAnchor: UnitPoint? =
+        ["dashboardBottom", "dashQuietBottom"].contains(LaunchMode.screenshotScreen ?? "") ? .bottom : nil   // MARK: uebersicht – dashQuietBottom
 
     var body: some View {
         let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID)
@@ -64,7 +65,6 @@ struct DashboardView: View {
 
     private func dashboard(ticket: TicketEntity, snapshot: AnalyticsSnapshot) -> some View {
         let summary = snapshot.summary
-        let hasTrips = summary.tripCount > 0
         let suggestions = candidates   // MARK: tripdetect
         let isRecording = TripRecorder.shared.isRecording
         return ScrollViewReader { proxy in
@@ -72,73 +72,16 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     topSection(ticket: ticket, snapshot: snapshot)
 
-                    if hasTrips {
-                        // Overlaps the faded valley of the summit chart by a few points (spec §8.1); the route starts above it.
-                        DashBalanceCard(snapshot: snapshot, catalog: app.catalog)
-                            .celebrate(trigger: app.detection.acceptTick, haptic: nil)   // MARK: tripdetect – an accepted proposal: the counter pops
-                            .celebrationBurst(trigger: app.detection.acceptTick)
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, -Theme.Spacing.xs)
-                            .reveal(order: 2)
-                        // MARK: ai – "Warum lohnt sich mein Ticket?" (docs/LOCAL_AI.md §3.2)
-                        AssistantWhyTicketButton(snapshot: snapshot)
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, Theme.Spacing.xs)
-                    } else {
-                        DashEmptyInviteCard(hasFavorites: !favorites.isEmpty) { app.presentAddTrip() }
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, Theme.Spacing.xs)
-                            .reveal(order: 2)
-                    }
-                    // MARK: yearreview – 1 Dec – 31 Jan, dismissible per year; also when a new ticket has no trip yet but the year has
-                    YearReviewSeasonalCard(trips: trips)
-                    CommuteCardSection(trips: trips, savedRoutes: favorites)   // MARK: commute – Pendel-Modus (docs/COMMUTE.md §1)
-
-                    if hasTrips || !favorites.isEmpty {
-                        // No second "Neue Fahrt" button in the content – the header's "+" and the favourites do that (DESIGN.md §5.1 · 5).
-                        DashQuickLogSection(favorites: favorites, summary: summary, ticketID: ticket.id,
-                                            ticketIsCurrent: ticket.isActive, showsNewTripButton: false)
-                            // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the card.
-                            .padding(.top, 2)
-                            .padding(.bottom, -Theme.Spacing.xs)
-                            .reveal(order: 3)
-                    }
-
-                    if !suggestions.isEmpty || isRecording {
-                        TripInboxSection(candidates: suggestions, isRecording: isRecording)
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, DashStyle.sectionSpacing)
-                            .reveal(order: 4)
-                            .motionTransition(.rise)
-                    }
-                    CalendarSuggestionsSection(trips: trips)   // MARK: calendarsuggestions – „Termine mit Zugfahrt?“ (docs/CALENDAR_SUGGESTIONS.md §2)
-
-                    if !trips.isEmpty {
-                        DashRecentTripsSection(trips: Array(trips.prefix(5)))
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, suggestions.isEmpty ? Theme.Spacing.m : DashStyle.sectionSpacing)
-                            .reveal(order: 5)
-                            .scrollCardTransition()
-                    }
-
-                    if hasTrips {
-                        insights(snapshot: snapshot)
-                            .padding(.horizontal, Theme.Spacing.cardGutter)
-                            .padding(.top, DashStyle.sectionSpacing)
-                            .featureGatedAny(.achievementsTeaser, .weekInsight)   // MARK: funktionen – no gap when both are off
-                    }
-
-                    // MARK: benefits
-                    PerkSummaryCard()
-                        .padding(.horizontal, Theme.Spacing.cardGutter)
-                        .padding(.top, hasTrips ? DashStyle.cardSpacing : DashStyle.sectionSpacing)
-                        .reveal(order: 8)
-                        .scrollCardTransition()
-                        .featureGated(.perksCard)   // MARK: funktionen
+                    // MARK: uebersicht – the cards in the person's order (docs/DASHBOARD_LAYOUT.md); the wave-1 hooks (tripdetect, ai,
+                    // yearreview, commute, calendarsuggestions, funktionen, benefits) moved into DashSectionView unchanged.
+                    DashSectionList(context: DashSectionContext(ticket: ticket, snapshot: snapshot, trips: trips, favorites: favorites,
+                                                                candidates: suggestions, isRecording: isRecording))
+                    DashCustomizeButton()   // MARK: uebersicht – „Übersicht anpassen“ at the end of the scroll
                 }
                 .padding(.bottom, Theme.Spacing.xl)
                 .motionAnimation(Motion.smooth, value: suggestions.count + (isRecording ? 1 : 0))
             }
+            .dashCustomizeHost()   // MARK: uebersicht – the editor sheet over the Übersicht
             .accessibilityIdentifier("perf.scroll.overview") // MARK: perf – KlimaBilanzPerfTests
             .revealScope()
             .tracksScrollCondense(condense, distance: Self.condenseDistance)
@@ -186,26 +129,6 @@ struct DashboardView: View {
             .padding(.top, Theme.Spacing.xxs)
             .reveal(.fade, order: 1)
             .heroCondense(condense, minScale: 0.9, fadeTo: 0.15)
-    }
-
-    @ViewBuilder
-    private func insights(snapshot: AnalyticsSnapshot) -> some View {
-        VStack(spacing: DashStyle.cardSpacing) {
-            DashAchievementTeaser(next: snapshot.nextAchievement,
-                                  unlockedCount: snapshot.unlockedAchievements.count,
-                                  totalCount: snapshot.achievements.count) {
-                app.isShowingAchievements = true
-            }
-            .zoomSource(id: DashZoomID.gipfelbuch, cornerRadius: Theme.Radius.card)
-            .reveal(order: 6)
-            .scrollCardTransition()
-            .featureGated(.achievementsTeaser)   // MARK: funktionen
-
-            DashWeekInsightCard(stats: DashWeekStats.make(fromNewestFirst: trips))
-                .reveal(order: 7)
-                .scrollCardTransition()
-                .featureGated(.weekInsight)   // MARK: funktionen
-        }
     }
 
     /// Fallback – RootView normally shows onboarding when there is no ticket.
@@ -399,6 +322,7 @@ private struct DashPresentation: ViewModifier {
     private var isVisible: Bool {
         app.selectedTab == .overview
             && !(app.isShowingSettings || app.isShowingAchievements || app.tripDraft != nil || app.updates.isPresentingSheet)
+            && !DashLayoutStore.shared.isEditing   // MARK: uebersicht – not under the editor sheet
     }
 
     private var celebrationKey: String {

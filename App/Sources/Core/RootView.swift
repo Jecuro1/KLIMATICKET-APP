@@ -663,6 +663,8 @@ struct ScreenshotRouter: View {
         // MARK: radar2-anschluss – Anschluss-Wächter: every state, the alternatives, the accessory badge, AX5 (synthetic, no network)
         case let guardScreen where GuardScreenshotHost.screens.contains(guardScreen):
             GuardScreenshotHost(screen: guardScreen)
+        case let dashScreen where DashLayoutScreenshotHost.screens.contains(dashScreen):   // MARK: uebersicht – Übersicht nach Maß: editor, figures, goals, Ruhig, AX5 (demo data)
+            DashLayoutScreenshotHost(screen: dashScreen)
         default:
             MainTabView().onAppear { app.selectedTab = .overview }
         }
