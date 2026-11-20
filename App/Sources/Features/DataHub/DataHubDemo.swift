@@ -202,7 +202,7 @@ struct DataHubScreenshotHost: View {
     static let screens: Set<String> = [
         "dataHub", "exportHub", "autoBackups", "backupPreview", "backupBanner", "dataAX5", "dataHubBottom", "dataRoundTrip",
         "dataSettingsRow", "backupRowsAX5",
-        "backupPreviewAX5",   // MARK: review-daten – the restore preview at AX5
+        "backupPreviewAX5", "backupPreviewAX5Mid",   // MARK: review-daten – the restore preview at AX5, top and change bars
     ]
 
     let screen: String
@@ -216,7 +216,7 @@ struct DataHubScreenshotHost: View {
             Color.clear
             if let files { content(files) }
         }
-        .dynamicTypeSize(["dataAX5", "backupBanner", "backupRowsAX5", "backupPreviewAX5"].contains(screen) ? .accessibility5 : .large)
+        .dynamicTypeSize(["dataAX5", "backupBanner", "backupRowsAX5", "backupPreviewAX5", "backupPreviewAX5Mid"].contains(screen) ? .accessibility5 : .large)
         .onAppear {
             let made = DataHubDemo.install(context: context)
             if screen.hasPrefix("backupPreview"), let data = try? DataHubDemo.previewFile(context: context),
@@ -238,8 +238,8 @@ struct DataHubScreenshotHost: View {
                 DataHubBackupsView(screenshotChecked: Set(files.prefix(1).map(\.name)), demoStoreCopies: DataHubDemo.storeCopy(files: files),
                                    screenshotScrollsToRows: screen == "backupRowsAX5")
             }
-        case "backupPreview", "backupPreviewAX5":
-            if let preview { DataHubRestoreSheet(preview: preview) }
+        case "backupPreview", "backupPreviewAX5", "backupPreviewAX5Mid":
+            if let preview { DataHubRestoreSheet(preview: preview, screenshotScrollsToChanges: screen == "backupPreviewAX5Mid") }
         case "dataHubBottom":
             NavigationStack { DataHubView(screenshotAnchor: .restore) }
         case "dataRoundTrip":

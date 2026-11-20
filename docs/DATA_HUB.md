@@ -260,6 +260,10 @@ Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
 - **Demo-Vorschau:** Die Datei „von einem anderen iPhone“ legte alle kopierten Einzelfahrten in eine gemeinsame Reise („1 neue Fahrt“
   statt zwölf) – eine Fahrt ohne Reise hat `journey_id` „“, nicht nil.
 - **Datenschutz-Zeile:** nennt alles, was in einer Sicherung steckt (auch Vorteile und Einstellungen).
+- **Vorschau bei AX5** (neue Szenen `backupPreviewAX5`, `backupPreviewAX5Mid`): der Dateiname in Titelgröße füllte den Bildschirm in
+  drei zerbrochenen Zeilen, „Das ändert sich“ verschwand unter dem Knopf, und der Knopf trennte „Wiederherstel-len“. Jetzt wächst der
+  Name bis AX1, die Sätze bis AX3, die Leiste bis AX2 (der Knopf nie getrennt), die Legende steht zweizeilig, wenn eine Zeile nicht reicht.
+- **Einstellungen und README** sagen „einmal am Tag, wenn sich etwas geändert hat“ statt nur „täglich“.
 - **Exportieren:** Die Komplettsicherung ließ sich nicht teilen, solange es keine Fahrt gab („0 Fahrten · 1 Ticket“ galt als leer) –
   leer ist sie nur ohne jede Zeile.
 - **Wortwahl:** Die Meldung nach dem Wiederherstellen sagt „Sicherung wiederhergestellt“ wie die ganze Seite (nicht „Backup“).

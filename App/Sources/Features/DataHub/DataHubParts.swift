@@ -344,13 +344,27 @@ struct DataHubDiffBar: View {
 /// The legend under the bars.
 struct DataHubDiffLegend: View {
     var body: some View {
-        HStack(spacing: Theme.Spacing.s) {
-            item("neu", Theme.pine)
-            item("geändert", Theme.glacier)
-            item("entfernt", Theme.negative)
-            item("bleibt", Theme.textTertiary.opacity(0.35))
+        // MARK: review-daten – one line when it fits, else two (at accessibility sizes four in a line ran off the card)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.s) {
+                item("neu", Theme.pine)
+                item("geändert", Theme.glacier)
+                item("entfernt", Theme.negative)
+                item("bleibt", Theme.textTertiary.opacity(0.35))
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                HStack(spacing: Theme.Spacing.s) {
+                    item("neu", Theme.pine)
+                    item("geändert", Theme.glacier)
+                }
+                HStack(spacing: Theme.Spacing.s) {
+                    item("entfernt", Theme.negative)
+                    item("bleibt", Theme.textTertiary.opacity(0.35))
+                }
+            }
         }
         .font(.caption)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .foregroundStyle(Theme.textSecondary)
         .accessibilityHidden(true)
     }

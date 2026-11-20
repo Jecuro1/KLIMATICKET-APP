@@ -8,6 +8,8 @@ import KlimaCore
 
 struct DataHubRestoreSheet: View {
     let preview: DataHubRestorePreview
+    /// CI scene backupPreviewAX5Mid: opens scrolled to the change bars (`// MARK: review-daten`).
+    var screenshotScrollsToChanges = false
 
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -20,21 +22,29 @@ struct DataHubRestoreSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Spacing.l) {
-                    header
-                    changesCard
-                    if !preview.settingsChanges.isEmpty { settingsCard }
-                    fileCard
-                    Text(BackupDiff.rule + " Vorher legt KlimaBilanz eine Sicherung in Dateien an.")
-                        .font(.footnote)
-                        .foregroundStyle(Theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.l) {
+                        header
+                        changesCard
+                            .id(ChangesAnchor.changes)
+                        if !preview.settingsChanges.isEmpty { settingsCard }
+                        fileCard
+                        Text(BackupDiff.rule + " Vorher legt KlimaBilanz eine Sicherung in Dateien an.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, Theme.Spacing.screen)
+                    .padding(.top, Theme.Spacing.s)
+                    .padding(.bottom, Theme.Spacing.xxl)
+                    .revealScope()
                 }
-                .padding(.horizontal, Theme.Spacing.screen)
-                .padding(.top, Theme.Spacing.s)
-                .padding(.bottom, Theme.Spacing.xxl)
-                .revealScope()
+                .task {
+                    guard screenshotScrollsToChanges else { return }
+                    try? await Task.sleep(for: .milliseconds(450))
+                    proxy.scrollTo(ChangesAnchor.changes, anchor: .top)
+                }
             }
             .safeAreaInset(edge: .bottom) { actionBar }
             .background { SetBackdrop() }
@@ -56,25 +66,32 @@ struct DataHubRestoreSheet: View {
         .tint(Theme.accent)
     }
 
+    private enum ChangesAnchor: Hashable { case changes }
+
     // MARK: Parts
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             Kicker(text: "Sicherung")
+            // MARK: review-daten – at AX5 a file name in the title font filled the screen in three broken lines and pushed
+            // „Das ändert sich“ under the button: the name stops at AX1, the sentences at AX3.
             Text(preview.title)
                 .font(Theme.Typography.title)
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 .accessibilityAddTraits(.isHeader)
             Text(DataHubText.keep(preview.diff.headline))
                 .font(.headline)
                 .foregroundStyle(preview.diff.changes > 0 ? Theme.textPrimary : Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             if let keeps = preview.diff.keepsLine {
                 Text(DataHubText.keep(keeps))
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             }
         }
         .reveal(order: 0)
@@ -164,12 +181,15 @@ struct DataHubRestoreSheet: View {
                 HStack(spacing: Theme.Spacing.xs) {
                     if isRestoring { ProgressView().tint(Theme.onAccent) }
                     Text(isRestoring ? "Wird wiederhergestellt …" : (hasWork ? "Wiederherstellen" : "Nichts zu übernehmen"))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)   // MARK: review-daten – a button never hyphenates („Wiederherstel-len“ at AX5)
                 }
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.primary)
             .disabled(!hasWork || isRestoring)
         }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // MARK: review-daten – the bar keeps room for the preview
         .padding(.horizontal, Theme.Spacing.screen)
         .padding(.vertical, Theme.Spacing.s)
         .background(.bar)
