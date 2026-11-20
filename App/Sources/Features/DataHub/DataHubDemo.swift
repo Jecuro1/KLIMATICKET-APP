@@ -175,17 +175,7 @@ struct DataHubScreenshotHost: View {
             NavigationStack { DataHubRoundTripScene(result: roundTrip) }
         case "dataSettingsRow":
             NavigationStack {
-                // The row as Einstellungen › Daten will show it (with „Alle Daten löschen“ under it).
-                List {
-                    Section {
-                        DataHubSettingsRow()
-                        Label("Alle Daten löschen", systemImage: "trash.fill")
-                            .foregroundStyle(Theme.negativeText)
-                    } header: {
-                        SetSectionHeader(title: "Daten")
-                    }
-                    .listRowBackground(Theme.surface)
-                }
+                List { SetDataSection() }   // Einstellungen › Daten as it is
                     .listStyle(.insetGrouped)
                     .listSectionSpacing(Theme.Spacing.l)
                     .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)

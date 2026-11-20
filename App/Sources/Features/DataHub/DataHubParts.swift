@@ -227,7 +227,11 @@ struct DataHubBackupRow: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.opacity)
             if isChecked, let details {
-                Label(details.verdict.title, systemImage: details.verdict.isDamaged ? "xmark.seal.fill" : "checkmark.seal.fill")
+                // Like the hero's line: at accessibility sizes the verdict stands alone (the words say it, the colour too).
+                Group {
+                    if typeSize.isAccessibilitySize { Text(details.verdict.title) }
+                    else { Label(details.verdict.title, systemImage: details.verdict.isDamaged ? "xmark.seal.fill" : "checkmark.seal.fill") }
+                }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(details.verdict.isDamaged ? Theme.negativeText : Theme.positiveText)
                     .motionTransition(.pop)

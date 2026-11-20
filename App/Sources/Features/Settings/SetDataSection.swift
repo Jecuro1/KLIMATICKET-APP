@@ -1,10 +1,9 @@
 import SwiftUI
 import SwiftData
-import UniformTypeIdentifiers
 import KlimaCore
 
-/// Daten: CSV export, JSON backup & restore, removing the demo year, delete everything.
-/// The exports are lazy share items (`TripsCSVExport`, `BackupShareItem`): nothing is prepared while Settings opens or scrolls.
+/// Daten: the way into Daten & Sicherung (exports, backups, restore, CSV import, Jahresbericht – docs/DATA_HUB.md), removing the
+/// demo year, delete everything (after a safety backup).
 struct SetDataSection: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
@@ -12,8 +11,6 @@ struct SetDataSection: View {
     @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }) private var favorites: [FavoriteRouteEntity]
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
 
-    @State private var isImporting = false
-    @State private var isRestoring = false
     @State private var isConfirmingDemoRemoval = false
     @State private var isConfirmingDelete = false
     @State private var isDeleting = false
@@ -30,13 +27,9 @@ struct SetDataSection: View {
     var body: some View {
         Section {
             Group {
-                csvRow
-                // MARK: reports
-                RepImportSettingsRow()
-                RepReportSettingsRow()
-                backupRow
+                // MARK: data – CSV, Backup, Wiederherstellen, CSV-Import and the Jahresbericht live in Daten & Sicherung (docs/DATA_HUB.md)
+                DataHubSettingsRow()
                     .id(SetScrollAnchor.data)
-                importRow
                 if hasDemoData {
                     demoRow
                 }
@@ -47,53 +40,16 @@ struct SetDataSection: View {
             SetSectionHeader(title: "Daten")
         } footer: {
             // The counts roll when a restore or a removal changes them.
-            SetFooter(text: "\(SetFormat.count(trips.count, "Fahrt", "Fahrten")) · \(SetFormat.count(favorites.count, "Favorit", "Favoriten")) · \(SetFormat.count(tickets.count, "Ticket", "Tickets")). Das Backup enthält alles und lässt sich jederzeit wieder einspielen.")
+            SetFooter(text: "\(SetFormat.count(tripCount, "Fahrt", "Fahrten")) · \(SetFormat.count(favorites.count, "Favorit", "Favoriten")) · \(SetFormat.count(tickets.count, "Ticket", "Tickets")). \(AutoBackupService.shared.isEnabled ? "KlimaBilanz sichert täglich in Dateien. " : "")Export und Wiederherstellen unter Daten & Sicherung.")   // MARK: data
                 .contentTransition(.numericText())
-                .motionAnimation(Motion.number, value: [trips.count, favorites.count, tickets.count])
+                .motionAnimation(Motion.number, value: [tripCount, favorites.count, tickets.count])
         }
     }
+
+    /// Fahrten as the Übersicht and Daten & Sicherung count them: the legs of a journey are one Fahrt.   // MARK: data
+    private var tripCount: Int { DataHubCounts.tripCount(trips.map { $0.journeyID?.uuidString }) }
 
     // MARK: Rows
-
-    private var csvRow: some View {
-        ShareLink(item: TripsCSVExport(container: context.container),
-                  subject: Text("KlimaBilanz – Fahrten"),
-                  preview: SharePreview("KlimaBilanz – Fahrten (CSV)")) {
-            SetRowLabel(title: "Fahrten als CSV exportieren",
-                        subtitle: trips.isEmpty ? "Noch keine Fahrten erfasst" : "Für Excel und Numbers",
-                        symbol: "tablecells.fill", tint: Theme.pine)
-        }
-        .disabled(trips.isEmpty)
-    }
-
-    private var backupRow: some View {
-        ShareLink(item: BackupShareItem(container: context.container),
-                  subject: Text("KlimaBilanz – Backup"),
-                  preview: SharePreview("KlimaBilanz – Backup")) {
-            SetRowLabel(title: "Backup sichern", subtitle: "Alle Tickets, Fahrten und Favoriten als Datei",
-                        symbol: "arrow.up.doc.fill", tint: Theme.glacier)
-        }
-    }
-
-    private var importRow: some View {
-        Button {
-            isImporting = true
-        } label: {
-            HStack(spacing: Theme.Spacing.s) {
-                SetRowLabel(title: "Backup wiederherstellen",
-                            subtitle: isRestoring ? "Wird wiederhergestellt …" : "Neuere Einträge gewinnen, nichts wird doppelt",
-                            symbol: "arrow.down.doc.fill", tint: Theme.dusk, isBusy: isRestoring, busyStyle: .pulse)
-                Spacer(minLength: Theme.Spacing.xs)
-                SetBusyIndicator(isBusy: isRestoring)
-            }
-            .motionAnimation(Motion.snappy, value: isRestoring)
-        }
-        .disabled(isRestoring)
-        // The result toast carries the one haptic of the restore (success or error).
-        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
-            handleImport(result)
-        }
-    }
 
     /// Only while rows of the sample year exist – "Demo ansehen" lives in the onboarding, where the store is still empty.
     /// Loading it here would mix fictitious trips into the user's real ticket year.
@@ -143,45 +99,6 @@ struct SetDataSection: View {
     }
 
     // MARK: Actions
-
-    private func handleImport(_ result: Result<URL, Error>) {
-        switch result {
-        case .success(let url):
-            isRestoring = true
-            Task {
-                // The picked file may live in iCloud Drive or another provider: read it off the main thread.
-                let data = await Task.detached(priority: .userInitiated) { () -> Data? in
-                    let isScoped = url.startAccessingSecurityScopedResource()
-                    defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
-                    return try? Data(contentsOf: url)
-                }.value
-                restore(data)
-                isRestoring = false
-            }
-        case .failure:
-            app.showToast("exclamationmark.triangle.fill", "Import abgebrochen", "Die Datei konnte nicht geöffnet werden.")
-        }
-    }
-
-    private func restore(_ data: Data?) {
-        guard let data else {
-            app.showToast("exclamationmark.triangle.fill", "Import abgebrochen", "Die Datei konnte nicht geöffnet werden.")
-            return
-        }
-        do {
-            let imported = try Backup.restoreChecked(data, context: context)   // MARK: data – a damaged version-3 file is refused untouched
-            let repository = Repository(context: context, app: app)
-            repository.commit()
-            // Restored tickets need their renewal reminders (no-op when reminders are off).
-            for ticket in repository.liveTickets() where !ticket.isExpired {
-                repository.scheduleReminders(for: ticket)
-            }
-            app.showToast("checkmark.circle.fill", "Backup wiederhergestellt", imported.summary)
-        } catch {
-            app.showToast("exclamationmark.triangle.fill", "Import fehlgeschlagen",
-                          (error as? DataHubRestoreError)?.errorDescription ?? "Die Datei ist kein gültiges KlimaBilanz-Backup.")   // MARK: data
-        }
-    }
 
     private func removeDemo() {
         let repository = Repository(context: context, app: app)
