@@ -255,6 +255,69 @@ final class DataHubDiffTests: XCTestCase {
     }
 }
 
+/// MARK: review-daten – the preview counts Fahrten like the app: the legs of a journey once (the Übersicht, Statistik and the
+/// backup rows did; the preview said „12 neue Fahrten“ for 12 legs).
+final class DataHubDiffJourneyTests: XCTestCase {
+    private let t1 = at(2026, 10, 1), t2 = at(2026, 10, 2)
+
+    private func leg(_ id: UUID, _ date: Date, deleted: Bool = false, _ journey: String?) -> BackupRowStamp {
+        BackupRowStamp(id: id, updatedAt: date, isDeleted: deleted, group: journey)
+    }
+
+    func testLegsOfAJourneyCountOnce() {
+        let j1 = "A1B2C3D4-0000-0000-0000-000000000001", j2 = "a1b2c3d4-0000-0000-0000-000000000002"
+        let j3 = UUID().uuidString, j4 = UUID().uuidString, j5 = UUID().uuidString, j6 = UUID().uuidString
+        let new = (0..<3).map { _ in UUID() }
+        let c1 = UUID(), c2 = UUID(), u1 = UUID(), u2 = UUID(), r1 = UUID(), r2 = UUID(), here = UUID(), joins = UUID()
+        let p1 = UUID(), p2 = UUID(), plain = UUID()
+        let current: [BackupTable: [BackupRowStamp]] = [.trips: [
+            leg(c1, t1, j2.uppercased()), leg(c2, t1, j2.uppercased()),     // the iPhone writes upper case, a file lower case
+            leg(u1, t1, j3), leg(u2, t1, j3),
+            leg(r1, t1, j4), leg(r2, t1, j4),
+            leg(here, t1, j5),                                             // a journey the file adds a leg to
+            leg(p1, t1, j6), leg(p2, t1, j6),                              // one leg removed in the file, one stays
+        ]]
+        let file: [BackupTable: [BackupRowStamp]] = [.trips: new.map { leg($0, t2, j1) } + [
+            leg(c1, t2, j2), leg(c2, t1, j2),                              // one leg changed: the journey changed
+            leg(u1, t1, j3), leg(u2, t1, j3),                              // unchanged
+            leg(r1, t2, deleted: true, j4), leg(r2, t2, deleted: true, j4), // removed as a whole
+            leg(joins, t2, j5),                                            // a new leg of a journey on the iPhone: changed
+            leg(p1, t2, deleted: true, j6),                                // a leg removed, the journey stays: changed
+            leg(plain, t2, nil),                                           // a trip of its own: new
+        ]]
+        let diff = BackupDiff.make(file: file, current: current)
+        let trips = diff.table(.trips)
+        XCTAssertEqual([trips.added, trips.changed, trips.removed, trips.unchanged, trips.newerHere, trips.deletedHere],
+                       [2, 3, 1, 1, 0, 0])
+        XCTAssertEqual(diff.headline, "Das ändert sich: 2 neue Fahrten, 3 geänderte, 1 entfernte, 1 unverändert.")
+        XCTAssertEqual(diff.appliedLine, "2 neue Fahrten, 3 geänderte, 1 entfernte")
+    }
+
+    func testAJourneyChangedHereStaysAndIsNamedOnce() {
+        let j = UUID().uuidString, a = UUID(), b = UUID(), gone = UUID()
+        let current: [BackupTable: [BackupRowStamp]] = [.trips: [leg(a, t2, j), leg(b, t1, j), leg(gone, t2, deleted: true, UUID().uuidString)]]
+        let file: [BackupTable: [BackupRowStamp]] = [.trips: [leg(a, t1, j), leg(b, t1, j), leg(gone, t1, nil)]]
+        let diff = BackupDiff.make(file: file, current: current)
+        XCTAssertEqual(diff.table(.trips).newerHere, 1, "a journey with one leg newer here is one Fahrt newer here")
+        XCTAssertEqual(diff.table(.trips).deletedHere, 1)
+        XCTAssertEqual(diff.changes, 0)
+        XCTAssertNil(diff.appliedLine)
+    }
+
+    func testTheNounGoesWithTheFirstNumber() {
+        let a = UUID(), b = UUID()
+        let current: [BackupTable: [BackupRowStamp]] = [.trips: [leg(a, t1, nil), leg(b, t1, nil)]]
+        let changed = BackupDiff.make(file: [.trips: [leg(a, t2, nil), leg(b, t1, nil)]], current: current)
+        XCTAssertEqual(changed.headline, "Das ändert sich: 1 geänderte Fahrt, 1 unverändert.")
+        let removed = BackupDiff.make(file: [.trips: [leg(a, t2, deleted: true, nil), leg(b, t2, deleted: true, nil)]],
+                                      current: current)
+        XCTAssertEqual(removed.headline, "Das ändert sich: 2 entfernte Fahrten.")
+        let other = BackupDiff.make(file: [.tickets: [leg(UUID(), t1, nil)], .favorites: [leg(UUID(), t1, nil), leg(UUID(), t1, nil)]],
+                                    current: [:])
+        XCTAssertEqual(other.appliedLine, "1 Ticket · 2 Favoriten")
+    }
+}
+
 final class DataHubSettingsPolicyTests: XCTestCase {
     func testAllowListPasses() {
         let values: [String: BackupSettingValue] = [

@@ -37,11 +37,13 @@ extension Backup {
         return try importBackup(data, context: context)
     }
 
-    /// What the merge compares, per table, for the rows of a file.
+    /// What the merge compares, per table, for the rows of a file. A trip carries its journey, so „Das ändert sich“ counts Fahrten
+    /// like the app (`// MARK: review-daten`).
     nonisolated static func stamps(of file: BackupFile) -> [BackupTable: [BackupRowStamp]] {
         [
             .tickets: file.tickets.map { BackupRowStamp(id: $0.id, updatedAt: $0.updated_at, isDeleted: $0.deleted_at != nil) },
-            .trips: file.trips.map { BackupRowStamp(id: $0.base.id, updatedAt: $0.base.updated_at, isDeleted: $0.base.deleted_at != nil) },
+            .trips: file.trips.map { BackupRowStamp(id: $0.base.id, updatedAt: $0.base.updated_at, isDeleted: $0.base.deleted_at != nil,
+                                                    group: $0.base.journey_id) },
             .favorites: file.favorites.map { BackupRowStamp(id: $0.id, updatedAt: $0.updated_at, isDeleted: $0.deleted_at != nil) },
             .benefits: (file.benefits ?? []).map { BackupRowStamp(id: $0.id, updatedAt: $0.updated_at, isDeleted: $0.deleted_at != nil) },
         ]
@@ -51,7 +53,8 @@ extension Backup {
     nonisolated static func currentStamps(context: ModelContext) throws -> [BackupTable: [BackupRowStamp]] {
         [
             .tickets: try context.fetch(FetchDescriptor<TicketEntity>()).map { BackupRowStamp(id: $0.id, updatedAt: $0.updatedAt, isDeleted: $0.deletedAt != nil) },
-            .trips: try context.fetch(FetchDescriptor<TripEntity>()).map { BackupRowStamp(id: $0.id, updatedAt: $0.updatedAt, isDeleted: $0.deletedAt != nil) },
+            .trips: try context.fetch(FetchDescriptor<TripEntity>()).map { BackupRowStamp(id: $0.id, updatedAt: $0.updatedAt, isDeleted: $0.deletedAt != nil,
+                                                                                          group: $0.journeyID?.uuidString) },
             .favorites: try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { BackupRowStamp(id: $0.id, updatedAt: $0.updatedAt, isDeleted: $0.deletedAt != nil) },
             .benefits: try context.fetch(FetchDescriptor<BenefitEntity>()).map { BackupRowStamp(id: $0.id, updatedAt: $0.updatedAt, isDeleted: $0.deletedAt != nil) },
         ]
@@ -69,8 +72,8 @@ extension Backup {
     nonisolated static func counts(context: ModelContext) -> DataHubCounts {
         var live = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil })
         live.propertiesToFetch = [\.journeyID]
-        let journeys = ((try? context.fetch(live)) ?? []).map { $0.journeyID?.uuidString }
-        return DataHubCounts(trips: DataHubCounts.tripCount(journeys),
+        let journeys = ((try? context.fetch(live)) ?? []).map(\.journeyID)
+        return DataHubCounts(trips: DataHubCounts.tripCount(journeys: journeys),
                       tickets: (try? context.fetchCount(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       favorites: (try? context.fetchCount(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       benefits: (try? context.fetchCount(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0)
@@ -104,6 +107,16 @@ struct DataHubCounts: Hashable, Sendable {
             if let id, !id.isEmpty { journeys.insert(id.lowercased()) } else { plain += 1 }
         }
         return plain + journeys.count
+    }
+
+    /// The same for the store's rows, without a string per trip (Einstellungen and the hub count in their bodies).
+    nonisolated static func tripCount(journeys: [UUID?]) -> Int {
+        var keys = Set<UUID>()
+        var plain = 0
+        for id in journeys {
+            if let id { keys.insert(id) } else { plain += 1 }
+        }
+        return plain + keys.count
     }
 
     /// „123 Fahrten · 2 Tickets · 5 Favoriten“ (Vorteile only when there are some); a number never leaves its word at a line end.

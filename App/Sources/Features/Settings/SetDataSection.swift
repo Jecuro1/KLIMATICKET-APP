@@ -47,7 +47,7 @@ struct SetDataSection: View {
     }
 
     /// Fahrten as the Übersicht and Daten & Sicherung count them: the legs of a journey are one Fahrt.   // MARK: data
-    private var tripCount: Int { DataHubCounts.tripCount(trips.map { $0.journeyID?.uuidString }) }
+    private var tripCount: Int { DataHubCounts.tripCount(journeys: trips.map(\.journeyID)) }
 
     // MARK: Rows
 

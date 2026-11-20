@@ -102,12 +102,13 @@ struct DataHubRecoveryButton: View {
         }
         guard let container = store.container else { return }
         do {
-            let imported = try Backup.restoreChecked(data, context: container.mainContext)
+            _ = try Backup.restoreChecked(data, context: container.mainContext)
             if let app = AppDelegate.appState {
                 let repository = Repository(context: container.mainContext, app: app)
                 repository.commit()
                 for ticket in repository.liveTickets() where !ticket.isExpired { repository.scheduleReminders(for: ticket) }
-                app.showToast("checkmark.circle.fill", "Aus Sicherung wiederhergestellt", imported.summary)
+                // MARK: review-daten – what the store holds now, counted like the line above the button (not every row of the file)
+                app.showToast("checkmark.circle.fill", "Aus Sicherung wiederhergestellt", Backup.counts(context: container.mainContext).line)
             }
         } catch {
             // The empty store is open; the unreadable one is kept as a copy. The person can try again from Daten & Sicherung.

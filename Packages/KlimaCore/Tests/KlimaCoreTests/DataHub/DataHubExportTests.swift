@@ -120,6 +120,20 @@ final class DataHubMonthlyCSVTests: XCTestCase {
         XCTAssertFalse(csv.replacingOccurrences(of: "\r\n", with: "").contains("\n"))
     }
 
+    /// MARK: review-daten – a ticket year that runs on ends with today's month (or a later trip's): months to come are not „0 Fahrten“.
+    func testMonthsToComeAreLeftOut() {
+        let ticket = TicketPeriod(productID: "classic", name: "T", price: 1400, start: day(2026, 10, 1, 0),
+                                  end: TicketPeriod.standardEnd(for: day(2026, 10, 1, 0)))
+        let interval = DataHubRange.ticketYear.interval(ticket: ticket, now: stamp)
+        let trips = [trip(day(2026, 10, 2))]
+        XCTAssertEqual(DataHubMonthlyCSV.rows(trips, interval: interval, until: stamp).map(\.label), ["Oktober 2026", "November 2026"])
+        let planned = trips + [trip(day(2027, 1, 5))]
+        XCTAssertEqual(DataHubMonthlyCSV.rows(planned, interval: interval, until: stamp).last?.label, "Jänner 2027")
+        let over = DataHubMonthlyCSV.rows(trips, interval: interval, until: day(2028, 1, 1))
+        XCTAssertEqual(over.count, 12, "a past ticket year keeps all its months")
+        XCTAssertEqual(DataHubMonthlyCSV.rows(trips, interval: nil, until: stamp).map(\.label), ["Oktober 2026"])
+    }
+
     func testAllRangeRunsFromFirstToLastTrip() {
         let rows = DataHubMonthlyCSV.rows([trip(day(2025, 11, 30)), trip(day(2026, 2, 1))], interval: nil)
         XCTAssertEqual(rows.map(\.label), ["November 2025", "Dezember 2025", "Jänner 2026", "Februar 2026"])
@@ -145,6 +159,22 @@ final class DataHubYearTextTests: XCTestCase {
         XCTAssertTrue(text.contains("1. Innsbruck Hbf ↔ St. Anton am Arlberg – 10 Fahrten"))
         XCTAssertTrue(text.contains("Werte sind Normalpreise"))
         XCTAssertFalse(text.contains("Prognose"), "no forecast in a balance")
+    }
+
+    /// MARK: review-daten – routes ranked like Statistik: a journey is one route from its first stop to its last (it counted legs).
+    func testRoutesCountJourneysLikeStatistik() {
+        var trips: [TripRecord] = []
+        for index in 0..<3 {
+            let journey = UUID()
+            trips.append(trip(day(2026, 10, 1 + index, 7), "Lech", "Langen am Arlberg", mode: .bus, journey: journey))
+            trips.append(trip(day(2026, 10, 1 + index, 8), "Langen am Arlberg", "Innsbruck Hbf", journey: journey))
+        }
+        trips += [trip(day(2026, 10, 20)), trip(day(2026, 10, 21))]
+        let text = DataHubYearText.markdown(trips: trips, range: .calendarYear, ticket: nil, now: stamp)
+        XCTAssertTrue(text.contains("1. Lech ↔ Innsbruck Hbf – 3 Fahrten"), text)
+        XCTAssertTrue(text.contains("2. Innsbruck Hbf ↔ St. Anton am Arlberg – 2 Fahrten"), text)
+        XCTAssertFalse(text.contains("Langen am Arlberg ↔"), "a leg is not a route of its own")
+        XCTAssertTrue(text.contains("- Fahrten: 5 an 5 Tagen"))
     }
 
     func testPaidOffAndOtherRanges() {
@@ -179,6 +209,8 @@ final class DataHubRangeTests: XCTestCase {
         XCTAssertEqual(DataHubFormat.bytes(840), "840 Byte")
         XCTAssertEqual(DataHubFormat.bytes(18_400), "18 KB")
         XCTAssertEqual(DataHubFormat.bytes(1_234_567), "1,2 MB")
+        XCTAssertEqual(DataHubFormat.bytes(999_499), "999 KB")
+        XCTAssertEqual(DataHubFormat.bytes(999_700), "1,0 MB", "never „1000 KB“")
         XCTAssertEqual(DataHubFormat.integer(1_234_567), "1.234.567")
         XCTAssertEqual(DataHubFormat.decimal(1234.56, digits: 1), "1.234,6")
         XCTAssertEqual(DataHubFormat.count(1, "Fahrt", "Fahrten"), "1 Fahrt")

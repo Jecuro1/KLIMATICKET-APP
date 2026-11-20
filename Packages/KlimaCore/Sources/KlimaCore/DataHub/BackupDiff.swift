@@ -34,11 +34,15 @@ public struct BackupRowStamp: Hashable, Sendable {
     public var id: UUID
     public var updatedAt: Date
     public var isDeleted: Bool
+    /// The journey a trip leg belongs to (`journey_id`): the preview counts Fahrten like the app, a journey of several legs once
+    /// (docs/JOURNEYS.md). nil for a row of its own.
+    public var group: String?
 
-    public init(id: UUID, updatedAt: Date, isDeleted: Bool) {
+    public init(id: UUID, updatedAt: Date, isDeleted: Bool, group: String? = nil) {
         self.id = id
         self.updatedAt = updatedAt
         self.isDeleted = isDeleted
+        self.group = group
     }
 }
 
@@ -88,11 +92,17 @@ public struct BackupDiff: Hashable, Sendable {
     public var deletedHere: Int { tables.reduce(0) { $0 + $1.deletedHere } }
 
     /// One rule per row, the merge's rule: unknown → added (or a stored deletion), file newer → changed / removed, equal →
-    /// unchanged, iPhone newer → stays. A row that appears twice in the file counts once, with its newest state.
+    /// unchanged, iPhone newer → stays. A row that appears twice in the file counts once, with its newest state. The legs of one
+    /// journey (`group`) count once, like „Fahrten“ everywhere in the app: all new → new, all removed → removed, any other visible
+    /// change → changed (also a leg added to or taken from a journey that stays), else unchanged or newer here.
     public static func make(file: [BackupTable: [BackupRowStamp]], current: [BackupTable: [BackupRowStamp]]) -> BackupDiff {
         BackupDiff(tables: BackupTable.allCases.map { table in
             var local: [UUID: BackupRowStamp] = [:]
             for row in current[table] ?? [] where local[row.id] == nil { local[row.id] = row }
+            var localVisibleLegs: [String: Int] = [:]
+            for row in local.values where !row.isDeleted {
+                if let key = groupKey(row.group) { localVisibleLegs[key, default: 0] += 1 }
+            }
             var incoming: [UUID: BackupRowStamp] = [:]
             var order: [UUID] = []
             for row in file[table] ?? [] {
@@ -103,31 +113,79 @@ public struct BackupDiff: Hashable, Sendable {
                     order.append(row.id)
                 }
             }
-            var diff = BackupTableDiff(table: table)
+            var groupOrder: [String] = []
+            var outcomes: [String: [RowOutcome]] = [:]
             for id in order {
                 guard let row = incoming[id] else { continue }
-                guard let here = local[id] else {
-                    if row.isDeleted { diff.deletedInFile += 1 } else { diff.added += 1 }
-                    continue
-                }
-                if row.updatedAt > here.updatedAt {
-                    switch (here.isDeleted, row.isDeleted) {
-                    case (false, true): diff.removed += 1
-                    case (true, true): diff.deletedInFile += 1
-                    case (true, false): diff.added += 1      // deleted here, alive in the newer file: it comes back
-                    case (false, false): diff.changed += 1
-                    }
-                } else if Self.sameSecond(row.updatedAt, here.updatedAt) {
-                    // A file stores whole seconds (ISO 8601): the iPhone's 12:00:05.7 and the file's 12:00:05 are the same version.
-                    if !row.isDeleted || !here.isDeleted { diff.unchanged += 1 }
-                } else if here.isDeleted && !row.isDeleted {
-                    diff.deletedHere += 1
-                } else if !here.isDeleted {
-                    diff.newerHere += 1
+                let key = groupKey(row.group) ?? groupKey(local[id]?.group) ?? "row:" + id.uuidString
+                if outcomes[key] == nil { groupOrder.append(key) }
+                outcomes[key, default: []].append(outcome(row, here: local[id]))
+            }
+            var diff = BackupTableDiff(table: table)
+            for key in groupOrder {
+                let legs = outcomes[key] ?? []
+                switch combine(legs, localVisibleLegs: localVisibleLegs[key] ?? 0) {
+                case .added: diff.added += 1
+                case .changed: diff.changed += 1
+                case .removed: diff.removed += 1
+                case .deletedInFile: diff.deletedInFile += 1
+                case .unchanged: diff.unchanged += 1
+                case .newerHere: diff.newerHere += 1
+                case .deletedHere: diff.deletedHere += 1
+                case .none: break
                 }
             }
             return diff
         })
+    }
+
+    /// What the merge does with one row.
+    enum RowOutcome: Equatable {
+        case added, changed, removed, deletedInFile, unchanged, newerHere, deletedHere
+        /// Deleted on both sides at the same time, or deleted here after a deletion in the file: nothing to tell.
+        case none
+    }
+
+    static func outcome(_ row: BackupRowStamp, here: BackupRowStamp?) -> RowOutcome {
+        guard let here else { return row.isDeleted ? .deletedInFile : .added }
+        if row.updatedAt > here.updatedAt {
+            switch (here.isDeleted, row.isDeleted) {
+            case (false, true): return .removed
+            case (true, true): return .deletedInFile
+            case (true, false): return .added      // deleted here, alive in the newer file: it comes back
+            case (false, false): return .changed
+            }
+        } else if sameSecond(row.updatedAt, here.updatedAt) {
+            // A file stores whole seconds (ISO 8601): the iPhone's 12:00:05.7 and the file's 12:00:05 are the same version.
+            return !row.isDeleted || !here.isDeleted ? .unchanged : .none
+        } else if here.isDeleted && !row.isDeleted {
+            return .deletedHere
+        } else if !here.isDeleted {
+            return .newerHere
+        }
+        return .none
+    }
+
+    /// One journey from the outcomes of its legs in the file. `localVisibleLegs`: its legs visible on the iPhone now.
+    static func combine(_ legs: [RowOutcome], localVisibleLegs: Int) -> RowOutcome {
+        let visible = legs.filter { $0 != .deletedInFile && $0 != .none }
+        guard !visible.isEmpty else { return legs.contains(.deletedInFile) ? .deletedInFile : .none }
+        let here = legs.filter { [.changed, .removed, .unchanged, .newerHere].contains($0) }.count
+        if visible.allSatisfy({ $0 == .added }) {
+            return localVisibleLegs > 0 ? .changed : .added      // a leg joins a journey the iPhone shows
+        }
+        if visible.allSatisfy({ $0 == .removed }) {
+            return localVisibleLegs > here ? .changed : .removed  // legs only on the iPhone keep the journey
+        }
+        if visible.contains(where: { $0 == .added || $0 == .changed || $0 == .removed }) { return .changed }
+        if visible.allSatisfy({ $0 == .deletedHere }) { return .deletedHere }
+        if visible.contains(where: { $0 == .newerHere || $0 == .deletedHere }) { return .newerHere }
+        return .unchanged
+    }
+
+    static func groupKey(_ group: String?) -> String? {
+        guard let group, !group.isEmpty else { return nil }
+        return "journey:" + group.lowercased()
     }
 
     static func sameSecond(_ a: Date, _ b: Date) -> Bool {
@@ -140,13 +198,9 @@ public struct BackupDiff: Hashable, Sendable {
             return "Nichts ändert sich: Dein iPhone hat schon alles aus dieser Sicherung – oder eine neuere Fassung davon."
         }
         let trips = table(.trips)
-        var parts: [String] = []
-        if trips.added > 0 { parts.append("\(trips.added) \(trips.added == 1 ? "neue Fahrt" : "neue Fahrten")") }
-        if trips.changed > 0 { parts.append("\(trips.changed) geänderte") }
-        if trips.removed > 0 { parts.append("\(trips.removed) entfernte") }
+        var parts = tripParts()
         if trips.changes > 0 && trips.unchanged > 0 { parts.append("\(trips.unchanged) unverändert") }
-        let others = BackupTable.allCases.filter { $0 != .trips }.map(table).filter { $0.changes > 0 }
-            .map { $0.table.count($0.changes) }
+        let others = otherChanges
         var text = "Das ändert sich: "
         if parts.isEmpty {
             text += others.joined(separator: ", ")
@@ -155,6 +209,29 @@ public struct BackupDiff: Hashable, Sendable {
             if !others.isEmpty { text += "; dazu " + others.joined(separator: ", ") }
         }
         return text + "."
+    }
+
+    /// The toast after the merge: „12 neue Fahrten, 3 geänderte · 1 Ticket“ – what the preview promised, a journey once. nil when no
+    /// row changed (only settings).
+    public var appliedLine: String? {
+        guard changes > 0 else { return nil }
+        let trips = tripParts()
+        return ([trips.joined(separator: ", ")].filter { !$0.isEmpty } + otherChanges).joined(separator: " · ")
+    }
+
+    /// The trips' visible changes; the first part carries the noun („3 geänderte Fahrten“, „12 neue Fahrten, 3 geänderte“).
+    private func tripParts() -> [String] {
+        let trips = table(.trips)
+        var parts: [String] = []
+        for (count, adjective) in [(trips.added, "neue"), (trips.changed, "geänderte"), (trips.removed, "entfernte")] where count > 0 {
+            parts.append(parts.isEmpty ? "\(count) \(adjective) \(count == 1 ? "Fahrt" : "Fahrten")" : "\(count) \(adjective)")
+        }
+        return parts
+    }
+
+    /// „1 Ticket“, „2 Favoriten“ – the other tables with changes.
+    private var otherChanges: [String] {
+        BackupTable.allCases.filter { $0 != .trips }.map(table).filter { $0.changes > 0 }.map { $0.table.count($0.changes) }
     }
 
     /// „2 Einträge sind auf diesem iPhone neuer und bleiben, wie sie sind.“ and „1 Eintrag, den du hier gelöscht hast, bleibt

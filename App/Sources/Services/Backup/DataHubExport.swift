@@ -123,7 +123,7 @@ struct DataHubExportSource: Sendable {
         case .tripsCSV:
             return Data(TripCSVExport.trips(snap.trips, notes: snap.notes).utf8)
         case .monthlyCSV:
-            let rows = DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval, emissions: emissions)
+            let rows = DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval, until: now, emissions: emissions)   // MARK: review-daten – no months to come
             return Data(DataHubMonthlyCSV.csv(rows, totalTrips: JourneySummary.tripCount(snap.trips)).utf8)
         case .tripsCalendar:
             return Data(DataHubICS.trips(snap.trips, durations: snap.durations, stamp: now).utf8)
@@ -165,7 +165,7 @@ struct DataHubExportSource: Sendable {
             switch format {
             case .backup: what = Backup.counts(context: context).line
             case .tripsCSV, .tripsCalendar: what = DataHubFormat.count(snap.trips.count, "Eintrag", "Einträge")
-            case .monthlyCSV: what = DataHubFormat.count(DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval).count, "Monat", "Monate")
+            case .monthlyCSV: what = DataHubFormat.count(DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval, until: now).count, "Monat", "Monate")
             case .deadlinesCalendar: what = DataHubFormat.count(snap.deadlines.count, "Frist", "Fristen")
             case .yearText: what = DataHubFormat.count(JourneySummary.tripCount(snap.trips), "Fahrt", "Fahrten")
             }

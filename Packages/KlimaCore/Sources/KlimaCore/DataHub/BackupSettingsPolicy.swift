@@ -109,7 +109,8 @@ public enum BackupSettingsPolicy {
     ]
 
     /// Never in a backup: live data and its consent, account and sync state, the backup's own state, letters (name and address),
-    /// the store, demo marks, launch switches and the system's own keys.
+    /// the store, demo marks, launch switches and the system's own keys. (The goals' ledger `goals.ledger.v1` does come along on
+    /// purpose: a goal already met when the file was written does not pop again after a restore – docs/DASHBOARD_LAYOUT.md §4.)
     public static let deniedPrefixes = [
         "live", "cloud.", "sync.", "auth.", "backup.", "letters.", "store.", "demo.", "KB", "widgetSnapshot", "NS", "Apple",
         "com.apple", "rules.log", "rules.ledger",

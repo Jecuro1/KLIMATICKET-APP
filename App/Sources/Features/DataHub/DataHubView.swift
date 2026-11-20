@@ -25,7 +25,7 @@ struct DataHubView: View {
     private var service: AutoBackupService { .shared }
 
     private var counts: DataHubCounts {
-        DataHubCounts(trips: DataHubCounts.tripCount(trips.map { $0.journeyID?.uuidString }), tickets: tickets.count,
+        DataHubCounts(trips: DataHubCounts.tripCount(journeys: trips.map(\.journeyID)), tickets: tickets.count,
                       favorites: favorites.count, benefits: benefits.count)
     }
 

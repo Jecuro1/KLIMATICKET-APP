@@ -73,7 +73,12 @@ struct RootView: View {
             Button(change.unsyncedItemCount > 0 ? "Durch Konto ersetzen (\(change.unsyncedItemCount) ungesichert)" : "Durch Daten des Kontos ersetzen",
                    role: .destructive) {
                 Task {
-                    _ = await AutoBackupService.shared.safetyBackup(.beforeDelete, container: context.container)   // MARK: data – the device's data first
+                    // MARK: data – the device's data first; MARK: review-daten – without that copy nothing is replaced, the question comes again
+                    guard await AutoBackupService.shared.safetyBackup(.beforeDelete, container: context.container).allowsDestructiveStep else {
+                        app.showToast("exclamationmark.triangle.fill", "Nichts ersetzt", "Die Sicherung davor ging nicht – ist der Speicher voll?", haptic: .warning)
+                        updateAccountSwitchAlert(afterDismissal: true)
+                        return
+                    }
                     await app.sync.discardLocalDataAndSync(context: context, auth: app.auth)
                     Repository(context: context, app: app).refreshWidgets()
                 }

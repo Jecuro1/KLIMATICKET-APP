@@ -72,10 +72,11 @@ struct DataHubBackupsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .motionAnimation(Motion.smooth, value: service.files.map(\.name))
             .sheet(item: $preview) { DataHubRestoreSheet(preview: $0) }
+            // MARK: review-daten – the counts of every listed file, also one written while the list is open (a restore's safety backup)
+            .task(id: service.files.map(\.name)) { await loadDetails() }
             .task {
                 await service.refresh()
                 checked = screenshotChecked
-                await loadDetails()
                 if let demoStoreCopies { storeCopies = demoStoreCopies }
                 else { storeCopies = await Task.detached(priority: .utility) { DataHubFolder.storeCopies() }.value }
                 guard screenshotScrollsToRows else { return }
@@ -116,14 +117,17 @@ struct DataHubBackupsView: View {
 
     // MARK: Actions
 
+    /// Reads the files whose details are not known yet (all of them on the first call).
     private func loadDetails() async {
-        let files = service.files
+        let known = details
+        let files = service.files.filter { known[$0.name] == nil }
+        guard !files.isEmpty else { return }
         let loaded = await Task.detached(priority: .utility) { () -> [String: DataHubBackupDetails] in
             var result: [String: DataHubBackupDetails] = [:]
             for file in files { result[file.name] = DataHubFolder.details(of: file.url) }
             return result
         }.value
-        withMotion(Motion.smooth) { details = loaded }
+        withMotion(Motion.smooth) { details.merge(loaded) { _, new in new } }
     }
 
     /// „Prüfen“: reads the file again and recomputes the checksum.
@@ -138,9 +142,15 @@ struct DataHubBackupsView: View {
                 app.showToast("exclamationmark.triangle.fill", "Datei nicht lesbar", file.name, haptic: .warning)
                 return
             }
-            app.showToast(fresh.verdict.isDamaged ? "xmark.seal.fill" : "checkmark.seal.fill", fresh.verdict.title,
-                          fresh.verdict.isDamaged ? "Nicht wiederherstellbar" : fresh.counts.line,
-                          haptic: fresh.verdict.isDamaged ? .warning : .success)
+            // MARK: review-daten – only a matching checksum is a green seal; a file without one, or no backup at all, says so
+            if let problem = fresh.problem {
+                app.showToast("xmark.seal.fill", fresh.verdict.isDamaged ? fresh.verdict.title : "Nicht wiederherstellbar", problem.message,
+                              haptic: .warning)
+            } else if fresh.verdict == .missing {
+                app.showToast("seal", fresh.verdict.title, "Lesbar, aber ohne Prüfsumme · " + fresh.counts.line)
+            } else {
+                app.showToast("checkmark.seal.fill", fresh.verdict.title, fresh.counts.line, haptic: .success)
+            }
         }
     }
 

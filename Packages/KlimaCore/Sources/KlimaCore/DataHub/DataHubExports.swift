@@ -111,12 +111,18 @@ public enum DataHubMonthlyCSV {
     public static let header = ["Monat", "Fahrten", "Wert (€)", "Distanz (km)", "CO₂ gespart (kg)"]
 
     /// One row per month from the first to the last month of the range (or of the trips, for „Alles“), months without a trip
-    /// included, so a chart in Excel shows the gaps.
-    public static func rows(_ trips: [TripRecord], interval: DateInterval?, emissions: EmissionFactors = .fallback,
+    /// included, so a chart in Excel shows the gaps. `until` (today): a range that runs on into the future ends with the month of
+    /// today or of its last trip, whichever is later – months that have not come yet are not „0 Fahrten“.
+    public static func rows(_ trips: [TripRecord], interval: DateInterval?, until: Date? = nil, emissions: EmissionFactors = .fallback,
                             calendar: Calendar = .vienna) -> [DataHubMonthRow] {
         let inRange = DataHubRange.filter(trips, interval: interval)
+        let latestTrip = inRange.map(\.date).max()
+        var end = interval?.end ?? latestTrip
+        if let interval, let until {
+            end = min(interval.end, max(until, latestTrip ?? until))
+        }
         guard let first = interval?.start ?? inRange.map(\.date).min(),
-              let last = interval?.end ?? inRange.map(\.date).max(),
+              let last = end,
               let startMonth = calendar.dateInterval(of: .month, for: first)?.start else { return [] }
         var byMonth: [Date: [TripRecord]] = [:]
         var memo = DayMemo(calendar)
@@ -214,20 +220,10 @@ public enum DataHubYearText {
         return out.joined(separator: "\n") + "\n"
     }
 
-    /// The most frequent routes, direction-independent, as „Innsbruck Hbf ↔ St. Anton am Arlberg“ (the first spelling seen).
+    /// The most frequent routes, direction-independent, as „Innsbruck Hbf ↔ St. Anton am Arlberg“ – Statistik's own ranking
+    /// (`StatsAggregator.topRoutes`: a journey is one route from its first to its last stop), from two Fahrten on.
     static func topRoutes(_ trips: [TripRecord], limit: Int) -> [(name: String, count: Int)] {
-        var counts: [String: (name: String, count: Int, first: Date)] = [:]
-        for trip in trips {
-            let key = trip.routeKey
-            if let entry = counts[key] {
-                counts[key] = (entry.name, entry.count + 1, entry.first)
-            } else {
-                counts[key] = ("\(trip.fromName) ↔ \(trip.toName)", 1, trip.date)
-            }
-        }
-        return counts.values.filter { $0.count >= 2 }
-            .sorted { ($0.count, $1.first) > ($1.count, $0.first) }
-            .prefix(limit).map { ($0.name, $0.count) }
+        StatsAggregator.topRoutes(trips, limit: limit).filter { $0.trips >= 2 }.map { ("\($0.fromName) ↔ \($0.toName)", $0.trips) }
     }
 
     static func footer(now: Date, calendar: Calendar) -> String {

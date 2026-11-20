@@ -5,7 +5,7 @@ bekomme ich es heraus, und was passiert, wenn etwas schiefgeht?* Für eine App, 
 iCloud-Sync über einen bezahlten Account, kein CloudKit), ist das die einzige Datensicherung, die nicht von einem Konto abhängt.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/DataHub/` (Linux-Tests unter `Tests/KlimaCoreTests/DataHub/`,
-`swift test --filter DataHub`, 33 Tests), App in `App/Sources/Data/Backup+V3.swift`, `App/Sources/Services/Backup/` (Ordner,
+`swift test --filter DataHub`, 38 Tests), App in `App/Sources/Data/Backup+V3.swift`, `App/Sources/Services/Backup/` (Ordner,
 automatische Sicherung, Export, Wiederherstellen) und `App/Sources/Features/DataHub/` (Seiten, Demo-Szenen).
 
 ## 1. Das Versprechen
@@ -15,7 +15,7 @@ automatische Sicherung, Export, Wiederherstellen) und `App/Sources/Features/Data
 - **Sicherungen enthalten deine Daten, aber nie Geheimnisse:** Anmeldung, Schlüssel, die Live-Daten-Zustimmung, Name und Adresse der
   Briefe und Gerätezustände kommen nicht hinein (§3.2). Ein Wiederherstellen kann deshalb Zustimmung und Anmeldung nicht ändern.
 - **Vor jedem zerstörerischen Schritt eine Sicherung:** vor „Alle Daten löschen“, vor dem Ersetzen durch die Daten eines Kontos und vor
-  jedem Wiederherstellen (§4.3). Gelingt sie bei „Alle Daten löschen“ oder beim Wiederherstellen nicht, passiert nichts.
+  jedem Wiederherstellen (§4.3). Gelingt sie nicht, passiert nichts (beim Konto: die Frage kommt wieder).
 - **Vorher sehen, was sich ändert:** Wiederherstellen zeigt zuerst „Das ändert sich: 12 neue Fahrten, 3 geänderte, 140 unverändert“ (§5).
 - **Ehrlich, wo die Dateien liegen:** „Diese Sicherungen liegen auf diesem iPhone. Löschst du die App, sind sie weg. Kopiere sie in
   Dateien oder iCloud Drive.“ – auf der Seite und in der Liste, bei jeder Textgröße ganz lesbar.
@@ -39,7 +39,8 @@ Der PDF-Jahresbericht bleibt, wo er war (Berichte), und ist von der Seite verlin
 
 **CSV (Excel in Österreich):** Strichpunkt, Dezimalkomma ohne Tausenderpunkt (`1060,45`, Excel liest es als Zahl), CRLF, UTF-8 mit BOM.
 Die Monatsübersicht hat für jeden Monat des Zeitraums eine Zeile, auch für leere (Lücken sichtbar im Diagramm), Monatsnamen
-österreichisch („Jänner 2027“). „Fahrten“ zählt wie die App: eine Reise aus mehreren Teilstrecken ist eine Fahrt. CO₂ wie überall:
+österreichisch („Jänner 2027“) – aber nur bis zum Monat von heute (oder einer späteren eingetragenen Fahrt): ein laufendes Ticketjahr
+listet keine kommenden Monate mit „0 Fahrten“. „Fahrten“ zählt wie die App: eine Reise aus mehreren Teilstrecken ist eine Fahrt. CO₂ wie überall:
 Umweltbundesamt-Faktoren aus dem Tarif-Katalog, Auto allein gegenüber Öffi.
 
 **Kalender (RFC 5545, auf dem Code von PlannerExport):** CRLF, Zeilen bei 75 Oktetten gefaltet (nie mitten in einem Umlaut), Komma,
@@ -50,7 +51,7 @@ Erinnerung um 09:00 am Vortag. Stabile `UID`s: ein zweiter Import aktualisiert s
 
 **Jahresbilanz (Markdown):** Überschrift mit Zeitraum, beim Ticketjahr Wert gegenüber Ticketpreis („noch € 400,00, bis es sich
 rentiert“ bzw. „rentiert, € 100,00 im Plus“), Fahrten an Tagen, km, CO₂, eine Monatstabelle, die drei häufigsten Strecken (ab zwei
-Fahrten), Fußzeile mit Quelle. Keine Prognose – eine Bilanz zählt nur, was war.
+Fahrten, gereiht wie in Statistik: eine Reise ist eine Strecke vom ersten bis zum letzten Halt), Fußzeile mit Quelle. Keine Prognose – eine Bilanz zählt nur, was war.
 
 ## 3. Komplettsicherung, Version 3
 
@@ -71,7 +72,8 @@ Erlaubt (Allow-List): `appearance`, `defaultDiscount`, `defaultTravelClass`, `ho
 Verboten (Deny-List, gewinnt immer, auch unter einem erlaubten Präfix): jeder Schlüssel mit `token`, `secret`, `password`,
 `credential`, `session`, `consent`, `auth`, `cookie`, `apikey`, `userid`, `keychain`, `bookmark`, `deviceid`, `udid` …; alles, was mit
 `live`, `cloud.`, `sync.`, `auth.`, `backup.`, `letters.`, `store.`, `demo.`, `KB`, `NS`, `Apple` beginnt, und `rules.log`/`rules.ledger`
-(Laufzustand). Zusätzlich wird ein Wert abgelehnt, der wie ein Token aussieht (JWT, „Bearer …“) oder größer als 256 KB ist. Die Keychain
+(Laufzustand). Das Buch der Ziele (`goals.ledger.v1`) kommt absichtlich mit: ein Ziel, das beim Sichern schon erfüllt war, poppt nach
+dem Wiederherstellen nicht noch einmal (docs/DASHBOARD_LAYOUT.md §4). Zusätzlich wird ein Wert abgelehnt, der wie ein Token aussieht (JWT, „Bearer …“) oder größer als 256 KB ist. Die Keychain
 wird für eine Sicherung nie gelesen. Getestet: ein eingeschmuggelter Token-Schlüssel und die Zustimmung werden abgelehnt.
 
 Beim Wiederherstellen werden Einstellungen **nur auf Wunsch** übernommen (Schalter „Auch Einstellungen übernehmen“, aus) und erst
@@ -127,12 +129,14 @@ Die Kopien, die `StoreLoader` selbst anlegt (vor einem App-Update, wenn das Öff
 2. **Vorschau** (`BackupDiff.make`, rein): pro Tabelle neu, geändert, entfernt, unverändert, auf diesem iPhone neuer – genau die Regel
    des Zusammenführens: unbekannte Zeilen kommen dazu, eine Zeile der Datei gewinnt nur, wenn sie neuer ist (`updated_at`), gleiche
    bleiben, eine in der Datei später gelöschte verschwindet, eine hier gelöschte, in der Datei neuere kommt zurück. Eine doppelte Zeile
-   zählt einmal. **Was du hier nach der Sicherung gelöscht hast, bleibt gelöscht** (die Löschung ist neuer als die Kopie in der Datei) –
+   zählt einmal. **Fahrten zählen wie in der App:** die Teilstrecken einer Reise sind eine Fahrt – alle neu: neu, alle entfernt:
+   entfernt, sonst jede sichtbare Änderung (auch eine Teilstrecke mehr oder weniger): geändert. **Was du hier nach der Sicherung gelöscht hast, bleibt gelöscht** (die Löschung ist neuer als die Kopie in der Datei) –
    die Vorschau sagt es: „1 Eintrag, den du hier nach dieser Sicherung gelöscht hast, bleibt gelöscht.“ Dazu Format, App-Version, Datum, Prüfsumme und – falls die Datei Einstellungen hat, die anders sind – der Schalter
    „Auch Einstellungen übernehmen“.
 3. **„Wiederherstellen“**: zuerst die Sicherung „vor dem Wiederherstellen“ (gelingt sie nicht: nichts passiert), dann das
-   Zusammenführen wie bisher (nur ergänzen, nichts doppelt), Erinnerungen der Tickets neu planen, Meldung wie gehabt
-   („154 Fahrten, 1 Tickets … importiert“).
+   Zusammenführen wie bisher (nur ergänzen, nichts doppelt), Erinnerungen der Tickets neu planen. Die Meldung sagt, was die Vorschau
+   versprochen hat („12 neue Fahrten, 3 geänderte · 1 Ticket“), nicht mehr jede geänderte Zeile samt Löschungen („95 Fahrten, 1 Tickets
+   … importiert“). „Aus Sicherung wiederherstellen“ meldet, was danach auf dem iPhone ist.
 
 **Mit KlimaBilanz-Konto (nicht geprüft):** nach „Alle Daten löschen“ liegen in der Cloud Löschungen, die neuer sind als jede ältere
 Sicherung. Wer danach wiederherstellt, dem kann die nächste Synchronisierung die wiederhergestellten Zeilen nach derselben Regel
@@ -216,7 +220,25 @@ dem Neustart greifen; die VoiceOver-Aktionen der Zeilen.
 - **Gestrichen (STRETCH):** „Sicherung in Ordner kopieren“ (Lesezeichen auf einen Ordner, etwa in iCloud Drive), flaches JSON der
   Fahrten mit Schema, Vorschau für den CSV-Import.
 
-## 11. Geräte-Checkliste (Besitzer)
+## 11. Review (adversarial, nach dem Bau)
+
+Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
+
+- **Zahlen:** Die Vorschau zählte Teilstrecken als Fahrten („12 neue Fahrten“ für 12 Zeilen), während Kopf, Liste, Einstellungen und
+  Statistik Reisen einmal zählen – jetzt zählt `BackupDiff` je Reise (`BackupRowStamp.group` = `journey_id`). Ohne neue Fahrt fehlte
+  das Hauptwort („Das ändert sich: 3 geänderte, …“) – jetzt „3 geänderte Fahrten“. Die Meldung nach dem Wiederherstellen zählte jede
+  Zeile samt Löschungen und sagte „1 Tickets“. Die häufigsten Strecken der Jahresbilanz zählten Teilstrecken, Statistik Reisen.
+  Die Monatsübersicht listete kommende Monate eines laufenden Ticketjahrs mit „0 Fahrten“. „1000 KB“ heißt jetzt „1,0 MB“.
+- **Sicherung vor dem Zerstörerischen:** „Durch Daten des Kontos ersetzen“ ersetzte auch, wenn die Sicherung davor scheiterte – jetzt
+  nicht, mit Hinweis, und die Frage kommt wieder.
+- **Ehrlichkeit:** „Prüfen“ zeigte bei einer Datei ohne Prüfsumme (oder einer, die gar keine Sicherung ist) ein grünes Siegel mit
+  Erfolgs-Haptik – jetzt ein leeres Siegel „Ohne Prüfsumme“ bzw. die Ablehnung.
+- **Liste:** Eine Sicherung, die bei offener Liste entsteht (die Sicherung vor dem Wiederherstellen), bekam nie ihren Inhalt angezeigt.
+
+Offen (bewusst): Wiederherstellen bringt eine hier gelöschte Fahrt nicht zurück (die Löschung ist neuer; der Plan sagt „nur
+ergänzen“) – zurück kommt sie nur in einen leeren Speicher. Ein Schalter „Gelöschte zurückholen“ wäre eine neue Funktion.
+
+## 12. Geräte-Checkliste (Besitzer)
 
 1. Einstellungen › Daten › Daten & Sicherung › „Jetzt sichern“. Dateien-App öffnen › Auf meinem iPhone › KlimaBilanz › Sicherungen:
    die Datei ist da.

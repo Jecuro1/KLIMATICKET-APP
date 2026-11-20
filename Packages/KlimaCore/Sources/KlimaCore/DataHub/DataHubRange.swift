@@ -88,7 +88,7 @@ public enum DataHubFormat {
     public static func bytes(_ count: Int) -> String {
         switch count {
         case ..<1000: return "\(max(0, count)) Byte"
-        case ..<1_000_000: return "\(Int((Double(count) / 1000).rounded())) KB"
+        case ..<999_500: return "\(Int((Double(count) / 1000).rounded())) KB"   // 999.500 Byte rounds to „1,0 MB“, not „1000 KB“
         default: return decimal(Double(count) / 1_000_000, digits: 1) + " MB"
         }
     }

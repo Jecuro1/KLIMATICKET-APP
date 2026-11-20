@@ -56,9 +56,14 @@ enum DataHubDemo {
             file.trips[at].base.updated_at = now.addingTimeInterval(Double(60 + index * 60))
             file.trips[at].base.note = "Auf dem anderen iPhone ergänzt"
         }
+        var journeys: [String: String] = [:]   // MARK: review-daten – a copied leg joins a new journey, not one of this iPhone
         for (index, row) in live.dropFirst(3).prefix(12).enumerated() {
             var copy = row
             copy.base.id = UUID()
+            if let journey = row.base.journey_id {
+                copy.base.journey_id = journeys[journey] ?? UUID().uuidString
+                journeys[journey] = copy.base.journey_id
+            }
             copy.base.date = row.base.date.addingTimeInterval(-Double(index + 1) * 86_400 * 7)
             copy.base.created_at = now
             copy.base.updated_at = now

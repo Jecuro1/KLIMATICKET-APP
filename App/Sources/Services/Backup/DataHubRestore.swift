@@ -75,7 +75,7 @@ enum DataHubRestore {
             return .failed("Die Sicherung davor ging nicht – es wurde nichts geändert.")
         }
         do {
-            let imported = try Backup.restoreChecked(preview.data, context: context)
+            _ = try Backup.restoreChecked(preview.data, context: context)
             let repository = Repository(context: context, app: app)
             repository.commit()
             // Restored tickets need their renewal reminders (no-op when reminders are off).
@@ -83,12 +83,22 @@ enum DataHubRestore {
                 repository.scheduleReminders(for: ticket)
             }
             if includeSettings && !preview.settings.isEmpty { BackupSettingsSnapshot.stage(preview.settings) }
-            return .restored(imported.summary + (includeSettings && !preview.settingsChanges.isEmpty ? " · Einstellungen beim nächsten Start" : ""))
+            return .restored(restoredLine(preview, includeSettings: includeSettings))
         } catch let error as DataHubRestoreError {
             return .failed(error.errorDescription ?? "Die Datei ist kein gültiges KlimaBilanz-Backup.")
         } catch {
             return .failed("Die Datei ist kein gültiges KlimaBilanz-Backup.")
         }
+    }
+
+    /// MARK: review-daten – the toast says what the preview promised, Fahrten counted like the app („12 neue Fahrten, 3 geänderte ·
+    /// 1 Ticket“). `ImportResult.summary` counted every changed row, deletions and the legs of a journey included („1 Tickets“).
+    static func restoredLine(_ preview: DataHubRestorePreview, includeSettings: Bool) -> String {
+        let settings = includeSettings && !preview.settingsChanges.isEmpty
+        guard let rows = preview.diff.appliedLine else {
+            return settings ? "Einstellungen gelten ab dem nächsten Start" : "Nichts geändert"
+        }
+        return rows + (settings ? " · Einstellungen beim nächsten Start" : "")
     }
 
     /// German names of the settings keys, for the preview (unknown keys say what they are by their group).

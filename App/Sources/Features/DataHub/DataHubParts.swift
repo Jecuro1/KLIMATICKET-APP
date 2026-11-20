@@ -230,10 +230,12 @@ struct DataHubBackupRow: View {
                 // Like the hero's line: at accessibility sizes the verdict stands alone (the words say it, the colour too).
                 Group {
                     if typeSize.isAccessibilitySize { Text(details.verdict.title) }
-                    else { Label(details.verdict.title, systemImage: details.verdict.isDamaged ? "xmark.seal.fill" : "checkmark.seal.fill") }
+                    else { Label(details.verdict.title, systemImage: details.verdict.isDamaged ? "xmark.seal.fill"
+                                 : (details.verdict == .missing ? "seal" : "checkmark.seal.fill")) }   // MARK: review-daten
                 }
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(details.verdict.isDamaged ? Theme.negativeText : Theme.positiveText)
+                    .foregroundStyle(details.verdict.isDamaged ? Theme.negativeText
+                                     : (details.verdict == .missing ? Theme.summitText : Theme.positiveText))   // MARK: review-daten
                     .motionTransition(.pop)
             }
             actions
