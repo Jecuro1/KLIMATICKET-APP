@@ -202,8 +202,11 @@ public enum GoalState: String, Sendable, Hashable {
     case onTrack
     /// Below the linear pace.
     case behind
-    /// `breakEvenBy`: the day has passed without the break-even.
+    /// `breakEvenBy`: the day has passed without the break-even. A monthly goal: the ticket ended inside the month short of it.
     case missed
+    /// Nothing can count: the ticket does not cover this month (it ended before it or starts after it), or the day of a
+    /// `breakEvenBy` goal lies outside the ticket's validity (a goal of an earlier ticket).
+    case paused
 }
 
 public struct GoalProgress: Equatable, Sendable, Identifiable {
@@ -224,6 +227,14 @@ public struct GoalProgress: Equatable, Sendable, Identifiable {
     /// End of the month at the current pace (shown from the 7th) or, for `breakEvenBy`, the app's forecast of the break-even day.
     public var projectedValue: Double?
     public var projectedDate: Date?
+    /// Monthly goals: the ticket starts after today inside this month (or in a later month while `paused`) – counting starts then.
+    public var startsOn: Date? = nil
+    /// Monthly goals: the ticket ends inside this month – its last day is the last that counts („bis Ticketende“).
+    public var endsOn: Date? = nil
+    /// `breakEvenBy`: the ticket paid off, but only after the goal's day.
+    public var paidOffOn: Date? = nil
+    /// `breakEvenBy`: the Bilanz card's forecast lies after the ticket's last day („kein Break-even bis zum Ablauf“).
+    public var forecastMissesTicketEnd = false
 
     public var id: UUID { goal.id }
     public var remaining: Double { max(0, target - actual) }
@@ -249,18 +260,19 @@ public enum GoalEvaluator {
     /// Days before a monthly projection is shown (the first days would extrapolate wildly).
     public static let projectionFromDay = 7
 
-    /// Progress of `goal` at `now`. Monthly goals read the trips of the Vienna calendar month that lie in the ticket year; the date goal
-    /// reads the ticket's summary (the same SavingsSummary the Übersicht shows, so its Prognose is the Bilanz card's).
+    /// Progress of `goal` at `now`. Monthly goals read the trips of the Vienna calendar month that lie in the ticket year and measure
+    /// the pace over the days of that month the ticket covers (a ticket that starts on the 15th does not make its holder „Hinter Plan“
+    /// for the 14 days before it); the date goal reads the ticket's summary (the same SavingsSummary the Übersicht shows, so its
+    /// Prognose is the Bilanz card's).
     public static func evaluate(_ goal: Goal, trips: [TripRecord], ticket: TicketPeriod, summary: SavingsSummary, now: Date,
                                 emissions: EmissionFactors = .fallback, calendar: Calendar = .vienna) -> GoalProgress {
         if goal.kind == .breakEvenBy { return breakEven(goal, ticket: ticket, summary: summary, now: now, calendar: calendar) }
 
         let monthStart = calendar.dateInterval(of: .month, for: now)?.start ?? calendar.startOfDay(for: now)
         let nextMonth = calendar.date(byAdding: .month, value: 1, to: monthStart) ?? now
-        // Calendar days, not seconds: a month with the DST switch has 743 or 745 hours but still its 31 days.
-        let daysInMonth = calendar.range(of: .day, in: .month, for: now)?.count ?? 30
-        let dayOfMonth = min(daysInMonth, max(1, calendar.component(.day, from: now)))
         let inMonth = trips.filter { $0.date >= monthStart && $0.date < nextMonth && ticket.contains($0.date) }
+        let year = calendar.component(.year, from: monthStart), month = calendar.component(.month, from: monthStart)
+        let periodKey = String(format: "%04d-%02d", year, month)
 
         let actual: Double
         switch goal.kind {
@@ -270,24 +282,54 @@ public enum GoalEvaluator {
         case .breakEvenBy: actual = 0
         }
         let target = goal.target
-        let completedShare = Double(dayOfMonth - 1) / Double(daysInMonth)
-        let expected = target * completedShare
+        let progress = target > 0 ? actual / target : 0
+        let reached = actual >= target - 1e-9
+
+        // The days of this month the ticket covers – calendar days, not seconds: a month with the DST switch has 743 or 745 hours
+        // but still its 31 days.
+        let ticketFirst = calendar.startOfDay(for: ticket.start)
+        let ticketLast = calendar.startOfDay(for: ticket.end)
+        let afterTicket = calendar.date(byAdding: .day, value: 1, to: ticketLast) ?? ticket.end
+        let from = max(monthStart, ticketFirst)
+        let until = min(nextMonth, afterTicket)   // exclusive
+        let windowDays = from < until ? days(from, until, calendar) : 0
+        let today = calendar.startOfDay(for: now)
+
+        guard windowDays > 0 else {
+            // The ticket does not cover this month: nothing can count, so nothing is „behind“.
+            return GoalProgress(goal: goal, actual: actual, target: target, progress: progress, state: reached ? .reached : .paused,
+                                expectedNow: 0, daysLeft: 0, periodKey: periodKey, projectedValue: nil, projectedDate: nil,
+                                startsOn: ticketFirst > today ? ticketFirst : nil)
+        }
+
+        let elapsed = days(from, today, calendar)   // < 0 before the ticket starts, ≥ windowDays after it ended
+        let completed = min(windowDays, max(0, elapsed))
+        let daysLeft = windowDays - completed       // today included
+        let expected = target * Double(completed) / Double(windowDays)
         let state: GoalState
-        if actual >= target - 1e-9 {
+        if reached {
             state = .reached
+        } else if daysLeft == 0 {
+            state = .missed                         // the ticket ended inside this month; no later trip counts
         } else if actual + 1e-9 >= (goal.kind == .tripsPerMonth ? floor(expected + 1e-9) : expected) {
             state = .onTrack
         } else {
             state = .behind
         }
         var projected: Double?
-        if state != .reached, dayOfMonth >= projectionFromDay {
-            projected = actual / Double(dayOfMonth) * Double(daysInMonth)
+        if state == .onTrack || state == .behind, elapsed + 1 >= projectionFromDay {
+            projected = actual / Double(elapsed + 1) * Double(windowDays)
         }
-        let year = calendar.component(.year, from: monthStart), month = calendar.component(.month, from: monthStart)
-        return GoalProgress(goal: goal, actual: actual, target: target, progress: target > 0 ? actual / target : 0, state: state,
-                            expectedNow: expected, daysLeft: daysInMonth - dayOfMonth + 1,
-                            periodKey: String(format: "%04d-%02d", year, month), projectedValue: projected, projectedDate: nil)
+        return GoalProgress(goal: goal, actual: actual, target: target, progress: progress, state: state,
+                            expectedNow: expected, daysLeft: daysLeft, periodKey: periodKey, projectedValue: projected,
+                            projectedDate: nil,
+                            startsOn: from > today ? from : nil,
+                            endsOn: until < nextMonth ? calendar.date(byAdding: .day, value: -1, to: until) : nil)
+    }
+
+    /// Calendar days from one local midnight to another (DST-safe).
+    private static func days(_ from: Date, _ to: Date, _ calendar: Calendar) -> Int {
+        calendar.dateComponents([.day], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).day ?? 0
     }
 
     private static func breakEven(_ goal: Goal, ticket: TicketPeriod, summary: SavingsSummary, now: Date,
@@ -296,16 +338,34 @@ public enum GoalEvaluator {
         let actual = summary.totalValue
         let until = goal.until ?? ticket.end
         let startDay = calendar.startOfDay(for: ticket.start)
+        let lastDay = calendar.startOfDay(for: ticket.end)
         let goalDay = calendar.startOfDay(for: until)
         let today = calendar.startOfDay(for: now)
-        let totalDays = max(1, (calendar.dateComponents([.day], from: startDay, to: goalDay).day ?? 0) + 1)
-        let completed = min(totalDays, max(0, calendar.dateComponents([.day], from: startDay, to: today).day ?? 0))
-        let expected = target * Double(completed) / Double(totalDays)
-        let daysLeft = max(0, (calendar.dateComponents([.day], from: today, to: goalDay).day ?? 0) + 1)
+        let key = "bis-" + dayKey(goalDay, calendar: calendar)
+        let progress = target > 0 ? actual / target : 1
 
+        // A day outside this ticket's validity (a goal kept from an earlier ticket) says nothing about this one.
+        guard goalDay >= startDay, goalDay <= lastDay else {
+            return GoalProgress(goal: goal, actual: actual, target: target, progress: progress, state: .paused, expectedNow: 0,
+                                daysLeft: 0, periodKey: key, projectedValue: nil, projectedDate: nil)
+        }
+
+        let totalDays = max(1, days(startDay, goalDay, calendar) + 1)
+        let completed = min(totalDays, max(0, days(startDay, today, calendar)))
+        let expected = target * Double(completed) / Double(totalDays)
+        let daysLeft = max(0, days(today, goalDay, calendar) + 1)
+
+        // The day the ticket paid off (an own share of € 0 is paid off from the first day).
+        let paidOffDay: Date? = target <= 0 ? startDay
+            : (summary.isPaidOff ? summary.paidOffDate.map { calendar.startOfDay(for: $0) } ?? startDay : nil)
+        var lateBreakEven: Date?
         let state: GoalState
-        if summary.isPaidOff, summary.paidOffDate.map({ calendar.startOfDay(for: $0) <= goalDay }) ?? true {
+        if let paidOffDay, paidOffDay <= goalDay {
             state = .reached
+        } else if let paidOffDay {
+            // Paid off, but only after the day: not reached – and never „noch € 0 bis zum Break-even“.
+            lateBreakEven = paidOffDay
+            state = today > goalDay ? .missed : .behind
         } else if today > goalDay {
             state = .missed
         } else if let forecast = summary.forecastBreakEvenDate {
@@ -314,11 +374,14 @@ public enum GoalEvaluator {
         } else {
             state = actual + 1e-9 >= expected ? .onTrack : .behind
         }
-        let key = "bis-" + dayKey(goalDay, calendar: calendar)
-        return GoalProgress(goal: goal, actual: actual, target: target, progress: target > 0 ? actual / target : 1, state: state,
+        let isOpen = (state == .onTrack || state == .behind) && lateBreakEven == nil
+        // Like the Bilanz card: a forecast date only while it lies within the validity; after it „kein Break-even bis zum Ablauf“.
+        let forecast = isOpen ? summary.forecastBreakEvenDate : nil
+        let inTime = forecast.map { calendar.startOfDay(for: $0) <= lastDay } ?? false
+        return GoalProgress(goal: goal, actual: actual, target: target, progress: progress, state: state,
                             expectedNow: expected, daysLeft: state == .missed ? 0 : daysLeft, periodKey: key,
-                            projectedValue: nil,
-                            projectedDate: state == .reached || state == .missed ? nil : summary.forecastBreakEvenDate)
+                            projectedValue: nil, projectedDate: inTime ? forecast : nil,
+                            paidOffOn: lateBreakEven, forecastMissesTicketEnd: forecast != nil && !inTime)
     }
 
     static func dayKey(_ day: Date, calendar: Calendar) -> String {
@@ -381,18 +444,31 @@ public enum GoalText {
             let over = p.actual - p.target
             guard over >= (kind == .tripsPerMonth ? 1 : 0.5) else { return "Genau aufs Ziel" }
             return "\(amount(over, kind: kind, format: format, roundingUp: false)) über dem Ziel"
+        case .paused:
+            if kind == .breakEvenBy { return "Der Tag liegt außerhalb deines Ticketjahrs" }
+            if let startsOn = p.startsOn { return "Dein Ticket gilt ab \(format.day(startsOn)) – dann zählt es" }
+            return "Dein Ticket gilt in diesem Monat nicht – es zählt nur im Ticketjahr"
         case .missed:
-            return "Der Tag ist vorbei · noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true)) bis zum Break-even"
-        case .onTrack, .behind:
-            let rest = "noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true))"
             if kind == .breakEvenBy {
+                if let late = p.paidOffOn { return "Break-even am \(format.day(late)) – nach dem Tag" }
+                return "Der Tag ist vorbei · noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true)) bis zum Break-even"
+            }
+            let short = amount(p.remaining, kind: kind, format: format, roundingUp: true)
+            guard let endsOn = p.endsOn else { return "Der Monat ist vorbei · \(short) fehlten" }
+            return "Dein Ticket galt bis \(format.day(endsOn)) · \(short) fehlten"
+        case .onTrack, .behind:
+            if kind == .breakEvenBy {
+                if let late = p.paidOffOn { return "Break-even am \(format.day(late)) – nach dem Tag" }
+                let rest = "noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true))"
                 return rest + " · " + (p.daysLeft == 1 ? "heute ist der Tag" : "\(p.daysLeft) Tage bis zum Ziel")
             }
+            let rest = "noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true))"
+            if let startsOn = p.startsOn { return rest + " · zählt ab \(format.day(startsOn))" }
             switch p.daysLeft {
             case ...1:
-                return rest + " · heute ist der letzte Tag"
+                return rest + (p.endsOn == nil ? " · heute ist der letzte Tag" : " · heute endet dein Ticket")
             case 2...7:
-                return rest + " · \(p.daysLeft) Tage übrig"
+                return rest + (p.endsOn == nil ? " · \(p.daysLeft) Tage übrig" : " · \(p.daysLeft) Tage bis Ticketende")
             default:
                 let perWeek = p.remaining / (Double(p.daysLeft) / 7)
                 let pace = kind == .tripsPerMonth
@@ -403,20 +479,24 @@ public enum GoalText {
         }
     }
 
-    /// „Prognose: etwa 22 Fahrten bis Monatsende“ · „Prognose: Break-even am 14. Dez.“ – nil without one.
+    /// „Prognose: etwa 22 Fahrten bis Monatsende“ · „Prognose: Break-even am 14. Dez.“ · „Prognose: kein Break-even bis zum Ablauf“
+    /// – nil without one.
     public static func projection(_ p: GoalProgress, format: GoalFormatter) -> String? {
         if let date = p.projectedDate { return "Prognose: Break-even am \(format.day(date))" }
+        if p.forecastMissesTicketEnd { return "Prognose: kein Break-even bis zum Ablauf" }
         guard let value = p.projectedValue, value.isFinite else { return nil }
-        return "Prognose: etwa \(amount(value, kind: p.goal.kind, format: format, roundingUp: false)) bis Monatsende"
+        let end = p.endsOn == nil ? "Monatsende" : "Ticketende"
+        return "Prognose: etwa \(amount(value, kind: p.goal.kind, format: format, roundingUp: false)) bis \(end)"
     }
 
-    /// „Auf Kurs“ · „Etwas hinter Plan“ · „Geschafft“ · „Nicht geschafft“ – the state in words (the ring is never the only sign).
+    /// „Auf Kurs“ · „Hinter Plan“ · „Geschafft“ · „Nicht geschafft“ · „Ruht“ – the state in words (the ring is never the only sign).
     public static func stateLabel(_ state: GoalState) -> String {
         switch state {
         case .reached: "Geschafft"
         case .onTrack: "Auf Kurs"
         case .behind: "Hinter Plan"
         case .missed: "Nicht geschafft"
+        case .paused: "Ruht"
         }
     }
 }

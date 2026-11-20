@@ -5,7 +5,7 @@ Stand: Track „Übersicht nach Maß“ (November 2026). Du ordnest die Übersic
 Vorlagen – **Standard · Ruhig · Zahlen · Alles** – sind einen Tipp entfernt. Jede Zahl ist dieselbe, die Statistik zeigt.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/Dashboard/` (`DashLayout.swift`, `KpiCatalog.swift`, `Goals.swift`; Linux-Tests
-unter `Tests/KlimaCoreTests/Dashboard/`, `swift test --filter 'DashLayout|Kpi|Goals'`, 40 Tests); App in
+unter `Tests/KlimaCoreTests/Dashboard/`, `swift test --filter 'DashLayout|Kpi|Goals'`, 45 Tests); App in
 `App/Sources/Features/Dashboard/Layout/` (Speicher `DashLayoutStore`, die Kartenliste `DashSectionList`, Kennzahlen, Ziele, Editor,
 Ziel-Editor, Demo-Szenen). Eingehängt mit `// MARK: uebersicht` in `DashboardView.swift`, `DashSupport.swift` (Woche), `Repository.swift`
 („Alle Daten löschen“), `SetPreferencesSections.swift` (Zeile in Darstellung) und `RootView.swift` (Szenen).
@@ -56,7 +56,8 @@ der Titel und wovon sie spricht („Ticketjahr 2026/27“). Für VoiceOver ist e
 
 **Der Katalog rechnet nichts selbst.** `KpiCatalog.reading(kind, input:)` liest einen Wert aus dem, was die Übersicht ohnehin hat: der
 `SavingsSummary` von `Analytics.make` (dieselbe wie Gipfel, Bilanz-Karte und Statistik), `records.longestStreakDays`,
-`topRoutes.first` und die Zahl der Karte „Diese Woche“. Formatiert wird nur mit `Format.*` und der Rundung des Gipfels (`SummitFigures`).
+`topRoutes.first`, die Zahl der Karte „Diese Woche“ und der Auto-Vergleich von Statistik › „Öffis vs. Auto“ (`WorkCarCalc`, dieselbe
+Zahl wie „Mit dem Auto“ auf der Bilanz-Karte; nur gerechnet, wenn die Kachel gewählt ist). Formatiert wird nur mit `Format.*` und der Rundung des Gipfels (`SummitFigures`).
 
 | Kennzahl | Wert | wie gezeigt |
 |---|---|---|
@@ -64,13 +65,13 @@ der Titel und wovon sie spricht („Ticketjahr 2026/27“). Für VoiceOver ist e
 | Ersparnis nach Ticketkosten | `net` | „+ € 412“; vor dem Break-even „€ 354 noch offen“ (dieselbe Zahl wie „Noch € 354 bis zum Break-even“) |
 | Fahrten | `tripCount` | eine Reise mit Umstieg zählt einmal |
 | Reisetage | `travelDays` | |
-| Kilometer | `distanceKm` | |
+| Kilometer | `distanceKm` | unter 10 km mit einer Nachkommastelle, wie Statistik |
 | CO₂ gespart | `co2SavedKg` | kg/t nach Look & Feel › Zahlen › CO₂, wie die Bilanz-Karte |
 | Ø Wert je Fahrt | `averageValuePerTrip` | „–“ ohne Fahrt |
 | Kosten pro Tag | `costPerDay` | |
 | Wert pro Tag | `valuePerDay` | |
 | Preis pro km | `effectivePricePerKm` | „–“ ohne Kilometer |
-| Auto-Vergleich | `carCostEquivalent` | Kilometer × amtliches Kilometergeld |
+| Auto-Vergleich | `CarComparisonResult.carCost` | wie „Öffis vs. Auto“ in Statistik und „Mit dem Auto“ auf der Bilanz-Karte: Straßen-km (Bahn-km × 1,15) × die Autokosten aus Einstellungen › Arbeit & Auto; „–“ ohne Fahrt |
 | Tage bis Ablauf | `daysRemaining` | |
 | Prognose Endwert | `forecastEndValue` | heißt „Prognose“; nur solange das Ticket läuft und es Fahrten gibt (wie die gepunktete Linie in Statistik) |
 | Fahrten diese Woche | die Karte „Diese Woche“ | Wochenstart nach Look & Feel |
@@ -95,9 +96,16 @@ Höchstens drei. Arten und Stepper:
 
 - **Auf Kurs / Hinter Plan** misst am linearen Tempo über die **schon vergangenen Tage** des Monats (Tageszählung, nicht Sekunden – ein
   Monat mit Zeitumstellung hat trotzdem 31 Tage). Am 1. ist noch nichts fällig. Bei Fahrten wird das Soll abgerundet (10,67 → 10).
-- **Geschafft** sobald das Ziel erreicht ist; **Nicht geschafft** nur bei „Break-even bis“, wenn der Tag vorbei ist.
+  Gezählt werden nur die Tage des Monats, die das Ticket abdeckt: Beginnt es am 15., misst das Tempo ab dem 15. („zählt ab 15. Nov.“
+  davor), endet es am 11., heißt es „7 Tage bis Ticketende“ und „Prognose: … bis Ticketende“.
+- **Geschafft** sobald das Ziel erreicht ist; **Nicht geschafft** bei „Break-even bis“, wenn der Tag vorbei ist, und bei einem
+  Monatsziel, wenn das Ticket im Monat geendet hat („Dein Ticket galt bis 11. März · 6 Fahrten fehlten“). **Ruht**, wenn nichts zählen
+  kann: das Ticket deckt den Monat nicht ab („Dein Ticket gilt ab 1. Dez. – dann zählt es“) oder der Tag von „Break-even bis“ liegt
+  außerhalb dieses Ticketjahrs (ein Ziel vom letzten Ticket). Ein ruhendes Ziel ist nie „Hinter Plan“ und poppt nie.
 - „Break-even bis“ folgt der **Prognose der Bilanz-Karte** (`forecastBreakEvenDate`): liegt sie vor dem Tag, ist es „Auf Kurs“. So
-  widerspricht der Ring nie der Karte darüber. Ohne Prognose (noch kein Tempo) entscheidet das lineare Tempo.
+  widerspricht der Ring nie der Karte darüber. Ohne Prognose (noch kein Tempo) entscheidet das lineare Tempo. Liegt die Prognose nach
+  dem letzten Gültigkeitstag, nennt der Ring kein Datum, sondern „Prognose: kein Break-even bis zum Ablauf“ (wie „Fehlt bei Ablauf“ auf
+  der Karte). Hat sich das Ticket erst nach dem Tag rentiert: „Break-even am 2. Juli – nach dem Tag“ (nicht „noch € 0“).
 - Was fehlt, mit einem Tempo, das eine Tatsache ist: „noch 4 Fahrten · etwa 1 pro Woche“, „noch € 36 · 5 Tage übrig“, „noch 1 Fahrt ·
   heute ist der letzte Tag“; erreicht „4 Fahrten über dem Ziel“ bzw. „Genau aufs Ziel“ (die Zeile darüber sagt „24 von 20 Fahrten“).
 - **Prognose** nur mit dem Wort: „Prognose: etwa 22 Fahrten bis Monatsende“ (ab dem 7. Tag) bzw. „Prognose: Break-even am 14. Dez.“.
@@ -114,9 +122,12 @@ Erreichbar über den Knopf **„Übersicht anpassen“** am Ende der Übersicht,
 **Einstellungen › Darstellung › Übersicht anpassen** (dort als Seite).
 
 - Als Sheet zuerst halbhoch: Was du änderst, passiert sofort darüber in der Übersicht (`Motion.smooth`). Ganz hoch ziehen zeigt alles.
-- **Vorlagen** als vier Kacheln; die passende trägt Ring und Häkchen. Eigene Anordnung: keine.
+- **Vorlagen** als vier Kacheln; die zuletzt getippte trägt Ring und Häkchen, solange ihr Layout gilt (sonst die passende; „Alles“ und
+  „Standard“ teilen ein Layout). Eigene Anordnung: keine.
 - **Karten:** Symbol, Name, wann sie erscheint (oder „Ausgeblendet“, „Funktion aus …“, „4 von 4 gewählt“, „2 Ziele“), das Auge.
-  „Sortieren“ im Kopf der Liste zeigt die Griffe zum Ziehen; ein langes Drücken zieht auch so. VoiceOver: Aktionen „Nach oben“, „Nach unten“, „Ausblenden“/„Einblenden“.
+  „Sortieren“ im Kopf der Liste zeigt die Griffe zum Ziehen; ein langes Drücken zieht auch so. VoiceOver: eine Zeile ist ein Element,
+  Doppeltippen blendet aus oder ein (der Hinweis sagt es), Aktionen „Nach oben“ (nicht an erster Stelle), „Nach unten“ (nicht an
+  letzter), „Ausblenden“/„Einblenden“.
 - **Kennzahlen** mit Live-Vorschau, **Ziele** mit Stand, **Ziel hinzufügen** (der Ziel-Editor zeigt den echten Ring des Entwurfs an
   den heutigen Fahrten, bevor du sicherst), **Zurücksetzen** (Reihenfolge und Sichtbarkeit; Kennzahlen und Ziele bleiben).
 
@@ -126,7 +137,9 @@ Szenen (`DashLayoutScreenshotHost`, Demo-Daten, kein Netz, keine Systemabfrage; 
 `dashEdit` (Editor halbhoch über der Übersicht), `dashEditFull`, `dashEditSort` (Griffe), `dashEditAX5`, `dashEditSettings` (als Seite),
 `dashSettingsRow` (die Zeile in Darstellung), `dashKpis` (Kacheln unter dem Gipfel), `dashKpisAX5` und `dashGoalsAX5` (die Karten
 selbst bei der größten Schrift, eine Spalte), `dashStandardAX5` (die Übersicht ohne Änderung bei der größten Schrift), `dashGoals` (drei
-Ringe), `dashQuiet`, `dashQuietBottom` (Vorlage Ruhig), `dashKpiPicker`, `dashGoalEditor`; dazu die bestehenden `dashboard`, `dashboardBottom` zum Vergleich. Die Ziele der Szenen
+Ringe), `dashQuiet`, `dashQuietBottom` (Vorlage Ruhig), `dashKpiPicker`, `dashGoalEditor`; dazu die bestehenden `dashboard`, `dashboardBottom` zum Vergleich.
+Aus dem Review: `dashGoalStates`/`dashGoalStatesAX5` (jeder Zustand eines Ziels an den Rändern eines Tickets, feste synthetische Tickets
+und Fahrten) und `dashKpisCar` (Bilanz-Karte mit „Mit dem Auto“ über der Kachel „Auto-Vergleich“ – dieselben Euro). Die Ziele der Szenen
 richten sich nach den Demo-Fahrten des laufenden Monats (eines erfüllt, eines unterwegs, „Break-even bis“), egal an welchem Tag der Lauf ist.
 
 Angesehen in vier Läufen, hell und dunkel: [693](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44658618686) (alle Szenen,
@@ -171,7 +184,24 @@ erste Kachelreihe war dadurch höher als die zweite).
 - Aus Einstellungen öffnet der Editor als Seite statt als Sheet (Einstellungen ist selbst ein Sheet).
 - „Nächster Erfolg“ und „Diese Woche“ sind zwei Karten (vorher ein Block); direkt untereinander behalten sie den engen Abstand.
 
-## 9. Auf dem Gerät prüfen
+## 9. Review (adversarial, November 2026)
+
+Gefunden und behoben (KlimaCore mit Linux-Tests, `swift test --filter 'DashLayout|Kpi|Goals'`, 45 Tests):
+
+- **Auto-Vergleich widersprach der Bilanz-Karte darüber:** die Kachel rechnete Bahn-km × Kilometergeld (Demo-Jahr etwa ein Achtel
+  weniger), Statistik und die Bilanz-Karte rechnen Straßen-km mit den Autokosten aus Einstellungen. Jetzt dieselbe Zahl (`KpiInput.carCost`).
+- **Monatsziele bei einem Ticket, das im Monat beginnt oder endet:** Wer am 15. ein Ticket bekommt und am 16. ein Ziel anlegt, las
+  „Hinter Plan“ und „Prognose: etwa 4 Fahrten“, weil die 14 Tage ohne Ticket mitzählten; nach dem Ablauf „etwa 5 pro Woche“ für Tage,
+  an denen nichts mehr zählt. Jetzt zählen nur die abgedeckten Tage, mit „Ruht“ und „Nicht geschafft“ wie in §4.
+- **„Break-even bis“:** ein erst nach dem Tag rentiertes Ticket hieß „Der Tag ist vorbei · noch € 0 bis zum Break-even“; eine Prognose
+  nach dem Ablauf stand als Datum da; ein Tag aus dem letzten Ticketjahr galt als „Nicht geschafft“ für das neue.
+- Kilometer unter 10 km mit einer Nachkommastelle wie Statistik.
+- Ein Tipp auf „Alles“ setzte Ring und Häkchen auf „Standard“.
+- VoiceOver: „Nach oben“ an erster Stelle tat nichts; das Auge war in die Zeile verschmolzen (Doppeltippen blendete ohne Hinweis aus).
+- Ziel-Editor: eine andere Art spielte zwei Haptiken auf einmal; „Break-even bis“ war nach dem Ablauf wählbar (mit einem Tag nach dem
+  Ticket).
+
+## 10. Auf dem Gerät prüfen
 
 1. Übersicht ohne Änderung mit der vorherigen Version vergleichen (bis auf „Übersicht anpassen“ unten).
 2. „Vorteile“ ausblenden, „Diese Woche“ nach oben ziehen, App beenden und neu starten – die Anordnung bleibt.

@@ -29,6 +29,8 @@ final class DashLayoutStore {
     var isEditing = false
     /// The editor opens at this part (`DashEditorFocus`).
     var editorFocus: DashEditorFocus?
+    /// MARK: review-uebersicht – the preset tapped last (in memory): „Alles“ shares the standard layout, and a tap on it lit „Standard“.
+    private(set) var appliedPreset: DashPreset?
     /// A goal was saved / deleted – the editor plays .success / .warning once (its sheet has closed by then).
     private(set) var goalSaveTick = 0
     private(set) var goalDeleteTick = 0
@@ -51,6 +53,12 @@ final class DashLayoutStore {
 
     /// Something differs from a fresh install (the editor's „Zurücksetzen“ is enabled then).
     var isCustomized: Bool { !layout.isStandard }
+
+    /// The preset the editor marks: the one tapped last while its layout still holds, else the one that gives the layout.
+    var currentPreset: DashPreset? {
+        if let appliedPreset, appliedPreset.layout == layout { return appliedPreset }
+        return DashPreset.matching(layout)
+    }
 
     // MARK: Layout
 
@@ -78,6 +86,7 @@ final class DashLayoutStore {
 
     /// A ready-made layout; „Zahlen“ and „Alles“ pick the four default figures when none is picked yet.
     func apply(_ preset: DashPreset) {
+        appliedPreset = preset
         withMotion(Motion.smooth) {
             layout = preset.layout
             if preset.fillsEmptyKpis, kpis.kinds.isEmpty { kpis = KpiSelection(KpiCatalog.defaultTiles) }
@@ -86,6 +95,7 @@ final class DashLayoutStore {
 
     /// Order and visibility as shipped; the figures and goals stay.
     func resetLayout() {
+        appliedPreset = nil
         withMotion(Motion.smooth) { layout = .standard }
     }
 

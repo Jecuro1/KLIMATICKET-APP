@@ -40,6 +40,9 @@ struct DashGoalEditor: View {
              until: kind == .breakEvenBy ? until : nil)
     }
 
+    /// MARK: review-uebersicht – „Break-even bis“ needs a day inside the validity; after the ticket's end there is none.
+    private var ticketHasEnded: Bool { snapshot.map { Date() > $0.ticket.end } ?? false }
+
     private var preview: GoalProgress? {
         snapshot.flatMap { DashGoalEvaluation.progress([draft], snapshot: $0, catalog: app.catalog).first }
     }
@@ -109,6 +112,7 @@ struct DashGoalEditor: View {
     private var kindSection: some View {
         Section {
             ForEach(GoalKind.allCases) { option in
+                let unavailable = option == .breakEvenBy && ticketHasEnded
                 Button {
                     withMotion(Motion.snappy) { kind = option }
                 } label: {
@@ -118,7 +122,8 @@ struct DashGoalEditor: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.title)
                                 .foregroundStyle(Theme.textPrimary)
-                            Text(kindDetail(option))
+                            Text(option == .breakEvenBy && ticketHasEnded ? "Dein Ticket ist abgelaufen – kein Tag mehr frei"
+                                 : kindDetail(option))
                                 .font(.footnote)
                                 .foregroundStyle(Theme.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -133,6 +138,8 @@ struct DashGoalEditor: View {
                     .contentShape(.rect)
                 }
                 .buttonStyle(.plain)
+                .disabled(unavailable)
+                .opacity(unavailable ? 0.5 : 1)
                 .listRowBackground(Theme.surface)
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(option == kind ? [.isButton, .isSelected] : .isButton)
@@ -163,7 +170,8 @@ struct DashGoalEditor: View {
                         .listRowBackground(Theme.surface)
                 }
             } else if let range = kind.targetRange {
-                Stepper(value: $amount, in: range, step: kind.targetStep) {
+                // The tick only for a step – a new kind sets the amount too and plays its own .selection.
+                Stepper(value: Binding(get: { amount }, set: { amount = $0; stepTick += 1 }), in: range, step: kind.targetStep) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(amountText)
                             .font(.system(.title2, design: .rounded, weight: .bold).monospacedDigit())
@@ -175,7 +183,6 @@ struct DashGoalEditor: View {
                     }
                     .accessibilityElement(children: .combine)
                 }
-                .onChange(of: amount) { _, _ in stepTick += 1 }
                 .listRowBackground(Theme.surface)
             }
         } header: {

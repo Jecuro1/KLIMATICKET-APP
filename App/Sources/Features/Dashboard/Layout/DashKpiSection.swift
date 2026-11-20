@@ -8,12 +8,20 @@ import KlimaCore
 
 /// The figures the Übersicht reads, from one snapshot.
 enum DashKpiInput {
-    static func make(snapshot: AnalyticsSnapshot, tripsNewestFirst trips: [TripEntity]) -> KpiInput {
-        KpiInput(summary: snapshot.summary,
-                 longestStreakDays: snapshot.records.longestStreakDays,
-                 topRoute: snapshot.topRoutes.first,
-                 tripsThisWeek: DashWeekStats.make(fromNewestFirst: trips).trips,
-                 ticketYear: StatsCalc.ticketYearLabel(snapshot.ticket))
+    /// `kinds`: the tiles that will be read (nil: all, for the picker) – the car comparison is worked out only when its tile is asked for.
+    @MainActor
+    static func make(snapshot: AnalyticsSnapshot, tripsNewestFirst trips: [TripEntity], catalog: TariffCatalog,
+                     kinds: [KpiKind]? = nil) -> KpiInput {
+        // MARK: review-uebersicht – „Auto-Vergleich“ is the comparison of Statistik › „Öffis vs. Auto“ and of the Bilanz card's car row
+        // on the same screen (WorkCarCalc: road km, the car costs chosen in Einstellungen), not rail km × Kilometergeld (an eighth lower).
+        let car = (kinds?.contains(.carComparison) ?? true)
+            ? WorkCarCalc.result(period: snapshot.ticket, records: snapshot.trips, catalog: catalog) : nil
+        return KpiInput(summary: snapshot.summary,
+                        longestStreakDays: snapshot.records.longestStreakDays,
+                        topRoute: snapshot.topRoutes.first,
+                        tripsThisWeek: DashWeekStats.make(fromNewestFirst: trips).trips,
+                        ticketYear: StatsCalc.ticketYearLabel(snapshot.ticket),
+                        carCost: car.flatMap { $0.tripCount > 0 && $0.carCost > 0 ? $0.carCost : nil })
     }
 }
 
@@ -60,7 +68,9 @@ struct KpiDisplay: Equatable {
             let n = Int(v.rounded())
             return KpiDisplay(value: Format.number(Double(n)), unit: n == 1 ? "Tag" : "Tage", rolling: Double(n), spoken: Format.days(n))
         case .distance:
-            return KpiDisplay(value: Format.number(v), unit: "km", rolling: v.rounded(), spoken: Format.number(v) + " Kilometer")
+            // One decimal under 10 km, like Format.km in Statistik.
+            let number = Format.number(v, decimals: v < 10 ? 1 : 0)
+            return KpiDisplay(value: number, unit: "km", rolling: v.rounded(), spoken: number + " Kilometer")
         case .co2:
             let parts = AppearanceRuntime.format.co2Parts(kg: v)   // the Bilanz card's rule (Look & Feel › Zahlen › CO₂)
             let number = Format.number(parts.value, decimals: parts.decimals)
@@ -96,12 +106,13 @@ struct DashKpiSection: View {
     let snapshot: AnalyticsSnapshot
     let trips: [TripEntity]
 
+    @Environment(AppState.self) private var app
     private var store: DashLayoutStore { .shared }
 
     var body: some View {
         let kinds = store.kpis.kinds
         if !kinds.isEmpty {
-            let input = DashKpiInput.make(snapshot: snapshot, tripsNewestFirst: trips)
+            let input = DashKpiInput.make(snapshot: snapshot, tripsNewestFirst: trips, catalog: app.catalog, kinds: kinds)
             VStack(alignment: .leading, spacing: DashStyle.cardSpacing) {
                 SectionHeader(title: "Kennzahlen", actionTitle: "Anpassen") { store.openEditor(at: .kpis) }
                     .padding(.horizontal, DashStyle.headerInset)

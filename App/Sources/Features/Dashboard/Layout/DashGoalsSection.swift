@@ -134,7 +134,7 @@ struct DashGoalRow: View {
     private var celebrationKey: String { "\(progress.state.rawValue)|\(progress.periodKey)|\(isVisible)" }
 }
 
-/// „Auf Kurs“ · „Hinter Plan“ · „Geschafft“ · „Nicht geschafft“ with a symbol – text, never colour alone.
+/// „Auf Kurs“ · „Hinter Plan“ · „Geschafft“ · „Nicht geschafft“ · „Ruht“ with a symbol – text, never colour alone.
 struct DashGoalStateLabel: View {
     let state: GoalState
 
@@ -152,6 +152,7 @@ struct DashGoalStateLabel: View {
         case .onTrack: "arrow.up.right"
         case .behind: "arrow.down.right"
         case .missed: "flag.slash"
+        case .paused: "pause.circle"   // MARK: review-uebersicht – the ticket does not cover the month
         }
     }
 
@@ -159,7 +160,7 @@ struct DashGoalStateLabel: View {
         switch state {
         case .reached, .onTrack: Theme.positiveText
         case .behind: Theme.summitText
-        case .missed: Theme.textSecondary
+        case .missed, .paused: Theme.textSecondary
         }
     }
 }
@@ -209,6 +210,7 @@ struct DashGoalRing: View {
         case .reached: AnyShapeStyle(Theme.positive)
         case .behind, .missed: AnyShapeStyle(Theme.summit)
         case .onTrack: AnyShapeStyle(Theme.routeGradient)
+        case .paused: AnyShapeStyle(Theme.textTertiary)
         }
     }
 }

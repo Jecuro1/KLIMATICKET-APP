@@ -43,8 +43,10 @@ final class KpiCatalogTests: XCTestCase {
         let summary = SavingsCalculator.summary(ticket: t, trips: goldenTrips(), now: now, calendar: cal)
         let stats = StatsAggregator.records(records, now: now, calendar: cal)
         let routes = StatsAggregator.topRoutes(records, limit: 5)
+        // The app fills the car tile from Statistik's „Öffis vs. Auto“ (WorkCarCalc → CarComparison.compare), like the Bilanz card.
+        let car = CarComparison.compare(ticket: t, trips: records, profile: CarProfile(), now: now, calendar: cal)
         return (KpiInput(summary: summary, longestStreakDays: stats.longestStreakDays, topRoute: routes.first, tripsThisWeek: week,
-                         ticketYear: "2026/27"), summary, stats, routes)
+                         ticketYear: "2026/27", carCost: car.tripCount > 0 ? car.carCost : nil), summary, stats, routes)
     }
 
     func testCatalogHasAtMostSixteenKinds() {
@@ -80,7 +82,10 @@ final class KpiCatalogTests: XCTestCase {
         XCTAssertEqual(value(.costPerDay)!, 1300 / 365, accuracy: 0.001)
         XCTAssertEqual(value(.valuePerDay), s.valuePerDay)
         XCTAssertEqual(value(.pricePerKm), s.effectivePricePerKm)
-        XCTAssertEqual(value(.carComparison), s.carCostEquivalent)
+        // „Auto-Vergleich“ is the car comparison of Statistik and the Bilanz card (road km = rail km × 1,15, Kilometergeld € 0,50) –
+        // not the summary's rail-km figure, which is an eighth lower and contradicted the Bilanz card on the same screen.
+        XCTAssertEqual(value(.carComparison)!, km * 1.15 * 0.50, accuracy: 0.001)
+        XCTAssertGreaterThan(value(.carComparison)!, s.carCostEquivalent + 1)
         XCTAssertEqual(value(.daysRemaining), Double(s.daysRemaining))
         XCTAssertEqual(value(.forecastEndValue), s.forecastEndValue)
         XCTAssertEqual(value(.tripsThisWeek), 3)
@@ -103,6 +108,7 @@ final class KpiCatalogTests: XCTestCase {
         XCTAssertNil(KpiCatalog.reading(.pricePerKm, input: input).value, "no km, no price per km")
         XCTAssertNil(KpiCatalog.reading(.forecastEndValue, input: input).value, "no pace, no forecast")
         XCTAssertNil(KpiCatalog.reading(.tripsThisWeek, input: input).value)
+        XCTAssertNil(KpiCatalog.reading(.carComparison, input: input).value, "no trip, no car comparison (as in Statistik)")
         XCTAssertTrue(KpiCatalog.reading(.favoriteRoute, input: input).isEmpty)
         XCTAssertEqual(KpiCatalog.reading(.tripCount, input: input).value, 0)
         XCTAssertFalse(input.hasForecast)

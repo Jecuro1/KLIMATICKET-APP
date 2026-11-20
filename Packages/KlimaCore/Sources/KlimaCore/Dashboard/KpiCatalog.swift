@@ -2,7 +2,8 @@ import Foundation
 
 // MARK: uebersicht – own figures on the Übersicht (docs/DASHBOARD_LAYOUT.md §3): up to four tiles out of a catalog of 16. Every value is
 // read from what the app already computed for the ticket year (the SavingsSummary of Analytics.make, its records and top routes, the
-// week card's count) – the catalog never computes a figure of its own, so a tile always says what Statistik says. Formatting is the
+// week card's count, the car comparison of Statistik's „Öffis vs. Auto“ and the Bilanz card) – the catalog never computes a figure of
+// its own, so a tile always says what Statistik says. Formatting is the
 // app's (Format.*); this file only says which number, which unit and whether there is one.
 
 /// The figures one can pick. The raw strings are stored – never rename one.
@@ -46,7 +47,7 @@ public enum KpiKind: String, CaseIterable, Codable, Sendable, Hashable, Identifi
         case .costPerDay: "Ticketpreis geteilt durch die Tage der Gültigkeit."
         case .valuePerDay: "Wert deiner Fahrten geteilt durch die Tage bisher."
         case .pricePerKm: "Ticketpreis geteilt durch deine Kilometer."
-        case .carComparison: "Deine Kilometer mal amtliches Kilometergeld."
+        case .carComparison: "Dieselben Wege mit dem Auto – wie „Öffis vs. Auto“ in Statistik."
         case .daysRemaining: "Tage, bis dein Ticket abläuft."
         case .forecastEndValue: "Wert zum Ablauf bei deinem Tempo – eine Prognose."
         case .tripsThisWeek: "Wie die Karte „Diese Woche“."
@@ -126,13 +127,19 @@ public struct KpiInput: Equatable, Sendable {
     public var tripsThisWeek: Int?
     /// „2026/27“.
     public var ticketYear: String
+    /// What the same trips would have cost by car – `CarComparisonResult.carCost` of Statistik's „Öffis vs. Auto“ and the Bilanz
+    /// card's car row (road km, the car costs chosen in Einstellungen); nil while that comparison has no trip. Not
+    /// `summary.carCostEquivalent` (rail km × Kilometergeld), which is about an eighth lower and would contradict the Bilanz card.
+    public var carCost: Double?
 
-    public init(summary: SavingsSummary, longestStreakDays: Int, topRoute: RouteStat?, tripsThisWeek: Int?, ticketYear: String) {
+    public init(summary: SavingsSummary, longestStreakDays: Int, topRoute: RouteStat?, tripsThisWeek: Int?, ticketYear: String,
+                carCost: Double? = nil) {
         self.summary = summary
         self.longestStreakDays = longestStreakDays
         self.topRoute = topRoute
         self.tripsThisWeek = tripsThisWeek
         self.ticketYear = ticketYear
+        self.carCost = carCost
     }
 
     /// A forecast exists while the ticket runs and there is a pace (like Statistik's dotted line and „Prognose“ label).
@@ -184,7 +191,7 @@ public enum KpiCatalog {
         case .costPerDay: return number(s.costPerDay)
         case .valuePerDay: return number(s.valuePerDay)
         case .pricePerKm: return number(s.effectivePricePerKm)
-        case .carComparison: return number(s.carCostEquivalent)
+        case .carComparison: return number(input.carCost)
         case .daysRemaining: return number(Double(s.daysRemaining))
         case .forecastEndValue: return number(input.hasForecast ? s.forecastEndValue : nil)
         case .tripsThisWeek: return number(input.tripsThisWeek.map(Double.init))

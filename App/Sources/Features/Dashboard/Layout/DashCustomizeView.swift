@@ -136,7 +136,7 @@ struct DashCustomizeView: View {
 
     private var presetsSection: some View {
         Section {
-            DashPresetGrid(current: DashPreset.matching(store.layout)) { preset in
+            DashPresetGrid(current: store.currentPreset) { preset in
                 store.apply(preset)
             }
             .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: Theme.Spacing.s, bottom: Theme.Spacing.s, trailing: Theme.Spacing.s))
@@ -144,7 +144,7 @@ struct DashCustomizeView: View {
         } header: {
             SetSectionHeader(title: "Vorlagen")
         } footer: {
-            SetFooter(text: DashPreset.matching(store.layout) == nil
+            SetFooter(text: store.currentPreset == nil
                       ? "Eigene Anordnung. Eine Vorlage ersetzt Reihenfolge und Sichtbarkeit – Kennzahlen und Ziele bleiben."
                       : "Eine Vorlage ersetzt Reihenfolge und Sichtbarkeit – Kennzahlen und Ziele bleiben.")
         }
@@ -156,7 +156,8 @@ struct DashCustomizeView: View {
         Section {
             ForEach(store.layout.order) { id in
                 DashSectionRow(id: id, layout: store.layout, offNote: offNote(id), contentNote: contentNote(id),
-                               isEditing: editMode.isEditing)
+                               isEditing: editMode.isEditing, canMoveUp: store.layout.order.first != id,
+                               canMoveDown: store.layout.order.last != id)
                     .listRowBackground(Theme.surface)
             }
             .onMove { source, destination in
@@ -217,7 +218,8 @@ struct DashCustomizeView: View {
     private func kpiSection(snapshot: AnalyticsSnapshot?, trips: [TripEntity]) -> some View {
         Section {
             if let snapshot, !store.kpis.kinds.isEmpty {
-                DashKpiGrid(readings: KpiCatalog.readings(store.kpis.kinds, input: DashKpiInput.make(snapshot: snapshot, tripsNewestFirst: trips)),
+                DashKpiGrid(readings: KpiCatalog.readings(store.kpis.kinds, input: DashKpiInput.make(snapshot: snapshot, tripsNewestFirst: trips,
+                                                                                                  catalog: app.catalog, kinds: store.kpis.kinds)),
                             summary: snapshot.summary, compact: true)
                     .listRowInsets(EdgeInsets(top: Theme.Spacing.xs, leading: 0, bottom: Theme.Spacing.xs, trailing: 0))
                     .listRowBackground(Color.clear)
@@ -385,6 +387,9 @@ private struct DashSectionRow: View {
     let offNote: String?
     let contentNote: String?
     let isEditing: Bool
+    /// MARK: review-uebersicht – VoiceOver offers only the moves that do something (at the top „Nach oben“ did nothing).
+    var canMoveUp = true
+    var canMoveDown = true
 
     @Environment(\.dynamicTypeSize) private var typeSize
     private var store: DashLayoutStore { .shared }
@@ -413,12 +418,18 @@ private struct DashSectionRow: View {
             }
         }
         .padding(.vertical, 2)
-        .accessibilityElement(children: .combine)
+        // One element: the eye inside it was merged into the row, so a double tap hid the card without saying so. Now the double
+        // tap is the eye, and the hint says it; moving and hiding are the row's actions.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(id.title)
         .accessibilityValue(isHidden ? "Ausgeblendet" : (offNote ?? "Sichtbar"))
+        .accessibilityHint(id.isCore ? "Immer sichtbar" : (isHidden ? "Doppeltippen blendet die Karte ein" : "Doppeltippen blendet die Karte aus"))
+        .accessibilityAction {
+            if !id.isCore { store.setHidden(id, !isHidden) }
+        }
         .accessibilityActions {
-            Button("Nach oben") { store.move(id, up: true) }
-            Button("Nach unten") { store.move(id, up: false) }
+            if canMoveUp { Button("Nach oben") { store.move(id, up: true) } }
+            if canMoveDown { Button("Nach unten") { store.move(id, up: false) } }
             if !id.isCore {
                 Button(isHidden ? "Einblenden" : "Ausblenden") { store.setHidden(id, !isHidden) }
             }

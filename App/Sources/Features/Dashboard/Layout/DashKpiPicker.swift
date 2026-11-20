@@ -16,7 +16,7 @@ struct DashKpiPicker: View {
 
     var body: some View {
         DashEditorSnapshot { snapshot, trips in
-            let input = snapshot.map { DashKpiInput.make(snapshot: $0, tripsNewestFirst: trips) }
+            let input = snapshot.map { DashKpiInput.make(snapshot: $0, tripsNewestFirst: trips, catalog: app.catalog) }
             List {
                 previewSection(snapshot: snapshot, input: input)
                 catalogSection(snapshot: snapshot, input: input)

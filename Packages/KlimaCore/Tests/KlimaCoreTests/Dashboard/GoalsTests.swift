@@ -26,9 +26,18 @@ final class GoalsTests: XCTestCase {
                                })
 
     func evaluate(_ goal: Goal, _ trips: [TripRecord], now: Date, price: Double = 1300) -> GoalProgress {
-        let t = ticket(price: price)
+        evaluate(goal, trips, now: now, ticket: ticket(price: price))
+    }
+
+    func evaluate(_ goal: Goal, _ trips: [TripRecord], now: Date, ticket t: TicketPeriod) -> GoalProgress {
         let summary = SavingsCalculator.summary(ticket: t, trips: trips, now: now, calendar: cal)
         return GoalEvaluator.evaluate(goal, trips: trips, ticket: t, summary: summary, now: now, calendar: cal)
+    }
+
+    /// A ticket year from `start` (00:00) to the day before its anniversary.
+    func ticket(from start: Date, price: Double = 1300) -> TicketPeriod {
+        TicketPeriod(productID: "oe-klassik", name: "KlimaTicket Ö Klassik", price: price, start: start,
+                     end: TicketPeriod.standardEnd(for: start, calendar: cal))
     }
 
     // MARK: Month boundaries
@@ -136,6 +145,76 @@ final class GoalsTests: XCTestCase {
         XCTAssertEqual(GoalText.projection(p, format: format), "Prognose: etwa 30 Fahrten bis Monatsende")
     }
 
+    // MARK: review-uebersicht – the days of the month the ticket covers
+
+    func testTicketStartingMidMonthMeasuresThePaceFromItsFirstDay() {
+        // A ticket from 15 November: on the 16th, two trips are on pace for 20 in the 16 days it covers this month (before, the
+        // 14 days without a ticket counted too and a brand-new holder read „Hinter Plan“ with „Prognose: etwa 4 Fahrten“).
+        let t = ticket(from: date(2026, 11, 15, 0))
+        let goal = Goal(kind: .tripsPerMonth, target: 20)
+        let two = [trip(date(2026, 11, 15, 9)), trip(date(2026, 11, 15, 18))]
+        let p = evaluate(goal, two, now: date(2026, 11, 16, 12), ticket: t)
+        XCTAssertEqual(p.expectedNow, 20.0 / 16, accuracy: 1e-9, "1 of 16 covered days is complete")
+        XCTAssertEqual(p.state, .onTrack)
+        XCTAssertEqual(p.daysLeft, 15)
+        XCTAssertNil(p.startsOn)
+        XCTAssertNil(p.endsOn)
+        XCTAssertEqual(GoalText.remaining(p, format: format), "noch 18 Fahrten · etwa 9 pro Woche")
+        // From the seventh covered day the projection runs over the covered days, to the end of the month.
+        let week = (15...21).map { trip(date(2026, 11, $0)) }
+        let later = evaluate(goal, week, now: date(2026, 11, 21, 20), ticket: t)
+        XCTAssertEqual(later.projectedValue!, 7.0 / 7 * 16, accuracy: 1e-9)
+        XCTAssertEqual(GoalText.projection(later, format: format), "Prognose: etwa 16 Fahrten bis Monatsende")
+        // Before the ticket starts nothing is due yet, and the line says from when it counts.
+        let before = evaluate(goal, [], now: date(2026, 11, 10, 12), ticket: t)
+        XCTAssertEqual(before.state, .onTrack)
+        XCTAssertEqual(before.expectedNow, 0)
+        XCTAssertEqual(before.daysLeft, 16)
+        XCTAssertEqual(before.startsOn, date(2026, 11, 15, 0))
+        XCTAssertEqual(GoalText.remaining(before, format: format), "noch 20 Fahrten · zählt ab 15.11.")
+    }
+
+    func testTicketEndingMidMonth() {
+        // A ticket from 12 March 2026 is valid through 11 March 2027: in March 2027 eleven days count.
+        let t = ticket(from: date(2026, 3, 12, 0))
+        let goal = Goal(kind: .tripsPerMonth, target: 10)
+        let trips = (1...4).map { trip(date(2027, 3, $0)) } + [trip(date(2027, 3, 12, 9))]
+        let p = evaluate(goal, trips, now: date(2027, 3, 5, 9), ticket: t)
+        XCTAssertEqual(p.actual, 4, "the trip on the 12th lies after the ticket")
+        XCTAssertEqual(p.daysLeft, 7, "5th to 11th")
+        XCTAssertEqual(p.expectedNow, 10.0 * 4 / 11, accuracy: 1e-9)
+        XCTAssertEqual(p.endsOn, date(2027, 3, 11, 0))
+        XCTAssertEqual(GoalText.remaining(p, format: format), "noch 6 Fahrten · 7 Tage bis Ticketende")
+        let ninth = evaluate(goal, trips, now: date(2027, 3, 9, 20), ticket: t)
+        XCTAssertEqual(ninth.projectedValue!, 4.0 / 9 * 11, accuracy: 1e-9)
+        XCTAssertEqual(GoalText.projection(ninth, format: format), "Prognose: etwa 5 Fahrten bis Ticketende")
+        let lastDay = evaluate(goal, trips, now: date(2027, 3, 11, 9), ticket: t)
+        XCTAssertEqual(GoalText.remaining(lastDay, format: format), "noch 6 Fahrten · heute endet dein Ticket")
+        // After its last day nothing more can count: not „Hinter Plan · etwa 5 pro Woche“ for 20 days without a ticket.
+        let after = evaluate(goal, trips, now: date(2027, 3, 20, 9), ticket: t)
+        XCTAssertEqual(after.state, .missed)
+        XCTAssertEqual(after.daysLeft, 0)
+        XCTAssertNil(after.projectedValue)
+        XCTAssertEqual(GoalText.remaining(after, format: format), "Dein Ticket galt bis 11.3. · 6 Fahrten fehlten")
+        XCTAssertEqual(GoalText.stateLabel(after.state), "Nicht geschafft")
+    }
+
+    func testMonthOutsideTheTicketRests() {
+        let goal = Goal(kind: .valuePerMonth, target: 100)
+        let expired = evaluate(goal, [trip(date(2027, 5, 2))], now: date(2027, 5, 10), ticket: ticket())
+        XCTAssertEqual(expired.state, .paused, "the ticket ended in February – nothing in May can count")
+        XCTAssertEqual(expired.actual, 0)
+        XCTAssertNil(expired.projectedValue)
+        XCTAssertEqual(GoalText.stateLabel(expired.state), "Ruht")
+        XCTAssertEqual(GoalText.remaining(expired, format: format), "Dein Ticket gilt in diesem Monat nicht – es zählt nur im Ticketjahr")
+        XCTAssertNil(GoalText.projection(expired, format: format))
+        let upcoming = evaluate(goal, [], now: date(2026, 11, 20), ticket: ticket(from: date(2026, 12, 1, 0)))
+        XCTAssertEqual(upcoming.state, .paused)
+        XCTAssertEqual(GoalText.remaining(upcoming, format: format), "Dein Ticket gilt ab 1.12. – dann zählt es")
+        var ledger = GoalLedger()
+        XCTAssertFalse(ledger.celebrate(expired), "a resting goal never pops")
+    }
+
     func testJourneysCountOnce() {
         let journey = UUID()
         let trips = [trip(date(2026, 11, 3, 7), journey: journey, leg: 0), trip(date(2026, 11, 3, 8), journey: journey, leg: 1),
@@ -214,9 +293,46 @@ final class GoalsTests: XCTestCase {
         let missed = evaluate(goal, late, now: date(2026, 7, 3))
         XCTAssertEqual(missed.state, .missed, "paid off after the goal's day")
         XCTAssertEqual(GoalText.stateLabel(missed.state), "Nicht geschafft")
+        // review-uebersicht: it said „Der Tag ist vorbei · noch € 0 bis zum Break-even“ for a ticket that had paid off.
+        XCTAssertEqual(missed.paidOffOn, date(2026, 7, 2, 0))
+        XCTAssertEqual(GoalText.remaining(missed, format: format), "Break-even am 2.7. – nach dem Tag")
+        XCTAssertNil(GoalText.projection(missed, format: format))
+        // A trip logged ahead past the day pays it off – still not by the day, and nothing is „noch € 0“.
+        let ahead = evaluate(goal, late, now: date(2026, 6, 10))
+        XCTAssertEqual(ahead.state, .behind)
+        XCTAssertEqual(GoalText.remaining(ahead, format: format), "Break-even am 2.7. – nach dem Tag")
         let open = evaluate(goal, [trip(date(2026, 5, 1), fare: 700)], now: date(2026, 7, 3))
         XCTAssertEqual(open.state, .missed)
         XCTAssertEqual(GoalText.remaining(open, format: format), "Der Tag ist vorbei · noch € 600 bis zum Break-even")
+    }
+
+    func testBreakEvenForecastAfterTheTicketEndIsNoDate() {
+        // Ten trips of € 10 in March: at that pace the break-even would come long after the ticket ended. The Bilanz card says
+        // „Fehlt bei Ablauf“; the goal must not say „Prognose: Break-even am …“ for a day the ticket no longer covers.
+        let goal = Goal(kind: .breakEvenBy, until: date(2026, 12, 31))
+        let trips = (2...11).map { trip(date(2026, 3, $0)) }
+        let now = date(2026, 4, 10, 12)
+        let summary = SavingsCalculator.summary(ticket: ticket(), trips: trips, now: now, calendar: cal)
+        XCTAssertNotNil(summary.forecastBreakEvenDate)
+        XCTAssertFalse(summary.forecastReachesBreakEven)
+        let p = evaluate(goal, trips, now: now)
+        XCTAssertEqual(p.state, .behind)
+        XCTAssertNil(p.projectedDate)
+        XCTAssertTrue(p.forecastMissesTicketEnd)
+        XCTAssertEqual(GoalText.projection(p, format: format), "Prognose: kein Break-even bis zum Ablauf")
+    }
+
+    func testBreakEvenDayOutsideTheTicketRests() {
+        // A goal kept from the last ticket: its day lies before this ticket's first day.
+        let goal = Goal(kind: .breakEvenBy, until: date(2026, 2, 20))
+        let p = evaluate(goal, [trip(date(2026, 3, 5))], now: date(2026, 3, 10))
+        XCTAssertEqual(p.state, .paused)
+        XCTAssertNil(p.projectedDate)
+        XCTAssertEqual(GoalText.remaining(p, format: format), "Der Tag liegt außerhalb deines Ticketjahrs")
+        // An own share of € 0 is paid off from the first day.
+        let free = evaluate(Goal(kind: .breakEvenBy, until: date(2026, 3, 1)), [trip(date(2026, 3, 9))], now: date(2026, 3, 10),
+                            price: 0)
+        XCTAssertEqual(free.state, .reached)
     }
 
     func testDateRangeIsInsideTheTicket() {
