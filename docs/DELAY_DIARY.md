@@ -223,6 +223,17 @@ Gefunden und behoben:
 - Neuer Test: Gültigkeitsmonate über das Ende der Sommerzeit (Ticket ab 25. Oktober 2026, die doppelte Stunde, die letzte Sekunde vor
   dem 25. November).
 
+Screenshots des Reviews (hell und dunkel angesehen): CI 44678509360 (`delayEntrySheetAX5`, `delayTripRowOpen`, `delayTripRow`,
+`timeBalanceDelays`, `delayDiaryMonth`, `delayReport`, `delayDiaryBottom`, `delayEntrySheet`, `delayEntryOnTime`, `delayDiary`),
+44682872946 (`delayEntrySheetAX5`, `delayEntryOutsideScope`, `timeBalanceDelays`, `delayRightsLink`, `delayDiaryCard`, `delayDiaryMid`,
+`delayReport`) und 44687711680 (`delayReport`, `delayEntryOutsideScope`). Die Schnellwerte bei AX5 sitzen jetzt mit Rand in einer
+Linie („Pünktlich“ neben „+5“), die Zeitbilanz zeigt „63 von 78 Fahrten, davon 9 verspätet ab 5 Min.“ wie das Tagebuch, das PDF
+„persönliche Quote dieser Monate: 83 % pünktlich“, der Link in Fahrgastrechte die schlichte Uhr. Zweimal blieb ein heller Start leer
+(`delayEntrySheetAX5` im ersten, `delayEntryOutsideScope` im zweiten Lauf): der Start brauchte 23 bzw. 34 s bis zum ersten Bild
+(im zweiten Fall schon `state.services` nach 5,8 statt 0,3 s), dieselben Szenen starteten sonst in 1–3 s und erschienen im nächsten
+Lauf richtig. Solche Ausreißer beim zweiten bis siebten Start eines Laufs stehen auch in Läufen anderer Funktionen (Kalender,
+Funktionen, Widgets, Anschluss-Wächter) – der Simulator der CI, nicht das Tagebuch.
+
 Geprüft und in Ordnung: Punkt 24 (gegen den AGB-Text im Arbeitsordner gelesen – 24.1 bis 24.4 wie in §7, keine Minutengrenze für
 eine einzelne Ankunft), Schreiben nur über `Repository+Delay` (kein `context.save` in `Features/Delays`), kein Netzwerk und keine
 Berechtigung, kein Betrag (`Format.euro`/„€“ in `Features/Delays`: keine Treffer), keine neue SwiftData-Spalte, Monatsgrenzen in
