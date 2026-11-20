@@ -35,7 +35,8 @@ struct FeatureHubHero: View {
                         .foregroundStyle(Theme.textPrimary)
                         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Jede Funktion mit eigenem Schalter")
+                    // MARK: integrate-wave2 – the Aussteige-Wecker has no switch of its own, the own-page rows switch on their page
+                    Text("Was an ist und wo du es schaltest")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

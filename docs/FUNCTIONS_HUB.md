@@ -268,6 +268,10 @@ haben. Jetzt fünf Zeilen mehr (`// MARK: integrate-wave2`, Linux-Tests `Feature
   sind in iOS aus“.
 - **Tägliche Sicherung** (neue Gruppe Daten): derselbe Schalter wie in Daten & Sicherung, direkt in der Zeile. Die Sicherung vor dem
   Löschen und Wiederherstellen hängt nicht davon ab.
+- Der Kopf sagt „Was an ist und wo du es schaltest“ statt „Jede Funktion mit eigenem Schalter“: der Aussteige-Wecker hat keinen, und
+  sechs Zeilen schalten auf ihrer eigenen Seite.
+- Screenshot-Läufe: 729 (CI 44755628830, die neuen Zeilen hell und dunkel, Einstellungen, Übersicht, Siri, Daten, Tagebuch, Radar), 730
+  (CI 44762475498, Radar-Gruppen mit vier Ziffern) und der Lauf dieses Kopfs (`featuresHub`, `featuresAX5`).
 
 Nicht in Funktionen, weil sie keinen eigenen Zustand haben und nichts senden: Zeitbilanz, Verspätungs-Tagebuch, Übersicht nach Maß, Look &
 Feel, Fragen an KlimaBilanz (Siri liest Tagessummen auf dem iPhone), Jahresrückblick, Was wäre wenn?. Die Teile des Zug-Radars
