@@ -205,8 +205,13 @@ final class ConnectionGuardStateTests: XCTestCase {
         let j = journey(buffer: 4)   // expected departure 14:35
         XCTAssertNotEqual(GuardFixture.assess(j, now: at("14:36")).assessment.state, .over)
         XCTAssertEqual(GuardFixture.assess(j, now: at("14:37")).assessment.state, .over)
+        // Short only by the walk (feeder 14:28, connection 14:30, walk 3): „Wackelt“ until two minutes after the departure,
+        // then „Umstieg vorbei“ with the note that nobody knows whether you made it (GuardEndTests).
         let short = journey(buffer: -1)
-        XCTAssertEqual(GuardFixture.assess(short, now: at("14:40")).assessment.state, .shaky, "no „Umstieg vorbei“ when short")
+        XCTAssertEqual(GuardFixture.assess(short, now: at("14:31")).assessment.state, .shaky)
+        let ended = GuardFixture.assess(short, now: at("14:32")).assessment
+        XCTAssertEqual(ended.state, .over)
+        XCTAssertTrue(ended.overShort)
     }
 
     /// A delayed connection (expected 5 minutes after planned) keeps the guard after the follow's stage turned `.arrived`

@@ -23,7 +23,8 @@ public enum GuardState: String, Sendable, Hashable, Codable, CaseIterable {
     case cancelled
     /// Neither train has a realtime value: computed from the timetable.
     case scheduled
-    /// Two minutes after the connecting departure with time to spare: the change is behind you, the guard ends.
+    /// Two minutes after the connecting departure while the feeder was there before it: the change is behind you, the guard
+    /// ends. When only the walk did not fit (`GuardAssessment.overShort`), the card says that nobody knows whether you made it.
     case over
 
     /// Worse is higher. „Nach Fahrplan“ ranks with „Sicher“ (no warning); „Umstieg vorbei“ is the end, not a level.
@@ -159,6 +160,13 @@ public struct GuardAssessment: Sendable, Hashable {
     public var connectionDeparture: Date? { connection.effective }
     /// The feeder's arrival at the transfer station the guard counts with.
     public var feederArrival: Date? { feeder.effective }
+
+    /// „Umstieg vorbei“ although the walk was longer than the time between the trains: the feeder was there before the
+    /// connection left, but whether you made it the data cannot say (the walk is the timetable's estimate).
+    public var overShort: Bool { state == .over && (bufferMinutes ?? 0) < 0 }
+
+    /// Minutes between the feeder's arrival and the connecting departure (the walk not subtracted); nil when a time is missing.
+    public var gapMinutes: Int? { bufferMinutes.map { $0 + walkMinutes } }
 }
 
 /// What the guard remembers between two assessments (memory only, docs/CONNECTION_GUARD.md §7).
@@ -286,11 +294,14 @@ public enum ConnectionGuard {
 
     /// The state the data says on its own (before the hysteresis). Order: cancelled, missed (fact), over, no times, no
     /// realtime, then the spare minutes with the trend; `isRchbl` false caps a better state at „Wackelt“.
+    /// Two minutes after the departure every change has an end: „Verpasst“ when the feeder came after it, „Umstieg vorbei“
+    /// when it came before – also when only the walk did not fit (`overShort`; before, such a change stayed „Wackelt“ or
+    /// „Wahrscheinlich verpasst“ for good).
     static func rawState(buffer: Int?, trend: GuardTrend, arrival: Date?, departure: Date?, cancelled: Bool, unreachable: Bool,
                          basedOnPlan: Bool, now: Date) -> GuardState {
         if cancelled { return .cancelled }
         if let arrival, let departure, now >= departure, arrival > departure { return .missed }
-        if let buffer, let departure, buffer >= 0, now >= departure.addingTimeInterval(overDelay) { return .over }
+        if let arrival, let departure, arrival <= departure, now >= departure.addingTimeInterval(overDelay) { return .over }
         var state: GuardState
         if let buffer, !basedOnPlan {
             switch buffer {

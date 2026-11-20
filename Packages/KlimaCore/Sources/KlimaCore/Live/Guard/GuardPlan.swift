@@ -35,6 +35,16 @@ public enum GuardIdleReason: Sendable, Hashable {
     case beforeWindow(Date)
 }
 
+/// Why a guard stopped checking (the card says it, docs/CONNECTION_GUARD.md §4).
+public enum GuardEndReason: Sendable, Hashable {
+    /// „Umstieg vorbei“.
+    case over
+    /// The time of the change has passed (connecting departure + 5 min) without „Umstieg vorbei“.
+    case windowPassed
+    /// The record is older than 12 hours.
+    case expired
+}
+
 public enum GuardDecision: Sendable, Hashable {
     case ask(GuardRequestKind)
     /// Ask at that time if nothing changes before.
@@ -47,7 +57,69 @@ public enum GuardManualDecision: Sendable, Hashable {
     case ask(GuardRequestKind)
     /// The last manual check is less than 20 s ago: possible again after these seconds.
     case tooSoon(TimeInterval)
+    /// The app itself pauses every request to the Auskunft until then (its circuit breaker): a tap would not reach it.
+    case paused(until: Date)
     case unavailable(GuardIdleReason)
+}
+
+/// Why the last request failed, so the card blames the right side (docs/CONNECTION_GUARD.md §4): the Auskunft, the app's own
+/// limit or pause, or the phone's connection.
+public enum GuardFailure: Sendable, Hashable {
+    /// The Auskunft answered with an error (HTTP status).
+    case auskunft
+    /// The Auskunft refused the request (blocked).
+    case refused
+    /// The Auskunft answered, but without the watched change (HAFAS code, no connection, unreadable answer).
+    case answerUnusable
+    /// The app's own limit (`RequestThrottle`, 40 a minute for the whole app) held the request back: it never went out.
+    case appLimit
+    /// The Auskunft asked for a pause (HTTP 429); the app pauses every request to it until `until` (nil: not known).
+    case auskunftPause(until: Date?)
+    /// The app's circuit breaker pauses every request to the Auskunft until then (after errors or a requested pause).
+    case paused(until: Date)
+    /// No answer in time: weak reception or a slow Auskunft – the app cannot tell which.
+    case noAnswer
+    /// No way through the network: transport error or no network path (a tunnel while iOS still says online).
+    case connection
+    /// Live data went off while the request was on its way.
+    case liveOff
+
+    /// `circuitOpenUntil`: until when the app's circuit for the Auskunft is open right after the failure (`LiveHealth`, only
+    /// when still ahead). An HTTP 429 opens it; the app's own limit never does and comes without `Retry-After` – that is how
+    /// the two `.rateLimited` tell apart.
+    public init(_ error: LiveError, circuitOpenUntil: Date? = nil) {
+        switch error {
+        case .http, .sessionExpired, .noPrice: self = .auskunft
+        case .blocked: self = .refused
+        case .hafas, .decoding, .noConnection: self = .answerUnusable
+        case .rateLimited(_, let retryAfter):
+            if let circuitOpenUntil { self = .auskunftPause(until: circuitOpenUntil) }
+            else if retryAfter != nil { self = .auskunftPause(until: nil) }
+            else { self = .appLimit }
+        case .circuitOpen(_, let until): self = .paused(until: until)
+        case .timeout: self = .noAnswer
+        case .network, .offline: self = .connection
+        case .disabled: self = .liveOff
+        }
+    }
+
+    /// The app pauses every request to the Auskunft until then (its circuit breaker, also after a requested pause).
+    public var pauseEnd: Date? {
+        switch self {
+        case .paused(let until): return until
+        case .auskunftPause(let until): return until
+        default: return nil
+        }
+    }
+
+    /// The Auskunft's own failures count towards the fallback; offline, live data off, the app's limit and pause, timeouts
+    /// and a refusal do not.
+    public static func countsForFallback(_ error: LiveError) -> Bool {
+        switch error {
+        case .hafas, .decoding, .noConnection, .http: return true
+        case .disabled, .offline, .timeout, .network, .blocked, .rateLimited, .circuitOpen, .sessionExpired, .noPrice: return false
+        }
+    }
 }
 
 /// The conditions outside the guard (observed by the app service).
@@ -80,9 +152,11 @@ public struct GuardRequestState: Sendable, Hashable {
     public var usesFallback: Bool
     public var inFlight: Bool
     public var lastManualAt: Date?
+    /// Why the last request failed; nil after an answer.
+    public var lastFailure: GuardFailure?
 
     public init(lastRequestAt: Date? = nil, lastAnswerAt: Date? = nil, consecutiveFailures: Int = 0, reconstructionFailures: Int = 0,
-                usesFallback: Bool = false, inFlight: Bool = false, lastManualAt: Date? = nil) {
+                usesFallback: Bool = false, inFlight: Bool = false, lastManualAt: Date? = nil, lastFailure: GuardFailure? = nil) {
         self.lastRequestAt = lastRequestAt
         self.lastAnswerAt = lastAnswerAt
         self.consecutiveFailures = consecutiveFailures
@@ -90,16 +164,24 @@ public struct GuardRequestState: Sendable, Hashable {
         self.usesFallback = usesFallback
         self.inFlight = inFlight
         self.lastManualAt = lastManualAt
+        self.lastFailure = lastFailure
     }
 
     public var nextKind: GuardRequestKind { usesFallback ? .connectionTrip : .reconstruction }
+
+    /// The app's own pause after the last failure, while it lasts.
+    public func pausedUntil(now: Date) -> Date? {
+        guard let until = lastFailure?.pauseEnd, until > now else { return nil }
+        return until
+    }
 }
 
 /// How a request ended.
 public enum GuardRequestOutcome: Sendable, Hashable {
     case answered
     /// `countsForFallback`: the Auskunft failed (not offline, not live data off); two in a row switch to the fallback.
-    case failed(countsForFallback: Bool)
+    /// `reason`: what the card says about it.
+    case failed(countsForFallback: Bool, reason: GuardFailure = .auskunft)
 }
 
 public enum GuardPlan {
@@ -131,10 +213,15 @@ public enum GuardPlan {
 
     /// The guard is over: „Umstieg vorbei“, past the window, or the record is older than 12 h.
     public static func hasEnded(state: GuardState?, window: DateInterval?, createdAt: Date, now: Date) -> Bool {
-        if state == .over { return true }
-        if now.timeIntervalSince(createdAt) > recordLifetime { return true }
-        if let window, now > window.end { return true }
-        return false
+        endReason(state: state, window: window, createdAt: createdAt, now: now) != nil
+    }
+
+    /// Why the guard is over; nil while it runs.
+    public static func endReason(state: GuardState?, window: DateInterval?, createdAt: Date, now: Date) -> GuardEndReason? {
+        if state == .over { return .over }
+        if now.timeIntervalSince(createdAt) > recordLifetime { return .expired }
+        if let window, now > window.end { return .windowPassed }
+        return nil
     }
 
     /// The automatic loop: what to do now. `returnedToForeground` is true for the first decision after the app became active.
@@ -150,7 +237,8 @@ public enum GuardPlan {
         guard let last = r.lastRequestAt else { return .ask(kind) }
         if r.consecutiveFailures > 0 {
             let wait = backoff[min(r.consecutiveFailures, backoff.count) - 1]
-            let due = last.addingTimeInterval(wait)
+            // The app's own pause (circuit breaker) holds every request anyway: no try before it ends.
+            let due = max(last.addingTimeInterval(wait), r.pausedUntil(now: now) ?? .distantPast)
             return due <= now ? .ask(kind) : .wait(due)
         }
         let answered = r.lastAnswerAt ?? last
@@ -164,6 +252,7 @@ public enum GuardPlan {
     public static func manual(conditions c: GuardConditions, requests r: GuardRequestState, ended: Bool, now: Date) -> GuardManualDecision {
         if let reason = blocker(c, ended: ended, manual: true) { return .unavailable(reason) }
         if r.inFlight { return .unavailable(.inFlight) }
+        if let until = r.pausedUntil(now: now) { return .paused(until: until) }
         if let last = r.lastManualAt, now.timeIntervalSince(last) < manualSpacing {
             return .tooSoon(manualSpacing - now.timeIntervalSince(last))
         }
@@ -181,9 +270,11 @@ public enum GuardPlan {
         case .answered:
             next.lastAnswerAt = sentAt
             next.consecutiveFailures = 0
+            next.lastFailure = nil
             if kind == .reconstruction { next.reconstructionFailures = 0 }
-        case .failed(let counts):
+        case .failed(let counts, let reason):
             next.consecutiveFailures += 1
+            next.lastFailure = reason
             if kind == .reconstruction, counts {
                 next.reconstructionFailures += 1
                 if next.reconstructionFailures >= fallbackAfter { next.usesFallback = true }

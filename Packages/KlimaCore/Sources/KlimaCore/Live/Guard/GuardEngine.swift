@@ -16,12 +16,56 @@ public struct GuardChange: Sendable, Hashable {
     public static let none = GuardChange(previous: nil, current: nil, worsened: false, searchAlternatives: false)
 }
 
+/// What the card offers at one moment (docs/CONNECTION_GUARD.md §8). Decided here, so the card never shows a button that
+/// does nothing – „Jetzt prüfen“ after the end was such a button.
+public struct GuardActions: Sendable, Hashable {
+    public enum Alternatives: Sendable, Hashable {
+        /// Not offered.
+        case none
+        /// In the card's menu.
+        case menu
+        /// A full-width button under the prominent one (after a short „Umstieg vorbei“).
+        case button
+        /// The prominent full-width button (shaky or worse).
+        case prominent
+    }
+
+    /// „REX 41 weiter verfolgen“ (after „Umstieg vorbei“).
+    public var continueFollow: Bool
+    public var alternatives: Alternatives
+    /// „Jetzt prüfen“: only while the guard runs and is on.
+    public var checkNow: Bool
+    /// „Wecker fürs Umsteigen“: while the guard runs, after its end only while the feeder has not arrived yet.
+    public var alarm: Bool
+    /// „Wächter aus“ / „Wächter an“: only while the guard runs.
+    public var toggleSwitch: Bool
+
+    public init(continueFollow: Bool = false, alternatives: Alternatives = .none, checkNow: Bool = false, alarm: Bool = false,
+                toggleSwitch: Bool = false) {
+        self.continueFollow = continueFollow
+        self.alternatives = alternatives
+        self.checkNow = checkNow
+        self.alarm = alarm
+        self.toggleSwitch = toggleSwitch
+    }
+
+    /// The card shows its „…“ menu.
+    public var hasMenu: Bool { toggleSwitch || alternatives == .menu }
+    /// The row of side-by-side buttons has anything in it.
+    public var hasRow: Bool { checkNow || alarm || hasMenu }
+}
+
 public struct GuardEngine: Sendable {
     public private(set) var record: GuardRecord
     public private(set) var memory = GuardMemory()
     public private(set) var requests = GuardRequestState()
     public private(set) var assessment: GuardAssessment?
     public private(set) var lastAlternativesSearchAt: Date?
+    /// The guard has ended and stopped (`finish`): it asks nothing any more, its switch and its record stay as they are (the
+    /// file is gone). Data that comes anyway – the follow's answer of the feeder, an answer still on its way – still counts:
+    /// an end computed from an old answer („Umstieg vorbei“ after a long time in the background) gives way to „Verpasst“ when a
+    /// fresher one says the feeder came after the departure.
+    public private(set) var isFinished = false
     private var followSnapshot: LiveFollowSnapshot?
     private var followAt: Date?
     private var connectionTrip: TripDetails?
@@ -44,7 +88,28 @@ public struct GuardEngine: Sendable {
 
     /// „Umstieg vorbei“, past the window, or the record is older than 12 h.
     public func hasEnded(now: Date) -> Bool {
-        GuardPlan.hasEnded(state: assessment?.state, window: window, createdAt: record.createdAt, now: now)
+        isFinished || GuardPlan.hasEnded(state: assessment?.state, window: window, createdAt: record.createdAt, now: now)
+    }
+
+    /// Why the guard is over (nil while it runs).
+    public func endReason(now: Date) -> GuardEndReason? {
+        GuardPlan.endReason(state: assessment?.state, window: window, createdAt: record.createdAt, now: now)
+            ?? (isFinished ? .windowPassed : nil)
+    }
+
+    /// What the card offers now.
+    public func actions(now: Date) -> GuardActions {
+        guard let a = assessment else { return GuardActions() }
+        let warning = a.state.rank >= GuardState.shaky.rank
+        if a.state == .over {
+            // The change is behind you; when only the walk did not fit, the alternatives stay at hand.
+            return GuardActions(continueFollow: continuation != nil, alternatives: a.overShort ? .button : .none)
+        }
+        if hasEnded(now: now) {
+            let arrivalAhead = a.feederArrival.map { $0 > now } ?? false
+            return GuardActions(alternatives: warning ? .prominent : .none, alarm: arrivalAhead)
+        }
+        return GuardActions(alternatives: warning ? .prominent : .menu, checkNow: !record.switchedOff, alarm: true, toggleSwitch: true)
     }
 
     /// The trip id of the connecting ride (the fallback's JourneyDetails).
@@ -85,7 +150,7 @@ public struct GuardEngine: Sendable {
     /// A Reconstruction answer asked at `sentAt`. An answer without the watched change counts as a failure.
     public mutating func applyReconstruction(_ journey: Journey, sentAt: Date, manual: Bool = false, now: Date) -> GuardChange {
         guard ConnectionGuard.legIndices(journey, feederRide: record.feederRide) != nil else {
-            applyFailure(kind: .reconstruction, countsForFallback: true, sentAt: sentAt, manual: manual)
+            applyFailure(kind: .reconstruction, countsForFallback: true, reason: .answerUnusable, sentAt: sentAt, manual: manual)
             return .none
         }
         requests = GuardPlan.record(requests, kind: .reconstruction, sentAt: sentAt, outcome: .answered, manual: manual)
@@ -101,9 +166,18 @@ public struct GuardEngine: Sendable {
         return reassess(now: now)
     }
 
-    public mutating func applyFailure(kind: GuardRequestKind, countsForFallback: Bool, sentAt: Date, manual: Bool = false) {
-        requests = GuardPlan.record(requests, kind: kind, sentAt: sentAt, outcome: .failed(countsForFallback: countsForFallback),
-                                    manual: manual)
+    public mutating func applyFailure(kind: GuardRequestKind, countsForFallback: Bool, reason: GuardFailure = .auskunft, sentAt: Date,
+                                      manual: Bool = false) {
+        requests = GuardPlan.record(requests, kind: kind, sentAt: sentAt,
+                                    outcome: .failed(countsForFallback: countsForFallback, reason: reason), manual: manual)
+    }
+
+    /// A failed request with the error that ended it: the reason for the card and whether it counts towards the fallback.
+    /// `circuitOpenUntil`: the app's circuit for the Auskunft right after the failure (tells a 429 from the app's own limit).
+    public mutating func applyFailure(kind: GuardRequestKind, error: LiveError, circuitOpenUntil: Date? = nil, sentAt: Date,
+                                      manual: Bool = false) {
+        applyFailure(kind: kind, countsForFallback: GuardFailure.countsForFallback(error),
+                     reason: GuardFailure(error, circuitOpenUntil: circuitOpenUntil), sentAt: sentAt, manual: manual)
     }
 
     /// The request was dropped before it went out (cancelled, the guard changed): nothing recorded but the flight.
@@ -135,7 +209,20 @@ public struct GuardEngine: Sendable {
         return GuardChange(previous: previous, current: current, worsened: worsened, searchAlternatives: search)
     }
 
-    public mutating func setSwitchedOff(_ off: Bool) { record.switchedOff = off }
+    /// „Wächter aus“ / „Wächter an“; after the end nothing changes (the record is gone and must not come back).
+    @discardableResult
+    public mutating func setSwitchedOff(_ off: Bool) -> Bool {
+        guard !isFinished else { return false }
+        record.switchedOff = off
+        return true
+    }
+
+    /// The guard has ended (`hasEnded`): it stops for good – also when fresher data turns „Umstieg vorbei“ into „Verpasst“
+    /// before the window's end.
+    public mutating func finish() {
+        isFinished = true
+        requests.inFlight = false
+    }
 
     // MARK: Weiter verfolgen
 

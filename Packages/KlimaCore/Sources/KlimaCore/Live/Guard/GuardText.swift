@@ -15,8 +15,8 @@ public enum GuardStatus: Sendable, Hashable {
     case switchedOff
     case offline(lastAt: Date?)
     case liveOff
-    /// The last request failed; the next try at `retry`.
-    case failed(lastAt: Date?, retry: Date?)
+    /// The last request failed for `reason`; the next try at `retry`.
+    case failed(lastAt: Date?, retry: Date?, reason: GuardFailure = .auskunft)
     case ended(lastAt: Date?)
 }
 
@@ -153,6 +153,39 @@ public enum GuardText {
     public static let noRealtimeNote = "Keine Echtzeit-Daten: gerechnet nach Fahrplan."
     public static let overNote = "Der Wächter ist für diese Fahrt fertig."
 
+    /// „Umstieg vorbei“ when only the walk did not fit: „Laut Prognose blieben 2 Min für 3 Min Fußweg. Ob du REX 2 erwischt
+    /// hast, weiß die Auskunft nicht.“ nil otherwise.
+    public static func overShortNote(_ a: GuardAssessment) -> String? {
+        guard a.overShort, let gap = a.gapMinutes else { return nil }
+        let left = gap <= 0 ? "blieb keine Minute" : (gap == 1 ? "blieb 1 Min" : "blieben \(gap) Min")
+        return "\(source(a)) \(left) für \(a.walkMinutes) Min Fußweg. Ob du \(a.connection.lineName) erwischt hast, weiß die Auskunft nicht."
+    }
+
+    static func overShortSpoken(_ a: GuardAssessment) -> String? {
+        guard a.overShort, let gap = a.gapMinutes else { return nil }
+        let left = gap <= 0 ? "blieb keine Minute" : (gap == 1 ? "blieb 1 Minute" : "blieben \(gap) Minuten")
+        return "\(source(a)) \(left) für \(RealtimePresentation.minutes(a.walkMinutes)) Fußweg. "
+            + "Ob du \(a.connection.lineName) erwischt hast, weiß die Auskunft nicht."
+    }
+
+    /// „Laut Prognose“ with realtime on either train, „Laut Fahrplan“ without.
+    static func source(_ a: GuardAssessment) -> String {
+        a.feeder.hasRealtime || a.connection.hasRealtime ? "Laut Prognose" : "Laut Fahrplan"
+    }
+
+    /// Why the guard stopped and what is left to do, after its end (not after „Umstieg vorbei“, which has `overNote`):
+    /// „Der Wächter prüft nicht mehr: Die Umstiegszeit ist vorbei. Wie du weiterkommst, zeigen die Alternativen.“
+    public static func endedNote(_ a: GuardAssessment, reason: GuardEndReason) -> String? {
+        let why: String
+        switch reason {
+        case .over: return nil
+        case .windowPassed: why = "Der Wächter prüft nicht mehr: Die Umstiegszeit ist vorbei."
+        case .expired: why = "Der Wächter prüft nicht mehr: Er läuft höchstens 12 Stunden."
+        }
+        guard a.state.rank >= GuardState.shaky.rank else { return why }
+        return "\(why) Wie du weiterkommst, zeigen die Alternativen."
+    }
+
     /// „Danach: Umstieg in Wiener Neustadt Hbf, 12 Min laut Fahrplan“.
     public static func laterTransfer(_ t: GuardLaterTransfer) -> String {
         guard let minutes = t.plannedBufferMinutes else { return "Danach: Umstieg in \(t.stationName)" }
@@ -180,13 +213,48 @@ public enum GuardText {
             return "Ohne Internet keine Prüfung. Gezeigt ist der Stand von \(RealtimePresentation.time(last))."
         case .liveOff:
             return "Für die Prüfung braucht es Live-Daten."
-        case .failed(let last, let retry):
-            let base = "Die Auskunft antwortet gerade nicht"
+        case .failed(let last, let retry, let reason):
+            let head = stand(last).map { "\($0) · " } ?? ""
+            // A pause still running: no try before it ends, the time says it all.
+            if let until = reason.pauseEnd, until > now { return head + pauseNote(reason, until: until) }
             let tail = retry.map { " · neuer Versuch \(inMinutes($0.timeIntervalSince(now)))" } ?? ""
-            return (stand(last).map { "\($0) · " } ?? "") + base + tail
+            return head + failure(reason) + tail
         case .ended(let last):
             return stand(last).map { "\($0) · Prüfung beendet" } ?? "Prüfung beendet"
         }
+    }
+
+    /// What failed, saying honestly whose doing it was: the Auskunft, the app's own limit or pause, or the connection.
+    public static func failure(_ reason: GuardFailure) -> String {
+        switch reason {
+        case .auskunft: "Die Auskunft antwortet gerade nicht"
+        case .refused: "Die Auskunft lehnt Abfragen gerade ab"
+        case .answerUnusable: "Die Auskunft liefert die Verbindung gerade nicht"
+        case .appLimit: "Die App hält ihr Limit von \(HafasClient.perMinute) Abfragen pro Minute ein"
+        case .auskunftPause: "Die Auskunft hat um eine kurze Pause gebeten"
+        case .paused: "Die App hat ihre Abfragen kurz pausiert"
+        case .noAnswer: "Keine Antwort: schwacher Empfang oder die Auskunft ist langsam"
+        case .connection: "Gerade keine Verbindung, vielleicht schwacher Empfang"
+        case .liveOff: "Live-Daten sind gerade aus"
+        }
+    }
+
+    /// A pause still running, for the status line and the note under „Jetzt prüfen“: „Die Auskunft bittet um eine Pause bis
+    /// 14:32“ (HTTP 429) or „Die App pausiert ihre Abfragen bis 14:32“ (its circuit breaker).
+    public static func pauseNote(_ reason: GuardFailure?, until: Date) -> String {
+        if case .auskunftPause? = reason { return "Die Auskunft bittet um eine Pause bis \(RealtimePresentation.time(until))" }
+        return paused(until)
+    }
+
+    /// „Die App pausiert ihre Abfragen bis 14:32“ (its circuit breaker).
+    public static func paused(_ until: Date) -> String {
+        "Die App pausiert ihre Abfragen bis \(RealtimePresentation.time(until))"
+    }
+
+    /// The status line for VoiceOver, as a sentence.
+    public static func spokenStatus(_ s: GuardStatus, now: Date) -> String {
+        let text = status(s, now: now).replacingOccurrences(of: " · ", with: ", ")
+        return text.hasSuffix(".") || text.hasSuffix("…") ? text : text + "."
     }
 
     // MARK: Buttons and footer
@@ -229,6 +297,8 @@ public enum GuardText {
         if let missed = missedNote(a) { sentences.append(missed) }
         if a.flaggedUnreachable { sentences.append(unreachableNote) }
         if a.basedOnPlan { sentences.append(noRealtimeNote) }
+        if let short = overShortSpoken(a) { sentences.append(short) }
+        if a.state == .over { sentences.append(overNote) }
         return sentences.joined(separator: " ")
     }
 

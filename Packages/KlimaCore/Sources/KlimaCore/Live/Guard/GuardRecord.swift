@@ -83,6 +83,21 @@ public struct GuardRecord: Codable, Sendable, Hashable {
         target.tripID == followTripID && target.transfer != nil && isTransferStation(target)
     }
 
+    /// „Live verfolgen“ again on the connection this guard already watches (same follow, same change, same rides to the same
+    /// destination): the guard keeps its trend, request history and search limit instead of starting over.
+    public func watchesSameChange(_ journey: Journey, followTripID: String, feederRide: Int) -> Bool {
+        guard followTripID == self.followTripID, feederRide == self.feederRide,
+              let new = Self.rideKey(journey), let watched = Self.rideKey(self.journey) else { return false }
+        return new == watched
+    }
+
+    /// The trip ids of the rides and the final destination (a planner answer and a Reconstruction of one connection agree).
+    static func rideKey(_ journey: Journey) -> [String]? {
+        let ids = journey.rideLegs.map { $0.tripID }
+        guard !ids.isEmpty, ids.allSatisfy({ $0 != nil }), let destination = journey.destination else { return nil }
+        return ids.compactMap { $0 } + [destination.extId ?? DisplayNames.name(destination.name)]
+    }
+
     public func encoded() -> Data? {
         try? JSONEncoder().encode(self)
     }

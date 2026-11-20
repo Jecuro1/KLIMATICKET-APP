@@ -25,6 +25,9 @@ final class ConnectionGuardService {
         var journeys: ((JourneyQuery) async throws -> JourneyPage)?
         /// Why nothing can be asked (consent, switch, kill switch, Offline-Modus, offline).
         var unavailable: LiveDataService.Unavailable?
+        /// Until when the app's circuit for the Auskunft is open (`LiveHealth`; asks nothing): read after a `.rateLimited`, it
+        /// tells the Auskunft's requested pause (HTTP 429 opens the circuit) from the app's own limit (never opens it).
+        var circuitOpenUntil: (() async -> Date?)?
 
         static let none = Services(unavailable: .switchedOff)
 
@@ -45,7 +48,12 @@ final class ConnectionGuardService {
                     guard let service = await live?.timetable else { throw LiveError.disabled(.oebbHafas) }
                     return try await service.journeys(query)
                 },
-                unavailable: nil)
+                unavailable: nil,
+                circuitOpenUntil: { [weak live] in
+                    guard let live else { return nil }
+                    await live.refreshHealth()
+                    return await live.health[.oebbHafas]?.openUntil
+                })
         }
     }
 
@@ -116,6 +124,16 @@ final class ConnectionGuardService {
         let now = clock()
         guard ConnectionGuard.canWatch(journey, followTripID: followTripID, feederRide: feederRide),
               LiveFollowTracker.shared.target?.tripID == followTripID else { return }
+        // „Live verfolgen“ again on the connection already watched (the follow kept the guard): the guard keeps its trend,
+        // its request history and its search limit – a fresh one would ask at once and could search the alternatives again.
+        if let current = engine, !isScripted,
+           current.record.watchesSameChange(journey, followTripID: followTripID, feederRide: feederRide) {
+            if !current.isFinished {
+                pushTransferEstimate()   // the restarted follow forgot the expected departure; the notice gets it back now
+                startLoopIfActive()
+            }
+            return
+        }
         let record = GuardRecord(followTripID: followTripID, journey: journey, journeyAt: now, feederRide: feederRide,
                                  products: products, klimaTicketOnly: klimaTicketOnly, createdAt: now)
         if live.isDemo {
@@ -177,15 +195,17 @@ final class ConnectionGuardService {
             Task { await perform(kind, manual: true) }
         case .tooSoon(let seconds):
             manualNote = GuardText.checkTooSoon(seconds)
+        case .paused(let until):
+            // A pause the app keeps (its own, or one the Auskunft asked for): a tap would not reach the Auskunft.
+            manualNote = GuardText.pauseNote(current.requests.lastFailure, until: until)
         case .unavailable:
             manualNote = nil
         }
     }
 
-    /// „Wächter aus“ / „Wächter an“ for this follow.
+    /// „Wächter aus“ / „Wächter an“ for this follow. After the end nothing changes: the record is gone and stays gone.
     func setSwitchedOff(_ off: Bool) {
-        guard var current = engine else { return }
-        current.setSwitchedOff(off)
+        guard var current = engine, !current.hasEnded(now: clock()), current.setSwitchedOff(off) else { return }
         engine = current
         if !isScripted { GuardRecordStore.save(current.record) }
         if !off {
@@ -249,7 +269,9 @@ final class ConnectionGuardService {
         if let reason = servicesProvider().unavailable {
             return reason == .offline ? .offline(lastAt: last) : .liveOff
         }
-        if current.requests.consecutiveFailures > 0 { return .failed(lastAt: last, retry: appActive ? nextCheckAt : nil) }
+        if current.requests.consecutiveFailures > 0 {
+            return .failed(lastAt: last, retry: appActive ? nextCheckAt : nil, reason: current.requests.lastFailure ?? .auskunft)
+        }
         if ProcessInfo.processInfo.isLowPowerModeEnabled { return .lowPower(lastAt: last) }
         if let window = current.window, now < window.start { return .beforeWindow(lastAt: last, start: window.start) }
         guard let last else { return .checking(lastAt: nil) }
@@ -340,7 +362,8 @@ final class ConnectionGuardService {
                 guard mine == generation, var latest = engine else { return }
                 let change = latest.applyReconstruction(journey, sentAt: sentAt, manual: manual, now: clock())
                 engine = latest
-                GuardRecordStore.save(latest.record)
+                // An answer that arrives after the end still counts on the card, but the record stays deleted.
+                if !latest.isFinished { GuardRecordStore.save(latest.record) }
                 handle(change)
             case .connectionTrip:
                 guard let trip = services.trip, let id = current.connectionTripID else { throw LiveError.disabled(.oebbHafas) }
@@ -352,22 +375,23 @@ final class ConnectionGuardService {
             }
             pushTransferEstimate()
         } catch {
+            let live = error as? LiveError
+            var openUntil: Date?
+            if case .rateLimited? = live, let read = services.circuitOpenUntil {
+                // A 429 opened the app's circuit, the app's own limit never does: the card says whose doing it was.
+                openUntil = await read().flatMap { $0 > clock() ? $0 : nil }
+            }
             guard mine == generation, var latest = engine else { return }
             if error is CancellationError {
                 latest.abandon()
+            } else if let live {
+                // The reason says whose doing it was (the Auskunft, the app's limit or pause, the connection); only the
+                // Auskunft's own failures count towards the fallback (`GuardFailure.countsForFallback`).
+                latest.applyFailure(kind: kind, error: live, circuitOpenUntil: openUntil, sentAt: sentAt, manual: manual)
             } else {
-                latest.applyFailure(kind: kind, countsForFallback: Self.countsForFallback(error), sentAt: sentAt, manual: manual)
+                latest.applyFailure(kind: kind, countsForFallback: false, sentAt: sentAt, manual: manual)
             }
             engine = latest
-        }
-    }
-
-    /// The Auskunft's own failures count towards the fallback; offline, live data off, throttle and timeouts do not.
-    static func countsForFallback(_ error: Error) -> Bool {
-        guard let live = error as? LiveError else { return false }
-        switch live {
-        case .hafas, .decoding, .noConnection, .http: return true
-        case .disabled, .offline, .timeout, .network, .blocked, .rateLimited, .circuitOpen, .sessionExpired, .noPrice: return false
         }
     }
 
@@ -427,11 +451,14 @@ final class ConnectionGuardService {
     }
 
     /// The guard is over („Umstieg vorbei“ or the window has passed): no more requests, the record goes; the card keeps the
-    /// last state until the follow stops.
+    /// last state until the follow stops (fresher data that comes anyway – the follow's answer – still counts).
     private func finish() {
         loop?.cancel()
         loop = nil
         nextCheckAt = nil
+        guard var current = engine, !current.isFinished else { return }   // once: later follow answers end up here again
+        current.finish()   // no request, no switch, no record any more
+        engine = current
         GuardRecordStore.save(nil)
     }
 
