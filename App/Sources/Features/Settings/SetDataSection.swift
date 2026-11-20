@@ -40,7 +40,7 @@ struct SetDataSection: View {
             SetSectionHeader(title: "Daten")
         } footer: {
             // The counts roll when a restore or a removal changes them.
-            SetFooter(text: "\(SetFormat.count(tripCount, "Fahrt", "Fahrten")) · \(SetFormat.count(favorites.count, "Favorit", "Favoriten")) · \(SetFormat.count(tickets.count, "Ticket", "Tickets")). \(AutoBackupService.shared.isEnabled ? "KlimaBilanz sichert täglich in Dateien. " : "")Export und Wiederherstellen unter Daten & Sicherung.")   // MARK: data
+            SetFooter(text: "\(SetFormat.count(tripCount, "Fahrt", "Fahrten")) · \(SetFormat.count(favorites.count, "Favorit", "Favoriten")) · \(SetFormat.count(tickets.count, "Ticket", "Tickets")). \(AutoBackupService.shared.isEnabled ? "KlimaBilanz sichert einmal am Tag in Dateien, wenn sich etwas geändert hat. " : "")Export und Wiederherstellen unter Daten & Sicherung.")   // MARK: data, review-daten – only after a change
                 .contentTransition(.numericText())
                 .motionAnimation(Motion.number, value: [tripCount, favorites.count, tickets.count])
         }
