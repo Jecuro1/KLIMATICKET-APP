@@ -87,7 +87,7 @@ struct DelayReportSheet: View {
                 .foregroundStyle(Theme.accentText)
                 .buttonStyle(.plain)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 200 : 76), spacing: Theme.Spacing.xs)],
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 200 : 100), spacing: Theme.Spacing.xs)],
                       spacing: Theme.Spacing.xs) {
                 ForEach(year.months) { month in
                     monthChip(month)

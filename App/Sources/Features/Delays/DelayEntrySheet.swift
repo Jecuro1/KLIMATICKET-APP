@@ -15,6 +15,8 @@ struct DelayEntrySheet: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     @State private var minutes: Int
+    /// The big number grows with the text (64 pt at the default size), up to what the line still holds.
+    @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 64
     @State private var stepUp = 0
     @State private var stepDown = 0
     @State private var picked = 0
@@ -83,6 +85,7 @@ struct DelayEntrySheet: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         .accessibilityElement(children: .combine)
     }
 
@@ -98,22 +101,41 @@ struct DelayEntrySheet: View {
     private var valueCard: some View {
         GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {
             VStack(spacing: Theme.Spacing.s) {
-                HStack(spacing: Theme.Spacing.s) {
-                    stepButton(symbol: "minus", label: "Eine Minute weniger", enabled: minutes > 0) {
-                        guard minutes > 0 else { return }
-                        withMotion(Motion.snappy) { minutes -= 1 }
-                        stepDown += 1
-                    }
+                if typeSize.isAccessibilitySize {
+                    // At the accessibility sizes the number gets the full width, the buttons go under it.
                     numeral
                         .frame(maxWidth: .infinity)
-                    stepButton(symbol: "plus", label: "Eine Minute mehr", enabled: minutes < DelayDiaryRules.maximumMinutes) {
-                        guard minutes < DelayDiaryRules.maximumMinutes else { return }
-                        withMotion(Motion.snappy) { minutes += 1 }
-                        stepUp += 1
+                    HStack {
+                        minusButton
+                        Spacer(minLength: Theme.Spacing.s)
+                        plusButton
+                    }
+                } else {
+                    HStack(spacing: Theme.Spacing.s) {
+                        minusButton
+                        numeral
+                            .frame(maxWidth: .infinity)
+                        plusButton
                     }
                 }
                 verdict
             }
+        }
+    }
+
+    private var minusButton: some View {
+        stepButton(symbol: "minus", label: "Eine Minute weniger", enabled: minutes > 0) {
+            guard minutes > 0 else { return }
+            withMotion(Motion.snappy) { minutes -= 1 }
+            stepDown += 1
+        }
+    }
+
+    private var plusButton: some View {
+        stepButton(symbol: "plus", label: "Eine Minute mehr", enabled: minutes < DelayDiaryRules.maximumMinutes) {
+            guard minutes < DelayDiaryRules.maximumMinutes else { return }
+            withMotion(Motion.snappy) { minutes += 1 }
+            stepUp += 1
         }
     }
 
@@ -130,10 +152,11 @@ struct DelayEntrySheet: View {
                 Text("angekommen")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text("+\(minutes)")
-                        .font(.system(size: 64, weight: .light, design: .rounded))
+                        .font(.system(size: numeralSize, weight: .light, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(Theme.textPrimary)
                         .contentTransition(.numericText(value: Double(minutes)))
@@ -142,11 +165,13 @@ struct DelayEntrySheet: View {
                     Text("Min.")
                         .font(.title3.weight(.medium))
                         .foregroundStyle(Theme.textSecondary)
+                        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 }
                 .motionTransition(.pop)
                 Text("später angekommen")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             }
         }
         .frame(minHeight: 96)
@@ -260,7 +285,7 @@ struct DelayEntrySheet: View {
             Button {
                 save()
             } label: {
-                Text(minutes == 0 ? "Als pünktlich speichern" : "Speichern · +\(minutes)\u{00A0}Min.")
+                Text(saveTitle)
                     .contentTransition(.numericText(value: Double(minutes)))
             }
             .buttonStyle(.primary)
@@ -282,11 +307,18 @@ struct DelayEntrySheet: View {
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, Theme.Spacing.s)
         .padding(.bottom, Theme.Spacing.xs)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .background {
             Theme.sheetBackground
                 .overlay(alignment: .top) { Rectangle().fill(Theme.separator).frame(height: 1) }
                 .ignoresSafeArea()
         }
+    }
+
+    /// „Speichern · +9 Min.“; at the accessibility sizes just „Speichern“ (the number is right above).
+    private var saveTitle: String {
+        if minutes == 0 { return typeSize.isAccessibilitySize ? "Pünktlich speichern" : "Als pünktlich speichern" }
+        return typeSize.isAccessibilitySize ? "Speichern" : "Speichern · +\(minutes)\u{00A0}Min."
     }
 
     private func save() {

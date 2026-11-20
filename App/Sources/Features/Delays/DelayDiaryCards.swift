@@ -79,16 +79,26 @@ struct DelayDiaryHeroCard: View {
     // MARK: Counts
 
     private var counts: some View {
+        // One line where the three fit, else two and one, else one under the other.
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Theme.Spacing.xs) { countPills }
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { countPills }
+            HStack(spacing: Theme.Spacing.xs) { recordedPill; latePill; openPill }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                HStack(spacing: Theme.Spacing.xs) { recordedPill; latePill }
+                openPill
+            }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { recordedPill; latePill; openPill }
         }
     }
 
-    @ViewBuilder
-    private var countPills: some View {
+    private var recordedPill: some View {
         DelayCountPill(value: year.recordedCount, word: "erfasst", symbol: "checklist", tint: Theme.accentText)
+    }
+
+    private var latePill: some View {
         DelayCountPill(value: year.lateCount, word: "verspätet", symbol: "clock.badge.exclamationmark", tint: Theme.summitText)
+    }
+
+    private var openPill: some View {
         DelayCountPill(value: year.notRecordedCount, word: "ohne Eintrag", symbol: "questionmark.circle", tint: Theme.textSecondary)
     }
 
@@ -170,6 +180,8 @@ struct DelayCountPill: View {
                 .foregroundStyle(Theme.textSecondary)
         }
         .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(Theme.surfaceSecondary.opacity(0.7), in: .capsule)

@@ -153,10 +153,10 @@ struct DelayBackfillSheet: View {
         } label: {
             Label("Pünktlich", systemImage: "checkmark")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.positiveText)
                 .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.glassProminent)
-        .tint(Theme.pine)
+        .buttonStyle(.glass)
         .accessibilityHint("Trägt die Fahrt als pünktlich ein")
     }
 
@@ -167,6 +167,7 @@ struct DelayBackfillSheet: View {
         } label: {
             Label("Verspätet …", systemImage: "clock.badge.exclamationmark")
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.summitText)
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)

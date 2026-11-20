@@ -88,7 +88,7 @@ public enum DelayDiaryText {
 
     /// The share line of a month or the year: „87 % pünktlich“ or „zu wenig Fahrten für eine Quote“.
     public static func shareLine(_ share: Double?) -> String {
-        share.map { "\(percent($0)) pünktlich" } ?? tooFewForShare
+        share.map { "\(percent($0))\u{00A0}pünktlich" } ?? tooFewForShare
     }
 
     /// „St. Anton am Arlberg → Innsbruck Hbf“, with „(Hin & Retour)“ or „(3 Etappen)“.
