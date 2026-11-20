@@ -7,8 +7,8 @@ import KlimaCore
 
 /// „Übersicht anpassen“ – a calm text button under the last card.
 struct DashCustomizeButton: View {
-    /// Shown to everyone once the editor's screens were looked at in screenshots; until then only in this track's CI scenes.
-    static let isLive = false
+    /// Live for everyone (the editor's screens were looked at in two screenshot runs, light and dark, AX5).
+    static let isLive = true
     /// The button and the row in Einstellungen › Darstellung.
     static var isShown: Bool { isLive || DashLayoutScreenshotHost.screens.contains(LaunchMode.screenshotScreen ?? "") }
 
@@ -41,7 +41,7 @@ struct DashSettingsRow: View {
             DashCustomizeView()
         } label: {
             SetRowLabel(title: "Übersicht anpassen", subtitle: "Karten ordnen und ausblenden, Kennzahlen, Ziele",
-                        symbol: "rectangle.3.group.fill", tint: Theme.dusk)
+                        symbol: "rectangle.3.group.fill", tint: Theme.dawn)
         }
     }
 }

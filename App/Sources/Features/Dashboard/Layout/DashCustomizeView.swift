@@ -12,7 +12,14 @@ struct DashCustomizeSheet: View {
     var focus: DashEditorFocus?
     /// CI scenes open it at full height.
     var startsLarge = false
-    @State private var detent: PresentationDetent = .medium
+    @State private var detent: PresentationDetent
+
+    init(focus: DashEditorFocus?, startsLarge: Bool = false) {
+        self.focus = focus
+        self.startsLarge = startsLarge
+        // Kennzahlen and Ziele sit further down: open tall when „Anpassen“ on their card asked for them.
+        _detent = State(initialValue: startsLarge || focus == .kpis || focus == .goals ? .large : .medium)
+    }
 
     var body: some View {
         NavigationStack {
@@ -21,10 +28,6 @@ struct DashCustomizeSheet: View {
         .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
         .modifier(DashSceneTypeSize())   // CI: a sheet does not take the presenter's text size
-        .onAppear {
-            // Kennzahlen and Ziele sit further down: open tall when „Anpassen“ on their card asked for them.
-            if startsLarge || focus == .kpis || focus == .goals { detent = .large }
-        }
     }
 }
 
@@ -167,7 +170,7 @@ struct DashCustomizeView: View {
                 Button {
                     withMotion(Motion.smooth) { editMode = editMode.isEditing ? .inactive : .active }
                 } label: {
-                    Label(editMode.isEditing ? "Fertig" : "Sortieren",
+                    Label(editMode.isEditing ? "Sortieren beenden" : "Sortieren",
                           systemImage: editMode.isEditing ? "checkmark" : "arrow.up.arrow.down")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.accentText)
@@ -383,6 +386,7 @@ private struct DashSectionRow: View {
     let contentNote: String?
     let isEditing: Bool
 
+    @Environment(\.dynamicTypeSize) private var typeSize
     private var store: DashLayoutStore { .shared }
     private var isHidden: Bool { layout.isHidden(id) }
 
@@ -401,7 +405,7 @@ private struct DashSectionRow: View {
             }
             Spacer(minLength: Theme.Spacing.xs)
             eye
-            if !isEditing {
+            if !isEditing, !typeSize.isAccessibilitySize {
                 Image(systemName: "line.3.horizontal")
                     .font(.body.weight(.medium))
                     .foregroundStyle(Theme.textTertiary)

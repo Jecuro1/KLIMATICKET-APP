@@ -13,7 +13,10 @@ Bedienung, Frost-Karten für Inhalte.
 
 ## Funktionen
 
-- **Übersicht** – riesige Amortisations-Anzeige mit „Gipfel“-Grafik, Break-even-Prognose, Kennzahlen, Schnellerfassung
+- **Übersicht** – riesige Amortisations-Anzeige mit „Gipfel“-Grafik, Break-even-Prognose, Kennzahlen, Schnellerfassung.
+  **Übersicht nach Maß:** Karten verschieben und ausblenden, bis zu vier eigene Kennzahlen (dieselben Zahlen wie Statistik) und bis zu
+  drei Ziele mit Ring („20 Fahrten im Monat“, „Break-even bis …“), Vorlagen Standard · Ruhig · Zahlen · Alles. Noch nicht auf einem
+  iPhone geprüft ([docs/DASHBOARD_LAYOUT.md](docs/DASHBOARD_LAYOUT.md))
 - **Fahrten erfassen in Sekunden** – 39.711 Haltestellen und 21.050 Orte (ÖBB-, Verbund- und Wiener-Linien-Fahrplandaten, OSM) mit
   Offline-Suche, Lieblingsfahrten, „Nochmal fahren“, Hin & Retour, Via-Halte, Mitfahrende, Notizen
 - **Fahrplan** – Verbindungen und Abfahrtstafeln mit Echtzeit, Preis und „Deckt dein KlimaTicket die Fahrt?“,

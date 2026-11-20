@@ -71,11 +71,16 @@ struct DashGoalRow: View {
     var isVisible = true
 
     @State private var popTick = 0
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let format = DashGoalFormat.formatter
         let projection = GoalText.projection(progress, format: format)
-        HStack(alignment: .top, spacing: Theme.Spacing.m) {
+        // At accessibility sizes the ring stands above the text, so the sentences get the whole width.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: Theme.Spacing.m))
+        layout {
             DashGoalRing(progress: progress)
                 .celebrate(trigger: popTick, haptic: .success)
             VStack(alignment: .leading, spacing: 3) {
