@@ -36,10 +36,11 @@ struct RadarMineStopPage: View {
 
     // MARK: Header
 
-    /// „Ab Neubaugasse“ over „Stand 14:32 · vor 40 s“, and a small „Ändern“ beside them (the long „Andere Haltestelle“ pushed the name onto two lines
-    /// and left room for one row in the panel, CI screenshots run 2; VoiceOver still says „Andere Haltestelle“).
+    /// „Ab Neubaugasse“ over „Stand 14:32 · vor 40 s“, and a small „Ändern“ beside them, at every size (the long „Andere Haltestelle“ pushed the name
+    /// onto two lines and left room for one row in the panel, CI screenshots run 2; stacked at AX sizes it took a row's height, run 3). VoiceOver
+    /// still says „Andere Haltestelle“.
     private func header(_ stop: RadarMineStop) -> some View {
-        RadarMineAdaptiveRow {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(RadarMineText.from(stop.name))
                     .font(.headline)
@@ -55,7 +56,7 @@ struct RadarMineStopPage: View {
                     }
                 }
             }
-        } trailing: {
+            .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 withMotion(Motion.smooth) { mine.clearStop() }
             } label: {

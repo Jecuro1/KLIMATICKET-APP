@@ -184,7 +184,7 @@ extension RadarView {
     /// switched off again. The area grows with its content up to the card's own limit plus the room for the bar and a note.
     var statusMaxHeight: CGFloat {
         if travel.isOpen { return max(360, model.mapSize.height * 0.58) }   // MARK: radartime – the open scrubber card
-        if radar2PanelIsOpen { return max(360, mineWindowHeight * (heatTypeSize.isAccessibilitySize ? 0.66 : 0.6)) }   // MARK: radar2-radarmine – the open „Meine“ panel (about a third of the screen) and the card
+        if radar2PanelIsOpen { return max(360, mineWindowHeight * (heatTypeSize.isAccessibilitySize ? 0.5 : 0.6)) }   // MARK: radar2-radarmine – the „Meine“ panel and the card; at AX sizes the card scrolls under the panel and the map keeps room
         guard heatOn else { return 360 }
         let mapHeight = max(model.mapSize.height, 560)
         // Normal sizes: the card at its limit and the room under it for the layer bar and a note. Accessibility sizes: as before, the

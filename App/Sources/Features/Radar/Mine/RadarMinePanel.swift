@@ -2,14 +2,14 @@ import SwiftUI
 import KlimaCore
 
 // MARK: radar2-radarmine – the panel „Meine Fahrzeuge“ (docs/RADAR_MINE.md §9): one glass card above the status card (the layer bar steps aside while
-// it is open), at most 36 % of the window's height (42 % at accessibility sizes); its pages scroll inside. Segments „Linien · In der Nähe ·
+// it is open), at most 36 % of the window's height (40 % at accessibility sizes); its pages scroll inside. Segments „Linien · In der Nähe ·
 // Haltestelle“, a menu that forgets what is remembered, a close button. The title row grows only to xxxLarge and the page to AX2, like the radar's
 // other bars over the map; from AX3 on the segments become a menu with the current page as its title (one line, never hyphenated).
 
 struct RadarMinePanel: View {
     var mine: RadarMineModel
     var context: RadarMineContext
-    /// The height of the radar's window: the panel takes at most 36 % of it (42 % at accessibility sizes) and the page scrolls inside. Not the map's
+    /// The height of the radar's window: the panel takes at most 36 % of it (40 % at accessibility sizes) and the page scrolls inside. Not the map's
     /// height: the map shrinks while the panel takes room at the bottom, and a panel sized from it shrank with it (CI screenshots run 2).
     var windowHeight: CGFloat
 
@@ -52,7 +52,7 @@ struct RadarMinePanel: View {
         }
     }
 
-    private var maxHeight: CGFloat { windowHeight * (typeSize.isAccessibilitySize ? 0.42 : 0.36) }
+    private var maxHeight: CGFloat { windowHeight * (typeSize.isAccessibilitySize ? 0.40 : 0.36) }
 
     private var listCap: CGFloat { max(maxHeight - chromeHeight - Theme.Spacing.s * 3, 120) }
 
