@@ -14,67 +14,74 @@ struct DataHubBackupsView: View {
     @State private var preview: DataHubRestorePreview?
     @State private var preparing: String?
 
-    /// CI scenes: rows already checked, the demo's database copy.
+    /// CI scenes: rows already checked, the demo's database copy, the list scrolled to its first backup.
     var screenshotChecked: Set<String> = []
     var demoStoreCopies: [DataHubStoreCopy]? = nil
+    var screenshotScrollsToRows = false
 
     private var service: AutoBackupService { .shared }
 
     var body: some View {
-        List {
-            Section {
-                DataHubBanner()
-                    .listRowBackground(Theme.summitText.opacity(0.08))
-            }
-            Section {
-                if service.files.isEmpty {
-                    emptyRow
-                        .listRowBackground(Theme.surface)
-                } else {
-                    ForEach(service.files) { file in
-                        DataHubBackupRow(file: file, details: details[file.name], isChecked: checked.contains(file.name),
-                                         onCheck: { check(file) }, onRestore: { restore(file) })
-                            .overlay(alignment: .topTrailing) {
-                                if preparing == file.name { ProgressView().motionTransition(.pop) }
-                            }
-                            .listRowBackground(Theme.surface)
-                            .motionTransition(.rise)
-                    }
-                }
-            } header: {
-                SetSectionHeader(title: service.files.isEmpty ? "Auf diesem iPhone" : "Auf diesem iPhone · \(service.files.count)")
-            } footer: {
-                SetFooter(text: DataHubText.retention + " " + BackupChecksum.honestyNote)
-            }
-            if !storeCopies.isEmpty {
+        ScrollViewReader { proxy in
+            List {
                 Section {
-                    ForEach(storeCopies) { copy in
-                        storeCopyRow(copy)
+                    DataHubBanner()
+                        .listRowBackground(Theme.summitText.opacity(0.08))
+                }
+                Section {
+                    if service.files.isEmpty {
+                        emptyRow
                             .listRowBackground(Theme.surface)
+                    } else {
+                        ForEach(service.files) { file in
+                            DataHubBackupRow(file: file, details: details[file.name], isChecked: checked.contains(file.name),
+                                             onCheck: { check(file) }, onRestore: { restore(file) })
+                                .overlay(alignment: .topTrailing) {
+                                    if preparing == file.name { ProgressView().motionTransition(.pop) }
+                                }
+                                .listRowBackground(Theme.surface)
+                                .motionTransition(.rise)
+                        }
                     }
                 } header: {
-                    SetSectionHeader(title: "Datenbank-Kopien")
+                    SetSectionHeader(title: service.files.isEmpty ? "Auf diesem iPhone" : "Auf diesem iPhone · \(service.files.count)")
                 } footer: {
-                    SetFooter(text: "Kopien der Datenbank, die KlimaBilanz vor einem Update oder bei einem Fehler selbst anlegt. Nur zum Teilen, etwa für den Support – wiederherstellen lassen sie sich hier nicht.")
+                    SetFooter(text: DataHubText.retention + " " + BackupChecksum.honestyNote)
+                }
+                .id(DataHubAnchor.backups)
+                if !storeCopies.isEmpty {
+                    Section {
+                        ForEach(storeCopies) { copy in
+                            storeCopyRow(copy)
+                                .listRowBackground(Theme.surface)
+                        }
+                    } header: {
+                        SetSectionHeader(title: "Datenbank-Kopien")
+                    } footer: {
+                        SetFooter(text: "Kopien der Datenbank, die KlimaBilanz vor einem Update oder bei einem Fehler selbst anlegt. Nur zum Teilen, etwa für den Support – wiederherstellen lassen sie sich hier nicht.")
+                    }
                 }
             }
-        }
-        .listStyle(.insetGrouped)
-        .listSectionSpacing(Theme.Spacing.l)
-        .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
-        .scrollContentBackground(.hidden)
-        .background { SetBackdrop() }
-        .tint(Theme.accent)
-        .navigationTitle("Sicherungen")
-        .navigationBarTitleDisplayMode(.inline)
-        .motionAnimation(Motion.smooth, value: service.files.map(\.name))
-        .sheet(item: $preview) { DataHubRestoreSheet(preview: $0) }
-        .task {
-            await service.refresh()
-            checked = screenshotChecked
-            await loadDetails()
-            if let demoStoreCopies { storeCopies = demoStoreCopies }
-            else { storeCopies = await Task.detached(priority: .utility) { DataHubFolder.storeCopies() }.value }
+            .listStyle(.insetGrouped)
+            .listSectionSpacing(Theme.Spacing.l)
+            .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+            .scrollContentBackground(.hidden)
+            .background { SetBackdrop() }
+            .tint(Theme.accent)
+            .navigationTitle("Sicherungen")
+            .navigationBarTitleDisplayMode(.inline)
+            .motionAnimation(Motion.smooth, value: service.files.map(\.name))
+            .sheet(item: $preview) { DataHubRestoreSheet(preview: $0) }
+            .task {
+                await service.refresh()
+                checked = screenshotChecked
+                await loadDetails()
+                if let demoStoreCopies { storeCopies = demoStoreCopies }
+                else { storeCopies = await Task.detached(priority: .utility) { DataHubFolder.storeCopies() }.value }
+                guard screenshotScrollsToRows else { return }
+                try? await Task.sleep(for: .milliseconds(450))
+                proxy.scrollTo(DataHubAnchor.backups, anchor: .top)
+            }
         }
     }
 

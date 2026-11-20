@@ -121,8 +121,12 @@ struct DataHubHero: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            Label(isAutoOn ? DataHubText.lastBackup(files.first(where: { !$0.isForeign }))
-                  : "Tägliche Sicherung ist aus", systemImage: isAutoOn ? "clock.arrow.circlepath" : "pause.circle")
+            // At accessibility sizes the line stands alone: beside the symbol its second line started under the symbol.
+            let line = isAutoOn ? DataHubText.lastBackup(files.first(where: { !$0.isForeign })) : "Tägliche Sicherung ist aus"
+            Group {
+                if typeSize.isAccessibilitySize { Text(line) }
+                else { Label(line, systemImage: isAutoOn ? "clock.arrow.circlepath" : "pause.circle") }
+            }
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(isAutoOn && backedCount > 0 ? Theme.positiveText : Theme.summitText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -210,6 +214,7 @@ struct DataHubBackupRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility3)
                 if !typeSize.isAccessibilitySize { Spacer(minLength: Theme.Spacing.xs) }
                 if file.kind.isSafety || file.isForeign {
                     SetPill(text: file.isForeign ? "Eigene Datei" : file.kind.title, symbol: file.isForeign ? "doc" : "shield.lefthalf.filled",
@@ -246,9 +251,10 @@ struct DataHubBackupRow: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Theme.Spacing.xs) { buttons(symbols: true) }
             HStack(spacing: Theme.Spacing.xs) { buttons(symbols: false) }
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { buttons(symbols: true) }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { buttons(symbols: true, wraps: true) }
         }
         .font(.footnote.weight(.semibold))
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // at AX5 a fixed „Wiederherstellen“ was wider than the row
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
         .controlSize(.small)
@@ -256,19 +262,21 @@ struct DataHubBackupRow: View {
     }
 
     @ViewBuilder
-    private func buttons(symbols: Bool) -> some View {
-        Button(action: onCheck) { actionLabel("Prüfen", "checkmark.seal", symbols) }
-        ShareLink(item: file.url, preview: SharePreview(file.name)) { actionLabel("Teilen", "square.and.arrow.up", symbols) }
-        Button(action: onRestore) { actionLabel("Wiederherstellen", "arrow.counterclockwise", symbols) }
+    private func buttons(symbols: Bool, wraps: Bool = false) -> some View {
+        Button(action: onCheck) { actionLabel("Prüfen", "checkmark.seal", symbols, wraps) }
+        ShareLink(item: file.url, preview: SharePreview(file.name)) { actionLabel("Teilen", "square.and.arrow.up", symbols, wraps) }
+        Button(action: onRestore) { actionLabel("Wiederherstellen", "arrow.counterclockwise", symbols, wraps) }
             .disabled(details?.canRestore == false)
     }
 
-    private func actionLabel(_ title: String, _ symbol: String, _ withSymbol: Bool) -> some View {
-        HStack(spacing: 4) {
+    /// In a line the label keeps its ideal width (so ViewThatFits can measure it); stacked it may wrap rather than leave the row.
+    @ViewBuilder
+    private func actionLabel(_ title: String, _ symbol: String, _ withSymbol: Bool, _ wraps: Bool) -> some View {
+        let label = HStack(spacing: 4) {
             if withSymbol { Image(systemName: symbol).imageScale(.small) }
-            Text(title).lineLimit(1)
+            Text(title).lineLimit(wraps ? nil : 1)
         }
-        .fixedSize()
+        if wraps { label.fixedSize(horizontal: false, vertical: true) } else { label.fixedSize() }
     }
 }
 

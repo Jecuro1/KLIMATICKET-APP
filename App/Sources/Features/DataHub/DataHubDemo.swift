@@ -131,7 +131,7 @@ enum DataHubDemo {
 struct DataHubScreenshotHost: View {
     static let screens: Set<String> = [
         "dataHub", "exportHub", "autoBackups", "backupPreview", "backupBanner", "dataAX5", "dataHubBottom", "dataRoundTrip",
-        "dataSettingsRow",
+        "dataSettingsRow", "backupRowsAX5",
     ]
 
     let screen: String
@@ -145,7 +145,7 @@ struct DataHubScreenshotHost: View {
             Color.clear
             if let files { content(files) }
         }
-        .dynamicTypeSize(screen == "dataAX5" || screen == "backupBanner" ? .accessibility5 : .large)
+        .dynamicTypeSize(["dataAX5", "backupBanner", "backupRowsAX5"].contains(screen) ? .accessibility5 : .large)
         .onAppear {
             let made = DataHubDemo.install(context: context)
             if screen == "backupPreview", let data = try? DataHubDemo.previewFile(context: context),
@@ -162,9 +162,10 @@ struct DataHubScreenshotHost: View {
         switch screen {
         case "exportHub":
             NavigationStack { DataHubExportView() }
-        case "autoBackups", "backupBanner":
+        case "autoBackups", "backupBanner", "backupRowsAX5":
             NavigationStack {
-                DataHubBackupsView(screenshotChecked: Set(files.prefix(1).map(\.name)), demoStoreCopies: DataHubDemo.storeCopy(files: files))
+                DataHubBackupsView(screenshotChecked: Set(files.prefix(1).map(\.name)), demoStoreCopies: DataHubDemo.storeCopy(files: files),
+                                   screenshotScrollsToRows: screen == "backupRowsAX5")
             }
         case "backupPreview":
             if let preview { DataHubRestoreSheet(preview: preview) }
