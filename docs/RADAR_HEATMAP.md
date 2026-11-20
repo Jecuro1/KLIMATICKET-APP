@@ -40,8 +40,8 @@ sie endet mit der Ansicht, sie pausiert im Stromspar-Modus und folgt dem Schutzs
 - **Die Ebene braucht keine Zugpunkte.** Auch mit ausgeschalteter Zug-Ebene lädt das Radar für die Pünktlichkeit; die Zustimmung zu Live-Daten
   (§2) gilt wie vorher: ohne sie lädt nichts und die Ebene zeigt nichts.
 - **Modi und Filter** (neu mit radar2, `docs/RADAR_MODES.md` §7). Die Zahlen gelten für **alle Züge und S-Bahnen**, die das Radar hält (`ProductMask.rail`),
-  was die Chips auch sagen: Solange die Ebene an ist, fragt die breite Spur des Radars ganz Österreich mit mindestens 4157, auch wenn der S-Bahn-Chip aus
-  ist oder nur Bus an ist; die Pins folgen weiter den Chips. Bus, Bim und U-Bahn fragt die eigene Stadt-Spur, nur nah herangezoomt und nur für Marker,
+  was die Chips auch sagen: Solange die Ebene an ist, gehen die Bahn-Anfragen des Radars an ganz Österreich, mit mindestens 4157, auch wenn der S-Bahn-Chip aus
+  ist oder nur Bus an ist; die Pins folgen weiter den Chips. Bus, Bim und U-Bahn laden eigene Stadt-Anfragen, nur nah herangezoomt und nur für Marker,
   nie für die Zahlen: Die zwei Österreich-Kacheln der Ebene bleiben reine Schiene. Eine Busverspätung wäre keine Zugverspätung (Review 1). Der Filter
   betrifft die Zugpunkte, nicht die Zahlen; ist er aktiv, sagt das Panel es.
 
@@ -93,8 +93,8 @@ sind zusammen etwa eine solche Antwort.
 - **Die Wahl bleibt.** Ebenen werden je Gerät gespeichert (`map.layers`): Wer die Pünktlichkeit an lässt, lädt bei jedem Öffnen des Radars
   ganz Österreich. Bei geschlossenem Radar und im Hintergrund lädt nichts.
 - **Bus, Bim, U-Bahn** (neu mit radar2, `docs/RADAR_MODES.md` §3, §7). Die Ebene fragt nur Schiene; Busse, Bims und U-Bahnen kommen über die
-  Stadt-Spur, die nur bei höchstens 0,6° Kartenhöhe und eingeschalteter Zug-Ebene fragt. Mit Bussen an blähen sie die Österreich-Kacheln also nicht
-  mehr auf; die letzte Zeile der Tabelle gilt nur noch für die Stadt-Spur in einer dichten Stadt (Obergrenze 24 × 1000 × 1,7 KB ≈ 41 MB je Minute),
+  Stadt-Anfragen, die nur bei höchstens 0,6° Kartenhöhe und eingeschalteter Zug-Ebene fragt. Mit Bussen an blähen sie die Österreich-Kacheln also nicht
+  mehr auf; die letzte Zeile der Tabelle gilt nur noch für die Stadt-Anfragen in einer dichten Stadt (Obergrenze 24 × 1000 × 1,7 KB ≈ 41 MB je Minute),
   und deren Kacheln verlangsamen die zwei Kacheln der Ebene im selben Budget (die Statuskarte sagt den Takt). Damit ist die frühere Frage an den Owner
   beantwortet, ohne etwas abzuschalten.
 
@@ -385,7 +385,7 @@ Anfragen geben die Kachel frei und behalten den Platz im Budget, kein Zeitgeber 
 
 Nicht geändert, mit Grund:
 
-- (Erledigt mit radar2:) Mit Bus, Bim oder U-Bahn an lud die Ebene ganz Österreich mit allen Fahrzeugen. Seit den zwei Spuren fragt sie nur Schiene (§1a).
+- (Erledigt mit radar2:) Mit Bus, Bim oder U-Bahn an lud die Ebene ganz Österreich mit allen Fahrzeugen. Seit den zwei Anfragereihen (Bahn, Stadt) fragt sie nur Schiene (§1a).
 - Die Überblendung baut bei jeder Änderung bis zu 900 Überlagerungen viermal neu (§4). Ob das auf dem Gerät Akku kostet, zeigt nur ein iPhone (§9a).
 - Ein Gruppenring ist orange, wenn ein Zug darin 5 Minuten oder mehr zu spät ist, auch bei 40 Minuten (die Gruppe kennt nur „verspätet“); die Zahlen in
   Panel und Feld-Blatt sagen es genau.

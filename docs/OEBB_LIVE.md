@@ -2850,57 +2850,89 @@ sagt „aktualisiert alle ~X s“), und die Datenmenge dabei ist nicht gemessen;
 rund 1,8 MB entpackt alle 20 s; die frühere Fassung holte bis zu vier Antworten mit zusammen bis zu 2,3 MB, die Menge ist also vergleichbar,
 aber jetzt vollständig); die Größe auf der Leitung; Werte über 1000; Zahlen nachts und am Wochenende; der Busbetrieb in Wien nach Teilung.
 
-### R11.3 Zusammenspiel: Pünktlichkeit, Zeitreise, Cockpit (2026-11-13)
+### R11.3 Zusammenspiel aller Radar-Teile (2026-11-13, neu gefasst 2026-11-20)
 
-Die drei Erweiterungen des Radars (`docs/RADAR_HEATMAP.md`, `docs/RADAR_TIMETRAVEL.md`, `docs/RADAR_COCKPIT.md`) teilen eine Live-Schleife, ein Budget
-und eine Regel, welcher Teil gerade fragen darf: `RadarFeatureGate` in KlimaCore. Die Radar-Ansicht fragt nur dort (`RadarView.gate`).
+Das Radar hat eine Live-Schleife, ein Budget und eine Regel, welcher Teil gerade fragen darf: `RadarFeatureGate` in KlimaCore. Die
+Radar-Ansicht fragt nur dort (`RadarView.gate`). Seit der zweiten Radar-Welle gehören dazu: die **Stadt-Anfragen** für Bus, Bim und U-Bahn
+neben den **Bahn-Anfragen** (§R11.4, `docs/RADAR_MODES.md`), die Abfahrtstafel von **„Wo bleibt mein Bus?“** als Nebenaufgabe der Live-Schleife
+(§R11.5, `docs/RADAR_MINE.md`), **Spuren**, die nichts fragen und nur merken, was ankommt (§R11.6, `docs/RADAR_TRAILS.md`), und außerhalb des
+Radars der **Anschluss-Wächter** an „Live verfolgen“ (§R8, `docs/CONNECTION_GUARD.md`). Pünktlichkeit, Zeitreise und Cockpit:
+`docs/RADAR_HEATMAP.md`, `docs/RADAR_TIMETRAVEL.md`, `docs/RADAR_COCKPIT.md`. Höchstens **ein** Teil des Radars fragt: die Live-Schleife (mit
+beiden Anfragereihen und der Tafel), die Zeitreise abseits von „Jetzt“ oder das Cockpit. Alle nehmen ihre Plätze aus denselben 24 je Minute.
 
-| Zustand | Live-Schleife (`RadarModel.run`) | Zeitreise-Schleife | Cockpit | Ausschnitt des Schedulers |
-|---|---|---|---|---|
-| Radar mit Zügen | läuft | – | – | die Karte |
-| Pünktlichkeit an (mit oder ohne Züge) | läuft | – (kein Uhr-Chip) | – | ganz Österreich (zwei Kacheln der Stufe 0); Verschieben der Karte ändert keine Anfrage |
-| Zeitreise offen bei „Jetzt“ | läuft | läuft, fragt nichts | – | die Karte |
-| Zeitreise abseits von „Jetzt“ (Karte oder Chip) | ruht | holt Momentaufnahmen | – | – |
-| Cockpit offen (aus dem Radar, der Pünktlichkeit oder einer Zeitreise) | ruht | ruht, die Zeitreise bleibt, wo sie war | ein Zug: kleiner Kasten alle 20 s, `JourneyDetails` alle 3 Min | – |
-| App im Hintergrund | ruht | ruht | – | – |
+| Zustand | Bahn-Anfragen | Stadt-Anfragen (Bus, Bim, U-Bahn) | Tafel „Wo bleibt mein Bus?“ | Zeitreise-Schleife | Cockpit | Spuren: merken / zeichnen |
+|---|---|---|---|---|---|---|
+| Radar, Ebene „Züge“ an | die Karte | die Karte, wenn ein Stadt-Modus an ist und die Karte ≤ 0,6° hoch | fragt, wenn die Seite offen ist | – | – | merkt / ja |
+| Pünktlichkeit an, „Züge“ an | ganz Österreich (zwei Kacheln der Stufe 0, mindestens 4157); Verschieben ändert keine Anfrage | die Karte, wie oben (nur Marker, nie für die Zahlen) | fragt, wenn offen | – (kein Uhr-Chip) | – | merkt / ja (über den Sechsecken) |
+| Pünktlichkeit an, „Züge“ aus | ganz Österreich | ruht (keine Marker) | ruht, sagt es | – | – | merkt die Bahn-Antworten / nein |
+| Zeitreise offen bei „Jetzt“ | die Karte | – (eine Zeitreise gibt es nur mit Zügen und S-Bahn) | – (die Karte der Zeitreise schließt das Panel „Meine“) | läuft, fragt nichts | – | merkt / ja |
+| Zeitreise abseits von „Jetzt“ (Karte oder Chip) | ruht | – | ruht, sagt es (Panel neben dem Chip) | holt Momentaufnahmen | – | nichts kommt an / ausgeblendet (die Zeitreise zeichnet ihre eigene, berechnete Spur) |
+| Cockpit offen (aus dem Radar, der Pünktlichkeit oder einer Zeitreise) | ruht | ruht | ruht, sagt es | ruht, die Zeitreise bleibt, wo sie war | ein Fahrzeug: kleiner Kasten alle 20 s, `JourneyDetails` alle 3 Min | nichts kommt an / – (Cockpit-Ansicht) |
+| Stromsparmodus | ruht (nur „Jetzt aktualisieren“) | ruht (ebenso) | ruht, sagt es; „Jetzt aktualisieren“ fährt in der Runde des Radars mit | – | – | merkt nur, was die Runde bringt / ja (letzter Stand) |
+| offline | ruht, bis die Verbindung zurück ist | ruht ebenso | ruht, sagt es | endet wie „Zurück zu Jetzt“, das Geladene bleibt | – | **behalten** / nein (offline keine Marker); zurück online mit einer Lücke |
+| keine Zustimmung, „Live-Fahrplan“ aus, Notschalter, Funktionen › Offline-Modus | endet | endet | endet | endet mit allem Geladenen | – | **gelöscht** |
+| App im Hintergrund | ruht | ruht | ruht | ruht | ruht (es fragt nur bei aktiver App) | behalten, nichts kommt an |
+| Radar geschlossen | endet | endet | endet | endet | – | weg (mit der Ansicht freigegeben) |
 
-- **Höchstens ein Teil fragt.** Die Live-Schleife, die Zeitreise abseits von „Jetzt“ oder das Cockpit, nie zwei zugleich. Alle drei nehmen ihren Platz aus
+- **Höchstens ein Teil fragt.** Die Live-Schleife, die Zeitreise abseits von „Jetzt“ oder das Cockpit, nie zwei zugleich. Alle nehmen ihren Platz aus
   demselben Budget des Radars (24 je Minute, höchstens 4 in 10 s, 1 s Abstand; `RadarScheduler.claimSlot`, über Ansichten hinweg `RadarBudgetLedger`),
   so dass auch ein Zusammentreffen nicht darüber käme (`HeatBudgetTests.testTheZeitreiseAndTheLayerShareOneBudget`,
   `RadarTimeSchedulerTests.testTheBudgetHoldsWhenTheLiveRadarAndTheZeitreiseAlternate`, `CockpitFeedTests.testTheBudgetOfTheCockpitIsAboutThreeAndAHalfRequestsAMinute`).
-- **Pünktlichkeit und Zeitreise schließen sich aus.** Den Uhr-Chip gibt es nur bei ausgeschalteter Pünktlichkeits-Ebene, nur mit Schiene und nur mit
-  Live-Daten. Die Ebene während einer Zeitreise einschalten (die Ebenen-Leiste steht, sobald die Zeitreise zum Chip zugeklappt ist) beendet die
-  Zeitreise; bis dahin bleibt die Ebene aus, denn ihre Zahlen gehören zu „jetzt“.
+- **Eine Live-Schleife, zwei Anfragereihen und eine Nebenaufgabe.** Bahn- und Stadt-Kacheln holt `RadarScheduler.next` im selben Takt und Budget; wollen
+  beide zusammen mehr als 24 je Minute, werden alle Kacheln um denselben Faktor langsamer (§R11.4). Die Tafel von „Wo bleibt mein Bus?“ nimmt in
+  derselben Schleife einen eigenen Platz (`Radar2Parts.dueSideJob`, `claimSlot`): eine Anfrage je 60 s, höchstens eine unterwegs, nur wenn
+  `RadarFeatureGate.stopPanelAsks` gilt (§R11.5). Selbst die dichteste Stadtansicht (16 Stadt-Kacheln) mit offener Tafel bleibt bei 24 und lässt
+  16 der 40 frei (`RadarMineGateTests.testTheWorstCityViewWithTheBoardStaysWithinTheBudget`). „Linien“ und „In der Nähe“ von „Meine Fahrzeuge“
+  und die Spuren fragen nichts; sie lesen, was die Kacheln liefern.
+- **Pünktlichkeit und Zeitreise schließen sich aus**, Bus, Bim oder U-Bahn und die Zeitreise ebenso. Den Uhr-Chip gibt es nur bei ausgeschalteter
+  Pünktlichkeits-Ebene, nur mit Zügen und S-Bahn und nur mit Live-Daten. Die Ebene während einer Zeitreise einschalten (die Ebenen-Leiste steht, sobald
+  die Zeitreise zum Chip zugeklappt ist) beendet die Zeitreise; bis dahin bleibt die Ebene aus, denn ihre Zahlen gehören zu „jetzt“. Die Zahlen der
+  Ebene zählen nur Züge und S-Bahnen, egal welche Chips an sind (`docs/RADAR_HEATMAP.md` §1a).
 - **Was eine Zeitreise beendet** (`RadarFeatureGate.timeEnding`): Zug-Ebene aus, Pünktlichkeit an, Bus, Bim oder U-Bahn an, keine Zustimmung, Schalter
   aus, Notschalter: Alles Geladene ist weg (`reset`). Nur offline: Sie endet wie „Zurück zu Jetzt“, das Geladene bleibt (`suspend`). Hintergrund und
   Cockpit beenden sie nicht.
-- **Cockpit.** Aus einer Zeitreise nur für einen Zug, den das Live-Radar kennt. Den Knopf „Cockpit“ hat das Fahrt-Blatt eines Zugs auf der Karte; das
-  Fahrt-Blatt aus der Liste einer Pünktlichkeits-Zelle (ein Blatt über dem Blatt der Zelle) hat ihn nicht.
+- **Ein Panel unten.** Die Karte der Zeitreise und das Panel „Meine“ teilen sich den Platz über der Statuskarte: Öffnet das eine, schließt das andere
+  (`Radar2Parts.timeCardOpened`, `RadarView+Mine`).
+- **Cockpit.** Aus einer Zeitreise nur für einen Zug, den das Live-Radar kennt. Den Knopf „Cockpit“ hat das Fahrt-Blatt eines Fahrzeugs auf der Karte;
+  das Fahrt-Blatt aus der Liste einer Pünktlichkeits-Zelle (ein Blatt über dem Blatt der Zelle) hat ihn nicht. Für Bus, Bim und U-Bahn ist das Cockpit
+  nicht auf einem Gerät geprüft (`docs/RADAR_MODES.md` §7).
+- **Fahrt-Blatt.** Ein Tipp auf ein Fahrzeug holt einmal dessen Fahrt (`JourneyDetails` mit Linienzug) über die Drossel der App, nicht über das
+  Radar-Budget; die Antwort bleibt 5 Minuten gemerkt (`RadarRouteCache`, höchstens 30 Fahrten). Es fragt nur nach einem Tipp, nie in einer Schleife.
+- **Spuren** schicken keine Anfrage und folgen jedem Zustand der Regel (`RadarTrailReviewTests.testTrailsFollowEveryStateOfTheRadarGate`): gezeichnet nur
+  mit Ebene „Züge“, offenen Live-Daten und bei „Jetzt“; offline behalten, nicht gezeichnet; gelöscht, wenn der Zugang zugeht (`Radar2Hooks`).
+- **Anschluss-Wächter** (nicht Teil des Radars): Er prüft eine live verfolgte Verbindung mit Umstieg, solange die App aktiv ist – eine Reconstruction alle
+  120 s (60 s, solange es schlechter als „Sicher“ steht), höchstens eine Suche nach Alternativen je 3 Minuten. Er fragt über die Drossel der App,
+  **nicht** über das Radar-Budget, und läuft unabhängig davon, ob das Radar offen ist; mit der Verfolgung etwa 2,3 Anfragen je Minute
+  (`docs/CONNECTION_GUARD.md` §4). Im Hintergrund fragt er nichts.
 - **Drossel der App.** Jede Anfrage geht durch `HafasClient` und `RequestThrottle` (40 je Minute für die ganze App, 0,3 s Abstand). Das Radar bleibt
-  mit allen drei Teilen bei 24; mindestens 16 je Minute bleiben für Fahrplan, Abfahrtstafeln, „Live verfolgen“, die Pendel-Karte und „Nächste
-  Abfahrten“ (`RadarSchedulerTests.testTheSharedBudgetLeavesRoomForThePlannerAndFollow`).
+  mit allen Teilen bei 24; mindestens 16 je Minute bleiben für Fahrplan, Abfahrtstafeln, „Live verfolgen“, den Anschluss-Wächter, die Pendel-Karte,
+  „Nächste Abfahrten“ und das Fahrt-Blatt (`RadarSchedulerTests.testTheSharedBudgetLeavesRoomForThePlannerAndFollow`, `RadarLaneSchedulerTests` (g)).
 
 **Test (Linux):** `RadarFeatureGateTests` geht jeden Zustand durch, den man erreichen kann (84: 48 im Radar, 24 unter dem Cockpit, 12 mit einer
 Zeitreise), und von jedem jeden Schritt, den der Bildschirm dort anbietet (Ebenen, Modi, Zeitreise auf, zu, weg, zurück, Cockpit auf und zu,
 Hintergrund, offline, Notschalter). Nach jedem Schritt gilt: nie zwei fragende Teile, die Live-Schleife ruht in der Zeitreise und unter dem Cockpit,
-die Pünktlichkeits-Ebene hat ihre Schleife, keine Zeitreise neben der Ebene oder einem anderen Modus, und von überall führen „Cockpit schließen“,
-„zurück in die App“ und „Zurück zu Jetzt“ zum Live-Radar. Der Test prüft die Regel, nicht SwiftUI: Dass `.task(id:)` und `.onChange` auf einem
-iPhone in dieser Reihenfolge laufen, zeigt nur ein Gerät (Geräte-Checklisten in den drei Dokumenten).
+die Pünktlichkeits-Ebene hat ihre Schleife, keine Zeitreise neben der Ebene oder einem anderen Modus, die Tafel fragt nur in der Live-Schleife mit
+Ebene „Züge“ und nie im Stromsparmodus, und von überall führen „Cockpit schließen“, „zurück in die App“ und „Zurück zu Jetzt“ zum Live-Radar.
+Jeder Teil prüft seinen Anteil in allen 480 Eingaben der Regel (auch denen, die man nicht erreichen kann): `RadarMineGateTests` (Tafel, mit offener und geschlossener Seite, mit und ohne
+Stromsparmodus), `RadarTrailReviewTests` (Spuren), `RadarIntegrationTests` (Stadt-Anfragen: nur in der Live-Schleife mit Ebene „Züge“, nie neben
+einer Zeitreise, nie für die Pünktlichkeit allein). Die Tests prüfen die Regel, nicht SwiftUI: Dass `.task(id:)` und `.onChange` auf einem iPhone in
+dieser Reihenfolge laufen, zeigt nur ein Gerät (Geräte-Checklisten in den Dokumenten der Teile).
 
-### R11.4 Bus, Bim, U-Bahn: zwei Spuren in einem Budget (2026-11-13, radar2)
+### R11.4 Bus, Bim, U-Bahn: Bahn- und Stadt-Anfragen in einem Budget (2026-11-13, radar2)
 
-Ausführlich: `docs/RADAR_MODES.md`. Ein Scheduler, zwei Spuren (`RadarLane`), ein Budget von 24 je Minute (höchstens 4 in 10 s, 1 s Abstand), über
+Ausführlich: `docs/RADAR_MODES.md`. Ein Scheduler, zwei Anfragereihen (`RadarLane`; früher „Spuren“ genannt, das Wort meint jetzt nur
+noch die Linie hinter einem Fahrzeug, §R11.6), ein Budget von 24 je Minute (höchstens 4 in 10 s, 1 s Abstand), über
 Ansichten hinweg `RadarBudgetLedger`; mindestens 16 der 40 je Minute bleiben für Fahrplan, Abfahrten und „Live verfolgen“ (`RadarLaneSchedulerTests` (g)).
 
-- **Breite Spur:** Züge (4125) und S-Bahn (32), voreingestellt beide (= 4157 wie bisher), bei eingeschalteter Pünktlichkeit immer 4157 für ganz
+- **Bahn-Anfragen** (`.wide`): Züge (4125) und S-Bahn (32), voreingestellt beide (= 4157 wie bisher), bei eingeschalteter Pünktlichkeit immer 4157 für ganz
   Österreich. Raster und Takt wie §R11.2 (bis Stufe 6, 20 s/45 s).
-- **Stadt-Spur:** Bus (64), Bim (512), U-Bahn (256); nur bei höchstens 0,6° Kartenhöhe (etwa 67 km), eingeschalteter Zug-Ebene und laufender
-  Live-Schleife; eine Stufe feiner als die breite Spur, Teilung bis Stufe 8 (1,2 × 1,1 km), höchstens 16 Kacheln; alle 20 s im WLAN, alle 60 s über
+- **Stadt-Anfragen** (`.city`): Bus (64), Bim (512), U-Bahn (256); nur bei höchstens 0,6° Kartenhöhe (etwa 67 km), eingeschalteter Zug-Ebene und laufender
+  Live-Schleife; eine Stufe feiner als die Bahn-Anfragen, Teilung bis Stufe 8 (1,2 × 1,1 km), höchstens 16 Kacheln; alle 20 s im WLAN, alle 60 s über
   mobile Daten oder im Datensparmodus.
-- Wollen beide Spuren mehr als 24 je Minute, werden alle Kacheln um denselben Faktor langsamer (16 Stadt- und 4 breite Kacheln: etwa 50 s); die
-  Statuskarte sagt es. Die Stadt-Spur schätzt ihre Datenmenge (1,7 KB je Eintrag, unkomprimiert) und sagt sie ab 2 MB je Minute; Obergrenze etwa 41 MB.
+- Wollen beide Reihen mehr als 24 je Minute, werden alle Kacheln um denselben Faktor langsamer (16 Stadt- und 4 Bahn-Kacheln: etwa 50 s); die
+  Statuskarte sagt es. Die Stadt-Anfragen schätzen ihre Datenmenge (1,7 KB je Eintrag, unkomprimiert) und sagt sie ab 2 MB je Minute; Obergrenze etwa 41 MB.
 - Keine neue Anfrageart: nur `JourneyGeoPos`. Zustimmung, Schalter, Notschalter, offline, Stromsparmodus, Hintergrund, Zeitreise und Cockpit wirken
-  auf beide Spuren wie in §R11.3.
+  auf beide Reihen wie in §R11.3.
 
 **Messung (einmalig, 4 Anfragen, Freitag 2026-11-13 21:17 Wien, abends)** – nur Zahlen, keine Fahrten, Linien, Namen oder Koordinaten:
 
@@ -2912,7 +2944,7 @@ Ansichten hinweg `RadarBudgetLedger`; mindestens 16 der 40 je Minute bleiben fü
 | Stufe-5-Kachel Graz Hbf, 832 | 24 (Bus 19, Bim 5) | nein | 52 592 | 2191 | 100 % mit Echtzeit |
 
 Folgen: JourneyGeoPos liefert U-Bahn-Positionen; Schiffe waren abends im November nicht messbar (bleiben verborgen); Schienenersatzverkehr und
-Rufbus/Seilbahn liefern Positionen, Chips dafür sind nicht gebaut; Grenzen der Stadt-Spur unverändert (abends nicht repräsentativ).
+Rufbus/Seilbahn liefern Positionen, Chips dafür sind nicht gebaut; Grenzen der Stadt-Anfragen unverändert (abends nicht repräsentativ).
 
 ### R11.5 Meine Fahrzeuge: die Abfahrtstafel als Nebenaufgabe (2026-11-19, radar2)
 

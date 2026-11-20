@@ -1,7 +1,7 @@
 # Radar für alle Verkehrsmittel (radarmodes)
 
 Stand 2026-11-13. Teil der zweiten Radar-Welle (radar2). Code: `App/Sources/Features/Radar/Modes/`, `App/Sources/Features/Radar/Radar2/`,
-`Packages/KlimaCore/Sources/KlimaCore/Live/Radar/Modes/`, die Spuren-Teile in `RadarScheduler.swift` und `RadarTiles.swift` (jeweils `// MARK: radarmodes`).
+`Packages/KlimaCore/Sources/KlimaCore/Live/Radar/Modes/`, die Teile der zwei Anfragereihen in `RadarScheduler.swift` und `RadarTiles.swift` (jeweils `// MARK: radarmodes`).
 Regeln für Live-Daten: `docs/OEBB_LIVE.md` §2, §R11 (hier §R11.4).
 
 ## 1. Was es kann
@@ -15,7 +15,7 @@ Regeln für Live-Daten: `docs/OEBB_LIVE.md` §2, §R11 (hier §R11.4).
 - **Der S-Bahn-Chip tut, was er sagt.** Bis radar2 fragte „Züge“ nach `.rail` (4157), und darin steckt die S-Bahn (32): S-Bahnen waren auf der
   Karte, ob der S-Bahn-Chip an war oder nicht. Jetzt ist „Züge“ 4125 und „S-Bahn“ 32; voreingestellt sind beide an, die Anfrage ist dieselbe wie bisher.
 - **Filter & Darstellung** (§6): Schnellwahl („Fernverkehr“, „Öffis in der Stadt“ …), Zugart, Linie oder Zugnummer, Betreiber, Verspätung, Echtzeit,
-  Region; Beschriftung (Linie, Linie und Ziel, Nur Punkte), Größe, Gruppen, Richtungspfeil, Takt der Stadt-Spur. Ein aktiver Filter steht immer
+  Region; Beschriftung (Linie, Linie und Ziel, Nur Punkte), Größe, Gruppen, Richtungspfeil, Takt der Stadt-Anfragen. Ein aktiver Filter steht immer
   sichtbar auf der Karte. Die Suche findet „13A“, „U6“ und „D“.
 - **Die Wahl bleibt** je Gerät (`radar.modes.v1`, `radar.filter.v1`, `radar.display.v1`).
 
@@ -39,12 +39,13 @@ Regeln für Live-Daten: `docs/OEBB_LIVE.md` §2, §R11 (hier §R11.4).
 - Weitere Arten (Schienenersatzverkehr, Schiff, Seilbahn und Rufbus) bekommen einen Chip nur, wenn eine Messung Positionen zeigt (§8). Gebaut ist
   keiner davon (§11).
 
-## 3. Zwei Ebenen der Abfrage
+## 3. Zwei Anfragereihen: Bahn und Stadt
 
-Ein Scheduler, zwei Spuren (`RadarLane`), ein Budget. Die Spur ist Teil des Kachel-Schlüssels (`RadarTileKey.lane`): Zustände, Teilungen, laufende
-Anfragen und Antworten gelten je Kachel und Spur, das Budget bleibt eines.
+Ein Scheduler, zwei Anfragereihen (`RadarLane`): **Bahn-Anfragen** (`.wide`) und **Stadt-Anfragen** (`.city`), ein Budget. Früher hießen sie
+„Spuren“; „Spur“ meint jetzt nur noch die Linie hinter einem Fahrzeug (`docs/RADAR_TRAILS.md`). Die Reihe ist Teil des Kachel-Schlüssels
+(`RadarTileKey.lane`): Zustände, Teilungen, laufende Anfragen und Antworten gelten je Kachel und Reihe, das Budget bleibt eines.
 
-| | breite Spur | Stadt-Spur |
+| | Bahn-Anfragen | Stadt-Anfragen |
 |---|---|---|
 | fragt nach | Züge, S-Bahn (bei eingeschalteter Pünktlichkeit immer alle Züge und S-Bahnen, 4157) | Bus, Bim, U-Bahn (was davon an ist) |
 | Gebiet | die Karte, bei Pünktlichkeit ganz Österreich | die Karte, nur bis 0,6° Höhe (etwa 67 km) |
@@ -52,45 +53,45 @@ Anfragen und Antworten gelten je Kachel und Spur, das Budget bleibt eines.
 | Teilung bei 1000 | bis Stufe 6 (4,9 × 4,6 km) | bis Stufe 8 (1,2 × 1,1 km) |
 | Kacheln je Ansicht | wie bisher | höchstens 16 (`cityMaxTiles`); eine Teilung, die mehr bräuchte, unterbleibt („zu dicht“, gesagt) |
 | Takt | 20 s dicht oder nah, 45 s ruhig (wie bisher) | „Automatisch“: 20 s im WLAN, 60 s über mobile Daten oder im Datensparmodus |
-| läuft, wenn | Live-Schleife läuft und die Spur etwas abfragt | Live-Schleife läuft, Zug-Ebene an, ein Stadt-Modus an, Karte ≤ 0,6° |
+| läuft, wenn | Live-Schleife läuft und die Reihe etwas abfragt | Live-Schleife läuft, Zug-Ebene an, ein Stadt-Modus an, Karte ≤ 0,6° |
 
-Warum zwei Spuren: (a) eine gemischte Antwort am Limit von 1000 drängte die Züge zugunsten der Busse hinaus (das Limit zählt die ganze Liste);
-(b) die Stadt-Spur kann feiner anfangen und tiefer teilen, ohne die zwei Kacheln der Österreich-Ansicht zu ändern; (c) die Pünktlichkeit behält ihre
+Warum zwei Reihen: (a) eine gemischte Antwort am Limit von 1000 drängte die Züge zugunsten der Busse hinaus (das Limit zählt die ganze Liste);
+(b) die Stadt-Anfragen können feiner anfangen und tiefer teilen, ohne die zwei Kacheln der Österreich-Ansicht zu ändern; (c) die Pünktlichkeit behält ihre
 Österreich-Kacheln mit Schiene, während Busse der Karte folgen; (d) ein Wechsel bei Bus, Bim oder U-Bahn setzt nur die Stadt-Kacheln zurück.
 
 Buchführung (README radar2 F14, F15):
-- **Eine Generation je Spur.** Eine Antwort, die vor einem Wechsel ihrer Spur gefragt wurde, fällt weg; eine Antwort der anderen Spur wird
+- **Eine Generation je Reihe.** Eine Antwort, die vor einem Wechsel ihrer Reihe gefragt wurde, fällt weg; eine Antwort der anderen Reihe wird
   verbucht und gibt ihre Kachel sofort frei (`RadarLaneSchedulerTests` (l)).
-- **Nie zwei Anfragen für eine Kachel.** Der Wechsel vergisst die Kacheln seiner Spur, aber nicht, dass eine Anfrage noch unterwegs ist
+- **Nie zwei Anfragen für eine Kachel.** Der Wechsel vergisst die Kacheln seiner Reihe, aber nicht, dass eine Anfrage noch unterwegs ist
   (`TileState.isStale`): Bis ihre Antwort da ist (und mit `recordDropped` wegfällt) oder `requestTimeout` vergangen ist, wird die Kachel nicht neu
   gefragt, und sie zählt zu den höchstens drei Anfragen unterwegs. Danach ist sie sofort fällig, wie eine nie gefragte. Vorher konnte ein Chip-Wechsel
   dieselbe Kachel ein zweites Mal schicken und kurz vier Anfragen unterwegs haben; das Budget (24 je Minute, 4 in 10 s) hielt auch damals
   (`RadarSchedulerInFlightResetTests`, Review-Fix).
-- **Was beim Wechsel geht:** Fahrzeuge, deren Klasse keine der beiden Spuren mehr anfragt (Chips ∪ 4157 bei Pünktlichkeit). Die Pins filtern weiter
+- **Was beim Wechsel geht:** Fahrzeuge, deren Klasse keine der beiden Reihen mehr anfragt (Chips ∪ 4157 bei Pünktlichkeit). Die Pins filtern weiter
   nach den Chips. So bleiben die S-Bahnen der Pünktlichkeit, wenn man den S-Bahn-Chip ausschaltet.
-- **Status:** Die bisherigen Felder von `RadarStatus` gelten nur für die breite Spur (Vollständigkeit der Pünktlichkeit, `holdsAllOfAustria` der
-  Zeitreise und `RadarStatusText.notes` lesen sie unverändert); die Stadt-Spur hat `status.city`. Gemeinsam nur, wo die Oberfläche eine Zahl zeigt:
-  Alter der Pille = ältere Antwort beider Spuren, „Radar pausiert“ = jede Spur mit Kacheln pausiert. Eine Spur ohne Maske hat keine Ansicht: Nur
+- **Status:** Die bisherigen Felder von `RadarStatus` gelten nur für die Bahn-Anfragen (Vollständigkeit der Pünktlichkeit, `holdsAllOfAustria` der
+  Zeitreise und `RadarStatusText.notes` lesen sie unverändert); die Stadt-Anfragen haben `status.city`. Gemeinsam nur, wo die Oberfläche eine Zahl zeigt:
+  Alter der Pille = ältere Antwort beider Reihen, „Radar pausiert“ = jede Reihe mit Kacheln pausiert. Eine Reihe ohne Maske hat keine Ansicht: Nur
   Bus an ergibt nie „Außerhalb des Radar-Bereichs“.
 - Über 0,6° verlassen Bus, Bim und U-Bahn die Karte sofort, die Chips tragen ein Lupen-Zeichen, VoiceOver sagt „an, erscheint beim Heranzoomen“,
   die Statuskarte sagt „Bus, Bim und U-Bahn erscheinen, wenn du näher heranzoomst.“
 
 ## 4. Budget, Datenmenge
 
-Ein Budget für beide Spuren: 24 je Minute, höchstens 4 in 10 s, 1 s Abstand, 3 gleichzeitig (`RadarSchedulerConfig.standard`), über Ansichten hinweg
+Ein Budget für beide Reihen: 24 je Minute, höchstens 4 in 10 s, 1 s Abstand, 3 gleichzeitig (`RadarSchedulerConfig.standard`), über Ansichten hinweg
 `RadarBudgetLedger`. Mindestens 16 der 40 Anfragen je Minute der App bleiben für Fahrplan, Abfahrten, „Live verfolgen“ (Test (g)). Wollen die
-sichtbaren Kacheln mehr, wird **jede** Kachel um denselben Faktor langsamer, auch die der breiten Spur und der Pünktlichkeit: 16 Stadt- und 4 breite
-Kacheln zu je 20 s wollen 60 je Minute, erlaubt sind 24, also alle etwa 50 s. Die Statuskarte sagt es einmal für beide Spuren
+sichtbaren Kacheln mehr, wird **jede** Kachel um denselben Faktor langsamer, auch die der Bahn-Anfragen und der Pünktlichkeit: 16 Stadt- und 4 Bahn-Kacheln
+zu je 20 s wollen 60 je Minute, erlaubt sind 24, also alle etwa 50 s. Die Statuskarte sagt es einmal für beide Reihen
 („Dieser Ausschnitt · aktualisiert alle ~50 s“; Tests (i)).
 
 Datenmenge (Schätzung, die App sagt „geschätzt“): Die Antworten von `/gate` sind nicht komprimiert (§A2.1). Ein Bus- oder Bim-Eintrag hat etwa
 1,7 KB (§R11.1 c: 1 666 493 B für 1000; Messung §8: 1,6 bis 2,2 KB), ein Zug etwa 2 KB. `RadarDataEstimate` rechnet mit den Fahrzeugen der letzten
-Antwort jeder sichtbaren Stadt-Kachel und dem gedehnten Takt der Spur; ab 2 MB je Minute steht es in der Statuskarte.
+Antwort jeder sichtbaren Stadt-Kachel und dem gedehnten Takt der Reihe; ab 2 MB je Minute steht es in der Statuskarte.
 
 | Lage | Anfragen je Minute | Daten je Minute (etwa) |
 |---|---|---|
-| Wien, Stadtansicht, WLAN: 6 Stadt-Kacheln zu je 400 Fahrzeugen, 20 s | 18 + breite Spur, im Budget | 12 MB |
-| Wien, Stadtansicht, mobile Daten („Automatisch“ → 60 s) | 6 + breite Spur | 4 MB |
+| Wien, Stadtansicht, WLAN: 6 Stadt-Kacheln zu je 400 Fahrzeugen, 20 s | 18 + Bahn-Anfragen, im Budget | 12 MB |
+| Wien, Stadtansicht, mobile Daten („Automatisch“ → 60 s) | 6 + Bahn-Anfragen | 4 MB |
 | Österreich mit Pünktlichkeit und Bus an (Bus erst ab 0,6°) | 6 (zwei Kacheln, Schiene) | wie ohne Bus |
 | Obergrenze: das ganze Budget, jede Antwort voll | 24 | 24 × 1000 × 1,7 KB ≈ 41 MB |
 
@@ -145,7 +146,7 @@ eines Datenzählers auf dem iPhone fehlt (§12).
 ## 6. Filter, Schnellwahl, Darstellung
 
 Das Blatt „Filter & Darstellung“ (Knopf links oben, `RadarFilterSheet`) hat zwei Seiten. Jede Änderung wirkt sofort auf der Karte. **Verkehrsmittel
-fragen die Auskunft** (beide Spuren, §3); **alle Filter wirken auf dem iPhone** auf die Fahrzeuge, die das Radar hält, mit einem einzigen Prüfer
+fragen die Auskunft** (beide Reihen, §3); **alle Filter wirken auf dem iPhone** auf die Fahrzeuge, die das Radar hält, mit einem einzigen Prüfer
 (`RadarFilter.matches(_:delay:)`) für die Live-Pins und die Pins der Zeitreise (README radar2 F9).
 
 | Option | Was sie tut | Wo | gespeichert |
@@ -167,7 +168,7 @@ fragen die Auskunft** (beide Spuren, §3); **alle Filter wirken auf dem iPhone**
 | Größe | Klein / Normal / Groß = Schild 10 / 11 / 13 pt; der Gruppenraster folgt (44 / 56 / 70 pt), so dass sich Gruppen nie überdecken | Marker, Gruppen | dto. |
 | Gruppen zusammenfassen | „Aus“ bis 250 Fahrzeuge im Ausschnitt, darüber wieder Gruppen; ohne Gruppen können sich Marker überdecken | Gruppen | dto. |
 | Richtungspfeil | Pfeil zum nächsten Halt an oder aus | Marker | dto. |
-| Bus, Bim und U-Bahn aktualisieren | „Automatisch“ (WLAN 20 s, mobile Daten 60 s), „Alle 20 s“, „Alle 60 s“ | Takt der Stadt-Spur | dto. |
+| Bus, Bim und U-Bahn aktualisieren | „Automatisch“ (WLAN 20 s, mobile Daten 60 s), „Alle 20 s“, „Alle 60 s“ | Takt der Stadt-Anfragen | dto. |
 
 - **Aktiver Filter immer sichtbar:** Unter den Chips steht „Filter: RJX, RJ · nur verspätet“ mit „Filter aus“; ein Tipp darauf öffnet das Blatt.
   Eine leere Karte mit Filter sagt „Kein Fahrzeug passt zum Filter. Ohne Filter wären es 84.“
@@ -180,14 +181,14 @@ fragen die Auskunft** (beide Spuren, §3); **alle Filter wirken auf dem iPhone**
 
 ## 7. Zusammenspiel mit Pünktlichkeit, Zeitreise, Cockpit
 
-- **Pünktlichkeit:** Bei eingeschalteter Ebene fragt die breite Spur Österreich mit mindestens 4157 (was die Chips auch sagen), und die Ebene zählt
+- **Pünktlichkeit:** Bei eingeschalteter Ebene gehen die Bahn-Anfragen an ganz Österreich, mit mindestens 4157 (was die Chips auch sagen), und die Ebene zählt
   alle Züge und S-Bahnen, die das Radar hält (`refreshHeat` mit `.rail`). Die Zahlen hängen nicht mehr an den Chips; „nur Bus an“ lässt die Ebene
   nicht mehr leer (der Hinweis dazu ist weg); Busse blähen ihre Österreich-Kacheln nicht mehr auf (die offene Frage in `docs/RADAR_HEATMAP.md` §1a ist
-  damit beantwortet, ohne etwas abzuschalten). Die Stadt-Spur läuft nur mit eingeschalteter Zug-Ebene, für Marker, nie für die Zahlen.
+  damit beantwortet, ohne etwas abzuschalten). Die Stadt-Anfragen laufen nur mit eingeschalteter Zug-Ebene, für Marker, nie für die Zahlen.
 - **Zeitreise:** Regel unverändert (nur Züge und S-Bahn); ihre Momentaufnahmen fragen weiter 4157, ihre Pins filtern nach den Chips: S-Bahn aus
   blendet die S-Bahnen auch dort aus.
 - **Cockpit:** für jedes Fahrzeug wie bisher; der Kasten des Cockpits fragt nach der Klasse des Fahrzeugs. Für Bus, Bim und U-Bahn **nicht geprüft**.
-- Zustände wie in §R11.3: Die Stadt-Spur ruht mit der Live-Schleife (Zeitreise abseits von „Jetzt“, Cockpit, Hintergrund, Stromsparmodus mit Ausnahme
+- Zustände wie in §R11.3: Die Stadt-Anfragen ruhen mit der Live-Schleife (Zeitreise abseits von „Jetzt“, Cockpit, Hintergrund, Stromsparmodus mit Ausnahme
   von „Jetzt aktualisieren“) und endet offline, ohne Zustimmung, beim Ausschalten oder Notschalter.
 
 ## 8. Messung (einmalig, 4 Anfragen, 2026-11-13, Freitag 21:17 Wien)
@@ -239,9 +240,9 @@ Takt, mobile Daten, Datenmenge, leer, leer mit Filter), Zeitreise-Hinweis, Legen
 
 ## 11. Geprüft / nicht geprüft
 
-Geprüft (Linux, KlimaCore): Masken und Speicherung der Modi (`RadarModeSelectionTests`), Raster mit Spuren (`RadarLaneTilesTests`), Scheduler mit
-zwei Spuren (a)–(m) inklusive Budget mit Nebenauftrag, Pünktlichkeit plus Stadt-Spur und der gemeinsamen Dehnung (`RadarLaneSchedulerTests`), was jede
-Spur fragt und das Demo-Budget (`RadarLanePlanTests`), Zählzeile (`RadarModeCountsTests`), Datenmenge (`RadarDataEstimateTests`), alle Texte
+Geprüft (Linux, KlimaCore): Masken und Speicherung der Modi (`RadarModeSelectionTests`), Raster mit beiden Reihen (`RadarLaneTilesTests`), Scheduler mit
+zwei Reihen (a)–(m) inklusive Budget mit Nebenauftrag, Pünktlichkeit plus Stadt-Anfragen und der gemeinsamen Dehnung (`RadarLaneSchedulerTests`), was jede
+Reihe fragt und das Demo-Budget (`RadarLanePlanTests`), Zählzeile (`RadarModeCountsTests`), Datenmenge (`RadarDataEstimateTests`), alle Texte
 (`RadarModesTextTests`); alle bisherigen Radar-Tests unverändert grün. App: Linux-Typprüfung.
 
 Dazu Teil B: Zugart, Betreiber, Linien, beide Prüfer gleich auf 20 Fällen, Speicherung v1 → v2 (`RadarFilterCoreTests`), Schnellwahl
@@ -261,8 +262,8 @@ Gruppen in der Farbe des häufigsten Verkehrsmittels, „Nur diese zeigen“ als
 ## 12. Geräte-Checkliste
 
 - Wien-Stadtansicht mit allen Arten 5 Minuten: ruckelt die Karte bei 300 bis 600 Markern, Akku.
-- Datenzähler (Einstellungen › Mobiles Netz) über 10 Minuten Stadt-Spur gegen die Schätzung der Statuskarte.
-- „Automatisch“ über Mobilfunk: kommt die Stadt-Spur alle 60 s?
+- Datenzähler (Einstellungen › Mobiles Netz) über 10 Minuten Stadt-Anfragen gegen die Schätzung der Statuskarte.
+- „Automatisch“ über Mobilfunk: kommen die Stadt-Anfragen alle 60 s?
 - VoiceOver über gemischte Marker; Legende bei AX5; Kartenstil „Dunkel“ (Ring-Abstand schwarz, Schilder lesbar).
 - Bus an in der Österreich-Ansicht: keine Bus-Anfrage, Lupe am Chip; heranzoomen bis unter 67 km: Busse kommen.
 - Filter und Darstellung nach einem Neustart der App noch da; „Filter aus“ in der Zeile auf der Karte; „Nur Punkte“ bei 500 Markern flüssig?
@@ -281,7 +282,7 @@ Gelandet im ersten Commit dieses Tracks (`Radar2/Radar2Seam.swift`); radarmine u
 | `Mine/RadarMineModel.swift`, `Mine/RadarView+Mine.swift` | radarmine | Stubs |
 | `Trail/RadarTrailModel.swift`, `Trail/RadarView+Trail.swift` | radartrail | Stubs |
 
-Haken in geteilten Dateien (je `// MARK: radar2`): `RadarModel` (`radar2`, `didMerge` nach `store.merge` mit den Produkten der Spur, `didRemove` mit den
+Haken in geteilten Dateien (je `// MARK: radar2`): `RadarModel` (`radar2`, `didMerge` nach `store.merge` mit den Produkten der Reihe, `didRemove` mit den
 ausgeschalteten Klassen, Nebenauftrag vor `scheduler.next` über `claimSlot`, `runSideJob`, Einzelmarker bei `keepsSingle`), `RadarView` (Karteninhalt,
 `Radar2Hooks`, Fahrt-Blatt), `RadarView+Heat` (Dekoration, Fahrt-Blatt), `RadarView+Controls` (Chip-Leiste, Panel, Notizen außerhalb des Blocks der
 Statuskarte), `RadarTripSheet` (`radar2`, `Radar2TripRows`), `RadarFilterSheet` (`parts`, `Radar2SettingsSections`).

@@ -67,7 +67,7 @@ oder 20 Minuten.
 | Wahl | gezeichnet | Grenzen |
 |---|---|---|
 | Aus | keine; nichts wird aufgenommen | – |
-| Ausgewählte und meine | das gewählte Fahrzeug (zuerst), das verfolgte („Live verfolgen“), die Fahrzeuge gemerkter Linien („Meine Fahrzeuge“, sobald radarmine sie liefert) | höchstens 12 |
+| Ausgewählte und meine | das gewählte Fahrzeug (zuerst), das verfolgte („Live verfolgen“), die Fahrzeuge gemerkter Linien („Meine Fahrzeuge“, `RadarMineModel.remembers`; die Fußzeile sagt es: „„Meine“ sind das Fahrzeug, das du live verfolgst, und die Fahrzeuge deiner gemerkten Linien.“) | höchstens 12 |
 | Alle im Ausschnitt | jedes einzeln gezeichnete Fahrzeug | Karte höchstens 0,5° hoch (etwa 55 km) und höchstens 60 Einzelmarker; sonst „mine“ und ein Hinweis mit dem Grund, der gilt: „Für alle Spuren ist die Karte zu weit.“ (zuerst, Heranzoomen hilft zuerst) oder „Zu viele Fahrzeuge für alle Spuren.“, dann „Gezeigt werden deine.“ (nur wenn welche gezeichnet sind) und „Zoom näher heran.“ |
 
 Nur **Einzelmarker** bekommen eine Spur: eine Gruppe hat keinen Marker, an dem eine Linie enden könnte. Die Spur des gewählten Fahrzeugs ist 5 pt

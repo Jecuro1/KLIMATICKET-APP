@@ -36,7 +36,7 @@ sichtbar.
   Kartenmitte am nächsten ist; ohne Echtzeit „… laut Fahrplan“, ausgefallen „… fällt aus“). Ohne Fahrzeug: „Gerade keine in den geladenen Gebieten.
   Die Auskunft kennt nur, was in den geladenen Gebieten fährt.“ mit **„Zur gemerkten Gegend“** (die Karte geht dorthin, keine Anfrage). Ist der Chip
   der Linie aus: „„Bus“ ist oben ausgeschaltet …“ mit „Einschalten“; ist die Karte für Bus, Bim und U-Bahn zu weit, sagt es der Zoom-Hinweis der
-  Stadt-Spur. Die Liste wird alle 5 s neu berechnet, nicht bei jeder Markerbewegung. Ein Tipp auf die Zeile wählt das Fahrzeug auf der Karte aus
+  Stadt-Anfragen. Die Liste wird alle 5 s neu berechnet, nicht bei jeder Markerbewegung. Ein Tipp auf die Zeile wählt das Fahrzeug auf der Karte aus
   (kein zweites Blatt über dem Panel); „Nicht mehr merken“ im Menü und als VoiceOver-Aktion.
 - **„Nur meine Linien hervorheben“:** deine Fahrzeuge bekommen einen goldenen Stern auf weißem Grund und einen goldenen Rand, alle anderen werden auf
   35 % gedimmt und verlieren den Pfeil (der Verspätungsring bleibt). Hervorgehobene Fahrzeuge werden **nie in Gruppen gefasst** – bis zu **60** als
@@ -98,12 +98,12 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   Eine gestrichelte Luftlinie verbindet jedes nummerierte Fahrzeug mit der Haltestelle; ein Tipp auf Zeile oder Nadel zeigt beide auf der Karte.
   Während die Seite Nummern zeigt, treten die anderen Marker zurück – auch die Gruppen der Ebene „Stationen“ (zweites Review: im CI-Screenshot las sich
   eine weiße „2“ für zwei Stationen neben der Haltestelle wie Ankunft Nummer 2; einzelne Stationen behalten ihre Namenskapsel).
-- **Chips aus:** eine Abfahrt eines Verkehrsmittels, dessen Chip aus ist (oder das die Stadt-Spur gerade nicht zeichnet), steht in der Liste ohne
+- **Chips aus:** eine Abfahrt eines Verkehrsmittels, dessen Chip aus ist (oder das die Stadt-Anfragen gerade nicht laden), steht in der Liste ohne
   Nummer; darunter „Bim ist aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte.“ mit „Einschalten“. Ist der Chip an und nur die
   Karte zu weit (Review): „Bim erscheint auf der Karte, wenn du näher heranzoomst – diese Abfahrten stehen schon in der Liste.“ – vorher hieß auch das
   „ist aus“, und „Einschalten“ tat nichts.
 - **Kamera (Review):** die erste Tafel einer gewählten Haltestelle rahmt die Haltestelle mit ihren nummerierten Ankünften (`RadarStopArrivals.frame`,
-  ein Achtel Rand je Seite, höchstens 0,3° hoch, damit die Stadt-Spur im Zoom bleibt), einmal je Haltestelle. Vorher blieb die Karte beim Zoom der
+  ein Achtel Rand je Seite, höchstens 0,3° hoch, damit die Stadt-Anfragen im Zoom bleiben), einmal je Haltestelle. Vorher blieb die Karte beim Zoom der
   Haltestelle, und in den CI-Screenshots lagen drei der fünf Nummern unter dem Panel. Solange Nummern auf der Karte sind, zeigt die Haltestelle nur ihren Punkt (ihr Name steht im Panel: „Ab …“) – die Namenskapsel verdeckte sonst eine Nummer neben ihr. Solange das Panel offen ist, steht der Hinweis „Zeitreise gibt es
   nur mit Zügen und S-Bahn.“ nicht unter ihm (die Uhr würde das Panel ohnehin schließen) – eine Zeile mehr Karte.
 - **Eine Haltestelle, die die Tafel ablehnt (Review):** antwortet die Tafel „LOCATION“ auf eine gemerkte Verknüpfung, wird die Haltestelle **einmal**
@@ -129,7 +129,7 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
 - **Beweis:** `RadarMineGateTests.testTheWorstCityViewWithTheBoardStaysWithinTheBudget` – Wien mit 16 Stadt- und den breiten Kacheln plus Tafel zehn
   Minuten lang: höchstens 24 je Minute, 4 in 10 s, 1 s Abstand, mindestens 16 der 40 je Minute frei, etwa eine Tafel je Minute.
 - **Daten:** eine Tafel von 12 Einträgen ist in den aufgezeichneten Antworten etwa 20–40 KB (1,8 KB je Eintrag in Innsbruck, meist Busse; 3 KB je
-  Eintrag in Wien Hbf, Bahn) – also höchstens rund 40 KB je Minute, klein gegen die Kacheln der Stadt-Spur.
+  Eintrag in Wien Hbf, Bahn) – also höchstens rund 40 KB je Minute, klein gegen die Kacheln der Stadt-Anfragen.
 
 ## 6. Datenschutz
 

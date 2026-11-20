@@ -23,17 +23,18 @@ Bedienung, Frost-Karten für Inhalte.
   Zugsuche nach Zugnummer, **Live verfolgen** mit Live Activity, **Zug-Radar** und Karte mit Ebenen, Störungen,
   Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme**. Live-Daten gibt es nur mit deiner Einwilligung und bei geöffneter
   App; im Hintergrund fragt die App höchstens für eine Verfolgung nach, für die du Live-Mitteilungen eingeschaltet hast
-- **Zug-Radar** – alle Züge Österreichs auf der Apple-Karte, mit höchstens 24 Anfragen je Minute ([docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11).
+- **Zug-Radar** – alle Züge Österreichs auf der Apple-Karte, in der Stadt auch Bus, Bim und U-Bahn; die Positionen berechnet die ÖBB-Auskunft
+  aus Fahrplan und Echtzeit (kein GPS), mit höchstens 24 Anfragen je Minute ([docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11).
   Die Ebene **Pünktlichkeit** färbt ein Sechseckraster nach der mittleren Verspätung (eine Momentaufnahme, keine ÖBB-Statistik,
   [docs/RADAR_HEATMAP.md](docs/RADAR_HEATMAP.md)); die **Zeitreise** zeigt, wo die Züge von 30 Minuten zurück bis 3 Stunden voraus sind, berechnet
   aus Fahrplan und den Verspätungen von jetzt, nicht gemessen ([docs/RADAR_TIMETRAVEL.md](docs/RADAR_TIMETRAVEL.md)); die **Cockpit-Ansicht**
-  folgt einem Zug schräg in 3D, mit nächstem Halt, Ankunft und Verspätung ([docs/RADAR_COCKPIT.md](docs/RADAR_COCKPIT.md)). Wie die drei
-  zusammenspielen: [docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11.3. Nur mit Live-Daten und bei offener App; die drei sind noch nicht auf einem
-  iPhone geprüft. **Bus, Bim und U-Bahn** kommen in der Stadt über eine eigene Spur im selben Budget, mit Wegzeichen-Schildern, Legende und
+  folgt einem Zug schräg in 3D, mit nächstem Halt, Ankunft und Verspätung ([docs/RADAR_COCKPIT.md](docs/RADAR_COCKPIT.md)). Nur mit Live-Daten und bei offener App; die drei sind noch nicht auf einem
+  iPhone geprüft. **Bus, Bim und U-Bahn** kommen in der Stadt über eigene Stadt-Anfragen im selben Budget, mit Wegzeichen-Schildern, Legende und
   Zählzeile ([docs/RADAR_MODES.md](docs/RADAR_MODES.md)). **Spuren** zeigen, wo die Auskunft ein Fahrzeug berechnet hat, seit das Radar offen ist –
   nur im Arbeitsspeicher, ohne eine Anfrage – und im Fahrtblatt die Verspätung „seit du zuschaust“ ([docs/RADAR_TRAILS.md](docs/RADAR_TRAILS.md)).
   **Meine Fahrzeuge** merkt sich Linien (Stern, der Rest tritt zurück), zeigt auf deinen Tipp die Fahrzeuge in deiner Nähe und bei „Wo bleibt mein
-  Bus?“ die nächsten Abfahrten einer Haltestelle mit dem Ort ihres Fahrzeugs – einmal pro Minute im selben Radar-Budget ([docs/RADAR_MINE.md](docs/RADAR_MINE.md))
+  Bus?“ die nächsten Abfahrten einer Haltestelle mit dem Ort ihres Fahrzeugs – einmal pro Minute im selben Radar-Budget ([docs/RADAR_MINE.md](docs/RADAR_MINE.md)). Wie alle Teile zusammenspielen –
+  wer wann fragt, ein Budget, was offline, im Hintergrund und unter dem Cockpit ruht: [docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11.3
 - **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (178.013 Relationen zwischen 979 Tarifpunkten, Tarif ab 14.12.2025),
   sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
 - **KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
