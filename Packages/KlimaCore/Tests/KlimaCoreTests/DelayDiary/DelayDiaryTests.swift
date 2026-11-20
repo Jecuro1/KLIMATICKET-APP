@@ -99,6 +99,25 @@ final class DelayDiaryTests: XCTestCase {
         XCTAssertFalse(result.months[0].isCurrent)
     }
 
+    /// review-delaydiary: a ticket that starts on the day summer time ends (25 October 2026, 03:00 → 02:00). Its months start at
+    /// 00:00 Vienna whatever the offset (CEST in October, CET in November); the hour that happens twice belongs to month 1;
+    /// the last second before the 25th of November is still month 1.
+    func testValidityMonthsAcrossTheEndOfSummerTime() {
+        let start = vienna(2026, 10, 25)
+        let doubledHour = trip(Date(timeIntervalSince1970: 1_792_891_200), delay: 6, source: .manual)   // 25 Oct 2026, 02:20 CET (second pass)
+        let lastSecond = trip(vienna(2026, 11, 24, 23, 59, 59), delay: 2, source: .manual)
+        let nextMonth = trip(vienna(2026, 11, 25, 0, 0, 0), delay: 9, source: .manual)
+        let result = year([doubledHour, lastSecond, nextMonth], now: vienna(2026, 11, 26), start: start)
+        XCTAssertEqual(result.months.map(\.start), [vienna(2026, 10, 25), vienna(2026, 11, 25)])
+        XCTAssertEqual(result.months[0].start.timeIntervalSince1970, 1_792_879_200, "00:00 CEST = 22:00 UTC the day before")
+        XCTAssertEqual(result.months[1].start.timeIntervalSince1970, 1_795_561_200, "00:00 CET = 23:00 UTC the day before")
+        XCTAssertEqual(result.months[0].end, vienna(2026, 11, 24, 23, 59, 59))
+        XCTAssertEqual(Set(result.months[0].entries.map(\.id)), [doubledHour.id, lastSecond.id])
+        XCTAssertEqual(result.months[1].entries.map(\.id), [nextMonth.id])
+        XCTAssertEqual(result.months[0].lateCount, 1)
+        XCTAssertTrue(result.months[1].isCurrent)
+    }
+
     func testOnlyBegunMonthsAndTripsUpToNowInsideTheTicket() {
         let now = vienna(2026, 5, 3, 12)
         let trips = [
@@ -366,6 +385,7 @@ final class DelayDiaryTests: XCTestCase {
             DelayDiaryText.shareLine(0.87), DelayDiaryText.capturedToast(0), DelayDiaryText.capturedToast(30),
             DelayDiaryText.noLateLine(threshold: 5, recorded: 3), DelayDiaryText.noLateLine(threshold: 5, recorded: 0),
             DelayDiaryText.reportChipLine(recorded: 0, late: 0), DelayDiaryText.reportChipLine(recorded: 3, late: 1),
+            DelayDiaryText.outsideScopeLine,
         ]
         for text in all {
             XCTAssertFalse(text.localizedCaseInsensitiveContains("anspruch"), text)

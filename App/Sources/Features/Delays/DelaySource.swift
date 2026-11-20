@@ -100,8 +100,17 @@ enum DelayDiaryFormat {
 
     /// The chart's short label: „Nov“ (the month the validity month starts in).
     static func shortMonth(_ date: Date) -> String {
-        date.formatted(.dateTime.month(.abbreviated).locale(Format.locale)).replacingOccurrences(of: ".", with: "")
+        date.formatted(shortMonthStyle).replacingOccurrences(of: ".", with: "")
     }
+
+    /// In Vienna time like `Format` (review-delaydiary: with the iPhone's own zone a month that starts at 00:00 in Vienna was
+    /// labelled with the month before on an iPhone set to London or New York – „Okt“ under the bar of November).
+    private static let shortMonthStyle: Date.FormatStyle = {
+        var style = Date.FormatStyle.dateTime.month(.abbreviated).locale(Format.locale)
+        style.timeZone = Format.timeZone
+        style.calendar = .vienna
+        return style
+    }()
 
     /// „Mo., 9. Nov. · 07:12“
     static func when(_ date: Date) -> String { "\(Format.weekdayDayMonth(date)) · \(Format.time(date))" }

@@ -29,6 +29,7 @@ struct DelayDiaryView: View {
                     EmptyStateView(symbol: "ticket", title: "Noch kein Ticket",
                                    message: "Lege dein KlimaTicket an – dann führst du hier dein Verspätungs-Tagebuch für das Ticketjahr.",
                                    actionTitle: "Zum Ticket") {
+                        DelayDiaryLink.shared.isPresented = false   // review: from klimabilanz://delays the tab changed under the sheet
                         app.selectedTab = .ticket
                     }
                     .padding(.top, Theme.Spacing.xxl)

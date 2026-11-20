@@ -203,15 +203,21 @@ struct DelayEntrySheet: View {
         .accessibilityLabel(label)
     }
 
-    /// What the personal mark makes of the value – in words and a symbol, never colour alone.
+    /// What the personal mark makes of the value – in words and a symbol, never colour alone. A trip that „Nur Bahn“ leaves
+    /// out says so instead (review-delaydiary: a bus trip was told „Zählt als verspätet“ though the diary does not count it).
     private var verdict: some View {
         let late = DelayDiaryRules.isLate(minutes, threshold: threshold)
+        let counted = DelayDiarySettings.shared.options.scope.includes(trip.mode)
+        let text = !counted ? DelayDiaryText.outsideScopeLine
+            : late ? "Zählt als verspätet (ab \(threshold)\u{00A0}Min.)" : "Zählt als pünktlich (unter \(threshold)\u{00A0}Min.)"
+        let symbol = !counted ? "line.3.horizontal.decrease.circle.fill"
+            : late ? "clock.badge.exclamationmark.fill" : "checkmark.seal.fill"
         return Label {
-            Text(late ? "Zählt als verspätet (ab \(threshold)\u{00A0}Min.)" : "Zählt als pünktlich (unter \(threshold)\u{00A0}Min.)")
+            Text(text)
                 .contentTransition(.interpolate)
         } icon: {
-            Image(systemName: late ? "clock.badge.exclamationmark.fill" : "checkmark.seal.fill")
-                .foregroundStyle(late ? Theme.summitText : Theme.positiveText)
+            Image(systemName: symbol)
+                .foregroundStyle(!counted ? Theme.textTertiary : late ? Theme.summitText : Theme.positiveText)
                 .symbolReplaceTransition()
         }
         .font(.footnote.weight(.semibold))
@@ -360,6 +366,13 @@ struct DelayTripRow: View {
     @State private var isEditing = false
 
     var body: some View {
+        // review-delaydiary: a trip that has not departed yet has no arrival to record (the diary and the Zeitbilanz count
+        // trips only up to now; a value typed in ahead would be a guess that counted later on its own).
+        if trip.date <= Date() { row }
+    }
+
+    @ViewBuilder
+    private var row: some View {
         let recorded = trip.recordedDelay
         let threshold = DelayDiarySettings.shared.options.thresholdMinutes
         let late = recorded.map { DelayDiaryRules.isLate($0.minutes, threshold: threshold) } ?? false

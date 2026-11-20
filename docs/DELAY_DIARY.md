@@ -12,7 +12,7 @@ PDF) und `App/Sources/Data/Repository+Delay.swift` (Schreiben).
 
 | Einstieg | Wie |
 |---|---|
-| Fahrt-Detail | Zeile „Verspätung“ unter den Kacheln („nicht erfasst“, „pünktlich · von Hand“, „+12 Min. · von Hand“) → Eingabe-Sheet |
+| Fahrt-Detail | Zeile „Verspätung“ unter den Kacheln, ab der Abfahrt („nicht erfasst“, „pünktlich · von Hand“, „+12 Min. · von Hand“) → Eingabe-Sheet |
 | Statistik | Karte „Verspätungs-Tagebuch“ unter der Zeitbilanz (Zoom in den Bildschirm, gleiches Ticketjahr wie die Statistik) |
 | Fahrgastrechte | „Mein Verspätungs-Tagebuch“ unter der Schätzung mit den Gültigkeitsmonaten |
 | Deep Link | `klimabilanz://delays` (Sheet; dieselben Regeln wie `klimabilanz://timebalance`: Einstellungen, Gipfelbuch, ein optionales Update, Was-wäre-wenn und eine offene Zeitbilanz schließen vorher, ein offener Fahrt-Editor, ein Pflicht-Update und der Jahresrückblick werden nie verdeckt, im Onboarding passiert nichts) |
@@ -40,7 +40,7 @@ nie nur Farbe). „Speichern“ bzw. „Als pünktlich speichern“; „Entferne
 
 - Kopf „Tagebuch · Ticketjahr 2026/27“, Titel „Verspätungen“.
 - **Held „Deine Pünktlichkeit · persönlich“:** die Quote zählt einmal hoch (`CountUpText`), daneben ein Ring (pünktlich voll in
-  Zirbe, verspätet gestrichelt in Morgenrot), darunter drei Zahlen mit Wort und Symbol („42 erfasst“, „5 verspätet“, „17 offen“),
+  Zirbe, verspätet gestrichelt in Morgenrot), darunter drei Zahlen mit Wort und Symbol („42 erfasst“, „5 verspätet“, „17 ohne Eintrag“),
   der Vorbehalt in einem Kasten (fett, §7) und die Grenze mit „Ändern“.
 - **Pro Gültigkeitsmonat:** ein Balken je begonnenem Monat – pünktlich (voll) unten, verspätet (schraffiert) darüber, die Fahrten
   ohne Eintrag als gestrichelte Kappe oben; Legende in Worten. Ein Tipp öffnet den Monat unten. Selbst gezeichnet (höchstens 12
@@ -69,7 +69,7 @@ Auf-/Zuklappen `Motion.smooth`, Werte `Motion.snappy`); Haptik `.increase`/`.dec
   prüft an 120 Zufallsfahrten, dass Tagebuch und Zeitbilanz dieselben Fahrten, dieselben erfassten Fahrten, dieselben „ab 1 Minute“
   und dieselbe Minutensumme zählen.
 - **Erfasst** heißt: `delaySourceRaw` ist gesetzt. **Pünktlich** zählt nur, was eingetragen ist (0 oder unter der Grenze). Fahrten
-  **ohne Eintrag** sind weder pünktlich noch verspätet: sie stehen als „offen“ / „ohne Eintrag“ da und bleiben aus der Quote
+  **ohne Eintrag** sind weder pünktlich noch verspätet: sie stehen als „ohne Eintrag“ da und bleiben aus der Quote
   (Entscheidung laut Plan: sonst hübschte jede vergessene Fahrt die Quote auf).
 - **Quote** = pünktlich ÷ erfasst, erst ab **5 erfassten Fahrten** im Monat (bzw. im Jahr für den Held), sonst „zu wenig Fahrten für
   eine Quote“. Prozent werden unter 100 **abgerundet** (1 verspätete von 300 ist „99 %“, nie „100 %“), „< 1 %“ statt „0 %“ für einen
@@ -106,7 +106,7 @@ persönliche Aufzeichnung“, Ticket mit Gültigkeit, optional der Name, Erstell
 (`DelayDiaryText.reportIntro`: mit der App geführt, Fahrten ab der Grenze, „Die Minuten wurden von Hand eingetragen; es sind keine
 amtlichen Pünktlichkeitswerte.“ – „Live-Daten“ nur, wenn eine gelistete Zeile von dort käme), der Vorbehalt im Kasten, eine Summe der
 gewählten Monate mit persönlicher Quote, dann je Monat „Gültigkeitsmonat 3 · 1. Mai 2026 – 31. Mai 2026“, seine Zahlen und eine
-Tabelle **Datum · Strecke · Zug · Verspätung · Quelle** (älteste zuerst, gleiche Minute nach Strecke). Fußzeile auf jeder Seite:
+Tabelle **Datum · Strecke · Linie · Verspätung · Quelle** („Linie“ nennt ohne bekannte Linie das Verkehrsmittel) (älteste zuerst, gleiche Minute nach Strecke). Fußzeile auf jeder Seite:
 „KlimaBilanz · persönliche Aufzeichnung, keine amtlichen Pünktlichkeitswerte · Seite n“. **Kein Betrag** – weder auf dem Bildschirm
 noch im PDF wird aus Verspätungen Geld gerechnet (kein `Format.euro` in `Features/Delays`).
 
@@ -202,6 +202,19 @@ Gefunden und behoben:
   Jetzt schließt das Tagebuch zuerst, der Link folgt nach 450 ms (`DelayDiaryLink.closeForLink`, eine markierte Zeile in RootView).
 - **PDF-Sheet:** schlug das Erzeugen fehl, blieben Vorschau und „Teilen“ der vorigen Auswahl stehen; jetzt nur die Fehlermeldung. Die
   Datei wird beim Schließen gelöscht.
+- **Monatskürzel in der Zeit des iPhones:** „Nov“ unter den Balken und auf den PDF-Schaltern kam aus der Zeitzone des Geräts. Ein
+  Gültigkeitsmonat beginnt um 00:00 in Wien – auf einem iPhone in London oder New York ist das noch der Vortag, dort stand „Okt“ unter
+  dem November. Jetzt in Wiener Zeit wie `Format` (`DelayDiaryFormat.shortMonth`).
+- **„Nur Bahn“ und das Eingabe-Sheet:** Bei einer Busfahrt sagte das Sheet „Zählt als verspätet (ab 5 Min.)“, obwohl das Tagebuch sie
+  mit „Nur Bahn“ gar nicht zählt. Jetzt „Zählt nicht im Tagebuch – dort zählen gerade nur Zug und S-Bahn“ (die Minuten zählen in der
+  Zeitbilanz weiter; `DelayDiaryText.outsideScopeLine`).
+- **Fahrten, die noch nicht abgefahren sind,** boten „Verspätung“ an (eine im Fahrplan vorab erfasste Fahrt). Ein Wert vorab wäre eine
+  Vermutung, die später von selbst mitzählt. Die Zeile erscheint jetzt ab der Abfahrt.
+- **Kachel ohne Urteil:** Die Statistik-Karte eines leeren Tagebuchs und der Link in Fahrgastrechte trugen die Uhr mit Ausrufezeichen
+  (das Zeichen einer verspäteten Fahrt). Jetzt die schlichte Uhr.
+- **„Zum Ticket“ im Sheet von `klimabilanz://delays`** (ohne Ticket) wechselte den Tab unter dem offenen Sheet; jetzt schließt es zuerst.
+- Neuer Test: Gültigkeitsmonate über das Ende der Sommerzeit (Ticket ab 25. Oktober 2026, die doppelte Stunde, die letzte Sekunde vor
+  dem 25. November).
 
 Geprüft und in Ordnung: Punkt 24 (gegen den AGB-Text im Arbeitsordner gelesen – 24.1 bis 24.4 wie in §7, keine Minutengrenze für
 eine einzelne Ankunft), Schreiben nur über `Repository+Delay` (kein `context.save` in `Features/Delays`), kein Netzwerk und keine

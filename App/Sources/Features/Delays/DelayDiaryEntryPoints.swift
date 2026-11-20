@@ -24,7 +24,8 @@ struct DelayDiaryEntryCard: View {
             GlassCard(padding: Theme.Spacing.m + 2) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.s) {
                     HStack(alignment: .top, spacing: Theme.Spacing.s + 2) {
-                        DelayDiaryTile(isLate: year.lateCount > 0 || year.isEmpty)
+                        // review-delaydiary: an empty diary gets the plain clock, not the warning badge of a late Fahrt.
+                        DelayDiaryTile(isLate: year.lateCount > 0, isOpen: year.isEmpty)
                         VStack(alignment: .leading, spacing: 2) {
                             Kicker(text: DelayDiaryText.title)
                             Text(headline(year))
@@ -127,7 +128,7 @@ struct DelayDiaryRightsLink: View {
         } label: {
             GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {
                 HStack(spacing: Theme.Spacing.s) {
-                    DelayDiaryTile(size: 40)
+                    DelayDiaryTile(size: 40, isOpen: true)   // review-delaydiary: a way in, not a verdict
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Mein Verspätungs-Tagebuch")
                             .font(.headline)

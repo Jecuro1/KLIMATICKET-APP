@@ -22,6 +22,10 @@ public enum DelayDiaryText {
         return "Diese Liste wurde mit der App KlimaBilanz auf dem eigenen iPhone geführt. Sie nennt \(fahrten), bei denen die Ankunft mindestens \(threshold)\u{00A0}Minuten später war als geplant. \(origin); es sind keine amtlichen Pünktlichkeitswerte."
     }
 
+    /// The entry sheet's verdict for a trip that „Nur Bahn“ leaves out (a bus, a Bim): the minutes still count in the Zeitbilanz,
+    /// the diary does not count the trip at all (review-delaydiary: the sheet said „Zählt als verspätet“ for it).
+    public static let outsideScopeLine = "Zählt nicht im Tagebuch – dort zählen gerade nur Zug und S-Bahn"
+
     /// „Verspätet heißt hier: ab 5 Min. Ankunft – deine eigene Grenze, keine Regel aus den AGB.“
     public static func thresholdLine(_ threshold: Int) -> String {
         "Verspätet heißt hier: ab \(threshold)\u{00A0}Min. bei der Ankunft – deine eigene Grenze, keine Regel aus den AGB."
