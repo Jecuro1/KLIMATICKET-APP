@@ -17,12 +17,16 @@ struct SiriQuestionsView: View {
     @State private var table: KpiDailyTable?
     @State private var isLoaded = false
 
-    init(question: KpiQuestion = .trips, period: KpiPeriod = .thisMonth) {
+    /// CI screenshots: where the list stands (`SiriScreenshotHost`).
+    var screenshotAnchor: Anchor? = nil
+
+    init(question: KpiQuestion = .trips, period: KpiPeriod = .thisMonth, screenshotAnchor: Anchor? = nil) {
         _question = State(initialValue: question)
         _period = State(initialValue: period)
+        self.screenshotAnchor = screenshotAnchor
     }
 
-    private enum Anchor: Hashable { case tester }
+    enum Anchor: Hashable { case tester, examples, end }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -70,6 +74,7 @@ struct SiriQuestionsView: View {
                     }
                 } header: {
                     SetSectionHeader(title: "So fragst du")
+                        .id(Anchor.examples)
                 } footer: {
                     SetFooter(text: "Sag „… in KlimaBilanz“. Nennst du keinen Zeitraum, gilt das Ticketjahr – Siri fragt nicht nach. Für Fahrten geht auch „Wie viele Fahrten diese Woche, diesen Monat, letzten Monat oder heuer in KlimaBilanz“.")
                 }
@@ -100,6 +105,7 @@ struct SiriQuestionsView: View {
                     SetSectionHeader(title: "Datenschutz")
                 } footer: {
                     SetFooter(text: "Die Zahlen werden mit jeder gespeicherten Fahrt neu abgelegt. Ist der Stand älter als einen Tag, sagt Siri dazu, von wann er ist.")
+                        .id(Anchor.end)
                 }
             }
             .listStyle(.insetGrouped)
@@ -116,6 +122,11 @@ struct SiriQuestionsView: View {
                 guard !isLoaded else { return }
                 table = SiriKpiWriter.makeTable(Repository(context: context, app: app))
                 isLoaded = true
+            }
+            .task {
+                guard let screenshotAnchor else { return }
+                try? await Task.sleep(for: .milliseconds(400))
+                proxy.scrollTo(screenshotAnchor, anchor: screenshotAnchor == .end ? .bottom : .top)
             }
         }
     }
@@ -202,7 +213,7 @@ private struct SiriQuestionsHero: View {
             orb
             VStack(alignment: .leading, spacing: 6) {
                 Text("Frag Siri nach deinen Zahlen")
-                    .font(Theme.Typography.sectionTitle)
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(Theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text("Fahrten, Wert, Kilometer, CO₂ und dein Ticket – Siri antwortet mit einem Satz und der Zahl, ohne dass du die App öffnest.")
@@ -215,6 +226,8 @@ private struct SiriQuestionsHero: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
             }
+            // The opening grows to AX3 – at AX5 it alone would fill the screen above „Probier es aus“.
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
         }
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .combine)

@@ -131,10 +131,10 @@ struct AskKlimaBars: View {
 
     var body: some View {
         let top = max(bars.map(\.value).max() ?? 0, 0.0001)
-        VStack(spacing: 4) {
-            HStack(alignment: .bottom, spacing: spacing) {
-                ForEach(bars) { bar in
-                    let fraction = bar.value > 0 ? max(0.06, bar.value / top) : 0
+        HStack(alignment: .bottom, spacing: spacing) {
+            ForEach(Array(bars.enumerated()), id: \.element.id) { index, bar in
+                let fraction = bar.value > 0 ? max(0.06, bar.value / top) : 0
+                VStack(spacing: 4) {
                     ZStack(alignment: .bottom) {
                         RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                             .fill(Theme.textTertiary.opacity(0.22))
@@ -144,22 +144,19 @@ struct AskKlimaBars: View {
                             .frame(height: height)
                             .scaleEffect(x: 1, y: fraction, anchor: .bottom)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: height, alignment: .bottom)
-                }
-            }
-            .frame(height: height)
-            .motionAnimation(Motion.smooth, value: bars.map(\.value))   // in the app the bars grow when the question changes
-            HStack(spacing: spacing) {
-                ForEach(Array(bars.enumerated()), id: \.element.id) { index, bar in
+                    .frame(height: height, alignment: .bottom)
+                    // Centred under its own bar: the zero-width frame lets „15“ overhang a 6-pt column without widening it.
                     Text(showsLabel(index) ? bar.label : " ")
                         .font(.system(size: 10, weight: bar.isCurrent ? .bold : .medium))
                         .foregroundStyle(bar.isCurrent ? Theme.textPrimary : Theme.textTertiary)
                         .lineLimit(1)
                         .fixedSize()
-                        .frame(maxWidth: .infinity)
+                        .frame(width: 0)
                 }
+                .frame(maxWidth: .infinity)
             }
         }
+        .motionAnimation(Motion.smooth, value: bars.map(\.value))   // in the app the bars grow when the question changes
         .accessibilityHidden(true)
     }
 

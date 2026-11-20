@@ -10,11 +10,15 @@ enum SiriQuestionsRelease {
 
 /// CI screenshot routes of „Fragen an KlimaBilanz“ (`-KBScreenshot <screen> -KBDemo YES`, demo year, no network):
 /// - `siriQuestions`: the page – opening, „Probier es aus“ with Fahrten · Dieser Monat
-/// - `siriAnswer`: „Wert deiner Fahrten · Letzter Monat“ in the tester and „So fragst du“ below it
-/// - `siriAX5`: the page at the largest accessibility text size
-/// - `siriSnippets`: what Siri shows for five answers (a month's days, a year's months, a ticket's days, the break-even, no table yet)
+/// - `siriAnswer`: „Wert deiner Fahrten · Letzter Monat“ in the tester (scrolled to it), „So fragst du“ below
+/// - `siriExamples`: „So fragst du“ with the eight questions; `siriBottom`: Kurzbefehle and Datenschutz
+/// - `siriAX5` / `siriAX5Mid`: the opening and the tester at the largest accessibility text size
+/// - `siriSnippets` / `siriSnippetsEnd`: what Siri shows for five answers (a month's days, a year's months, a ticket's days, the
+///   break-even, no table yet), top and end
+/// - `settings2` shows the row in Einstellungen once it is live
 struct SiriScreenshotHost: View {
-    static let screens: Set<String> = ["siriQuestions", "siriAnswer", "siriAX5", "siriSnippets"]
+    static let screens: Set<String> = ["siriQuestions", "siriAnswer", "siriExamples", "siriBottom", "siriAX5", "siriAX5Mid",
+                                       "siriSnippets", "siriSnippetsEnd"]
 
     let screen: String
 
@@ -30,10 +34,16 @@ struct SiriScreenshotHost: View {
     private var content: some View {
         switch screen {
         case "siriAnswer":
-            NavigationStack { SiriQuestionsView(question: .value, period: .lastMonth) }
-                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.32))
-        case "siriSnippets":
+            NavigationStack { SiriQuestionsView(question: .value, period: .lastMonth, screenshotAnchor: .tester) }
+        case "siriExamples":
+            NavigationStack { SiriQuestionsView(question: .co2, period: .ticketYear, screenshotAnchor: .examples) }
+        case "siriBottom":
+            NavigationStack { SiriQuestionsView(screenshotAnchor: .end) }
+        case "siriAX5Mid":
+            NavigationStack { SiriQuestionsView(question: .daysLeft, period: .ticketYear, screenshotAnchor: .tester) }
+        case "siriSnippets", "siriSnippetsEnd":
             SiriSnippetGallery(table: SiriKpiWriter.makeTable(Repository(context: context, app: app)))
+                .defaultScrollAnchor(screen == "siriSnippetsEnd" ? .bottom : .top)
         default:
             NavigationStack { SiriQuestionsView() }
         }

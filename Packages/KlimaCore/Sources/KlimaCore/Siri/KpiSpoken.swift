@@ -5,6 +5,8 @@ import Foundation
 
 public enum KpiSpoken {
     static let locale = Locale(identifier: "de_AT")
+    /// Between a number and its unit („5 Fahrten“, „184 Euro 90“, „11. April 2027“): a line never breaks there.
+    public static let glue = "\u{00A0}"
 
     /// „1.044“, „3,4“ – de-AT digits with `decimals` fraction digits (0 … 2).
     public static func number(_ value: Double, decimals: Int = 0) -> String {
@@ -24,33 +26,33 @@ public enum KpiSpoken {
     public static func euro(_ value: Double) -> String {
         let cents = Int((abs(value) * 100).rounded())
         let sign = value < 0 && cents > 0 ? "minus " : ""
-        if cents >= 100_000 { return sign + "\(number(Double((cents + 50) / 100))) Euro" }
+        if cents >= 100_000 { return sign + "\(number(Double((cents + 50) / 100)))\(glue)Euro" }
         let euros = cents / 100, rest = cents % 100
-        if euros == 0 && rest > 0 { return sign + "\(rest) Cent" }
-        if rest == 0 { return sign + "\(number(Double(euros))) Euro" }
-        return sign + "\(number(Double(euros))) Euro \(rest)"
+        if euros == 0 && rest > 0 { return sign + "\(rest)\(glue)Cent" }
+        if rest == 0 { return sign + "\(number(Double(euros)))\(glue)Euro" }
+        return sign + "\(number(Double(euros)))\(glue)Euro\(glue)\(rest)"
     }
 
     /// „1 Fahrt“, „14 Fahrten“, „keine Fahrt“ is the caller's sentence.
-    public static func trips(_ count: Int) -> String { count == 1 ? "1 Fahrt" : "\(number(Double(count))) Fahrten" }
+    public static func trips(_ count: Int) -> String { count == 1 ? "1\(glue)Fahrt" : "\(number(Double(count)))\(glue)Fahrten" }
 
     /// „1 Tag“, „45 Tage“.
-    public static func days(_ count: Int) -> String { count == 1 ? "1 Tag" : "\(number(Double(count))) Tage" }
+    public static func days(_ count: Int) -> String { count == 1 ? "1\(glue)Tag" : "\(number(Double(count)))\(glue)Tage" }
 
     /// „412 Kilometer“, „3,4 Kilometer“, „1 Kilometer“ (one decimal below 10 km).
     public static func km(_ value: Double) -> String {
         let text = compact(value, decimals: value < 9.95 ? 1 : 0)
-        return "\(text) Kilometer"
+        return "\(text)\(glue)Kilometer"
     }
 
     /// „3,4 Kilogramm“, „58 Kilogramm“, „1,2 Tonnen“ (from 1.000 kg unless Zahlen says „Immer kg“), „1 Tonne“.
     public static func co2(_ kg: Double, format: FormatPrefs = .standard) -> String {
         if format.co2 == .automatic, kg.rounded() >= 1000 {
             let text = compact(kg / 1000, decimals: 1)
-            return text == "1" ? "1 Tonne" : "\(text) Tonnen"
+            return text == "1" ? "1\(glue)Tonne" : "\(text)\(glue)Tonnen"
         }
         let text = compact(kg, decimals: kg < 9.95 ? 1 : 0)
-        return text == "1" ? "1 Kilogramm" : "\(text) Kilogramm"
+        return text == "1" ? "1\(glue)Kilogramm" : "\(text)\(glue)Kilogramm"
     }
 
     // MARK: Written (the snippet's big figure and the value a Kurzbefehl gets)
@@ -61,12 +63,12 @@ public enum KpiSpoken {
     }
 
     /// „412 km“, „3,4 km“.
-    public static func writtenKm(_ value: Double) -> String { "\(compact(value, decimals: value < 9.95 ? 1 : 0)) km" }
+    public static func writtenKm(_ value: Double) -> String { "\(compact(value, decimals: value < 9.95 ? 1 : 0))\(glue)km" }
 
     /// „58 kg“, „3,4 kg“, „1,2 t“.
     public static func writtenCO2(_ kg: Double, format: FormatPrefs = .standard) -> String {
-        if format.co2 == .automatic, kg.rounded() >= 1000 { return "\(compact(kg / 1000, decimals: 1)) t" }
-        return "\(compact(kg, decimals: kg < 9.95 ? 1 : 0)) kg"
+        if format.co2 == .automatic, kg.rounded() >= 1000 { return "\(compact(kg / 1000, decimals: 1))\(glue)t" }
+        return "\(compact(kg, decimals: kg < 9.95 ? 1 : 0))\(glue)kg"
     }
 
     // MARK: Dates
@@ -80,7 +82,7 @@ public enum KpiSpoken {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
         let year = calendar.component(.year, from: now)
         let month = monthNames[max(0, min(11, (c.month ?? 1) - 1))]
-        let text = "\(c.day ?? 1). \(month)"
-        return c.year == year ? text : "\(text) \(c.year ?? year)"
+        let text = "\(c.day ?? 1).\(glue)\(month)"
+        return c.year == year ? text : "\(text)\(glue)\(c.year ?? year)"
     }
 }
