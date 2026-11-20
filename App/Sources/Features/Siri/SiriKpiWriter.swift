@@ -12,16 +12,20 @@ enum SiriKpiWriter {
     /// A table with the same figures is written again only after this long (its time stamp drives „Stand …“).
     static let rewriteAfter: TimeInterval = 60 * 60
 
+    /// What this process wrote last (MARK: review-siri – compared in memory; the file was read and decoded on every refresh).
+    private static var lastWritten: KpiDailyTable?
+
     static func refresh(_ repo: Repository, now: Date = Date()) {
         // Screenshot and performance runs keep their in-memory demo data to themselves.
         guard !LaunchMode.isSandboxed else { return }
         Diagnostics.measure("SiriKpi.write") {
             let table = makeTable(repo, now: now)
-            if let stored = SiriKpiFile.load(), stored.hasSameFigures(as: table),
+            if let stored = lastWritten ?? SiriKpiFile.load(), stored.hasSameFigures(as: table),
                now.timeIntervalSince(stored.generatedAt) >= 0, now.timeIntervalSince(stored.generatedAt) < rewriteAfter {
+                lastWritten = stored
                 return
             }
-            SiriKpiFile.save(table)
+            lastWritten = SiriKpiFile.save(table) ? table : nil
         }
     }
 

@@ -40,7 +40,9 @@ App-Group-Container (ohne App Group: Application Support; der Intent läuft im P
   Ticketjahr-Antworten kommen ohnehin aus der Summary.
 - **Wann geschrieben**: `SiriKpiWriter.refresh` hängt mit einer markierten Zeile an `Repository.refreshWidgets()` – nach jedem
   Speichern (gebündelt mit dem Widget-Update), beim Start, nach einer Synchronisierung, an einem neuen Tag, nach einem Ticketwechsel,
-  nach „Alle Daten löschen“. Gleiche Zahlen werden erst nach einer Stunde neu geschrieben (der Zeitstempel trägt den „Stand“).
+  nach „Alle Daten löschen“. Gleiche Zahlen werden erst nach einer Stunde neu geschrieben (der Zeitstempel trägt den „Stand“);
+  verglichen wird mit der zuletzt geschriebenen Tabelle im Speicher, nicht mit der Datei (Review: sie wurde bei jedem Update
+  gelesen und dekodiert).
   Nicht in Screenshot- und Performance-Läufen. Atomar geschrieben: ein Leser sieht die alte oder die neue Datei.
 - **Größe**: 400 Tage mit je einer Fahrt sind unter 60 KB (Test), ein typisches Jahr deutlich darunter (nur Tage mit Fahrten).
 - **Robust**: Müll, eine leere Datei oder ein fehlender Zeitstempel ergeben „keine Tabelle“; ein kaputtes Feld seinen Standard, eine
@@ -74,13 +76,25 @@ folgt Look & Feel › Zahlen: „€ 186,40“, „412 km“, „1,4 t“.
 | Kilometer | „Im November bist du 3,4 Kilometer gefahren.“ |
 | CO₂ gespart | „Im Oktober hast du gegenüber dem Auto etwa 58 Kilogramm CO₂ gespart.“ |
 | Ersparnis nach Ticketkosten | „Dein Ticket hat sich rentiert: Du bist 80 Euro 40 im Plus.“ · „Du bist noch 120 Euro im Minus. So viel fehlt bis zum Break-even.“ · nach Ablauf „Du warst …“ |
-| Tage bis Ablauf | „Dein Ticket gilt noch 100 Tage, bis 28. Februar 2027.“ · „Heute ist der letzte Tag deines Tickets.“ · „Dein Ticket ist am 28. Februar abgelaufen.“ · vor Beginn „Dein Ticket beginnt am … und gilt bis …“ |
+| Tage bis Ablauf | „Dein Ticket gilt noch 100 Tage, bis 28. Februar 2027.“ · „Heute ist der letzte Tag deines Tickets.“ · „Dein Ticket ist am 28. Februar abgelaufen.“ · vor Beginn „Dein Ticket beginnt am … und gilt bis …“ mit den Tagen bis zum Ablauf als Zahl (Review: es stand die Länge der Gültigkeit da, 365) |
 | Fehlt bis Break-even | „Bis zum Break-even fehlen noch 120 Euro. Prognose bei deinem Tempo: am 14. Dezember.“ · „… reicht es laut Prognose nicht bis zum Ablauf.“ · „Nichts mehr: Dein Ticket hat sich am 3. Oktober rentiert.“ |
 | Kosten pro Tag | „Dein Ticket kostet dich 3 Euro 23 pro Tag: 1.179 Euro für 365 Tage.“ |
 
 - **Leerer Zeitraum**: „Im Oktober hast du keine Fahrt erfasst.“ (bei jeder der vier Zeitraum-Fragen; im laufenden Ticketjahr
   „… noch keine Fahrt …“).
-- **Älter als 24 Stunden**: angehängt „Stand 12. November. Öffne die App, um zu aktualisieren.“
+- **Noch nicht gespeicherte Fahrten** (Review): „Lieblingsfahrt erfassen“ aus einem Widget, dem Kontrollzentrum oder Siri legt die
+  Fahrt in die App Group (`QuickLogQueue`); gespeichert wird sie erst, wenn die App öffnet. „Pendelfahrt erfassen“ behält eine Fahrt
+  dort, solange ihre Haltestellen noch nicht gefunden sind (`CommuteLogQueue`). „Ticket-Bilanz anzeigen“ zählt solche Fahrten schon
+  (vorläufig im Widget-Stand), die Tabelle nicht – ohne Hinweis hätten Siris zwei Antworten verschiedene Zahlen genannt. Fällt eine
+  wartende Fahrt in den gefragten Zeitraum (beim Ticketjahr in die Gültigkeit), kommt nach dem Satz „Noch nicht dabei: 1 Fahrt aus
+  Widget oder Siri – sie zählt, sobald du KlimaBilanz öffnest.“ (Mehrzahl „… 3 Fahrten … – sie zählen …“). Die Zahl selbst bleibt
+  die gespeicherte. Nicht bei Tage bis Ablauf und Kosten pro Tag (eine Fahrt ändert sie nicht). Der Intent liest nur die Zeitpunkte
+  der wartenden Fahrten (`SiriPendingTrips`).
+- **Balken des Ticketjahrs** (Review): nur die Tage des Tickets. Ein Ticket ab 15. März hat im ersten und im letzten Monat auch
+  Fahrten des Tickets davor bzw. danach – die Balken zählten sie mit, ergaben zusammen mehr als die Zahl darüber und wichen von
+  Statistiks Monaten ab (`StatsAggregator.months(_:in:)`). Liegt der Ticketbeginn vor den 400 Tagen der Tabelle (ein altes
+  Ticketjahr, wenn kein Ticket läuft), gibt es keine Balken statt leerer erster Monate.
+- **Älter als 24 Stunden**: angehängt „Stand 12. November. Öffne die App, um zu aktualisieren.“ (immer zuletzt)
 - **Keine Tabelle**: „Öffne KlimaBilanz einmal – dann kennt Siri deine Zahlen.“ **Kein Ticket** (Ticketjahr, Ticket-Fragen):
   „Öffne KlimaBilanz und lege zuerst dein Ticket an.“ Zeitraum-Fragen für Woche, Monat und Jahr gehen auch ohne Ticket.
 - Prognosen heißen „Prognose“; Tage und Kosten pro Tag rechnet `SavingsCalculator.summary` mit den Ticketdaten (dieselbe Formel
@@ -92,7 +106,8 @@ folgt Look & Feel › Zahlen: „€ 186,40“, „412 km“, „1,4 t“.
 
 - `AskKlimaIntent` („Frag KlimaBilanz“, Kategorie „Zahlen“) mit zwei `AppEnum`-Parametern: `AskKlimaQuestion` (Standard Fahrten)
   und `AskKlimaPeriod` (Standard Ticketjahr), deutsche Titel und Synonyme („Wie viel CO₂ habe ich gespart“, „Wann läuft mein Ticket
-  ab“, „diesen Monat“, „heuer“ …). Ergebnis: Dialog (der Satz), Snippet (`AskKlimaSnippet`) und die geschriebene Zahl als `String`
+  ab“, „diesen Monat“, „heuer“ …). Die Spracherkennung schreibt „CO2“, nicht „CO₂“ – deshalb steht das Beispiel der Seite auch als
+  „Wie viel CO2 habe ich gespart“ unter den Synonymen (Review; ob Siri es erkennt, zeigt erst ein iPhone). Ergebnis: Dialog (der Satz), Snippet (`AskKlimaSnippet`) und die geschriebene Zahl als `String`
   („€ 186,40“; ohne Zahl der Satz) für den nächsten Schritt eines Kurzbefehls (`resultValueName` „Antwort“).
 - **Ein** App Shortcut in `Shortcuts.swift` (MARK: siri), der 9. von höchstens 10 – der 10. bleibt frei
   (`scripts/test_app_shortcuts.py` zählt und prüft, dass jede Phrase die App nennt und höchstens einen Parameter hat). Phrasen:
@@ -146,7 +161,8 @@ sind vollständig.
 
 - Linux: `swift test --package-path Packages/KlimaCore --no-parallel --filter Siri` (Tabelle, Kreuzprobe mit der Summary,
   Statistik-Monate, Reisen, Wiener Tage und Umstellungen, Fenster, JSON, Müll, Stand, alle Kombinationen, Sätze, Einzahl/Mehrzahl,
-  Zeiträume, Wochenstart, Balken, Ticket-Fragen, Fortschritt, gesprochene Zahlen); Typprüfung von App und Widget
+  Zeiträume, Wochenstart, Balken, Ticket-Fragen, Fortschritt, gesprochene Zahlen; aus dem Review `SiriKpiReviewTests`: Balken des
+  Ticketjahrs = Zahl = Statistiks Monate, altes Ticketjahr ohne Balken, wartende Fahrten in jedem Zeitraum, Tage vor Beginn); Typprüfung von App und Widget
   (`tools/typecheck`), `scripts/test_app_shortcuts.py`.
 - CI (macOS): Build und die Screenshots in hell und dunkel.
 - **Nur auf einem iPhone prüfbar**: ob Siri die deutschen Phrasen und Synonyme erkennt; der Intent im Hintergrund (App nicht
@@ -155,4 +171,5 @@ sind vollständig.
 - Gerät-Checkliste: „Wie viele Fahrten diesen Monat in KlimaBilanz“, „Wie viel CO₂ habe ich gespart in KlimaBilanz“, „Wann läuft
   mein Ticket ab in KlimaBilanz“ sagen; „Frag KlimaBilanz“ in der Kurzbefehle-App mit „Wert deiner Fahrten · Letzter Monat“ laufen
   lassen und die Zahl mit Statistik vergleichen; eine Fahrt erfassen und sofort wieder fragen; Flugmodus – die Antwort kommt
-  trotzdem.
+  trotzdem; die App ganz schließen, „Lieblingsfahrt in KlimaBilanz erfassen“ sagen und gleich „Wie viele Fahrten diese Woche in
+  KlimaBilanz“ fragen – der Satz nennt die wartende Fahrt, nach dem Öffnen der App ist sie in der Zahl.

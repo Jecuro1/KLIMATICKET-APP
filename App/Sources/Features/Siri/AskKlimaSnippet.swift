@@ -76,10 +76,11 @@ struct AskKlimaSnippet: View {
     @ViewBuilder
     private var periodText: some View {
         if let period = answer.periodLabel {
+            // MARK: review-siri – a text style, so it grows with the text size (12 pt stayed 12 pt at AX5)
             Text(period)
-                .font(.system(size: 12, weight: .medium))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(Theme.textSecondary)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 .minimumScaleFactor(0.8)
         }
     }
@@ -109,10 +110,11 @@ struct AskKlimaSnippet: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(answer.status == .noTicket ? "Noch kein Ticket" : "Noch keine Zahlen")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.headline)   // MARK: review-siri – text styles: they grow with the text size
                     .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("Öffne KlimaBilanz einmal.")
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

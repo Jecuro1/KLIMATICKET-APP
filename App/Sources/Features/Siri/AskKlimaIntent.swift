@@ -21,7 +21,8 @@ enum AskKlimaQuestion: String, AppEnum {
         .distance: DisplayRepresentation(title: "Kilometer", image: .init(systemName: "point.topleft.down.to.point.bottomright.curvepath"),
                                          synonyms: ["Wie viele Kilometer", "Wie weit bin ich gefahren", "Strecke"]),
         .co2: DisplayRepresentation(title: "CO₂ gespart", image: .init(systemName: "leaf.fill"),
-                                    synonyms: ["Wie viel CO₂ habe ich gespart", "Wie viel CO2", "CO2 Ersparnis", "CO zwei"]),
+                                    synonyms: ["Wie viel CO₂ habe ich gespart", "Wie viel CO2 habe ich gespart", "Wie viel CO2", "CO2 gespart",
+                                               "CO2 Ersparnis", "CO zwei"]),
         .net: DisplayRepresentation(title: "Ersparnis nach Ticketkosten", image: .init(systemName: "plus.forwardslash.minus"),
                                     synonyms: ["Bin ich im Plus", "Plus oder Minus", "Ersparnis nach Ticketpreis"]),
         .daysLeft: DisplayRepresentation(title: "Tage bis Ablauf", image: .init(systemName: "hourglass"),
@@ -78,7 +79,17 @@ struct AskKlimaIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog & ShowsSnippetView {
-        let answer = KpiAnswer.make(question.question, period: period.period, table: SiriKpiFile.load(), now: Date())
+        let answer = KpiAnswer.make(question.question, period: period.period, table: SiriKpiFile.load(), now: Date(),
+                                    pending: SiriPendingTrips.dates())   // MARK: review-siri
         return .result(value: answer.shortcutValue, dialog: "\(answer.sentence)", view: AskKlimaSnippet(answer: answer))
+    }
+}
+
+/// The Fahrten that wait to be saved (MARK: review-siri): „Lieblingsfahrt erfassen“ from a widget, Control Center or Siri queues its
+/// Fahrt in the App Group and the app saves it when it opens (QuickLogQueue); „Pendelfahrt erfassen“ keeps a ride queued while its
+/// stations cannot be found yet (CommuteLogQueue). Only their dates – an answer names how many fall in its period.
+enum SiriPendingTrips {
+    static func dates() -> [Date] {
+        QuickLogQueue.pending().map(\.date) + CommuteLogQueue.pending().map(\.date)
     }
 }

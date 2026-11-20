@@ -15,6 +15,7 @@ struct SiriQuestionsView: View {
     @State private var question: KpiQuestion
     @State private var period: KpiPeriod
     @State private var table: KpiDailyTable?
+    @State private var pending: [Date] = []   // MARK: review-siri – queued Fahrten, named like Siri names them
     @State private var isLoaded = false
 
     /// CI screenshots: where the list stands (`SiriScreenshotHost`).
@@ -26,7 +27,7 @@ struct SiriQuestionsView: View {
         self.screenshotAnchor = screenshotAnchor
     }
 
-    enum Anchor: Hashable { case tester, examples, end }
+    enum Anchor: Hashable { case tester, answer, examples, end }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -55,6 +56,7 @@ struct SiriQuestionsView: View {
                     SiriAnswerPlatter(phrase: AskKlimaPhrase.spoken(question, period), answer: answer)
                         .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: Theme.Spacing.s, bottom: Theme.Spacing.s, trailing: Theme.Spacing.s))
                         .listRowBackground(Theme.surface)
+                        .id(Anchor.answer)
                 } header: {
                     SetSectionHeader(title: "Probier es aus")
                         .id(Anchor.tester)
@@ -121,18 +123,19 @@ struct SiriQuestionsView: View {
                 // Built from the data on screen (the file Siri reads is written with the widgets; this one is never stale).
                 guard !isLoaded else { return }
                 table = SiriKpiWriter.makeTable(Repository(context: context, app: app))
+                pending = LaunchMode.isSandboxed ? [] : SiriPendingTrips.dates()
                 isLoaded = true
             }
             .task {
                 guard let screenshotAnchor else { return }
                 try? await Task.sleep(for: .milliseconds(400))
-                proxy.scrollTo(screenshotAnchor, anchor: screenshotAnchor == .end ? .bottom : .top)
+                proxy.scrollTo(screenshotAnchor, anchor: screenshotAnchor == .end || screenshotAnchor == .answer ? .bottom : .top)
             }
         }
     }
 
     private var answer: KpiAnswer {
-        KpiAnswer.make(question, period: period, table: isLoaded ? table : nil, now: Date())
+        KpiAnswer.make(question, period: period, table: isLoaded ? table : nil, now: Date(), pending: pending)
     }
 
     /// A labelled choice: the title on the left, the current value as a menu on the right (stacked at accessibility sizes).
@@ -241,7 +244,7 @@ private struct SiriQuestionsHero: View {
             Circle()
                 .fill(Theme.routeGradient)
             Circle()
-                .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
+                .strokeBorder(Theme.onAccent.opacity(0.35), lineWidth: 1)
             Image(systemName: "waveform")
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(Theme.onAccent)
