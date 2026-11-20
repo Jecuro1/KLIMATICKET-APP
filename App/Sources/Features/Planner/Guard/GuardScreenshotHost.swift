@@ -51,7 +51,8 @@ struct GuardScreenshotHost: View {
         case .noRealtime, .over, .ended, .overShort:
             GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
         case .endedAX5:
-            GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
+            // The card's end at AX5 (its top is the same as in guardAX5): the reason, „Prüfung beendet“ and what is offered.
+            GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()), showsEnd: true)
                 .dynamicTypeSize(.accessibility5)
         case .alternatives:
             GuardAlternativesSheet()
@@ -67,6 +68,8 @@ struct GuardScreenshotHost: View {
 /// The card on its own (a connection without realtime: no follow answer with realtime may stand next to it).
 private struct GuardCardOnlyShot: View {
     let target: LiveFollowTarget
+    /// Opens scrolled to the end of the card (the AX5 scene of the end).
+    var showsEnd = false
 
     var body: some View {
         NavigationStack {
@@ -74,6 +77,7 @@ private struct GuardCardOnlyShot: View {
                 ConnectionGuardCard(target: target, snapshot: nil)
                     .padding(Theme.Spacing.cardGutter)
             }
+            .defaultScrollAnchor(showsEnd ? .bottom : .top)
             .ambientBackground(.standard, glow: 0.3)
             .navigationTitle(target.lineName)
             .navigationBarTitleDisplayMode(.inline)

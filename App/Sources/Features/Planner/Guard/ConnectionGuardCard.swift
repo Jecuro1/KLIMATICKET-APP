@@ -428,7 +428,11 @@ struct ConnectionGuardCard: View {
             case .menu, .none:
                 EmptyView()
             }
-            if offered.hasRow {
+            if offered.alarm, !offered.checkNow, !offered.hasMenu {
+                // Alone after the end: across the card like the alternatives (a lone tile was a tall, empty capsule).
+                Button { onAlarm() } label: { wideLabel(GuardText.alarmButton, symbol: "bell.badge") }
+                    .buttonStyle(.glass)
+            } else if offered.hasRow {
                 if isLarge {
                     row(engine: engine, offered: offered)
                 } else {
