@@ -58,7 +58,10 @@ extension KpiAnswer {
     public static let noTicketSentence = "Öffne KlimaBilanz und lege zuerst dein Ticket an."
 
     /// The answer to `question` for `period` from `table` at `now`.
-    public static func make(_ question: KpiQuestion, period: KpiPeriod, table: KpiDailyTable?, now: Date,
+    /// - Parameter pending: when the Fahrten that widgets, Control Center and Siri queued („Lieblingsfahrt erfassen“) were logged –
+    ///   they reach the table only once the app opens and saves them. Those of the answered period are named after the figure
+    ///   (MARK: review-siri – „Ticket-Bilanz anzeigen“ already counts them, so Siri's two answers would disagree silently).
+    public static func make(_ question: KpiQuestion, period: KpiPeriod, table: KpiDailyTable?, now: Date, pending: [Date] = [],
                             calendar: Calendar = .vienna) -> KpiAnswer {
         let answered: KpiPeriod = question.isTicketOnly ? .ticketYear : period
         guard let table else {
@@ -68,11 +71,36 @@ extension KpiAnswer {
         var answer = question.isTicketOnly
             ? ticketAnswer(question, asked: period, table: table, now: now, calendar: calendar)
             : periodAnswer(question, period: period, table: table, now: now, calendar: calendar)
+        if answer.status != .noTicket, let note = pendingNote(question, period: answered, table: table, pending: pending, now: now, calendar: calendar) {
+            answer.sentence += " " + note
+        }
         if table.isStale(at: now) {
             answer.isStale = true
             answer.sentence += " Stand \(KpiSpoken.date(table.generatedAt, now: now, calendar: calendar)). Öffne die App, um zu aktualisieren."
         }
         return answer
+    }
+
+    /// „Noch nicht dabei: 1 Fahrt aus Widget oder Siri – sie zählt, sobald du KlimaBilanz öffnest.“ for the queued Fahrten of the
+    /// answered period; nil for none, and for the questions they do not change (a date, a price per day).
+    static func pendingNote(_ question: KpiQuestion, period: KpiPeriod, table: KpiDailyTable, pending: [Date], now: Date,
+                            calendar: Calendar) -> String? {
+        guard !pending.isEmpty, question != .daysLeft, question != .costPerDay else { return nil }
+        let count: Int
+        if let range = period.range(now: now, weekStart: table.format.weekStart, calendar: calendar) {
+            count = pending.filter { date in
+                let key = KpiDailyTable.dayKey(date, calendar: calendar)
+                return key >= range.first && key <= range.last
+            }.count
+        } else if let ticket = table.ticket {
+            count = pending.filter { ticket.period.contains($0) }.count
+        } else {
+            count = 0
+        }
+        guard count > 0 else { return nil }
+        return count == 1
+            ? "Noch nicht dabei: 1\(KpiSpoken.glue)Fahrt aus Widget oder Siri – sie zählt, sobald du KlimaBilanz öffnest."
+            : "Noch nicht dabei: \(KpiSpoken.trips(count)) aus Widget oder Siri – sie zählen, sobald du KlimaBilanz öffnest."
     }
 
     // MARK: Trips, value, km, CO₂
@@ -101,7 +129,13 @@ extension KpiAnswer {
             hasTrips = ticket.tripCount > 0
             name = "im Ticketjahr"
             label = "Ticketjahr \(ticketYear(ticket, calendar: calendar))"
-            bars = monthBars(question, from: ticket.start, to: ticket.end, table: table, now: now, calendar: calendar)
+            // MARK: review-siri – only the ticket's own days (its first and last month held trips of the ticket before and after,
+            // so the bars did not add up to the figure above them or match Statistik's months); none when the table's days do not
+            // reach back to the ticket's start (an old ticket year: its early months would read empty).
+            let first = KpiDailyTable.dayKey(ticket.start, calendar: calendar), last = KpiDailyTable.dayKey(ticket.end, calendar: calendar)
+            bars = first >= table.firstCoveredDay(calendar: calendar)
+                ? monthBars(question, from: ticket.start, to: ticket.end, days: (first, last), table: table, now: now, calendar: calendar)
+                : []
         }
         let title = "\(question.title) · \(label)"
         let opening = name.prefix(1).uppercased() + name.dropFirst()
@@ -187,7 +221,9 @@ extension KpiAnswer {
                 progress = 1
                 sentence = "Dein Ticket ist am \(endDate) abgelaufen."
             } else if notYet {
-                value = KpiSpoken.days(days.daysTotal)
+                // MARK: review-siri – the days until it runs out, counted like „noch … Tage“ (it said the period's length, 365)
+                let today = calendar.startOfDay(for: now), endDay = calendar.startOfDay(for: ticket.end)
+                value = KpiSpoken.days(max(0, calendar.dateComponents([.day], from: today, to: endDay).day ?? days.daysTotal))
                 sentence = "Dein Ticket beginnt am \(KpiSpoken.date(ticket.start, now: now, calendar: calendar)) und gilt bis \(endDate)."
             } else if days.daysRemaining == 0 {
                 value = KpiSpoken.days(0)
@@ -226,7 +262,7 @@ extension KpiAnswer {
             guard let parsed = KpiDailyTable.parse(dayKey: range.first),
                   let start = calendar.date(from: DateComponents(year: parsed.year, month: 1, day: 1)),
                   let end = calendar.date(from: DateComponents(year: parsed.year, month: 12, day: 31)) else { return [] }
-            return monthBars(question, from: start, to: end, table: table, now: now, calendar: calendar)
+            return monthBars(question, from: start, to: end, days: nil, table: table, now: now, calendar: calendar)
         default:
             guard let parsed = KpiDailyTable.parse(dayKey: range.first),
                   var day = calendar.date(from: DateComponents(year: parsed.year, month: parsed.month, day: parsed.day)) else { return [] }
@@ -246,15 +282,17 @@ extension KpiAnswer {
         }
     }
 
-    /// One bar per calendar month from `start` through `end`.
-    private static func monthBars(_ question: KpiQuestion, from start: Date, to end: Date, table: KpiDailyTable, now: Date,
-                                  calendar: Calendar) -> [KpiBar] {
+    /// One bar per calendar month from `start` through `end`, summing only the day keys in `days` (inclusive) when given.
+    private static func monthBars(_ question: KpiQuestion, from start: Date, to end: Date, days: (first: String, last: String)?,
+                                  table: KpiDailyTable, now: Date, calendar: Calendar) -> [KpiBar] {
         let first = calendar.dateComponents([.year, .month], from: start)
         let last = calendar.dateComponents([.year, .month], from: end)
         let current = calendar.dateComponents([.year, .month], from: now)
         guard var year = first.year, var month = first.month, let lastYear = last.year, let lastMonth = last.month else { return [] }
         var totals: [String: Double] = [:]
-        for day in table.days { totals[String(day.day.prefix(7)), default: 0] += metric(question, day) }
+        for day in table.days where days.map({ day.day >= $0.first && day.day <= $0.last }) ?? true {
+            totals[String(day.day.prefix(7)), default: 0] += metric(question, day)
+        }
         var bars: [KpiBar] = []
         while (year, month) <= (lastYear, lastMonth), bars.count < 14 {
             let key = String(KpiDailyTable.dayKey(year: year, month: month, day: 1).prefix(7))

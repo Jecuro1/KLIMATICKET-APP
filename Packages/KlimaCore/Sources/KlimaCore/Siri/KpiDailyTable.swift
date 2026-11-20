@@ -106,6 +106,13 @@ public struct KpiDailyTable: Codable, Equatable, Sendable {
         return total
     }
 
+    /// The oldest day the table can hold a row for (`dayWindow` days up to the day it was written) – older days are not in it,
+    /// whether there were trips or not. MARK: review-siri
+    public func firstCoveredDay(calendar: Calendar = .vienna) -> String {
+        let written = calendar.startOfDay(for: generatedAt)
+        return Self.dayKey(calendar.date(byAdding: .day, value: -(Self.dayWindow - 1), to: written) ?? written, calendar: calendar)
+    }
+
     /// „2026-10-25“ for `date` in `calendar` (Vienna by default).
     public static func dayKey(_ date: Date, calendar: Calendar = .vienna) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: date)
