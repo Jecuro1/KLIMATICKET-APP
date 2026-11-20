@@ -75,6 +75,7 @@ enum DataHubRestore {
             return .failed("Die Sicherung davor ging nicht – es wurde nichts geändert.")
         }
         do {
+            let schedulesBefore = routeSchedules(context: context)   // MARK: review-daten
             _ = try Backup.restoreChecked(preview.data, context: context)
             let repository = Repository(context: context, app: app)
             repository.commit()
@@ -82,12 +83,31 @@ enum DataHubRestore {
             for ticket in repository.liveTickets() where !ticket.isExpired {
                 repository.scheduleReminders(for: ticket)
             }
+            await refreshRouteReminders(before: schedulesBefore, context: context)   // MARK: review-daten
             if includeSettings && !preview.settings.isEmpty { BackupSettingsSnapshot.stage(preview.settings) }
             return .restored(restoredLine(preview, includeSettings: includeSettings))
         } catch let error as DataHubRestoreError {
             return .failed(error.errorDescription ?? "Die Datei ist kein gültiges KlimaBilanz-Backup.")
         } catch {
             return .failed("Die Datei ist kein gültiges KlimaBilanz-Backup.")
+        }
+    }
+
+    /// MARK: review-daten – „Meine Routen“: the pattern of each saved route before a restore.
+    @MainActor
+    static func routeSchedules(context: ModelContext) -> [UUID: String] {
+        let routes = (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? []
+        return Dictionary(routes.map { ($0.id, $0.scheduleRaw) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// MARK: review-daten – a route whose pattern the restore brought or changed gets its reminders again (never asking iOS for
+    /// permission here); every other route keeps what it has, so an alarm paused in „Alarme“ stays paused.
+    @MainActor
+    static func refreshRouteReminders(before: [UUID: String], context: ModelContext) async {
+        guard !LaunchMode.isSandboxed else { return }
+        let routes = (try? context.fetch(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? []
+        for route in routes where (before[route.id] ?? "") != route.scheduleRaw {
+            await SavedRouteReminders.apply(to: route, requestingPermission: false)
         }
     }
 

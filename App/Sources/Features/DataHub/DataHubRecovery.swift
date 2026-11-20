@@ -107,6 +107,7 @@ struct DataHubRecoveryButton: View {
                 let repository = Repository(context: container.mainContext, app: app)
                 repository.commit()
                 for ticket in repository.liveTickets() where !ticket.isExpired { repository.scheduleReminders(for: ticket) }
+                Task { await DataHubRestore.refreshRouteReminders(before: [:], context: container.mainContext) }   // MARK: review-daten
                 // MARK: review-daten – what the store holds now, counted like the line above the button (not every row of the file)
                 app.showToast("checkmark.circle.fill", "Aus Sicherung wiederhergestellt", Backup.counts(context: container.mainContext).line)
             }

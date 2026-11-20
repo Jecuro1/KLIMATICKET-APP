@@ -56,15 +56,28 @@ enum DataHubDemo {
             file.trips[at].base.updated_at = now.addingTimeInterval(Double(60 + index * 60))
             file.trips[at].base.note = "Auf dem anderen iPhone ergänzt"
         }
-        var journeys: [String: String] = [:]   // MARK: review-daten – a copied leg joins a new journey, not one of this iPhone
-        for (index, row) in live.dropFirst(3).prefix(12).enumerated() {
+        // MARK: review-daten – a copied leg joins a new journey, not one of this iPhone; a trip of its own („“ = no journey) stays
+        // one, and the legs of a journey keep their day together (12 copied trips must read „12 neue Fahrten“, not „1 neue Fahrt“)
+        var journeys: [String: (id: String, week: Int)] = [:]
+        var weeks = 0
+        for row in live.dropFirst(3).prefix(12) {
             var copy = row
             copy.base.id = UUID()
-            if let journey = row.base.journey_id {
-                copy.base.journey_id = journeys[journey] ?? UUID().uuidString
-                journeys[journey] = copy.base.journey_id
+            let week: Int
+            if let journey = row.base.journey_id, !journey.isEmpty {
+                if let known = journeys[journey] {
+                    week = known.week
+                } else {
+                    weeks += 1
+                    week = weeks
+                    journeys[journey] = (UUID().uuidString.lowercased(), week)
+                }
+                copy.base.journey_id = journeys[journey]?.id
+            } else {
+                weeks += 1
+                week = weeks
             }
-            copy.base.date = row.base.date.addingTimeInterval(-Double(index + 1) * 86_400 * 7)
+            copy.base.date = row.base.date.addingTimeInterval(-Double(week) * 86_400 * 7)
             copy.base.created_at = now
             copy.base.updated_at = now
             file.trips.append(copy)

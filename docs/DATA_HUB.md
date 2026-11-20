@@ -145,7 +145,9 @@ Die Kopien, die `StoreLoader` selbst anlegt (vor einem App-Update, wenn das Öff
    die Vorschau sagt es: „1 Eintrag, den du hier nach dieser Sicherung gelöscht hast, bleibt gelöscht.“ Dazu Format, App-Version, Datum, Prüfsumme und – falls die Datei Einstellungen hat, die anders sind – der Schalter
    „Auch Einstellungen übernehmen“.
 3. **„Wiederherstellen“**: zuerst die Sicherung „vor dem Wiederherstellen“ (gelingt sie nicht: nichts passiert), dann das
-   Zusammenführen wie bisher (nur ergänzen, nichts doppelt), Erinnerungen der Tickets neu planen. Die Meldung sagt, was die Vorschau
+   Zusammenführen wie bisher (nur ergänzen, nichts doppelt), Erinnerungen der Tickets neu planen – und die einer gespeicherten Route,
+   deren Muster die Datei gebracht oder geändert hat (ohne iOS nach der Erlaubnis zu fragen; andere Routen bleiben, wie sie sind, eine
+   unter „Alarme“ pausierte bleibt pausiert). Die Meldung sagt, was die Vorschau
    versprochen hat („12 neue Fahrten, 3 geänderte · 1 Ticket“), nicht mehr jede geänderte Zeile samt Löschungen („95 Fahrten, 1 Tickets
    … importiert“). „Aus Sicherung wiederherstellen“ meldet, was danach auf dem iPhone ist.
 
@@ -253,7 +255,11 @@ Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
 - **Komplettsicherung, die nicht komplett war:** Preisquelle, Fahrplan-Referenz und Linien einer Fahrt sowie das Muster einer
   gespeicherten Route gingen beim Wiederherstellen in einen leeren Speicher verloren (die Sync-Zeilen tragen sie nicht) – „Live-Preis“
   wurde zu keiner Angabe, die Linie fehlte im Verspätungs-Nachweis, „Meine Routen“ erinnerte nicht mehr. Jetzt im Block `local` (§3.1).
-  Die Rundreise in CI vergleicht seither ganze Zeilen statt nur Zahlen.
+  Die Rundreise in CI vergleicht seither ganze Zeilen statt nur Zahlen. Eine wiederhergestellte Route mit Muster bekommt ihre
+  Erinnerungen (§5).
+- **Demo-Vorschau:** Die Datei „von einem anderen iPhone“ legte alle kopierten Einzelfahrten in eine gemeinsame Reise („1 neue Fahrt“
+  statt zwölf) – eine Fahrt ohne Reise hat `journey_id` „“, nicht nil.
+- **Datenschutz-Zeile:** nennt alles, was in einer Sicherung steckt (auch Vorteile und Einstellungen).
 - **Exportieren:** Die Komplettsicherung ließ sich nicht teilen, solange es keine Fahrt gab („0 Fahrten · 1 Ticket“ galt als leer) –
   leer ist sie nur ohne jede Zeile.
 - **Wortwahl:** Die Meldung nach dem Wiederherstellen sagt „Sicherung wiederhergestellt“ wie die ganze Seite (nicht „Backup“).

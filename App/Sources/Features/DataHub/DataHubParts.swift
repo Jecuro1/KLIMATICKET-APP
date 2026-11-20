@@ -29,7 +29,7 @@ enum DataHubText {
 
     static let banner = "Diese Sicherungen liegen auf diesem iPhone. Löschst du die App, sind sie weg. Kopiere sie in Dateien oder iCloud Drive."
     static let whereLine = "Dateien › Auf meinem iPhone › KlimaBilanz › Sicherungen"
-    static let privacy = "Nichts verlässt dein iPhone, außer du teilst eine Datei. Sicherungen enthalten deine Tickets, Fahrten und Favoriten – Anmeldung, Schlüssel und die Live-Daten-Zustimmung sind nie dabei."
+    static let privacy = "Nichts verlässt dein iPhone, außer du teilst eine Datei. Sicherungen enthalten deine Tickets, Fahrten, Favoriten, Vorteile und Einstellungen – Anmeldung, Schlüssel und die Live-Daten-Zustimmung sind nie dabei."   // MARK: review-daten – all of what is in them
     /// MARK: review-daten – with a cloud account the rows are synced; „Nichts verlässt dein iPhone“ would be false then.
     static let privacySynced = "Deine Tickets, Fahrten, Favoriten und Vorteile werden mit deinem KlimaBilanz-Konto synchronisiert. Sicherungen und Exporte verlassen dein iPhone nur, wenn du eine Datei teilst – Anmeldung, Schlüssel und die Live-Daten-Zustimmung sind nie dabei."
     static let retention = "Behalten werden die Sicherungen der letzten 7 Tage, je eine der letzten 4 Wochen und 3 Monate. Sicherungen vor dem Löschen oder Wiederherstellen bleiben 30 Tage, die neueste immer."
