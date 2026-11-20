@@ -2931,7 +2931,8 @@ rund um ihn, wie beim Verschieben der Karte (die Auskunft sieht grob die Gegend 
 - **Positionen der Tafel:** die aufgezeichneten Tafeln (2026-10-09) tragen `pos` auch für Bus, Bim und U-Bahn (Innsbruck Hbf: Bus 11 von 19, Bim 5 von 7;
   Wien Hbf Ankünfte: Bus 7 von 7, Bim 15 von 17, U-Bahn 6 von 8). Gezeigt mit dem Alter der Tafel, nie hochgerechnet; älter als 2 Minuten grau.
 - **Nicht gemessen:** ob die `jid` der Tafel der des Radars gleicht. Die App ersetzt die Nadel der Tafel nur bei gleicher Fahrt-ID und neuerer
-  Radar-Antwort durch den Radar-Marker und sagt unter jeder Tafel, dass ein Fahrzeug zweimal erscheinen kann.
+  Radar-Antwort durch den Radar-Marker und sagt unter jeder Tafel, dass ein Fahrzeug zweimal erscheinen kann. Die Messung (zwei Anfragen, nur Zahlen
+  und Ja/Nein) liegt als `RadarMineLiveTests` bereit (`KB_LIVE_TESTS=1 KB_RADAR_MINE=1`, nur werktags 9–19 Uhr Wien); sie lief noch nicht.
 - **Gespeichert:** nur gemerkte Linien (Titel, Verkehrsmittel, grob die Gegend) und die letzten fünf Haltestellen in `RadarMine/mine.json`, nicht in der
   iPhone-Sicherung; Tafel, Positionen und Standort nur im Arbeitsspeicher.
 

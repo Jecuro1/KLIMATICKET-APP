@@ -224,12 +224,15 @@ public enum FeatureRegistry {
                 // MARK: review-funktionen – „Auf der Karte zeigen“ in „Züge suchen“ opened the whole radar while it was off
                 offEffect: "Der Radar-Knopf im Fahrplan und „Auf der Karte zeigen“ in „Züge suchen“ sind ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.",
                 hiddenEntry: "der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“",
-                dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst",
-                                            when: "solange der Radar offen ist, höchstens 24 Anfragen pro Minute – \(liveAsk)"),
+                // MARK: radar2-radarmine – „Wo bleibt mein Bus?“ asks the chosen stop's departures inside the same 24 (docs/RADAR_MINE.md §4)
+                dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst; bei „Wo bleibt mein Bus?“ die Haltestelle, die du wählst",
+                                            when: "solange der Radar offen ist, höchstens 24 Anfragen pro Minute; die Abfahrten deiner Haltestelle einmal pro Minute darin, solange diese Ansicht offen ist – \(liveAsk)"),
                             FeatureDataFlow(.appleMaps, sends: "der Kartenausschnitt, den du ansiehst",
                                             when: "solange eine Karte zu sehen ist"),
                             // MARK: radar2-radartrail – Spuren keep what the radar loaded, in memory only (docs/RADAR_TRAILS.md §3)
-                            .local("Spuren: Positionen, die das Radar geladen hat – nur im Arbeitsspeicher, solange es offen ist")])
+                            .local("Spuren: Positionen, die das Radar geladen hat – nur im Arbeitsspeicher, solange es offen ist"),
+                            // MARK: radar2-radarmine – remembered lines and stops on the device only, the fix of „In der Nähe“ in memory (docs/RADAR_MINE.md §6)
+                            .local("Meine Fahrzeuge: gemerkte Linien und die letzten fünf Haltestellen auf diesem iPhone, nicht in der iPhone-Sicherung; dein Standort für „In der Nähe“ nur im Arbeitsspeicher, nie gesendet")])
         case .trainSearch:
             return FeatureDescriptor(
                 id: id, title: "Züge suchen", line: "Einen Zug über seine Nummer finden, zum Beispiel RJX 66",

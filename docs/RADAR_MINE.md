@@ -1,6 +1,6 @@
 # Meine Fahrzeuge auf dem Radar (radarmine)
 
-Stand 2026-11-19. Teil der zweiten Radar-Welle (radar2). Code: `App/Sources/Features/Radar/Mine/`,
+Stand 2026-11-20. Teil der zweiten Radar-Welle (radar2). Code: `App/Sources/Features/Radar/Mine/`,
 `Packages/KlimaCore/Sources/KlimaCore/Live/Radar/Mine/`, Tests in `Packages/KlimaCore/Tests/KlimaCoreTests/Live/Radar/Mine/`. Eingebunden nur über die
 Naht der zweiten Welle (`Radar2/Radar2Seam.swift`, `docs/RADAR_MODES.md` §13) und je eine markierte Zeile in `ScreenshotRouter` (`RootView.swift`),
 `Heat/RadarView+Heat.swift` (Höhe des offenen Panels), `Repository.deleteAllData` („Alle Daten löschen“), `StopBoardDepartures.isAhead` (gemeinsame
@@ -16,7 +16,11 @@ Der Chip **„Meine“** am Anfang der Verkehrsmittel-Chips öffnet über der St
    Ort, an dem das Fahrzeug gerade ist; die ersten fünf mit Position bekommen eine Nummer, in der Liste und auf der Karte.
 
 Es öffnet sich immer nur ein Panel unten: Öffnet sich die Zeitreise, schließt sich „Meine“ (`Radar2Parts.timeCardOpened`), und „Meine“ schließt die
-Zeitreise-Karte. Während das Panel offen ist, weicht die Ebenenleiste (wie bei der Zeitreise).
+Zeitreise-Karte. Während das Panel offen ist, weicht die Ebenenleiste (wie bei der Zeitreise). Das Panel ist so hoch wie sein Inhalt, höchstens 36 % des
+Bildschirms (ab AX1 40 %, die Statuskarte rückt dann unter das Panel und wird mit ihm gescrollt, damit die Karte Platz behält); der Rest scrollt im
+Panel. Gemessen am Bildschirm, nicht an der Karte: die Karte wird kleiner, während das Panel unten Platz
+nimmt, und ein Panel, das sich an ihr maß, schrumpfte mit (CI-Screenshots, zweiter Lauf). So bleiben Haltestelle und nummerierte Fahrzeuge darüber
+sichtbar.
 
 ## 2. Linien
 
@@ -62,7 +66,8 @@ Zeitreise-Karte. Während das Panel offen ist, weicht die Ebenenleiste (wie bei 
   Haltestelle kommen, weiß nur die Abfahrtstafel (StationBoard). Ihre Einträge tragen für laufende Fahrten die Position, die die Auskunft berechnet hat
   (`BoardEntry.currentPosition`); in den aufgezeichneten Tafeln auch für Bus, Bim und U-Bahn (`docs/OEBB_LIVE.md` §R11.5).
 - **Auswahl:** Suche im eigenen Stationsverzeichnis (keine Anfrage), „Kartenmitte: …“ (die Haltestelle der Kartenmitte, bis 1 km), „In der Nähe: …“
-  (nur nach einem Fix) und „Zuletzt“ (die letzten fünf). „Andere Haltestelle“ führt zurück.
+  (nur nach einem Fix) und „Zuletzt“ (die letzten fünf). Das kleine „Ändern“ neben dem Namen (ab AX1 nur sein Symbol, damit der Name umbricht statt abgeschnitten
+zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
 - **Abfrage:** eine StationBoard-Anfrage für 30 Minuten, höchstens 12 Einträge, **Züge, S-Bahn, Bus, Bim und U-Bahn (4989), egal welche Chips an sind**
   – mit den voreingestellten Chips (Züge, S-Bahn) wäre eine Bushaltestelle sonst leer und „Die Auskunft kennt keine Abfahrt“ wäre falsch. Beim ersten
   Mal für eine Haltestelle vorher eine LocMatch-Anfrage (keine bei `uic:`-Stationen; der Linker merkt sie sich 30 Tage auf dem Gerät).
@@ -70,9 +75,9 @@ Zeitreise-Karte. Während das Panel offen ist, weicht die Ebenenleiste (wie bei 
   letzten Antwort; nie zwei gleichzeitig; nach Fehlern 15/30/60/120 s; nach 30 Minuten ohne Tipp Pause („Pausiert. Tippe zum Aktualisieren.“).
 - **Zeilen (`RadarStopArrivals`):** die nächsten acht, die noch vor dir liegen (die Regel der „Nächsten Abfahrten“ des Pendel-Modus,
   `StopBoardDepartures.isAhead`: bis eine Minute nach der Abfahrt, ausgefallen bis zur Plan-Zeit), in der Reihenfolge der Tafel: Schild,
-  „13A → Hauptbahnhof“, „in 4 Min“ mit „+1“ / „pünktlich“ / „laut Fahrplan“ / „fällt aus“ (durchgestrichen), „ab 14:36 · Steig 2“ (Bahn: „Gleis 4“) und
-  die Position: „noch 1,2 km“ (Luftlinie), „an der Haltestelle“ (bis 100 m) oder „Position unbekannt“; älter als 2 Minuten grau mit „Position von vor
-  3 Min“. Nie hochgerechnet.
+  „→ Hauptbahnhof“ neben dem Schild „13A“, „in 4 Min“ mit „+1“ / „pünktlich“ / „laut Fahrplan“ / „fällt aus“ (durchgestrichen) und in einer zweiten
+  Zeile „ab 14:36 · Steig 2“ (Bahn: „Gleis 4“) mit der Position: „noch 1,2 km“ (Luftlinie), „an der Haltestelle“ (bis 100 m) oder „Position
+  unbekannt“; älter als 2 Minuten grau mit „Position von vor 3 Min“. Nie hochgerechnet.
 - **Position:** hält das Radar dieselbe Fahrt-ID mit einer **neueren** Antwort als die Tafel (oder hat die Tafel keine Position), ist der Radar-Marker
   die Position: er bekommt die Nummer und bleibt Einzelmarker. Sonst zeigt eine eigene Nadel mit Nummer (gestrichelter Rand) die Position der Tafel.
   Eine gestrichelte Luftlinie verbindet jedes nummerierte Fahrzeug mit der Haltestelle; ein Tipp auf Zeile oder Nadel zeigt beide auf der Karte.
@@ -114,7 +119,9 @@ Funktionen-Zentrale nennt beides beim Zug-Radar.
 
 ## 7. Messung
 
-**Nicht gemessen.** Die aufgezeichneten Tafeln vom 2026-10-09 (`Fixtures/OEBB/hafas/`) tragen `pos` für Bus, Bim und U-Bahn (Innsbruck Hbf
+**Nicht gemessen.** Die Messung liegt als Live-Test bereit (`RadarMineLiveTests`, zwei Anfragen: die Tafel von Wien Hbf für Bus, Bim und U-Bahn und
+das Radar rund um den Bahnhof; nur Zahlen und Ja/Nein; `KB_LIVE_TESTS=1 KB_RADAR_MINE=1`, nur werktags 9–19 Uhr Wiener Zeit, weil nachts kaum Busse
+fahren). Sie lief nicht: als der Teil fertig wurde, war es in Wien nachts. Die aufgezeichneten Tafeln vom 2026-10-09 (`Fixtures/OEBB/hafas/`) tragen `pos` für Bus, Bim und U-Bahn (Innsbruck Hbf
 Abfahrten: Bus 11 von 19, Bim 5 von 7, Median 1,1–1,2 km von der Haltestelle; Wien Hbf Ankünfte: Bus 7 von 7, Bim 15 von 17, U-Bahn 6 von 8). Ob die
 Fahrt-IDs der Tafel denen des Radars gleichen, ist **nicht geprüft**. Deshalb steht der Satz „Ein Fahrzeug kann zweimal erscheinen: einmal vom Radar,
 einmal von der Abfahrtstafel.“ von Anfang an unter jeder Tafel; stimmen die IDs nicht überein, ersetzt der Radar-Marker nie eine Nadel und dasselbe
@@ -132,8 +139,9 @@ eigene Messung. „Linien“ nutzt deshalb nur, was die Kacheln halten; außerha
 Alle Sätze stehen in `RadarMineText` (KlimaCore) und sind getestet (`RadarMineTextTests`): „berechnet“, nie GPS; leere Listen sagen, was die Auskunft
 kennt, nie „es fährt nichts“; „Min“ in Zeilen, „Minuten“ für VoiceOver; „240 m“, „1,2 km“; du-Form. VoiceOver liest jede Zeile als einen Satz
 („Bus 13A nach Hauptbahnhof, ab 14 Uhr 36, in 4 Minuten, 1 Minute verspätet, Steig 2, noch 1,2 Kilometer entfernt, Position berechnet, Nummer 1 auf der
-Karte“), mit Aktionen „Auf der Karte zeigen“ und „Nicht mehr merken“. Ab AX3 werden die Segmente ein Menü; Zeilen stapeln sich, die Zeit wird nie
-abgeschnitten.
+Karte“), mit Aktionen „Auf der Karte zeigen“ und „Nicht mehr merken“. Textgrößen: die Titelzeile („Meine Fahrzeuge“ mit zwei Knöpfen) wächst bis
+xxxLarge, die Seite bis AX2 – wie Statuskarte und Leisten des Radars über der Karte (bei AX5 war sonst keine Zeile mehr zu sehen); ab AX3 werden die
+Segmente ein Menü mit der Seite als Titel, einzeilig („Haltestelle“ wurde bei AX5 getrennt); Zeilen stapeln sich, die Zeit wird nie abgeschnitten.
 
 ## 10. Demo und Screenshots
 
@@ -149,8 +157,11 @@ Bus, den das Demo-Radar hält – gleiche Fahrt-ID, er bekommt die Nummer –, z
 Geprüft (Linux, `swift test --filter RadarMine`): Schlüssel und Vergleich, 20er-Grenze, Datei-Format v1 mit Toleranz, Umkreis-Kante 1,499/1,501 km,
 Reihenfolge, Minuten, Tafel-Zeilen (Reihenfolge, vergangene, 8er-Grenze, 100 m, Steig/Gleis, Alter), Radar-Abgleich nur bei gleicher ID und neuerer
 Antwort, Nummern, Gate in jedem Zustand (auch in `RadarFeatureGateTests`), Takt und Backoff, Budget-Simulation, Hervorhebungs-Grenze 60, alle Texte,
-Quell-Wächter (keine UserDefaults, kein zweiter Standortweg, keine Position in einer Anfrage, Tafel nur über die Quelle der Nebenaufgabe). Linux-Typecheck
-der App. CI-Screenshots hell, dunkel und AX5.
+Quell-Wächter (keine UserDefaults, kein zweiter Standortweg, keine Position in einer Anfrage, Tafel nur über die Quelle der Nebenaufgabe), die Zeilen
+der Funktionen-Zentrale. Linux-Typecheck der App. CI-Screenshots hell, dunkel und AX5 in vier Läufen (Builds 677, 680, 685, 689: Panelhöhe, AX5-Kappen,
+Kopfzeile der Haltestelle, eine Zeile für Zeit, Steig und Position, Fahrtblatt-Szene); danach wurden Chip „Meine“ und „Linie merken“ für alle
+sichtbar (`RadarMineEntry.isReleased`, vorher nur in Screenshot-Starts). Das Symbol statt „Ändern“ ab AX1 kam nach dem vierten Lauf und ist in
+keinem Screenshot zu sehen.
 
 Nicht geprüft: alles mit echten Daten (Messung §7), MapKit-Leistung mit vielen hervorgehobenen Markern, der echte Standort-Dialog, VoiceOver auf dem Gerät.
 

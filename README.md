@@ -28,7 +28,9 @@ Bedienung, Frost-Karten für Inhalte.
   zusammenspielen: [docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11.3. Nur mit Live-Daten und bei offener App; die drei sind noch nicht auf einem
   iPhone geprüft. **Bus, Bim und U-Bahn** kommen in der Stadt über eine eigene Spur im selben Budget, mit Wegzeichen-Schildern, Legende und
   Zählzeile ([docs/RADAR_MODES.md](docs/RADAR_MODES.md)). **Spuren** zeigen, wo die Auskunft ein Fahrzeug berechnet hat, seit das Radar offen ist –
-  nur im Arbeitsspeicher, ohne eine Anfrage – und im Fahrtblatt die Verspätung „seit du zuschaust“ ([docs/RADAR_TRAILS.md](docs/RADAR_TRAILS.md))
+  nur im Arbeitsspeicher, ohne eine Anfrage – und im Fahrtblatt die Verspätung „seit du zuschaust“ ([docs/RADAR_TRAILS.md](docs/RADAR_TRAILS.md)).
+  **Meine Fahrzeuge** merkt sich Linien (Stern, der Rest tritt zurück), zeigt auf deinen Tipp die Fahrzeuge in deiner Nähe und bei „Wo bleibt mein
+  Bus?“ die nächsten Abfahrten einer Haltestelle mit dem Ort ihres Fahrzeugs – einmal pro Minute im selben Radar-Budget ([docs/RADAR_MINE.md](docs/RADAR_MINE.md))
 - **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (178.013 Relationen zwischen 979 Tarifpunkten, Tarif ab 14.12.2025),
   sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
 - **KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)

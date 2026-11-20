@@ -5,11 +5,11 @@ import KlimaCore
 // budget, the invented stop and place of `RadarMineDemo`, no network, no permission prompt (the location is never asked in a screenshot launch). The
 // scene is set before the radar is built, so its model starts with the scene's lines, page and stop.
 
-/// Whether the entry points (the chip „Meine“, „Linie merken“) are shown. Screenshot launches always; everyone else once the screens behind them were
-/// looked at in the CI screenshots (docs/RADAR_MINE.md §11).
+/// Whether the entry points (the chip „Meine“, „Linie merken“) are shown. Screenshot launches always; everyone else since the screens behind them were
+/// looked at in four CI screenshot runs, light, dark and AX5 (docs/RADAR_MINE.md §11).
 enum RadarMineEntry {
     static var isShown: Bool { LaunchMode.isSandboxed || isReleased }
-    static let isReleased = false
+    static let isReleased = true
 }
 
 struct RadarMineScreenshotHost: View {

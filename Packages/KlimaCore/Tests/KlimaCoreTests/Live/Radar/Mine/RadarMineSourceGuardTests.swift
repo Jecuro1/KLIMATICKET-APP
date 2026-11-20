@@ -57,6 +57,21 @@ final class RadarMineSourceGuardTests: XCTestCase {
         }
     }
 
+    func testTheFunctionsHubNamesWhatIsSentAndWhatStays() {
+        // The Funktionen-Zentrale (docs/FUNCTIONS_HUB.md) lists every data flow: the stop goes to the ÖBB-Auskunft inside the radar's own flow (one
+        // item per feature and recipient), the remembered lines, the last stops and the fix stay on the iPhone.
+        let flows = FeatureID.radar.descriptor.dataFlows
+        let timetable = flows.filter { $0.recipient == .oebbTimetable }
+        XCTAssertEqual(timetable.count, 1)
+        XCTAssertTrue(timetable.first?.sends.contains("„Wo bleibt mein Bus?“ die Haltestelle") == true)
+        XCTAssertTrue(timetable.first?.when.contains("einmal pro Minute") == true)
+        XCTAssertTrue(timetable.first?.when.contains("24 Anfragen pro Minute") == true)
+        let mine = flows.filter { $0.recipient == .device && $0.sends.hasPrefix("Meine Fahrzeuge:") }
+        XCTAssertEqual(mine.count, 1)
+        XCTAssertTrue(mine.first?.sends.contains("nicht in der iPhone-Sicherung") == true)
+        XCTAssertTrue(mine.first?.sends.contains("nie gesendet") == true)
+    }
+
     func testTheBoardOnlyThroughTheSideJobsSource() throws {
         // Only `RadarStopBoardSource` (called from the side job in `RadarMineModel.run`) reaches the timetable or the station linker.
         let words = ["timetable.", "linker.", "TimetableService", "HafasClient", "claimSlot", "RequestThrottle"]
