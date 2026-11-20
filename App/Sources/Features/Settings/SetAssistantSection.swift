@@ -14,8 +14,15 @@ struct SetAssistantSection: View {
                             symbol: "sparkles", tint: Theme.dusk)
             }
             .listRowBackground(Theme.surface)
+            if SiriQuestionsRelease.isLive {   // MARK: siri – „Fragen an KlimaBilanz“: Siri und Kurzbefehle (docs/SIRI_QUESTIONS.md §6)
+                NavigationLink { SiriQuestionsView() } label: {
+                    SetRowLabel(title: "Fragen an KlimaBilanz", subtitle: "Siri und Kurzbefehle: Fahrten, Wert, CO₂ und dein Ticket",
+                                symbol: "waveform", tint: Theme.glacier)
+                }
+                .listRowBackground(Theme.surface)
+            }
         } header: {
-            SetSectionHeader(title: "KI")
+            SetSectionHeader(title: SiriQuestionsRelease.isLive ? "KI & Siri" : "KI")   // MARK: siri
         }
     }
 }
