@@ -138,8 +138,9 @@ Szenen (`DashLayoutScreenshotHost`, Demo-Daten, kein Netz, keine Systemabfrage; 
 `dashSettingsRow` (die Zeile in Darstellung), `dashKpis` (Kacheln unter dem Gipfel), `dashKpisAX5` und `dashGoalsAX5` (die Karten
 selbst bei der größten Schrift, eine Spalte), `dashStandardAX5` (die Übersicht ohne Änderung bei der größten Schrift), `dashGoals` (drei
 Ringe), `dashQuiet`, `dashQuietBottom` (Vorlage Ruhig), `dashKpiPicker`, `dashGoalEditor`; dazu die bestehenden `dashboard`, `dashboardBottom` zum Vergleich.
-Aus dem Review: `dashGoalStates`/`dashGoalStatesAX5` (jeder Zustand eines Ziels an den Rändern eines Tickets, feste synthetische Tickets
-und Fahrten) und `dashKpisCar` (Bilanz-Karte mit „Mit dem Auto“ über der Kachel „Auto-Vergleich“ – dieselben Euro). Die Ziele der Szenen
+Aus dem Review: `dashGoalStates`/`dashGoalStatesEnd`/`dashGoalStatesAX5` (jeder Zustand eines Ziels an den Rändern eines Tickets, feste
+synthetische Tickets und Fahrten; `…End` zeigt das Ende der Liste), `dashKpisCar` (Bilanz-Karte mit „Mit dem Auto“ über der Kachel
+„Auto-Vergleich“ – dieselben Euro) und `dashCardsMoved` (die Karten verschoben, „Schnell erfassen“ unter „Diese Woche“). Die Ziele der Szenen
 richten sich nach den Demo-Fahrten des laufenden Monats (eines erfüllt, eines unterwegs, „Break-even bis“), egal an welchem Tag der Lauf ist.
 
 Angesehen in vier Läufen, hell und dunkel: [693](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44658618686) (alle Szenen,
@@ -207,6 +208,12 @@ Gefunden und behoben (KlimaCore mit Linux-Tests, `swift test --filter 'DashLayou
 - Über der Tab-Leiste stand auf jedem Tab eine leere Glas-Kapsel über dem Inhalt: das Zubehör von „Live verfolgen“ (iOS 26.0 zeigt
   `tabViewBottomAccessory` auch leer). Ab iOS 26.1 ist es nur da, während eine Fahrt verfolgt wird (`isEnabled:`; eine Zeile in
   `RootView.swift`, `LiveFollowAccessoryVisibility.swift`). Unter iOS 26.0 bleibt es wie bisher.
+
+Angesehen, hell und dunkel: [Lauf 719](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44697622835) (die Ziel-Zustände, die
+Auto-Kachel unter der Bilanz-Karte – beide € 2.380 –, Picker, Ziele, Editor und die Übersicht ohne Änderung) und
+[Lauf 720](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44703366981) (ohne leere Kapsel über der Tab-Leiste, „Schnell
+erfassen“ mit Abstand, die Auto-Kachel einzeilig). Die helle Aufnahme von `dashGoalStatesEnd` blieb in Lauf 720 leer: der Simulator
+brauchte 8,6 s bis `state.services`, bevor Code der Szene lief; die dunkle derselben Szene war richtig.
 
 ## 10. Auf dem Gerät prüfen
 
