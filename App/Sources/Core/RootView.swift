@@ -529,6 +529,8 @@ struct ScreenshotRouter: View {
         // MARK: ai – on-device assistant: Settings › KI (available, unavailable), Suche in Worten, Warum lohnt sich mein Ticket (demo, no model call)
         case let aiScreen where AIScreenshotHost.screens.contains(aiScreen):
             AIScreenshotHost(screen: aiScreen)
+        case let siriScreen where SiriScreenshotHost.screens.contains(siriScreen):   // MARK: siri – Fragen an KlimaBilanz (demo year, no network)
+            SiriScreenshotHost(screen: siriScreen)
         // MARK: map – the Scotty-style map with every layer on, zoomed to Wien (demo data, no network)
         case "mapLayers":
             RadarView(preset: .layers)

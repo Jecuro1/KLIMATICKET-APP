@@ -460,6 +460,7 @@ struct Repository {
         Diagnostics.measure("Widgets.refresh") { writeWidgetSnapshot() } // MARK: Diagnostics
         // MARK: widgets – the station list the Abfahrten widget chooses from (offline data; written only when it changed)
         WidgetCacheSync.stationsDidChange(favorites: liveFavorites(), homeStationID: app.settings.homeStationID, stations: app.stations)
+        SiriKpiWriter.refresh(self)   // MARK: siri – the table Siri and Kurzbefehle answer from (docs/SIRI_QUESTIONS.md §2)
     }
 
     private func writeWidgetSnapshot() {

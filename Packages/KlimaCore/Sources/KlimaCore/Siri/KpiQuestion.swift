@@ -36,7 +36,7 @@ public enum KpiQuestion: String, CaseIterable, Codable, Sendable, Identifiable {
     }
 
     /// The asked period does not matter at all (no „nur fürs Ticketjahr“ note): a date and a price per day.
-    var ignoresPeriod: Bool { self == .daysLeft || self == .costPerDay }
+    public var ignoresPeriod: Bool { self == .daysLeft || self == .costPerDay }
 
     /// What one says to Siri („… in KlimaBilanz“) – shown in Einstellungen as an example.
     public var example: String {

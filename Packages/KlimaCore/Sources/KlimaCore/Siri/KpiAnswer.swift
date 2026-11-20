@@ -35,6 +35,12 @@ public struct KpiAnswer: Equatable, Sendable {
 
     /// What a Kurzbefehl gets to work with: the written figure, or the sentence when there is none.
     public var shortcutValue: String { value ?? sentence }
+
+    /// The period part of `label` („Oktober 2026“, „Ticketjahr 2026/27“); nil when the label names the question only.
+    public var periodLabel: String? {
+        let prefix = question.title + " · "
+        return label.hasPrefix(prefix) ? String(label.dropFirst(prefix.count)) : nil
+    }
 }
 
 public struct KpiBar: Equatable, Sendable, Identifiable {

@@ -79,6 +79,9 @@ final class SiriKpiAnswerTests: XCTestCase {
                        "Der Wert deiner Fahrten im Jahr 2026: 1.189 Euro. So viel hätten sie einzeln gekostet.")
         XCTAssertEqual(KpiAnswer.make(.trips, period: .calendarYear, table: t, now: now).label, "Fahrten · 2026")
         XCTAssertEqual(KpiAnswer.make(.trips, period: .lastMonth, table: t, now: now).label, "Fahrten · Oktober 2026")
+        XCTAssertEqual(KpiAnswer.make(.value, period: .lastMonth, table: t, now: now).periodLabel, "Oktober 2026")
+        XCTAssertEqual(KpiAnswer.make(.net, period: .thisWeek, table: t, now: now).periodLabel, "Ticketjahr 2026/27")
+        XCTAssertNil(KpiAnswer.make(.net, period: .thisWeek, table: nil, now: now).periodLabel)
         // The ticket year reads the ticket's own figures (Statistik's summary), not the days.
         XCTAssertEqual(KpiAnswer.make(.trips, period: .ticketYear, table: t, now: now).sentence, "Im Ticketjahr hast du 212 Fahrten erfasst.")
         XCTAssertEqual(KpiAnswer.make(.co2, period: .ticketYear, table: t, now: now).sentence,
