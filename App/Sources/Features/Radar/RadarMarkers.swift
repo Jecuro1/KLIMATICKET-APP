@@ -54,12 +54,17 @@ struct RadarClusterBubble: View {
 
     var body: some View {
         let worst: RadarDelayState = cluster.cancelledCount > 0 ? .cancelled : (cluster.lateCount > 0 ? .late : .onTime)
-        Text(verbatim: String(cluster.count))   // MARK: radarmodes – „1010“, never the locale's „1,010“
+        let digits = String(cluster.count)
+        // MARK: integrate-wave2 – four digits („1188“ in Wien) were wider than the 34 pt circle: the first digit ran out of it and
+        // vanished on a light map („188“). The circle grows with the number instead.
+        let diameter: CGFloat = digits.count >= 5 ? 52 : (digits.count == 4 ? 44 : 34)
+        Text(verbatim: digits)   // MARK: radarmodes – „1010“, never the locale's „1,010“
             .font(.system(size: 13, weight: .bold, design: .rounded))
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize()
             .foregroundStyle(.white)
-            .frame(minWidth: 34, minHeight: 34)
-            .padding(.horizontal, 4)
+            .frame(width: diameter, height: diameter)   // MARK: integrate-wave2
             .background(Theme.accent, in: .circle)
             .overlay(Circle().strokeBorder(worst.tint, lineWidth: 3))
             .shadow(color: .black.opacity(0.25), radius: 3, y: 1)

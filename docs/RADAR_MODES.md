@@ -107,6 +107,8 @@ eines Datenzählers auf dem iPhone fehlt (§12).
   rot fällt aus, grau ohne Echtzeit; gestrichelt, solange die Position zwischen zwei Antworten geschätzt ist. Ein oranger Ring auf dem orangen Bus-Schild
   bliebe ohne den Abstand unsichtbar.
 - Pfeil in der Farbe des Verkehrsmittels zum nächsten Halt, ein weicher Schatten, Auswahl 1,18-fach mit `Motion.snappy`; Gruppen wie bisher (Zahl im Kreis).
+  Der Kreis wächst mit der Zahl (34 pt, ab vier Ziffern 44 pt, ab fünf 52 pt): in der Wiener Stadt-Demo stand „1188“ breiter als der Kreis, die erste
+  Ziffer lief hinaus und verschwand weiß auf der hellen Karte („188“; Integration der zweiten Welle, CI-Screenshot `radarModesCrowded`).
 - **Kontrast der Schilder** (Text auf Füllung, WCAG):
 
 | Schild | hell | dunkel |
