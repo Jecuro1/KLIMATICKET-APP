@@ -8,16 +8,21 @@ import Foundation
 public enum FeatureID: String, CaseIterable, Codable, Sendable, Hashable, Identifiable {
     // Live-Daten
     case liveTimetable, livePrices, followNotices
+    case exitAlarm   // MARK: integrate-wave2 – the Aussteige-Wecker rides on „Live verfolgen“ (docs/EXIT_ALARM.md)
     // Karte & Radar
     case radar, trainSearch, disruptions
     // Erfassen
     case tripDetection
     // Übersicht
     case assistant, perksCard, achievementsTeaser, weekInsight
+    case commute, calendarSuggestions   // MARK: integrate-wave2 – Pendel-Modus, Kalender-Vorschläge (their own pages)
     // Mitteilungen
     case renewalReminders, weeklySummary
+    case automation   // MARK: integrate-wave2 – Automatik (its own page)
     // Darstellung
     case haptics, officialLogos
+    // Daten
+    case autoBackup   // MARK: integrate-wave2 – „Tägliche Sicherung“ of Daten & Sicherung (docs/DATA_HUB.md §4)
 
     public var id: String { rawValue }
     public var descriptor: FeatureDescriptor { FeatureRegistry.descriptor(self) }
@@ -27,6 +32,7 @@ public enum FeatureID: String, CaseIterable, Codable, Sendable, Hashable, Identi
 /// The hub's sections, in display order.
 public enum FeatureGroup: String, CaseIterable, Sendable, Hashable, Identifiable {
     case liveData, mapRadar, capture, overview, notices, appearance
+    case data   // MARK: integrate-wave2
 
     public var id: String { rawValue }
 
@@ -38,6 +44,7 @@ public enum FeatureGroup: String, CaseIterable, Sendable, Hashable, Identifiable
         case .overview: "Übersicht"
         case .notices: "Mitteilungen"
         case .appearance: "Darstellung"
+        case .data: "Daten"   // MARK: integrate-wave2
         }
     }
 }
@@ -145,7 +152,7 @@ public struct FeatureDescriptor: Equatable, Sendable, Identifiable {
     public var sendsData: Bool { dataFlows.contains { $0.recipient.isRemote } }
 
     /// MARK: review-funktionen – it speaks only through notices, so iOS refusing them keeps it quiet while its switch is on.
-    public var usesNotifications: Bool { [.followNotices, .renewalReminders, .weeklySummary].contains(id) }
+    public var usesNotifications: Bool { [.followNotices, .renewalReminders, .weeklySummary, .automation].contains(id) }   // MARK: integrate-wave2 – Automatik speaks only through notices
 }
 
 /// The registry: every feature of the hub in display order.
@@ -216,6 +223,15 @@ public enum FeatureRegistry {
                 hiddenEntry: nil,
                 dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Zug, den du verfolgst",
                                             when: "solange du ihn verfolgst, auch im Hintergrund, wenn iOS es zulässt")])
+        // MARK: integrate-wave2 – no switch of its own: it is there whenever „Live verfolgen“ is (docs/EXIT_ALARM.md §1, §2)
+        case .exitAlarm:
+            return FeatureDescriptor(
+                id: id, title: "Aussteige-Wecker", line: "Weckt dich kurz vor deinem Ausstieg – nach Fahrplan und Standort",
+                group: .liveData, storage: .wrapped(place: "Einstellungen › Aussteige-Wecker"), control: .ownPage,
+                dependencies: [.liveTimetable], usesLiveData: false,
+                offEffect: "Es lässt sich kein Wecker stellen, und ein gestellter endet mit einer Mitteilung.",
+                hiddenEntry: nil,
+                dataFlows: [.local("dein Standort, solange ein Wecker gestellt ist – nur auf dem iPhone, nie gesendet und nicht gespeichert; den Fahrplan holt „Live verfolgen“, der Wecker fragt selbst nichts ab")])
         case .radar:
             return FeatureDescriptor(
                 // MARK: integrate-radar3 – every mode the radar shows, and that its positions are calculated (docs/OEBB_LIVE.md §R11.3)
@@ -295,6 +311,25 @@ public enum FeatureRegistry {
                 offEffect: "Die Karte „Diese Woche“ in der Übersicht ist ausgeblendet.",
                 hiddenEntry: "die Karte „Diese Woche“ in der Übersicht",
                 dataFlows: [.local()])
+        // MARK: integrate-wave2 – Pendel-Modus (docs/COMMUTE.md §1, §7): its switch lives on its own page
+        case .commute:
+            return FeatureDescriptor(
+                id: id, title: "Pendel-Modus", line: "Die nächsten Züge deiner Stammstrecke in der Übersicht",
+                group: .overview, storage: .wrapped(place: "Einstellungen › Pendeln"), control: .ownPage,
+                dependencies: [], usesLiveData: false,
+                offEffect: "Die Übersicht zeigt keine Pendel-Karte – höchstens einmal die Frage „Ist das dein Arbeitsweg?“.",
+                hiddenEntry: nil,
+                dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "Start und Ziel deiner Stammstrecke und die Uhrzeit",
+                                            when: "höchstens einmal pro Minute, solange die Pendel-Karte in ihrem Zeitfenster zu sehen ist – \(liveAsk)")])
+        // MARK: integrate-wave2 – Kalender-Vorschläge (docs/CALENDAR_SUGGESTIONS.md): off until switched on, on its own page
+        case .calendarSuggestions:
+            return FeatureDescriptor(
+                id: id, title: "Kalender-Vorschläge", line: "Zugfahrten zu deinen Terminen der nächsten 14 Tage",
+                group: .overview, storage: .wrapped(place: "Einstellungen › Kalender-Vorschläge"), control: .ownPage,
+                dependencies: [], usesLiveData: false,
+                offEffect: "Die App liest keine Termine, und die Übersicht schlägt keine Fahrt zu einem Termin vor.",
+                hiddenEntry: nil,
+                dataFlows: [.local("Termine der nächsten 14 Tage aus den Kalendern, die du wählst – gelesen nur auf dem iPhone und bei offener App, Titel und Orte nie gespeichert")])
         case .renewalReminders:
             return FeatureDescriptor(
                 id: id, title: "Verlängerungs-Erinnerung", line: "Bevor dein Ticket abläuft",
@@ -311,6 +346,15 @@ public enum FeatureRegistry {
                 offEffect: "Sonntags kommt kein Wochenrückblick.",
                 hiddenEntry: nil,
                 dataFlows: [.local("nichts – dein iPhone plant die Mitteilung selbst")])
+        // MARK: integrate-wave2 – Automatik (docs/AUTOMATION.md): „an“ while the master switch and at least one rule are on
+        case .automation:
+            return FeatureDescriptor(
+                id: id, title: "Automatik", line: "Eigene Regeln „Wenn … dann …“ für Erinnerungen und Meilensteine",
+                group: .notices, storage: .wrapped(place: "Einstellungen › Automatik"), control: .ownPage,
+                dependencies: [], usesLiveData: false,
+                offEffect: "Keine Regel läuft, und ihre geplanten Mitteilungen sind entfernt.",
+                hiddenEntry: nil,
+                dataFlows: [.local("nichts – Regeln laufen auf dem iPhone und fragen nichts im Netz ab")])
         case .haptics:
             return FeatureDescriptor(
                 id: id, title: "Haptik", line: "Spürbare Bestätigung bei Tipps und Erfolgen",
@@ -328,6 +372,15 @@ public enum FeatureRegistry {
                 hiddenEntry: nil,
                 dataFlows: [FeatureDataFlow(.cloud, sends: "nichts Persönliches – nur der Abruf des Logo-Pakets",
                                             when: "einmal beim ersten Bedarf, danach nur bei einer neuen Version")])
+        // MARK: integrate-wave2 – the daily backup of Daten & Sicherung (docs/DATA_HUB.md §4); the safety backups do not depend on it
+        case .autoBackup:
+            return FeatureDescriptor(
+                id: id, title: "Tägliche Sicherung", line: "Einmal am Tag eine Sicherung in Dateien, wenn sich etwas geändert hat",
+                group: .data, storage: .wrapped(place: "Einstellungen › Daten & Sicherung"), control: .toggle,
+                dependencies: [], usesLiveData: false,
+                offEffect: "Es entsteht keine tägliche Sicherung. Vor dem Löschen und Wiederherstellen sichert die App trotzdem.",
+                hiddenEntry: nil,
+                dataFlows: [.local("alle deine Daten als Datei unter Dateien › Auf meinem iPhone › KlimaBilanz › Sicherungen – sie bleiben auf dem iPhone (und im iCloud-Backup des iPhones, falls es an ist) und gehen nur weiter, wenn du sie teilst")])
         }
     }
 }

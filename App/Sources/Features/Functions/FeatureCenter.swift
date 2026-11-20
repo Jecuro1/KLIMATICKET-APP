@@ -53,6 +53,13 @@ final class FeatureCenter {
             .weeklySummary: s.weeklySummaryEnabled,
             .haptics: s.hapticsEnabled,
             .officialLogos: LogoPackStore.shared.userEnabled,
+            // MARK: integrate-wave2 – the wave-2 features with a state of their own, read where they are stored. The Aussteige-Wecker
+            // has no switch: it is there whenever „Live verfolgen“ is (its row follows Fahrplan & Echtzeit and the Offline-Modus).
+            .exitAlarm: true,
+            .commute: CommuteModel.shared.settings.isEnabled,
+            .calendarSuggestions: CalendarSuggestionStore.shared.prefs.isEnabled,
+            .automation: AutoStore.shared.book.isEnabled && AutoStore.shared.book.rules.contains(where: \.isEnabled),
+            .autoBackup: AutoBackupService.shared.isEnabled,
         ]
         wrapped.merge(demoWrapped) { _, demo in demo }
         return FeatureContext(wrapped: wrapped, live: liveState(app.live), notificationsBlocked: notificationsBlocked)
@@ -109,7 +116,8 @@ final class FeatureCenter {
             guard s.weeklySummaryEnabled != on else { return }
             s.weeklySummaryEnabled = on
             FeatureNoticeEffects.weeklySummary(on, app: app)
-        case .followNotices, .tripDetection:
+        case .autoBackup: AutoBackupService.shared.isEnabled = on   // MARK: integrate-wave2 – exactly what its switch in Daten & Sicherung does
+        case .followNotices, .tripDetection, .exitAlarm, .commute, .calendarSuggestions, .automation:   // MARK: integrate-wave2
             break   // switched on their own page (permission and setup), the hub links there
         case .radar, .trainSearch, .disruptions, .perksCard, .achievementsTeaser, .weekInsight:
             break   // hub switches, handled above

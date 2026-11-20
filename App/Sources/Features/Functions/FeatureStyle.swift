@@ -22,6 +22,12 @@ extension FeatureID {
         case .weeklySummary: "calendar.badge.clock"
         case .haptics: "iphone.radiowaves.left.and.right"
         case .officialLogos: "mountain.2.fill"
+        // MARK: integrate-wave2 – the symbols of their rows in Einstellungen
+        case .exitAlarm: "alarm.fill"
+        case .commute: "point.topleft.down.to.point.bottomright.curvepath"
+        case .calendarSuggestions: CalendarSymbol.name
+        case .automation: "wand.and.sparkles"
+        case .autoBackup: "clock.arrow.circlepath"
         }
     }
 
@@ -37,6 +43,7 @@ extension FeatureGroup {
         case .overview: Theme.dawn
         case .notices: Theme.gold
         case .appearance: Theme.alpenglow
+        case .data: Theme.glacier   // MARK: integrate-wave2 – like Daten & Sicherung in Einstellungen
         }
     }
 
@@ -48,6 +55,7 @@ extension FeatureGroup {
         case .overview: "mountain.2.fill"
         case .notices: "bell.fill"
         case .appearance: "paintpalette.fill"
+        case .data: "externaldrive.fill"   // MARK: integrate-wave2
         }
     }
 }

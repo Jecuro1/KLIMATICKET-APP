@@ -20,13 +20,13 @@ Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/FeatureGate/` (Linux-Tests 
 
 ## 2. Die Seite
 
-1. **Kopf mit Mosaik:** „13 von 15 an“ (die Zahl rollt) über 15 kleinen Kacheln – leuchtend = an, gestrichelt in der Gruppenfarbe =
+1. **Kopf mit Mosaik:** „17 von 20 an“ (die Zahl rollt) über 20 kleinen Kacheln – leuchtend = an, gestrichelt in der Gruppenfarbe =
    ausgeblendet (braucht etwas oder Offline-Modus), grau = ausgeschaltet, ein Punkt = an, wartet aber auf Live-Daten. Darunter Pillen
    „Offline-Modus an“ und „2 Einstiege ausgeblendet“.
 2. **Offline-Modus** – ein Schalter, darunter genau, was er stoppt und was nicht (§4).
 3. **Gerade ausgeblendet** – eine Zeile pro verstecktem Einstieg; ein Tipp springt zur Funktion und lässt ihre Zeile kurz aufleuchten.
 4. **Datenschutz-Überblick** (§5).
-5. **Die Gruppen** Live-Daten, Karte & Radar, Erfassen, Übersicht, Mitteilungen, Darstellung. Jede Zeile: Symbol, Name, eine Zeile,
+5. **Die Gruppen** Live-Daten, Karte & Radar, Erfassen, Übersicht, Mitteilungen, Darstellung, Daten. Jede Zeile: Symbol, Name, eine Zeile,
    der Zustand als Text („an“, „an · wartet auf Live-Daten“, „an · Mitteilungen sind in iOS aus“, „aus“, „ausgeblendet · braucht
    Fahrplan & Echtzeit“, „pausiert · Offline-Modus“), solange sie aus ist der Satz, was dann anders ist, und **„Was wird gesendet?“** (Popover: Empfänger, was, wann).
    Fehlt einer Funktion nur das, was sie braucht, steht direkt in ihrer Zeile „Fahrplan & Echtzeit einschalten“.
@@ -65,6 +65,11 @@ U-Bahn auf der Karte – Positionen berechnet“), Hinweis (was anders ist), Dop
 | Wochenrückblick | Mitteilungen | Einstellungen › Mitteilungen | – | – |
 | Haptik | Darstellung | Einstellungen › Look & Feel | – | – |
 | Offizielle Logos & Wappen | Darstellung | Einstellungen › Darstellung | – | – |
+| Aussteige-Wecker | Live-Daten | kein eigener Schalter – da, solange „Live verfolgen“ geht; Einstellungen › Aussteige-Wecker (eigene Seite) | Fahrplan & Echtzeit | – |
+| Pendel-Modus | Übersicht | Einstellungen › Pendeln (eigene Seite) | – | – |
+| Kalender-Vorschläge | Übersicht | Einstellungen › Kalender-Vorschläge (eigene Seite, Standard aus) | – | – |
+| Automatik | Mitteilungen | Einstellungen › Automatik (eigene Seite; „an“ = Hauptschalter an und mindestens eine Regel an) | – | – |
+| Tägliche Sicherung | Daten | Einstellungen › Daten & Sicherung | – | – |
 
 Die Schalter, die es vorher schon gab, sind **eingehüllt, nicht verdoppelt**: Funktionen liest und setzt sie dort, wo sie liegen
 (`AppSettings`, Look & Feel, `LogoPackStore`, `TripDetectionService`). Verlängerungs-Erinnerung und Wochenrückblick tun beim Umschalten
@@ -110,7 +115,7 @@ Die Seite liest die Zähler jede Sekunde, solange sie offen ist (ein Actor-Aufru
 
 | Empfänger | von | was | wann |
 |---|---|---|---|
-| ÖBB-Fahrplanauskunft | Fahrplan & Echtzeit, Live-Mitteilungen, Zug-Radar, Züge suchen, Störungen, Hintergrund-Erkennung | Haltestellen, Zeiten, Zugnummern; für „In der Nähe“ der Standort auf rund 100 m gerundet; beim Radar der Kartenausschnitt (bei der Zeitreise mit der gewählten Zeit), die angetippte Fahrt, das Fahrzeug im Cockpit und die Haltestelle von „Wo bleibt mein Bus?“; die Zugnummer der Suche; der verfolgte Zug; für einen Vorschlag einmal zwei Haltestellen und die Uhrzeit | nur mit Zustimmung: wenn du suchst oder eine Live-Ansicht offen ist, für die Widgets beim Öffnen höchstens alle 15 Minuten, beim Verfolgen auch im Hintergrund; Radar höchstens 24 pro Minute (Karte, Zeitreise, Cockpit und Tafel zusammen; eine angetippte Fahrt kommt dazu) |
+| ÖBB-Fahrplanauskunft | Fahrplan & Echtzeit, Live-Mitteilungen, Zug-Radar, Züge suchen, Störungen, Hintergrund-Erkennung, Pendel-Modus | Haltestellen, Zeiten, Zugnummern; für „In der Nähe“ der Standort auf rund 100 m gerundet; beim Radar der Kartenausschnitt (bei der Zeitreise mit der gewählten Zeit), die angetippte Fahrt, das Fahrzeug im Cockpit und die Haltestelle von „Wo bleibt mein Bus?“; die Zugnummer der Suche; der verfolgte Zug; für einen Vorschlag einmal zwei Haltestellen und die Uhrzeit | nur mit Zustimmung: wenn du suchst oder eine Live-Ansicht offen ist, für die Widgets beim Öffnen höchstens alle 15 Minuten, beim Verfolgen auch im Hintergrund; Radar höchstens 24 pro Minute (Karte, Zeitreise, Cockpit und Tafel zusammen; eine angetippte Fahrt kommt dazu) |
 | ÖBB-Ticketshop | Live-Ticketpreise | Start, Ziel, Tag, Klasse, Ermäßigung | wenn ein Preis angezeigt wird |
 | VAO | Live-Ticketpreise | Start und Ziel im Verbund, Tag | wenn ein Verbundpreis angezeigt wird |
 | KlimaBilanz-Server (Cloudflare) | Konto & Sync, Server-Einstellungen, Offizielle Logos | mit Konto Fahrten, Tickets, Favoriten, Vorteile, Anzeigename und die E-Mail-Adresse der Anmeldung; ohne Konto nur App- und iOS-Version beim Abruf der Server-Einstellungen; für Logos nichts Persönliches | Sync beim Öffnen und nach Änderungen; Server-Einstellungen bei jedem Start und vor jedem Sync, **auch ohne Konto**; Logo-Paket beim ersten Bedarf |
@@ -122,7 +127,8 @@ Logo-Pakete“); GitHub nennt, was automatisch kommt und was nur nach deinem Tip
 nur nach deinem Tipp“).
 | Apple Karten | Zug-Radar (und jede Karte) | der Kartenausschnitt | solange eine Karte zu sehen ist |
 
-Am Ende „Bleibt auf dem iPhone“ (KI, Vorteile-Karte, Gipfelbuch-Vorschau, Diese Woche, Erinnerungen, Haptik) und die Zeile:
+Am Ende „Bleibt auf dem iPhone“ (KI, Vorteile-Karte, Gipfelbuch-Vorschau, Diese Woche, Erinnerungen, Haptik, Aussteige-Wecker,
+Kalender-Vorschläge, Automatik, Tägliche Sicherung) und die Zeile:
 „Wie bei jeder Internet-Anfrage sieht der Empfänger die IP-Adresse deines Anschlusses.“
 
 ## 6. Links und Widget-Knöpfe zu einer ausgeblendeten Funktion
@@ -182,7 +188,8 @@ Offline-Modus: Karte „Offline-Modus ist an“, keine Radar-, Störungs- und Su
 ausgeschaltetem Radar), `featuresSettingsRow`; seit dem Review `featuresTrainSearch` (RJX 66 bei ausgeschaltetem Radar: „Live verfolgen“ ohne „Auf der Karte
 zeigen“, darunter „Live verfolgen gibt es am Tag der Fahrt.“ ohne „und Karte“), `featuresLinkOffline` (der Link im Offline-Modus),
 `featuresNoticesBlocked` („an · Mitteilungen sind in iOS aus“ mit „In iOS erlauben“) und `featuresPrivacyServer` (die Karte des
-KlimaBilanz-Servers mit „Server-Einstellungen“).
+KlimaBilanz-Servers mit „Server-Einstellungen“); seit der Integration der zweiten Welle `featuresWave2Live` (Aussteige-Wecker unter
+Live-Daten), `featuresWave2` (Pendel-Modus an, Kalender-Vorschläge aus) und `featuresWave2End` (Automatik, Tägliche Sicherung).
 Demo-Daten, kein Netz, keine Systemabfrage; die Zähler der Szene macht ein echter
 `RequestThrottle` mit festgehaltener Uhr. Die Szenen schreiben nichts in die Einstellungen des Screenshot-Laufs.
 
@@ -212,6 +219,9 @@ war dieselbe Szene dunkel in Ordnung.
 7. Offline-Modus an, dann `klimabilanz://radar` → Hinweis „Offline-Modus ist an“, Funktionen bleibt oben beim Schalter.
 8. Mitteilungen der App in den iOS-Einstellungen aus → Wochenrückblick und Verlängerungs-Erinnerung sagen „an · Mitteilungen sind in iOS
    aus“; wieder erlaubt und zurück in die App → „an“.
+9. Pendel-Modus, Kalender-Vorschläge und Automatik auf ihren Seiten ein- und ausschalten → in Funktionen derselbe Zustand; „Einrichten“
+   bzw. „Einstellungen öffnen“ führt auf genau diese Seite. „Tägliche Sicherung“ in Funktionen aus → in Daten & Sicherung ist der
+   Schalter aus, und es entsteht keine tägliche Datei mehr.
 
 ## 12. Grenzen
 
@@ -242,3 +252,24 @@ Gegen main geprüft, alles mit `// MARK: review-funktionen`:
   Balken), Gate-Kosten im View-Body (Wörterbuch aus gespeicherten Werten, kein Dekodieren), Offline-Modus in allen Live-Wegen
   (`timetable` ist nil, `effectiveConfig` schaltet die Clients ab, kein Hintergrundabruf bleibt hängen), keine SwiftData-Änderung,
   Mitteilungs-Schalter schreiben über `Repository`, keine Systemabfrage in Szenen.
+
+## 14. Integration der zweiten Welle (20.11.2026)
+
+Die Seite fragte „Was kann die App, was davon ist an?“, kannte aber die Funktionen der zweiten Welle nicht, die einen eigenen Zustand
+haben. Jetzt fünf Zeilen mehr (`// MARK: integrate-wave2`, Linux-Tests `FeatureHubWave2Tests`):
+
+- **Aussteige-Wecker** (Live-Daten): kein eigener Schalter – er ist da, solange „Live verfolgen“ geht, und folgt deshalb „Fahrplan &
+  Echtzeit“ und dem Offline-Modus („pausiert · Offline-Modus“: kein Wecker lässt sich stellen, ein gestellter endet mit einer
+  Mitteilung). Was er nutzt, bleibt auf dem iPhone: der Standort, solange ein Wecker gestellt ist; den Fahrplan holt die Verfolgung.
+- **Pendel-Modus** und **Kalender-Vorschläge** (Übersicht), **Automatik** (Mitteilungen): eingehüllte Schalter auf ihrer eigenen Seite;
+  die Zeile zeigt den Zustand und führt mit „Einrichten“ bzw. „Einstellungen öffnen“ dorthin. Die Pendel-Karte fragt die
+  ÖBB-Fahrplanauskunft (Start, Ziel, Uhrzeit; höchstens einmal pro Minute in ihrem Zeitfenster, nur mit Zustimmung) – sie steht
+  deshalb auch im Datenschutz-Überblick. Automatik spricht nur über Mitteilungen und sagt wie die Erinnerungen „an · Mitteilungen
+  sind in iOS aus“.
+- **Tägliche Sicherung** (neue Gruppe Daten): derselbe Schalter wie in Daten & Sicherung, direkt in der Zeile. Die Sicherung vor dem
+  Löschen und Wiederherstellen hängt nicht davon ab.
+
+Nicht in Funktionen, weil sie keinen eigenen Zustand haben und nichts senden: Zeitbilanz, Verspätungs-Tagebuch, Übersicht nach Maß, Look &
+Feel, Fragen an KlimaBilanz (Siri liest Tagessummen auf dem iPhone), Jahresrückblick, Was wäre wenn?. Die Teile des Zug-Radars
+(Bus/Bim/U-Bahn, Spuren, Meine Fahrzeuge, Zeitreise, Cockpit, Pünktlichkeit) stehen in der Zeile „Zug-Radar“ und ihrem „Was wird
+gesendet?“; der Anschluss-Wächter in „Fahrplan & Echtzeit“.

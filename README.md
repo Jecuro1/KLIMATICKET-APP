@@ -18,10 +18,12 @@ Bedienung, Frost-Karten für Inhalte.
   drei Ziele mit Ring („20 Fahrten im Monat“, „Break-even bis …“), Vorlagen Standard · Ruhig · Zahlen · Alles. Noch nicht auf einem
   iPhone geprüft ([docs/DASHBOARD_LAYOUT.md](docs/DASHBOARD_LAYOUT.md))
 - **Fahrten erfassen in Sekunden** – 39.711 Haltestellen und 21.050 Orte (ÖBB-, Verbund- und Wiener-Linien-Fahrplandaten, OSM) mit
-  Offline-Suche, Lieblingsfahrten, „Nochmal fahren“, Hin & Retour, Via-Halte, Mitfahrende, Notizen
+  Offline-Suche, Lieblingsfahrten, „Nochmal fahren“, Hin & Retour, Via-Halte ([docs/VIA.md](docs/VIA.md)), Reisen mit Etappen
+  ([docs/JOURNEYS.md](docs/JOURNEYS.md)), Mitfahrende, Notizen
 - **Fahrplan** – Verbindungen und Abfahrtstafeln mit Echtzeit, Preis und „Deckt dein KlimaTicket die Fahrt?“,
   Zugsuche nach Zugnummer, **Live verfolgen** mit Live Activity, **Zug-Radar** und Karte mit Ebenen, Störungen,
-  Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme**. Live-Daten gibt es nur mit deiner Einwilligung und bei geöffneter
+  Haltestellen-Details mit Ausstattung, **Meine Routen** und **Alarme** ([docs/PLANNER.md](docs/PLANNER.md),
+  [docs/ROUTES_ALARMS.md](docs/ROUTES_ALARMS.md)). Live-Daten gibt es nur mit deiner Einwilligung und bei geöffneter
   App; im Hintergrund fragt die App höchstens für eine Verfolgung nach, für die du Live-Mitteilungen eingeschaltet hast
 - **Zug-Radar** – alle Züge Österreichs auf der Apple-Karte, in der Stadt auch Bus, Bim und U-Bahn; die Positionen berechnet die ÖBB-Auskunft
   aus Fahrplan und Echtzeit (kein GPS), mit höchstens 24 Anfragen je Minute ([docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11).
@@ -37,19 +39,21 @@ Bedienung, Frost-Karten für Inhalte.
   wer wann fragt, ein Budget, was offline, im Hintergrund und unter dem Cockpit ruht: [docs/OEBB_LIVE.md](docs/OEBB_LIVE.md) §R11.3
 - **Exakte Normalpreise** – offizielle ÖBB-Relationspreise (178.013 Relationen zwischen 979 Tarifpunkten, Tarif ab 14.12.2025),
   sonst kalibrierte Schätzung nach Bahnkilometern; Kernzonen-Tarife in Städten; Vorteilscard & 1. Klasse; **Tarifstand** warnt vor Preis- und Fahrplanwechseln
+  ([docs/TARIFF_FRESHNESS.md](docs/TARIFF_FRESHNESS.md))
 - **KlimaTickets** – KlimaTicket Ö (Klassik/Jugend/Senior/Spezial/Familie, Preise 2021–2026 nach Gültigkeitsbeginn)
   und die regionalen Tickets der Bundesländer (80 Tarifvarianten im Katalog; der Tarifstand zeigt, wie aktuell er ist)
 - **Statistik** – Ersparnis-Verlauf mit Prognose, Monatsbilanz, Verkehrsmittel, Wochentage, Reise-Kalender,
-  Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, **Was wäre wenn?**, Öffis vs. Auto, CO₂-Bilanz, Österreich-Karte, Jahresbericht als PDF
+  Top-Strecken, Rekorde, „Welches Ticket lohnt sich?“, **Was wäre wenn?** ([docs/WHATIF.md](docs/WHATIF.md)), Öffis vs. Auto, CO₂-Bilanz,
+  Österreich-Karte, Jahresbericht als PDF
 - **Zeitbilanz** – deine Stunden in Bahn und Bus, ehrlich getrennt in erfasst (eingetragene Dauer, Abfahrt & Ankunft) und geschätzt
   (Durchschnittstempo), dazu wie lange du mit dem Auto selbst gefahren wärst, erfasste Verspätungen und die letzten 12 Wochen; optionale
   „Dauer“ im Fahrt-Editor ([docs/TIME_BALANCE.md](docs/TIME_BALANCE.md))
 - **Verspätungs-Tagebuch** – bei jeder Fahrt mit einem Tipp festhalten, ob sie pünktlich war; pro Gültigkeitsmonat deine **persönliche**
   Quote (ab 5 erfassten Fahrten, eigene Grenze ab 5 Min.), Nachtragen, und die verspäteten Fahrten der gewählten Monate als PDF zum Teilen –
   kein Betrag, kein „Anspruch“: für die Entschädigung zählt laut AGB Punkt 24 die Pünktlichkeit der Bahn ([docs/DELAY_DIARY.md](docs/DELAY_DIARY.md))
-- **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen
+- **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen ([docs/YEAR_REVIEW.md](docs/YEAR_REVIEW.md))
 - **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
-  Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht
+  Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht ([docs/TICKET_LETTERS.md](docs/TICKET_LETTERS.md))
 - **Erfolge** – 17 Abzeichen von „Eingestiegen“ bis „Ganz Österreich“
 - **Aussteige-Wecker** – klingelt kurz vor deinem Ausstieg, nach Fahrplan (mit Verspätung) und per Standort (bei gesperrtem iPhone mit der
   Erlaubnis „Immer“); der Standort bleibt auf dem Gerät und wird nicht gespeichert. Noch nicht auf einem iPhone geprüft
@@ -78,8 +82,12 @@ Bedienung, Frost-Karten für Inhalte.
   iPhone; die Widgets melden dem Smart Stack, wann sie gerade wichtig sind (kurz vor der Abfahrt, am Break-even-Tag – die Reihung
   entscheidet iOS); „Unterwegs“ und „Live verfolgen“ haben ein kleines Layout
   für den Smart Stack einer gekoppelten Apple Watch, ohne Watch-App (Sperre und Watch noch nicht auf Geräten geprüft,
-  [docs/WIDGETS_SMARTSTACK.md](docs/WIDGETS_SMARTSTACK.md))
+  [docs/WIDGETS.md](docs/WIDGETS.md), [docs/WIDGETS_SMARTSTACK.md](docs/WIDGETS_SMARTSTACK.md))
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick
+  ([docs/LOCAL_AI.md](docs/LOCAL_AI.md))
+- **Look & Feel** – sechs Akzentfarben für die ganze App (auf Lesbarkeit geprüft), Bewegung Voll · Ruhig · Aus,
+  Haptik Aus · Dezent · Voll und Regeln für Zahlen (Beträge mit oder ohne Cent, Wochenstart, CO₂-Einheit); App-Symbol und Farbe schlagen
+  sich gegenseitig vor. Kein Netz, keine Berechtigung ([docs/THEMES.md](docs/THEMES.md))
 - **Fragen an KlimaBilanz** – frag Siri „Wie viele Fahrten diesen Monat in KlimaBilanz?“, „Wie viel CO₂ habe ich gespart?“ oder „Wann
   läuft mein Ticket ab?“: acht Kennzahlen – Fahrten, Wert, Kilometer und CO₂ für Woche, Monat, Vormonat, Ticketjahr oder Kalenderjahr,
   dazu vier Ticket-Fragen –, mit denselben Zahlen wie Statistik und einem Satz plus Zahl als Antwort. Per Sprache gilt das Ticketjahr
@@ -89,8 +97,10 @@ Bedienung, Frost-Karten für Inhalte.
 - **Konten** – Anmeldung mit Google, Microsoft oder Apple (je nachdem, was dein Backend eingerichtet hat) und Cloud-Sync zwischen Geräten
   über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
 - **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
+  ([docs/DIREKT_INSTALLIEREN.md](docs/DIREKT_INSTALLIEREN.md), [docs/MANUAL_UPDATE.md](docs/MANUAL_UPDATE.md))
 - **Funktionen** – jede Funktion mit eigenem Schalter (Zug-Radar, Züge suchen, Störungen, Vorteile-Karte, Gipfelbuch-Vorschau, „Diese
-  Woche“ und die bestehenden Schalter an einem Ort); Knöpfe und Karten einer ausgeschalteten Funktion verschwinden und werden dort
+  Woche“ und die bestehenden Schalter an einem Ort, auch Tägliche Sicherung; Aussteige-Wecker, Pendel-Modus, Kalender-Vorschläge und
+  Automatik mit ihrem Zustand und dem Weg auf ihre Seite); Knöpfe und Karten einer ausgeschalteten Funktion verschwinden und werden dort
   genannt. Ein **Offline-Modus** stoppt alle Live-Daten (auch „Live verfolgen“ samt Aussteige-Wecker) und die automatische
   Update-Prüfung, ohne deine Zustimmung zu ändern; der **Datenschutz-Überblick** zeigt, wer was wann
   bekommt und wie viele Live-Anfragen in dieser Sitzung wirklich hinausgingen. Noch nicht auf einem iPhone geprüft
@@ -110,7 +120,12 @@ Installation per AltStore, SideStore, Sideloadly oder TestFlight – Details in 
 ## Entwicklung
 
 - Architektur: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Design: [docs/DESIGN.md](docs/DESIGN.md) ·
-  Design-System-API: [docs/DESIGN_SYSTEM_API.md](docs/DESIGN_SYSTEM_API.md)
+  Design-System-API: [docs/DESIGN_SYSTEM_API.md](docs/DESIGN_SYSTEM_API.md) · Bewegung: [docs/MOTION.md](docs/MOTION.md) ·
+  Design-Spezifikation: [docs/DESIGN_FINAL_SYNTHESIS.md](docs/DESIGN_FINAL_SYNTHESIS.md) · iOS-26-Notizen:
+  [docs/SWIFTUI_IOS26_NOTES.md](docs/SWIFTUI_IOS26_NOTES.md) · Leistung: [docs/PERF_BASELINE.md](docs/PERF_BASELINE.md)
+- Haltestellen-Daten und Wegzeichen: [docs/ENRICH_SPEC.md](docs/ENRICH_SPEC.md), Orte-Suche: [docs/PLACES_SUGGEST_SPEC.md](docs/PLACES_SUGGEST_SPEC.md),
+  Logos und Wappen: [docs/LOGO_SPEC.md](docs/LOGO_SPEC.md), [docs/LOGO_ROLLOUT.md](docs/LOGO_ROLLOUT.md) · Live verfolgen per Push
+  (nicht gebaut, nur die Schnittstelle): [docs/LIVE_PUSH.md](docs/LIVE_PUSH.md)
 - Projekt erzeugen: `brew install xcodegen && xcodegen generate`
 - Kernlogik testen (macOS oder Linux): `swift test --package-path Packages/KlimaCore` und
   `swift test --package-path Packages/KlimaCloud`

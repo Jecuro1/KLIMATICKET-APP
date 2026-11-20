@@ -212,6 +212,15 @@ struct FeaturesHubView: View {
         switch id {
         case .tripDetection:
             TripDetectSettingsView()
+        // MARK: integrate-wave2 – the wave-2 features open the page their Einstellungen row opens
+        case .exitAlarm:
+            FeatureSectionPage(title: id.title) { SetExitAlarmSection() }
+        case .commute:
+            CommuteSettingsPage()
+        case .calendarSuggestions:
+            CalendarSettingsPage()
+        case .automation:
+            AutoRulesView()
         default:
             FeatureSectionPage(title: id.title) { SetFollowNoticesSection() }
         }

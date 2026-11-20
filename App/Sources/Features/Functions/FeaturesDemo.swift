@@ -24,6 +24,10 @@ enum FeatureDemo {
         case "featuresNoticesBlocked":   // MARK: review-funktionen – iOS refuses the notices
             wrapped[.renewalReminders] = true
             noticesBlocked = true
+        case "featuresWave2Live", "featuresWave2", "featuresWave2End":   // MARK: integrate-wave2 – Pendel-Modus and Automatik on, Kalender-Vorschläge off
+            wrapped[.commute] = true
+            wrapped[.automation] = true
+            wrapped[.calendarSuggestions] = false
         default:
             // A lived-in hub: the Vorteile-Karte switched off (one note), the rest as it comes.
             settings.set(.perksCard, false)
@@ -90,6 +94,7 @@ struct FeaturesScreenshotHost: View {
         "featuresHub", "featuresOffline", "featuresPrivacy", "featuresPrivacyBottom", "featuresDependency", "featuresAX5",
         "featuresAX5Rows", "featuresPlanner", "featuresLink", "featuresSettingsRow", "featuresRows", "featuresInfo",
         "featuresTrainSearch", "featuresLinkOffline", "featuresNoticesBlocked", "featuresPrivacyServer",   // MARK: review-funktionen
+        "featuresWave2Live", "featuresWave2", "featuresWave2End",   // MARK: integrate-wave2 – the rows of the wave-2 features
     ]
 
     let screen: String
@@ -135,6 +140,13 @@ struct FeaturesScreenshotHost: View {
                 TrainSearchView(initialText: "RJX 66", autoSubmit: true)
             case "featuresNoticesBlocked":
                 NavigationStack { FeaturesHubView(screenshotAnchor: .renewalReminders) }
+            // MARK: integrate-wave2 – Aussteige-Wecker under Live-Daten, Pendel-Modus and Kalender-Vorschläge, Automatik and Daten
+            case "featuresWave2Live":
+                NavigationStack { FeaturesHubView(screenshotAnchor: .exitAlarm) }
+            case "featuresWave2":
+                NavigationStack { FeaturesHubView(screenshotAnchor: .commute) }
+            case "featuresWave2End":
+                NavigationStack { FeaturesHubView(screenshotAnchor: .autoBackup) }
             case "featuresLink", "featuresLinkOffline":
                 MainTabView()
                     .task {

@@ -44,7 +44,8 @@ final class FeatureGateTests: XCTestCase {
         XCTAssertTrue(FeatureRegistry.requires(.radar, .liveTimetable))
         XCTAssertTrue(FeatureRegistry.requires(.trainSearch, .liveTimetable))
         XCTAssertFalse(FeatureRegistry.requires(.perksCard, .liveTimetable))
-        XCTAssertEqual(Set(FeatureRegistry.dependents(of: .liveTimetable)), [.followNotices, .radar, .trainSearch, .disruptions])
+        XCTAssertEqual(Set(FeatureRegistry.dependents(of: .liveTimetable)),
+                       [.followNotices, .exitAlarm, .radar, .trainSearch, .disruptions])   // MARK: integrate-wave2 – the Aussteige-Wecker
         XCTAssertTrue(FeatureGate.isAffectedByOfflineMode(.radar))
         XCTAssertTrue(FeatureGate.isAffectedByOfflineMode(.livePrices))
         XCTAssertFalse(FeatureGate.isAffectedByOfflineMode(.weekInsight))
