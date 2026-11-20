@@ -145,7 +145,8 @@ public enum RadarStopArrivals {
         public var longitudeSpan: Double
     }
 
-    /// The view that holds the stop and every point, with a fifth of the extent as margin on each side: at least `minSpan` high (and one and a half
+    /// The view that holds the stop and every point, with an eighth of the extent as margin on each side (a pin's half width in the short map band
+    /// over the panel; a fifth zoomed the CI scene out until the city lane had more tiles than budget): at least `minSpan` high (and one and a half
     /// times that wide, as the radar's other camera moves), at most `maxSpan` high (inside the city lane's zoom: a far point is not worth losing the
     /// buses). MapKit widens the shorter side to the map's shape. nil when a coordinate is not finite.
     public static func frame(stop: GeoPoint, points: [GeoPoint], minSpan: Double = 0.012, maxSpan: Double = 0.3) -> Frame? {
@@ -154,8 +155,8 @@ public enum RadarStopArrivals {
         let latitudes = all.map(\.latitude), longitudes = all.map(\.longitude)
         let north = latitudes.max() ?? stop.latitude, south = latitudes.min() ?? stop.latitude
         let east = longitudes.max() ?? stop.longitude, west = longitudes.min() ?? stop.longitude
-        let height = min(max((north - south) * 1.4, minSpan), maxSpan)
-        let width = min(max((east - west) * 1.4, height * 1.5), maxSpan * 1.5)
+        let height = min(max((north - south) * 1.25, minSpan), maxSpan)
+        let width = min(max((east - west) * 1.25, height * 1.5), maxSpan * 1.5)
         return Frame(centre: GeoPoint(latitude: (north + south) / 2, longitude: (east + west) / 2), latitudeSpan: height, longitudeSpan: width)
     }
 

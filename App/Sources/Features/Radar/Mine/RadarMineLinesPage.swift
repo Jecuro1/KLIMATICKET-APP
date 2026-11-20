@@ -28,6 +28,8 @@ struct RadarMineLinesPage: View {
     }
 
     @State private var rows: [Row] = []
+    /// MARK: radar2-review-radarmine – the list's loop rests while the app is not active.
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -42,8 +44,9 @@ struct RadarMineLinesPage: View {
             }
             RadarMineFooter(lines: [RadarMineText.linesFooter])
         }
-        .task(id: mine.lines) {
+        .task(id: RadarMineLoopID(value: mine.lines, active: scenePhase == .active)) {
             while !Task.isCancelled {
+                guard scenePhase == .active else { return }
                 let next = makeRows()
                 if next != rows { withMotion(Motion.smooth) { rows = next } }
                 try? await Task.sleep(for: .seconds(5))

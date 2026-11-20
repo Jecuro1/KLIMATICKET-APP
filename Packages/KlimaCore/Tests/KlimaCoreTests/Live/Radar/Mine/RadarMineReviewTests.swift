@@ -119,6 +119,36 @@ final class RadarMineReviewTests: XCTestCase {
         XCTAssertEqual(RadarMineText.markerValue(star: false, number: nil, dimmed: false), "")
     }
 
+    // MARK: The highlight's cap between two passes (second review)
+
+    /// Only what the last pass chose stays single: before the first pass nothing (switching the highlight on used to make every vehicle of your
+    /// lines single until the pass ran), never more than 60, and a vehicle that came in after the pass groups until the next one.
+    func testTheHighlightCapHoldsBetweenTwoPasses() {
+        var selection = RadarMineHighlight.Selection()
+        XCTAssertFalse(selection.keepsSingle("t0"), "before the first pass nothing is single")
+        let many = (0..<200).map { RadarMineHighlight.Candidate(tripID: "t\($0)", coordinate: F.point(north: Double($0) * 50)) }
+        XCTAssertTrue(selection.update(many, centre: F.neubau))
+        XCTAssertEqual(selection.tripIDs.count, RadarMineHighlight.singleCap)
+        XCTAssertEqual(many.filter { selection.keepsSingle($0.tripID) }.count, 60)
+        XCTAssertTrue(selection.keepsSingle("t0"))
+        XCTAssertFalse(selection.keepsSingle("t199"), "the far ones group")
+        XCTAssertFalse(selection.update(many, centre: F.neubau), "the same markers: no regrouping")
+        XCTAssertFalse(selection.keepsSingle("new"), "a vehicle the last pass did not see groups until the next")
+        let few = Array(many.prefix(12)) + [RadarMineHighlight.Candidate(tripID: "new", coordinate: F.neubau)]
+        XCTAssertTrue(selection.update(few, centre: F.neubau))
+        XCTAssertEqual(selection.tripIDs, Set(few.map(\.tripID)), "up to the cap every one of them")
+        XCTAssertTrue(selection.clear())
+        XCTAssertFalse(selection.keepsSingle("new"))
+        XCTAssertFalse(selection.clear(), "nothing left to regroup")
+        XCTAssertEqual(RadarMineText.groupValue, "mit deiner Linie")
+    }
+
+    /// The board is a side job of the radar's loop: while the whole radar pauses, the page says so instead of letting its „Stand“ grow old in silence.
+    func testThePausedRadarIsSaid() {
+        XCTAssertEqual(RadarMineText.radarPaused, "Das Radar pausiert gerade – die Abfahrten auch, bis es weiterlädt.")
+        XCTAssertFalse(RadarMineText.radarPaused.contains("Sie "), "du-Form")
+    }
+
     // MARK: The first board frames the stop and its arrivals
 
     func testTheFrameHoldsTheStopAndEveryNumberedArrival() throws {

@@ -87,6 +87,10 @@ struct RadarMineStopPage: View {
             RadarMineNote(symbol: "questionmark.circle", text: RadarMineText.unknownStop)
         } else if let text = RadarMineText.pause(mine.pause, idle: mine.isIdle) {
             pauseNote(text)
+        } else if radarPaused {
+            // MARK: radar2-review-radarmine – a rate limit, an open circuit or failures pause the whole radar and the board with it: the page said nothing
+            // while its „Stand“ grew old (the status card that says it can sit under the panel)
+            RadarMineNote(symbol: "pause.circle", text: RadarMineText.radarPaused)
         } else if let error = mine.boardError {
             RadarMineNote(symbol: "wifi.exclamationmark", text: error)
         } else if mine.isLoadingBoard {
@@ -109,6 +113,12 @@ struct RadarMineStopPage: View {
         if !outOfZoom.isEmpty {
             RadarMineNote(symbol: "plus.magnifyingglass", text: RadarMineText.modesOutOfZoom(outOfZoom))
         }
+    }
+
+    /// The radar's loop is paused (`RadarModel.load` failed: a rate limit, an open circuit or failures on every lane).
+    private var radarPaused: Bool {
+        if case .failed = context.radar.load { return true }
+        return false
     }
 
     @ViewBuilder private func pauseNote(_ text: String) -> some View {

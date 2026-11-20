@@ -20,19 +20,23 @@ struct RadarMineChip: View {
     }
 }
 
-/// The stop of the stop page: its name on a glass capsule over a dot with the bus glyph.
+/// The stop of the stop page: its name on a glass capsule over a dot with the bus glyph (the dot alone while arrivals are numbered).
 struct RadarMineStopMarker: View {
     var name: String
+    /// MARK: radar2-review-radarmine – false while numbered arrivals are on the map: the capsule covered a number next to the stop.
+    var showsName = true
 
     var body: some View {
         VStack(spacing: 2) {
-            Text(name)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(Theme.textPrimary)
-                .lineLimit(1)
-                .padding(.horizontal, Theme.Spacing.xs)
-                .padding(.vertical, 3)
-                .glassEffect(.regular, in: .capsule)
+            if showsName {
+                Text(name)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(1)
+                    .padding(.horizontal, Theme.Spacing.xs)
+                    .padding(.vertical, 3)
+                    .glassEffect(.regular, in: .capsule)
+            }
             Image(systemName: "bus.fill")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(Theme.snow)
@@ -48,11 +52,13 @@ struct RadarMineStopMarker: View {
 }
 
 /// A numbered arrival drawn from the board's position: a small circle in the mode's colour with its number, a dashed white outline (the position
-/// is the board's, not a radar marker). Grey when the position is older than two minutes.
+/// is the board's, not a radar marker). Grey when the position is older than two minutes. MARK: radar2-review-radarmine – a solid outline when the
+/// position is the radar's own but its marker is hidden by the filter (the dashes said „from the board“ for it as well).
 struct RadarMineBoardPin: View {
     var number: Int
     var mode: TransportMode
     var isStale: Bool
+    var fromBoard = true
 
     var body: some View {
         Text(verbatim: String(number))
@@ -61,7 +67,7 @@ struct RadarMineBoardPin: View {
             .foregroundStyle(Theme.snow)
             .frame(width: 24, height: 24)
             .background(isStale ? Theme.textTertiary : Theme.modeColor(mode), in: .circle)
-            .overlay(Circle().strokeBorder(Theme.snow, style: StrokeStyle(lineWidth: 2, dash: [3, 2])))
+            .overlay(Circle().strokeBorder(Theme.snow, style: StrokeStyle(lineWidth: 2, dash: fromBoard ? [3, 2] : [])))
             .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
             .frame(width: 44, height: 44)
             .contentShape(.circle)

@@ -166,6 +166,8 @@ public enum RadarMineText {
     public static let needsLive = "Für Abfahrten braucht es Live-Daten."
     public static let settings = "Einstellungen"
     public static let offline = "Ohne Internet gibt es keine Abfahrten."
+    /// MARK: radar2-review-radarmine – the whole radar pauses (rate limit, open circuit, failures): the board waits with it.
+    public static let radarPaused = "Das Radar pausiert gerade – die Abfahrten auch, bis es weiterlädt."
     /// A row's mode chip is off: it stays in the list without a number on the map.
     public static func modesOffMap(_ modes: [RadarMode]) -> String {
         "\(RadarModesText.names(modes)) \(modes.count == 1 ? "ist" : "sind") aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte."
@@ -265,6 +267,10 @@ public enum RadarMineText {
         if star { return "deine Linie" }
         return dimmed ? "nicht hervorgehoben" : ""
     }
+
+    /// MARK: radar2-review-radarmine – a group of markers that holds a vehicle of your lines (beyond the 60 single ones): the ring gets the star, and
+    /// VoiceOver hears it.
+    public static let groupValue = "mit deiner Linie"
 
     // MARK: Units
 

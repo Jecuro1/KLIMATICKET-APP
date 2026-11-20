@@ -14,6 +14,8 @@ struct RadarMineMapArrival: Identifiable {
     var number: Int
     var point: GeoPoint
     var isBoardPin: Bool
+    /// MARK: radar2-review-radarmine – the position is the board's (dashed outline); false: the radar's, whose marker the filter hides.
+    var fromBoard: Bool
     var mode: TransportMode
     var title: String
     var isStale: Bool
@@ -30,20 +32,22 @@ extension RadarView {
                 MapPolyline(coordinates: [arrival.point.clCoordinate, stop.coordinate.clCoordinate])
                     .stroke(Theme.textSecondary, style: StrokeStyle(lineWidth: 2, lineCap: .round, dash: [4, 4]))
             }
+            // MARK: radar2-review-radarmine – the stop first; while numbers are on the map only its dot (the name stands in the panel's „Ab …“): in the
+            // CI screenshots number 3 hid under the capsule „Neubaugasse (Demo)“
+            Annotation(stop.name, coordinate: stop.coordinate.clCoordinate, anchor: .bottom) {
+                RadarMineStopMarker(name: stop.name, showsName: arrivals.isEmpty)
+            }
+            .annotationTitles(.hidden)
             ForEach(arrivals.filter(\.isBoardPin)) { arrival in
                 Annotation(arrival.title, coordinate: arrival.point.clCoordinate, anchor: .center) {
                     Button { mineFocus(arrival.point, with: stop.coordinate) } label: {
-                        RadarMineBoardPin(number: arrival.number, mode: arrival.mode, isStale: arrival.isStale)
+                        RadarMineBoardPin(number: arrival.number, mode: arrival.mode, isStale: arrival.isStale, fromBoard: arrival.fromBoard)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Nummer \(arrival.number), \(arrival.title), Position berechnet")
                 }
                 .annotationTitles(.hidden)
             }
-            Annotation(stop.name, coordinate: stop.coordinate.clCoordinate, anchor: .bottom) {
-                RadarMineStopMarker(name: stop.name)
-            }
-            .annotationTitles(.hidden)
         }
         if let fix = mine.fix, mine.isOpen, mine.page == .near {
             MapCircle(center: fix.clCoordinate, radius: RadarNearby.radiusKm * 1000)
@@ -89,6 +93,16 @@ extension RadarView {
     /// The opacity of a group of markers (read by the radar's group bubble, one marked line in `Heat/RadarView+Heat.swift`).
     func mineGroupOpacity(_ cluster: RadarCluster) -> Double {
         model.radar2.mine.groupOpacity(cluster.tripIDs) { model.pinsByID[$0]?.vehicle }
+    }
+
+    /// MARK: radar2-review-radarmine – the star on a group that holds a vehicle of your lines (more than 60 of them are on the map), and its words for
+    /// VoiceOver; nothing otherwise.
+    func mineGroupDecoration(_ cluster: RadarCluster) -> RadarMarkerDecoration {
+        model.radar2.mine.groupHoldsMine(cluster.tripIDs) { model.pinsByID[$0]?.vehicle } ? RadarMarkerDecoration(badge: .star) : .plain
+    }
+
+    func mineGroupSpoken(_ cluster: RadarCluster) -> String {
+        mineGroupDecoration(cluster).badge == .star ? RadarMineText.groupValue : ""
     }
 
     // MARK: Actions
@@ -162,10 +176,16 @@ extension RadarView {
             let isRadar = arrival.source == .radar
             let drawn = isRadar ? (model.pinsByID[arrival.tripID]?.coordinate ?? board) : board
             return RadarMineMapArrival(id: arrival.id, number: number, point: drawn, isBoardPin: !isRadar || model.pinsByID[arrival.tripID] == nil,
-                                       mode: arrival.line?.mode ?? arrival.row.mode, title: arrival.row.lineTitle,
+                                       fromBoard: !isRadar, mode: arrival.line?.mode ?? arrival.row.mode, title: arrival.row.lineTitle,
                                        isStale: RadarStopArrivals.isStale(arrival.positionAt, now: now))
         }
     }
+}
+
+/// MARK: radar2-review-radarmine – the id of a page's or hook's loop: what it is about and whether the app is active (the loop rests in the background).
+struct RadarMineLoopID<Value: Equatable>: Equatable {
+    var value: Value
+    var active: Bool
 }
 
 /// What the pages of the panel need of the radar.
@@ -207,17 +227,20 @@ struct RadarMineHooks: ViewModifier {
                 mine.regroup = { [weak model] in model?.rebuildPinsNow() }
                 await applyScene()
             }
-            // The highlight's single markers follow the map: every two seconds while it is on (at once when it changes).
-            .task(id: mine.highlightOn) {
+            // The highlight's single markers follow the map: every two seconds while it is on (at once when it changes). MARK: radar2-review-radarmine –
+            // these loops rest while the app is not active (it may run on in the background for the Aussteige-Wecker or a recording, the radar does not
+            // load then, and nothing here can change); back in front they start at once.
+            // A line remembered or forgotten while the highlight is on gets its pass at once as well (its vehicles group until then).
+            .task(id: RadarMineLoopID(value: mine.highlightOn ? mine.lines : nil, active: gate.sceneActive)) {
                 while !Task.isCancelled {
                     mine.refreshHighlightSingles(pins: model.pins, centre: model.box.center)
-                    guard mine.highlightOn else { return }
+                    guard mine.highlightOn, gate.sceneActive else { return }
                     try? await Task.sleep(for: .seconds(2))
                 }
             }
             // The stop page's rows: with every board and every five seconds from the radar's newest markers.
-            .task(id: mine.stopPageShown) {
-                while !Task.isCancelled && mine.stopPageShown {
+            .task(id: RadarMineLoopID(value: mine.stopPageShown, active: gate.sceneActive)) {
+                while !Task.isCancelled && mine.stopPageShown && gate.sceneActive {
                     refreshArrivals()
                     try? await Task.sleep(for: .seconds(5))
                 }

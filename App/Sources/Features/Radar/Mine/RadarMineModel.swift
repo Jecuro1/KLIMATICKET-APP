@@ -84,8 +84,8 @@ final class RadarMineModel {
     @ObservationIgnored private var wholeLineIDs: Set<String> = []
     @ObservationIgnored private var directedKeys: [RadarLineKey] = []
     @ObservationIgnored private var noIdentity: Set<String> = []
-    @ObservationIgnored private var highlightSingles: Set<String> = []
-    @ObservationIgnored private var highlightAllSingle = true
+    /// MARK: radar2-review-radarmine – only the trips of the last pass stay single (the cap holds between two passes, `RadarMineHighlight.Selection`).
+    @ObservationIgnored private var highlightSelection = RadarMineHighlight.Selection()
 
     @ObservationIgnored private let store: RadarMineStore
     /// Created on the first tap of „In meiner Nähe zeigen“ (creating it asks nothing).
@@ -112,7 +112,9 @@ final class RadarMineModel {
 
     /// The departures board of the open stop page, when it is due and the radar may ask; nil: nothing to ask.
     func dueSideJob(now: Date) -> RadarSideJob? {
-        guard isOpen, page == .stop, station != nil, mayAsk else { return nil }
+        // MARK: radar2-review-radarmine – no source yet: nothing to ask (a job without one was cancelled and due again in every round, each time
+        // with a slot of the radar's budget)
+        guard isOpen, page == .stop, station != nil, source != nil, mayAsk else { return nil }
         guard let job = plan.nextJob(now: now) else { return nil }
         let generation = plan.generation
         return RadarSideJob(id: "mine|\(job.rawValue)|\(generation)") { [weak self] in
@@ -139,7 +141,7 @@ final class RadarMineModel {
     func keepsSingle(_ vehicle: RadarVehicle) -> Bool {
         if stopPageShown, numberedTrips[vehicle.tripID] != nil { return true }
         guard highlightOn, remembers(vehicle) else { return false }
-        return highlightAllSingle || highlightSingles.contains(vehicle.tripID)
+        return highlightSelection.keepsSingle(vehicle.tripID)
     }
 
     /// The Zeitreise card opened: one bottom panel at a time.
@@ -296,20 +298,15 @@ final class RadarMineModel {
     }
 
     /// The highlighted markers that stay single: all of them up to 60, else the 60 nearest the map's centre (called by the view every few
-    /// seconds while the highlight is on, and at once when it changes).
+    /// seconds while the highlight is on, and at once when it changes). A vehicle of your lines that came in since the last pass groups until
+    /// the next one, so there are never more than 60.
     func refreshHighlightSingles(pins: [RadarPin], centre: GeoPoint) {
         guard highlightOn else {
-            highlightSingles = []
-            highlightAllSingle = true
+            if highlightSelection.clear() { regroup?() }
             return
         }
         let candidates = pins.filter { remembers($0.vehicle) }.map { RadarMineHighlight.Candidate(tripID: $0.id, coordinate: $0.coordinate) }
-        let all = candidates.count <= RadarMineHighlight.singleCap
-        let singles = all ? [] : RadarMineHighlight.singles(candidates, centre: centre)
-        guard all != highlightAllSingle || singles != highlightSingles else { return }
-        highlightAllSingle = all
-        highlightSingles = singles
-        regroup?()
+        if highlightSelection.update(candidates, centre: centre) { regroup?() }
     }
 
     /// The stop page is what the panel shows: its numbers and lines are on the map.
@@ -458,7 +455,14 @@ final class RadarMineModel {
     func groupOpacity(_ tripIDs: [String], vehicle: (String) -> RadarVehicle?) -> Double {
         if stopPageShown, !numbers.isEmpty { return 0.35 }
         guard highlightOn else { return 1 }
-        return tripIDs.contains { id in vehicle(id).map(remembers) ?? false } ? 1 : 0.35
+        return groupHoldsMine(tripIDs, vehicle: vehicle) ? 1 : 0.35
+    }
+
+    /// MARK: radar2-review-radarmine – a group that holds a vehicle of your lines (beyond the 60 single markers) gets the star on its ring (spec §7);
+    /// before, only its full opacity told it apart.
+    func groupHoldsMine(_ tripIDs: [String], vehicle: (String) -> RadarVehicle?) -> Bool {
+        guard highlightOn, !(stopPageShown && !numbers.isEmpty) else { return false }
+        return tripIDs.contains { id in vehicle(id).map(remembers) ?? false }
     }
 
     /// The trip ids of the board (the view looks only these up in the radar's store).
@@ -484,10 +488,14 @@ final class RadarMineModel {
                     return nil
                 }
             }
-            let board = try await source.board(at: location, station: station, now: Date())
+            // MARK: radar2-review-radarmine – the board's positions belong to the moment it was asked, as the radar's tiles do (`RadarModel.fetch`):
+            // „Stand“ and „vor 12 s“ were the answer's arrival, so a slow answer looked fresher than it was, and the radar's newer answer of the
+            // same trip was compared with the wrong moment.
+            let askedAt = Date()
+            let board = try await source.board(at: location, station: station, now: askedAt)
             guard generation == plan.generation else { return nil }
             self.board = board
-            boardFetchedAt = Date()
+            boardFetchedAt = askedAt
             boardError = nil
             plan.answered(now: Date())
             return nil

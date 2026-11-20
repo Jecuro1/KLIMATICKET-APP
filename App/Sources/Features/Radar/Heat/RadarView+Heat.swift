@@ -96,6 +96,8 @@ extension RadarView {
         } else {
             RadarClusterBubble(cluster: cluster, noun: noun)
                 .opacity(mineGroupOpacity(cluster))   // MARK: radar2-radarmine – groups step back while your lines are highlighted
+                .overlay(alignment: .topTrailing) { RadarDecorationBadge(decoration: mineGroupDecoration(cluster)) }   // MARK: radar2-review-radarmine – …
+                .accessibilityValue(mineGroupSpoken(cluster))   // MARK: radar2-review-radarmine – … and its star when one of yours is inside
         }
     }
 

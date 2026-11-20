@@ -11,6 +11,8 @@ import KlimaCore
 enum RadarMineScene: String, CaseIterable, Sendable {
     case lines = "radarMineLines"
     case highlight = "radarMineHighlight"
+    /// MARK: radar2-review-radarmine – ten remembered bus lines in Wien: more than 60 highlighted vehicles, so the cap and the starred groups show.
+    case highlightMany = "radarMineHighlightMany"
     case near = "radarMineNear"
     case nearIntro = "radarMineNearIntro"
     case denied = "radarMineDenied"
@@ -27,7 +29,7 @@ enum RadarMineScene: String, CaseIterable, Sendable {
         case .lines, .empty, .linesAX5: .lines
         case .near, .nearIntro, .denied: .near
         case .stop, .picker, .ax5: .stop
-        case .highlight, .tripSheet: nil
+        case .highlight, .highlightMany, .tripSheet: nil
         }
     }
 
@@ -36,7 +38,7 @@ enum RadarMineScene: String, CaseIterable, Sendable {
         switch self {
         case .stop, .ax5, .picker: (GeoPoint(latitude: 48.1985, longitude: 16.3530), 0.034)
         case .near, .nearIntro, .denied: (RadarMineDemo.place, 0.03)
-        case .lines, .linesAX5, .highlight, .empty: (GeoPoint(latitude: 48.1990, longitude: 16.3620), 0.045)
+        case .lines, .linesAX5, .highlight, .highlightMany, .empty: (GeoPoint(latitude: 48.1990, longitude: 16.3620), 0.045)
         case .tripSheet: nil
         }
     }
@@ -64,11 +66,19 @@ enum RadarMineDemo {
         ])
     }
 
+    /// Ten bus lines of the Wien demo fleet (20 buses each): far more highlighted vehicles than the 60 single markers.
+    static var manyLines: RadarMineLines {
+        let wien = RadarLineKey.area(of: GeoPoint(latitude: 48.2, longitude: 16.37))
+        return RadarMineLines(["2A", "3A", "4A", "5A", "7A", "10A", "12A", "13A", "14A", "37A"].map {
+            RadarLineKey(mode: .bus, compact: "BUS\($0)", title: "Bus \($0)", area: wien)
+        })
+    }
+
     /// The model as the scene starts.
     @MainActor static func prepare(_ mine: RadarMineModel, scene: RadarMineScene) {
         var file = RadarMineFile()
-        if scene != .empty { file.lines = lines }
-        file.highlight = scene == .highlight || scene == .lines || scene == .linesAX5
+        if scene != .empty { file.lines = scene == .highlightMany ? manyLines : lines }
+        file.highlight = scene == .highlight || scene == .highlightMany || scene == .lines || scene == .linesAX5
         file.stops = [RadarMineStop(id: stop.id, name: stop.name, coordinate: stop.location)]
         mine.adoptDemo(file)
         guard let page = scene.page else { return }

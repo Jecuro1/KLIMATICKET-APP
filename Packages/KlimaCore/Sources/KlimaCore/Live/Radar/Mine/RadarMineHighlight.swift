@@ -30,4 +30,31 @@ public enum RadarMineHighlight {
         let ranked = candidates.map { ($0.tripID, distance($0)) }.sorted { $0.1 != $1.1 ? $0.1 < $1.1 : $0.0 < $1.0 }
         return Set(ranked.prefix(max(cap, 0)).map(\.0))
     }
+
+    /// MARK: radar2-review-radarmine – the single markers between two passes. A pass runs every few seconds over the markers; only the trips it chose
+    /// stay single until the next one, so the cap holds in between as well. Before, „all of them“ was a flag that also let every vehicle of your
+    /// lines that a newer answer or a wider view brought in go single, and switching the highlight on started with that flag: for up to two
+    /// seconds hundreds of buses of twenty remembered lines in Wien were single markers. A vehicle the last pass did not see groups until the next.
+    public struct Selection: Sendable, Equatable {
+        public private(set) var tripIDs: Set<String> = []
+
+        public init() {}
+
+        /// A pass over the highlighted candidates now on the map; true when the single markers changed (the radar regroups).
+        public mutating func update(_ candidates: [Candidate], centre: GeoPoint, cap: Int = singleCap) -> Bool {
+            let next = RadarMineHighlight.singles(candidates, centre: centre, cap: cap)
+            guard next != tripIDs else { return false }
+            tripIDs = next
+            return true
+        }
+
+        /// The highlight went off: nothing stays single any more; true when something was.
+        public mutating func clear() -> Bool {
+            guard !tripIDs.isEmpty else { return false }
+            tripIDs = []
+            return true
+        }
+
+        public func keepsSingle(_ tripID: String) -> Bool { tripIDs.contains(tripID) }
+    }
 }

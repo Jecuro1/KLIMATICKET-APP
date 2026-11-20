@@ -14,6 +14,8 @@ struct RadarMineNearPage: View {
     @State private var rows: [RadarNearbyRow] = []
     /// MARK: radar2-review-radarmine – what the rows cover (`RadarNearby.coverage`): only the whole, loaded circle may be called empty.
     @State private var coverage: RadarNearby.Coverage = .loading
+    /// MARK: radar2-review-radarmine – the list's loop rests while the app is not active.
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -35,8 +37,8 @@ struct RadarMineNearPage: View {
             }
             RadarMineFooter(lines: [RadarMineText.nearFooter])
         }
-        .task(id: mine.fix) {
-            while !Task.isCancelled, let fix = mine.fix {
+        .task(id: RadarMineLoopID(value: mine.fix, active: scenePhase == .active)) {
+            while !Task.isCancelled, scenePhase == .active, let fix = mine.fix {
                 let radar = context.radar
                 let sightings = radar.pins.map { RadarMineSighting(vehicle: $0.vehicle, coordinate: $0.coordinate, isEstimate: $0.isEstimate) }
                 let next = RadarNearby.rows(sightings, from: fix, now: Date())

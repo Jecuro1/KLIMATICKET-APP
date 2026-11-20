@@ -41,7 +41,11 @@ sichtbar.
 - **„Nur meine Linien hervorheben“:** deine Fahrzeuge bekommen einen goldenen Stern auf weißem Grund und einen goldenen Rand, alle anderen werden auf
   35 % gedimmt und verlieren den Pfeil (der Verspätungsring bleibt). Hervorgehobene Fahrzeuge werden **nie in Gruppen gefasst** – bis zu **60** als
   einzelne Marker, die der Kartenmitte am nächsten zuerst (`RadarMineHighlight`); mehr gruppieren sich wie gewohnt (20 Buslinien in Wien wären sonst
-  Hunderte Einzelmarker, gegen die 250er-Regel von radarmodes). Der Chip „Meine“ ist dann golden.
+  Hunderte Einzelmarker, gegen die 250er-Regel von radarmodes). Der Chip „Meine“ ist dann golden. (Zweites Review:) Die Auswahl der 60 läuft alle
+  2 s über die Marker; einzeln bleibt nur, was der letzte Durchgang gewählt hat (`RadarMineHighlight.Selection`). Vorher war „alle“ ein Schalter, der
+  beim Einschalten der Hervorhebung und für jedes neu geladene Fahrzeug deiner Linien bis zum nächsten Durchgang galt – in Wien bis zu zwei Sekunden
+  lang Hunderte Einzelmarker. Eine Gruppe, in der eines deiner Fahrzeuge steckt, bekommt den Stern an ihrem Ring und für VoiceOver „mit deiner Linie“
+  (vorher nur volle Deckkraft).
 - **Spuren:** „Ausgewählte und meine“ (`docs/RADAR_TRAILS.md`) zeichnet jetzt auch die Spuren deiner gemerkten Linien (`remembers(_:)`).
 
 ## 3. In der Nähe
@@ -88,6 +92,9 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   unbekannt“; älter als 2 Minuten grau mit „Position von vor 3 Min“. Nie hochgerechnet.
 - **Position:** hält das Radar dieselbe Fahrt-ID mit einer **neueren** Antwort als die Tafel (oder hat die Tafel keine Position), ist der Radar-Marker
   die Position: er bekommt die Nummer und bleibt Einzelmarker. Sonst zeigt eine eigene Nadel mit Nummer (gestrichelter Rand) die Position der Tafel.
+  Versteckt der Filter den Radar-Marker, steht die Nummer auf einer Nadel mit durchgezogenem Rand (die Position ist die des Radars, nicht der Tafel;
+  zweites Review). „Stand“ und Alter einer Tafel sind der Moment ihrer Anfrage – wie bei den Kacheln des Radars, zu dem die Positionen gehören
+  (zweites Review; vorher die Ankunft der Antwort, so wirkte eine langsame Antwort frischer, und der Vergleich mit dem Radar nahm den falschen Moment).
   Eine gestrichelte Luftlinie verbindet jedes nummerierte Fahrzeug mit der Haltestelle; ein Tipp auf Zeile oder Nadel zeigt beide auf der Karte.
   Während die Seite Nummern zeigt, treten die anderen Marker zurück.
 - **Chips aus:** eine Abfahrt eines Verkehrsmittels, dessen Chip aus ist (oder das die Stadt-Spur gerade nicht zeichnet), steht in der Liste ohne
@@ -95,8 +102,8 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   Karte zu weit (Review): „Bim erscheint auf der Karte, wenn du näher heranzoomst – diese Abfahrten stehen schon in der Liste.“ – vorher hieß auch das
   „ist aus“, und „Einschalten“ tat nichts.
 - **Kamera (Review):** die erste Tafel einer gewählten Haltestelle rahmt die Haltestelle mit ihren nummerierten Ankünften (`RadarStopArrivals.frame`,
-  ein Fünftel Rand je Seite, höchstens 0,3° hoch, damit die Stadt-Spur im Zoom bleibt), einmal je Haltestelle. Vorher blieb die Karte beim Zoom der
-  Haltestelle, und in den CI-Screenshots lagen drei der fünf Nummern unter dem Panel. Solange das Panel offen ist, steht der Hinweis „Zeitreise gibt es
+  ein Achtel Rand je Seite, höchstens 0,3° hoch, damit die Stadt-Spur im Zoom bleibt), einmal je Haltestelle. Vorher blieb die Karte beim Zoom der
+  Haltestelle, und in den CI-Screenshots lagen drei der fünf Nummern unter dem Panel. Solange Nummern auf der Karte sind, zeigt die Haltestelle nur ihren Punkt (ihr Name steht im Panel: „Ab …“) – die Namenskapsel verdeckte sonst eine Nummer neben ihr. Solange das Panel offen ist, steht der Hinweis „Zeitreise gibt es
   nur mit Zügen und S-Bahn.“ nicht unter ihm (die Uhr würde das Panel ohnehin schließen) – eine Zeile mehr Karte.
 - **Eine Haltestelle, die die Tafel ablehnt (Review):** antwortet die Tafel „LOCATION“ auf eine gemerkte Verknüpfung, wird die Haltestelle **einmal**
   neu verknüpft (eigener Platz, bei `uic:` ohne Anfrage); lehnt die Tafel auch die neue ab, endet die Haltestelle mit „Diese Haltestelle findet die
@@ -107,7 +114,8 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   der Stromsparmodus aus ist. Die Seite sagt jede Pause: Zeitreise weg von „Jetzt“, Cockpit offen, Stromsparmodus (mit „Jetzt aktualisieren“, das die
   Abfrage in die manuelle Runde des Radars legt), Ebene „Züge“ aus (mit „Einschalten“), keine Live-Daten (mit „Einstellungen“), offline, und die
   Pause nach 30 Minuten. Fehler: die Sätze von `LiveMessage.text(for:)`; eine Haltestelle ohne ÖBB-Station: „Diese Haltestelle findet die Auskunft
-  nicht.“
+  nicht.“ Pausiert das ganze Radar (429, offener Schalter, Fehler auf allen Ebenen), sagt die Seite „Das Radar pausiert gerade – die Abfahrten auch,
+  bis es weiterlädt.“ (zweites Review; vorher alterte ihr „Stand“ still, und die Statuskarte, die es sagt, kann unter dem Panel liegen).
 - **„Alle Abfahrten“** öffnet die Abfahrtstafel des Fahrplans (über `showBoard` des Radars).
 
 ## 5. Budget und Datenmenge
@@ -171,7 +179,9 @@ gemerkt – in der Wien-Ansicht „nicht geladen“); die erfundene Haltestelle 
 Bus, den das Demo-Radar hält – gleiche Fahrt-ID, er bekommt die Nummer –, zwei ohne Position, eine ausgefallen); der erfundene Ort Wien Neubau
 (48,2015 / 16,3480) für „In der Nähe“, als eigener Punkt gezeichnet (keine Standortfrage, kein Simulator-Ort). Szenen (`RadarMineScene`):
 `radarMineLines`, `radarMineLinesAX5`, `radarMineHighlight`, `radarMineNear`, `radarMineNearIntro`, `radarMineDenied` (simuliert), `radarMineStop`,
-`radarMinePicker`, `radarMineEmpty`, `radarMineTripSheet`, `radarMineAX5`. Sie nutzen das Demo-Budget der Stadtflotten (`RadarView(preset: .modesCity)`).
+`radarMinePicker`, `radarMineEmpty`, `radarMineTripSheet`, `radarMineAX5`, `radarMineHighlightMany` (zweites Review: zehn gemerkte Buslinien,
+weit mehr als 60 hervorgehobene Fahrzeuge – die Grenze und die Gruppen mit Stern). Sie nutzen das Demo-Budget der Stadtflotten
+(`RadarView(preset: .modesCity)`).
 
 ## 11. Geprüft / nicht geprüft
 
@@ -190,6 +200,14 @@ Nicht geprüft: alles mit echten Daten (Messung §7), MapKit-Leistung mit vielen
 für den ganzen, geladenen Umkreis und sagt sonst, was fehlt, eine Standortsuche über einen Seitenwechsel hinweg bleibt nicht hängen, ein Chip, der an
 ist, heißt bei zu weiter Karte nicht „aus“, VoiceOver hört Stern, Nummer und Dimmen der Marker, die erste Tafel rahmt Haltestelle und Ankünfte, der
 Zeitreise-Hinweis tritt unter dem Panel zurück. Tests: `RadarMineReviewTests` (Linux).
+
+**Zweites Review (2026-11-20):** die Grenze von 60 einzelnen hervorgehobenen Markern gilt auch zwischen zwei Durchgängen (vorher bis zu 2 s lang alle,
+siehe §2), Gruppen mit deinen Fahrzeugen tragen den Stern, „Stand“ einer Tafel ist der Moment ihrer Anfrage, eine Nebenaufgabe ohne Quelle wird gar
+nicht erst fällig (sie hätte in jeder Runde einen Platz des Budgets belegt), die Schleifen von „Meine Fahrzeuge“ (Hervorhebung, Zeilen der
+Haltestelle, „In der Nähe“, „Linien“) ruhen, solange die App nicht aktiv ist (sie kann für den Aussteige-Wecker oder eine Aufzeichnung im Hintergrund
+weiterlaufen), eine Nummer, deren Radar-Marker der Filter versteckt, steht auf einer Nadel mit durchgezogenem Rand, und die Haltestelle zeigt nur ihren
+Punkt, solange Nummern auf der Karte sind (die Namenskapsel verdeckte die Nummer 3), und die Seite sagt, wenn das ganze Radar pausiert. Tests:
+`testTheHighlightCapHoldsBetweenTwoPasses`, `testThePausedRadarIsSaid`.
 
 ## 12. Geräte-Checkliste
 
