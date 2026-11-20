@@ -30,6 +30,8 @@ enum DataHubText {
     static let banner = "Diese Sicherungen liegen auf diesem iPhone. Löschst du die App, sind sie weg. Kopiere sie in Dateien oder iCloud Drive."
     static let whereLine = "Dateien › Auf meinem iPhone › KlimaBilanz › Sicherungen"
     static let privacy = "Nichts verlässt dein iPhone, außer du teilst eine Datei. Sicherungen enthalten deine Tickets, Fahrten und Favoriten – Anmeldung, Schlüssel und die Live-Daten-Zustimmung sind nie dabei."
+    /// MARK: review-daten – with a cloud account the rows are synced; „Nichts verlässt dein iPhone“ would be false then.
+    static let privacySynced = "Deine Tickets, Fahrten, Favoriten und Vorteile werden mit deinem KlimaBilanz-Konto synchronisiert. Sicherungen und Exporte verlassen dein iPhone nur, wenn du eine Datei teilst – Anmeldung, Schlüssel und die Live-Daten-Zustimmung sind nie dabei."
     static let retention = "Behalten werden die Sicherungen der letzten 7 Tage, je eine der letzten 4 Wochen und 3 Monate. Sicherungen vor dem Löschen oder Wiederherstellen bleiben 30 Tage, die neueste immer."
 }
 
@@ -40,6 +42,8 @@ struct DataHubHero: View {
     var counts: DataHubCounts
     var files: [DataHubBackupFile]
     var isAutoOn: Bool
+    /// Signed in with a cloud account: the rows are synced, they do not only stay here (`// MARK: review-daten`).
+    var syncsToAccount = false
     var now: Date = Date()
 
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -70,7 +74,7 @@ struct DataHubHero: View {
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(Theme.textPrimary)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Bleiben auf diesem iPhone, bis du sie teilst")
+                    Text(syncsToAccount ? "Auf diesem iPhone und in deinem KlimaBilanz-Konto" : "Bleiben auf diesem iPhone, bis du sie teilst")
                         .font(.subheadline)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

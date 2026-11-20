@@ -24,6 +24,9 @@ struct DataHubView: View {
 
     private var service: AutoBackupService { .shared }
 
+    /// MARK: review-daten – the same rule as Einstellungen › Konto: a cloud profile with the backend configured syncs the rows.
+    private var syncsToAccount: Bool { (app.auth.profile?.isCloud ?? false) && app.auth.isCloudAvailable }
+
     private var counts: DataHubCounts {
         DataHubCounts(trips: DataHubCounts.tripCount(journeys: trips.map(\.journeyID)), tickets: tickets.count,
                       favorites: favorites.count, benefits: benefits.count)
@@ -33,11 +36,11 @@ struct DataHubView: View {
         ScrollViewReader { proxy in
             List {
                 Section {
-                    DataHubHero(counts: counts, files: service.files, isAutoOn: service.isEnabled)
+                    DataHubHero(counts: counts, files: service.files, isAutoOn: service.isEnabled, syncsToAccount: syncsToAccount)
                         .reveal(order: 0)
                         .listRowBackground(Theme.surface)
                 } footer: {
-                    SetFooter(text: DataHubText.privacy)
+                    SetFooter(text: syncsToAccount ? DataHubText.privacySynced : DataHubText.privacy)
                 }
                 exportSection
                 backupSection

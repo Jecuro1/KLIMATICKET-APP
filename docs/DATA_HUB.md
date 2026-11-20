@@ -10,8 +10,9 @@ automatische Sicherung, Export, Wiederherstellen) und `App/Sources/Features/Data
 
 ## 1. Das Versprechen
 
-- **Nichts verlässt dein iPhone, außer du teilst eine Datei.** Es gibt keinen Server-Upload, keine Analyse. Alle Exporte entstehen erst,
-  wenn du im Teilen-Menü ein Ziel wählst.
+- **Nichts verlässt dein iPhone, außer du teilst eine Datei.** Sicherungen und Exporte haben keinen Server-Upload, keine Analyse. Alle
+  Exporte entstehen erst, wenn du im Teilen-Menü ein Ziel wählst. Mit einem KlimaBilanz-Konto synchronisiert die App deine Einträge wie
+  bisher – die Seite sagt es dann („Auf diesem iPhone und in deinem KlimaBilanz-Konto“) statt „Nichts verlässt dein iPhone“.
 - **Sicherungen enthalten deine Daten, aber nie Geheimnisse:** Anmeldung, Schlüssel, die Live-Daten-Zustimmung, Name und Adresse der
   Briefe und Gerätezustände kommen nicht hinein (§3.2). Ein Wiederherstellen kann deshalb Zustimmung und Anmeldung nicht ändern.
 - **Vor jedem zerstörerischen Schritt eine Sicherung:** vor „Alle Daten löschen“, vor dem Ersetzen durch die Daten eines Kontos und vor
@@ -233,6 +234,8 @@ Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
   nicht, mit Hinweis, und die Frage kommt wieder.
 - **Ehrlichkeit:** „Prüfen“ zeigte bei einer Datei ohne Prüfsumme (oder einer, die gar keine Sicherung ist) ein grünes Siegel mit
   Erfolgs-Haptik – jetzt ein leeres Siegel „Ohne Prüfsumme“ bzw. die Ablehnung.
+- **Ehrlich zum Konto:** Kopf und Fußzeile sagten auch angemeldet „Bleiben auf diesem iPhone“ und „Nichts verlässt dein iPhone“ –
+  mit einem Cloud-Konto werden die Einträge synchronisiert, und die Seite sagt das jetzt.
 - **Liste:** Eine Sicherung, die bei offener Liste entsteht (die Sicherung vor dem Wiederherstellen), bekam nie ihren Inhalt angezeigt.
 
 Offen (bewusst): Wiederherstellen bringt eine hier gelöschte Fahrt nicht zurück (die Löschung ist neuer; der Plan sagt „nur
