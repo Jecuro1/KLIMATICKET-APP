@@ -104,6 +104,7 @@ struct SetAppearanceSection: View {
                     AppIconSettingsRow()
                 }
                 SetOfficialLogosToggle() // MARK: stops
+                if DashCustomizeButton.isShown { DashSettingsRow() }   // MARK: uebersicht – Übersicht anpassen (docs/DASHBOARD_LAYOUT.md §5)
                 NavigationLink {
                     WidgetGalleryView()
                 } label: {

@@ -101,7 +101,12 @@ final class GoalsTests: XCTestCase {
         XCTAssertEqual(p.ringFraction, 1)
         XCTAssertEqual(p.state, .reached)
         XCTAssertNil(p.projectedValue, "no projection once reached")
-        XCTAssertEqual(GoalText.remaining(p, format: format), "Geschafft · 30 von 20 Fahrten")
+        XCTAssertEqual(GoalText.remaining(p, format: format), "10 Fahrten über dem Ziel")
+        XCTAssertEqual(GoalText.status(p, format: format), "30 von 20 Fahrten")
+        let exact = evaluate(goal, Array(trips.prefix(20)), now: date(2026, 11, 16, 20))
+        XCTAssertEqual(GoalText.remaining(exact, format: format), "Genau aufs Ziel")
+        let one = evaluate(goal, Array(trips.prefix(21)), now: date(2026, 11, 16, 20))
+        XCTAssertEqual(GoalText.remaining(one, format: format), "1 Fahrt über dem Ziel")
         XCTAssertEqual(GoalText.stateLabel(p.state), "Geschafft")
     }
 
@@ -203,7 +208,7 @@ final class GoalsTests: XCTestCase {
         XCTAssertEqual(reached.state, .reached)
         XCTAssertGreaterThan(reached.progress, 1)
         XCTAssertNil(reached.projectedDate)
-        XCTAssertEqual(GoalText.remaining(reached, format: format), "Geschafft · dein Ticket hat sich rentiert")
+        XCTAssertEqual(GoalText.remaining(reached, format: format), "Dein Ticket hat sich rentiert")
 
         let late = [trip(date(2026, 5, 1), fare: 700), trip(date(2026, 7, 2), fare: 700)]
         let missed = evaluate(goal, late, now: date(2026, 7, 3))

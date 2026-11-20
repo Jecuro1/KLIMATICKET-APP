@@ -53,9 +53,9 @@ struct KpiDisplay: Equatable {
             return KpiDisplay(value: SummitFigures.euro(open), unit: "noch offen", rolling: open, tone: .open,
                               spoken: "noch \(SummitFigures.euro(open)) offen")
         case .tripCount, .tripsThisWeek:
+            // The title already says „Fahrten“ – the number stands alone.
             let n = Int(v.rounded())
-            return KpiDisplay(value: Format.number(Double(n)), unit: n == 1 ? "Fahrt" : "Fahrten", rolling: Double(n),
-                              spoken: GoalText.trips(n))
+            return KpiDisplay(value: Format.number(Double(n)), unit: nil, rolling: Double(n), spoken: GoalText.trips(n))
         case .travelDays, .longestStreak, .daysRemaining:
             let n = Int(v.rounded())
             return KpiDisplay(value: Format.number(Double(n)), unit: n == 1 ? "Tag" : "Tage", rolling: Double(n), spoken: Format.days(n))
@@ -121,12 +121,20 @@ struct DashKpiGrid: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: DashStyle.cardSpacing, alignment: .top),
-                            count: typeSize.isAccessibilitySize ? 1 : 2)
-        LazyVGrid(columns: columns, alignment: .leading, spacing: DashStyle.cardSpacing) {
-            ForEach(readings) { reading in
-                DashKpiTile(reading: reading, display: KpiDisplay.make(reading, summary: summary), compact: compact)
-                    .motionTransition(.pop)
+        // A Grid (not a lazy one): the two tiles of a row share its height. One column at accessibility sizes.
+        let perRow = typeSize.isAccessibilitySize ? 1 : 2
+        let rows = stride(from: 0, to: readings.count, by: perRow).map { Array(readings[$0..<min($0 + perRow, readings.count)]) }
+        Grid(horizontalSpacing: DashStyle.cardSpacing, verticalSpacing: DashStyle.cardSpacing) {
+            ForEach(rows, id: \.first?.kind) { row in
+                GridRow {
+                    ForEach(row) { reading in
+                        DashKpiTile(reading: reading, display: KpiDisplay.make(reading, summary: summary), compact: compact)
+                            .motionTransition(.pop)
+                    }
+                    if row.count < perRow {
+                        Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
+                    }
+                }
             }
         }
         .motionAnimation(Motion.smooth, value: readings.map(\.kind))
@@ -158,7 +166,7 @@ struct DashKpiTile: View {
                 .lineLimit(2)
         }
         .padding(compact ? Theme.Spacing.s : Theme.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .frostedCard(cornerRadius: Theme.Radius.tile)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(reading.kind.title)

@@ -113,7 +113,8 @@ struct DashGoalEditor: View {
                     withMotion(Motion.snappy) { kind = option }
                 } label: {
                     HStack(spacing: Theme.Spacing.s) {
-                        SetIconTile(symbol: option.symbol, tint: option == kind ? Theme.pine : Theme.textTertiary)
+                        SetIconTile(symbol: option.symbol, tint: Theme.pine)
+                            .opacity(option == kind ? 1 : 0.45)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.title)
                                 .foregroundStyle(Theme.textPrimary)

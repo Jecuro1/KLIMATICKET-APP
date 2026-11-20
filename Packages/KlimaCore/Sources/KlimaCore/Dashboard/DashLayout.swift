@@ -66,7 +66,7 @@ public enum DashSectionID: String, CaseIterable, Codable, Sendable, Hashable, Id
     /// When the card has something to show at all – the editor says it, so a visible but empty card is no surprise.
     public var whenShown: String {
         switch self {
-        case .balance: "Immer da · lässt sich verschieben, nicht ausblenden"
+        case .balance: "Immer da – nur verschiebbar"
         case .yearReview: "1. Dezember bis 31. Jänner"
         case .commute: "Wenn der Pendel-Modus an ist oder einen Weg vorschlägt"
         case .quickLog: "Sobald du Favoriten oder Fahrten hast"
@@ -281,9 +281,9 @@ public enum DashPreset: String, CaseIterable, Sendable, Identifiable {
     public var subtitle: String {
         switch self {
         case .standard: "Wie ausgeliefert"
-        case .quiet: "Bilanz, Erfassen, letzte Fahrten"
-        case .numbers: "Kennzahlen und Ziele oben"
-        case .all: "Jede Karte, vier Kennzahlen"
+        case .quiet: "Nur das Nötigste"
+        case .numbers: "Zahlen zuerst"
+        case .all: "Jede Karte"
         }
     }
 

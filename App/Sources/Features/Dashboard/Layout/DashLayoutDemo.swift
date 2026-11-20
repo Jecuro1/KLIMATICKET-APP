@@ -9,11 +9,13 @@ import KlimaCore
 struct DashCustomizeButton: View {
     /// Shown to everyone once the editor's screens were looked at in screenshots; until then only in this track's CI scenes.
     static let isLive = false
+    /// The button and the row in Einstellungen › Darstellung.
+    static var isShown: Bool { isLive || DashLayoutScreenshotHost.screens.contains(LaunchMode.screenshotScreen ?? "") }
 
     private var store: DashLayoutStore { .shared }
 
     var body: some View {
-        if Self.isLive || DashLayoutScreenshotHost.screens.contains(LaunchMode.screenshotScreen ?? "") {
+        if Self.isShown {
             Button {
                 store.openEditor()
             } label: {
@@ -32,10 +34,22 @@ struct DashCustomizeButton: View {
     }
 }
 
+/// Einstellungen › Darstellung › „Übersicht anpassen“ – the editor as a page.
+struct DashSettingsRow: View {
+    var body: some View {
+        NavigationLink {
+            DashCustomizeView()
+        } label: {
+            SetRowLabel(title: "Übersicht anpassen", subtitle: "Karten ordnen und ausblenden, Kennzahlen, Ziele",
+                        symbol: "rectangle.3.group.fill", tint: Theme.dusk)
+        }
+    }
+}
+
 struct DashLayoutScreenshotHost: View {
     static let screens: Set<String> = [
         "dashEdit", "dashEditFull", "dashEditSort", "dashEditAX5", "dashKpis", "dashKpisAX5", "dashGoals", "dashQuiet",
-        "dashQuietBottom", "dashKpiPicker", "dashGoalEditor", "dashEditSettings",
+        "dashQuietBottom", "dashKpiPicker", "dashGoalEditor", "dashEditSettings", "dashStandardAX5", "dashGoalsAX5", "dashSettingsRow",
     ]
 
     let screen: String
@@ -70,6 +84,40 @@ struct DashLayoutScreenshotHost: View {
             }
         case "dashEditSettings":
             NavigationStack { DashCustomizeView() }
+        case "dashSettingsRow":
+            NavigationStack {
+                List { SetAppearanceSection() }
+                    .listStyle(.insetGrouped)
+                    .listSectionSpacing(Theme.Spacing.l)
+                    .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+                    .scrollContentBackground(.hidden)
+                    .background { SetBackdrop() }
+                    .tint(Theme.accent)
+                    .navigationTitle("Einstellungen")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        case "dashKpisAX5", "dashGoalsAX5":
+            // The two cards themselves at the largest text size (the Übersicht's header and summit above them are another story).
+            NavigationStack {
+                DashEditorSnapshot { snapshot, trips in
+                    ScrollView {
+                        if let snapshot {
+                            VStack(alignment: .leading, spacing: 0) {
+                                if screen == "dashKpisAX5" {
+                                    DashKpiSection(snapshot: snapshot, trips: trips)
+                                } else {
+                                    DashGoalsSection(snapshot: snapshot)
+                                }
+                            }
+                            .padding(.horizontal, Theme.Spacing.cardGutter)
+                            .padding(.vertical, Theme.Spacing.m)
+                        }
+                    }
+                    .ambientBackground(.standard, glow: 0.4)
+                }
+                .navigationTitle("Übersicht")
+                .navigationBarTitleDisplayMode(.inline)
+            }
         case "dashEdit", "dashEditFull", "dashEditSort", "dashEditAX5":
             MainTabView()
                 .task {
@@ -96,11 +144,11 @@ struct DashLayoutScreenshotHost: View {
             var layout = DashPreset.numbers.layout
             layout.place(.balance, after: .kpis)   // the tiles right under the summit for the capture
             store.installDemo(layout: layout, kpis: figures, goals: goals)
-        case "dashGoals":
+        case "dashGoals", "dashGoalsAX5":
             var layout = DashLayout.standard   // the rings right under the summit for the capture
             layout.move(fromOffsets: IndexSet(integer: layout.order.firstIndex(of: .goals) ?? 0), toOffset: 0)
             store.installDemo(layout: layout, kpis: figures, goals: goals)
-        case "dashGoalEditor":
+        case "dashGoalEditor", "dashStandardAX5":
             store.installDemo(layout: .standard, kpis: [], goals: [])
         default:
             var layout = DashPreset.numbers.layout

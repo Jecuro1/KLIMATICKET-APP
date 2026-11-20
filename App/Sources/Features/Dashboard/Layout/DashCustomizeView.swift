@@ -20,9 +20,21 @@ struct DashCustomizeSheet: View {
         }
         .presentationDetents([.medium, .large], selection: $detent)
         .presentationDragIndicator(.visible)
+        .modifier(DashSceneTypeSize())   // CI: a sheet does not take the presenter's text size
         .onAppear {
             // Kennzahlen and Ziele sit further down: open tall when „Anpassen“ on their card asked for them.
             if startsLarge || focus == .kpis || focus == .goals { detent = .large }
+        }
+    }
+}
+
+/// CI scene dashEditAX5: the sheet at the largest text size.
+private struct DashSceneTypeSize: ViewModifier {
+    func body(content: Content) -> some View {
+        if LaunchMode.screenshotScreen == "dashEditAX5" {
+            content.dynamicTypeSize(.accessibility5)
+        } else {
+            content
         }
     }
 }
@@ -108,12 +120,6 @@ struct DashCustomizeView: View {
                         .fontWeight(.semibold)
                 }
             }
-            ToolbarItem(placement: isSheet ? .topBarLeading : .topBarTrailing) {
-                Button(editMode.isEditing ? "Fertig sortieren" : "Sortieren") {
-                    withMotion(Motion.smooth) { editMode = editMode.isEditing ? .inactive : .active }
-                }
-                .accessibilityHint("Zeigt die Griffe zum Verschieben der Karten")
-            }
         }
         .haptic(.warning, trigger: resetTick)
         .haptic(.success, trigger: store.goalSaveTick)
@@ -146,16 +152,48 @@ struct DashCustomizeView: View {
     private var sectionsSection: some View {
         Section {
             ForEach(store.layout.order) { id in
-                DashSectionRow(id: id, layout: store.layout, offNote: offNote(id), isEditing: editMode.isEditing)
+                DashSectionRow(id: id, layout: store.layout, offNote: offNote(id), contentNote: contentNote(id),
+                               isEditing: editMode.isEditing)
                     .listRowBackground(Theme.surface)
             }
             .onMove { source, destination in
                 store.move(fromOffsets: source, toOffset: destination)
             }
         } header: {
-            SetSectionHeader(title: "Karten")
+            HStack(alignment: .firstTextBaseline) {
+                SetSectionHeader(title: "Karten")
+                Spacer(minLength: Theme.Spacing.xs)
+                // The handles to drag: on with „Sortieren“ (a long press drags at any time).
+                Button {
+                    withMotion(Motion.smooth) { editMode = editMode.isEditing ? .inactive : .active }
+                } label: {
+                    Label(editMode.isEditing ? "Fertig" : "Sortieren",
+                          systemImage: editMode.isEditing ? "checkmark" : "arrow.up.arrow.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.accentText)
+                        .labelStyle(.titleAndIcon)
+                        .contentTransition(.opacity)
+                }
+                .buttonStyle(.pressable)
+                .textCase(nil)
+                .accessibilityHint("Zeigt die Griffe zum Verschieben der Karten")
+            }
         } footer: {
-            SetFooter(text: "„Sortieren“ zeigt die Griffe – oder halte eine Karte gedrückt und zieh sie an ihren Platz. Karten ohne Inhalt bleiben unsichtbar, egal was hier steht. Kopf, Ticket und Gipfel stehen immer oben.")
+            SetFooter(text: "„Sortieren“ zeigt die Griffe – oder halte eine Karte gedrückt und zieh sie an ihren Platz. Eine Karte ohne Inhalt bleibt unsichtbar, egal was hier steht. Kopf, Ticket und Gipfel stehen immer oben.")
+        }
+    }
+
+    /// What Kennzahlen and Ziele hold right now („4 gewählt“, „2 Ziele“) instead of when they would show.
+    private func contentNote(_ id: DashSectionID) -> String? {
+        switch id {
+        case .kpis:
+            let n = store.kpis.kinds.count
+            return n == 0 ? nil : "\(n) von \(KpiCatalog.maxTiles) gewählt"
+        case .goals:
+            let n = store.goals.goals.count
+            return n == 0 ? nil : (n == 1 ? "1 Ziel" : "\(n) Ziele")
+        default:
+            return nil
         }
     }
 
@@ -267,11 +305,17 @@ struct DashPresetGrid: View {
     @State private var selectionTick = 0
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.s, alignment: .top),
-                            count: typeSize.isAccessibilitySize ? 1 : 2)
-        LazyVGrid(columns: columns, spacing: Theme.Spacing.s) {
-            ForEach(DashPreset.allCases) { preset in
-                tile(preset)
+        // A Grid: the tiles of a row share its height. One column at accessibility sizes.
+        let perRow = typeSize.isAccessibilitySize ? 1 : 2
+        let presets = DashPreset.allCases
+        let rows = stride(from: 0, to: presets.count, by: perRow).map { Array(presets[$0..<min($0 + perRow, presets.count)]) }
+        Grid(horizontalSpacing: Theme.Spacing.s, verticalSpacing: Theme.Spacing.s) {
+            ForEach(rows, id: \.first) { row in
+                GridRow {
+                    ForEach(row) { preset in
+                        tile(preset)
+                    }
+                }
             }
         }
         .haptic(.selection, trigger: selectionTick)
@@ -304,7 +348,7 @@ struct DashPresetGrid: View {
                 Spacer(minLength: 0)
             }
             .padding(Theme.Spacing.s)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Theme.surface, in: shape)
             .overlay {
                 shape.strokeBorder(isCurrent ? Theme.accent : Theme.separator, lineWidth: isCurrent ? 2 : 1)
@@ -336,6 +380,7 @@ private struct DashSectionRow: View {
     let id: DashSectionID
     let layout: DashLayout
     let offNote: String?
+    let contentNote: String?
     let isEditing: Bool
 
     private var store: DashLayoutStore { .shared }
@@ -343,7 +388,9 @@ private struct DashSectionRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.s) {
-            SetIconTile(symbol: id.symbol, tint: isHidden ? Theme.textTertiary : tint)
+            SetIconTile(symbol: id.symbol, tint: tint)
+                .opacity(isHidden ? 0.4 : 1)
+                .saturation(isHidden ? 0 : 1)
             VStack(alignment: .leading, spacing: 2) {
                 Text(id.title)
                     .foregroundStyle(isHidden ? Theme.textSecondary : Theme.textPrimary)
@@ -377,7 +424,7 @@ private struct DashSectionRow: View {
 
     private var detail: String {
         if isHidden { return "Ausgeblendet" }
-        return offNote ?? id.whenShown
+        return offNote ?? contentNote ?? id.whenShown
     }
 
     @ViewBuilder

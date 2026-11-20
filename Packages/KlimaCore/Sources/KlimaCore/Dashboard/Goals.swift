@@ -371,13 +371,16 @@ public enum GoalText {
     }
 
     /// What is left, with a pace that is a fact, not a promise: „noch 4 Fahrten · etwa 1 pro Woche“, „noch € 36 · 5 Tage übrig“,
-    /// „noch 2 Fahrten · heute ist der letzte Tag“, „Geschafft · 24 von 20 Fahrten“.
+    /// „noch 2 Fahrten · heute ist der letzte Tag“; once met „4 Fahrten über dem Ziel“ (the status says „24 von 20 Fahrten“).
     public static func remaining(_ p: GoalProgress, format: GoalFormatter) -> String {
         let kind = p.goal.kind
         switch p.state {
         case .reached:
-            if kind == .breakEvenBy { return "Geschafft · dein Ticket hat sich rentiert" }
-            return "Geschafft · \(status(p, format: format))"
+            // The status line above already says „24 von 20 Fahrten“ – this one says what it means.
+            if kind == .breakEvenBy { return "Dein Ticket hat sich rentiert" }
+            let over = p.actual - p.target
+            guard over >= (kind == .tripsPerMonth ? 1 : 0.5) else { return "Genau aufs Ziel" }
+            return "\(amount(over, kind: kind, format: format, roundingUp: false)) über dem Ziel"
         case .missed:
             return "Der Tag ist vorbei · noch \(amount(p.remaining, kind: kind, format: format, roundingUp: true)) bis zum Break-even"
         case .onTrack, .behind:

@@ -145,7 +145,7 @@ struct DashGoalStateLabel: View {
         switch state {
         case .reached: "checkmark.circle.fill"
         case .onTrack: "arrow.up.right"
-        case .behind: "tortoise.fill"
+        case .behind: "arrow.down.right"
         case .missed: "flag.slash"
         }
     }
