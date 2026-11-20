@@ -412,11 +412,7 @@ struct ConnectionGuardCard: View {
     private func actions(engine: GuardEngine, offered: GuardActions) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             if offered.continueFollow, let next = engine.continuation?.target {
-                Button { continueFollow() } label: {
-                    Label(GuardText.continueButton(next.lineName), systemImage: "location.fill")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                }
+                Button { continueFollow() } label: { wideLabel(GuardText.continueButton(next.lineName), symbol: "location.fill") }
                 .buttonStyle(.glassProminent)
                 .tint(Theme.prominentTint)
                 .accessibilityLabel(GuardText.continueSpoken(next.lineName))
@@ -447,10 +443,24 @@ struct ConnectionGuardCard: View {
         .padding(.top, 2)
     }
 
+    /// MARK: integrate-radar3 – at accessibility sizes the symbol sits above the words, so a long word keeps the button's width: beside the
+    /// symbol „Alternativen ansehen“ broke as „Alternativ-en“ at AX5 (CI screenshots, guardEndedAX5).
+    @ViewBuilder
     private func wideLabel(_ title: String, symbol: String) -> some View {
-        Label(title, systemImage: symbol)
+        if isLarge {
+            VStack(spacing: 4) {
+                Image(systemName: symbol).accessibilityHidden(true)   // VoiceOver reads the words, as with `Label`
+                Text(title)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             .font(.subheadline.weight(.semibold))
             .frame(maxWidth: .infinity)
+        } else {
+            Label(title, systemImage: symbol)
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity)
+        }
     }
 
     @ViewBuilder
