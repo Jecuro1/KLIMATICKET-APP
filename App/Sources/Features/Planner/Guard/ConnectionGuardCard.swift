@@ -122,6 +122,9 @@ struct ConnectionGuardCard: View {
 
     private var isLarge: Bool { typeSize.isAccessibilitySize }
 
+    /// The buttons' scroll target (the AX5 scene of the end shows them).
+    static let actionsID = "guardActions"
+
     // MARK: Card
 
     private func card(_ a: GuardAssessment, engine: GuardEngine, now: Date) -> some View {
@@ -177,6 +180,7 @@ struct ConnectionGuardCard: View {
             notes(a, endNote: endNote)
             status(engine: engine, now: now)
             actions(engine: engine, offered: offered)
+                .id(Self.actionsID)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The rail runs the full height of the card's content (a background is offered the content's size); at accessibility

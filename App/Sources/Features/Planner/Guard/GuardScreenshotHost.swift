@@ -51,7 +51,7 @@ struct GuardScreenshotHost: View {
         case .noRealtime, .over, .ended, .overShort:
             GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
         case .endedAX5:
-            // The card's end at AX5 (its top is the same as in guardAX5): the reason, „Prüfung beendet“ and what is offered.
+            // The card's end at AX5 (its top is like guardAX5's): the reason, „Prüfung beendet“ and what is offered.
             GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()), showsEnd: true)
                 .dynamicTypeSize(.accessibility5)
         case .alternatives:
@@ -68,16 +68,25 @@ struct GuardScreenshotHost: View {
 /// The card on its own (a connection without realtime: no follow answer with realtime may stand next to it).
 private struct GuardCardOnlyShot: View {
     let target: LiveFollowTarget
-    /// Opens scrolled to the end of the card (the AX5 scene of the end).
+    /// Opens with the card's buttons in the middle of the screen (the AX5 scene of the end; at AX5 the footer alone fills the
+    /// screen at the bottom).
     var showsEnd = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                ConnectionGuardCard(target: target, snapshot: nil)
-                    .padding(Theme.Spacing.cardGutter)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    ConnectionGuardCard(target: target, snapshot: nil)
+                        .padding(Theme.Spacing.cardGutter)
+                }
+                .task {
+                    guard showsEnd else { return }
+                    // The card draws once the scene is installed (the host's task); then its buttons to the middle.
+                    for _ in 0..<40 where ConnectionGuardService.shared.engine == nil { try? await Task.sleep(for: .milliseconds(50)) }
+                    try? await Task.sleep(for: .milliseconds(200))
+                    proxy.scrollTo(ConnectionGuardCard.actionsID, anchor: .center)
+                }
             }
-            .defaultScrollAnchor(showsEnd ? .bottom : .top)
             .ambientBackground(.standard, glow: 0.3)
             .navigationTitle(target.lineName)
             .navigationBarTitleDisplayMode(.inline)
