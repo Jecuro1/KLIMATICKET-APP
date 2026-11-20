@@ -111,8 +111,8 @@ struct SiriQuestionsView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .haptic(.selection, trigger: question)
-            .haptic(.selection, trigger: period)
+            // MARK: review-siri – one tick per choice (an example sets question and period at once: it played two)
+            .haptic(.selection, trigger: [question.rawValue, period.rawValue])
             .listSectionSpacing(Theme.Spacing.l)
             .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
             .scrollContentBackground(.hidden)
@@ -293,6 +293,9 @@ struct SiriAnswerPlatter: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("Siri sagt: \(answer.sentence)")
             }
+            // MARK: review-siri – the phrase and Siri's sentence grow to AX3 like the opening (at AX5 the sentence filled the screen
+            // and „November:“ lost its colon to a line of its own)
+            .dynamicTypeSize(...DynamicTypeSize.accessibility3)
             .padding(.horizontal, 18)
             .padding(.top, 14)
             AskKlimaSnippet(answer: answer)

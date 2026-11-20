@@ -148,11 +148,18 @@ wohin; das steht in der Beschreibung der Aktion und auf der Seite. Kein Netz, ke
 hell, dunkel und AX5 angesehen wurden. Screenshot-Szenen (`-KBScreenshot <name> -KBDemo YES`, Demo-Jahr, kein Netz):
 `siriQuestions` (die Seite), `siriAnswer` (Wert · Letzter Monat, zum Ausprobieren gescrollt), `siriExamples` („So fragst du“),
 `siriBottom` (Kurzbefehle, Datenschutz), `siriAX5` / `siriAX5Mid` (größte Schrift: Eröffnung, Ausprobieren mit Tage bis Ablauf),
-`siriSnippets` / `siriSnippetsEnd` (Siris Tafel für fünf Antworten: Tage eines Monats, Monate eines Jahres, Tage bis Ablauf,
-Break-even, keine Tabelle) und `siriSettings` (der Abschnitt „KI & Siri“ in Einstellungen).
+`siriSnippets` / `siriSnippetsMid` / `siriSnippetsEnd` (Siris Tafel für sechs Antworten: Tage eines Monats, Monate eines Jahres,
+Monate des Ticketjahrs mit einer wartenden Fahrt, Tage bis Ablauf, Break-even, keine Tabelle), `siriAX5Answer` (Siris Tafel bei
+AX5) und `siriSettings` (der Abschnitt „KI & Siri“ in Einstellungen).
 
 Angesehen in hell und dunkel: Lauf 723 (erste Fassung), 724 (Zahl und Einheit trennen nie, Balken-Beschriftung unter dem eigenen
 Balken, Eröffnung bis AX3), 725 (freigegeben: „KlimaBilanz“ trennt nicht, Prozent wie die Widgets), 726 (die Einstellungs-Zeile).
+Review (`SiriKpiReviewTests`, Szenen `siriAX5Answer` – Siris Tafel bei AX5 – und `siriSnippetsMid` – Fahrten im Ticketjahr mit
+den Monaten des Tickets und einer wartenden Fahrt): Lauf 727 in hell und dunkel angesehen (alle Aufnahmen vollständig); bei AX5
+füllte Siris Satz den Bildschirm und „November:“ verlor seinen Doppelpunkt an eine eigene Zeile – Satz und Phrase wachsen seither
+bis AX3 wie die Eröffnung (Lauf 728). Das Snippet schreibt Zeitraum und „Noch keine Zahlen“ in Textstilen, die mit der
+Schriftgröße wachsen; die Balken-Beschriftungen und die große Zahl bleiben fest (31 Tage in einer Zeile).
+
 Die jeweils erste helle Aufnahme eines Laufs (`siriSnippets` in 723 und 724) blieb leer: der Simulator hing beim ersten Bild im
 Farbraum-Aufbau von CoreGraphics (`stuck-light-siriSnippets.sample.txt`), dieselbe Szene in dunkel und `siriSnippetsEnd` in hell
 sind vollständig.

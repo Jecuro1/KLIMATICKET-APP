@@ -81,9 +81,10 @@ Bedienung, Frost-Karten für Inhalte.
   [docs/WIDGETS_SMARTSTACK.md](docs/WIDGETS_SMARTSTACK.md))
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick
 - **Fragen an KlimaBilanz** – frag Siri „Wie viele Fahrten diesen Monat in KlimaBilanz?“, „Wie viel CO₂ habe ich gespart?“ oder „Wann
-  läuft mein Ticket ab?“: acht Kennzahlen für Woche, Monat, Vormonat, Ticketjahr und Kalenderjahr, mit denselben Zahlen wie Statistik und
-  einem Satz plus Zahl als Antwort; in der Kurzbefehle-App gibt „Frag KlimaBilanz“ die Zahl an den nächsten Schritt weiter. Ausprobieren
-  unter Einstellungen › KI & Siri. Antworten aus Tagessummen auf dem iPhone, ohne Haltestellen und Orte; die Spracherkennung ist noch
+  läuft mein Ticket ab?“: acht Kennzahlen – Fahrten, Wert, Kilometer und CO₂ für Woche, Monat, Vormonat, Ticketjahr oder Kalenderjahr,
+  dazu vier Ticket-Fragen –, mit denselben Zahlen wie Statistik und einem Satz plus Zahl als Antwort. Per Sprache gilt das Ticketjahr
+  (Fahrten auch für jeden anderen Zeitraum); jede Kombination und die Weitergabe der Zahl an den nächsten Schritt bietet „Frag
+  KlimaBilanz“ in der Kurzbefehle-App. Ausprobieren unter Einstellungen › KI & Siri. Antworten aus Tagessummen auf dem iPhone, ohne Haltestellen und Orte; die Spracherkennung ist noch
   nicht auf einem iPhone geprüft ([docs/SIRI_QUESTIONS.md](docs/SIRI_QUESTIONS.md))
 - **Konten** – Anmeldung mit Google, Microsoft oder Apple (je nachdem, was dein Backend eingerichtet hat) und Cloud-Sync zwischen Geräten
   über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
