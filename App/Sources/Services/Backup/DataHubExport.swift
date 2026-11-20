@@ -154,31 +154,45 @@ struct DataHubExportSource: Sendable {
         return try Backup.temporaryFile(named: fileName(format, ticket: ticket), data: data)
     }
 
-    /// The preview line per format: what is in it and how big the file is.
-    func previews() -> [DataHubExportFormat: String] {
+    /// The preview line per format (what is in it and how big the file is) and the formats with nothing in them.
+    func previews() -> DataHubExportPreviews {
         let context = ModelContext(container)
-        guard let snap = try? snapshot(context: context) else { return [:] }
-        var lines: [DataHubExportFormat: String] = [:]
+        guard let snap = try? snapshot(context: context) else { return DataHubExportPreviews() }
+        var result = DataHubExportPreviews()
         for format in DataHubExportFormat.allCases {
             guard let size = try? content(format).count else { continue }
             let what: String
+            let entries: Int
             switch format {
-            case .backup: what = Backup.counts(context: context).line
-            case .tripsCSV, .tripsCalendar: what = DataHubFormat.count(snap.trips.count, "Eintrag", "Einträge")
-            case .monthlyCSV: what = DataHubFormat.count(DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval, until: now).count, "Monat", "Monate")
-            case .deadlinesCalendar: what = DataHubFormat.count(snap.deadlines.count, "Frist", "Fristen")
-            case .yearText: what = DataHubFormat.count(JourneySummary.tripCount(snap.trips), "Fahrt", "Fahrten")
+            case .backup:
+                // MARK: review-daten – empty only without any row (it read „0 Fahrten · 1 Ticket“ and could not be shared)
+                let counts = Backup.counts(context: context)
+                what = counts.line
+                entries = counts.isEmpty ? 0 : 1
+            case .tripsCSV, .tripsCalendar:
+                entries = snap.trips.count
+                what = DataHubFormat.count(entries, "Eintrag", "Einträge")
+            case .monthlyCSV:
+                entries = DataHubMonthlyCSV.rows(snap.trips, interval: snap.interval, until: now).count
+                what = DataHubFormat.count(entries, "Monat", "Monate")
+            case .deadlinesCalendar:
+                entries = snap.deadlines.count
+                what = DataHubFormat.count(entries, "Frist", "Fristen")
+            case .yearText:
+                entries = JourneySummary.tripCount(snap.trips)
+                what = DataHubFormat.count(entries, "Fahrt", "Fahrten")
             }
-            lines[format] = "\(what) · \(DataHubFormat.bytes(size))"
+            result.lines[format] = "\(what) · \(DataHubFormat.bytes(size))"
+            if entries == 0 { result.empty.insert(format) }
         }
-        return lines
+        return result
     }
+}
 
-    /// How many entries a format has (an empty one is shown, but cannot be shared).
-    func isEmpty(_ format: DataHubExportFormat, previews: [DataHubExportFormat: String]) -> Bool {
-        guard let line = previews[format] else { return false }
-        return line.hasPrefix("0 ")
-    }
+/// What „Exportieren“ shows per format; an empty one is shown, but cannot be shared.
+struct DataHubExportPreviews: Equatable, Sendable {
+    var lines: [DataHubExportFormat: String] = [:]
+    var empty: Set<DataHubExportFormat> = []
 }
 
 // MARK: - Share items (one type per content type: a share target picks by type)

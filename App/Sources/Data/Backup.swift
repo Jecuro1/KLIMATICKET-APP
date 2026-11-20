@@ -26,20 +26,26 @@ struct BackupFile: Codable {
     // app ignores the keys, a version-2 file has none of them.
     var settings: [String: BackupSettingValue]?
     var checksum: String?
+    /// MARK: review-daten – the columns only this iPhone has (price source, lines, journey reference, a route's pattern; docs/DATA_HUB.md
+    /// §3.1). nil in older files: the merge then leaves those columns of this iPhone alone.
+    var local: BackupLocalBlock?
 
     private enum CodingKeys: String, CodingKey {
         case format, version, exportedAt, appVersion, tickets, trips, favorites, benefits
         case settings, checksum   // MARK: data
+        case local   // MARK: review-daten
     }
 
     init(tickets: [TicketDTO], trips: [BackupTripRow], favorites: [FavoriteDTO], benefits: [BenefitDTO]?,   // MARK: timebalance
-         settings: [String: BackupSettingValue]? = nil, checksum: String? = nil) {   // MARK: data
+         settings: [String: BackupSettingValue]? = nil, checksum: String? = nil,   // MARK: data
+         local: BackupLocalBlock? = nil) {   // MARK: review-daten
         self.tickets = tickets
         self.trips = trips
         self.favorites = favorites
         self.benefits = benefits
         self.settings = settings
         self.checksum = checksum
+        self.local = local
     }
 
     /// Tickets, trips and favourites must be readable; the benefits section is optional and tolerant
@@ -56,6 +62,7 @@ struct BackupFile: Codable {
         benefits = try c.decodeIfPresent([BackupBenefitRow].self, forKey: .benefits)?.map(\.dto)
         settings = try? c.decodeIfPresent([String: BackupSettingValue].self, forKey: .settings)   // MARK: data – a bad block never blocks the rows
         checksum = try? c.decodeIfPresent(String.self, forKey: .checksum)
+        local = try? c.decodeIfPresent(BackupLocalBlock.self, forKey: .local)   // MARK: review-daten – a bad block keeps this iPhone's columns
     }
 }
 
@@ -113,17 +120,27 @@ enum Backup {
                                    apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
         // MARK: timebalance – a row's time keys go with it (absent in older files: the entity keeps its values)
         let tripTimes = Dictionary(file.trips.map { ($0.base.id, $0.times) }, uniquingKeysWith: { _, last in last })
+        let local = file.local   // MARK: review-daten – a row taken from the file takes its local columns too (nil block: kept)
         result.trips = try merge(file.trips.map(\.base), context: context, id: \TripEntity.id, updatedAt: \.updatedAt,
                                  apply: { row, trip in
                                      row.keepingLocalExtras(of: trip).apply(to: trip)
                                      tripTimes[row.id]?.apply(to: trip)
+                                     local?.trip(row.id).apply(to: trip)   // MARK: review-daten
                                  }, make: { row in
                                      let trip = row.makeEntity()
                                      tripTimes[row.id]?.apply(to: trip)
+                                     local?.trip(row.id).apply(to: trip)   // MARK: review-daten
                                      return trip
                                  })
         result.favorites = try merge(file.favorites, context: context, id: \FavoriteRouteEntity.id, updatedAt: \.updatedAt,
-                                     apply: { $0.keepingLocalExtras(of: $1).apply(to: $1) }, make: { $0.makeEntity() })
+                                     apply: { row, favorite in
+                                         row.keepingLocalExtras(of: favorite).apply(to: favorite)
+                                         local?.favorite(row.id).apply(to: favorite)   // MARK: review-daten
+                                     }, make: { row in
+                                         let favorite = row.makeEntity()
+                                         local?.favorite(row.id).apply(to: favorite)   // MARK: review-daten
+                                         return favorite
+                                     })
         result.benefits = try merge(file.benefits ?? [], context: context, id: \BenefitEntity.id, updatedAt: \.updatedAt,
                                     apply: { $0.apply(to: $1) }, make: { $0.makeEntity() })
         try context.save()

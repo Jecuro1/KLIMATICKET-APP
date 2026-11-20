@@ -9,7 +9,7 @@ struct DataHubExportView: View {
     @Environment(AppState.self) private var app
     @Environment(\.modelContext) private var context
     @State private var range: DataHubRange
-    @State private var previews: [DataHubExportFormat: String] = [:]
+    @State private var previews = DataHubExportPreviews()
 
     /// `range`: CI scenes start on another range.
     init(range: DataHubRange = .ticketYear) {
@@ -63,8 +63,8 @@ struct DataHubExportView: View {
     }
 
     private func row(_ format: DataHubExportFormat) -> some View {
-        let preview = previews[format]
-        let isEmpty = source.isEmpty(format, previews: previews)
+        let preview = previews.lines[format]
+        let isEmpty = previews.empty.contains(format)
         return shareLink(format) {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
                 Label {

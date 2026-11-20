@@ -185,7 +185,7 @@ struct DataHubRestoreSheet: View {
             switch outcome {
             case .restored(let summary):
                 dismiss()
-                app.showToast("checkmark.circle.fill", "Backup wiederhergestellt", summary)
+                app.showToast("checkmark.circle.fill", "Sicherung wiederhergestellt", summary)   // MARK: review-daten – the hub's word
             case .failed(let message):
                 failure = message
             }

@@ -12,11 +12,16 @@ extension Backup {
     /// background one). `settings` is filtered again here, so nothing outside the allow-list can reach the file.
     nonisolated static func exportV3(context: ModelContext, settings: [String: BackupSettingValue]) throws -> Data {
         let tickets = try context.fetch(FetchDescriptor<TicketEntity>()).map { TicketDTO($0, userID: "") }
-        let trips = try context.fetch(FetchDescriptor<TripEntity>()).map { BackupTripRow(entity: $0) }   // MARK: timebalance
-        let favorites = try context.fetch(FetchDescriptor<FavoriteRouteEntity>()).map { FavoriteDTO($0, userID: "") }
+        let tripEntities = try context.fetch(FetchDescriptor<TripEntity>())
+        let trips = tripEntities.map { BackupTripRow(entity: $0) }   // MARK: timebalance
+        let favoriteEntities = try context.fetch(FetchDescriptor<FavoriteRouteEntity>())
+        let favorites = favoriteEntities.map { FavoriteDTO($0, userID: "") }
         let benefits = try context.fetch(FetchDescriptor<BenefitEntity>()).map { BenefitDTO($0, userID: "") }
+        // MARK: review-daten – always written (also empty): a file with the block restores these columns exactly
+        let local = BackupLocalBlock.make(trips: tripEntities.map { ($0.id, TripLocalColumns(entity: $0)) },
+                                          favorites: favoriteEntities.map { ($0.id, FavoriteLocalColumns(entity: $0)) })
         var file = BackupFile(tickets: tickets, trips: trips, favorites: favorites, benefits: benefits,
-                              settings: BackupSettingsPolicy.filter(settings).kept, checksum: BackupChecksum.placeholder)
+                              settings: BackupSettingsPolicy.filter(settings).kept, checksum: BackupChecksum.placeholder, local: local)
         file.version = BackupFormat.currentVersion
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -77,6 +82,34 @@ extension Backup {
                       tickets: (try? context.fetchCount(FetchDescriptor<TicketEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       favorites: (try? context.fetchCount(FetchDescriptor<FavoriteRouteEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0,
                       benefits: (try? context.fetchCount(FetchDescriptor<BenefitEntity>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0)
+    }
+}
+
+// MARK: review-daten – the local columns of a row (docs/DATA_HUB.md §3.1): no sync row carries them, the backup does.
+extension TripLocalColumns {
+    init(entity e: TripEntity) {
+        self.init(priceSource: e.priceSourceRaw, priceProvider: e.priceProvider, priceProduct: e.priceProduct,
+                  priceFetchedAt: e.priceFetchedAt, journeyRef: e.journeyRef, lineSummary: e.lineSummary)
+    }
+
+    /// Exactly these values (a row taken from a file that has the block).
+    func apply(to e: TripEntity) {
+        e.priceSourceRaw = priceSource
+        e.priceProvider = priceProvider
+        e.priceProduct = priceProduct
+        e.priceFetchedAt = priceFetchedAt
+        e.journeyRef = journeyRef
+        e.lineSummary = lineSummary
+    }
+}
+
+extension FavoriteLocalColumns {
+    init(entity e: FavoriteRouteEntity) {
+        self.init(schedule: e.scheduleRaw)
+    }
+
+    func apply(to e: FavoriteRouteEntity) {
+        e.scheduleRaw = schedule
     }
 }
 

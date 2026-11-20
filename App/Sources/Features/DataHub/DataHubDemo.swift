@@ -105,19 +105,28 @@ enum DataHubDemo {
         var source: DataHubCounts
         var restored: DataHubCounts
         var allRows: (Int, Int)
+        /// MARK: review-daten – rows with local columns (price source, lines, a route's pattern) before and after.
+        var localRows: (Int, Int)
+        /// MARK: review-daten – the restored store, backed up again, gives the same rows column for column (not only the same counts).
+        var rowsIdentical: Bool
         var verdict: BackupChecksum.Verdict
         var size: Int
 
         static func == (a: RoundTrip, b: RoundTrip) -> Bool {
-            a.source == b.source && a.restored == b.restored && a.allRows == b.allRows && a.verdict == b.verdict && a.size == b.size
+            a.source == b.source && a.restored == b.restored && a.allRows == b.allRows && a.localRows == b.localRows
+                && a.rowsIdentical == b.rowsIdentical && a.verdict == b.verdict && a.size == b.size
         }
 
-        var isIdentical: Bool { source == restored && allRows.0 == allRows.1 && !verdict.isDamaged }
+        var isIdentical: Bool {
+            source == restored && allRows.0 == allRows.1 && localRows.0 == localRows.1 && rowsIdentical && !verdict.isDamaged
+        }
     }
 
-    /// Exports the demo store with the app's own export and restores it into an empty in-memory store; counts per table must match.
+    /// Exports the demo store with the app's own export and restores it into an empty in-memory store; counts per table must match,
+    /// and a backup of the restored store must hold the same rows, column for column (`// MARK: review-daten`).
     @MainActor
     static func roundTrip(context: ModelContext) -> RoundTrip? {
+        plantLocalColumns(context: context)
         guard let data = try? Backup.export(context: context) else { return nil }
         let empty = DataSchema.makeInMemoryContainer()
         guard (try? Backup.restoreChecked(data, context: empty.mainContext)) != nil else { return nil }
@@ -125,10 +134,53 @@ enum DataHubDemo {
             ((try? c.fetchCount(FetchDescriptor<TripEntity>())) ?? 0) + ((try? c.fetchCount(FetchDescriptor<TicketEntity>())) ?? 0)
                 + ((try? c.fetchCount(FetchDescriptor<FavoriteRouteEntity>())) ?? 0) + ((try? c.fetchCount(FetchDescriptor<BenefitEntity>())) ?? 0)
         }
+        func local(_ c: ModelContext) -> Int {
+            let trips = ((try? c.fetch(FetchDescriptor<TripEntity>())) ?? []).filter { !TripLocalColumns(entity: $0).isEmpty }.count
+            return trips + ((try? c.fetch(FetchDescriptor<FavoriteRouteEntity>())) ?? []).filter { !$0.scheduleRaw.isEmpty }.count
+        }
+        let again = try? Backup.export(context: empty.mainContext)
+        let original = canonical(data)
         let result = RoundTrip(source: Backup.counts(context: context), restored: Backup.counts(context: empty.mainContext),
-                               allRows: (all(context), all(empty.mainContext)), verdict: BackupChecksum.verify(data), size: data.count)
+                               allRows: (all(context), all(empty.mainContext)), localRows: (local(context), local(empty.mainContext)),
+                               rowsIdentical: original != nil && again.flatMap(canonical) == original,
+                               verdict: BackupChecksum.verify(data), size: data.count)
         LaunchTrace.mark(result.isIdentical ? "data.roundtrip.identical" : "data.roundtrip.DIFFERENT")
         return result
+    }
+
+    /// A backup without what differs between two writes of the same rows (time of writing, app version, checksum, row order).
+    static func canonical(_ data: Data) -> Data? {
+        guard var file = try? Backup.decodeFile(data) else { return nil }
+        file.exportedAt = Date(timeIntervalSince1970: 0)
+        file.appVersion = ""
+        file.checksum = nil
+        file.tickets.sort { $0.id.uuidString < $1.id.uuidString }
+        file.trips.sort { $0.base.id.uuidString < $1.base.id.uuidString }
+        file.favorites.sort { $0.id.uuidString < $1.id.uuidString }
+        file.benefits = file.benefits?.sorted { $0.id.uuidString < $1.id.uuidString }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return try? encoder.encode(file)
+    }
+
+    /// The demo year has no live price and no line names: the two newest trips get them (the scene's own in-memory store), so the
+    /// round trip covers the block `local` as well as the saved route's pattern the demo already has.
+    @MainActor
+    static func plantLocalColumns(context: ModelContext) {
+        var newest = FetchDescriptor<TripEntity>(predicate: #Predicate { $0.deletedAt == nil }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+        newest.fetchLimit = 2
+        for (index, trip) in ((try? context.fetch(newest)) ?? []).enumerated() where trip.lineSummary.isEmpty {
+            trip.lineSummary = index == 0 ? "Railjet Xpress 162" : "S 1"
+            trip.journeyRef = index == 0 ? "demo-journey-ref" : ""
+            if index == 0 {
+                trip.priceSourceRaw = PriceSource.liveOebb.rawValue
+                trip.priceProvider = "ÖBB"
+                trip.priceProduct = "Standard-Ticket"
+                trip.priceFetchedAt = trip.date.addingTimeInterval(-86_400)
+            }
+        }
+        try? context.save()
     }
 }
 
@@ -208,6 +260,10 @@ private struct DataHubRoundTripScene: View {
                     row("Favoriten", result.source.favorites, result.restored.favorites)
                     row("Vorteile", result.source.benefits, result.restored.benefits)
                     row("Alle Zeilen (mit gelöschten)", result.allRows.0, result.allRows.1)
+                    row("Mit Preisquelle, Linie oder Muster", result.localRows.0, result.localRows.1)   // MARK: review-daten
+                    Label(result.rowsIdentical ? "Jede Zeile gleich, Spalte für Spalte" : "Zeilen weichen ab",
+                          systemImage: result.rowsIdentical ? "equal.circle.fill" : "notequal.circle.fill")
+                        .foregroundStyle(result.rowsIdentical ? Theme.positiveText : Theme.negativeText)
                     Label(result.isIdentical ? "Identisch · \(result.verdict.title) · \(DataHubFormat.bytes(result.size))" : "Unterschied gefunden",
                           systemImage: result.isIdentical ? "checkmark.seal.fill" : "xmark.seal.fill")
                         .font(.headline)

@@ -5,7 +5,7 @@ bekomme ich es heraus, und was passiert, wenn etwas schiefgeht?* Für eine App, 
 iCloud-Sync über einen bezahlten Account, kein CloudKit), ist das die einzige Datensicherung, die nicht von einem Konto abhängt.
 
 Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/DataHub/` (Linux-Tests unter `Tests/KlimaCoreTests/DataHub/`,
-`swift test --filter DataHub`, 38 Tests), App in `App/Sources/Data/Backup+V3.swift`, `App/Sources/Services/Backup/` (Ordner,
+`swift test --filter DataHub`, 43 Tests), App in `App/Sources/Data/Backup+V3.swift`, `App/Sources/Services/Backup/` (Ordner,
 automatische Sicherung, Export, Wiederherstellen) und `App/Sources/Features/DataHub/` (Seiten, Demo-Szenen).
 
 ## 1. Das Versprechen
@@ -62,6 +62,16 @@ Version 2 (Tickets, Fahrten mit Zeit-Schlüsseln, Favoriten, Vorteile – die Sy
 `settings` (die erlaubten Einstellungen) und `checksum` (`"crc32:xxxxxxxx"`). Beide sind optional: eine App mit Version 2 ignoriert
 sie und stellt eine Version-3-Datei wieder her; diese App liest Dateien der Version 1 und 2 wie bisher. Getestet in KlimaCore
 (`DataHubEnvelopeTests`: ein Version-2-Leser öffnet eine Version-3-Datei, eine Version-2-Datei wird gelesen).
+
+**Was nur auf diesem iPhone liegt** (`local`, seit dem Review): Die Sync-Zeilen kennen manche Spalten nicht – woher ein Preis kam
+(„Live-Preis ÖBB · Standard-Ticket, abgefragt am …“), die Fahrplan-Referenz, die Linien einer Fahrt („Railjet Xpress 162“, die der
+Verspätungs-Nachweis druckt) und das Wochenmuster einer gespeicherten Route („Meine Routen“). Sie stehen in einem eigenen, optionalen
+Block `local` (`BackupLocalBlock`: `trips` und `favorites`, je Zeilen-ID nur das, was gesetzt ist). Regel beim Wiederherstellen: Hat die
+Datei den Block, bekommt eine Zeile, die aus der Datei übernommen wird (neu oder neuer), genau seine Werte – keine, wenn der Block für
+sie nichts hat, wie jede andere Spalte dieser Zeile. Ohne Block (ältere Datei, oder ein Block, der sich nicht lesen lässt) bleiben diese
+Spalten auf dem iPhone, wie sie sind. Ältere Leser ignorieren den Schlüssel. Getestet in KlimaCore (`DataHubLocalColumnsTests`: nur
+Gesetztes wird geschrieben, Hin und zurück, Zeile ohne Eintrag, ein einzelner falscher Wert blockiert nichts, ältere Leser, Prüfsumme).
+Die Vorschläge von „Fahrten erkennen“ (Orte) kommen absichtlich nicht in die Sicherung.
 
 ### 3.2 Einstellungen (`BackupSettingsPolicy`)
 
@@ -191,8 +201,11 @@ untereinander dürfen die Knöpfe umbrechen und wachsen nur bis AX2; „Letzte S
 ohne Symbol. Der vierte zeigt die Zeile in den Einstellungen.
 
 **`dataRoundTrip` ist der CI-Test der Annahme:** die Demo-Daten werden mit dem eigenen Export gesichert, in einen leeren
-In-Memory-Speicher wiederhergestellt und je Tabelle verglichen (sichtbare Zeilen und alle Zeilen samt gelöschten); das Ergebnis steht
-im Bild und als Marke `data.roundtrip.identical` im Launch-Trace des CI-Laufs. (Die App hat kein Unit-Test-Ziel auf macOS; eine Szene
+In-Memory-Speicher wiederhergestellt und je Tabelle verglichen (sichtbare Zeilen und alle Zeilen samt gelöschten). Seit dem Review
+zählt nicht nur die Zahl: der wiederhergestellte Speicher wird noch einmal gesichert, und beide Dateien müssen – ohne Zeitpunkt,
+App-Version, Prüfsumme und Reihenfolge – Zeile für Zeile, Spalte für Spalte gleich sein; zwei Demo-Fahrten bekommen dafür eine
+Preisquelle und Linien (die gespeicherte Pendel-Route hat ihr Muster schon). Das Ergebnis steht im Bild und als Marke
+`data.roundtrip.identical` im Launch-Trace des CI-Laufs. (Die App hat kein Unit-Test-Ziel auf macOS; eine Szene
 statt eines neuen Test-Targets hält das Projekt schlank.)
 
 ## 9. Getestet und nicht getestet
@@ -237,6 +250,13 @@ Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
 - **Ehrlich zum Konto:** Kopf und Fußzeile sagten auch angemeldet „Bleiben auf diesem iPhone“ und „Nichts verlässt dein iPhone“ –
   mit einem Cloud-Konto werden die Einträge synchronisiert, und die Seite sagt das jetzt.
 - **Liste:** Eine Sicherung, die bei offener Liste entsteht (die Sicherung vor dem Wiederherstellen), bekam nie ihren Inhalt angezeigt.
+- **Komplettsicherung, die nicht komplett war:** Preisquelle, Fahrplan-Referenz und Linien einer Fahrt sowie das Muster einer
+  gespeicherten Route gingen beim Wiederherstellen in einen leeren Speicher verloren (die Sync-Zeilen tragen sie nicht) – „Live-Preis“
+  wurde zu keiner Angabe, die Linie fehlte im Verspätungs-Nachweis, „Meine Routen“ erinnerte nicht mehr. Jetzt im Block `local` (§3.1).
+  Die Rundreise in CI vergleicht seither ganze Zeilen statt nur Zahlen.
+- **Exportieren:** Die Komplettsicherung ließ sich nicht teilen, solange es keine Fahrt gab („0 Fahrten · 1 Ticket“ galt als leer) –
+  leer ist sie nur ohne jede Zeile.
+- **Wortwahl:** Die Meldung nach dem Wiederherstellen sagt „Sicherung wiederhergestellt“ wie die ganze Seite (nicht „Backup“).
 
 Offen (bewusst): Wiederherstellen bringt eine hier gelöschte Fahrt nicht zurück (die Löschung ist neuer; der Plan sagt „nur
 ergänzen“) – zurück kommt sie nur in einen leeren Speicher. Ein Schalter „Gelöschte zurückholen“ wäre eine neue Funktion.
