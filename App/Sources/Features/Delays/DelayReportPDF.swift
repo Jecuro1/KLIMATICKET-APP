@@ -156,7 +156,7 @@ private struct DelayReportPage {
             let cells = [
                 "\(Format.weekdayDayMonth(row.date)) \(Calendar.vienna.component(.year, from: row.date))\n\(Format.time(row.date))",
                 row.route,
-                row.train.isEmpty ? "–" : row.train,
+                row.lineOrMode,
                 DelayDiaryText.minutes(row.minutes),
                 DelayDiaryText.sourceName(row.source),
             ]
@@ -176,7 +176,7 @@ private struct DelayReportPage {
     }
 
     private mutating func tableHeader() {
-        let titles = ["Datum", "Strecke", "Zug", "Verspätung", "Quelle"]
+        let titles = ["Datum", "Strecke", "Linie", "Verspätung", "Quelle"]
         for (title, column) in zip(titles, columns) {
             _ = text(title, size: 9, weight: .semibold, color: .darkGray, x: column.x, y: y, width: column.width - 6, alignment: column.alignment)
         }

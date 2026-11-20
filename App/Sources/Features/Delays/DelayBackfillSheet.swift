@@ -261,7 +261,7 @@ struct DelayOptionsSheet: View {
                 }
             }
         }
-        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.fraction(0.72), .large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("delay.options")
     }

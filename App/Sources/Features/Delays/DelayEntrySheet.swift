@@ -34,6 +34,13 @@ struct DelayEntrySheet: View {
             ScrollView {
                 VStack(spacing: Theme.Spacing.m) {
                     header
+                    if recorded == nil {
+                        Text("Noch nicht erfasst – wähle die Minuten oder „Pünktlich“.")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Theme.accentText)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    }
                     valueCard
                     quickValues
                     notes
@@ -54,7 +61,7 @@ struct DelayEntrySheet: View {
                 }
             }
         }
-        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.fraction(0.82), .large])
         .presentationDragIndicator(.visible)
         .haptic(.increase, trigger: stepUp)
         .haptic(.decrease, trigger: stepDown)
@@ -275,7 +282,11 @@ struct DelayEntrySheet: View {
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, Theme.Spacing.s)
         .padding(.bottom, Theme.Spacing.xs)
-        .background(Theme.sheetBackground.opacity(0.94).ignoresSafeArea())
+        .background {
+            Theme.sheetBackground
+                .overlay(alignment: .top) { Rectangle().fill(Theme.separator).frame(height: 1) }
+                .ignoresSafeArea()
+        }
     }
 
     private func save() {
@@ -324,7 +335,7 @@ struct DelayTripRow: View {
                         DelayDiaryTile(size: 40, isLate: late)
                         titles
                         Spacer(minLength: Theme.Spacing.xs)
-                        value(recorded, late: late)
+                        value(recorded, late: late, alignment: .trailing)
                         chevron
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
@@ -334,7 +345,7 @@ struct DelayTripRow: View {
                             Spacer(minLength: 0)
                             chevron
                         }
-                        value(recorded, late: late)
+                        value(recorded, late: late, alignment: .leading)
                     }
                 }
             }
@@ -357,20 +368,26 @@ struct DelayTripRow: View {
             Text("Verspätung")
                 .font(.headline)
                 .foregroundStyle(Theme.textPrimary)
-            Text(trip.journeyID == nil ? "Ankunft · fürs Verspätungs-Tagebuch" : "Ankunft dieser Etappe")
+            Text(trip.journeyID == nil ? "bei der Ankunft" : "Ankunft dieser Etappe")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private func value(_ recorded: (minutes: Int, source: TripDelaySource)?, late: Bool) -> some View {
-        Text(DelayDiaryText.rowValue(minutes: recorded?.minutes, source: recorded?.source))
-            .font(.subheadline.weight(.semibold))
-            .monospacedDigit()
-            .foregroundStyle(recorded == nil ? Theme.textSecondary : (late ? Theme.summitText : Theme.positiveText))
-            .contentTransition(.numericText())
-            .multilineTextAlignment(.trailing)
+    /// „+12 Min.“ over „von Hand“, „pünktlich“ over „von Hand“, or „nicht erfasst“ over „Eintragen“.
+    private func value(_ recorded: (minutes: Int, source: TripDelaySource)?, late: Bool, alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 1) {
+            Text(recorded.map { DelayDiaryText.minutes($0.minutes) } ?? "nicht erfasst")
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(recorded == nil ? Theme.textSecondary : (late ? Theme.summitText : Theme.positiveText))
+                .contentTransition(.numericText())
+            Text(recorded.map { DelayDiaryText.sourceName($0.source) } ?? "Eintragen")
+                .font(.caption)
+                .foregroundStyle(recorded == nil ? Theme.accentText : Theme.textSecondary)
+        }
+        .lineLimit(1)
     }
 
     private var chevron: some View {

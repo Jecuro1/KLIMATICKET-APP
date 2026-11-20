@@ -18,10 +18,8 @@ struct DelayDiaryHeroCard: View {
         GlassCard(padding: Theme.Spacing.l) {
             VStack(alignment: .leading, spacing: Theme.Spacing.m) {
                 if typeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        figure
-                        ring.frame(width: 72, height: 72)
-                    }
+                    // The ring only repeats the counts below in shape: at accessibility sizes the words carry it.
+                    figure
                 } else {
                     HStack(alignment: .center, spacing: Theme.Spacing.m) {
                         figure
@@ -41,7 +39,7 @@ struct DelayDiaryHeroCard: View {
 
     private var figure: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Kicker(text: "Deine Pünktlichkeit · persönlich")
+            Kicker(text: "Persönliche Quote")
             if let share = year.onTimeShare {
                 CountUpText(value: share * 100, delay: 0.1) { DelayDiaryText.percent($0 / 100) }
                     .font(.system(size: numeralSize, weight: .light, design: .rounded))
@@ -53,6 +51,7 @@ struct DelayDiaryHeroCard: View {
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             } else {
                 Text("–")
                     .font(.system(size: numeralSize, weight: .light, design: .rounded))
@@ -61,6 +60,7 @@ struct DelayDiaryHeroCard: View {
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .dynamicTypeSize(...DynamicTypeSize.accessibility2)
             }
         }
         .accessibilityElement(children: .ignore)
@@ -79,13 +79,17 @@ struct DelayDiaryHeroCard: View {
     // MARK: Counts
 
     private var counts: some View {
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.xs))
-            : AnyLayout(HStackLayout(spacing: Theme.Spacing.xs))
-        return layout {
-            DelayCountPill(value: year.recordedCount, word: "erfasst", symbol: "checklist", tint: Theme.accentText)
-            DelayCountPill(value: year.lateCount, word: "verspätet", symbol: "clock.badge.exclamationmark", tint: Theme.summitText)
-            DelayCountPill(value: year.notRecordedCount, word: "offen", symbol: "questionmark.circle", tint: Theme.textSecondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Theme.Spacing.xs) { countPills }
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) { countPills }
         }
+    }
+
+    @ViewBuilder
+    private var countPills: some View {
+        DelayCountPill(value: year.recordedCount, word: "erfasst", symbol: "checklist", tint: Theme.accentText)
+        DelayCountPill(value: year.lateCount, word: "verspätet", symbol: "clock.badge.exclamationmark", tint: Theme.summitText)
+        DelayCountPill(value: year.notRecordedCount, word: "ohne Eintrag", symbol: "questionmark.circle", tint: Theme.textSecondary)
     }
 
     // MARK: Caveat and mark
@@ -414,7 +418,9 @@ struct DelayMonthCard: View {
                             .foregroundStyle(Theme.textTertiary)
                     }
                     if typeSize.isAccessibilitySize, let share = month.onTimeShare {
-                        shareFigure(share)
+                        Text(DelayDiaryText.shareLine(share))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.textPrimary)
                     }
                 }
                 Spacer(minLength: Theme.Spacing.xs)
@@ -425,6 +431,7 @@ struct DelayMonthCard: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Theme.textTertiary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .accessibilityHidden(true)
             }
             .padding(Theme.Spacing.m)

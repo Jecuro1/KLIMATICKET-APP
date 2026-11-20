@@ -53,13 +53,13 @@ enum DelayDiaryDemo {
 /// - `delayReport`: „Nachweis als PDF“ with the real PDF in the preview
 /// - `delayBackfill`: „Nachtragen“ for the current month
 /// - `delayOptions`: the diary's settings
-/// - `delayDiaryCard`: the Statistik card
+/// - `delayDiaryCard`: the Statistik card; `delayRightsLink`: „Mein Verspätungs-Tagebuch“ in Fahrgastrechte
 /// - `delayDiaryAX5` / `delayDiaryAX5Mid` / `delayEntrySheetAX5`: the largest accessibility text size
 struct DelayDiaryScreenshotHost: View {
     static let screens: Set<String> = [
         "delayDiary", "delayDiaryMid", "delayDiaryBottom", "delayDiaryMonth", "delayDiaryEmpty", "delayEntrySheet", "delayEntryOnTime",
         "delayTripRow", "delayReport", "delayBackfill", "delayOptions", "delayDiaryCard", "delayDiaryAX5", "delayDiaryAX5Mid",
-        "delayEntrySheetAX5",
+        "delayEntrySheetAX5", "delayRightsLink",
     ]
 
     let screen: String
@@ -72,9 +72,12 @@ struct DelayDiaryScreenshotHost: View {
 
     @State private var sheetShown = false
 
+    /// Sheets do not inherit the type size set on the presenter: they get it again.
+    private var typeSize: DynamicTypeSize { screen.contains("AX5") ? .accessibility5 : .large }
+
     var body: some View {
         content
-            .dynamicTypeSize(screen.contains("AX5") ? .accessibility5 : .large)
+            .dynamicTypeSize(typeSize)
             .task {
                 try? await Task.sleep(for: .milliseconds(500))
                 sheetShown = true
@@ -113,7 +116,7 @@ struct DelayDiaryScreenshotHost: View {
                 if let trip { TripDetailView(trip: trip) }
             }
             .sheet(isPresented: $sheetShown) {
-                if let trip { DelayEntrySheet(trip: trip) }
+                if let trip { DelayEntrySheet(trip: trip).dynamicTypeSize(typeSize) }
             }
         case "delayTripRow":
             NavigationStack {
@@ -128,10 +131,13 @@ struct DelayDiaryScreenshotHost: View {
         case "delayBackfill":
             NavigationStack { DelayDiaryView() }
                 .sheet(isPresented: $sheetShown) {
-                    if let ticket, let current = year?.months.last {
+                    if let ticket, let current = year?.months.last(where: { $0.notRecordedCount > 0 }) {
                         DelayBackfillSheet(ticket: ticket, request: DelayBackfillRequest(monthIndex: current.index))
                     }
                 }
+        case "delayRightsLink":
+            NavigationStack { PerkPassengerRightsView() }
+                .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.32))
         case "delayOptions":
             NavigationStack { DelayDiaryView() }
                 .sheet(isPresented: $sheetShown) { DelayOptionsSheet() }

@@ -12,8 +12,15 @@ public struct DelayReportRow: Hashable, Sendable, Identifiable {
     public var legCount: Int
     /// The Fahrplan's line summary („RJX 662“), "" when unknown.
     public var train: String
+    /// The counted legs' modes in travel order (what the PDF names when no line is known).
+    public var modes: [TransportMode]
     public var minutes: Int
     public var source: TripDelaySource
+
+    /// The line, or the modes' names when no line is known („Bus“, „Zug · Bus“).
+    public var lineOrMode: String {
+        train.isEmpty ? modes.map(\.displayName).joined(separator: " · ") : train
+    }
 
     /// „St. Anton am Arlberg → Innsbruck Hbf“, „… (Hin & Retour)“, „… (3 Etappen)“.
     public var route: String { DelayDiaryText.route(from: fromName, to: toName, roundTrip: isRoundTrip, legs: legCount) }
@@ -75,7 +82,7 @@ public enum DelayReportBuilder {
     static func row(_ entry: DelayDiaryEntry) -> DelayReportRow? {
         guard let minutes = entry.minutes, let source = entry.source else { return nil }
         return DelayReportRow(id: entry.id, date: entry.date, fromName: entry.fromName, toName: entry.toName,
-                              isRoundTrip: entry.isRoundTrip, legCount: entry.legCount, train: entry.lines, minutes: minutes,
-                              source: source)
+                              isRoundTrip: entry.isRoundTrip, legCount: entry.legCount, train: entry.lines, modes: entry.modes,
+                              minutes: minutes, source: source)
     }
 }

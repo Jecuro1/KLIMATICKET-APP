@@ -161,6 +161,8 @@ struct DelayDiaryScreen: View {
             Text("Verspätungen")
                 .font(Theme.Typography.heroTitle)
                 .foregroundStyle(Theme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .accessibilityAddTraits(.isHeader)
             Text("Dein Tagebuch: welche Fahrten pünktlich waren und welche nicht – so, wie du sie festgehalten hast.")
                 .font(.subheadline)
@@ -217,10 +219,10 @@ struct DelayDiaryScreen: View {
     private func emptyCard(_ year: DelayDiaryYear) -> some View {
         GlassCard {
             VStack(spacing: 0) {
-                EmptyStateView(symbol: "clock.badge.questionmark", title: "Noch leer",
+                EmptyStateView(symbol: "clock.badge.questionmark", title: "Dein Tagebuch ist leer",
                                message: DelayDiaryText.emptyState,
-                               actionTitle: year.notRecordedCount > 0 && fixture == nil ? "Letzte Fahrten nachtragen" : nil) {
-                    backfill = DelayBackfillRequest(monthIndex: nil)
+                               actionTitle: year.notRecordedCount > 0 ? "Letzte Fahrten nachtragen" : nil) {
+                    if fixture == nil { backfill = DelayBackfillRequest(monthIndex: nil) }
                 }
                 if year.tripCount > 0 {
                     Text("\(DelayDiaryText.fahrten(year.tripCount)) in diesem Ticketjahr – noch keine mit Eintrag.")

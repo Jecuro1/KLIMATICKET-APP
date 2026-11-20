@@ -87,7 +87,7 @@ struct DelayReportSheet: View {
                 .foregroundStyle(Theme.accentText)
                 .buttonStyle(.plain)
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 200 : 104), spacing: Theme.Spacing.xs)],
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 200 : 76), spacing: Theme.Spacing.xs)],
                       spacing: Theme.Spacing.xs) {
                 ForEach(year.months) { month in
                     monthChip(month)
@@ -112,10 +112,10 @@ struct DelayReportSheet: View {
                     .foregroundStyle(isOn ? Theme.onAccent : Theme.textTertiary)
                     .symbolReplaceTransition()
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(DelayDiaryFormat.shortMonth(month.start) + " " + String(Calendar.vienna.component(.year, from: month.start)))
+                    Text(DelayDiaryFormat.shortMonth(month.start))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isOn ? Theme.onAccent : Theme.textPrimary)
-                    Text(month.lateCount == 1 ? "1 verspätet" : "\(month.lateCount) verspätet")
+                    Text("\(month.lateCount) verspätet")
                         .font(.caption2)
                         .foregroundStyle(isOn ? Theme.onAccent.opacity(0.85) : Theme.textSecondary)
                 }
@@ -203,7 +203,11 @@ struct DelayReportSheet: View {
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .padding(.top, Theme.Spacing.s)
         .padding(.bottom, Theme.Spacing.xs)
-        .background(Theme.sheetBackground.opacity(0.94).ignoresSafeArea())
+        .background {
+            Theme.sheetBackground
+                .overlay(alignment: .top) { Rectangle().fill(Theme.separator).frame(height: 1) }
+                .ignoresSafeArea()
+        }
     }
 
     // MARK: Rendering

@@ -77,12 +77,12 @@ public enum DelayDiaryText {
     /// „1 Fahrt“ / „12 Fahrten“.
     public static func fahrten(_ count: Int) -> String { count == 1 ? "1\u{00A0}Fahrt" : "\(count)\u{00A0}Fahrten" }
 
-    /// A month row's line: „12 Fahrten · 9 erfasst · 2 verspätet“ (only what is there).
+    /// A month row's line: „12 Fahrten · 9 erfasst · 2 verspätet“ (only what is there). A number keeps its word on the line.
     public static func monthSummary(trips: Int, recorded: Int, late: Int) -> String {
         guard trips > 0 else { return "Keine Fahrten" }
         var parts = [fahrten(trips)]
-        parts.append(recorded == trips ? "alle erfasst" : "\(recorded) erfasst")
-        if recorded > 0 { parts.append("\(late) verspätet") }
+        parts.append(recorded == trips ? "alle\u{00A0}erfasst" : "\(recorded)\u{00A0}erfasst")
+        if recorded > 0 { parts.append("\(late)\u{00A0}verspätet") }
         return parts.joined(separator: " · ")
     }
 

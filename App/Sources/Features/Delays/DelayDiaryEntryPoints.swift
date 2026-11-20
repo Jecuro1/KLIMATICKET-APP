@@ -45,9 +45,19 @@ struct DelayDiaryEntryCard: View {
                             .accessibilityHidden(true)
                     }
                     if !year.isEmpty {
-                        StatsGrowOnView { grow in
-                            DelayShareBar(onTime: year.onTimeCount, late: year.lateCount, grow: grow)
-                                .frame(height: 8)
+                        VStack(spacing: 5) {
+                            StatsGrowOnView { grow in
+                                DelayShareBar(onTime: year.onTimeCount, late: year.lateCount, grow: grow)
+                                    .frame(height: 8)
+                            }
+                            HStack {
+                                Text("\(year.onTimeCount) pünktlich")
+                                Spacer(minLength: Theme.Spacing.xs)
+                                Text("\(year.lateCount) verspätet")
+                            }
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.textSecondary)
                         }
                         .accessibilityHidden(true)
                     }
@@ -66,14 +76,14 @@ struct DelayDiaryEntryCard: View {
     }
 
     private func headline(_ year: DelayDiaryYear) -> String {
-        if let share = year.onTimeShare { return "\(DelayDiaryText.percent(share)) pünktlich · persönlich" }
+        if let share = year.onTimeShare { return "\(DelayDiaryText.percent(share)) pünktlich" }
         if year.recordedCount > 0 { return "\(DelayDiaryText.fahrten(year.recordedCount)) eingetragen" }
         return "Waren deine Züge pünktlich?"
     }
 
     private func detail(_ year: DelayDiaryYear) -> String {
         if year.isEmpty { return "Halte fest, welche Fahrten verspätet waren – dein eigenes Tagebuch, mit PDF zum Teilen." }
-        var text = "\(year.lateCount) verspätet ab \(year.threshold)\u{00A0}Min. · \(year.recordedCount) von \(DelayDiaryText.fahrten(year.tripCount)) erfasst"
+        var text = "Persönlich · \(year.recordedCount) von \(DelayDiaryText.fahrten(year.tripCount)) erfasst, verspätet heißt ab \(year.threshold)\u{00A0}Min."
         if year.onTimeShare == nil { text += " · \(DelayDiaryText.tooFewForShare)" }
         return text
     }
