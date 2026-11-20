@@ -88,5 +88,19 @@ struct KlimaBilanzShortcuts: AppShortcutsProvider {
             shortTitle: "Pendelfahrt erfassen",
             systemImageName: "point.topleft.down.to.point.bottomright.curvepath"
         )
+        // MARK: siri – „Frag KlimaBilanz“ (docs/SIRI_QUESTIONS.md §5): the 9th App Shortcut of at most 10 – the 10th slot stays free.
+        // One parameter per phrase: the question (the period keeps its default, Ticketjahr) or, for Fahrten, the period.
+        AppShortcut(
+            intent: AskKlimaIntent(),
+            phrases: [
+                "\(\.$question) in \(.applicationName)",
+                "Frag \(.applicationName) nach \(\.$question)",
+                "\(.applicationName) \(\.$question)",
+                "Wie viele Fahrten \(\.$period) in \(.applicationName)",
+                "Fahrten \(\.$period) in \(.applicationName)",
+            ],
+            shortTitle: "Frag KlimaBilanz",
+            systemImageName: "questionmark.bubble.fill"
+        )
     }
 }

@@ -2,10 +2,11 @@ import SwiftUI
 import SwiftData
 import KlimaCore
 
-/// „Fragen an KlimaBilanz“ is reachable (Einstellungen › KI & Siri, the App Shortcut, the action in the Kurzbefehle-App) once the
-/// screen and Siri's snippet were looked at in screenshots; `false` hides all three again.
+/// „Fragen an KlimaBilanz“ is reachable from Einstellungen › KI & Siri since the page and Siri's snippet were looked at in two
+/// screenshot runs (723, 724); `false` hides the row again (the App Shortcut and the Kurzbefehle action go with `isDiscoverable` in
+/// AskKlimaIntent and the entry in Shortcuts.swift).
 enum SiriQuestionsRelease {
-    static let isLive = false
+    static let isLive = true
 }
 
 /// CI screenshot routes of „Fragen an KlimaBilanz“ (`-KBScreenshot <screen> -KBDemo YES`, demo year, no network):

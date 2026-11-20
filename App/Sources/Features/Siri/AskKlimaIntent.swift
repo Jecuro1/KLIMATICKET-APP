@@ -58,9 +58,6 @@ struct AskKlimaIntent: AppIntent {
         "Sagt dir eine Zahl aus KlimaBilanz – Fahrten, Wert, Kilometer, CO₂ oder dein Ticket – für den Zeitraum, den du wählst. Die Antwort entsteht auf deinem iPhone aus Tagessummen, ohne Haltestellen und Orte. Was ein Kurzbefehl danach mit der Zahl macht, bestimmst du.",
         categoryName: "Zahlen", searchKeywords: ["Fahrten", "CO₂", "Kilometer", "Ticket", "Statistik"], resultValueName: "Antwort")
 
-    /// Hidden from the Kurzbefehle-App until „Fragen an KlimaBilanz“ is live (docs/SIRI_QUESTIONS.md §8).
-    static let isDiscoverable = false
-
     // Defaults: a phrase names one of the two („Wie viele Fahrten diesen Monat“ → the period, „Wie viel CO₂ habe ich gespart“ →
     // the question); the other keeps its default, so Siri never has to ask back.
     @Parameter(title: "Frage", default: .trips)

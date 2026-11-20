@@ -128,8 +128,9 @@ wohin; das steht in der Beschreibung der Aktion und auf der Seite. Kein Netz, ke
 
 ## 8. Freigabe, Demo, Screenshots
 
-`SiriQuestionsRelease.isLive` (SiriScreenshotHost.swift) schaltet die Einstellungs-Zeile; der Intent ist bis zur Freigabe
-`isDiscoverable = false` und ohne App Shortcut. Screenshot-Szenen (`-KBScreenshot <name> -KBDemo YES`, Demo-Jahr, kein Netz):
+`SiriQuestionsRelease.isLive` (SiriScreenshotHost.swift) schaltet die Einstellungs-Zeile. Bis zur Freigabe war der Intent
+`isDiscoverable = false` und ohne App Shortcut; freigegeben nach zwei Screenshot-Läufen (723, 724), in denen Seite und Snippet in
+hell, dunkel und AX5 angesehen wurden. Screenshot-Szenen (`-KBScreenshot <name> -KBDemo YES`, Demo-Jahr, kein Netz):
 `siriQuestions` (die Seite), `siriAnswer` (Wert · Letzter Monat und „So fragst du“), `siriAX5` (größte Schrift), `siriSnippets`
 (Siris Tafel für fünf Antworten: Tage eines Monats, Monate eines Jahres, Tage bis Ablauf, Break-even, keine Tabelle).
 

@@ -80,6 +80,11 @@ Bedienung, Frost-Karten für Inhalte.
   für den Smart Stack einer gekoppelten Apple Watch, ohne Watch-App (Sperre und Watch noch nicht auf Geräten geprüft,
   [docs/WIDGETS_SMARTSTACK.md](docs/WIDGETS_SMARTSTACK.md))
 - **KI auf dem Gerät** (Apple Intelligence, optional und abschaltbar) – Suche in Alltagssprache, Erklärung der Ticket-Bilanz, Wochenrückblick
+- **Fragen an KlimaBilanz** – frag Siri „Wie viele Fahrten diesen Monat in KlimaBilanz?“, „Wie viel CO₂ habe ich gespart?“ oder „Wann
+  läuft mein Ticket ab?“: acht Kennzahlen für Woche, Monat, Vormonat, Ticketjahr und Kalenderjahr, mit denselben Zahlen wie Statistik und
+  einem Satz plus Zahl als Antwort; in der Kurzbefehle-App gibt „Frag KlimaBilanz“ die Zahl an den nächsten Schritt weiter. Ausprobieren
+  unter Einstellungen › KI & Siri. Antworten aus Tagessummen auf dem iPhone, ohne Haltestellen und Orte; die Spracherkennung ist noch
+  nicht auf einem iPhone geprüft ([docs/SIRI_QUESTIONS.md](docs/SIRI_QUESTIONS.md))
 - **Konten** – Anmeldung mit Google, Microsoft oder Apple (je nachdem, was dein Backend eingerichtet hat) und Cloud-Sync zwischen Geräten
   über ein eigenes, kostenloses Cloudflare-Backend (Worker + D1, Daten in der EU) – optional, ohne Konto bleibt alles lokal
 - **Updates mit einem Tipp** – neue Versionen werden automatisch erkannt (In-App-Hinweis, AltStore/SideStore-Quelle, TestFlight oder App Store) – ein Tipp, und die App ist aktuell; Ticketpreise aktualisieren sich von selbst
