@@ -153,7 +153,8 @@ bleiben gleich; die Zeitbilanz der Demo zeigt seither ihre Karte „Verspätunge
 
 CI-Szenen (`[shots:…]`, `-KBDemo YES`, kein Netzwerk): `delayDiary`, `delayDiaryMid`, `delayDiaryBottom`, `delayDiaryMonth`,
 `delayDiaryEmpty`, `delayEntrySheet`, `delayEntryOnTime`, `delayTripRow`, `delayReport`, `delayBackfill`, `delayOptions`,
-`delayDiaryCard`, `delayDiaryAX5`, `delayDiaryAX5Mid`, `delayEntrySheetAX5`, `delayRightsLink`.
+`delayDiaryCard`, `delayDiaryAX5`, `delayDiaryAX5Mid`, `delayEntrySheetAX5`, `delayRightsLink`; aus dem Review `delayTripRowOpen`
+(eine Fahrt ohne Eintrag) und `delayEntryOutsideScope` (das Sheet einer Busfahrt mit „Nur Bahn“).
 
 Was die Screenshot-Läufe gezeigt haben (CI-Läufe 44651594648, 44657556529 und 44663275966 – dieser erst im dritten Versuch: zweimal
 scheiterte vorher ein Test von KlimaCloud auf macOS, das dieser Track nicht berührt; im nächsten Lauf von main lief er durch –, hell und
@@ -213,6 +214,9 @@ Gefunden und behoben:
 - **Kachel ohne Urteil:** Die Statistik-Karte eines leeren Tagebuchs und der Link in Fahrgastrechte trugen die Uhr mit Ausrufezeichen
   (das Zeichen einer verspäteten Fahrt). Jetzt die schlichte Uhr.
 - **„Zum Ticket“ im Sheet von `klimabilanz://delays`** (ohne Ticket) wechselte den Tab unter dem offenen Sheet; jetzt schließt es zuerst.
+- **Zwei Demo-Jahre:** Die Szene `timeBalanceDelays` rechnete noch mit ihrer alten Vorlage („live“-Minuten, die kein Build erfasst)
+  und zeigte „64 von 78 Fahrten, davon 11 verspätet ab 5 Min.“, das Tagebuch für dasselbe Demo-Jahr 63 erfasste und 9 verspätete.
+  Jetzt zeigt die Szene die gespeicherten Demo-Fahrten mit den Einträgen des Tagebuchs (Vorlage entfernt).
 - Neuer Test: Gültigkeitsmonate über das Ende der Sommerzeit (Ticket ab 25. Oktober 2026, die doppelte Stunde, die letzte Sekunde vor
   dem 25. November).
 

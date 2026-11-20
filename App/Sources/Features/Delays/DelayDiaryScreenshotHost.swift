@@ -48,7 +48,8 @@ enum DelayDiaryDemo {
 /// - `delayDiary` / `delayDiaryMid` / `delayDiaryBottom`: the diary of the demo year (top, the months, report and method)
 /// - `delayDiaryMonth`: a month opened to its late Fahrten
 /// - `delayDiaryEmpty`: nothing recorded yet
-/// - `delayEntrySheet` / `delayEntryOnTime`: the sheet over a trip (a late entry; a trip without one)
+/// - `delayEntrySheet` / `delayEntryOnTime`: the sheet over a trip (a late entry; a trip without one);
+///   `delayEntryOutsideScope`: the late bus trip's sheet with „Nur Bahn“ (review)
 /// - `delayTripRow`: the „Verspätung“ row in the trip detail; `delayTripRowOpen`: the row of a trip without an entry (review)
 /// - `delayReport`: „Nachweis als PDF“ with the real PDF in the preview
 /// - `delayBackfill`: „Nachtragen“ for the current month
@@ -61,6 +62,7 @@ struct DelayDiaryScreenshotHost: View {
         "delayTripRow", "delayReport", "delayBackfill", "delayOptions", "delayDiaryCard", "delayDiaryAX5", "delayDiaryAX5Mid",
         "delayEntrySheetAX5", "delayRightsLink",
         "delayTripRowOpen",   // MARK: review-delaydiary – the neutral tile of „nicht erfasst“
+        "delayEntryOutsideScope",   // MARK: review-delaydiary – the sheet of a bus trip with „Nur Bahn“
     ]
 
     let screen: String
@@ -80,6 +82,8 @@ struct DelayDiaryScreenshotHost: View {
         content
             .dynamicTypeSize(typeSize)
             .task {
+                // MARK: review-delaydiary – „Nur Bahn“ for the bus trip's sheet (sandboxed launches start from the defaults)
+                if screen == "delayEntryOutsideScope" { DelayDiarySettings.shared.options = DelayDiaryOptions(scope: .rail) }
                 try? await Task.sleep(for: .milliseconds(500))
                 sheetShown = true
             }
@@ -111,8 +115,12 @@ struct DelayDiaryScreenshotHost: View {
             NavigationStack { DelayDiaryView(initiallyExpanded: year?.months.last(where: { $0.lateCount > 0 })?.index) }
         case "delayDiaryEmpty":
             NavigationStack { DelayDiaryView(fixture: DelayDiaryDemo.withoutDelays(trips)) }
-        case "delayEntrySheet", "delayEntrySheetAX5", "delayEntryOnTime":
-            let trip = screen == "delayEntryOnTime" ? trips.first { $0.recordedDelay == nil } : lateTrip
+        case "delayEntrySheet", "delayEntrySheetAX5", "delayEntryOnTime", "delayEntryOutsideScope":
+            let trip = switch screen {
+            case "delayEntryOnTime": trips.first { $0.recordedDelay == nil }
+            case "delayEntryOutsideScope": trips.first { $0.recordedDelay != nil && !DelayDiaryScope.rail.includes($0.mode) } ?? lateTrip
+            default: lateTrip
+            }
             NavigationStack {
                 if let trip { TripDetailView(trip: trip) }
             }

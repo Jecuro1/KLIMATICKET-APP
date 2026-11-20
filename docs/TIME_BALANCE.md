@@ -142,8 +142,9 @@ zählen weiter ab der ersten Minute; liegt keine Fahrt über der Grenze, heißt 
 Verspätungen werden **nicht** zu den Stunden oben
 addiert (eine eingetragene Dauer kann sie schon enthalten). Erfasst werden Verspätungen im Verspätungs-Tagebuch
 (docs/DELAY_DIARY.md): Zeile „Verspätung“ im Fahrt-Detail, von Hand; eine Änderung zählt hier sofort mit. Die Demo-Daten tragen
-seither Ankünfte von Hand (`DelayDiaryDemo`); die Szene `timeBalanceDelays` zeigt weiter ihre eigene Vorlage (mit „live“ für die
-Fahrplan-Fahrten).
+seither Ankünfte von Hand (`DelayDiaryDemo`); die Szene `timeBalanceDelays` zeigt seit dem Review des Tagebuchs genau diese
+gespeicherten Demo-Fahrten (ihre eigene Vorlage – „live“ für die Fahrplan-Fahrten, die kein Build so erfasst – gab der Zeitbilanz
+64 erfasste und 11 verspätete Fahrten, dem Tagebuch für dasselbe Demo-Jahr 63 und 9).
 
 ## 8. Der Bildschirm
 

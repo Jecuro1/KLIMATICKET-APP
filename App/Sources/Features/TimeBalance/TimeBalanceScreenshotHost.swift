@@ -35,33 +35,13 @@ enum TimeBalanceDemo {
             }
         }
     }
-
-    /// The `timeBalanceDelays` fixture: the same trips with arrival delays as a later delay diary or a followed ride would
-    /// record them (live for the Fahrplan connections, typed in for a few others).
-    static func withDelays(_ inputs: [TimeTripInput]) -> [TimeTripInput] {
-        let pattern = [0, 4, 0, 11, 2, 0, 0, 23, 6, 0, 3, 0, 14, 0, 38, 1]
-        var index = 0
-        return inputs.map { input in
-            var trip = input
-            if trip.arrivalAt != nil {
-                trip.delayMinutes = pattern[index % pattern.count]
-                trip.delaySource = .live
-                index += 1
-            } else if trip.durationMinutes > 0, index % 3 == 0 {
-                trip.delayMinutes = 9
-                trip.delaySource = .manual
-                index += 1
-            }
-            return trip
-        }
-    }
 }
 
 /// CI screenshot routes of the Zeitbilanz (`-KBScreenshot <screen> -KBDemo YES`, demo data, no network):
 /// - `timeBalance` / `timeBalanceMid` / `timeBalanceBottom`: the demo ticket year (top, the weeks and facts, the end)
 /// - `timeBalanceMonth`: the month view with its stepper; `timeBalanceMonthMid`: its car card, weeks and facts („über 19 Tage“)
 /// - `timeBalanceEmpty`: a period without trips
-/// - `timeBalanceDelays`: the demo year with recorded delays (fixture)
+/// - `timeBalanceDelays`: the demo year with the Verspätungs-Tagebuch's entries (the stored demo trips), at the delays card
 /// - `timeBalanceAX5` / `timeBalanceAX5Mid` / `timeBalanceAX5Bottom`: the largest accessibility text size
 /// - `timeBalanceCard`: the Statistik card
 /// - `tripEditDuration`: „Fahrt bearbeiten“ with the „Dauer“ wheel open
@@ -101,7 +81,10 @@ struct TimeBalanceScreenshotHost: View {
         case "timeBalanceEmpty":
             NavigationStack { TimeBalanceView(fixture: []) }
         case "timeBalanceDelays":
-            NavigationStack { TimeBalanceView(fixture: TimeBalanceDemo.withDelays(trips.map(\.timeInput))) }
+            // MARK: review-delaydiary – the demo year carries the Verspätungs-Tagebuch's entries now, so the scene shows the
+            // stored trips: the same Fahrten, entries and „verspätet“ as the diary (its old fixture gave the Zeitbilanz 64
+            // recorded and 11 late against the diary's 63 and 9 for the same demo year, with „live“ minutes no build records).
+            NavigationStack { TimeBalanceView() }
                 .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.3))
         case "timeBalanceCard":
             NavigationStack {
