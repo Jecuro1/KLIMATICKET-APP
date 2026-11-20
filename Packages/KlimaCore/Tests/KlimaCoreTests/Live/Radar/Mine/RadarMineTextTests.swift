@@ -90,6 +90,9 @@ final class RadarMineTextTests: XCTestCase {
         XCTAssertTrue(stale.contains("Position vor 3 Minuten"), stale)
         XCTAssertTrue(RadarMineText.stand(F.t0).hasPrefix("Stand "))
         XCTAssertEqual(RadarMineText.from("Neubaugasse"), "Ab Neubaugasse")
+        // The short button beside the name; VoiceOver hears the whole action.
+        XCTAssertEqual(RadarMineText.changeStop, "Ändern")
+        XCTAssertEqual(RadarMineText.otherStop, "Andere Haltestelle")
     }
 
     func testHonesty() {

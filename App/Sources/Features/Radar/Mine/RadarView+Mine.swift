@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import MapKit
 import KlimaCore
 
@@ -67,12 +68,19 @@ extension RadarView {
     @ViewBuilder var minePanel: some View {
         let mine = model.radar2.mine
         if mine.isOpen {
-            RadarMinePanel(mine: mine, context: mineContext, maxHeight: max(model.mapSize.height, 560) * 0.45)
+            RadarMinePanel(mine: mine, context: mineContext, windowHeight: mineWindowHeight)
                 .motionTransition(.lift)
         }
     }
 
     var minePanelIsOpen: Bool { model.radar2.mine.isOpen }
+
+    /// The height of the radar's screen. Not the map's: the map shrinks while the panel takes room at the bottom, and a panel sized from it shrank
+    /// with it (CI screenshots run 2). About a third of it leaves the stop and its numbered arrivals on the map above.
+    var mineWindowHeight: CGFloat {
+        let height = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first?.screen.bounds.height ?? 0
+        return height > 0 ? height : 844
+    }
 
     func mineDecoration(_ pin: RadarPin) -> RadarMarkerDecoration {
         model.radar2.mine.decoration(for: pin)

@@ -36,12 +36,15 @@ struct RadarMineStopPage: View {
 
     // MARK: Header
 
+    /// „Ab Neubaugasse“ over „Stand 14:32 · vor 40 s“, and a small „Ändern“ beside them (the long „Andere Haltestelle“ pushed the name onto two lines
+    /// and left room for one row in the panel, CI screenshots run 2; VoiceOver still says „Andere Haltestelle“).
     private func header(_ stop: RadarMineStop) -> some View {
         RadarMineAdaptiveRow {
             VStack(alignment: .leading, spacing: 2) {
                 Text(RadarMineText.from(stop.name))
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 if let at = mine.boardFetchedAt {
                     TimelineView(.periodic(from: .now, by: 5)) { timeline in
@@ -56,12 +59,16 @@ struct RadarMineStopPage: View {
             Button {
                 withMotion(Motion.smooth) { mine.clearStop() }
             } label: {
-                Label(RadarMineText.otherStop, systemImage: "arrow.triangle.swap")
+                Label(RadarMineText.changeStop, systemImage: "arrow.triangle.swap")
                     .font(.footnote.weight(.semibold))
-                    .frame(minHeight: 44)
+                    .lineLimit(1)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(Theme.accentText)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .controlSize(.small)
+            .tint(Theme.accent)
+            .fixedSize()
+            .accessibilityLabel(RadarMineText.otherStop)
         }
     }
 
@@ -187,14 +194,25 @@ private struct RadarMineArrivalRow: View {
             } trailing: {
                 eta
             }
-            Text(RadarMineText.departure(arrival))
+            // „ab 14:36 · Steig 2 · noch 1,2 km“ on one line (a third line per row left room for one and a half rows, CI screenshots run 2).
+            details
                 .font(.footnote)
                 .monospacedDigit()
                 .foregroundStyle(Theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if !arrival.isCancelled { position }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// The departure, then where the vehicle is: grey when the position is older than two minutes or unknown.
+    private var details: Text {
+        let departure = Text(RadarMineText.departure(arrival))
+        guard !arrival.isCancelled else { return departure }
+        let stale = RadarStopArrivals.isStale(arrival.positionAt, now: Date())
+        var place = RadarMineText.position(arrival.position)
+        if stale { place += " · \(RadarMineText.positionAge(Date().timeIntervalSince(arrival.positionAt ?? Date())))" }
+        let tint = stale || arrival.position == .unknown ? Theme.textTertiary : Theme.textSecondary
+        return Text("\(departure) · \(Text(Image(systemName: positionSymbol)).font(.caption2.weight(.bold)).foregroundStyle(tint)) \(Text(place).foregroundStyle(tint))")
     }
 
     /// The plate names the line; the row names where it goes (a plate „13A“ next to „13A → …“ said it twice, CI screenshots run 1).
@@ -228,19 +246,6 @@ private struct RadarMineArrivalRow: View {
         if eta.isCancelled { return Theme.negativeText }
         guard eta.isRealtime, let minutes = eta.delayMinutes else { return Theme.textSecondary }
         return minutes > 0 ? Theme.summitText : Theme.positiveText
-    }
-
-    @ViewBuilder private var position: some View {
-        let stale = RadarStopArrivals.isStale(arrival.positionAt, now: Date())
-        Label {
-            Text(stale ? "\(RadarMineText.position(arrival.position)) · \(RadarMineText.positionAge(Date().timeIntervalSince(arrival.positionAt ?? Date())))"
-                       : RadarMineText.position(arrival.position))
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: positionSymbol).font(.caption2.weight(.bold))
-        }
-        .font(.caption)
-        .foregroundStyle(stale || arrival.position == .unknown ? Theme.textTertiary : Theme.textSecondary)
     }
 
     private var positionSymbol: String {

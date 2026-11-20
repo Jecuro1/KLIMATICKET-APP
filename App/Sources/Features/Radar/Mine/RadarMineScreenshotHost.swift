@@ -44,7 +44,18 @@ private struct RadarMineTripSheetShot: View {
     init() {
         let now = Date()
         let fleet = RadarCityDemoFleet.vehicles(now: now)
-        vehicle = fleet.first { $0.line?.lineNumber == "13A" && !$0.isCancelled } ?? fleet[0]
+        // A run between two stops (the demo's run on its last leg names its destination twice) whose delay reads the same in whole and in rounded
+        // minutes (the header said „6 Minuten“ over stops at „+7“, CI screenshots run 2).
+        func clean(_ vehicle: RadarVehicle) -> Bool {
+            let names = vehicle.stopovers.map(\.location.name)
+            guard Set(names).count == names.count, vehicle.stopovers.count == 4 else { return false }
+            let event = vehicle.stopovers[2].arrival
+            guard let planned = event?.planned, let realtime = event?.realtime else { return true }
+            let minutes = realtime.timeIntervalSince(planned) / 60
+            return minutes.rounded(.down) == minutes.rounded()
+        }
+        let buses = fleet.filter { $0.line?.lineNumber == "13A" && !$0.isCancelled }
+        vehicle = buses.first(where: clean) ?? buses.first ?? fleet[0]
         // Its own synthetic stops in the sheet's cache before it asks (the demo timetable answers every trip with one sample train run).
         RadarRouteCache.shared.store(TripDetails(tripID: vehicle.tripID, line: vehicle.line, direction: vehicle.direction, stopovers: vehicle.stopovers),
                                      now: now)

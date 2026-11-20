@@ -140,6 +140,8 @@ public enum RadarMineText {
     public static let recent = "Zuletzt"
     public static let chooseStop = "Wähl eine Haltestelle, dann zeigt das Radar, wo ihre nächsten Abfahrten gerade sind."
     public static let otherStop = "Andere Haltestelle"
+    /// The short button beside the stop's name (VoiceOver says `otherStop`).
+    public static let changeStop = "Ändern"
     public static func from(_ name: String) -> String { "Ab \(name)" }
     public static let loadingBoard = "Lade Abfahrten …"
     public static let stopEmpty = "Die Auskunft kennt für die nächsten 30 Minuten keine Abfahrt ab hier."

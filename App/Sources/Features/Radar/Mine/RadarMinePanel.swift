@@ -2,14 +2,16 @@ import SwiftUI
 import KlimaCore
 
 // MARK: radar2-radarmine – the panel „Meine Fahrzeuge“ (docs/RADAR_MINE.md §9): one glass card above the status card (the layer bar steps aside while
-// it is open), at most 45 % of the map's height; its pages scroll inside. Segments „Linien · In der Nähe · Haltestelle“, a menu that forgets what is
-// remembered, a close button. At accessibility sizes the segments become a menu with the current page as its title.
+// it is open), at most 36 % of the window's height (42 % at accessibility sizes); its pages scroll inside. Segments „Linien · In der Nähe ·
+// Haltestelle“, a menu that forgets what is remembered, a close button. The title row grows only to xxxLarge and the page to AX2, like the radar's
+// other bars over the map; from AX3 on the segments become a menu with the current page as its title (one line, never hyphenated).
 
 struct RadarMinePanel: View {
     var mine: RadarMineModel
     var context: RadarMineContext
-    /// At most this tall (45 % of the map): the page scrolls inside.
-    var maxHeight: CGFloat
+    /// The height of the radar's window: the panel takes at most 36 % of it (42 % at accessibility sizes) and the page scrolls inside. Not the map's
+    /// height: the map shrinks while the panel takes room at the bottom, and a panel sized from it shrank with it (CI screenshots run 2).
+    var windowHeight: CGFloat
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var contentHeight: CGFloat = 0
@@ -31,6 +33,7 @@ struct RadarMinePanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // the rows grow to AX2 like the status card under them (AX5 showed no row at all)
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: contentHeight > 0 ? min(contentHeight, listCap) : min(160, listCap))
         }
@@ -48,6 +51,8 @@ struct RadarMinePanel: View {
             Button(RadarMineText.cancel, role: .cancel) {}
         }
     }
+
+    private var maxHeight: CGFloat { windowHeight * (typeSize.isAccessibilitySize ? 0.42 : 0.36) }
 
     private var listCap: CGFloat { max(maxHeight - chromeHeight - Theme.Spacing.s * 3, 120) }
 
@@ -93,7 +98,7 @@ struct RadarMinePanel: View {
             .buttonStyle(.plain)
             .accessibilityLabel(RadarMineText.close)
         }
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)   // „Meine Fahrzeuge“ and two buttons stay on one line (AX3 broke the word)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)   // „Meine Fahrzeuge“ and two buttons stay on one line (AX1 still wrapped the title, run 2)
     }
 
     @ViewBuilder private var pagePicker: some View {
@@ -108,12 +113,16 @@ struct RadarMinePanel: View {
             } label: {
                 HStack(spacing: Theme.Spacing.xs) {
                     Label(mine.page.title, systemImage: mine.page.symbol)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.bold))
                 }
                 .font(.headline)
                 .foregroundStyle(Theme.accentText)
                 .frame(minHeight: 44)
+                .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // „Haltestelle“ on one line (AX5 hyphenated it, run 2)
             }
+            .accessibilityLabel("\(RadarMineText.panelTitle): \(mine.page.title)")
         } else {
             GlassSegmentedPicker(selection: selection, options: RadarMineText.Page.allCases) { page in
                 Text(page.title)
