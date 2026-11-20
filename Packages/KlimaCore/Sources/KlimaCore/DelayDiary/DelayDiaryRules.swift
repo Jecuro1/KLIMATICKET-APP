@@ -8,8 +8,8 @@ import Foundation
 //   Eisenbahnverkehrsunternehmen.
 // - 24.2: Garantiert wird ein Pünktlichkeitsgrad von 93,00 % pro Gültigkeitsmonat bei allen Eisenbahnverkehrsunternehmen; den
 //   Pünktlichkeitsgrad veröffentlichen die Unternehmen auf ihren Websites.
-// - 24.3: Liegt er in einem Gültigkeitsmonat unter 93,00 %, gibt es einmal im Jahr nach Ablauf 10 % des Monatsanteils der
-//   Entschädigungsbasis.
+// - 24.3: Liegt der Pünktlichkeitsgrad eines Eisenbahnverkehrsunternehmens in einem Gültigkeitsmonat unter 93,00 %, gibt es
+//   einmal im Jahr nach Ablauf 10 % des auf diesen Monat und dieses Unternehmen entfallenden Anteils der Entschädigungsbasis.
 // Punkt 24 names NO minute from which a single arrival counts as late: what counts is the railway's degree of punctuality per
 // validity month, measured and published by the railway. So the diary cannot reproduce it. A recorded arrival counts as late
 // from the holder's own mark (5 minutes unless changed), and every share on screen and in the PDF is called „persönlich“.

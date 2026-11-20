@@ -239,6 +239,7 @@ struct DelayEntrySheet: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .foregroundStyle(selected ? Theme.onAccent : Theme.textPrimary)
+                        .padding(.horizontal, Theme.Spacing.xs)
                         .frame(maxWidth: .infinity, minHeight: 40)
                         .background(selected ? AnyShapeStyle(Theme.prominentTint) : AnyShapeStyle(Theme.surfaceSecondary), in: .capsule)
                 }
@@ -247,6 +248,8 @@ struct DelayEntrySheet: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
+        // At AX5 „Pünktlich“ filled its capsule edge to edge and sat lower than „+5“ (fourth screenshots): the chips stop at AX2.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
     }
 
     // MARK: Notes

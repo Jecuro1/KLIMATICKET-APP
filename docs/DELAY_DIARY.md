@@ -112,7 +112,9 @@ Gelesen am 20.11.2026 im AGB-PDF des KlimaTicket Ö (Punkt 24 „Fahrgastrechte 
   während der Geltungsdauer wiederholt Verspätungen oder Ausfälle auftreten; abgewickelt von den Unternehmen.
 - 24.2: garantiert wird ein **Pünktlichkeitsgrad von 93,00 % pro Gültigkeitsmonat** bei allen Eisenbahnverkehrsunternehmen; den
   Pünktlichkeitsgrad veröffentlichen die Unternehmen auf ihren Websites.
-- 24.3: liegt er in einem Gültigkeitsmonat darunter, gibt es einmal im Jahr nach Ablauf 10 % des Monatsanteils der Entschädigungsbasis.
+- 24.3: liegt der Pünktlichkeitsgrad **eines** Eisenbahnverkehrsunternehmens in einem Gültigkeitsmonat darunter, gibt es einmal im Jahr
+  nach Ablauf 10 % des auf diesen Monat und dieses Unternehmen entfallenden Anteils der Entschädigungsbasis.
+- 24.4: die Agentur für Passagier- und Fahrgastrechte (apf) ist Schlichtungs- und Informationsstelle.
 
 **Punkt 24 nennt keine Minute, ab der eine einzelne Ankunft verspätet ist** – maßgeblich ist der Pünktlichkeitsgrad der Bahn, den die
 Bahn selbst misst. Darum (Plan: „wenn nicht eindeutig, 5 Minuten und ‚persönlich‘“) gilt im Tagebuch eine **eigene Grenze von 5
@@ -122,8 +124,14 @@ und es ist eine Regel der Bahn, nicht der AGB. Der Vorbehalt auf dem Bildschirm 
 eine Entschädigung zählt laut AGB die Pünktlichkeit der Bahn im Gültigkeitsmonat (Punkt 24), nicht einzelne Verspätungen.“ Im PDF
 steht er ohne „deine“ (`reportCaveat`).
 
+**Gegengelesen (Agent, 20.11.2026):** Punkt 24 im AGB-Text Wort für Wort gegen den Kommentar in `DelayDiaryRules.swift` und die
+beiden Vorbehalte gehalten. Sie stimmen: Punkt 24 nennt keine Minutengrenze für eine einzelne Ankunft, er misst den Pünktlichkeitsgrad
+der Bahn pro Gültigkeitsmonat. Nachgeschärft wurde nur die Zusammenfassung von 24.3 (der Grad zählt **je Unternehmen**, die
+Entschädigung ist ein Anteil je Monat und Unternehmen) – im Kommentar und oben; auf dem Bildschirm und im PDF steht kein Betrag,
+daher ändert sich dort nichts.
+
 **Menschliche Prüfung (offen):** Wortlaut von Punkt 24 gegen den Kommentar in `DelayDiaryRules.swift` und die beiden Vorbehalte
-halten. Ergebnis hier eintragen: _noch nicht geprüft_.
+halten. Ergebnis hier eintragen: _noch nicht von einem Menschen geprüft_.
 
 ## 8. Tests und Screenshots
 
@@ -160,6 +168,12 @@ dunkel) und was danach geändert wurde:
   „Speichern“ ohne Minuten).
 - Nachtragen: weißer Text auf hellem Grün im dunklen Modus war kaum lesbar – jetzt Glas-Knöpfe mit textsicheren Farben.
 - Im dritten Lauf stimmte alles; nur „Zählt als verspätet (ab 5 Min.)“ wuchs bei AX5 auf drei riesige Zeilen – stoppt jetzt bei AX2.
+- Vierter Lauf (CI 44669677779, nach dem Freischalten: `delayEntrySheetAX5`, `delayTripRow`, `delayDiaryCard`, hell und dunkel):
+  Zeile im Fahrt-Detail und Statistik-Karte unverändert richtig („+9 Min.“ über „von Hand“; „85 % pünktlich“, „54 pünktlich ·
+  9 verspätet“); „Zählt als verspätet (ab 5 Min.)“ steht bei AX5 in zwei Zeilen. Übrig war „Pünktlich“ unter den Schnellwerten: bei
+  AX5 füllte das Wort seine Kapsel ohne Rand und saß tiefer als „+5“. Danach bekommen die Schnellwerte einen Innenabstand und wachsen nur
+  bis AX2 – **in keinem Screenshot-Lauf mehr angesehen** (das Budget von vier Läufen war aufgebraucht); die nächste Prüfung sollte
+  `delayEntrySheetAX5` einmal aufnehmen.
 - Ein heller Start von `delayDiaryMid` zeigte im ersten Lauf den Home-Bildschirm (App beendet, im zweiten Lauf nicht wieder – als
   einmaliger Simulator-Ausreißer gewertet, nicht reproduziert).
 
