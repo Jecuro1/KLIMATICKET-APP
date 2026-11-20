@@ -101,6 +101,16 @@ public enum DelayDiaryText {
         recorded > 0 ? "\(late)\u{00A0}verspätet" : "0\u{00A0}erfasst"
     }
 
+    /// The PDF's summary of the chosen months: „7 Gültigkeitsmonate · 68 Fahrten, davon 55 mit erfasster Ankunft, 9 verspätet
+    /// (ab 5 Min.) · persönliche Quote dieser Monate: 83 % pünktlich“. The share is the chosen months' only (review-delaydiary:
+    /// the default choice leaves out months without a late Fahrt, and an unqualified „persönliche Quote: 83 %“ read like the
+    /// year's 85 % on the screen).
+    public static func reportSummary(months: Int, trips: Int, recorded: Int, late: Int, threshold: Int, share: Double?) -> String {
+        let monthWord = months == 1 ? "1 Gültigkeitsmonat" : "\(months) Gültigkeitsmonate"
+        let quote = months == 1 ? "persönliche Quote dieses Monats" : "persönliche Quote dieser Monate"
+        return "\(monthWord) · \(fahrten(trips)), davon \(recorded) mit erfasster Ankunft, \(late) verspätet (ab \(threshold)\u{00A0}Min.) · \(quote): \(shareLine(share))"
+    }
+
     /// The share line of a month or the year: „87 % pünktlich“ or „zu wenig Fahrten für eine Quote“.
     public static func shareLine(_ share: Double?) -> String {
         share.map { "\(percent($0))\u{00A0}pünktlich" } ?? tooFewForShare

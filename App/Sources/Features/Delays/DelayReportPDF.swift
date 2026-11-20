@@ -139,9 +139,9 @@ private struct DelayReportPage {
     }
 
     private mutating func summary(_ report: DelayReport) {
-        let months = report.months.count == 1 ? "1 Gültigkeitsmonat" : "\(report.months.count) Gültigkeitsmonate"
-        var line = "\(months) · \(DelayDiaryText.fahrten(report.tripCount)), davon \(report.recordedCount) mit erfasster Ankunft, \(report.lateCount) verspätet (ab \(report.threshold)\u{00A0}Min.)"
-        line += " · persönliche Quote: \(DelayDiaryText.shareLine(report.onTimeShare))"
+        // review-delaydiary: „dieser Monate“ – the share of the chosen months, not the year's on the screen.
+        let line = DelayDiaryText.reportSummary(months: report.months.count, trips: report.tripCount, recorded: report.recordedCount,
+                                                late: report.lateCount, threshold: report.threshold, share: report.onTimeShare)
         ensureRoom(measure(line, size: 10.5, weight: .semibold, width: width) + 10)
         y += text(line, size: 10.5, weight: .semibold, x: left, y: y, width: width) + 14
     }

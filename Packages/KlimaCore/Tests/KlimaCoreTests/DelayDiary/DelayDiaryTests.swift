@@ -373,6 +373,24 @@ final class DelayDiaryTests: XCTestCase {
         XCTAssertNil(report.onTimeShare)
     }
 
+    /// review-delaydiary: the PDF's summary says whose share it is – the chosen months', which the default choice (months with a
+    /// late Fahrt) can put below the year's on the screen.
+    func testReportSummaryNamesTheChosenMonths() {
+        XCTAssertEqual(DelayDiaryText.reportSummary(months: 7, trips: 68, recorded: 55, late: 9, threshold: 5, share: 46.0 / 55.0),
+                       "7 Gültigkeitsmonate · 68\u{00A0}Fahrten, davon 55 mit erfasster Ankunft, 9 verspätet (ab 5\u{00A0}Min.) · persönliche Quote dieser Monate: 83\u{00A0}%\u{00A0}pünktlich")
+        XCTAssertEqual(DelayDiaryText.reportSummary(months: 1, trips: 1, recorded: 1, late: 1, threshold: 10, share: nil),
+                       "1 Gültigkeitsmonat · 1\u{00A0}Fahrt, davon 1 mit erfasster Ankunft, 1 verspätet (ab 10\u{00A0}Min.) · persönliche Quote dieses Monats: zu wenig Fahrten für eine Quote")
+        // The demo-like year: the default choice leaves out a punctual month, so its share is lower than the year's.
+        var trips: [DelayDiaryTrip] = []
+        for day in 1...10 { trips.append(trip(vienna(2026, 3, day, 8), delay: day == 1 ? 12 : 0, source: .manual)) }
+        for day in 1...10 { trips.append(trip(vienna(2026, 4, day, 8), delay: 0, source: .manual)) }
+        let diary = year(trips, now: vienna(2026, 4, 20))
+        let report = DelayReportBuilder.make(diary, months: DelayReportBuilder.defaultSelection(diary))
+        XCTAssertEqual(report.months.map(\.index), [0])
+        XCTAssertEqual(DelayDiaryText.percent(report.onTimeShare ?? -1), "90\u{00A0}%")
+        XCTAssertEqual(DelayDiaryText.percent(diary.onTimeShare ?? -1), "95\u{00A0}%")
+    }
+
     /// A personal log: the caveat cites Punkt 24, and no sentence claims a right or names money.
     func testCopyIsAPersonalLog() {
         XCTAssertEqual(DelayDiaryText.caveat,
@@ -386,6 +404,7 @@ final class DelayDiaryTests: XCTestCase {
             DelayDiaryText.noLateLine(threshold: 5, recorded: 3), DelayDiaryText.noLateLine(threshold: 5, recorded: 0),
             DelayDiaryText.reportChipLine(recorded: 0, late: 0), DelayDiaryText.reportChipLine(recorded: 3, late: 1),
             DelayDiaryText.outsideScopeLine,
+            DelayDiaryText.reportSummary(months: 3, trips: 30, recorded: 20, late: 2, threshold: 5, share: 0.9),
         ]
         for text in all {
             XCTAssertFalse(text.localizedCaseInsensitiveContains("anspruch"), text)

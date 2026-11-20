@@ -105,7 +105,7 @@ Das PDF (A4, `UIGraphicsPDFRenderer`, echter Text, Titel in den Dokument-Infos, 
 persönliche Aufzeichnung“, Ticket mit Gültigkeit, optional der Name, Erstellungsdatum, ein neutraler Einleitungssatz
 (`DelayDiaryText.reportIntro`: mit der App geführt, Fahrten ab der Grenze, „Die Minuten wurden von Hand eingetragen; es sind keine
 amtlichen Pünktlichkeitswerte.“ – „Live-Daten“ nur, wenn eine gelistete Zeile von dort käme), der Vorbehalt im Kasten, eine Summe der
-gewählten Monate mit persönlicher Quote, dann je Monat „Gültigkeitsmonat 3 · 1. Mai 2026 – 31. Mai 2026“, seine Zahlen und eine
+gewählten Monate mit ihrer persönlichen Quote („persönliche Quote dieser Monate“), dann je Monat „Gültigkeitsmonat 3 · 1. Mai 2026 – 31. Mai 2026“, seine Zahlen und eine
 Tabelle **Datum · Strecke · Linie · Verspätung · Quelle** („Linie“ nennt ohne bekannte Linie das Verkehrsmittel) (älteste zuerst, gleiche Minute nach Strecke). Fußzeile auf jeder Seite:
 „KlimaBilanz · persönliche Aufzeichnung, keine amtlichen Pünktlichkeitswerte · Seite n“. **Kein Betrag** – weder auf dem Bildschirm
 noch im PDF wird aus Verspätungen Geld gerechnet (kein `Format.euro` in `Features/Delays`).
@@ -217,6 +217,9 @@ Gefunden und behoben:
 - **Zwei Demo-Jahre:** Die Szene `timeBalanceDelays` rechnete noch mit ihrer alten Vorlage („live“-Minuten, die kein Build erfasst)
   und zeigte „64 von 78 Fahrten, davon 11 verspätet ab 5 Min.“, das Tagebuch für dasselbe Demo-Jahr 63 erfasste und 9 verspätete.
   Jetzt zeigt die Szene die gespeicherten Demo-Fahrten mit den Einträgen des Tagebuchs (Vorlage entfernt).
+- **Die Quote im PDF war eine andere als auf dem Bildschirm, ohne es zu sagen:** Vorgewählt sind die Monate mit einer verspäteten
+  Fahrt; im Demo-Jahr fehlt so der pünktliche August, und das PDF sagte „persönliche Quote: 83 % pünktlich“, der Bildschirm 85 %.
+  Jetzt „persönliche Quote dieser Monate: 83 % pünktlich“ (`DelayDiaryText.reportSummary`, getestet).
 - Neuer Test: Gültigkeitsmonate über das Ende der Sommerzeit (Ticket ab 25. Oktober 2026, die doppelte Stunde, die letzte Sekunde vor
   dem 25. November).
 
