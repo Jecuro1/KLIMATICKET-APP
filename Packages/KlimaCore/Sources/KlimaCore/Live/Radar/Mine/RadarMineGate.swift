@@ -68,6 +68,9 @@ public struct RadarStopWatchPlan: Sendable, Equatable {
     public private(set) var failures = 0
     public private(set) var retryAt: Date?
     public private(set) var lastInteraction: Date?
+    /// MARK: radar2-review-radarmine – the board refused this stop's link once and it was linked anew: a second refusal ends the stop („Diese
+    /// Haltestelle findet die Auskunft nicht“) instead of linking and asking again in every free slot of the radar's budget.
+    public private(set) var relinked = false
     private var forceDue = false
 
     public init() {}
@@ -83,6 +86,7 @@ public struct RadarStopWatchPlan: Sendable, Equatable {
         retryAt = nil
         lastInteraction = now
         forceDue = false
+        relinked = false
     }
 
     /// No stop any more (the page or the panel closed, the access closed).
@@ -95,6 +99,7 @@ public struct RadarStopWatchPlan: Sendable, Equatable {
         failures = 0
         retryAt = nil
         forceDue = false
+        relinked = false
     }
 
     /// A tap on the page: the idle clock starts again (after an idle pause the board is due at once, its last answer being old).
@@ -159,6 +164,18 @@ public struct RadarStopWatchPlan: Sendable, Equatable {
         failures += 1
         let wait = RadarStopWatchPlan.backoff[min(failures, RadarStopWatchPlan.backoff.count) - 1]
         retryAt = now.addingTimeInterval(wait)
+    }
+
+    /// MARK: radar2-review-radarmine – the board answered „LOCATION“ for the stop's link. The first time the stop is linked anew (in its own slot when
+    /// it needs a lookup, else the board is due at once); true. The second time nothing more is asked for this stop; false (the caller ends it): a
+    /// refusing board would otherwise be linked and asked again in every free slot and take the radar's tiles their budget.
+    public mutating func linkRefused(needsLink: Bool, now: Date) -> Bool {
+        inFlight = nil
+        guard !relinked, stopID != nil else { return false }
+        relinked = true
+        self.needsLink = needsLink
+        retryAt = nil
+        return true
     }
 
     /// The job was cancelled (the loop ended): due as before, nothing counted.

@@ -95,4 +95,42 @@ public enum RadarNearby {
         }
         .sorted { $0.distanceKm != $1.distanceKm ? $0.distanceKm < $1.distanceKm : $0.tripID < $1.tripID }
     }
+
+    // MARK: radar2-review-radarmine – what the list can honestly say. The rows come from the radar's markers, and those are only the vehicles in
+    // the map's view whose tiles have answered. „Die Auskunft kennt im Umkreis von 1,5 km gerade kein Fahrzeug“ is true only when the whole circle
+    // is in the view, its tiles have answered and the radar is loading; before, the page said it while the map had moved away from the circle,
+    // while the city lane was out of zoom, before the first answer of the new tiles, and with the train layer off or the radar paused.
+
+    /// How much of the circle around the fix the radar's markers cover right now.
+    public enum Coverage: Equatable, Sendable {
+        /// The whole circle is in view and answered: an empty list means the Auskunft knows no vehicle there.
+        case complete
+        /// Tiles of the view are still waiting for their first answer.
+        case loading
+        /// The map no longer shows the whole circle (moved or zoomed in): the list holds only what is in view.
+        case offMap
+        /// Bus, Bim or U-Bahn are on, but the map is too far out for them.
+        case cityOutOfZoom
+        /// The radar does not load now (train layer off, no live data, Zeitreise away, Cockpit, Low Power Mode, paused after errors).
+        case notLoading
+    }
+
+    /// The coverage of the circle around `fix` by the markers of the view `box`. `loads`: the radar asks for tiles now; `pending`: a visible tile
+    /// still waits for its first answer.
+    public static func coverage(fix: GeoPoint, box: RadarBox, loads: Bool, pending: Bool, cityModesOn: Bool, cityOutOfZoom: Bool,
+                                radiusKm: Double = radiusKm) -> Coverage {
+        guard loads else { return .notLoading }
+        guard circleShown(fix, in: box, radiusKm: radiusKm) else { return .offMap }
+        if cityModesOn && cityOutOfZoom { return .cityOutOfZoom }
+        return pending ? .loading : .complete
+    }
+
+    /// The circle (to 90 % of its radius, so the view MapKit fits around it counts) lies in `box`.
+    public static func circleShown(_ fix: GeoPoint, in box: RadarBox, radiusKm: Double = radiusKm) -> Bool {
+        guard fix.latitude.isFinite, fix.longitude.isFinite, radiusKm.isFinite, radiusKm >= 0 else { return false }
+        let dLat = radiusKm * 0.9 / RadarLanePlan.kmPerDegreeLatitude
+        let dLon = radiusKm * 0.9 / (RadarLanePlan.kmPerDegreeLatitude * max(cos(fix.latitude * .pi / 180), 0.01))
+        return box.north >= fix.latitude + dLat && box.south <= fix.latitude - dLat
+            && box.east >= fix.longitude + dLon && box.west <= fix.longitude - dLon
+    }
 }

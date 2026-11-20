@@ -135,6 +135,30 @@ public enum RadarStopArrivals {
         Set(rows.filter { $0.point != nil && !$0.isCancelled }.compactMap { row in row.mode.flatMap { shownModes.contains($0) ? nil : $0 } })
     }
 
+    // MARK: radar2-review-radarmine – the first board of a chosen stop frames the stop with its numbered arrivals (in the CI screenshots three of the
+    // five numbers lay under the panel, at the stop's own zoom).
+
+    /// A map view: its centre and spans in degrees.
+    public struct Frame: Equatable, Sendable {
+        public var centre: GeoPoint
+        public var latitudeSpan: Double
+        public var longitudeSpan: Double
+    }
+
+    /// The view that holds the stop and every point, with a fifth of the extent as margin on each side: at least `minSpan` high (and one and a half
+    /// times that wide, as the radar's other camera moves), at most `maxSpan` high (inside the city lane's zoom: a far point is not worth losing the
+    /// buses). MapKit widens the shorter side to the map's shape. nil when a coordinate is not finite.
+    public static func frame(stop: GeoPoint, points: [GeoPoint], minSpan: Double = 0.012, maxSpan: Double = 0.3) -> Frame? {
+        let all = [stop] + points
+        guard all.allSatisfy({ $0.latitude.isFinite && $0.longitude.isFinite }) else { return nil }
+        let latitudes = all.map(\.latitude), longitudes = all.map(\.longitude)
+        let north = latitudes.max() ?? stop.latitude, south = latitudes.min() ?? stop.latitude
+        let east = longitudes.max() ?? stop.longitude, west = longitudes.min() ?? stop.longitude
+        let height = min(max((north - south) * 1.4, minSpan), maxSpan)
+        let width = min(max((east - west) * 1.4, height * 1.5), maxSpan * 1.5)
+        return Frame(centre: GeoPoint(latitude: (north + south) / 2, longitude: (east + west) / 2), latitudeSpan: height, longitudeSpan: width)
+    }
+
     /// The position is older than two minutes.
     public static func isStale(_ positionAt: Date?, now: Date) -> Bool {
         guard let positionAt else { return false }

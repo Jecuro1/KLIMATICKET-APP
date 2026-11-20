@@ -104,6 +104,13 @@ public enum RadarMineText {
     /// The dot of the invented place in demo and screenshot launches (VoiceOver).
     public static let demoPlace = "Ort der Vorschau, erfunden"
     public static let nearFooter = "Dein Standort bleibt auf dem iPhone und wird nicht gespeichert. Die Positionen sind berechnet, kein GPS."
+    // MARK: radar2-review-radarmine – the list says what it covers (`RadarNearby.Coverage`): „kennt kein Fahrzeug“ only for the whole, loaded circle
+    /// The map no longer shows the whole circle.
+    public static let nearOffMap = "Die Karte zeigt gerade nicht den ganzen Umkreis. Die Liste nennt nur, was dort zu sehen ist."
+    /// Back to the circle around the fix.
+    public static let toCircle = "Zum Umkreis"
+    /// The radar loads nothing now (train layer off, no live data, Zeitreise, Cockpit, Low Power Mode, paused).
+    public static let nearNotLoading = "Das Radar lädt gerade nichts nach. Die Liste nennt nur, was schon geladen ist."
 
     /// „Bus 13A → Hauptbahnhof“.
     public static func vehicleTitle(_ title: String, direction: String?) -> String {
@@ -162,6 +169,11 @@ public enum RadarMineText {
     /// A row's mode chip is off: it stays in the list without a number on the map.
     public static func modesOffMap(_ modes: [RadarMode]) -> String {
         "\(RadarModesText.names(modes)) \(modes.count == 1 ? "ist" : "sind") aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte."
+    }
+
+    /// MARK: radar2-review-radarmine – a row's mode is on, but the map is too far out for it (the city lane): it is not „aus“.
+    public static func modesOutOfZoom(_ modes: [RadarMode]) -> String {
+        "\(RadarModesText.names(modes)) \(modes.count == 1 ? "erscheint" : "erscheinen") auf der Karte, wenn du näher heranzoomst – diese Abfahrten stehen schon in der Liste."
     }
 
     /// The pause line of the stop page; nil while it asks.
@@ -242,6 +254,16 @@ public enum RadarMineText {
         }
         if let number { parts.append("Nummer \(number) auf der Karte") }
         return parts.joined(separator: ", ")
+    }
+
+    // MARK: Map markers
+
+    /// MARK: radar2-review-radarmine – what VoiceOver adds to a vehicle marker that „Meine Fahrzeuge“ marks (the star, the number and the dimmed rest
+    /// are drawn only): „deine Linie“, „Nummer 2 der Abfahrten“, „nicht hervorgehoben“; empty for an unmarked marker.
+    public static func markerValue(star: Bool, number: Int?, dimmed: Bool) -> String {
+        if let number { return "Nummer \(number) der Abfahrten" }
+        if star { return "deine Linie" }
+        return dimmed ? "nicht hervorgehoben" : ""
     }
 
     // MARK: Units
