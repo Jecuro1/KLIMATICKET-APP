@@ -9,6 +9,8 @@ struct RadarMineStopPage: View {
     var mine: RadarMineModel
     var context: RadarMineContext
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             if let stop = mine.stop {
@@ -37,15 +39,15 @@ struct RadarMineStopPage: View {
     // MARK: Header
 
     /// „Ab Neubaugasse“ over „Stand 14:32 · vor 40 s“, and a small „Ändern“ beside them, at every size (the long „Andere Haltestelle“ pushed the name
-    /// onto two lines and left room for one row in the panel, CI screenshots run 2; stacked at AX sizes it took a row's height, run 3). VoiceOver
-    /// still says „Andere Haltestelle“.
+    /// onto two lines and left room for one row in the panel, CI screenshots run 2; stacked at AX sizes it took a row's height, run 3). At
+    /// accessibility sizes the button is its symbol only and the name wraps instead of being cut („Ab Neubauga…“ at AX5, run 4). VoiceOver says
+    /// „Andere Haltestelle“.
     private func header(_ stop: RadarMineStop) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(RadarMineText.from(stop.name))
                     .font(.headline)
                     .foregroundStyle(Theme.textPrimary)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 if let at = mine.boardFetchedAt {
                     TimelineView(.periodic(from: .now, by: 5)) { timeline in
@@ -60,9 +62,14 @@ struct RadarMineStopPage: View {
             Button {
                 withMotion(Motion.smooth) { mine.clearStop() }
             } label: {
-                Label(RadarMineText.changeStop, systemImage: "arrow.triangle.swap")
-                    .font(.footnote.weight(.semibold))
-                    .lineLimit(1)
+                if typeSize.isAccessibilitySize {
+                    Image(systemName: "arrow.triangle.swap")
+                        .font(.footnote.weight(.semibold))
+                } else {
+                    Label(RadarMineText.changeStop, systemImage: "arrow.triangle.swap")
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                }
             }
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)
