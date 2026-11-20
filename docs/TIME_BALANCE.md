@@ -135,9 +135,10 @@ früheren Etappe kommt nicht dazu, ein Anschluss kann sie geschluckt haben). Rev
 konnte „3 von 1 Fahrt“ sagen. Sind alle erfassten Fahrten pünktlich, heißt die Zeile „Pünktlich: keine Zeit verloren“ (vorher
 „Keine Verspätung erfasst“, was wie „nichts erfasst“ klang). Die Karte nennt,
 wie viele von wie vielen Fahrten erfasst sind und wie viele verspätet waren. Verspätungen werden **nicht** zu den Stunden oben
-addiert (eine eingetragene Dauer kann sie schon enthalten). In diesem Build gibt es noch keinen Weg, eine Verspätung zu erfassen –
-das Verspätungs-Tagebuch (delaydiary) baut auf diesen Feldern auf. Die Demo-Daten haben deshalb keine Verspätungen; die Szene
-`timeBalanceDelays` zeigt eine Vorlage.
+addiert (eine eingetragene Dauer kann sie schon enthalten). Erfasst werden Verspätungen im Verspätungs-Tagebuch
+(docs/DELAY_DIARY.md): Zeile „Verspätung“ im Fahrt-Detail, von Hand; eine Änderung zählt hier sofort mit. Die Demo-Daten tragen
+seither Ankünfte von Hand (`DelayDiaryDemo`); die Szene `timeBalanceDelays` zeigt weiter ihre eigene Vorlage (mit „live“ für die
+Fahrplan-Fahrten).
 
 ## 8. Der Bildschirm
 
@@ -229,7 +230,7 @@ Zeitbilanz (docs/THEMES.md).
   greift der StoreLoader-Wiederherstellungsbildschirm. Geräte-Check unten.
 - **Genauigkeit des Tempomodells** gegen echte Fahrpläne – nur stichprobenartig plausibilisiert (§3).
 - **Gefühl des Rads** (Rasten, Haptik) und VoiceOver auf dem echten Gerät.
-- Verspätungen: erst mit einem Weg, sie zu erfassen (Verspätungs-Tagebuch), echte Daten.
+- Verspätungen mit echten Daten: erfasst im Verspätungs-Tagebuch (docs/DELAY_DIARY.md §10, Geräte-Checkliste Punkt 1–2).
 
 Geräte-Checkliste:
 1. Über eine 1.0.8-Installation mit echten Fahrten installieren (App **nicht** vorher löschen), Fahrten und Statistik öffnen: nichts

@@ -6,9 +6,10 @@ import KlimaCore
 // the holder's diary settings, the memoised year.
 
 /// The diary's entry points (the „Verspätung“ row in a trip, the Statistik card, the link in Fahrgastrechte and
-/// klimabilanz://delays). They show only in screenshot runs until the screens are looked at; `false` hides all four again.
+/// klimabilanz://delays). They showed only in screenshot runs until the screens were looked at (three CI runs, light and dark,
+/// AX5); `false` hides all four again.
 enum DelayDiaryRelease {
-    static let isLive = false
+    static let isLive = true
 }
 
 extension TripEntity {

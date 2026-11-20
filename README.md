@@ -43,6 +43,9 @@ Bedienung, Frost-Karten für Inhalte.
 - **Zeitbilanz** – deine Stunden in Bahn und Bus, ehrlich getrennt in erfasst (eingetragene Dauer, Abfahrt & Ankunft) und geschätzt
   (Durchschnittstempo), dazu wie lange du mit dem Auto selbst gefahren wärst, erfasste Verspätungen und die letzten 12 Wochen; optionale
   „Dauer“ im Fahrt-Editor ([docs/TIME_BALANCE.md](docs/TIME_BALANCE.md))
+- **Verspätungs-Tagebuch** – bei jeder Fahrt mit einem Tipp festhalten, ob sie pünktlich war; pro Gültigkeitsmonat deine **persönliche**
+  Quote (ab 5 erfassten Fahrten, eigene Grenze ab 5 Min.), Nachtragen, und die verspäteten Fahrten der gewählten Monate als PDF zum Teilen –
+  kein Betrag, kein „Anspruch“: für die Entschädigung zählt laut AGB Punkt 24 die Pünktlichkeit der Bahn ([docs/DELAY_DIARY.md](docs/DELAY_DIARY.md))
 - **Dein Jahr** – der Jahresrückblick als Geschichte zum Teilen
 - **Digitales Ticket** – Wallet-Karte mit holografischem Schimmer, Gültigkeit, Verlängerungs-Erinnerungen, Ticket-Jahre; Briefe zu
   Fahrgastrechten (Widerspruch, Kündigung) und Ratenübersicht

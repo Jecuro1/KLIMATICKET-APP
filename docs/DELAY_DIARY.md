@@ -17,7 +17,8 @@ PDF) und `App/Sources/Data/Repository+Delay.swift` (Schreiben).
 | Fahrgastrechte | „Mein Verspätungs-Tagebuch“ unter der Schätzung mit den Gültigkeitsmonaten |
 | Deep Link | `klimabilanz://delays` (Sheet; dieselben Regeln wie `klimabilanz://timebalance`: Einstellungen, Gipfelbuch, ein optionales Update, Was-wäre-wenn und eine offene Zeitbilanz schließen vorher, ein offener Fahrt-Editor, ein Pflicht-Update und der Jahresrückblick werden nie verdeckt, im Onboarding passiert nichts) |
 
-Alle vier hängen an `DelayDiaryRelease.isLive` (bis die Screenshots angesehen sind: nur in Screenshot-Läufen sichtbar).
+Alle vier hängen an `DelayDiaryRelease.isLive` – live, seit die Szenen in drei CI-Läufen (hell und dunkel, AX5) angesehen sind; bis
+dahin zeigten sie sich nur in Screenshot-Läufen. `false` versteckt alle vier wieder (die Demo-Verspätungen ebenso).
 
 ## 2. Eine Verspätung eintragen
 
@@ -132,12 +133,35 @@ Monate und Fahrten bis jetzt im Ticket, unter 5 erfassten keine Quote, offene Fa
 pünktlich, leer ohne NaN, Reise einmal mit letzter erfasster Ankunft, „Nur Bahn“, gleiche Zählung wie die Zeitbilanz, Reihenfolge
 und Auswahl des PDF, tolerante Einstellungen, Prozent abgerundet, Texte ohne „Anspruch“ und ohne Geld.
 
-Demo (`DelayDiaryDemo.assign`, nur „von Hand“): vier von fünf Fahrten des Demo-Jahrs tragen eine Ankunft (etwa jede achte verspätet),
-jede fünfte keine; die Pendelfahrten aus dem Fahrplan heißen „Railjet Xpress“. Werte und Summen bleiben gleich.
+Demo (`DelayDiaryDemo.assign`, nur „von Hand“): vier von fünf Fahrten des Demo-Jahrs tragen eine Ankunft (etwa jede siebte verspätet:
+63 erfasst, 9 verspätet, „85 %“), jede fünfte keine; die Pendelfahrten aus dem Fahrplan heißen „Railjet Xpress“. Werte und Summen
+bleiben gleich; die Zeitbilanz der Demo zeigt seither ihre Karte „Verspätungen“.
 
 CI-Szenen (`[shots:…]`, `-KBDemo YES`, kein Netzwerk): `delayDiary`, `delayDiaryMid`, `delayDiaryBottom`, `delayDiaryMonth`,
 `delayDiaryEmpty`, `delayEntrySheet`, `delayEntryOnTime`, `delayTripRow`, `delayReport`, `delayBackfill`, `delayOptions`,
-`delayDiaryCard`, `delayDiaryAX5`, `delayDiaryAX5Mid`, `delayEntrySheetAX5`.
+`delayDiaryCard`, `delayDiaryAX5`, `delayDiaryAX5Mid`, `delayEntrySheetAX5`, `delayRightsLink`.
+
+Was die Screenshot-Läufe gezeigt haben (CI-Läufe 44651594648, 44657556529 und 44663275966 – dieser erst im dritten Versuch: zweimal
+scheiterte vorher ein Test von KlimaCloud auf macOS, das dieser Track nicht berührt; im nächsten Lauf von main lief er durch –, hell und
+dunkel) und was danach geändert wurde:
+- Das Eingabe-Sheet war bei mittlerer Höhe zu kurz: die Schnellwerte lagen unter der Knopfleiste, Text schien durch sie hindurch.
+  Jetzt öffnet es höher (82 %), die Leiste ist deckend; eine Fahrt ohne Eintrag sagt „Noch nicht erfasst – wähle die Minuten oder
+  „Pünktlich““ (vorher stand „pünktlich angekommen“ da, als wäre es schon so).
+- Die Zeile im Fahrt-Detail brach in zwei Zeilen um – jetzt „bei der Ankunft“ und rechts „+9 Min.“ über „von Hand“.
+- Der Held: „DEINE PÜNKTLICHKEIT · PERSÖNLICH“ brach um (jetzt „Persönliche Quote“), die drei Zahlen stehen in einer Zeile oder zwei
+  und eins; „offen“ heißt wie in der Legende „ohne Eintrag“.
+- Statistik-Karte: „85 % pünktlich · persönlich“ brach um – jetzt „85 % pünktlich“, „Persönlich · …“ darunter und „54 pünktlich ·
+  9 verspätet“ unter dem Balken.
+- PDF-Sheet: „Aug 20…“ abgeschnitten (jetzt nur der Monat, drei pro Zeile), die Leiste deckend; im PDF heißt die Spalte „Linie“ und
+  nennt ohne Linie das Verkehrsmittel („Bim“, „Bus“) statt „–“.
+- AX5: „Verspätun-gen“ getrennt (jetzt eine Zeile, verkleinert), der Ring mit riesiger Uhr (bei Bedienungshilfen-Größen weg, die Zahlen
+  stehen in Worten da), „75 %“ winzig neben riesigem „pünktlich“ (jetzt eine Zeile in Textgröße), Zahl und Wort brachen auseinander
+  („8 / erfasst“ – jetzt mit festem Leerzeichen), im Sheet „+9“ zwischen den Knöpfen zerquetscht (jetzt Zahl oben, Knöpfe darunter,
+  „Speichern“ ohne Minuten).
+- Nachtragen: weißer Text auf hellem Grün im dunklen Modus war kaum lesbar – jetzt Glas-Knöpfe mit textsicheren Farben.
+- Im dritten Lauf stimmte alles; nur „Zählt als verspätet (ab 5 Min.)“ wuchs bei AX5 auf drei riesige Zeilen – stoppt jetzt bei AX2.
+- Ein heller Start von `delayDiaryMid` zeigte im ersten Lauf den Home-Bildschirm (App beendet, im zweiten Lauf nicht wieder – als
+  einmaliger Simulator-Ausreißer gewertet, nicht reproduziert).
 
 ## 9. Nicht gebaut: Live-Übernahme (Stretch)
 

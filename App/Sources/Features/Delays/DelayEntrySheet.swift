@@ -217,6 +217,7 @@ struct DelayEntrySheet: View {
         .font(.footnote.weight(.semibold))
         .foregroundStyle(Theme.textSecondary)
         .frame(maxWidth: .infinity)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .motionAnimation(Motion.snappy, value: late)
         .accessibilityElement(children: .combine)
     }
