@@ -222,7 +222,10 @@ struct RadarMineHooks: ViewModifier {
                     try? await Task.sleep(for: .seconds(5))
                 }
             }
-            .onChange(of: mine.boardFetchedAt) { _, _ in refreshArrivals() }
+            .onChange(of: mine.boardFetchedAt) { _, _ in
+                refreshArrivals()
+                frameFirstBoard()   // MARK: radar2-review-radarmine
+            }
             // The modes go to the model: the loops above run in the closure of their start and would keep an old value.
             .onChange(of: shownModes, initial: true) { _, modes in
                 mine.shownModes = modes
@@ -244,10 +247,27 @@ struct RadarMineHooks: ViewModifier {
         return held
     }
 
-    /// The CI scene: the camera, once the radar's own preset has run.
+    /// MARK: radar2-review-radarmine – the chosen stop's first board: the camera frames the stop with its numbered arrivals (`RadarStopArrivals.frame`),
+    /// once per stop; nothing to frame (no number on the map) keeps the stop's own view.
+    private func frameFirstBoard() {
+        guard mine.framePending, mine.stopPageShown, let stop = mine.stop, mine.board != nil else { return }
+        mine.didFrame()
+        let points = mine.arrivals.compactMap { arrival -> GeoPoint? in
+            guard mine.numbers[arrival.id] != nil else { return nil }
+            return arrival.source == .radar ? (model.pinsByID[arrival.tripID]?.coordinate ?? arrival.point) : arrival.point
+        }
+        guard !points.isEmpty, let frame = RadarStopArrivals.frame(stop: stop.coordinate, points: points) else { return }
+        withMotion(Motion.smooth) {
+            camera = .region(MKCoordinateRegion(center: frame.centre.clCoordinate,
+                                                span: MKCoordinateSpan(latitudeDelta: frame.latitudeSpan, longitudeDelta: frame.longitudeSpan)))
+        }
+    }
+
+    /// The CI scene: the camera, once the radar's own preset has run (a stop scene whose first board already framed its arrivals keeps that view).
     private func applyScene() async {
         guard let scene = RadarMineDemo.scene, let (centre, span) = scene.camera else { return }
         try? await Task.sleep(for: .milliseconds(400))
+        if mine.stop != nil, !mine.framePending { return }   // MARK: radar2-review-radarmine
         camera = .region(MKCoordinateRegion(center: centre.clCoordinate, span: MKCoordinateSpan(latitudeDelta: span, longitudeDelta: span * 1.5)))
     }
 }

@@ -42,6 +42,7 @@ struct RadarMarker: View {
         .motionAnimation(Motion.snappy, value: isSelected)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(pin.accessibilityText)
+        .accessibilityValue(decoration.spokenValue)   // MARK: radar2-review-radarmine – the star, the number and the dimmed rest are heard too
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 }

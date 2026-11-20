@@ -99,3 +99,13 @@ struct RadarMineNumberBadge: View {
             .accessibilityHidden(true)
     }
 }
+
+// MARK: radar2-review-radarmine – what VoiceOver adds to a marked vehicle (`RadarMarker` reads it as its value): the star of a remembered line, the
+// number of an arrival at the stop, „nicht hervorgehoben“ for the dimmed rest (spec §9). The marks were drawn only before.
+extension RadarMarkerDecoration {
+    var spokenValue: String {
+        var number: Int?
+        if case .number(let n)? = badge { number = n }
+        return RadarMineText.markerValue(star: badge == .star, number: number, dimmed: emphasis == .dimmed)
+    }
+}

@@ -189,7 +189,9 @@ extension RadarView {
             }
             .dynamicTypeSize(...DynamicTypeSize.accessibility2)   // MARK: radar2-fix-radarmodes
             if timeAvailable { RadarTimePanel(travel: travel) }   // MARK: radartime – the clock chip, expanding to the scrubber
-            else if timeHintShown { Text(RadarModesText.timeTravelHint).radarHint() }   // MARK: radarmodes – where the clock chip sits
+            // MARK: radarmodes – where the clock chip sits; radar2-review-radarmine – not under the „Meine“ panel (the clock would close it anyway; the
+            // hint took the map another line where the stop's arrivals should be)
+            else if timeHintShown && !radar2PanelIsOpen { Text(RadarModesText.timeTravelHint).radarHint() }
         }
         .padding(.horizontal, Theme.Spacing.cardGutter)
         .frame(maxWidth: .infinity)

@@ -59,6 +59,14 @@ sichtbar.
 - Zustände: „Suche deinen Standort …“, „Lade Fahrzeuge in deiner Nähe …“, keine Freigabe („Ohne Standort geht das nicht …“ mit „Einstellungen
   öffnen“, keine erneute Frage), kein Fix in 8 s („Dein Standort kam gerade nicht …“ mit „Erneut versuchen“), Bus/Bim/U-Bahn aus (mit „Einschalten“),
   leer („Die Auskunft kennt im Umkreis von 1,5 km gerade kein Fahrzeug.“, mit Filter „… keines, das zum Filter passt.“).
+- **Was die Liste abdeckt (Review, `RadarNearby.coverage`):** Die Zeilen kommen aus den Markern der Kartenansicht. „… kennt … kein Fahrzeug“ steht
+  nur, wenn der ganze Umkreis in der Ansicht ist, ihre Kacheln geantwortet haben und das Radar lädt. Sonst sagt die Seite, was fehlt: „Die Karte zeigt
+  gerade nicht den ganzen Umkreis. Die Liste nennt nur, was dort zu sehen ist.“ (mit „Zum Umkreis“), bei zu weiter Karte „Bus, Bim und U-Bahn
+  erscheinen, wenn du näher heranzoomst.“ (mit „Zum Umkreis“), solange Kacheln noch fehlen „Lade Fahrzeuge in deiner Nähe …“, und wenn das Radar
+  nicht lädt (Ebene „Züge“ aus, keine Live-Daten, Zeitreise, Cockpit, Stromsparmodus, „Radar pausiert“) „Das Radar lädt gerade nichts nach. Die Liste
+  nennt nur, was schon geladen ist.“ Vorher sagte sie „kennt kein Fahrzeug“ schon, wenn die Karte woanders war oder die neuen Kacheln noch fehlten.
+- Wechselst du die Seite, während der Standort gesucht wird, bleibt der Fix (solange das Panel offen ist); die Karte bewegt sich nur, wenn die Seite
+  gerade zu sehen ist, und „Zum Umkreis“ führt hin. Vorher blieb die Seite danach bei „Suche deinen Standort …“ ohne Knopf stehen.
 
 ## 4. Haltestelle – „Wo bleibt mein Bus?“
 
@@ -83,7 +91,18 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   Eine gestrichelte Luftlinie verbindet jedes nummerierte Fahrzeug mit der Haltestelle; ein Tipp auf Zeile oder Nadel zeigt beide auf der Karte.
   Während die Seite Nummern zeigt, treten die anderen Marker zurück.
 - **Chips aus:** eine Abfahrt eines Verkehrsmittels, dessen Chip aus ist (oder das die Stadt-Spur gerade nicht zeichnet), steht in der Liste ohne
-  Nummer; darunter „Bim ist aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte.“ mit „Einschalten“.
+  Nummer; darunter „Bim ist aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte.“ mit „Einschalten“. Ist der Chip an und nur die
+  Karte zu weit (Review): „Bim erscheint auf der Karte, wenn du näher heranzoomst – diese Abfahrten stehen schon in der Liste.“ – vorher hieß auch das
+  „ist aus“, und „Einschalten“ tat nichts.
+- **Kamera (Review):** die erste Tafel einer gewählten Haltestelle rahmt die Haltestelle mit ihren nummerierten Ankünften (`RadarStopArrivals.frame`,
+  ein Fünftel Rand je Seite, höchstens 0,3° hoch, damit die Stadt-Spur im Zoom bleibt), einmal je Haltestelle. Vorher blieb die Karte beim Zoom der
+  Haltestelle, und in den CI-Screenshots lagen drei der fünf Nummern unter dem Panel. Solange das Panel offen ist, steht der Hinweis „Zeitreise gibt es
+  nur mit Zügen und S-Bahn.“ nicht unter ihm (die Uhr würde das Panel ohnehin schließen) – eine Zeile mehr Karte.
+- **Eine Haltestelle, die die Tafel ablehnt (Review):** antwortet die Tafel „LOCATION“ auf eine gemerkte Verknüpfung, wird die Haltestelle **einmal**
+  neu verknüpft (eigener Platz, bei `uic:` ohne Anfrage); lehnt die Tafel auch die neue ab, endet die Haltestelle mit „Diese Haltestelle findet die
+  Auskunft nicht. Wähl bitte eine andere.“ (`RadarStopWatchPlan.linkRefused`). Vorher verknüpfte und fragte die Seite in jeder Runde der Schleife neu –
+  bis zu den ganzen 24 je Minute des Radars, und die Kacheln bekamen keinen Platz mehr. Höchstens vier Anfragen (zwei bei `uic:`) für so eine
+  Haltestelle (`RadarMineReviewTests`).
 - **Pausen (`RadarFeatureGate.stopPanelAsks`):** gefragt wird nur, solange die Live-Schleife läuft, die Ebene „Züge“ an ist, die Seite offen ist und
   der Stromsparmodus aus ist. Die Seite sagt jede Pause: Zeitreise weg von „Jetzt“, Cockpit offen, Stromsparmodus (mit „Jetzt aktualisieren“, das die
   Abfrage in die manuelle Runde des Radars legt), Ebene „Züge“ aus (mit „Einschalten“), keine Live-Daten (mit „Einstellungen“), offline, und die
@@ -139,7 +158,9 @@ eigene Messung. „Linien“ nutzt deshalb nur, was die Kacheln halten; außerha
 Alle Sätze stehen in `RadarMineText` (KlimaCore) und sind getestet (`RadarMineTextTests`): „berechnet“, nie GPS; leere Listen sagen, was die Auskunft
 kennt, nie „es fährt nichts“; „Min“ in Zeilen, „Minuten“ für VoiceOver; „240 m“, „1,2 km“; du-Form. VoiceOver liest jede Zeile als einen Satz
 („Bus 13A nach Hauptbahnhof, ab 14 Uhr 36, in 4 Minuten, 1 Minute verspätet, Steig 2, noch 1,2 Kilometer entfernt, Position berechnet, Nummer 1 auf der
-Karte“), mit Aktionen „Auf der Karte zeigen“ und „Nicht mehr merken“. Textgrößen: die Titelzeile („Meine Fahrzeuge“ mit zwei Knöpfen) wächst bis
+Karte“), mit Aktionen „Auf der Karte zeigen“ und „Nicht mehr merken“. Die Marker auf der Karte sagen, was gezeichnet ist (Review,
+`RadarMineText.markerValue`): „deine Linie“ (Stern), „Nummer 2 der Abfahrten“, „nicht hervorgehoben“ (gedimmt) – vorher waren Stern, Nummer und
+Dimmen für VoiceOver stumm. Textgrößen: die Titelzeile („Meine Fahrzeuge“ mit zwei Knöpfen) wächst bis
 xxxLarge, die Seite bis AX2 – wie Statuskarte und Leisten des Radars über der Karte (bei AX5 war sonst keine Zeile mehr zu sehen); ab AX3 werden die
 Segmente ein Menü mit der Seite als Titel, einzeilig („Haltestelle“ wurde bei AX5 getrennt); Zeilen stapeln sich, die Zeit wird nie abgeschnitten.
 
@@ -164,6 +185,11 @@ sichtbar (`RadarMineEntry.isReleased`, vorher nur in Screenshot-Starts). Das Sym
 keinem Screenshot zu sehen.
 
 Nicht geprüft: alles mit echten Daten (Messung §7), MapKit-Leistung mit vielen hervorgehobenen Markern, der echte Standort-Dialog, VoiceOver auf dem Gerät.
+
+**Review (2026-11-20):** eine ablehnende Tafel fragt nur noch einmal neu statt in jeder Runde (Budget), „In der Nähe“ nennt „kennt kein Fahrzeug“ nur
+für den ganzen, geladenen Umkreis und sagt sonst, was fehlt, eine Standortsuche über einen Seitenwechsel hinweg bleibt nicht hängen, ein Chip, der an
+ist, heißt bei zu weiter Karte nicht „aus“, VoiceOver hört Stern, Nummer und Dimmen der Marker, die erste Tafel rahmt Haltestelle und Ankünfte, der
+Zeitreise-Hinweis tritt unter dem Panel zurück. Tests: `RadarMineReviewTests` (Linux).
 
 ## 12. Geräte-Checkliste
 

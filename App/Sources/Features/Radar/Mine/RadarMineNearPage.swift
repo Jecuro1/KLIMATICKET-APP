@@ -12,7 +12,8 @@ struct RadarMineNearPage: View {
     var context: RadarMineContext
 
     @State private var rows: [RadarNearbyRow] = []
-    @State private var settled = false
+    /// MARK: radar2-review-radarmine – what the rows cover (`RadarNearby.coverage`): only the whole, loaded circle may be called empty.
+    @State private var coverage: RadarNearby.Coverage = .loading
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
@@ -35,17 +36,23 @@ struct RadarMineNearPage: View {
             RadarMineFooter(lines: [RadarMineText.nearFooter])
         }
         .task(id: mine.fix) {
-            settled = false
             while !Task.isCancelled, let fix = mine.fix {
-                let sightings = context.radar.pins.map { RadarMineSighting(vehicle: $0.vehicle, coordinate: $0.coordinate, isEstimate: $0.isEstimate) }
+                let radar = context.radar
+                let sightings = radar.pins.map { RadarMineSighting(vehicle: $0.vehicle, coordinate: $0.coordinate, isEstimate: $0.isEstimate) }
                 let next = RadarNearby.rows(sightings, from: fix, now: Date())
                 if next.map(\.id) != rows.map(\.id) {
                     withMotion(Motion.smooth) { rows = next }
                 } else {
                     rows = next
                 }
-                if context.radar.load == .loaded { settled = true }
-                try? await Task.sleep(for: .seconds(next.isEmpty && !settled ? 1 : 5))
+                // MARK: radar2-review-radarmine – the gate is read from the model (the context is a copy of the moment the page was built)
+                let gate = mine.gate
+                let paused: Bool = { if case .failed = radar.load { return true } else { return false } }()
+                let loads = gate.liveLoopRuns && gate.trainsOn && !radar.lowPower && !paused
+                let current = RadarNearby.coverage(fix: fix, box: radar.box, loads: loads, pending: radar.status.anyPending,
+                                                   cityModesOn: radar.modes.hasCity, cityOutOfZoom: radar.cityOutOfZoom)
+                if current != coverage { withMotion(Motion.smooth) { coverage = current } }
+                try? await Task.sleep(for: .seconds(coverage == .complete ? 5 : 1))   // a note goes as soon as the map is back on the circle
             }
         }
     }
@@ -56,10 +63,11 @@ struct RadarMineNearPage: View {
                 context.switchOn([.bus, .tram, .subway])
             }
         }
+        coverageNote
         if rows.isEmpty {
-            if !settled {
+            if coverage == .loading {
                 progress(RadarMineText.loadingNear)
-            } else {
+            } else if coverage == .complete {
                 RadarMineNote(symbol: "dot.radiowaves.left.and.right",
                               text: context.radar.filter.isActive ? RadarMineText.nearEmptyFiltered : RadarMineText.nearEmpty)
             }
@@ -75,6 +83,27 @@ struct RadarMineNearPage: View {
     }
 
     private var cityModesOn: Bool { context.radar.modes.hasCity }
+
+    /// MARK: radar2-review-radarmine – why the list may miss vehicles of the circle: the map left it, the city lane is out of zoom, the radar does not
+    /// load. Each with the way back to the circle where that helps.
+    @ViewBuilder private var coverageNote: some View {
+        switch coverage {
+        case .offMap:
+            RadarMineNote(symbol: "scope", text: RadarMineText.nearOffMap, actionTitle: RadarMineText.toCircle) { backToCircle() }
+        case .cityOutOfZoom:
+            RadarMineNote(symbol: "plus.magnifyingglass", text: RadarModesText.zoomHint(context.radar.modes.ordered.filter(\.isCity)),
+                          actionTitle: RadarMineText.toCircle) { backToCircle() }
+        case .notLoading:
+            RadarMineNote(symbol: "pause.circle", text: RadarMineText.nearNotLoading)
+        case .complete, .loading:
+            EmptyView()
+        }
+    }
+
+    private func backToCircle() {
+        guard let fix = mine.fix else { return }
+        context.focus(fix, RadarNearby.viewSpanKm / RadarLanePlan.kmPerDegreeLatitude)
+    }
 
     private func locateButton(_ title: String, symbol: String, prominent: Bool) -> some View {
         Button {

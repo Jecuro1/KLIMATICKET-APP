@@ -2924,7 +2924,8 @@ rund um ihn, wie beim Verschieben der Karte (die Auskunft sieht grob die Gegend 
   4989 = Züge, S-Bahn, Bus, Bim, U-Bahn, unabhängig von den Chips), beim ersten Mal davor eine LocMatch-Anfrage (keine für `uic:`-Stationen; 30 Tage
   auf dem Gerät gemerkt). Jede ist eine **Nebenaufgabe der Live-Schleife** (`Radar2Parts.dueSideJob`) mit **einem eigenen Platz** des Radar-Budgets
   (`RadarScheduler.claimSlot`): dieselben 24 je Minute, 4 in 10 s, 1 s Abstand; höchstens eine unterwegs; Backoff 15/30/60/120 s; Pause nach 30 Minuten
-  ohne Tipp. Sie läuft nur, wenn `RadarFeatureGate.stopPanelAsks` (Live-Schleife läuft, Ebene „Züge“ an, Seite offen, kein Stromsparmodus) – also nie
+  ohne Tipp; lehnt die Tafel die Haltestelle ab („LOCATION“), wird sie einmal neu verknüpft und danach aufgegeben, höchstens vier Anfragen (Review
+  2026-11-20; vorher in jeder Runde neu, bis zum ganzen Radar-Budget). Sie läuft nur, wenn `RadarFeatureGate.stopPanelAsks` (Live-Schleife läuft, Ebene „Züge“ an, Seite offen, kein Stromsparmodus) – also nie
   im Hintergrund, nie während die Zeitreise weg von „Jetzt“ ist, nie unter dem Cockpit, nie ohne Zustimmung, Schalter, offline oder im Offline-Modus.
   429, offener Schalter und Notschalter pausieren das ganze Radar. Beweis: `RadarMineGateTests` (alle Gate-Zustände, Takt, Budget mit 16 Stadt-Kacheln:
   mindestens 16 der 40 je Minute bleiben frei).

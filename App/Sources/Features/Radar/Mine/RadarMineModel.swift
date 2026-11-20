@@ -59,6 +59,9 @@ final class RadarMineModel {
     private(set) var numbers: [String: Int] = [:]
     /// Trip id → number for the arrivals whose position is the radar's marker (they get the badge instead of a board pin).
     @ObservationIgnored private(set) var numberedTrips: [String: Int] = [:]
+    /// MARK: radar2-review-radarmine – the chosen stop's first board still has to frame the stop with its numbered arrivals (once per stop: the
+    /// stop's own zoom left three of five numbers under the panel in the CI screenshots).
+    @ObservationIgnored private(set) var framePending = false
 
     // MARK: Inputs from the radar view
 
@@ -203,6 +206,7 @@ final class RadarMineModel {
         stop = nil
         station = nil
         location = nil
+        framePending = false
         if hadNumbers { regroup?() }
     }
 
@@ -341,7 +345,10 @@ final class RadarMineModel {
         }
         nearState = .locating
         let location = await service.currentLocation()
-        guard isOpen, page == .near, nearState == .locating else { return nil }
+        // MARK: radar2-review-radarmine – the panel closed (or the access ended) meanwhile: the fix is not wanted any more. Another page is no
+        // reason to drop it: before, the page stayed at „Suche deinen Standort …“ without a button when you came back. The fix is held (the page
+        // offers „Zum Umkreis“), but the map moves only while the page is shown.
+        guard isOpen, nearState == .locating else { return nil }
         guard let location else {
             nearState = service.isDenied ? .denied : .noFix
             return nil
@@ -349,7 +356,7 @@ final class RadarMineModel {
         fix = GeoPoint(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
         fixIsSynthetic = false
         nearState = .ready
-        return fix
+        return page == .near ? fix : nil
     }
 
     /// Screenshot and demo scenes: a fixed invented place, never the device's.
@@ -384,14 +391,19 @@ final class RadarMineModel {
         location = nil
         stop = chosen
         plan.start(stopID: station.id, needsLink: source?.needsLink(station) ?? false, now: Date())
+        framePending = true
         file.noteStop(chosen)
         save()
         if hadNumbers { regroup?() }
     }
 
+    /// The first board framed the stop and its arrivals (or had nothing to frame).
+    func didFrame() { framePending = false }
+
     /// „Andere Haltestelle“: back to the picker.
     func clearStop() {
         let hadNumbers = !numberedTrips.isEmpty
+        framePending = false
         plan.stop()
         stop = nil
         station = nil
@@ -487,10 +499,13 @@ final class RadarMineModel {
             if let live = error as? LiveError, case .hafas(code: "LOCATION", _) = live {
                 if self.location != nil {
                     // The board refused a stored station link: forget it; the next slot links the stop again (one request per slot).
+                    // MARK: radar2-review-radarmine – once per stop: a board that refuses the new link as well ends the stop below. Before, every
+                    // refusal linked anew and asked again at once, so a stop the board never takes (a `uic:` id it does not know, a LocMatch hit
+                    // that is no stop) took a slot in every round of the loop – up to the radar's whole 24 a minute, and the tiles starved.
                     self.location = nil
                     await source.forget(station)
-                    plan.start(stopID: station.id, needsLink: source.needsLink(station), now: Date())
-                    return nil
+                    guard generation == plan.generation else { return nil }   // another stop was chosen meanwhile
+                    if plan.linkRefused(needsLink: source.needsLink(station), now: Date()) { return nil }
                 }
                 // The stop has no ÖBB station: say so instead of asking again every minute.
                 unknownStop = true

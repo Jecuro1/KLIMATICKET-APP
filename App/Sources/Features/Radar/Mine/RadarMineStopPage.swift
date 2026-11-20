@@ -96,13 +96,18 @@ struct RadarMineStopPage: View {
             }
             .frame(minHeight: 44)
         }
+        // MARK: radar2-review-radarmine – a mode whose chip is off is „aus“ (with „Einschalten“); a city mode that is on but out of zoom only waits for
+        // a closer map (it was called „aus“ as well, and „Einschalten“ did nothing)
         let hidden = RadarStopArrivals.hiddenModes(mine.arrivals, shownModes: context.shownModes)
-        if !hidden.isEmpty {
-            let modes = RadarMode.allCases.filter(hidden.contains)
-            RadarMineNote(symbol: "eye.slash", text: RadarMineText.modesOffMap(modes),
-                          actionTitle: modes.contains(where: { !context.radar.modes.contains($0) }) ? RadarMineText.switchOn : nil) {
-                context.switchOn(Set(modes))
+        let off = RadarMode.allCases.filter { hidden.contains($0) && !context.radar.modes.contains($0) }
+        let outOfZoom = RadarMode.allCases.filter { hidden.contains($0) && context.radar.modes.contains($0) }
+        if !off.isEmpty {
+            RadarMineNote(symbol: "eye.slash", text: RadarMineText.modesOffMap(off), actionTitle: RadarMineText.switchOn) {
+                context.switchOn(Set(off))
             }
+        }
+        if !outOfZoom.isEmpty {
+            RadarMineNote(symbol: "plus.magnifyingglass", text: RadarMineText.modesOutOfZoom(outOfZoom))
         }
     }
 
