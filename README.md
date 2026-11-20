@@ -90,8 +90,8 @@ Bedienung, Frost-Karten für Inhalte.
   bekommt und wie viele Live-Anfragen in dieser Sitzung wirklich hinausgingen. Noch nicht auf einem iPhone geprüft
   ([docs/FUNCTIONS_HUB.md](docs/FUNCTIONS_HUB.md))
 - **Daten & Sicherung** – Export als Komplettsicherung (mit Einstellungen und Prüfsumme), Tabelle, Monatsübersicht, Kalenderdatei
-  (Fahrten und Ticket-Fristen) und Jahresbilanz-Text, für Ticketjahr, Kalenderjahr oder alles; eine tägliche Sicherung in der
-  Dateien-App (Auf meinem iPhone › KlimaBilanz › Sicherungen, liegt auf dem iPhone – kopier sie in iCloud Drive), eine Sicherung vor
+  (Fahrten und Ticket-Fristen) und Jahresbilanz-Text, für Ticketjahr, Kalenderjahr oder alles; eine tägliche Sicherung, wenn sich
+  etwas geändert hat, in der Dateien-App (Auf meinem iPhone › KlimaBilanz › Sicherungen, liegt auf dem iPhone – kopier sie in iCloud Drive), eine Sicherung vor
   jedem Löschen und Wiederherstellen, und vor dem Wiederherstellen die Vorschau „Das ändert sich“. Noch nicht auf einem iPhone geprüft
   ([docs/DATA_HUB.md](docs/DATA_HUB.md))
 - **Datenschutz** – ohne Konto bleibt alles auf dem iPhone; kein Tracking, keine Werbung
