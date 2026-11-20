@@ -262,7 +262,9 @@ Gefunden und behoben (`// MARK: review-daten`, Tests in KlimaCore):
 - **Datenschutz-Zeile:** nennt alles, was in einer Sicherung steckt (auch Vorteile und Einstellungen).
 - **Vorschau bei AX5** (neue Szenen `backupPreviewAX5`, `backupPreviewAX5Mid`): der Dateiname in Titelgröße füllte den Bildschirm in
   drei zerbrochenen Zeilen, „Das ändert sich“ verschwand unter dem Knopf, und der Knopf trennte „Wiederherstel-len“. Jetzt wächst der
-  Name bis AX1, die Sätze bis AX3, die Leiste bis AX2 (der Knopf nie getrennt), die Legende steht zweizeilig, wenn eine Zeile nicht reicht.
+  Name bis AX1, die Sätze bis AX3, die Leiste bis AX2 (der Knopf nie getrennt), die Legende steht zweizeilig, wenn eine Zeile nicht reicht. Der vierte Lauf zeigte die Balken bei AX5 lesbar, nur die Kurzform
+  „+12 · ~3“ neben „Fahrten“ brach um – sie steht bei AX-Größen nicht mehr (die Zeile unter dem Balken sagt dasselbe; ohne fünften
+  Screenshot-Lauf geprüft nur per Typprüfung).
 - **Einstellungen und README** sagen „einmal am Tag, wenn sich etwas geändert hat“ statt nur „täglich“.
 - **Exportieren:** Die Komplettsicherung ließ sich nicht teilen, solange es keine Fahrt gab („0 Fahrten · 1 Ticket“ galt als leer) –
   leer ist sie nur ohne jede Zeile.

@@ -296,6 +296,7 @@ struct DataHubBackupRow: View {
 struct DataHubDiffBar: View {
     var diff: BackupTableDiff
     @State private var shown = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var segments: [(Int, Color)] {
         [(diff.added, Theme.pine), (diff.changed, Theme.glacier), (diff.removed, Theme.negative),
@@ -310,7 +311,9 @@ struct DataHubDiffBar: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.textPrimary)
                 Spacer(minLength: Theme.Spacing.xs)
-                if diff.changes > 0 {
+                // MARK: review-daten – the short form only where it fits beside the name (at AX5 „+12 · ~3“ broke in two lines);
+                // the line under the bar says the same in words
+                if diff.changes > 0 && !typeSize.isAccessibilitySize {
                     Text("+\(diff.added) · ~\(diff.changed)\(diff.removed > 0 ? " · −\(diff.removed)" : "")")
                         .font(.caption.monospacedDigit().weight(.semibold))
                         .foregroundStyle(Theme.textSecondary)
