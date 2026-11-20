@@ -2592,7 +2592,10 @@ kein Netz und starten keine Live-Aktivität.
   10 Min alt ist, mit der erwarteten Abfahrt des Anschlusses, in denselben ganzen Minuten wie das Verbindungsdetail.
 - **Anschluss-Wächter** (radar2 `anschluss`): verfolgst du eine Verbindung mit Umstieg, prüft die App den Umstieg (eine Reconstruction
   alle 120 s, 60 s wenn es knapp wird, über die App-Drossel, nicht das Radar-Budget) – nur bei offener App, nie im Hintergrund.
-  Zustände, Zahlen und Grenzen: [docs/CONNECTION_GUARD.md](CONNECTION_GUARD.md).
+  Zustände, Zahlen und Grenzen: [docs/CONNECTION_GUARD.md](CONNECTION_GUARD.md). **Stand 2026-11-20:** Nach einem `.rateLimited`
+  liest der Wächter den Schutzschalter (`LiveHealth`, keine Anfrage): offen heißt, die Auskunft hat mit 429 um eine Pause gebeten,
+  zu heißt, die eigene Drossel hat die Anfrage gar nicht hinausgelassen – die Karte sagt, wessen Sache es war, und fragt während einer
+  Pause nicht. Noch einmal „Live verfolgen“ auf derselben Verbindung behält den Wächter (keine zusätzliche Anfrage, keine zweite Suche).
 
 ## R9 Zugsuche („Züge suchen“, JourneyMatch) [LIVE 2026-10-14 · eine Anfrage]
 

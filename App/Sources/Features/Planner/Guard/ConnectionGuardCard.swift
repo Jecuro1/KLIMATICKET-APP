@@ -125,21 +125,28 @@ struct ConnectionGuardCard: View {
     // MARK: Card
 
     private func card(_ a: GuardAssessment, engine: GuardEngine, now: Date) -> some View {
-        GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.card) {
+        // One decision for the buttons and the VoiceOver actions (KlimaCore, tested): nothing is offered that does nothing.
+        let offered = engine.actions(now: now)
+        let endNote = engine.endReason(now: now).flatMap { GuardText.endedNote(a, reason: $0) }
+        return GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.card) {
             VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                main(a, engine: engine, now: now)
+                main(a, engine: engine, offered: offered, endNote: endNote, now: now)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(GuardText.accessibility(a, now: now))
+                    .accessibilityLabel(spoken(a, endNote: endNote, now: now))
                     .accessibilityActions {
-                        if let next = engine.continuation?.target {
+                        if offered.continueFollow, let next = engine.continuation?.target {
                             Button(GuardText.continueSpoken(next.lineName)) { continueFollow() }
                         }
-                        Button(GuardText.alternativesButton) { openAlternatives() }
-                        if a.state != .over, !engine.record.switchedOff {
+                        if offered.alternatives != .none {
+                            Button(GuardText.alternativesButton) { openAlternatives() }
+                        }
+                        if offered.checkNow {
                             Button(GuardText.checkButton) { service.checkNow() }
                         }
-                        Button(GuardText.alarmButton) { onAlarm() }
-                        if a.state != .over {
+                        if offered.alarm {
+                            Button(GuardText.alarmButton) { onAlarm() }
+                        }
+                        if offered.toggleSwitch {
                             Button(engine.record.switchedOff ? GuardText.switchOn : GuardText.switchOff) {
                                 service.setSwitchedOff(!engine.record.switchedOff)
                             }
@@ -150,16 +157,26 @@ struct ConnectionGuardCard: View {
         }
     }
 
-    private func main(_ a: GuardAssessment, engine: GuardEngine, now: Date) -> some View {
+    /// The card as VoiceOver reads it: the state sentence, why it ended, and the status line (also „Prüfung beendet“ and whose
+    /// doing a failed check was).
+    private func spoken(_ a: GuardAssessment, endNote: String?, now: Date) -> String {
+        var parts = [GuardText.accessibility(a, now: now)]
+        if let endNote { parts.append(endNote) }
+        if let status = service.status(now: now) { parts.append(GuardText.spokenStatus(status, now: now)) }
+        if let note = service.manualNote { parts.append(note.hasSuffix(".") ? note : note + ".") }
+        return parts.joined(separator: " ")
+    }
+
+    private func main(_ a: GuardAssessment, engine: GuardEngine, offered: GuardActions, endNote: String?, now: Date) -> some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             header(a)
             headline(a)
                 .scaleEffect(pulsing ? 1.04 : 1, anchor: .leading)
             if let trend = GuardText.trend(a, now: now) { trendLine(trend, a) }
             legs(a, engine: engine)
-            notes(a)
+            notes(a, endNote: endNote)
             status(engine: engine, now: now)
-            actions(a, engine: engine)
+            actions(engine: engine, offered: offered)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // The rail runs the full height of the card's content (a background is offered the content's size); at accessibility
@@ -328,7 +345,7 @@ struct ConnectionGuardCard: View {
     // MARK: Notes, status, actions
 
     @ViewBuilder
-    private func notes(_ a: GuardAssessment) -> some View {
+    private func notes(_ a: GuardAssessment, endNote: String?) -> some View {
         if let change = GuardText.platformChange(a.connection) {
             noteRow(change, symbol: "signpost.right.and.left.fill", color: Theme.summitText, fill: Theme.summit)
         }
@@ -341,8 +358,15 @@ struct ConnectionGuardCard: View {
         if a.basedOnPlan {
             noteRow(GuardText.noRealtimeNote, symbol: "calendar", color: Theme.textSecondary, fill: nil)
         }
+        if let short = GuardText.overShortNote(a) {
+            // Only the walk did not fit: whether you made it, nobody knows – said plainly, in the warning colour.
+            noteRow(short, symbol: "figure.walk.motion", color: Theme.summitText, fill: Theme.summit)
+        }
         if a.state == .over {
             noteRow(GuardText.overNote, symbol: "checkmark.circle", color: Theme.textSecondary, fill: nil)
+        }
+        if let endNote {
+            noteRow(endNote, symbol: "clock.badge.checkmark", color: Theme.textSecondary, fill: nil)
         }
         ForEach(Array(a.laterTransfers.enumerated()), id: \.offset) { _, later in
             noteRow(GuardText.laterTransfer(later), symbol: "arrow.triangle.swap", color: Theme.textSecondary, fill: nil)
@@ -380,12 +404,10 @@ struct ConnectionGuardCard: View {
     }
 
     /// „Alternativen ansehen“ across the card when it matters; „Jetzt prüfen“, „Wecker fürs Umsteigen“ and the menu below, side by
-    /// side (stacked at accessibility sizes).
-    private func actions(_ a: GuardAssessment, engine: GuardEngine) -> some View {
-        let off = engine.record.switchedOff || a.state == .over
-        let showsAlternativesButton = a.state.rank >= GuardState.shaky.rank
-        return VStack(alignment: .leading, spacing: 8) {
-            if let next = engine.continuation?.target {
+    /// side (stacked at accessibility sizes). Which of them shows is `GuardActions` (after the end: no check, no switch).
+    private func actions(engine: GuardEngine, offered: GuardActions) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if offered.continueFollow, let next = engine.continuation?.target {
                 Button { continueFollow() } label: {
                     Label(GuardText.continueButton(next.lineName), systemImage: "location.fill")
                         .font(.subheadline.weight(.semibold))
@@ -395,37 +417,43 @@ struct ConnectionGuardCard: View {
                 .tint(Theme.prominentTint)
                 .accessibilityLabel(GuardText.continueSpoken(next.lineName))
             }
-            if showsAlternativesButton {
-                Button { openAlternatives() } label: {
-                    Label(GuardText.alternativesButton, systemImage: "arrow.triangle.branch")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.glassProminent)
-                .tint(Theme.prominentTint)
+            switch offered.alternatives {
+            case .prominent:
+                Button { openAlternatives() } label: { wideLabel(GuardText.alternativesButton, symbol: "arrow.triangle.branch") }
+                    .buttonStyle(.glassProminent)
+                    .tint(Theme.prominentTint)
+            case .button:
+                Button { openAlternatives() } label: { wideLabel(GuardText.alternativesButton, symbol: "arrow.triangle.branch") }
+                    .buttonStyle(.glass)
+            case .menu, .none:
+                EmptyView()
             }
-            if a.state == .over {
-                EmptyView()   // the change is behind you: only „weiter verfolgen“
-            } else if isLarge {
-                checkButton(off: off)
-                alarmButton
-                menu(alternatives: showsAlternativesButton, off: engine.record.switchedOff)
-            } else {
-                HStack(spacing: 8) {
-                    checkButton(off: off)
-                    alarmButton
-                    menu(alternatives: showsAlternativesButton, off: engine.record.switchedOff)
+            if offered.hasRow {
+                if isLarge {
+                    row(engine: engine, offered: offered)
+                } else {
+                    HStack(spacing: 8) { row(engine: engine, offered: offered) }
                 }
             }
         }
         .padding(.top, 2)
     }
 
+    private func wideLabel(_ title: String, symbol: String) -> some View {
+        Label(title, systemImage: symbol)
+            .font(.subheadline.weight(.semibold))
+            .frame(maxWidth: .infinity)
+    }
+
     @ViewBuilder
-    private func checkButton(off: Bool) -> some View {
-        if !off {
+    private func row(engine: GuardEngine, offered: GuardActions) -> some View {
+        if offered.checkNow {
             Button { service.checkNow() } label: { tileLabel(GuardText.checkButton, symbol: "arrow.clockwise") }
                 .buttonStyle(.glass)
+        }
+        if offered.alarm { alarmButton }
+        if offered.hasMenu {
+            menu(alternatives: offered.alternatives == .menu, toggle: offered.toggleSwitch, off: engine.record.switchedOff)
         }
     }
 
@@ -455,13 +483,15 @@ struct ConnectionGuardCard: View {
         }
     }
 
-    private func menu(alternatives: Bool, off: Bool) -> some View {
+    private func menu(alternatives: Bool, toggle: Bool, off: Bool) -> some View {
         Menu {
-            if !alternatives {
+            if alternatives {
                 Button { openAlternatives() } label: { Label(GuardText.alternativesButton, systemImage: "arrow.triangle.branch") }
             }
-            Button { service.setSwitchedOff(!off) } label: {
-                Label(off ? GuardText.switchOn : GuardText.switchOff, systemImage: off ? "eye" : "eye.slash")
+            if toggle {
+                Button { service.setSwitchedOff(!off) } label: {
+                    Label(off ? GuardText.switchOn : GuardText.switchOff, systemImage: off ? "eye" : "eye.slash")
+                }
             }
         } label: {
             Image(systemName: "ellipsis")

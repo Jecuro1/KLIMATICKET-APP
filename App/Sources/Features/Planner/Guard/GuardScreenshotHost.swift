@@ -7,7 +7,8 @@ import KlimaCore
 
 struct GuardScreenshotHost: View {
     static let screens: Set<String> = ["guardSafe", "guardTighter", "guardShaky", "guardMissed", "guardCancelled", "guardNoRealtime",
-                                       "guardAlternatives", "guardAccessory", "guardAX5", "guardOver"]
+                                       "guardAlternatives", "guardAccessory", "guardAX5", "guardOver",
+                                       "guardEnded", "guardEndedAX5", "guardOverShort"]   // MARK: fix-anschluss
 
     let screen: String
     @Environment(AppState.self) private var app
@@ -23,6 +24,9 @@ struct GuardScreenshotHost: View {
         case "guardAccessory": .accessory
         case "guardAX5": .ax5
         case "guardOver": .over
+        case "guardEnded": .ended
+        case "guardEndedAX5": .endedAX5
+        case "guardOverShort": .overShort
         default: .shaky
         }
     }
@@ -44,8 +48,11 @@ struct GuardScreenshotHost: View {
         switch scene {
         case .accessory:
             MainTabView()
-        case .noRealtime, .over:
+        case .noRealtime, .over, .ended, .overShort:
             GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
+        case .endedAX5:
+            GuardCardOnlyShot(target: GuardDemo.followTarget(scene, now: GuardDemo.sceneNow()))
+                .dynamicTypeSize(.accessibility5)
         case .alternatives:
             GuardAlternativesSheet()
         case .ax5:

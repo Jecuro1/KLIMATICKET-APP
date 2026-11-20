@@ -9,9 +9,14 @@ enum GuardDemo {
     /// The scenes of `GuardScreenshotHost`.
     enum Scene: String, CaseIterable {
         case safe, tighter, shaky, missed, cancelled, noRealtime, alternatives, accessory, ax5, over
+        // MARK: fix-anschluss – the ends: missed and checked no more, and a change that only the walk made too short
+        case ended, endedAX5, overShort
 
         /// Scenes without the running demo follow (its realtime and its future arrival would contradict the card).
-        var isCardOnly: Bool { self == .noRealtime || self == .over }
+        var isCardOnly: Bool { self == .noRealtime || isEnded }
+
+        /// The guard has stopped checking in this scene („Prüfung beendet“).
+        var isEnded: Bool { self == .over || self == .ended || self == .endedAX5 || self == .overShort }
     }
 
     static let feederTripID = "demo|radar|RJX66"
@@ -57,6 +62,12 @@ enum GuardDemo {
             return Script(connectionPlanned: 38, connectionDelay: nil, feederDelay: nil)
         case .over:
             return Script(connectionPlanned: 34, connectionDelay: 1, shift: -40, laterRide: true)
+        case .ended, .endedAX5:
+            // REX 41 left 6 minutes ago, RJX 66 is 16 minutes late and still on its way: „Verpasst“, the window is over.
+            return Script(connectionPlanned: 34, connectionDelay: 0, feederDelay: 16, shift: -40)
+        case .overShort:
+            // RJX 66 arrived 1 minute before REX 41 left, the walk is 3: „Umstieg vorbei“, whether you made it nobody knows.
+            return Script(connectionPlanned: 32, connectionDelay: 0, shift: -40)
         }
     }
 
@@ -187,7 +198,7 @@ enum GuardDemo {
         let record = record(scene, now: now)
         var alternativesState: ConnectionGuardService.Alternatives = .idle
         var searchedAt: Date?
-        if scene == .missed || scene == .alternatives || scene == .cancelled {
+        if scene == .missed || scene == .alternatives || scene == .cancelled || scene == .ended || scene == .endedAX5 || scene == .overShort {
             var engine = GuardEngine(record: record)
             _ = engine.reassess(now: now)
             for answer in answers(scene, now: now) {
@@ -203,7 +214,7 @@ enum GuardDemo {
             }
         }
         service.installScripted(record: record, answers: answers(scene, now: now),
-                                status: scene == .over ? .ended(lastAt: now.addingTimeInterval(-60))
+                                status: scene.isEnded ? .ended(lastAt: now.addingTimeInterval(-60))
                                     : .updated(at: now, next: now.addingTimeInterval(scene == .safe || scene == .noRealtime ? 120 : 60)),
                                 services: services(scene, now: now), alternatives: alternativesState, searchedAt: searchedAt)
         if scene == .missed || scene == .alternatives { service.requestScriptedAlternatives() }

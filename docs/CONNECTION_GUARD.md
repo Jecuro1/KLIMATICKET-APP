@@ -4,7 +4,7 @@
 Blatt der Verfolgung eine Karte: wie viele Minuten zum Umsteigen bleiben, ob es knapper wird, beide Züge am Umstiegsbahnhof mit Zeit
 und Gleis, den Fußweg dazwischen – und, wenn es eng wird oder der Anschluss weg ist, die nächsten Verbindungen ab dem Umstiegsbahnhof.
 
-Stand 2026-11-13. Code: `Packages/KlimaCore/Sources/KlimaCore/Live/Guard/` (Logik, Linux-Tests in
+Stand 2026-11-20. Code: `Packages/KlimaCore/Sources/KlimaCore/Live/Guard/` (Logik, Linux-Tests in
 `Packages/KlimaCore/Tests/KlimaCoreTests/Live/Guard/`), `App/Sources/Features/Planner/Guard/` (Dienst, Karte, Abzeichen, Alternativen,
 Demo, Screenshot-Szenen). Spezifikation dieser Welle: radar2 `anschluss`.
 
@@ -45,6 +45,10 @@ auf; dieselben Daten geben überall dieselbe Zahl. Ein Test vergleicht sie für 
   des Fahrplans für die Alternativen).
 - **Weiter verfolgen**: Nach „Umstieg vorbei“ bietet die Karte „REX 41 weiter verfolgen“ an. Ein Tipp verfolgt den Anschluss; hat
   die Verbindung danach noch einen Umstieg, bekommt er einen eigenen Wächter (auf der zweiten Fahrt).
+- **Noch einmal „Live verfolgen“** auf derselben Verbindung (gleiche Fahrten bis zum gleichen Ziel, gleicher Umstieg,
+  `GuardRecord.watchesSameChange`) startet die Verfolgung neu, behält aber den Wächter: Trend, Anfragen-Verlauf und die
+  3-Minuten-Grenze der Suche bleiben, es geht keine zusätzliche Anfrage und keine zweite Suche hinaus. Die Mitteilung „Anschluss knapp“
+  bekommt die erwartete Abfahrt sofort zurück. Eine andere Verbindung oder ein anderer Anschluss startet einen neuen Wächter.
 
 ## 3 Zustände und Schwellen
 
@@ -60,9 +64,16 @@ ab 5 sicher, 2–4 knapp, unter 2 gefährdet).
 | Verpasst | die Abfahrt des Anschlusses (Echtzeit, sonst Fahrplan) ist vorbei, und der Zubringer war noch nicht da – eine Tatsache der Daten | `negative` |
 | Fällt aus | Zubringer oder Anschluss fällt aus, oder einer hält nicht am Umstiegsbahnhof | `negative` |
 | Nach Fahrplan | keiner der beiden Züge hat Echtzeit | `textSecondary` |
-| Umstieg vorbei | 2 Min nach der Abfahrt des Anschlusses, und die letzte Umstiegszeit war 0 oder mehr; der Wächter endet | `textTertiary` |
+| Umstieg vorbei | 2 Min nach der Abfahrt des Anschlusses, wenn der Zubringer laut Daten vor ihr da war; der Wächter endet. Reichte nur der Fußweg nicht (Zubringer vor der Abfahrt da, Umstiegszeit unter 0), sagt die Karte, dass niemand weiß, ob du ihn erwischt hast, und bietet beides an: „weiter verfolgen“ und die Alternativen | `textTertiary` |
 
 Reihenfolge der Prüfung: Ausfall, Verpasst, Umstieg vorbei, ohne Echtzeit, dann die Minuten mit dem Trend.
+
+**Jeder Umstieg endet.** 2 Min nach der Abfahrt des Anschlusses ist er „Verpasst“ (der Zubringer kam danach) oder „Umstieg vorbei“
+(der Zubringer kam davor). Vorher blieb ein Umstieg, dem nur der Fußweg fehlte (Zubringer 14:28, Anschluss 14:30, Fußweg 3 Min), für
+immer „Wackelt“ oder „Wahrscheinlich verpasst“ – samt Abzeichen „wohl verpasst“ –, bis die Verfolgung endete. Jetzt: „Umstieg vorbei“
+mit „Laut Prognose blieben 2 Min für 3 Min Fußweg. Ob du REX 41 erwischt hast, weiß die Auskunft nicht.“ (ohne Echtzeit „Laut
+Fahrplan …“). Der Fußweg ist die Schätzung des Fahrplans; ob du es geschafft hast, kann die App nicht wissen und behauptet es nicht.
+Fehlt eine der beiden Zeiten, endet der Wächter mit dem Ende des Fensters (§4).
 
 - **Trend**: aus jeder neuen Antwort ein Wert (Zeit der Anfrage, Minuten), zehn Minuten lang gemerkt. *Fallend*: jetzt mindestens 2 Min
   unter dem höchsten Wert der letzten 10 Min („Wird knapper: vor 4 Min waren es 9 Min“); *steigend*: mindestens 2 über dem niedrigsten
@@ -86,6 +97,19 @@ Stromspar-Modus; der Wächter ist für diese Fahrt nicht aus; die Zeit liegt im 
 - **Takt**: eine Reconstruction alle 120 s, alle 60 s, solange es schlechter als „Sicher“ steht. Sofort beim Start, bei der Rückkehr
   in die App (wenn die letzte Antwort älter als 60 s ist) und auf „Jetzt prüfen“ (höchstens alle 20 s, auch im Stromspar-Modus).
   Nie zwei Anfragen gleichzeitig. Nach Fehlern wartet er 15, 30, 60, dann 120 s.
+- **Ende**: mit „Umstieg vorbei“, mit dem Ende des Fensters oder nach 12 Stunden. Danach fragt er nichts mehr, der Datensatz ist
+  gelöscht, und die Karte zeigt den letzten Stand mit „Prüfung beendet“ und dem Grund („Der Wächter prüft nicht mehr: Die Umstiegszeit
+  ist vorbei. Wie du weiterkommst, zeigen die Alternativen.“). Sie bietet nur an, was dann noch etwas tut (`GuardEngine.actions`,
+  für Knöpfe und VoiceOver-Aktionen gleich): kein „Jetzt prüfen“ und kein „Wächter an/aus“ mehr (vorher tat „Jetzt prüfen“ nach dem
+  Ende nichts, und „Wächter an/aus“ schrieb den gelöschten Datensatz neu); „Alternativen ansehen“, wenn es schlechter als „Sicher“
+  stand; „Wecker fürs Umsteigen“, solange der Zubringer noch nicht angekommen ist. Späte Antworten ändern nichts mehr.
+- **Fehler, ehrlich zugeordnet** (`GuardFailure`): Die Statuszeile sagt, wessen Sache es war – „Die Auskunft antwortet gerade nicht“
+  (HTTP-Fehler), „Die Auskunft lehnt Abfragen gerade ab“, „Die Auskunft liefert die Verbindung gerade nicht“, „Die App hält ihr Limit
+  von 40 Abfragen pro Minute ein“ (`RequestThrottle`: die Anfrage ging gar nicht hinaus), „Die Auskunft bittet um eine Pause bis 14:32“
+  (HTTP 429), „Die App pausiert ihre Abfragen bis 14:32“ (der Schutzschalter `LiveHealth` nach Fehlern), „Keine Antwort: schwacher
+  Empfang oder die Auskunft ist langsam“ (Zeitüberschreitung), „Gerade keine Verbindung, vielleicht schwacher Empfang“. Das eigene Limit
+  und eine 429 kommen beide als `.rateLimited`; nur die 429 öffnet den Schutzschalter, und den liest der Wächter direkt danach (fragt
+  nichts). Während einer Pause versucht er es nicht und „Jetzt prüfen“ sagt, bis wann.
 - **Nach einem Neustart** kommt der Wächter mit der Verfolgung zurück. Das Laden fragt nichts – auch nicht in einer
   Hintergrund-Aktualisierung der Verfolgung; die Schleife startet erst, wenn die App aktiv ist.
 - **Budget**: alle Anfragen laufen über `HafasClient` → `RequestThrottle` (40 je Minute für die ganze App) und `LiveHealth`, **nicht**
@@ -156,13 +180,18 @@ Alle Texte stehen in `GuardText` (getestet in `GuardTextTests`).
   Anschluss als nicht erreichbar.“, „Keine Echtzeit-Daten: gerechnet nach Fahrplan.“, „Danach: Umstieg in …“.
 - Status: „Stand 14:27 · nächste Prüfung in 1 Min“ · „Stromspar-Modus: keine automatische Prüfung.“ · „Wächter für diese Fahrt aus.“ ·
   „Ohne Internet keine Prüfung. Gezeigt ist der Stand von 14:21.“ · „Für die Prüfung braucht es Live-Daten.“ · „Automatische Prüfung ab
-  13:50“ · „Die Auskunft antwortet gerade nicht · neuer Versuch in 1 Min“ · „Prüfung beendet“.
+  13:50“ · „Die Auskunft antwortet gerade nicht · neuer Versuch in 1 Min“ und die anderen Fehler aus §4 · „Prüfung beendet“.
+- Nach dem Ende: „Der Wächter prüft nicht mehr: Die Umstiegszeit ist vorbei.“ (oder „… Er läuft höchstens 12 Stunden.“), bei einem
+  Stand schlechter als „Sicher“ dazu „Wie du weiterkommst, zeigen die Alternativen.“; nach einem Umstieg, dem nur der Fußweg fehlte,
+  „Laut Prognose blieben 2 Min für 3 Min Fußweg. Ob du REX 41 erwischt hast, weiß die Auskunft nicht.“
 - Fußzeile (immer): „KlimaBilanz prüft deinen Anschluss nur, solange die App offen ist. Im Hintergrund kommt höchstens die Mitteilung
   „Anschluss knapp“ – nur mit eingeschalteten Live-Mitteilungen und nur, wenn iOS die App kurz aufweckt. Das ist nicht garantiert.“ und
   „Ob ein Zug wartet, sagt die Auskunft nicht. Die Einschätzung rechnet mit den Prognosen beider Züge.“
 - VoiceOver: die Karte ist ein Element mit einem Satz („Anschluss in St. Pölten Hbf: wackelt, 1 Minute zum Umsteigen, wird knapper.
   Ankunft RJX 66 um 14 Uhr 31, 3 Minuten später. Abfahrt REX 2 um 14 Uhr 40, 1 Minute später, Gleis 7. Fußweg 3 Minuten.“) und den
-  Aktionen „Alternativen ansehen“, „Jetzt prüfen“, „Wecker fürs Umsteigen“, „Wächter aus“.
+  Aktionen „Alternativen ansehen“, „Jetzt prüfen“, „Wecker fürs Umsteigen“, „Wächter aus“ – genau die, die gerade auch als Knopf da
+  sind. Der Satz endet mit der Statuszeile („Stand 14:27, nächste Prüfung in 1 Min.“, nach dem Ende „… Prüfung beendet.“ und der
+  Grund).
 - Toasts (einer je Verschlechterung, mit Haptik `.warning`, nur bei offener App): „Anschluss in St. Pölten wird knapper“ · „… wackelt“ ·
   „… wahrscheinlich verpasst“ · „… verpasst“ · „REX 2 fällt aus“.
 - Abzeichen im Zubehör der Tab-Leiste: „knapper“, „wackelt“, „wohl verpasst“, „verpasst“, „fällt aus“ mit dem Umstiegs-Symbol; VoiceOver
@@ -182,7 +211,10 @@ Screenshot-Szenen (`GuardScreenshotHost`): `guardSafe` (8 Min, gleichbleibend), 
 (1 Min, wackelt, Gleis geändert), `guardMissed` („Es fehlen dir 4 Min“, „Wahrscheinlich verpasst“, die Alternativen öffnen sich
 selbst), `guardCancelled` („REX 41 fällt aus“), `guardNoRealtime` (nach Fahrplan, nur die Karte – neben der Demo-Verfolgung mit
 Echtzeit wäre „keine Echtzeit“ falsch), `guardAlternatives` (drei Zeilen und der Tipp), `guardAccessory` (Abzeichen im Zubehör),
-`guardAX5` (Karte bei AX5), `guardOver` („Umstieg vorbei“ mit „REX 41 weiter verfolgen“ und dem nächsten Umstieg, nur die Karte).
+`guardAX5` (Karte bei AX5), `guardOver` („Umstieg vorbei“ mit „REX 41 weiter verfolgen“ und dem nächsten Umstieg, nur die Karte),
+`guardEnded` / `guardEndedAX5` („Verpasst“, das Fenster ist vorbei: „Prüfung beendet“, der Grund, „Alternativen ansehen“ und der Wecker,
+kein „Jetzt prüfen“; nur die Karte, auch bei AX5), `guardOverShort` („Umstieg vorbei“, obwohl nur 1 Min für 3 Min Fußweg blieb:
+der ehrliche Hinweis, „REX 41 weiter verfolgen“ und „Alternativen ansehen“).
 
 Mit `-KBDemo` außerhalb der Screenshots: Der Demo-Fahrplan hat keine Reconstruction; der Wächter einer Demo-Verbindung antwortet mit
 der Verbindung, wie sie beim Start war, und sucht Alternativen im Demo-Fahrplan. Die Demo-Verfolgung kennt nur die Radar-Fahrten; eine
@@ -190,13 +222,16 @@ Planer-Demo-Verbindung zeigt in der Verfolgung „Keine Verbindung zu ÖBB“ (u
 
 ## 10 Geprüft / nicht geprüft
 
-Geprüft (Linux, `swift test --filter "ConnectionGuard|TransferBuffer|FollowTransferAlignment|GuardPlan|GuardGate|GuardAlternatives|GuardRecord|GuardText"`):
+Geprüft (Linux, `swift test --filter "ConnectionGuard|TransferBuffer|FollowTransferAlignment|GuardPlan|GuardGate|GuardAlternatives|GuardRecord|GuardText|GuardEnd"`):
 Schwellen 10, 9, 5, 4, 2, 1, 0, −1, −2 mit Trend; Hysterese; Verpasst als Tatsache (auch bei gerundet 0 Min); Wahrscheinlich verpasst
 nicht klebrig; Ausfälle; ohne Echtzeit; `isRchbl` false; Umstieg vorbei nach der *erwarteten* Abfahrt; Mitternacht und
 Zeitumstellung 25.10.2026; dieselbe Zahl wie die Verbindungsdetails für jeden aufgezeichneten Umstieg; Fenster, Takt, Rückkehr,
 „Jetzt prüfen“, nie zwei gleichzeitig, Backoff, Rückfall auf JourneyDetails, Stromspar-Modus, ohne Live-Daten keine Anfrage
 (Test-Doppel, das eine simulierte Stunde lang nie fragt), Hintergrund, „Wächter aus“; Alternativen (Abfrage, Auswahl, Texte, 3-Minuten-
-Grenze); Datensatz (Version, schlanke Kopie, Müll, 12 h, gleiche Fahrt mit gleichem Umstieg); die Mitteilung (alte Datensätze, frisch
+Grenze); Datensatz (Version, schlanke Kopie, Müll, 12 h, gleiche Fahrt mit gleichem Umstieg); jedes Ende (auch nur der Fußweg zu
+kurz, nach Fahrplan, 12 h), nach dem Ende nichts mehr (Antworten, Fehler, Schalter), welche Knöpfe wann, noch einmal „Live verfolgen“
+(dieselbe Verbindung erkannt, auch als schlanke Kopie oder mit neuen Verspätungen), jeder Fehlergrund mit seinem Text, die Pause der
+App und die der Auskunft (`GuardEndTests`); die Mitteilung (alte Datensätze, frisch
 gegen alt, Fußweg, 4 Min 40 s, dieselben Minuten wie die Karte); die Live Activity mit der erwarteten Abfahrt; „weiter verfolgen“
 (Ziel und eigener Wächter für den nächsten Umstieg); jeder Text. Typprüfung der App unter Linux, Screenshots auf dem Simulator.
 
@@ -226,3 +261,7 @@ gegen alt, Fußweg, 4 Min 40 s, dieselben Minuten wie die Karte); die Live Activ
 9. App beenden und neu öffnen während der Verfolgung: die Karte kommt mit der Verfolgung zurück und prüft sofort einmal.
 10. Live Activity auf dem Sperrbildschirm während des Umstiegs: „Umstieg in … · 14:45“ zeigt die erwartete Abfahrt, solange der
     Wächter sie vor höchstens 10 Min gesehen hat.
+11. Noch einmal „Live verfolgen“ auf derselben Verbindung: die Karte behält Trend und „Stand“; in Funktionen › Datenschutz zählt die
+    ÖBB-Auskunft dafür keine zusätzliche Anfrage des Wächters.
+12. Nach dem Ende (5 Min nach der Abfahrt des Anschlusses, ohne „Umstieg vorbei“): „Prüfung beendet“ mit dem Grund, kein „Jetzt
+    prüfen“, kein „Wächter an/aus“; „Alternativen ansehen“ sucht noch einmal (höchstens alle 3 Min).
