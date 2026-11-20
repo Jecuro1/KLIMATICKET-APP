@@ -181,7 +181,8 @@ struct SiriQuestionsView: View {
     private func exampleRow(_ item: KpiQuestion, select: @escaping () -> Void) -> some View {
         Button(action: select) {
             HStack(alignment: .center, spacing: Theme.Spacing.s) {
-                SetRowLabel(title: item.title, subtitle: "„\(AskKlimaPhrase.example(item))“", symbol: item.symbol, tint: AskKlimaPhrase.tint(item))
+                SetRowLabel(title: item.title, subtitle: WidSiriPhrase.unbreakableNames("„\(AskKlimaPhrase.example(item))“"),
+                            symbol: item.symbol, tint: AskKlimaPhrase.tint(item))
                 Spacer(minLength: 0)
                 if item == question {
                     Image(systemName: "checkmark")
@@ -195,6 +196,7 @@ struct SiriQuestionsView: View {
         }
         .buttonStyle(.pressableCard)
         .foregroundStyle(Theme.textPrimary)
+        .accessibilityLabel("\(item.title): „\(AskKlimaPhrase.example(item))“")
         .accessibilityHint("Zeigt die Antwort oben unter „Probier es aus“")
         .accessibilityAddTraits(item == question ? [.isSelected, .isButton] : .isButton)
         .listRowBackground(Theme.surface)
@@ -220,7 +222,8 @@ private struct SiriQuestionsHero: View {
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("„Wie viele Fahrten diesen Monat in KlimaBilanz?“")
+                Text(WidSiriPhrase.unbreakableNames("„Wie viele Fahrten diesen Monat in KlimaBilanz?“"))
+                    .accessibilityLabel("„Wie viele Fahrten diesen Monat in KlimaBilanz?“")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.accentText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -264,7 +267,9 @@ struct SiriAnswerPlatter: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.textTertiary)
                         .accessibilityHidden(true)
-                    Text(phrase.map { "„\($0)“" } ?? "Nur im Kurzbefehl: Frag KlimaBilanz · \(answer.question.title) · \(answer.period.title)")
+                    // „KlimaBilanz“ never hyphenates („Klima-“ | „Bilanz“; display only, VoiceOver reads the label below).
+                    Text(WidSiriPhrase.unbreakableNames(phrase.map { "„\($0)“" }
+                         ?? "Nur im Kurzbefehl: Frag KlimaBilanz · \(answer.question.title) · \(answer.period.title)"))
                         .font(.footnote)
                         .foregroundStyle(Theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -276,7 +281,7 @@ struct SiriAnswerPlatter: View {
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(Theme.accent)
                         .accessibilityHidden(true)
-                    Text(answer.sentence)
+                    Text(WidSiriPhrase.unbreakableNames(answer.sentence))
                         .font(.callout.weight(.medium))
                         .foregroundStyle(Theme.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)

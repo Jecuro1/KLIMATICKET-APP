@@ -86,7 +86,7 @@ struct AskKlimaSnippet: View {
 
     /// „73 % der Gültigkeit vorbei“ / „92 % des Ticketpreises erreicht“.
     private func progressCaption(_ progress: Double) -> String {
-        let percent = Int((min(max(progress, 0), 1) * 100).rounded(.down))
+        let percent = WidFormat.percentValue(progress)   // the widgets' and „Ticket-Bilanz“'s rounding: never 100 % before the price
         return answer.question == .daysLeft ? "\(percent) % der Gültigkeit vorbei" : "\(percent) % des Ticketpreises erreicht"
     }
 
