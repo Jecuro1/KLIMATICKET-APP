@@ -47,6 +47,8 @@ public struct DelayReport: Hashable, Sendable {
     public var lateCount: Int { months.reduce(0) { $0 + $1.lateCount } }
     public var onTimeShare: Double? { DelayDiaryRules.onTimeShare(recorded: recordedCount, late: lateCount) }
     public var isEmpty: Bool { months.isEmpty }
+    /// A listed row came from live data.
+    public var hasLive: Bool { rows.contains { $0.source == .live } }
 }
 
 public enum DelayReportBuilder {

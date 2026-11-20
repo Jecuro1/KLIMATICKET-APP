@@ -15,10 +15,11 @@ public enum DelayDiaryText {
     public static let title = "Verspätungs-Tagebuch"
     public static let reportTitle = "Verspätungs-Tagebuch – persönliche Aufzeichnung"
 
-    /// The PDF's neutral first paragraph.
-    public static func reportIntro(threshold: Int, scope: DelayDiaryScope) -> String {
+    /// The PDF's neutral first paragraph. It names live data only when a listed row came from it (this build records by hand).
+    public static func reportIntro(threshold: Int, scope: DelayDiaryScope, hasLive: Bool = false) -> String {
         let fahrten = scope == .rail ? "Zug- und S-Bahn-Fahrten" : "Fahrten"
-        return "Diese Liste wurde mit der App KlimaBilanz auf dem eigenen iPhone geführt. Sie nennt \(fahrten), bei denen die Ankunft mindestens \(threshold)\u{00A0}Minuten später war als geplant. Die Minuten wurden von Hand eingetragen oder beim Live-Verfolgen der Fahrt übernommen; es sind keine amtlichen Pünktlichkeitswerte."
+        let origin = hasLive ? "Die Minuten wurden von Hand eingetragen oder aus Live-Daten übernommen" : "Die Minuten wurden von Hand eingetragen"
+        return "Diese Liste wurde mit der App KlimaBilanz auf dem eigenen iPhone geführt. Sie nennt \(fahrten), bei denen die Ankunft mindestens \(threshold)\u{00A0}Minuten später war als geplant. \(origin); es sind keine amtlichen Pünktlichkeitswerte."
     }
 
     /// „Verspätet heißt hier: ab 5 Min. Ankunft – deine eigene Grenze, keine Regel aus den AGB.“

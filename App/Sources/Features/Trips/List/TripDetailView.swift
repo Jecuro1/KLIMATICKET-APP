@@ -54,6 +54,7 @@ struct TripDetailView: View {
                 }
                 tiles(info)
                     .reveal(order: 2)
+                if DelayDiaryRelease.showsEntryPoints { DelayTripRow(trip: trip).reveal(order: 2) }   // MARK: delaydiary – „Verspätung“
                 if let route = info.route {
                     // Map(initialPosition:) frames the region once – a new route (Bearbeiten) needs a new map.
                     TripListDetailMap(route: route, mode: trip.mode)

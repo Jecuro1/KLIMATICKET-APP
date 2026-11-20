@@ -68,6 +68,7 @@ struct PerkPassengerRightsView: View {
                     } else {
                         PerkRightsEstimateCard(ticket: ticket, estimate: estimate, months: months, badMonths: badMonths,
                                                onToggle: toggleMonth)
+                        if DelayDiaryRelease.showsEntryPoints { DelayDiaryRightsLink() }   // MARK: delaydiary – „Mein Verspätungs-Tagebuch“
                         PerkRightsFactsCard(scheme: scheme)
                         PerkRightsChecklistCard(steps: steps(for: scheme, ticket: ticket), completed: completedSteps,
                                                 onToggle: { toggleStep($0, ticket: ticket) },

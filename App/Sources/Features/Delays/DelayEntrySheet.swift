@@ -1,0 +1,401 @@
+import SwiftUI
+import SwiftData
+import KlimaCore
+
+// MARK: delaydiary – „Verspätung“: the small sheet that records a trip's arrival delay (docs/DELAY_DIARY.md §2)
+
+/// A stepper from 0 („pünktlich“) to 240 minutes in 1-minute steps (hold to repeat), quick values, what the mark makes of it,
+/// „Speichern“ and – when something is recorded – „Entfernen“. Writes through `Repository.recordDelay` / `removeDelay`.
+struct DelayEntrySheet: View {
+    let trip: TripEntity
+
+    @Environment(AppState.self) private var app
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    @State private var minutes: Int
+    @State private var stepUp = 0
+    @State private var stepDown = 0
+    @State private var picked = 0
+
+    private static let quickValues = [0, 5, 10, 15, 20, 30, 45, 60]
+
+    init(trip: TripEntity) {
+        self.trip = trip
+        _minutes = State(initialValue: trip.recordedDelay?.minutes ?? 0)
+    }
+
+    private var threshold: Int { DelayDiarySettings.shared.options.thresholdMinutes }
+    private var recorded: (minutes: Int, source: TripDelaySource)? { trip.recordedDelay }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: Theme.Spacing.m) {
+                    header
+                    valueCard
+                    quickValues
+                    notes
+                }
+                .padding(.horizontal, Theme.Spacing.cardGutter)
+                .padding(.top, Theme.Spacing.xs)
+                .padding(.bottom, Theme.Spacing.m)
+            }
+            .scrollIndicators(.hidden)
+            .background(Theme.sheetBackground.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom, spacing: 0) { actions }
+            .navigationTitle("Verspätung")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(role: .close) { dismiss() }
+                        .accessibilityLabel("Schließen")
+                }
+            }
+        }
+        .presentationDetents(typeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDragIndicator(.visible)
+        .haptic(.increase, trigger: stepUp)
+        .haptic(.decrease, trigger: stepDown)
+        .haptic(.selection, trigger: picked)
+        .accessibilityIdentifier("delay.entry")
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        VStack(spacing: 2) {
+            Text(TripListFormat.routeTitle(trip.fromName, trip.toName, roundTrip: trip.isRoundTrip))
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+                .multilineTextAlignment(.center)
+            Text(subtitle)
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var subtitle: String {
+        var parts = [DelayDiaryFormat.when(trip.date)]
+        let line = trip.lineSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !line.isEmpty { parts.append(line) }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: Value
+
+    private var valueCard: some View {
+        GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {
+            VStack(spacing: Theme.Spacing.s) {
+                HStack(spacing: Theme.Spacing.s) {
+                    stepButton(symbol: "minus", label: "Eine Minute weniger", enabled: minutes > 0) {
+                        guard minutes > 0 else { return }
+                        withMotion(Motion.snappy) { minutes -= 1 }
+                        stepDown += 1
+                    }
+                    numeral
+                        .frame(maxWidth: .infinity)
+                    stepButton(symbol: "plus", label: "Eine Minute mehr", enabled: minutes < DelayDiaryRules.maximumMinutes) {
+                        guard minutes < DelayDiaryRules.maximumMinutes else { return }
+                        withMotion(Motion.snappy) { minutes += 1 }
+                        stepUp += 1
+                    }
+                }
+                verdict
+            }
+        }
+    }
+
+    private var numeral: some View {
+        VStack(spacing: 0) {
+            if minutes == 0 {
+                Label("pünktlich", systemImage: "checkmark.circle.fill")
+                    .font(.system(.title, design: .rounded).weight(.semibold))
+                    .foregroundStyle(Theme.positiveText)
+                    .labelStyle(.titleAndIcon)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .motionTransition(.pop)
+                Text("angekommen")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("+\(minutes)")
+                        .font(.system(size: 64, weight: .light, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.textPrimary)
+                        .contentTransition(.numericText(value: Double(minutes)))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    Text("Min.")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .motionTransition(.pop)
+                Text("später angekommen")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+        }
+        .frame(minHeight: 96)
+        .motionAnimation(Motion.snappy, value: minutes == 0)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Verspätung")
+        .accessibilityValue(DelayDiaryText.spoken(minutes))
+        .accessibilityAdjustableAction { direction in
+            switch direction {
+            case .increment: if minutes < DelayDiaryRules.maximumMinutes { minutes += 1 }
+            case .decrement: if minutes > 0 { minutes -= 1 }
+            @unknown default: break
+            }
+        }
+        .accessibilityIdentifier("delay.entry.value")
+    }
+
+    private func stepButton(symbol: String, label: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.title2.weight(.semibold))
+                .frame(width: 56, height: 56)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.circle)
+        .buttonRepeatBehavior(.enabled)
+        .disabled(!enabled)
+        .accessibilityLabel(label)
+    }
+
+    /// What the personal mark makes of the value – in words and a symbol, never colour alone.
+    private var verdict: some View {
+        let late = DelayDiaryRules.isLate(minutes, threshold: threshold)
+        return Label {
+            Text(late ? "Zählt als verspätet (ab \(threshold)\u{00A0}Min.)" : "Zählt als pünktlich (unter \(threshold)\u{00A0}Min.)")
+                .contentTransition(.interpolate)
+        } icon: {
+            Image(systemName: late ? "clock.badge.exclamationmark.fill" : "checkmark.seal.fill")
+                .foregroundStyle(late ? Theme.summitText : Theme.positiveText)
+                .symbolReplaceTransition()
+        }
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(Theme.textSecondary)
+        .frame(maxWidth: .infinity)
+        .motionAnimation(Motion.snappy, value: late)
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Quick values
+
+    private var quickValues: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: typeSize.isAccessibilitySize ? 120 : 68), spacing: Theme.Spacing.xs)],
+                  spacing: Theme.Spacing.xs) {
+            ForEach(Self.quickValues, id: \.self) { value in
+                let selected = value == minutes
+                Button {
+                    withMotion(Motion.snappy) { minutes = value }
+                    picked += 1
+                } label: {
+                    Text(value == 0 ? "Pünktlich" : "+\(value)")
+                        .font(.subheadline.weight(.semibold))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .foregroundStyle(selected ? Theme.onAccent : Theme.textPrimary)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(selected ? AnyShapeStyle(Theme.prominentTint) : AnyShapeStyle(Theme.surfaceSecondary), in: .capsule)
+                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel(value == 0 ? "Pünktlich" : "\(value) Minuten")
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+    }
+
+    // MARK: Notes
+
+    @ViewBuilder
+    private var notes: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            if trip.journeyID != nil {
+                note("point.topleft.down.to.point.bottomright.curvepath",
+                     "Ankunft dieser Etappe. Für die Reise zählt die letzte erfasste Ankunft – eine Reise ist eine Fahrt.")
+            }
+            if trip.isRoundTrip {
+                note("arrow.left.arrow.right", "Hin & Retour ist ein Eintrag: trag die größere der beiden Verspätungen ein.")
+            }
+            if let recorded, recorded.source == .live {
+                note("dot.radiowaves.left.and.right", "Aus Live-Daten übernommen. Änderst du die Minuten, gilt der Eintrag als von Hand.")
+            }
+            note("lock.fill", "Bleibt auf diesem iPhone – nur das PDF, das du selbst teilst, verlässt es.")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func note(_ symbol: String, _ text: String) -> some View {
+        Label {
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: symbol).foregroundStyle(Theme.textTertiary)
+        }
+        .font(.footnote)
+        .foregroundStyle(Theme.textSecondary)
+    }
+
+    // MARK: Actions
+
+    private var actions: some View {
+        VStack(spacing: Theme.Spacing.xs) {
+            Button {
+                save()
+            } label: {
+                Text(minutes == 0 ? "Als pünktlich speichern" : "Speichern · +\(minutes)\u{00A0}Min.")
+                    .contentTransition(.numericText(value: Double(minutes)))
+            }
+            .buttonStyle(.primary)
+            .accessibilityIdentifier("delay.entry.save")
+            if recorded != nil {
+                Button(role: .destructive) {
+                    remove()
+                } label: {
+                    Label("Entfernen", systemImage: "trash")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Theme.negativeText)
+                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Die Fahrt gilt dann wieder als nicht erfasst")
+            }
+        }
+        .padding(.horizontal, Theme.Spacing.cardGutter)
+        .padding(.top, Theme.Spacing.s)
+        .padding(.bottom, Theme.Spacing.xs)
+        .background(Theme.sheetBackground.opacity(0.94).ignoresSafeArea())
+    }
+
+    private func save() {
+        let before = (trip: trip, minutes: trip.delayMinutes, sourceRaw: trip.delaySourceRaw)
+        // An unchanged live value stays live; anything typed here is „von Hand“.
+        let source: TripDelaySource = (recorded?.source == .live && recorded?.minutes == minutes) ? .live : .manual
+        let repo = Repository(context: context, app: app)
+        guard repo.recordDelay(trip, minutes: minutes, source: source) else { return }
+        dismiss()
+        let title = minutes == 0 ? "Als pünktlich eingetragen" : "Verspätung eingetragen"
+        app.showToast("clock.badge.checkmark", title, "\(DelayDiaryText.minutes(minutes)) · \(TripListFormat.routeTitle(trip.fromName, trip.toName))",
+                      actionTitle: "Rückgängig", haptic: .success) {
+            Repository(context: context, app: app).restoreDelays([before])
+        }
+    }
+
+    private func remove() {
+        let before = (trip: trip, minutes: trip.delayMinutes, sourceRaw: trip.delaySourceRaw)
+        guard Repository(context: context, app: app).removeDelay(trip) else { return }
+        dismiss()
+        app.showToast("clock.arrow.circlepath", "Verspätung entfernt", "Die Fahrt gilt wieder als nicht erfasst",
+                      actionTitle: "Rückgängig", haptic: .warning) {
+            Repository(context: context, app: app).restoreDelays([before])
+        }
+    }
+}
+
+// MARK: - The row in a trip
+
+/// Fahrt-Detail: „Verspätung“ with what is recorded („+12 Min. · von Hand“ / „nicht erfasst“); a tap opens the sheet.
+struct DelayTripRow: View {
+    let trip: TripEntity
+
+    @State private var isEditing = false
+
+    var body: some View {
+        let recorded = trip.recordedDelay
+        let threshold = DelayDiarySettings.shared.options.thresholdMinutes
+        let late = recorded.map { DelayDiaryRules.isLate($0.minutes, threshold: threshold) } ?? false
+        Button {
+            isEditing = true
+        } label: {
+            GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Spacing.s) {
+                        DelayDiaryTile(size: 40, isLate: late)
+                        titles
+                        Spacer(minLength: Theme.Spacing.xs)
+                        value(recorded, late: late)
+                        chevron
+                    }
+                    VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                        HStack(spacing: Theme.Spacing.s) {
+                            DelayDiaryTile(size: 40, isLate: late)
+                            titles
+                            Spacer(minLength: 0)
+                            chevron
+                        }
+                        value(recorded, late: late)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.pressableCard)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Verspätung")
+        .accessibilityValue(DelayDiaryText.spokenRow(minutes: recorded?.minutes, source: recorded?.source))
+        .accessibilityHint(recorded == nil ? "Trägt ein, ob die Fahrt pünktlich war" : "Ändert oder entfernt den Eintrag")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("delay.row")
+        .sheet(isPresented: $isEditing) {
+            DelayEntrySheet(trip: trip)
+        }
+    }
+
+    private var titles: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Verspätung")
+                .font(.headline)
+                .foregroundStyle(Theme.textPrimary)
+            Text(trip.journeyID == nil ? "Ankunft · fürs Verspätungs-Tagebuch" : "Ankunft dieser Etappe")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func value(_ recorded: (minutes: Int, source: TripDelaySource)?, late: Bool) -> some View {
+        Text(DelayDiaryText.rowValue(minutes: recorded?.minutes, source: recorded?.source))
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(recorded == nil ? Theme.textSecondary : (late ? Theme.summitText : Theme.positiveText))
+            .contentTransition(.numericText())
+            .multilineTextAlignment(.trailing)
+    }
+
+    private var chevron: some View {
+        Image(systemName: "chevron.right")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.textTertiary)
+            .accessibilityHidden(true)
+    }
+}
+
+/// The diary's tile: a clock on the dawn → alpenglow gradient (pine → glacier for „pünktlich“).
+struct DelayDiaryTile: View {
+    var size: CGFloat = 44
+    var isLate: Bool = true
+
+    var body: some View {
+        Image(systemName: isLate ? "clock.badge.exclamationmark" : "clock.badge.checkmark")
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(LinearGradient(colors: isLate ? [Theme.dawn, Theme.alpenglow] : [Theme.pine, Theme.glacier],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: .rect(cornerRadius: size * 0.3, style: .continuous))
+            .environment(\.colorScheme, .light)
+            .contentTransition(.symbolEffect(.replace))
+            .accessibilityHidden(true)
+    }
+}

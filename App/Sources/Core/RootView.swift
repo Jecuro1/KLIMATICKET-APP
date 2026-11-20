@@ -113,6 +113,7 @@ struct RootView: View {
         .tripRecorderHost()  // MARK: tripdetect – the full-screen recording screen ("Fahrt aufzeichnen")
         .autoRulesSheetHost()  // MARK: automation – „Regel ansehen“ from a rule notice opens the rule list
         .timeBalanceLinkHost()  // MARK: timebalance – klimabilanz://timebalance opens the Zeitbilanz in a sheet
+        .delayDiaryLinkHost()  // MARK: delaydiary – klimabilanz://delays opens the Verspätungs-Tagebuch in a sheet
         .calendarSettingsHost()  // MARK: calendarsuggestions – klimabilanz://calendar and „Anpassen“ open Kalender-Vorschläge in a sheet
         .featureLinkHost()  // MARK: funktionen – a link to a hidden feature opens its row in Funktionen (docs/FUNCTIONS_HUB.md)
         .task {
@@ -262,6 +263,7 @@ struct RootView: View {
     /// klimabilanz://year[/2026|/ticket] – the year story   // MARK: yearreview
     /// klimabilanz://whatif – „Was wäre wenn?“   // MARK: whatif
     /// klimabilanz://timebalance – „Zeitbilanz“   // MARK: timebalance
+    /// klimabilanz://delays – „Verspätungs-Tagebuch“   // MARK: delaydiary
     /// klimabilanz://calendar – „Kalender-Vorschläge“   // MARK: calendarsuggestions
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
@@ -302,6 +304,10 @@ struct RootView: View {
             let closesWhatIf = showsWhatIf
             showsWhatIf = false
             if TimeBalanceRelease.isLive { TimeBalanceLink.shared.open(closing: app, afterSheet: closesWhatIf) }
+        case "delays":   // MARK: delaydiary – like klimabilanz://timebalance (Was-wäre-wenn and the app-level sheets close first)
+            let closesWhatIf = showsWhatIf
+            showsWhatIf = false
+            DelayDiaryLink.shared.open(closing: app, afterSheet: closesWhatIf)
         case "calendar":   // MARK: calendarsuggestions – klimabilanz://calendar: Einstellungen › Kalender-Vorschläge (app-level sheets and Was-wäre-wenn close first)
             let closesWhatIf = showsWhatIf
             showsWhatIf = false
@@ -643,6 +649,8 @@ struct ScreenshotRouter: View {
         // MARK: timebalance – Zeitbilanz: ticket year, month, empty, delays, AX5, the Statistik card, the editor's „Dauer“ (demo data, no network)
         case let balanceScreen where TimeBalanceScreenshotHost.screens.contains(balanceScreen):
             TimeBalanceScreenshotHost(screen: balanceScreen)
+        case let delayScreen where DelayDiaryScreenshotHost.screens.contains(delayScreen):   // MARK: delaydiary – the diary, its sheets, the row and the card (demo data, no network)
+            DelayDiaryScreenshotHost(screen: delayScreen)
         // MARK: calendarsuggestions – Kalender-Vorschläge: cards, follow-up, settings in every permission state, AX5 (fake calendar, no alert)
         case let calendarScreen where CalendarScreenshotHost.screens.contains(calendarScreen):
             CalendarScreenshotHost(screen: calendarScreen)

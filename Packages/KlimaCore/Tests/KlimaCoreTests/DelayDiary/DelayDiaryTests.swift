@@ -261,6 +261,8 @@ final class DelayDiaryTests: XCTestCase {
         XCTAssertEqual(report.rows[0].route, "Bludenz → Bregenz (Hin & Retour)")
         XCTAssertEqual(report.rows[1].train, "S 1")
         XCTAssertEqual(report.rows[3].source, .live)
+        XCTAssertTrue(report.hasLive)
+        XCTAssertFalse(DelayReportBuilder.make(diary, months: [0]).hasLive)
         XCTAssertEqual(report.months[0].recordedCount, 3)
         XCTAssertEqual(report.months[0].lateCount, 1)
         XCTAssertNil(report.months[0].onTimeShare)
@@ -336,6 +338,8 @@ final class DelayDiaryTests: XCTestCase {
             XCTAssertFalse(text.localizedCaseInsensitiveContains("euro"), text)
         }
         XCTAssertTrue(DelayDiaryText.reportIntro(threshold: 10, scope: .rail).contains("10\u{00A0}Minuten"))
+        XCTAssertFalse(DelayDiaryText.reportIntro(threshold: 5, scope: .all).contains("Live"), "no live capture in this build")
+        XCTAssertTrue(DelayDiaryText.reportIntro(threshold: 5, scope: .all, hasLive: true).contains("Live-Daten"))
         XCTAssertTrue(DelayDiaryText.reportIntro(threshold: 5, scope: .rail).contains("Zug- und S-Bahn-Fahrten"))
     }
 }

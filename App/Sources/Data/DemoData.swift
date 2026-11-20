@@ -101,6 +101,7 @@ enum DemoData {
         // MARK: tripmeta – purposes + "Ohne KlimaTicket nicht gefahren" (values unchanged, so the totals stay the same).
         MetaDemoCategories.assign(trips: seeded, favorites: favorites)
         TimeBalanceDemo.assign(trips: seeded)   // MARK: timebalance – durations and planned arrivals (values and totals unchanged)
+        DelayDiaryDemo.assign(trips: seeded)   // MARK: delaydiary – arrivals typed in by hand (values and totals unchanged)
         try? context.save()
         print("Demo data: \(count) trips")
     }
