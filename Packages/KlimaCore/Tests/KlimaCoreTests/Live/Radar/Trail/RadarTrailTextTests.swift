@@ -16,7 +16,7 @@ final class RadarTrailTextTests: XCTestCase {
         XCTAssertEqual(RadarTrailText.lengthTitle, "Länge")
         XCTAssertEqual(RadarTrailSetting.lengths.map(RadarTrailText.length), ["5 Min", "10 Min", "20 Min"])
         XCTAssertEqual(RadarTrailText.spokenLength(20), "20 Minuten")
-        XCTAssertEqual(RadarTrailText.footer, "Eine Spur zeigt, wo die Auskunft das Fahrzeug berechnet hat, seit das Radar offen ist. Das Radar merkt sich das nur im Arbeitsspeicher und vergisst es beim Schließen.")
+        XCTAssertEqual(RadarTrailText.footer, "„Meine“ sind das Fahrzeug, das du live verfolgst, und die Fahrzeuge deiner gemerkten Linien. Eine Spur zeigt, wo die Auskunft das Fahrzeug berechnet hat, seit das Radar offen ist. Das Radar merkt sich das nur im Arbeitsspeicher und vergisst es beim Schließen.")
     }
 
     func testCaption() {

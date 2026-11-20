@@ -218,15 +218,17 @@ public enum FeatureRegistry {
                                             when: "solange du ihn verfolgst, auch im Hintergrund, wenn iOS es zulässt")])
         case .radar:
             return FeatureDescriptor(
-                id: id, title: "Zug-Radar", line: "Züge in Echtzeit auf der Karte",
+                // MARK: integrate-radar3 – every mode the radar shows, and that its positions are calculated (docs/OEBB_LIVE.md §R11.3)
+                id: id, title: "Zug-Radar", line: "Züge, Bus, Bim und U-Bahn auf der Karte – Positionen berechnet",
                 group: .mapRadar, storage: .hub(defaultOn: true), control: .toggle,
                 dependencies: [.liveTimetable], usesLiveData: false,
                 // MARK: review-funktionen – „Auf der Karte zeigen“ in „Züge suchen“ opened the whole radar while it was off
                 offEffect: "Der Radar-Knopf im Fahrplan und „Auf der Karte zeigen“ in „Züge suchen“ sind ausgeblendet; Widget-Knopf und Link öffnen dann diese Seite.",
                 hiddenEntry: "der Radar-Knopf im Fahrplan samt „Auf der Karte zeigen“ in „Züge suchen“",
                 // MARK: radar2-radarmine – „Wo bleibt mein Bus?“ asks the chosen stop's departures inside the same 24 (docs/RADAR_MINE.md §4)
-                dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst; bei „Wo bleibt mein Bus?“ die Haltestelle, die du wählst",
-                                            when: "solange der Radar offen ist, höchstens 24 Anfragen pro Minute; die Abfahrten deiner Haltestelle einmal pro Minute darin, solange diese Ansicht offen ist – \(liveAsk)"),
+                // MARK: integrate-radar3 – also the Zeitreise's time, the tapped trip (trip sheet) and the Cockpit's train (docs/OEBB_LIVE.md §R11.3)
+                dataFlows: [FeatureDataFlow(.oebbTimetable, sends: "der Kartenausschnitt, den du ansiehst, bei der Zeitreise mit der gewählten Zeit; die Fahrt, die du antippst oder im Cockpit begleitest; bei „Wo bleibt mein Bus?“ die Haltestelle, die du wählst",
+                                            when: "solange das Radar offen ist, höchstens 24 Anfragen pro Minute für Karte, Zeitreise und Cockpit; die Abfahrten deiner Haltestelle einmal pro Minute darin, solange diese Ansicht offen ist; eine Fahrt, wenn du sie antippst – \(liveAsk)"),
                             FeatureDataFlow(.appleMaps, sends: "der Kartenausschnitt, den du ansiehst",
                                             when: "solange eine Karte zu sehen ist"),
                             // MARK: radar2-radartrail – Spuren keep what the radar loaded, in memory only (docs/RADAR_TRAILS.md §3)

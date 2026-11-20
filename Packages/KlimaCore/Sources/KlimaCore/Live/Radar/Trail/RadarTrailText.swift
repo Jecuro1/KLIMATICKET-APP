@@ -12,7 +12,9 @@ public enum RadarTrailText {
     public static let modeMine = "Ausgewählte und meine"
     public static let modeAll = "Alle im Ausschnitt"
     public static let lengthTitle = "Länge"
-    public static let footer = "Eine Spur zeigt, wo die Auskunft das Fahrzeug berechnet hat, seit das Radar offen ist. Das Radar merkt sich das nur im Arbeitsspeicher und vergisst es beim Schließen."
+    /// MARK: integrate-radar3 – what „meine“ covers (`RadarTrailPolicy.trips`: the followed vehicle and the remembered lines of „Meine Fahrzeuge“).
+    public static let mineMeaning = "„Meine“ sind das Fahrzeug, das du live verfolgst, und die Fahrzeuge deiner gemerkten Linien."
+    public static let footer = "\(mineMeaning) Eine Spur zeigt, wo die Auskunft das Fahrzeug berechnet hat, seit das Radar offen ist. Das Radar merkt sich das nur im Arbeitsspeicher und vergisst es beim Schließen."
 
     /// „5 Min“.
     public static func length(_ minutes: Int) -> String { "\(minutes) Min" }

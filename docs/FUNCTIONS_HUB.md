@@ -32,8 +32,8 @@ Code: Logik in `Packages/KlimaCore/Sources/KlimaCore/FeatureGate/` (Linux-Tests 
    Fehlt einer Funktion nur das, was sie braucht, steht direkt in ihrer Zeile „Fahrplan & Echtzeit einschalten“.
    Oben ein Suchfeld („Funktion suchen“).
 
-Für VoiceOver ist jede Zeile **ein** Element: Name, Wert („Schalter an, ausgeblendet · braucht Fahrplan & Echtzeit. Züge in Echtzeit auf
-der Karte“), Hinweis (was anders ist), Doppeltipp schaltet; „Was wird gesendet?“ und „… einschalten“ sind Aktionen der Zeile.
+Für VoiceOver ist jede Zeile **ein** Element: Name, Wert („Schalter an, ausgeblendet · braucht Fahrplan & Echtzeit. Züge, Bus, Bim und
+U-Bahn auf der Karte – Positionen berechnet“), Hinweis (was anders ist), Doppeltipp schaltet; „Was wird gesendet?“ und „… einschalten“ sind Aktionen der Zeile.
 
 ## 3. Die Regel (`FeatureGate`)
 
@@ -110,7 +110,7 @@ Die Seite liest die Zähler jede Sekunde, solange sie offen ist (ein Actor-Aufru
 
 | Empfänger | von | was | wann |
 |---|---|---|---|
-| ÖBB-Fahrplanauskunft | Fahrplan & Echtzeit, Live-Mitteilungen, Zug-Radar, Züge suchen, Störungen, Hintergrund-Erkennung | Haltestellen, Zeiten, Zugnummern; für „In der Nähe“ der Standort auf rund 100 m gerundet; beim Radar der Kartenausschnitt; die Zugnummer der Suche; der verfolgte Zug; für einen Vorschlag einmal zwei Haltestellen und die Uhrzeit | nur mit Zustimmung: wenn du suchst oder eine Live-Ansicht offen ist, für die Widgets beim Öffnen höchstens alle 15 Minuten, beim Verfolgen auch im Hintergrund; Radar höchstens 24 pro Minute |
+| ÖBB-Fahrplanauskunft | Fahrplan & Echtzeit, Live-Mitteilungen, Zug-Radar, Züge suchen, Störungen, Hintergrund-Erkennung | Haltestellen, Zeiten, Zugnummern; für „In der Nähe“ der Standort auf rund 100 m gerundet; beim Radar der Kartenausschnitt (bei der Zeitreise mit der gewählten Zeit), die angetippte Fahrt, das Fahrzeug im Cockpit und die Haltestelle von „Wo bleibt mein Bus?“; die Zugnummer der Suche; der verfolgte Zug; für einen Vorschlag einmal zwei Haltestellen und die Uhrzeit | nur mit Zustimmung: wenn du suchst oder eine Live-Ansicht offen ist, für die Widgets beim Öffnen höchstens alle 15 Minuten, beim Verfolgen auch im Hintergrund; Radar höchstens 24 pro Minute (Karte, Zeitreise, Cockpit und Tafel zusammen; eine angetippte Fahrt kommt dazu) |
 | ÖBB-Ticketshop | Live-Ticketpreise | Start, Ziel, Tag, Klasse, Ermäßigung | wenn ein Preis angezeigt wird |
 | VAO | Live-Ticketpreise | Start und Ziel im Verbund, Tag | wenn ein Verbundpreis angezeigt wird |
 | KlimaBilanz-Server (Cloudflare) | Konto & Sync, Server-Einstellungen, Offizielle Logos | mit Konto Fahrten, Tickets, Favoriten, Vorteile, Anzeigename und die E-Mail-Adresse der Anmeldung; ohne Konto nur App- und iOS-Version beim Abruf der Server-Einstellungen; für Logos nichts Persönliches | Sync beim Öffnen und nach Änderungen; Server-Einstellungen bei jedem Start und vor jedem Sync, **auch ohne Konto**; Logo-Paket beim ersten Bedarf |

@@ -12,8 +12,9 @@ extension RadarView {
         Button { showsFilter = true } label: {
             Image(systemName: model.filter.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
         }
-        .accessibilityLabel("Filter")
-        .accessibilityValue(model.filter.isActive ? "aktiv" : "aus")
+        // MARK: integrate-radar3 – VoiceOver names the sheet the button opens („Filter & Darstellung“), and whether a filter holds
+        .accessibilityLabel(RadarModesText.sheetTitle)
+        .accessibilityValue(model.filter.isActive ? "Filter aktiv" : "kein Filter")
     }
 
     var styleMenu: some View {

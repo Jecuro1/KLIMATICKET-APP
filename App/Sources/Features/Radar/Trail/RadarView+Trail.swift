@@ -101,8 +101,11 @@ extension RadarView {
         let mode = trail.setting.mode
         guard mode != .off else { return .none }
         let drawing = trailDrawing
-        let held = mode == .all ? trail.holdsAnything
+        // MARK: integrate-radar3 – asked only away from now (the note reads it nowhere else); „meine“ includes the remembered lines' vehicles
+        let mine = model.radar2.mine
+        let held = travel.isAway && (mode == .all ? trail.holdsAnything
             : trail.holds(model.selectedTripID) || trail.holds(LiveFollowTracker.shared.target?.tripID)
+                || (!mine.lines.isEmpty && model.store.entries.contains { trail.holds($0.key) && mine.remembers($0.value.vehicle) }))
         return RadarTrailPolicy.note(mode: mode, trainsOn: trainsOn, timeAway: travel.isAway, choice: drawing.choice,
                                      drawn: drawing.trails.count, heldForReturn: held, firstRecordedAt: trail.firstRecordedAt, now: Date(),
                                      length: trail.setting.length, drawnSince: drawing.since)   // MARK: radar2-review-radartrail – „seit“ as drawn
