@@ -87,6 +87,7 @@ extension RadarView {
                 Annotation("\(cluster.count) Stationen", coordinate: cluster.center.clCoordinate, anchor: .center) {
                     Button { zoom(toStations: cluster.center) } label: { StationClusterBubble(count: cluster.count) }
                         .buttonStyle(.plain)
+                        .opacity(mineStationGroupOpacity)   // MARK: radar2-review-radarmine – a white „2 Stationen“ beside the numbered arrivals read as one of them
                 }
                 .annotationTitles(.hidden)
             }

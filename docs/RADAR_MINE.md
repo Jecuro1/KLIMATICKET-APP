@@ -96,7 +96,8 @@ zu werden; VoiceOver: „Andere Haltestelle“) führt zurück.
   zweites Review). „Stand“ und Alter einer Tafel sind der Moment ihrer Anfrage – wie bei den Kacheln des Radars, zu dem die Positionen gehören
   (zweites Review; vorher die Ankunft der Antwort, so wirkte eine langsame Antwort frischer, und der Vergleich mit dem Radar nahm den falschen Moment).
   Eine gestrichelte Luftlinie verbindet jedes nummerierte Fahrzeug mit der Haltestelle; ein Tipp auf Zeile oder Nadel zeigt beide auf der Karte.
-  Während die Seite Nummern zeigt, treten die anderen Marker zurück.
+  Während die Seite Nummern zeigt, treten die anderen Marker zurück – auch die Gruppen der Ebene „Stationen“ (zweites Review: im CI-Screenshot las sich
+  eine weiße „2“ für zwei Stationen neben der Haltestelle wie Ankunft Nummer 2; einzelne Stationen behalten ihre Namenskapsel).
 - **Chips aus:** eine Abfahrt eines Verkehrsmittels, dessen Chip aus ist (oder das die Stadt-Spur gerade nicht zeichnet), steht in der Liste ohne
   Nummer; darunter „Bim ist aus – diese Abfahrten stehen in der Liste, aber nicht auf der Karte.“ mit „Einschalten“. Ist der Chip an und nur die
   Karte zu weit (Review): „Bim erscheint auf der Karte, wenn du näher heranzoomst – diese Abfahrten stehen schon in der Liste.“ – vorher hieß auch das

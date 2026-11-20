@@ -101,6 +101,13 @@ extension RadarView {
         model.radar2.mine.groupHoldsMine(cluster.tripIDs) { model.pinsByID[$0]?.vehicle } ? RadarMarkerDecoration(badge: .star) : .plain
     }
 
+    /// MARK: radar2-review-radarmine – the stations layer's group bubbles step back like the vehicle groups while the stop page numbers its arrivals:
+    /// in the CI screenshots a white „2“ (two stations) beside the stop read as arrival number 2. Single stations keep their name capsule.
+    var mineStationGroupOpacity: Double {
+        let mine = model.radar2.mine
+        return mine.stopPageShown && !mine.numbers.isEmpty ? 0.35 : 1
+    }
+
     func mineGroupSpoken(_ cluster: RadarCluster) -> String {
         mineGroupDecoration(cluster).badge == .star ? RadarMineText.groupValue : ""
     }
