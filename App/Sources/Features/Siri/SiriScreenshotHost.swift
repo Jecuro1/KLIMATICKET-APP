@@ -16,10 +16,10 @@ enum SiriQuestionsRelease {
 /// - `siriAX5` / `siriAX5Mid`: the opening and the tester at the largest accessibility text size
 /// - `siriSnippets` / `siriSnippetsEnd`: what Siri shows for five answers (a month's days, a year's months, a ticket's days, the
 ///   break-even, no table yet), top and end
-/// - `settings2` shows the row in Einstellungen once it is live
+/// - `siriSettings`: the section „KI & Siri“ of Einstellungen with the row „Fragen an KlimaBilanz“ (as SettingsView draws it)
 struct SiriScreenshotHost: View {
     static let screens: Set<String> = ["siriQuestions", "siriAnswer", "siriExamples", "siriBottom", "siriAX5", "siriAX5Mid",
-                                       "siriSnippets", "siriSnippetsEnd"]
+                                       "siriSnippets", "siriSnippetsEnd", "siriSettings"]
 
     let screen: String
 
@@ -45,6 +45,17 @@ struct SiriScreenshotHost: View {
         case "siriSnippets", "siriSnippetsEnd":
             SiriSnippetGallery(table: SiriKpiWriter.makeTable(Repository(context: context, app: app)))
                 .defaultScrollAnchor(screen == "siriSnippetsEnd" ? .bottom : .top)
+        case "siriSettings":
+            NavigationStack {
+                List { SetAssistantSection() }
+                    .listStyle(.insetGrouped)
+                    .listSectionSpacing(Theme.Spacing.l)
+                    .listSectionMargins(.horizontal, Theme.Spacing.cardGutter)
+                    .scrollContentBackground(.hidden)
+                    .background { SetBackdrop() }
+                    .navigationTitle("Einstellungen")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
         default:
             NavigationStack { SiriQuestionsView() }
         }

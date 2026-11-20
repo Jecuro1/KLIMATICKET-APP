@@ -131,8 +131,16 @@ wohin; das steht in der Beschreibung der Aktion und auf der Seite. Kein Netz, ke
 `SiriQuestionsRelease.isLive` (SiriScreenshotHost.swift) schaltet die Einstellungs-Zeile. Bis zur Freigabe war der Intent
 `isDiscoverable = false` und ohne App Shortcut; freigegeben nach zwei Screenshot-Läufen (723, 724), in denen Seite und Snippet in
 hell, dunkel und AX5 angesehen wurden. Screenshot-Szenen (`-KBScreenshot <name> -KBDemo YES`, Demo-Jahr, kein Netz):
-`siriQuestions` (die Seite), `siriAnswer` (Wert · Letzter Monat und „So fragst du“), `siriAX5` (größte Schrift), `siriSnippets`
-(Siris Tafel für fünf Antworten: Tage eines Monats, Monate eines Jahres, Tage bis Ablauf, Break-even, keine Tabelle).
+`siriQuestions` (die Seite), `siriAnswer` (Wert · Letzter Monat, zum Ausprobieren gescrollt), `siriExamples` („So fragst du“),
+`siriBottom` (Kurzbefehle, Datenschutz), `siriAX5` / `siriAX5Mid` (größte Schrift: Eröffnung, Ausprobieren mit Tage bis Ablauf),
+`siriSnippets` / `siriSnippetsEnd` (Siris Tafel für fünf Antworten: Tage eines Monats, Monate eines Jahres, Tage bis Ablauf,
+Break-even, keine Tabelle) und `siriSettings` (der Abschnitt „KI & Siri“ in Einstellungen).
+
+Angesehen in hell und dunkel: Lauf 723 (erste Fassung), 724 (Zahl und Einheit trennen nie, Balken-Beschriftung unter dem eigenen
+Balken, Eröffnung bis AX3), 725 (freigegeben: „KlimaBilanz“ trennt nicht, Prozent wie die Widgets), 726 (die Einstellungs-Zeile).
+Die jeweils erste helle Aufnahme eines Laufs (`siriSnippets` in 723 und 724) blieb leer: der Simulator hing beim ersten Bild im
+Farbraum-Aufbau von CoreGraphics (`stuck-light-siriSnippets.sample.txt`), dieselbe Szene in dunkel und `siriSnippetsEnd` in hell
+sind vollständig.
 
 ## 9. Getestet und nicht getestet
 
