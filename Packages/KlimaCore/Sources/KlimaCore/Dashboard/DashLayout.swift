@@ -278,10 +278,11 @@ public enum DashPreset: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// Short enough for one line in the editor's two-column tiles (the longer „Wie ausgeliefert“ wrapped and made the first row taller).
     public var subtitle: String {
         switch self {
-        case .standard: "Wie ausgeliefert"
-        case .quiet: "Nur das Nötigste"
+        case .standard: "Ab Werk"
+        case .quiet: "Das Nötigste"
         case .numbers: "Zahlen zuerst"
         case .all: "Jede Karte"
         }

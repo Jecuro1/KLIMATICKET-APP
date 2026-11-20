@@ -41,8 +41,8 @@ die Einladung ohne Fahrt), `yearReview`, `commute`, `quickLog`, `suggestions`, `
 
 | Vorlage (Untertitel) | Reihenfolge | ausgeblendet | Kennzahlen |
 |---|---|---|---|
-| Standard („Wie ausgeliefert“) | Standard | – | wie gewählt |
-| Ruhig („Nur das Nötigste“) | Standard | Jahresrückblick, Kennzahlen, Nächster Erfolg, Diese Woche, Vorteile | wie gewählt |
+| Standard („Ab Werk“) | Standard | – | wie gewählt |
+| Ruhig („Das Nötigste“) | Standard | Jahresrückblick, Kennzahlen, Nächster Erfolg, Diese Woche, Vorteile | wie gewählt |
 | Zahlen („Zahlen zuerst“) | Bilanz, Kennzahlen, Ziele, Diese Woche, dann der Rest | Vorteile | ohne Wahl: die vier Standard-Kacheln |
 | Alles („Jede Karte“) | Standard | – | ohne Wahl: die vier Standard-Kacheln |
 
@@ -129,6 +129,12 @@ selbst bei der größten Schrift, eine Spalte), `dashStandardAX5` (die Übersich
 Ringe), `dashQuiet`, `dashQuietBottom` (Vorlage Ruhig), `dashKpiPicker`, `dashGoalEditor`; dazu die bestehenden `dashboard`, `dashboardBottom` zum Vergleich. Die Ziele der Szenen
 richten sich nach den Demo-Fahrten des laufenden Monats (eines erfüllt, eines unterwegs, „Break-even bis“), egal an welchem Tag der Lauf ist.
 
+Angesehen in vier Läufen, hell und dunkel: [693](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44658618686) (alle Szenen,
+dazu `dashboard`/`dashboardBottom` ohne Änderung), [697](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44663760622) (nach dem
+ersten Feinschliff), [699](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44668459954) (mit dem Knopf am Ende der Übersicht und
+der Zeile in Einstellungen) und ein letzter für die kürzeren Untertitel der Vorlagen („Ab Werk“, „Das Nötigste“ – vorher zweizeilig, die
+erste Kachelreihe war dadurch höher als die zweite).
+
 ## 7. Getestet und nicht
 
 - Linux (`swift test --filter 'DashLayout|Kpi|Goals'`): Zusammenführen mit neuer Karte, unbekannte Karte, `move` gleich `Array.move`,
@@ -137,6 +143,20 @@ richten sich nach den Demo-Fahrten des laufenden Monats (eines erfüllt, eines u
   29. 3. und 25. 10. 2026), erster Tag ohne Fahrt, 150 % Überschuss, genau im Plan, Einzahl/Mehrzahl, „Break-even bis“ ohne Prognose,
   das Buch feuert einmal pro Zeitraum.
 - Typprüfung der App unter Linux (`tools/typecheck`), CI-Build auf macOS, Screenshots hell und dunkel.
+- **Leistung** (ein `[perf]`-Lauf nach dem Umbau: [Lauf 44658832501](https://github.com/Jecuro1/KLIMATICKET-APP/actions/runs/44658832501),
+  Commit `71161e0`, Artefakt `perf-594`). Der Job stieß wie die Läufe von Look & Feel an das 95-Minuten-Limit (docs/THEMES.md §4); die
+  Übersicht war vorher fertig gemessen. Wischen (XCUITest), die Zahl der Planung:
+
+  | Übersicht · Daten | Baseline Lauf 383 | Lauf 387 | dieser Lauf |
+  |---|---:|---:|---:|
+  | +1 500 Fahrten | 309,0 ms/s | 179,8 ms/s | 299,0 ms/s |
+  | Demo-Jahr | 315,3 ms/s | 188,6 ms/s | 308,6 ms/s |
+
+  Also nicht schlechter als die Baseline, aber langsamer als Lauf 387. Der Runner war in diesem Lauf überall langsamer, auch auf
+  Bildschirmen ohne Änderung (Gipfelbuch Wischen 13,7 → 42,0, Ticket-Tour 118 → 250, Statistik-Tour 330 → 574 ms/s gegen Lauf 387;
+  `sample` brauchte 145 s für ein Fenster von 20 s); der Vergleich trägt nur Unterschiede ab etwa Faktor 2 (docs/PERF_BASELINE.md §6).
+  Die Tour-Zeile der Übersicht (459 ms/s) taugt nicht: Gezählt wurde nur einer der sechs Durchgänge, die anderen hatten weniger als die
+  nötigen 10 Frames. Ein sauberer Vergleich vorher/nachher auf demselben Runner oder auf einem iPhone steht aus.
 - **Nur auf dem iPhone prüfbar:** wie sich Ziehen anfühlt, Umordnen mit VoiceOver, die Pop-Haptik beim Erreichen, die Leistung der
   datengetriebenen Liste beim Scrollen.
 
