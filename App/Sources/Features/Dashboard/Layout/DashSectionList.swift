@@ -107,8 +107,10 @@ private struct DashSectionView: View {
                 // No second "Neue Fahrt" button in the content – the header's "+" and the favourites do that (DESIGN.md §5.1 · 5).
                 DashQuickLogSection(favorites: context.favorites, summary: snapshot.summary, ticketID: context.ticket.id,
                                     ticketIsCurrent: context.ticket.isActive, showsNewTripButton: false)
-                    // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the card.
-                    .padding(.top, 2)
+                    // The chip row carries 8 pt of vertical breathing room for glass and shadows → 10 pt below the Bilanz card.
+                    // MARK: review-uebersicht – under any other card (the preset „Zahlen“ puts it under „Diese Woche“, or a card the
+                    // person moved) it keeps a section's gap; 10 pt read as part of the card above.
+                    .padding(.top, previous == .balance ? 2 : (previous == nil ? Theme.Spacing.xs : DashStyle.sectionSpacing - Theme.Spacing.xs))
                     .padding(.bottom, -Theme.Spacing.xs)
                     .reveal(order: revealOrder)
             }

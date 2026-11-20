@@ -200,6 +200,13 @@ Gefunden und behoben (KlimaCore mit Linux-Tests, `swift test --filter 'DashLayou
 - VoiceOver: „Nach oben“ an erster Stelle tat nichts; das Auge war in die Zeile verschmolzen (Doppeltippen blendete ohne Hinweis aus).
 - Ziel-Editor: eine andere Art spielte zwei Haptiken auf einmal; „Break-even bis“ war nach dem Ablauf wählbar (mit einem Tag nach dem
   Ticket).
+- Aus den Screenshots des Reviews: „Schnell erfassen“ unter einer anderen Karte als der Bilanz (Vorlage „Zahlen“: unter „Diese Woche“)
+  klebte mit 10 pt an ihr – jetzt der Abstand einer Karte (Szene `dashCardsMoved`); in den Sätzen der Ziele bleibt eine Zahl bei ihrem
+  Wort („· 6“ am Zeilenende, „Fahrten fehlten“ darunter); die Kachel „Auto-Vergleich“ sagt nur „Ticketjahr 2026/27“ (zweizeilig machte
+  sie ihre Reihe höher).
+- Über der Tab-Leiste stand auf jedem Tab eine leere Glas-Kapsel über dem Inhalt: das Zubehör von „Live verfolgen“ (iOS 26.0 zeigt
+  `tabViewBottomAccessory` auch leer). Ab iOS 26.1 ist es nur da, während eine Fahrt verfolgt wird (`isEnabled:`; eine Zeile in
+  `RootView.swift`, `LiveFollowAccessoryVisibility.swift`). Unter iOS 26.0 bleibt es wie bisher.
 
 ## 10. Auf dem Gerät prüfen
 

@@ -206,7 +206,7 @@ struct DashGoalEditor: View {
     private var footer: String {
         kind == .breakEvenBy
             ? "„Auf Kurs“ heißt: die Prognose der Bilanz-Karte liegt vor dem Tag. Sie rechnet mit deinem bisherigen Tempo – kein Versprechen."
-            : "Gezählt wird der laufende Kalendermonat. „Auf Kurs“ misst an den Tagen, die schon vorbei sind; am 1. ist noch nichts fällig."
+            : "Gezählt wird der laufende Kalendermonat, soweit dein Ticket gilt. „Auf Kurs“ misst an den Tagen, die schon vorbei sind; am ersten Tag ist noch nichts fällig."
     }
 
     private func save() {

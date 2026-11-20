@@ -276,7 +276,7 @@ struct DashCustomizeView: View {
         } header: {
             SetSectionHeader(title: "Ziele")
         } footer: {
-            SetFooter(text: "Ein Monatsziel zählt im Kalendermonat, wie Statistik. Der Ring zeigt, wie weit du bist; was „auf Kurs“ heißt, misst die App an den Tagen, die schon vorbei sind. Eine Prognose bleibt eine Prognose.")
+            SetFooter(text: "Ein Monatsziel zählt im Kalendermonat, wie Statistik – an den Tagen, an denen dein Ticket gilt. Der Ring zeigt, wie weit du bist; was „auf Kurs“ heißt, misst die App an den Tagen, die schon vorbei sind. Eine Prognose bleibt eine Prognose.")
         }
     }
 

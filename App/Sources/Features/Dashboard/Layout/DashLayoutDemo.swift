@@ -50,8 +50,9 @@ struct DashLayoutScreenshotHost: View {
     static let screens: Set<String> = [
         "dashEdit", "dashEditFull", "dashEditSort", "dashEditAX5", "dashKpis", "dashKpisAX5", "dashGoals", "dashQuiet",
         "dashQuietBottom", "dashKpiPicker", "dashGoalEditor", "dashEditSettings", "dashStandardAX5", "dashGoalsAX5", "dashSettingsRow",
-        "dashGoalStates", "dashGoalStatesAX5",   // MARK: review-uebersicht – every goal state at a ticket's edges (synthetic)
+        "dashGoalStates", "dashGoalStatesEnd", "dashGoalStatesAX5",   // MARK: review-uebersicht – goal states at a ticket's edges
         "dashKpisCar",                           // MARK: review-uebersicht – the Bilanz card's car row above the „Auto-Vergleich“ tile
+        "dashCardsMoved",                        // MARK: review-uebersicht – „Schnell erfassen“ under „Diese Woche“ (moved cards)
     ]
 
     let screen: String
@@ -59,6 +60,8 @@ struct DashLayoutScreenshotHost: View {
     @Query(filter: #Predicate<TicketEntity> { $0.deletedAt == nil }) private var tickets: [TicketEntity]
     @Query(filter: #Predicate<TripEntity> { $0.deletedAt == nil }, sort: \TripEntity.date, order: .reverse)
     private var trips: [TripEntity]
+    @Query(filter: #Predicate<FavoriteRouteEntity> { $0.deletedAt == nil }, sort: \FavoriteRouteEntity.sortIndex)
+    private var favorites: [FavoriteRouteEntity]
     @State private var isReady = false
 
     var body: some View {
@@ -138,13 +141,30 @@ struct DashLayoutScreenshotHost: View {
                 .navigationTitle("Übersicht")
                 .navigationBarTitleDisplayMode(.inline)
             }
-        case "dashGoalStates", "dashGoalStatesAX5":   // MARK: review-uebersicht
+        case "dashCardsMoved":   // MARK: review-uebersicht – the cards in a moved order, from the top (no hero above them)
+            NavigationStack {
+                ScrollView {
+                    if let ticket = Analytics.activeTicket(in: tickets, selectedID: app.settings.selectedTicketID) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            DashSectionList(context: DashSectionContext(
+                                ticket: ticket, snapshot: Analytics.make(ticket: ticket, trips: trips, catalog: app.catalog), trips: trips,
+                                favorites: favorites, candidates: [], isRecording: false))
+                        }
+                        .padding(.bottom, Theme.Spacing.xl)
+                    }
+                }
+                .ambientBackground(.standard, glow: 0.4)
+                .navigationTitle("Übersicht")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+        case "dashGoalStates", "dashGoalStatesEnd", "dashGoalStatesAX5":   // MARK: review-uebersicht
             NavigationStack {
                 ScrollView {
                     DashGoalStatesDemo()
                         .padding(.horizontal, Theme.Spacing.cardGutter)
                         .padding(.vertical, Theme.Spacing.m)
                 }
+                .defaultScrollAnchor(screen == "dashGoalStatesEnd" ? .bottom : .top)
                 .ambientBackground(.standard, glow: 0.4)
                 .navigationTitle("Ziele")
                 .navigationBarTitleDisplayMode(.inline)
@@ -181,6 +201,11 @@ struct DashLayoutScreenshotHost: View {
             store.installDemo(layout: layout, kpis: figures, goals: goals)
         case "dashGoalEditor", "dashStandardAX5":
             store.installDemo(layout: .standard, kpis: [], goals: [])
+        case "dashCardsMoved":   // MARK: review-uebersicht – „Diese Woche“ first, „Schnell erfassen“ under it
+            var layout = DashLayout.standard
+            layout.move(fromOffsets: IndexSet(integer: layout.order.firstIndex(of: .week) ?? 0), toOffset: 0)
+            layout.place(.quickLog, after: .week)
+            store.installDemo(layout: layout, kpis: [], goals: [])
         case "dashKpisCar":   // MARK: review-uebersicht
             store.installDemo(layout: .standard, kpis: [.carComparison, .distance, .totalValue, .tripCount], goals: [])
         default:

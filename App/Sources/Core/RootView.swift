@@ -367,9 +367,7 @@ struct MainTabView: View {
         .tabBarMinimizeBehavior(.onScrollDown)
         .plannerTabSearch()   // MARK: planner
         // MARK: scotty – „Live verfolgen“: the active trip above the tab bar (shown only while a follow runs)
-        .tabViewBottomAccessory {
-            LiveFollowAccessoryHost(tracker: LiveFollowTracker.shared)
-        }
+        .liveFollowAccessory(LiveFollowTracker.shared)   // MARK: review-uebersicht – no empty glass capsule while nothing is followed
     }
 }
 

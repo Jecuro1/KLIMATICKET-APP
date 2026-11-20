@@ -75,7 +75,7 @@ struct DashGoalRow: View {
 
     var body: some View {
         let format = DashGoalFormat.formatter
-        let projection = GoalText.projection(progress, format: format)
+        let projection = GoalText.projection(progress, format: format).map(DataHubCounts.keepingUnits)
         // At accessibility sizes the ring stands above the text, so the sentences get the whole width.
         let layout = typeSize.isAccessibilitySize
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: Theme.Spacing.s))
@@ -100,7 +100,8 @@ struct DashGoalRow: View {
                     .monospacedDigit()
                     .foregroundStyle(Theme.textPrimary)
                     .numericValue(progress.actual)
-                Text(GoalText.remaining(progress, format: format))
+                // MARK: review-uebersicht – a number keeps its word at a line end („· 6“ / „Fahrten fehlten“ broke apart).
+                Text(DataHubCounts.keepingUnits(GoalText.remaining(progress, format: format)))
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -95,7 +95,6 @@ public enum KpiKind: String, CaseIterable, Codable, Sendable, Hashable, Identifi
         case .daysRemaining: "Gültigkeit"
         case .forecastEndValue: "Prognose · zum Ablauf"
         case .tripsThisWeek: "diese Woche"
-        case .carComparison: "mit dem Auto · Ticketjahr \(ticketYear)"
         default: "Ticketjahr \(ticketYear)"
         }
     }
