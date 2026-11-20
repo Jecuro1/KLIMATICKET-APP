@@ -69,9 +69,12 @@ public struct TimeBalanceDelays: Hashable, Sendable {
     public var totalMinutes: Double
     /// Fahrten with a recorded delay (0 included; a journey once).
     public var recordedTrips: Int
-    /// Of those, arrived at least a minute late.
+    /// Of those, arrived at least `lateFromMinutes` late.
     public var delayedTrips: Int
     public var longestMinutes: Int
+    /// From how many minutes a Fahrt counts as „verspätet“: the Verspätungs-Tagebuch's personal mark (review-delaydiary –
+    /// both screens say „verspätet“ about the same Fahrten, so they use one mark; at least 1).
+    public var lateFromMinutes: Int = 1
 }
 
 public struct TimeBalance: Hashable, Sendable {
@@ -121,9 +124,12 @@ public enum TimeBalanceCalculator {
     ///   - trips: every trip that may matter – the chart's weeks can reach before the period (they are drawn faint), the
     ///     totals use only trips inside `range` and up to `now` (like the Auto-Vergleich).
     ///   - carProfile: the holder's car settings (road-distance factor).
+    ///   - lateFromMinutes: a recorded Fahrt counts as „verspätet“ from this many minutes (the diary's personal mark; the
+    ///     minutes lost count from the first minute either way).
     public static func compute(trips: [TimeTripInput], range: ClosedRange<Date>, now: Date, carProfile: CarProfile,
                                model: TravelTimeModel = .standard, calendar: Calendar = .vienna,
-                               weekCount: Int = 12) -> TimeBalance {
+                               weekCount: Int = 12, lateFromMinutes: Int = 1) -> TimeBalance {
+        let lateFrom = max(1, lateFromMinutes)
         let past = trips.filter { $0.date <= now }
         let resolved = TravelTimeResolver.resolveAll(past, model: model, calendar: calendar)
         let inRange = past.filter { range.contains($0.date) }
@@ -163,7 +169,7 @@ public enum TimeBalanceCalculator {
             if let delay = legs.last(where: { $0.recordedDelayMinutes != nil })?.recordedDelayMinutes {
                 delayRecorded += 1
                 delayTotal += Double(delay)
-                if delay >= 1 { delayLate += 1 }
+                if delay >= lateFrom { delayLate += 1 }
                 delayLongest = max(delayLongest, delay)
             }
             let minutes = times.reduce(0) { $0 + $1.minutesPerDirection }
@@ -187,7 +193,8 @@ public enum TimeBalanceCalculator {
             }
 
         let delays = delayRecorded > 0
-            ? TimeBalanceDelays(totalMinutes: delayTotal, recordedTrips: delayRecorded, delayedTrips: delayLate, longestMinutes: delayLongest)
+            ? TimeBalanceDelays(totalMinutes: delayTotal, recordedTrips: delayRecorded, delayedTrips: delayLate, longestMinutes: delayLongest,
+                                lateFromMinutes: lateFrom)
             : nil
 
         return TimeBalance(

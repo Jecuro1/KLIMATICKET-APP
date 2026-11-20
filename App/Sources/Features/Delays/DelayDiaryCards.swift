@@ -476,7 +476,7 @@ struct DelayMonthCard: View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Rectangle().fill(Theme.separator).frame(height: 1)
             if month.lateEntries.isEmpty {
-                Label(month.recordedCount > 0 ? "Keine Verspätung ab \(threshold)\u{00A0}Min. in diesem Monat." : "In diesem Monat ist noch nichts eingetragen.",
+                Label(DelayDiaryText.noLateLine(threshold: threshold, recorded: month.recordedCount),
                       systemImage: month.recordedCount > 0 ? "checkmark.seal" : "tray")
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
@@ -578,7 +578,7 @@ struct DelayDiaryMethodCard: View {
                 row("clock.badge.exclamationmark", "Verspätet ab \(threshold)\u{00A0}Min.", "Deine eigene Grenze, einstellbar. Eine Quote gibt es ab \(DelayDiaryRules.minimumRecordedForShare) erfassten Fahrten.")
                 row("point.topleft.down.to.point.bottomright.curvepath", "Eine Reise ist eine Fahrt", "Bei Etappen zählt die letzte erfasste Ankunft – wie in der Zeitbilanz.")
                 row("building.columns", "Was die AGB messen", "Punkt 24.2: die Pünktlichkeit jeder Bahn pro Gültigkeitsmonat, gemessen und veröffentlicht von der Bahn selbst.")
-                row("lock.fill", "Bleibt auf deinem iPhone", "Nichts davon wird hochgeladen. Nur das PDF, das du selbst teilst, verlässt das Gerät.")
+                row("lock.fill", "Bleibt auf deinem iPhone", "Die App lädt nichts davon hoch. Weiter geht es nur, wenn du selbst das PDF oder eine Sicherung teilst.")
             }
         }
         .accessibilityIdentifier("delayDiary.method")

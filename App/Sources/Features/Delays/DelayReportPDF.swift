@@ -47,9 +47,16 @@ enum DelayReportPDF {
         return (data, max(pages, 1))
     }
 
+    static var folder: URL { FileManager.default.temporaryDirectory.appending(path: "Verspaetungen", directoryHint: .isDirectory) }
+
+    /// Removes the written PDFs (when the sheet closes – the share sheet has copied what it took by then).
+    static func removeFiles() {
+        try? FileManager.default.removeItem(at: folder)
+    }
+
     /// Writes the PDF to the temporary directory; returns its URL and page count.
     static func write(_ report: DelayReport, head: DelayReportHead) throws -> (url: URL, pages: Int) {
-        let folder = FileManager.default.temporaryDirectory.appending(path: "Verspaetungen", directoryHint: .isDirectory)
+        let folder = Self.folder
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let label = head.yearLabel.replacingOccurrences(of: "/", with: "-")
         let url = folder.appending(path: "Verspaetungs-Tagebuch-\(label).pdf")
@@ -148,7 +155,8 @@ private struct DelayReportPage {
         y += text(title, size: 12, weight: .bold, x: left, y: y, width: width) + 2
         y += text(counts, size: 9.5, color: .darkGray, x: left, y: y, width: width) + 6
         if month.rows.isEmpty {
-            y += text("Keine Verspätung ab \(threshold)\u{00A0}Min. in diesem Monat.", size: 10, color: .darkGray, x: left, y: y, width: width) + 14
+            y += text(DelayDiaryText.noLateLine(threshold: threshold, recorded: month.recordedCount), size: 10, color: .darkGray,
+                      x: left, y: y, width: width) + 14
             return
         }
         tableHeader()

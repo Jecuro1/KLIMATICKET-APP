@@ -240,6 +240,21 @@ final class DelayDiaryTests: XCTestCase {
         let anyMinute = diary.entries.filter { ($0.minutes ?? 0) >= 1 }.count
         XCTAssertEqual(anyMinute, balance.delays?.delayedTrips)
         XCTAssertEqual(diary.entries.compactMap(\.minutes).reduce(0, +), Int(balance.delays?.totalMinutes ?? -1))
+        // review-delaydiary: with the diary's mark both screens call the same Fahrten „verspätet“ (the Zeitbilanz counted every
+        // minute: about twice as many „verspätet“ there as in the diary for the demo year).
+        for mark in DelayDiaryRules.thresholdChoices {
+            let marked = TimeBalanceCalculator.compute(trips: inputs, range: range, now: now, carProfile: CarProfile(), lateFromMinutes: mark)
+            let options = DelayDiaryOptions(thresholdMinutes: mark)
+            let diaryAtMark = DelayDiaryCalculator.compute(trips: inputs.map { DelayDiaryTrip($0) }, ticketStart: ticketStart,
+                                                           ticketEnd: ticketEnd, now: now, options: options)
+            XCTAssertEqual(diaryAtMark.lateCount, marked.delays?.delayedTrips, "mark \(mark)")
+            XCTAssertEqual(marked.delays?.lateFromMinutes, mark)
+            XCTAssertEqual(marked.delays?.recordedTrips, balance.delays?.recordedTrips)
+            XCTAssertEqual(marked.delays?.totalMinutes, balance.delays?.totalMinutes, "the minutes lost do not depend on the mark")
+        }
+        XCTAssertEqual(balance.delays?.lateFromMinutes, 1)
+        let floor = TimeBalanceCalculator.compute(trips: inputs, range: range, now: now, carProfile: CarProfile(), lateFromMinutes: 0)
+        XCTAssertEqual(floor.delays?.delayedTrips, balance.delays?.delayedTrips, "a mark below 1 minute is 1 minute")
     }
 
     // MARK: Report
@@ -323,6 +338,22 @@ final class DelayDiaryTests: XCTestCase {
         XCTAssertEqual(DelayDiaryText.route(from: "A", to: "B", roundTrip: false, legs: 3), "A → B (3 Etappen)")
     }
 
+    /// review-delaydiary: a month without an entry is not called punctual – not on the screen, not in the PDF, not on its chip.
+    func testAMonthWithoutEntriesIsNotCalledPunctual() {
+        XCTAssertEqual(DelayDiaryText.noLateLine(threshold: 5, recorded: 4), "Keine Verspätung ab 5\u{00A0}Min. in diesem Monat.")
+        XCTAssertEqual(DelayDiaryText.noLateLine(threshold: 10, recorded: 0), "In diesem Monat ist noch nichts eingetragen.")
+        XCTAssertEqual(DelayDiaryText.reportChipLine(recorded: 6, late: 2), "2\u{00A0}verspätet")
+        XCTAssertEqual(DelayDiaryText.reportChipLine(recorded: 6, late: 0), "0\u{00A0}verspätet")
+        XCTAssertEqual(DelayDiaryText.reportChipLine(recorded: 0, late: 0), "0\u{00A0}erfasst")
+        // A month with Fahrten but no entry, picked for the PDF: counted, no rows, no share.
+        let quiet = year([trip(vienna(2026, 3, 3, 8)), trip(vienna(2026, 3, 4, 8))], now: vienna(2026, 3, 20))
+        let report = DelayReportBuilder.make(quiet, months: [0])
+        XCTAssertEqual(report.months.first?.tripCount, 2)
+        XCTAssertEqual(report.months.first?.recordedCount, 0)
+        XCTAssertEqual(report.rows.count, 0)
+        XCTAssertNil(report.onTimeShare)
+    }
+
     /// A personal log: the caveat cites Punkt 24, and no sentence claims a right or names money.
     func testCopyIsAPersonalLog() {
         XCTAssertEqual(DelayDiaryText.caveat,
@@ -333,6 +364,8 @@ final class DelayDiaryTests: XCTestCase {
             DelayDiaryText.reportTitle, DelayDiaryText.reportIntro(threshold: 5, scope: .all),
             DelayDiaryText.reportIntro(threshold: 10, scope: .rail), DelayDiaryText.thresholdLine(5),
             DelayDiaryText.shareLine(0.87), DelayDiaryText.capturedToast(0), DelayDiaryText.capturedToast(30),
+            DelayDiaryText.noLateLine(threshold: 5, recorded: 3), DelayDiaryText.noLateLine(threshold: 5, recorded: 0),
+            DelayDiaryText.reportChipLine(recorded: 0, late: 0), DelayDiaryText.reportChipLine(recorded: 3, late: 1),
         ]
         for text in all {
             XCTAssertFalse(text.localizedCaseInsensitiveContains("anspruch"), text)

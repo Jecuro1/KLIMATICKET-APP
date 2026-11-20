@@ -267,7 +267,8 @@ struct DelayEntrySheet: View {
             if let recorded, recorded.source == .live {
                 note("dot.radiowaves.left.and.right", "Aus Live-Daten übernommen. Änderst du die Minuten, gilt der Eintrag als von Hand.")
             }
-            note("lock.fill", "Bleibt auf diesem iPhone – nur das PDF, das du selbst teilst, verlässt es.")
+            // review-delaydiary: the JSON backup carries the minutes too (Daten & Sicherung), not only the PDF.
+            note("lock.fill", "Bleibt auf diesem iPhone – weiter geht es nur, wenn du selbst das PDF oder eine Sicherung teilst.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -368,7 +369,7 @@ struct DelayTripRow: View {
             GlassCard(padding: Theme.Spacing.m, cornerRadius: Theme.Radius.tile) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: Theme.Spacing.s) {
-                        DelayDiaryTile(size: 40, isLate: late)
+                        DelayDiaryTile(size: 40, isLate: late, isOpen: recorded == nil)
                         titles
                         Spacer(minLength: Theme.Spacing.xs)
                         value(recorded, late: late, alignment: .trailing)
@@ -376,7 +377,7 @@ struct DelayTripRow: View {
                     }
                     VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                         HStack(spacing: Theme.Spacing.s) {
-                            DelayDiaryTile(size: 40, isLate: late)
+                            DelayDiaryTile(size: 40, isLate: late, isOpen: recorded == nil)
                             titles
                             Spacer(minLength: 0)
                             chevron
@@ -434,17 +435,25 @@ struct DelayTripRow: View {
     }
 }
 
-/// The diary's tile: a clock on the dawn → alpenglow gradient (pine → glacier for „pünktlich“).
+/// The diary's tile: a clock on the dawn → alpenglow gradient (pine → glacier for „pünktlich“). `isOpen` (a trip without an
+/// entry) shows the plain clock on the diary's colours – neither a check nor a warning (review-delaydiary: an unrecorded trip
+/// showed the green „pünktlich“ tile).
 struct DelayDiaryTile: View {
     var size: CGFloat = 44
     var isLate: Bool = true
+    var isOpen: Bool = false
+
+    private var symbol: String {
+        if isOpen { return "clock" }
+        return isLate ? "clock.badge.exclamationmark" : "clock.badge.checkmark"
+    }
 
     var body: some View {
-        Image(systemName: isLate ? "clock.badge.exclamationmark" : "clock.badge.checkmark")
+        Image(systemName: symbol)
             .font(.system(size: size * 0.42, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(LinearGradient(colors: isLate ? [Theme.dawn, Theme.alpenglow] : [Theme.pine, Theme.glacier],
+            .background(LinearGradient(colors: isLate || isOpen ? [Theme.dawn, Theme.alpenglow] : [Theme.pine, Theme.glacier],
                                        startPoint: .topLeading, endPoint: .bottomTrailing),
                         in: .rect(cornerRadius: size * 0.3, style: .continuous))
             .environment(\.colorScheme, .light)

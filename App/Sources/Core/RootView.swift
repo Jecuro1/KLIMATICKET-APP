@@ -267,6 +267,10 @@ struct RootView: View {
     /// klimabilanz://calendar – „Kalender-Vorschläge“   // MARK: calendarsuggestions
     private func handleDeepLink(_ url: URL) {
         guard url.scheme == AppConfig.urlScheme else { return }
+        if url.host() != "delays", DelayDiaryLink.shared.closeForLink() {   // MARK: review-delaydiary – the diary's sheet closes first
+            Task { @MainActor in try? await Task.sleep(for: .milliseconds(450)); handleDeepLink(url) }
+            return
+        }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func value(_ name: String) -> String? { items.first { $0.name == name }?.value }
         switch url.host() {

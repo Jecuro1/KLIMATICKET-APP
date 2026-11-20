@@ -62,6 +62,7 @@ enum TimeBalanceMemo {
         /// `now` in quarter hours: the totals only count trips up to now.
         var quarter: Int
         var profile: CarProfile
+        var lateFrom: Int   // MARK: review-delaydiary – the diary's mark („verspätet“ on both screens)
     }
 
     private static var inputsStamp: Int?
@@ -90,9 +91,12 @@ enum TimeBalanceMemo {
 
     static func balance(trips: [TripEntity], range: ClosedRange<Date>, now: Date, profile: CarProfile) -> TimeBalance {
         let stamp = stamp(trips)
-        let key = Key(tripsStamp: stamp, range: range, quarter: Int(now.timeIntervalSinceReferenceDate / 900), profile: profile)
+        let lateFrom = DelayDiarySettings.shared.options.thresholdMinutes   // MARK: review-delaydiary
+        let key = Key(tripsStamp: stamp, range: range, quarter: Int(now.timeIntervalSinceReferenceDate / 900), profile: profile,
+                      lateFrom: lateFrom)
         if let hit = entries.first(where: { $0.key == key }) { return hit.value }
-        let value = TimeBalanceCalculator.compute(trips: inputs(trips, stamp: stamp), range: range, now: now, carProfile: profile)
+        let value = TimeBalanceCalculator.compute(trips: inputs(trips, stamp: stamp), range: range, now: now, carProfile: profile,
+                                                  lateFromMinutes: lateFrom)
         entries.insert((key, value), at: 0)
         if entries.count > capacity { entries.removeLast() }
         return value
@@ -100,6 +104,7 @@ enum TimeBalanceMemo {
 
     /// For a fixed list of inputs (screenshot fixtures): not memoised.
     static func balance(inputs: [TimeTripInput], range: ClosedRange<Date>, now: Date, profile: CarProfile) -> TimeBalance {
-        TimeBalanceCalculator.compute(trips: inputs, range: range, now: now, carProfile: profile)
+        TimeBalanceCalculator.compute(trips: inputs, range: range, now: now, carProfile: profile,
+                                      lateFromMinutes: DelayDiarySettings.shared.options.thresholdMinutes)   // MARK: review-delaydiary
     }
 }

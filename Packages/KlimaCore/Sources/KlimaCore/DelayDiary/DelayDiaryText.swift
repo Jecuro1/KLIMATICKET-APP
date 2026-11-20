@@ -86,6 +86,17 @@ public enum DelayDiaryText {
         return parts.joined(separator: " · ")
     }
 
+    /// An open month without a late Fahrt, on the screen and in the PDF: „Keine Verspätung ab 5 Min. in diesem Monat.“ only
+    /// when something was recorded – a month with no entry is not a punctual one.
+    public static func noLateLine(threshold: Int, recorded: Int) -> String {
+        recorded > 0 ? "Keine Verspätung ab \(threshold)\u{00A0}Min. in diesem Monat." : "In diesem Monat ist noch nichts eingetragen."
+    }
+
+    /// A month chip of „Nachweis als PDF“: „2 verspätet“, „0 erfasst“ for a month without an entry (not „0 verspätet“).
+    public static func reportChipLine(recorded: Int, late: Int) -> String {
+        recorded > 0 ? "\(late)\u{00A0}verspätet" : "0\u{00A0}erfasst"
+    }
+
     /// The share line of a month or the year: „87 % pünktlich“ or „zu wenig Fahrten für eine Quote“.
     public static func shareLine(_ share: Double?) -> String {
         share.map { "\(percent($0))\u{00A0}pünktlich" } ?? tooFewForShare

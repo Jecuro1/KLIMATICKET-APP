@@ -174,9 +174,14 @@ enum TimeBalanceText {
 
     static func delayDetail(_ delays: TimeBalanceDelays, tripCount: Int) -> String {
         var text = "Nur Fahrten mit erfasster Verspätung: \(Format.number(Double(delays.recordedTrips))) von \(trips(tripCount))"
+        // MARK: review-delaydiary – „verspätet“ from the Verspätungs-Tagebuch's mark, like the diary and its Statistik card
+        // (counting every minute, this card called about twice as many of the demo year's Fahrten „verspätet“ as the diary).
+        let mark = "ab \(delays.lateFromMinutes)\u{00A0}Min."
         if delays.delayedTrips > 0 {
-            text += ", davon \(Format.number(Double(delays.delayedTrips))) verspätet"
+            text += ", davon \(Format.number(Double(delays.delayedTrips))) verspätet \(mark)"
             if delays.longestMinutes > 0 { text += " (höchstens \(clock(Double(delays.longestMinutes))))" }
+        } else if delays.longestMinutes > 0 {
+            text += ", keine verspätet \(mark) (höchstens \(clock(Double(delays.longestMinutes))))"
         } else {
             text += ", alle pünktlich"
         }

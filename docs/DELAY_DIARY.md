@@ -87,13 +87,19 @@ Kein eigenes Modell: das Tagebuch liest und schreibt die Felder der Zeitbilanz (
 docs/TIME_BALANCE.md §5 – Standardwerte, nur auf dem Gerät, im JSON-Backup als `delay_minutes` / `delay_source`). Geschrieben wird
 nur über `Repository+Delay.swift` (`recordDelay`, `recordOnTime`, `removeDelay`, `restoreDelays`) mit dem normalen Commit; jede
 Änderung stempelt die Fahrt (`touch()`), daher rechnen Zeitbilanz („verloren“), Statistik-Karte und Tagebuch sofort neu (alle hängen
-an `updatedAt`). Der Commit stößt **keinen Sync** an: die Verspätung steht in keiner Sync-Zeile.
+an `updatedAt`). Der Commit stößt **keinen Sync** an: die Verspätung steht in keiner Sync-Zeile. Weil `touch()` den Zeitstempel der
+Fahrt neu setzt, schickt der nächste Sync (mit Konto) die Zeile der Fahrt noch einmal – **ohne** Minuten und Quelle; der Server sieht
+nur, dass sich die Zeile geändert hat. Das JSON-Backup (Daten & Sicherung, auch die tägliche Sicherung in „Dateien“) enthält die
+Minuten: wer eine Sicherung teilt, teilt auch das Tagebuch. Die Texte sagen deshalb „weiter geht es nur, wenn du selbst das PDF oder
+eine Sicherung teilst“ (vorher: „nur das PDF … verlässt das Gerät“ – Review).
 
 ## 6. Nachweis als PDF
 
 „Nachweis als PDF“ öffnet ein Sheet: die Gültigkeitsmonate als Schalter (vorgewählt: die mit einer verspäteten Fahrt, sonst die mit
 einem Eintrag; „Alle“ / „Keine“), „Name aufs PDF“ (nur wenn am Ticket ein Name steht), die echte Datei in einer PDFKit-Vorschau,
-„Teilen“ (Share Sheet – der einzige Weg aus dem Gerät).
+„Teilen“ (Share Sheet – der einzige Weg, auf dem das PDF das Gerät verlässt). Die Datei liegt im temporären Ordner und wird gelöscht,
+sobald das Sheet schließt (Review: vorher blieb sie dort, mit dem Namen, falls gewählt). Monate ohne Eintrag heißen im PDF „In diesem
+Monat ist noch nichts eingetragen.“ und im Schalter „0 erfasst“ – nicht „Keine Verspätung“ bzw. „0 verspätet“ (Review).
 
 Das PDF (A4, `UIGraphicsPDFRenderer`, echter Text, Titel in den Dokument-Infos, kein Logo): Titel „Verspätungs-Tagebuch –
 persönliche Aufzeichnung“, Ticket mit Gültigkeit, optional der Name, Erstellungsdatum, ein neutraler Einleitungssatz
@@ -176,6 +182,31 @@ dunkel) und was danach geändert wurde:
   `delayEntrySheetAX5` einmal aufnehmen.
 - Ein heller Start von `delayDiaryMid` zeigte im ersten Lauf den Home-Bildschirm (App beendet, im zweiten Lauf nicht wieder – als
   einmaliger Simulator-Ausreißer gewertet, nicht reproduziert).
+
+## 8a. Review (Gegenprüfung auf `main`, 20.11.2026)
+
+Gefunden und behoben:
+- **„verspätet“ hieß zweierlei.** Die Zeitbilanz zählte jede erfasste Minute als „verspätet“, das Tagebuch und seine Statistik-Karte
+  erst ab der eigenen Grenze (5 Min.). Für dieselben Demo-Fahrten stand in der Zeitbilanz etwa doppelt so oft „verspätet“. Jetzt
+  zählt die Zeitbilanz „verspätet“ ab derselben Grenze und sagt sie dazu („davon 9 verspätet ab 5 Min.“); die verlorenen Minuten
+  zählen weiter ab der ersten (`TimeBalanceCalculator.compute(lateFromMinutes:)`, getestet für 3/5/10/15 gegen das Tagebuch).
+- **Ein Monat ohne Eintrag galt im PDF als pünktlich:** „Keine Verspätung ab 5 Min. in diesem Monat.“ stand auch da, wo nichts
+  erfasst war; der Monats-Schalter im PDF-Sheet sagte „0 verspätet“. Jetzt „In diesem Monat ist noch nichts eingetragen.“ / „0 erfasst“
+  (`DelayDiaryText.noLateLine`, `reportChipLine`, getestet).
+- **Eine Fahrt ohne Eintrag sah pünktlich aus:** Die Zeile „Verspätung“ im Fahrt-Detail zeigte bei „nicht erfasst“ die grüne Kachel
+  mit Häkchen. Jetzt die schlichte Uhr in den Farben des Tagebuchs.
+- **„Nur das PDF verlässt das Gerät“ stimmte nicht:** Das JSON-Backup trägt die Minuten auch (§5). Text im Sheet und in „So führst du
+  das Tagebuch“ korrigiert.
+- **Deep Links unter dem Tagebuch-Sheet:** Kam ein anderer `klimabilanz://`-Link (Fahrt erfassen, Zeitbilanz, Was-wäre-wenn,
+  Jahresrückblick …), während `klimabilanz://delays` offen war, blieb dessen Sheet hängen (SwiftUI zeigt keins über einem anderen).
+  Jetzt schließt das Tagebuch zuerst, der Link folgt nach 450 ms (`DelayDiaryLink.closeForLink`, eine markierte Zeile in RootView).
+- **PDF-Sheet:** schlug das Erzeugen fehl, blieben Vorschau und „Teilen“ der vorigen Auswahl stehen; jetzt nur die Fehlermeldung. Die
+  Datei wird beim Schließen gelöscht.
+
+Geprüft und in Ordnung: Punkt 24 (gegen den AGB-Text im Arbeitsordner gelesen – 24.1 bis 24.4 wie in §7, keine Minutengrenze für
+eine einzelne Ankunft), Schreiben nur über `Repository+Delay` (kein `context.save` in `Features/Delays`), kein Netzwerk und keine
+Berechtigung, kein Betrag (`Format.euro`/„€“ in `Features/Delays`: keine Treffer), keine neue SwiftData-Spalte, Monatsgrenzen in
+Wiener Zeit (Tests mit Sommerzeit), leeres Jahr ohne NaN, Motion nur über die Tokens.
 
 ## 9. Nicht gebaut: Live-Übernahme (Stretch)
 

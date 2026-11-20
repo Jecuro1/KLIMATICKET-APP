@@ -182,6 +182,15 @@ final class DelayDiaryLink {
             if app.tripDraft == nil, app.yearReviewRequest == nil { self.isPresented = true }
         }
     }
+
+    /// Another klimabilanz:// link arrives while the diary's sheet is open: the sheet closes first and RootView handles the
+    /// link once it is gone (review-delaydiary – a trip editor, Zeitbilanz, Was-wäre-wenn or Jahresrückblick asked for over it
+    /// stayed pending, the case `TimeBalanceLink` describes). Returns whether it was open.
+    func closeForLink() -> Bool {
+        guard isPresented else { return false }
+        isPresented = false
+        return true
+    }
 }
 
 extension View {

@@ -49,7 +49,7 @@ enum DelayDiaryDemo {
 /// - `delayDiaryMonth`: a month opened to its late Fahrten
 /// - `delayDiaryEmpty`: nothing recorded yet
 /// - `delayEntrySheet` / `delayEntryOnTime`: the sheet over a trip (a late entry; a trip without one)
-/// - `delayTripRow`: the „Verspätung“ row in the trip detail
+/// - `delayTripRow`: the „Verspätung“ row in the trip detail; `delayTripRowOpen`: the row of a trip without an entry (review)
 /// - `delayReport`: „Nachweis als PDF“ with the real PDF in the preview
 /// - `delayBackfill`: „Nachtragen“ for the current month
 /// - `delayOptions`: the diary's settings
@@ -60,6 +60,7 @@ struct DelayDiaryScreenshotHost: View {
         "delayDiary", "delayDiaryMid", "delayDiaryBottom", "delayDiaryMonth", "delayDiaryEmpty", "delayEntrySheet", "delayEntryOnTime",
         "delayTripRow", "delayReport", "delayBackfill", "delayOptions", "delayDiaryCard", "delayDiaryAX5", "delayDiaryAX5Mid",
         "delayEntrySheetAX5", "delayRightsLink",
+        "delayTripRowOpen",   // MARK: review-delaydiary – the neutral tile of „nicht erfasst“
     ]
 
     let screen: String
@@ -121,6 +122,11 @@ struct DelayDiaryScreenshotHost: View {
         case "delayTripRow":
             NavigationStack {
                 if let trip = lateTrip { TripDetailView(trip: trip) }
+            }
+            .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.42))
+        case "delayTripRowOpen":   // MARK: review-delaydiary
+            NavigationStack {
+                if let trip = trips.first(where: { $0.recordedDelay == nil }) { TripDetailView(trip: trip) }
             }
             .defaultScrollAnchor(UnitPoint(x: 0.5, y: 0.42))
         case "delayReport":

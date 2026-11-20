@@ -67,6 +67,8 @@ struct DelayReportSheet: View {
         .presentationDragIndicator(.visible)
         .haptic(.selection, trigger: picked)
         .task(id: renderKey) { render() }
+        // review-delaydiary: the file (with the holder's name, if chosen) does not outlive the sheet in the temporary folder.
+        .onDisappear { DelayReportPDF.removeFiles() }
         .accessibilityIdentifier("delay.report")
     }
 
@@ -115,7 +117,7 @@ struct DelayReportSheet: View {
                     Text(DelayDiaryFormat.shortMonth(month.start))
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isOn ? Theme.onAccent : Theme.textPrimary)
-                    Text("\(month.lateCount) verspätet")
+                    Text(DelayDiaryText.reportChipLine(recorded: month.recordedCount, late: month.lateCount))
                         .font(.caption2)
                         .foregroundStyle(isOn ? Theme.onAccent.opacity(0.85) : Theme.textSecondary)
                 }
@@ -128,7 +130,7 @@ struct DelayReportSheet: View {
                         in: .rect(cornerRadius: Theme.Radius.chip, style: .continuous))
         }
         .buttonStyle(.pressable)
-        .accessibilityLabel("\(DelayDiaryFormat.monthTitle(month)), \(month.lateCount) verspätet")
+        .accessibilityLabel("\(DelayDiaryFormat.monthTitle(month)), \(DelayDiaryText.reportChipLine(recorded: month.recordedCount, late: month.lateCount))")
         .accessibilityValue(isOn ? "im PDF" : "nicht im PDF")
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
@@ -224,6 +226,8 @@ struct DelayReportSheet: View {
                 failed = false
             }
         } catch {
+            // No stale preview or share of an older selection after a failed render.
+            rendered = nil
             failed = true
         }
     }

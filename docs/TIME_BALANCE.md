@@ -134,7 +134,12 @@ Etappen zählt einmal, mit der Verspätung ihrer **letzten erfassten Ankunft** (
 früheren Etappe kommt nicht dazu, ein Anschluss kann sie geschluckt haben). Review: vorher zählte jede Etappe einzeln, und die Karte
 konnte „3 von 1 Fahrt“ sagen. Sind alle erfassten Fahrten pünktlich, heißt die Zeile „Pünktlich: keine Zeit verloren“ (vorher
 „Keine Verspätung erfasst“, was wie „nichts erfasst“ klang). Die Karte nennt,
-wie viele von wie vielen Fahrten erfasst sind und wie viele verspätet waren. Verspätungen werden **nicht** zu den Stunden oben
+wie viele von wie vielen Fahrten erfasst sind und wie viele verspätet waren – „verspätet“ ab der Grenze des Verspätungs-Tagebuchs
+(standardmäßig 5 Min., dort einstellbar; „davon 9 verspätet ab 5 Min.“). Review des Tagebuchs: vorher zählte hier jede Minute, und für
+dieselben Demo-Fahrten stand hier etwa doppelt so oft „verspätet“ wie im Tagebuch und auf seiner Statistik-Karte (das Demo-Muster
+hat je 36 Einträge 10 ab 1 Min. und 5 ab 5 Min.). Die verlorenen Minuten
+zählen weiter ab der ersten Minute; liegt keine Fahrt über der Grenze, heißt es „keine verspätet ab 5 Min. (höchstens 4 Min.)“.
+Verspätungen werden **nicht** zu den Stunden oben
 addiert (eine eingetragene Dauer kann sie schon enthalten). Erfasst werden Verspätungen im Verspätungs-Tagebuch
 (docs/DELAY_DIARY.md): Zeile „Verspätung“ im Fahrt-Detail, von Hand; eine Änderung zählt hier sofort mit. Die Demo-Daten tragen
 seither Ankünfte von Hand (`DelayDiaryDemo`); die Szene `timeBalanceDelays` zeigt weiter ihre eigene Vorlage (mit „live“ für die
